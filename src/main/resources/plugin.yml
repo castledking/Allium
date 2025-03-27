@@ -19,10 +19,14 @@ commands:
     usage: "/give <player> <item> <amount>"
     permission: core.give
     aliases: [i]
+  itemdb:
+    description: "Shows item/block info"
+    usage: "/itemdb"
+    permission: core.itemdb
 
 permissions:
   core.explode:
-    default: true
+    default: op
   core.explode.self:
     default: op
   core.explode.exempt:

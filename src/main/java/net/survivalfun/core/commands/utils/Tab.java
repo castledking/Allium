@@ -7,6 +7,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,29 +25,22 @@ public class Tab implements TabCompleter {
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, String alias, String @NotNull [] args) {
         // Ensure we handle tab completion for specific commands/aliases
-        switch (alias.toLowerCase()) {
-            case "explode":
-                return getExplodeSuggestions(sender, args);
-            case "gc":
-                return getDevSuggestions(sender, args);
-            case "give":
-                return getGiveSuggestions(sender, args);
-            case "i": // Explicitly handle tab completion for /i
-                return getISuggestions(sender, args);
-            default:
-                return new ArrayList<>(); // Return an empty list to block default behavior
-        }
+        return switch (alias.toLowerCase()) {
+            case "explode" -> getExplodeSuggestions(sender, args);
+            case "give" -> getGiveSuggestions(sender, args);
+            case "i" -> // Explicitly handle tab completion for /i
+                    getISuggestions(sender, args);
+            default -> new ArrayList<>(); // Return an empty list to block default behavior
+        };
     }
 
     private List<String> getExplodeSuggestions(CommandSender sender, String[] args) {
         List<String> suggestions = new ArrayList<>();
 
         // Only players can use this command
-        if (!(sender instanceof Player)) return suggestions;
-
-        Player player = (Player) sender;
+        if (!(sender instanceof Player player)) return suggestions;
 
         // Fetch configurable values for min, max, and default from the config file
         int min = config.getInt("explode-command.min", 1);
@@ -84,34 +78,6 @@ public class Tab implements TabCompleter {
         return filterSuggestions(suggestions, args[args.length - 1]);
     }
 
-    /**
-     * Adds Tab completion for the `/dev` command with "register" and "unregister" subcommands.
-     */
-    private List<String> getDevSuggestions(CommandSender sender, String[] args) {
-        List<String> suggestions = new ArrayList<>();
-
-        // Only allow suggestions if the sender has permission to use /dev
-        if (sender.hasPermission("core.dev")) {
-            switch (args.length) {
-                case 1:
-                    suggestions.add("register");
-                    suggestions.add("unregister");
-                    break;
-                case 2:
-                    // Suggestions for the second argument (commands to register/unregister)
-                    // Right now, only 'gc' is available
-                    if ("register".equalsIgnoreCase(args[0]) || "unregister".equalsIgnoreCase(args[0])) {
-                        suggestions.add("gc");
-                    }
-                    break;
-                default:
-                    // Handle cases where args.length > 2 (not needed at this time)
-                    break;
-            }
-        }
-
-        return filterSuggestions(suggestions, args[args.length - 1]);
-    }
 
     /**
      * Provides Tab Completion suggestions for the /give command.

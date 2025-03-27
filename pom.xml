@@ -30,14 +30,6 @@
                         <goals>
                             <goal>shade</goal>
                         </goals>
-                        <configuration>
-                            <artifactSet>
-                                <includes>
-                                    <include>net.sf.jopt-simple:jopt-simple</include>
-                                </includes>
-                            </artifactSet>
-                        </configuration>
-
                     </execution>
                 </executions>
             </plugin>
@@ -48,14 +40,21 @@
                 <filtering>true</filtering>
             </resource>
         </resources>
+
     </build>
 
-
+    <repositories>
+        <repository>
+            <id>papermc-repo</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+    </repositories>
     <dependencies>
         <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot-api</artifactId>
-            <version>1.21.5-R0.1-SNAPSHOT</version> <!-- Use the latest version -->
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>1.21.4-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.kyori</groupId>

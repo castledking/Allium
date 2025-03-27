@@ -3,8 +3,10 @@ import net.survivalfun.core.chat.FormatChatListener;
 import net.survivalfun.core.commands.Explode;
 import net.survivalfun.core.commands.GC;
 import net.survivalfun.core.commands.Give;
+import net.survivalfun.core.commands.ItemDB;
 import net.survivalfun.core.commands.utils.Tab;
 import net.survivalfun.core.lang.LangManager;
+import net.survivalfun.core.utils.LegacyIDUtils;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -48,6 +50,9 @@ public class PluginStart extends JavaPlugin {
             // Register give command
             getCommand("give").setExecutor(new Give());
             getCommand("give").setTabCompleter(new Tab(this));
+
+            // Register ItemDB command
+            getCommand("itemdb").setExecutor(new ItemDB());
         } catch (Exception e) {
             getServer().getPluginManager().disablePlugin(this);
         }

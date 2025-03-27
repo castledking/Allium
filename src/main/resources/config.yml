@@ -1,0 +1,4 @@
+explode-command:
+  default: 2
+  max: 10
+  min: 1

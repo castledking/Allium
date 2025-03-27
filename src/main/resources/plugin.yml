@@ -1,0 +1,31 @@
+name: SFCore
+version: 1.0
+main: net.survivalfun.core.PluginStart
+api-version: 1.21
+author: towkio
+description: "Survival Fun Core"
+
+commands:
+  explode:
+    description: "Explodes target player"
+    usage: "/explode <played> [modifier]"
+    permission: core.explode
+  gc:
+    description: "Displays server details"
+    usage: "/gc"
+    permission: core.gc
+  give:
+    description: "Give items to players"
+    usage: "/give <player> <item> <amount>"
+    permission: core.give
+    aliases: [i]
+
+permissions:
+  core.explode:
+    default: true
+  core.explode.self:
+    default: op
+  core.explode.exempt:
+    default: op
+  core.gc:
+    default: true

@@ -1,12 +1,12 @@
 package net.survivalfun.core;
 import net.survivalfun.core.chat.FormatChatListener;
-import net.survivalfun.core.commands.Explode;
-import net.survivalfun.core.commands.GC;
-import net.survivalfun.core.commands.Give;
-import net.survivalfun.core.commands.ItemDB;
+import net.survivalfun.core.commands.core.Heal;
+import net.survivalfun.core.commands.fun.Explode;
+import net.survivalfun.core.commands.utils.GC;
+import net.survivalfun.core.commands.core.Give;
+import net.survivalfun.core.commands.utils.ItemDB;
 import net.survivalfun.core.commands.utils.Tab;
 import net.survivalfun.core.lang.LangManager;
-import net.survivalfun.core.utils.LegacyIDUtils;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -53,6 +53,9 @@ public class PluginStart extends JavaPlugin {
 
             // Register ItemDB command
             getCommand("itemdb").setExecutor(new ItemDB());
+
+            // Register Heal command
+            getCommand("heal").setExecutor(new Heal());
         } catch (Exception e) {
             getServer().getPluginManager().disablePlugin(this);
         }

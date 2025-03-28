@@ -8,7 +8,7 @@ description: "Survival Fun Core"
 commands:
   explode:
     description: "Explodes target player"
-    usage: "/explode <played> [modifier]"
+    usage: "/explode <player> [modifier]"
     permission: core.explode
   gc:
     description: "Displays server details"
@@ -23,6 +23,10 @@ commands:
     description: "Shows item/block info"
     usage: "/itemdb"
     permission: core.itemdb
+  heal:
+    description: "Heal players"
+    usage: "/heal [player]"
+    permission: core.heal
 
 permissions:
   core.explode:

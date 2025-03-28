@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands;
+package net.survivalfun.core.commands.fun;
 
 import net.survivalfun.core.PluginStart;
 import org.bukkit.command.Command;
@@ -46,7 +46,7 @@ public class Explode implements CommandExecutor {
      * Command logic implementation.
      */
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
         // Ensure the command is executed by a player
         if (!(sender instanceof Player player)) {
             sender.sendMessage("This command can only be run by a player!");
@@ -135,16 +135,20 @@ public class Explode implements CommandExecutor {
         return true;
     }
 
-
-
-
-    /**
-     * Creates a fireball for a player at the player's location with the given explosion power.
-     *
-     * @param player         The target player.
-     * @param explosionPower The explosion power of the fireball.
-     */
     public void createFireball(Player player, int explosionPower) {
-        player.getWorld().createExplosion(player.getLocation(), explosionPower);
+        // Summon a fireball with custom explosion power and downward motion
+        String summonCommand = String.format(
+                "summon minecraft:fireball %f %f %f {ExplosionPower:%d,Motion:[0.0,-3.0,0.0]}",
+                player.getLocation().getX(),
+                player.getLocation().getY() + 1, // Spawn slightly above player to avoid collision
+                player.getLocation().getZ(),
+                explosionPower
+        );
+
+        // Execute the summon command through the Bukkit server
+        player.getServer().dispatchCommand(
+                player.getServer().getConsoleSender(),
+                summonCommand
+        );
     }
 }

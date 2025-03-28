@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands;
+package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.utils.LegacyIDUtils;
 import org.bukkit.command.Command;

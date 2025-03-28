@@ -1,17 +1,16 @@
-package net.survivalfun.core.commands;
+package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.lang.LangManager;
+import net.survivalfun.core.utils.ColorUtils;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
-import java.nio.file.FileStore;
-import java.nio.file.FileSystems;
 import java.util.HashMap;
 import java.util.List;
 
@@ -23,7 +22,7 @@ public class GC implements CommandExecutor {
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
         LangManager lang = plugin.getLangManager();
         if (lang == null) {
             sender.sendMessage("Error: Language system not initialized");
@@ -32,13 +31,13 @@ public class GC implements CommandExecutor {
 
         // Check permissions
         if (!sender.hasPermission("core.gc")) {
-            sender.sendMessage(deserialize(lang.get("commands.gc.no_permission"), sender));
+            sender.sendMessage(ColorUtils.colorize(lang.get("commands.gc.no_permission")));
             return true;
         }
 
         // Send header from lang.yml
         String usageHeader = lang.get("commands.gc.usage_header");
-        sender.sendMessage(deserialize(usageHeader, sender));
+        sender.sendMessage(ColorUtils.colorize(usageHeader));
 
         // Run command in async (to avoid lag for disk/memory checks)
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -56,21 +55,16 @@ public class GC implements CommandExecutor {
                 int availableProcessors = osMXBean.getAvailableProcessors();
 
                 long totalDiskSpace = 0L, freeDiskSpace = 0L;
+                double[] tpsArray = new double[]{20.0, 20.0, 20.0}; // Default values
                 try {
-                    for (FileStore store : FileSystems.getDefault().getFileStores()) {
-                        totalDiskSpace += store.getTotalSpace();
-                        freeDiskSpace += store.getUsableSpace();
-                    }
-                } catch (Exception e) {
-                    totalDiskSpace = -1;
-                    freeDiskSpace = -1;
+                    // This is the proper Paper API method
+                    tpsArray = Bukkit.getTPS(); // No need for instanceof check
+                } catch (NoSuchMethodError e) {
+                    // Fallback if not using Paper
+                    plugin.getLogger().warning("Could not get TPS - Paper API not available");
                 }
 
-                totalDiskSpace /= (1024 * 1024 * 1024);
-                freeDiskSpace /= (1024 * 1024 * 1024);
-
-                // Get TPS using Spigot's API
-                String tps = "20";
+                String tps = formatTps(tpsArray[0]);
 
                 // Create placeholder map
                 HashMap<String, String> placeholders = new HashMap<>();
@@ -88,7 +82,7 @@ public class GC implements CommandExecutor {
                 // Send messages from lang.yml with placeholders replaced
                 List<String> messages = lang.getList("commands.gc.message");
                 for (String line : messages) {
-                    sender.sendMessage(deserialize(lang.format(line, placeholders), sender));
+                    sender.sendMessage(ColorUtils.colorize(lang.format(line, placeholders)));
                 }
             } catch (Exception e) {
                 sender.sendMessage("Error: Failed to process system information");
@@ -98,15 +92,20 @@ public class GC implements CommandExecutor {
         return true;
     }
 
+    private String formatTps(double tps) {
+        // Paper sometimes reports slightly above 20, so we cap it
+        tps = Math.min(tps, 20.0);
 
-    private String deserialize(String message, CommandSender sender) {
-        // Convert color codes for both console and players
-        if (sender instanceof org.bukkit.command.ConsoleCommandSender) {
-            // Console understands § codes directly
-            return message.replace('&', '§');
+        // Determine color based on TPS health
+        String color;
+        if (tps >= 18.0) {
+            color = "&a"; // Green - healthy
+        } else if (tps >= 15.0) {
+            color = "&e"; // Yellow - minor lag
         } else {
-            // Players need the color codes translated through ChatColor
-            return ChatColor.translateAlternateColorCodes('&', message);
+            color = "&c"; // Red - severe lag
         }
+
+        return color + String.format("%.1f", tps);
     }
 }

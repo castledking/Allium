@@ -1,4 +1,3 @@
-# Language file (lang.yml)
 error-prefix: "&4Error: "
 invalid-explode-integer: "&cPlease enter an integer between &7{min}&c and &7{max}&c."
 explode-success: "&aExploding with power &e{power}&a."
@@ -9,8 +8,10 @@ player-not-online: "&cPlayer &7{name}&c is not online."
 no-permission: "&cYou do not have permission to use this command!"
 commands:
   gc:
-    no_permission: "&cYou do not have permission to use this command."
-    usage_header: "&a===== SERVER AND MACHINE USAGE ====="
+    usage-header: "&a===== SERVER AND MACHINE USAGE ====="
+    disk-space-error: "Could not retrieve disk space information"
+    system-info-error: "Failed to process system information"
+    world-info-error: "Failed to gather world information"
     message:
       - "&eOS: &f{osName} (Version: {osVersion}, Architecture: {osArch})"
       - "&eAvailable Processors: &f{availableProcessors}"
@@ -19,4 +20,8 @@ commands:
       - "&eMax Memory: &f{maxRam} MB"
       - "&eTotal Allocated Memory: &f{allocatedMemory} MB"
       - "&eFree Memory: &f{freeMemory} MB"
-      - "&eServer TPS: &f{tps}"
+      - "&eServer TPS: {tps}"
+      - "&6&nWorld Information:"
+      - "&eLoaded Worlds: &f{worldCount} &7(Total Chunks: &f{totalChunks}&7)"
+      - "&eTotal Entities: &f{totalEntities} &7| &eTile Entities: &f{totalTileEntities}"
+      - "&7World Details: {worldInfo}"

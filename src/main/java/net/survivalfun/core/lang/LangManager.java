@@ -1,41 +1,32 @@
 package net.survivalfun.core.lang;
 
 import net.survivalfun.core.utils.ColorUtils;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
+import java.util.stream.Collectors;
 
 public class LangManager {
-    private FileConfiguration config;
-    private final File langFile; // Path to lang.yml
-    private final Map<String, String> messages = new HashMap<>(); // Stores loaded messages
+    private final File langFile;
+    private final Map<String, Object> messages = new HashMap<>();
+    private final Map<String, Object> defaultMessages = new HashMap<>();
 
-    // Default messages for fallback
-    private final Map<String, String> defaultMessages = new HashMap<>();
-
-    // Constructor
     public LangManager(File pluginFolder) {
-
-        // Ensure plugin folder exists
-        if (!pluginFolder.exists()) {
-            pluginFolder.mkdirs();
+        if (!pluginFolder.exists() && !pluginFolder.mkdirs()) {
+            throw new IllegalStateException("Could not create plugin folder");
         }
 
-        // Initialize lang.yml file
         this.langFile = new File(pluginFolder, "lang.yml");
-        
         initializeDefaultMessages();
-        load(); // Load or create the language file
+        load();
     }
 
-    /**
-     * Initializes default messages for fallback.
-     */
     private void initializeDefaultMessages() {
+        // Basic messages
         defaultMessages.put("error-prefix", "&4Error: ");
         defaultMessages.put("invalid-explode-integer", "&cPlease enter an integer between &7{min}&c and &7{max}&c.");
         defaultMessages.put("explode-success", "&aExploding with power &e{power}&a.");
@@ -44,121 +35,133 @@ public class LangManager {
         defaultMessages.put("player-not-found", "&cPlayer &7{name}&c was not found.");
         defaultMessages.put("player-not-online", "&cPlayer &7{name}&c is not online.");
         defaultMessages.put("no-permission", "&cYou do not have permission to use this command!");
-        defaultMessages.put("commands.gc.no_permission", "&cYou do not have permission to use this command.");
-        defaultMessages.put("commands.gc.usage_header", "&a===== SERVER AND MACHINE USAGE =====");
-        defaultMessages.put("commands.gc.message", "&eOS: &f{osName} (Version: {osVersion}, Architecture: {osArch})\n" +
-                "&eAvailable Processors: &f{availableProcessors}\n" +
-                "&eTotal Disk Space: &f{totalDiskSpace} GB\n" +
-                "&eFree Disk Space: &f{freeDiskSpace} GB\n" +
-                "&eMax Memory: &f{maxRam} MB\n" +
-                "&eTotal Allocated Memory: &f{allocatedMemory} MB\n" +
-                "&eFree Memory: &f{freeMemory} MB\n" +
-                "&eServer TPS: &f{tps}");
+
+        // GC command messages
+        defaultMessages.put("commands.gc.no-permission", "&cYou do not have permission to use this command.");
+        defaultMessages.put("commands.gc.usage-header", "&a===== SERVER AND MACHINE USAGE =====");
+        defaultMessages.put("commands.gc.disk-space-error", "Could not retrieve disk space information");
+        defaultMessages.put("commands.gc.system-info-error", "Failed to process system information");
+        defaultMessages.put("commands.gc.world-info-error", "Failed to gather world information");
+
+        // GC multi-line message as List
+        defaultMessages.put("commands.gc.message", Arrays.asList(
+                "&eOS: &f{osName} (Version: {osVersion}, Architecture: {osArch})",
+                "&eAvailable Processors: &f{availableProcessors}",
+                "&eTotal Disk Space: &f{totalDiskSpace} GB",
+                "&eFree Disk Space: &f{freeDiskSpace} GB",
+                "&eMax Memory: &f{maxRam} MB",
+                "&eTotal Allocated Memory: &f{allocatedMemory} MB",
+                "&eFree Memory: &f{freeMemory} MB",
+                "&eServer TPS: {tps}",
+                "\\n",  // This will be converted to a blank line
+                "&6&nWorld Information:",
+                "&eLoaded Worlds: &f{worldCount} &7(Total Chunks: &f{totalChunks}&7)",
+                "&eTotal Entities: &f{totalEntities} &7| &eTile Entities: &f{totalTileEntities}",
+                "&7World Details: {worldInfo}"
+        ));
     }
 
-    /**
-     * Loads the lang.yml file, falling back to default messages if needed.
-     * Also updates the lang.yml file with missing keys.
-     */
     public void load() {
+        // Create default lang.yml if it doesn't exist
+        FileConfiguration config;
         if (!langFile.exists()) {
-            return;
+            try {
+                if (!langFile.createNewFile()) {
+                    throw new IllegalStateException("Could not create lang.yml");
+                }
+                config = new YamlConfiguration();
+                // Write all defaults to the new file
+                defaultMessages.forEach(config::set);
+                config.save(langFile);
+                messages.putAll(defaultMessages);
+                return;
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to create lang.yml", e);
+            }
         }
 
-        // Load config from lang.yml
+        // Load the config file
         config = YamlConfiguration.loadConfiguration(langFile);
         messages.clear();
 
-        // Add missing default messages
+        // Merge defaults with existing config
         boolean updated = false;
-        for (Map.Entry<String, String> entry : defaultMessages.entrySet()) {
+        for (Map.Entry<String, Object> entry : defaultMessages.entrySet()) {
             if (!config.contains(entry.getKey())) {
                 config.set(entry.getKey(), entry.getValue());
                 updated = true;
             }
         }
 
-        // Save the updated config if new defaults were added
+        // Save if we added any new defaults
         if (updated) {
             try {
                 config.save(langFile);
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new IllegalStateException("Failed to save lang.yml", e);
             }
         }
 
-        // Populate messages from lang.yml
-        for (String key : config.getKeys(true)) {
-            if (config.isString(key)) {
-                messages.put(key, config.getString(key));
-            } else if (config.isList(key)) {
-                // For lists, we'll store them as a special format in the messages map
-                List<String> list = config.getStringList(key);
-                messages.put(key, String.join("\n", list));
+        // Load all messages into memory with proper null checks
+        loadMessagesRecursive(config, "");
+    }
+
+    private void loadMessagesRecursive(ConfigurationSection section, String path) {
+        if (section == null) return;
+
+        for (String key : section.getKeys(false)) {
+            String fullPath = path.isEmpty() ? key : path + "." + key;
+
+            if (section.isConfigurationSection(key)) {
+                ConfigurationSection subSection = section.getConfigurationSection(key);
+                if (subSection != null) {
+                    loadMessagesRecursive(subSection, fullPath);
+                }
+            } else if (section.isList(key)) {
+                messages.put(fullPath, section.getStringList(key));
+            } else {
+                messages.put(fullPath, section.getString(key, ""));
             }
         }
     }
 
-    /**
-     * Get a single message by key.
-     * Falls back to defaultMessages if the key is missing.
-     *
-     * @param key The key for the message.
-     * @return The corresponding message or a placeholder if missing.
-     */
     public String get(String key) {
-        if (messages.containsKey(key)) {
-            return ColorUtils.colorize(messages.get(key)); // Found in lang.yml
-        }
-
-        if (defaultMessages.containsKey(key)) {
-            return ColorUtils.colorize(defaultMessages.get(key)); // Fallback to defaultMessages
-        }
-
-        return ColorUtils.colorize("&c[Missing language key: " + key + "]");
+        Object message = messages.getOrDefault(key, defaultMessages.get(key));
+        return ColorUtils.colorize(message != null ? message.toString() : "&c[Missing key: " + key + "]");
     }
 
     public List<String> getList(String key) {
-        // First check if we have a stored message
-        if (messages.containsKey(key)) {
-            String storedMessage = messages.get(key);
-            // If the message contains newlines, it's a list
-            if (storedMessage.contains("\n")) {
-                List<String> list = Arrays.asList(storedMessage.split("\n"));
-                list.replaceAll(ColorUtils::colorize);
-                return list;
+        Object message = messages.getOrDefault(key, defaultMessages.get(key));
+
+        if (message instanceof List) {
+            List<String> list = new ArrayList<>();
+            for (Object line : (List<?>) message) {
+                String lineStr = line.toString();
+                if (lineStr.equals("\\n")) {
+                    list.add(""); // Add empty line
+                } else {
+                    list.add(lineStr);
+                }
             }
+            list.replaceAll(ColorUtils::colorize);
+            return list;
+        } else if (message != null) {
+            // Handle case where it's stored as a single string with newlines
+            return Arrays.stream(message.toString().split("\n"))
+                    .map(line -> line.equals("\\n") ? "" : line) // Handle \n in single strings
+                    .map(ColorUtils::colorize)
+                    .collect(Collectors.toList());
         }
 
-        // If not found in messages, try to get directly from config
-        if (config.isList(key)) {
-            List<String> messages = config.getStringList(key);
-            messages.replaceAll(ColorUtils::colorize);
-            return messages;
-        }
-
-        // If not a list, try to get as a string
-        if (config.isString(key)) {
-            String message = config.getString(key);
-            return Collections.singletonList(ColorUtils.colorize(message));
-        }
-
-        // If no value found, return empty list
-        return Collections.emptyList();
+        return Collections.singletonList(ColorUtils.colorize("&c[Missing list: " + key + "]"));
     }
 
-    /**
-     * Replaces placeholders in messages.
-     *
-     * @param message      The message to process.
-     * @param placeholders A map of placeholders and their replacements.
-     * @return The processed message with placeholders replaced.
-     */
     public String format(String message, Map<String, String> placeholders) {
         if (message == null) return null;
+        String formatted = message;
         for (Map.Entry<String, String> entry : placeholders.entrySet()) {
-            message = message.replace("{" + entry.getKey() + "}", entry.getValue());
+            formatted = formatted.replace("{" + entry.getKey() + "}", entry.getValue());
         }
-        return ColorUtils.colorize(message);
+        return ColorUtils.colorize(formatted);
     }
 }

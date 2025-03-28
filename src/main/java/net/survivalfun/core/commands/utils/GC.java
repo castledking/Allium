@@ -2,7 +2,6 @@ package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.lang.LangManager;
-import net.survivalfun.core.utils.ColorUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -31,13 +30,12 @@ public class GC implements CommandExecutor {
 
         // Check permissions
         if (!sender.hasPermission("core.gc")) {
-            sender.sendMessage(ColorUtils.colorize(lang.get("commands.gc.no_permission")));
+            sender.sendMessage(lang.get("commands.gc.no_permission"));
             return true;
         }
 
         // Send header from lang.yml
-        String usageHeader = lang.get("commands.gc.usage_header");
-        sender.sendMessage(ColorUtils.colorize(usageHeader));
+        sender.sendMessage(lang.get("commands.gc.usage_header"));
 
         // Run command in async (to avoid lag for disk/memory checks)
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -82,7 +80,7 @@ public class GC implements CommandExecutor {
                 // Send messages from lang.yml with placeholders replaced
                 List<String> messages = lang.getList("commands.gc.message");
                 for (String line : messages) {
-                    sender.sendMessage(ColorUtils.colorize(lang.format(line, placeholders)));
+                    sender.sendMessage(lang.format(line, placeholders));
                 }
             } catch (Exception e) {
                 sender.sendMessage("Error: Failed to process system information");

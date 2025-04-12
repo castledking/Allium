@@ -1,0 +1,87 @@
+#==========================================#
+#                GENERAL SETTINGS          #
+#==========================================#
+
+
+core-prefix: "&#B2C3EEC&#B0D3F3o&#AFE3F8r&#ADF3FDe"
+error-prefix: "&#CD2B39E&#C82C39r&#C32D3Ar&#BD2D3Ao&#B82E3Ar&#A93838"
+unknown-locale: "Translation for &7{key} &8(&7{lang} &8| &7{country}&8) &ccould not be found!"
+
+#==========================================#
+#                COMMAND SETTINGS          #
+#==========================================#
+
+command-usage: "&7Usage: /{cmd} {args}"
+unknown-command: "Unknown command: {command}. Type /help for a list of commands."
+not-a-player: "You must be a player to use this command."
+player-not-found: "Player &7{name} was not found."
+player-not-online: "Player &7{name} is not online."
+invalid: "Invalid {arg}! Please check your syntax."
+no-permission: "You do not have permission to use this command!"
+hold-item: "&cYou must be holding an item to {modify} it."
+contact-admin: "An unexpected error has occurred. Please contact an administrator."
+gc:
+  usage-header: "&a===== SERVER AND MACHINE USAGE ====="
+  disk-space-error: "&cCould not retrieve disk space information."
+  system-info-error: "&cFailed to process system information."
+  world-info-error: "&cFailed to gather world information."
+  message:
+    - "&eOS: &f{osName} (Version: {osVersion}, Architecture: {osArch})"
+    - "&eAvailable Processors: &f{availableProcessors}"
+    - "&eTotal Disk Space: &f{totalDiskSpace} GB"
+    - "&eFree Disk Space: &f{freeDiskSpace} GB"
+    - "&eMax Memory: &f{maxRam} MB"
+    - "&eTotal Allocated Memory: &f{allocatedMemory} MB"
+    - "&eFree Memory: &f{freeMemory} MB"
+    - "&eServer TPS: &f{tps}"
+    - "&6&nWorld Information:"
+    - "&eLoaded Worlds: &f{worldCount} &7(Total Chunks: &f{totalChunks}&7)"
+    - "&eTotal Entities: &f{totalEntities} &7| &eTile Entities: &f{totalTileEntities}"
+    - "&7World Details: &f{worldInfo}"
+
+gamemode:
+  invalid: "&cInvalid gamemode: &7{mode}"
+  switch: "&aSwitched to &e{gamemode} &agamemode."
+  switch-other: "&aSwitched &e{name}&a to &e{gamemode} &agamemode."
+  reset: "&aYour gamemode has been reset to &e{gamemode}&a."
+
+reload:
+  reload-success: "&aConfiguration reloaded."
+  reload-failure: "&cError reloading configuration! Check console for details."
+
+explode:
+  invalid: "Please enter an integer between &7{min} and &7{max}."
+  self: "&aExploding with power &e{power}&a."
+  other: "&aExploding &e{name} &awith power &e{power}&a."
+give:
+  inventory-full: "Inventory full, make some space before giving more items."
+  success: "&aYou have given yourself {amount} {item}."
+  success-other: "&aYou have given &e{name} &a{amount} {item}."
+  receive: "&aYou have received {amount} {item}."
+  invalid-item: "Item {item} not found."
+  unsafe-level: "Enchantment {enchant} exceeds maximum level. Limiting to ({maxLevel})."
+  unsafe-enchant: "Enchantment {enchant} can't be applied to {item}!"
+  conflicting-enchants: "{enchant} cannot be combined with {enchant2} on {item}!"
+fly:
+  enable: "&aEnabled flight."
+  enable-other: "&aSet flying mode to &nenabled&a for &e{name}&a."
+  disable: "&aDisabled flight."
+  disable-other: "Set flying mode to &c&ndisabled&a for &e{name}&a."
+god:
+  enable: "&aEnabled god mode."
+  enable-other: "&aSet god mode to &nenabled&a for &e{name}&a."
+  disable: "&cDisabled god mode."
+  disable-other: "Set god mode to &c&ndisabled&a for &e{name}&a."
+rename:
+  success: "&aRenamed item to &e{name}&a."
+  failure: "This item cannot be renamed."
+lore:
+  add: "&aAdded lore line: &e{text}&a."
+  insert: "Inserted lore line at index {index}: &e{text}&a."
+  remove: "&aRemoved lore line: &e{line}&a."
+  clear: "&aLore cleared successfully."
+  failure: "This item's lore cannot be modified."
+nv:
+  enabled: "&aEnabled night vision."
+  disabled: "&cDisabled night vision."
+  spectator-only: "&cYou must be in spectator mode to use night vision."

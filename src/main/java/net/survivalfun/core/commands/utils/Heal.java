@@ -1,5 +1,7 @@
-package net.survivalfun.core.commands.core;
+package net.survivalfun.core.commands.utils;
 
+import net.survivalfun.core.managers.lang.Lang;
+import net.survivalfun.core.utils.Text;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.attribute.Attribute;
@@ -11,6 +13,12 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 public class Heal implements CommandExecutor {
+
+    private final Lang lang;
+
+    public Heal(Lang lang) {
+        this.lang = lang;
+    }
 
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, @NotNull String label, String @NotNull [] args) {
         // If sender is console and no arguments provided
@@ -43,6 +51,12 @@ public class Heal implements CommandExecutor {
             return false;
         }
 
+        // Check if player has permission to use heal command
+        if (!player.hasPermission("core.heal")) {
+            Text.sendErrorMessage(player, "no-permission", lang);
+            return true;
+        }
+
         // If sender is a player
         if (args.length == 0) {
             // Heal self
@@ -61,7 +75,7 @@ public class Heal implements CommandExecutor {
             }
 
             if (!player.hasPermission("core.heal.others")) {
-                player.sendMessage("§cYou don't have permission to heal others.");
+                Text.sendErrorMessage(player, "no-permission", lang);
                 return true;
             }
 
@@ -77,9 +91,9 @@ public class Heal implements CommandExecutor {
                 OfflinePlayer offlineTarget = Bukkit.getOfflinePlayer(args[0]);
 
                 if (offlineTarget.hasPlayedBefore()) {
-                    player.sendMessage("§e" + offlineTarget.getName() + " §cis currently offline.");
+                    Text.sendErrorMessage(player, "player-not-online", lang, "{name}", args[0]);
                 } else {
-                    player.sendMessage("§cPlayer §e" + args[0] + " §chas never joined this server.");
+                    Text.sendErrorMessage(player, "player-not-found", lang, "{player}", args[0]);
                 }
             }
             return true;

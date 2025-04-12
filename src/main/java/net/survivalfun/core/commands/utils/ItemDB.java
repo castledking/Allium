@@ -1,6 +1,6 @@
 package net.survivalfun.core.commands.utils;
 
-import net.survivalfun.core.utils.LegacyIDUtils;
+import net.survivalfun.core.utils.LegacyID;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -30,7 +30,7 @@ public class ItemDB implements CommandExecutor {
         }
 
         int amount = itemInHand.getAmount();
-        String legacyId = LegacyIDUtils.getLegacyIdFromMaterial(itemInHand.getType());
+        String legacyId = LegacyID.getLegacyIdFromMaterial(itemInHand.getType());
 
         // Format the output more cleanly
         player.sendMessage("§6Item Information:");

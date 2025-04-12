@@ -1,7 +1,7 @@
 package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
-import net.survivalfun.core.lang.LangManager;
+import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.Chunk;
@@ -29,7 +29,7 @@ public class GC implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
-        LangManager lang = plugin.getLangManager();
+        Lang lang = plugin.getLangManager();
         if (lang == null) {
             sender.sendMessage("Error: Language system not initialized");
             plugin.getLogger().log(Level.SEVERE, "LanguageManager not initialized when executing GC command");
@@ -37,11 +37,12 @@ public class GC implements CommandExecutor {
         }
 
         if (!sender.hasPermission("core.gc")) {
-            sender.sendMessage(lang.get("no-permission"));
+            sender.sendMessage(lang.get("error-prefix")
+                    + lang.get("no-permission"));
             return true;
         }
 
-        sender.sendMessage(lang.get("commands.gc.usage-header"));
+        sender.sendMessage(lang.get("gc.usage-header"));
 
         // Run async part for safe operations
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -69,7 +70,7 @@ public class GC implements CommandExecutor {
                 diskSpace[1] = store.getUsableSpace() / 1024 / 1024 / 1024;
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Could not get disk space information", e);
-                sender.sendMessage(lang.get("error-prefix") + (lang.get("commands.gc.disk-space-error")));
+                sender.sendMessage(lang.get("error-prefix") + (lang.get("gc.disk-space-error")));
             }
 
             // TPS information (safe async)
@@ -133,14 +134,14 @@ public class GC implements CommandExecutor {
                         placeholders.put("totalTileEntities", String.valueOf(totalTileEntities.get()));
                         placeholders.put("worldInfo", worldInfo.toString());
 
-                        // Send messages from lang.yml with placeholders replaced
-                        List<String> messages = lang.getList("commands.gc.message");
+                        // Send messages from lang_en.yml with placeholders replaced
+                        List<String> messages = lang.getList("gc.message");
                         for (String line : messages) {
                             sender.sendMessage(lang.format(line, placeholders));
                         }
                     });
                 } catch (Exception e) {
-                    sender.sendMessage(lang.get("error-prefix") + (lang.get("commands.gc.world-info-error")));
+                    sender.sendMessage(lang.get("error-prefix") + (lang.get("gc.world-info-error")));
                     plugin.getLogger().log(Level.SEVERE, "Error gathering world information in GC command", e);
                 }
             });

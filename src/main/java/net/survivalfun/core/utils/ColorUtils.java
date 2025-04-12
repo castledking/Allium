@@ -3,14 +3,7 @@ package net.survivalfun.core.utils;
 import org.bukkit.ChatColor;
 
 public class ColorUtils {
-    /**
-     * Translates '&' color codes into Minecraft color codes using Spigot API.
-     *
-     * For example: "&aHello" becomes "§aHello" (green-colored "Hello" in Minecraft).
-     *
-     * @param message The input string containing '&' color codes
-     * @return The translated string with Minecraft color codes
-     */
+
     public static String colorize(String message) {
         if (message == null || message.isEmpty()) {
             return "";
@@ -18,11 +11,7 @@ public class ColorUtils {
         return ChatColor.translateAlternateColorCodes('&', message);
     }
 
-    /**
-     * Strips all color codes from a string
-     * @param message The colored string
-     * @return The string without color codes
-     */
+
     public static String stripColor(String message) {
         if (message == null || message.isEmpty()) {
             return "";
@@ -30,12 +19,23 @@ public class ColorUtils {
         return ChatColor.stripColor(message);
     }
 
-    /**
-     * Colorizes a string and then converts it to a legacy text component
-     * (useful for titles/scoreboards that require § format)
-     * @param message The input string
-     * @return The legacy-formatted string
-     */
+    public static String colorizeHex(String textToTranslate) {
+        java.util.regex.Pattern hexPattern = java.util.regex.Pattern.compile("&#([A-Fa-f0-9]{6})");
+        java.util.regex.Matcher matcher = hexPattern.matcher(textToTranslate);
+        StringBuilder buffer = new StringBuilder(textToTranslate.length() + 4 * 8);
+        while (matcher.find())
+        {
+            String group = matcher.group(1);
+            matcher.appendReplacement(buffer, ChatColor.COLOR_CHAR + "x"
+                    + ChatColor.COLOR_CHAR + group.charAt(0) + ChatColor.COLOR_CHAR + group.charAt(1)
+                    + ChatColor.COLOR_CHAR + group.charAt(2) + ChatColor.COLOR_CHAR + group.charAt(3)
+                    + ChatColor.COLOR_CHAR + group.charAt(4) + ChatColor.COLOR_CHAR + group.charAt(5)
+            );
+
+        }
+        return matcher.appendTail(buffer).toString();
+    }
+
     public static String colorizeToLegacy(String message) {
         return colorize(message).replace(ChatColor.COLOR_CHAR, '§');
     }

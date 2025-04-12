@@ -4,6 +4,7 @@ main: net.survivalfun.core.PluginStart
 api-version: 1.21
 author: towkio
 description: "Survival Fun Core"
+soft-depend: [VaultUnlocked]
 
 commands:
   explode:
@@ -27,8 +28,52 @@ commands:
     description: "Heal players"
     usage: "/heal [player]"
     permission: core.heal
-
+  core:
+    description: "Core commands"
+    usage: "/core"
+    permission: core.admin
+  rename:
+    description: "Rename item in main hand"
+    usage: "/rename <name>"
+    permission: core.rename
+  lore:
+    description: "Mange lore in main hand"
+    usage: "/lore <add|remove|clear> <text>"
+    permission: core.lore
+  god:
+    description: "Toggle god mode"
+    usage: "/god || /god <player>"
+    permission: core.god
+  more:
+    description: "Adds more items to your inventory"
+    usage: "/more"
+    permission: core.more
+  fly:
+    description: "Toggle flight"
+    usage: "/fly || /fly <player>"
+    permission: core.fly
+  gamemode:
+    description: "Change gamemode"
+    usage: "/gamemode <gamemode> <player>"
+    permission: core.gamemode
+    aliases: [gm, gmc, gms, gma, gmsp, survival, creative, adventure, spectator]
 permissions:
+  core.gamemode.others:
+    default: op
+  core.gamemode.survival:
+    default: op
+  core.gamemode.creative:
+    default: op
+  core.gamemode.adventure:
+    default: op
+  core.gamemode.spectator:
+    default: op
+  core.gamemode:
+    default: op
+  core.fly:
+    default: op
+  core.fly.others:
+    default: op
   core.explode:
     default: op
   core.explode.self:
@@ -37,3 +82,19 @@ permissions:
     default: op
   core.gc:
     default: true
+  core.give:
+    default: op
+  core.itemdb:
+    default: op
+  core.heal:
+    default: op
+  core.rename:
+    default: op
+  core.lore:
+    default: op
+  core.god:
+    default: op
+  core.admin:
+    default: op
+  core.more:
+    default: op

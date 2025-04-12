@@ -9,7 +9,7 @@
     <!-- Define custom properties -->
     <property name="src.dir" value="src/main/resources" />
     <property name="target.dir" value="target" />
-    <property name="output.jar" value="D:/Minecraft Servers/1.21.4/plugins/${ant.project.name}.jar" />
+    <property name="output.jar" value="D:/mcdata/plugins/${ant.project.name}.jar" />
     <property name="foundation.repo" value="${user.home}/.m2/repository/com/github/kangarko/Foundation/${foundation.version}" />
 
     <!-- Define the 'Build' target -->

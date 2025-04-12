@@ -1,7 +1,7 @@
 package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
-import net.survivalfun.core.lang.LangManager;
+import net.survivalfun.core.managers.lang.LangManager;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.Chunk;
@@ -133,7 +133,7 @@ public class GC implements CommandExecutor {
                         placeholders.put("totalTileEntities", String.valueOf(totalTileEntities.get()));
                         placeholders.put("worldInfo", worldInfo.toString());
 
-                        // Send messages from lang.yml with placeholders replaced
+                        // Send messages from lang_en.yml with placeholders replaced
                         List<String> messages = lang.getList("commands.gc.message");
                         for (String line : messages) {
                             sender.sendMessage(lang.format(line, placeholders));

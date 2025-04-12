@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.core;
+package net.survivalfun.core.commands.utils;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;

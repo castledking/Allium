@@ -66,6 +66,7 @@ public class LegacyIDUtils {
         addLegacyId("6:5", Material.DARK_OAK_SAPLING);
         addLegacyId("6:6", Material.CHERRY_SAPLING);
         addLegacyId("6:7", Material.MANGROVE_PROPAGULE);
+        addLegacyId("6:8", Material.PALE_OAK_SAPLING);
 
         // Logs and wood
         addLegacyId("7:0", Material.OAK_LOG);
@@ -166,6 +167,7 @@ public class LegacyIDUtils {
         addLegacyId("16", Material.COAL_ORE);
         addLegacyId("16:1", Material.DEEPSLATE_COAL_ORE);
         addLegacyId("17", Material.COPPER_ORE);
+        addLegacyId("17:1", Material.DEEPSLATE_COPPER_ORE);
         addLegacyId("18", Material.NOTE_BLOCK);
 
 
@@ -245,8 +247,10 @@ public class LegacyIDUtils {
         addLegacyId("30", Material.COBWEB);
         addLegacyId("31:1", Material.SHORT_GRASS);
         addLegacyId("31:2", Material.FERN);
-        addLegacyId("31:3", Material.SEAGRASS);
-        addLegacyId("31:4", Material.SEA_PICKLE);
+        // addLegacyId("31:3", Material.SHORT_DRY_GRASS); 1.21.5 additions
+        // addLegacyId("31:4", Material.BUSH);
+        addLegacyId("31:5", Material.SEAGRASS);
+        addLegacyId("31:6", Material.SEA_PICKLE);
         addLegacyId("32", Material.DEAD_BUSH);
 
         addLegacyId("33", Material.PISTON);
@@ -300,29 +304,107 @@ public class LegacyIDUtils {
         addLegacyId("38:8", Material.OXEYE_DAISY);
         addLegacyId("38:9", Material.CORNFLOWER);
         addLegacyId("38:10", Material.LILY_OF_THE_VALLEY);
-        addLegacyId("38:11", Material.WITHER_ROSE);
-        addLegacyId("38:12", Material.TORCHFLOWER);
-        addLegacyId("38:13", Material.SUNFLOWER);
-        addLegacyId("38:14", Material.LILAC);
-        addLegacyId("38:15", Material.ROSE_BUSH);
-        addLegacyId("38:16", Material.PEONY);
-        addLegacyId("38:17", Material.SPORE_BLOSSOM);
-        addLegacyId("38:18", Material.CRIMSON_FUNGUS);
-        addLegacyId("38:19", Material.WARPED_FUNGUS);
-        addLegacyId("38:20", Material.CRIMSON_ROOTS);
-        addLegacyId("38:21", Material.WARPED_ROOTS);
-        addLegacyId("38:22", Material.NETHER_SPROUTS);
-        addLegacyId("38:23", Material.WEEPING_VINES);
-        addLegacyId("38:24", Material.TWISTING_VINES);
-        addLegacyId("38:25", Material.SUGAR_CANE);
-        addLegacyId("38:26", Material.KELP);
-        addLegacyId("38:27", Material.MOSS_CARPET);
-        addLegacyId("38:28", Material.PINK_PETALS);
-        addLegacyId("38:29", Material.MOSS_BLOCK);
-        addLegacyId("38:30", Material.HANGING_ROOTS);
-        addLegacyId("38:31", Material.BIG_DRIPLEAF);
-        addLegacyId("38:32", Material.SMALL_DRIPLEAF);
-        addLegacyId("38:33", Material.BAMBOO);
+        addLegacyId("38:11", Material.TORCHFLOWER);
+        // addLegacyId("38:12", Material.CACTUS_FLOWER); 1.21.5 additions
+        // addLegacyId("38:13", Material.CLOSED_EYEBLOSSOM);
+        // addLegacyId("38:14", Material.OPEN_EYEBLOSSOM);
+        addLegacyId("38:15", Material.WITHER_ROSE);
+        addLegacyId("38:16", Material.PINK_PETALS);
+        // addLegacyId("38:17", Material.WILDFLOWERS);
+        // addLegacyId("38:18", Material.LEAF_LITTER);
+        addLegacyId("38:19", Material.SPORE_BLOSSOM);
+        // addLegacyId("38:20", Material.FIREFLY_BUSH);
+        addLegacyId("38:21", Material.BAMBOO);
+        addLegacyId("38:22", Material.SUGAR_CANE);
+        addLegacyId("81", Material.CACTUS);
+        addLegacyId("38:23", Material.CRIMSON_FUNGUS);
+        addLegacyId("38:24", Material.WARPED_FUNGUS);
+        addLegacyId("38:25", Material.CRIMSON_ROOTS);
+        addLegacyId("38:26", Material.WARPED_ROOTS);
+        addLegacyId("38:27", Material.NETHER_SPROUTS);
+        addLegacyId("38:28", Material.WEEPING_VINES);
+        addLegacyId("106", Material.VINE);
+        addLegacyId("175:6", Material.TALL_GRASS);
+        addLegacyId("175:3", Material.LARGE_FERN);
+        // addLegacyId("175:2", Material.TALL_DRY_GRASS);
+        addLegacyId("175", Material.SUNFLOWER);
+        addLegacyId("175:1", Material.LILAC);
+        addLegacyId("175:4", Material.ROSE_BUSH);
+        addLegacyId("175:5", Material.PEONY);
+        addLegacyId("175:7", Material.PITCHER_PLANT);
+        addLegacyId("38:29", Material.BIG_DRIPLEAF);
+        addLegacyId("38:30", Material.SMALL_DRIPLEAF);
+        addLegacyId("199", Material.CHORUS_PLANT);
+        addLegacyId("200", Material.CHORUS_FLOWER);
+        addLegacyId("38:31", Material.GLOW_LICHEN);
+        addLegacyId("38:32", Material.HANGING_ROOTS);
+        addLegacyId("38:33", Material.KELP);
+        addLegacyId("39", Material.BROWN_MUSHROOM);
+        addLegacyId("40", Material.RED_MUSHROOM);
+        addLegacyId("41", Material.GOLD_BLOCK);
+        addLegacyId("42", Material.IRON_BLOCK);
+        addLegacyId("43", Material.RAW_COPPER_BLOCK);
+        addLegacyId("43:1", Material.RAW_GOLD_BLOCK);
+        addLegacyId("43:2", Material.RAW_IRON_BLOCK);
+        addLegacyId("43:4", Material.AMETHYST_BLOCK);
+        addLegacyId("43:5", Material.BUDDING_AMETHYST);
+        addLegacyId("44", Material.STONE_SLAB);
+        addLegacyId("44:1", Material.SMOOTH_STONE_SLAB);
+        addLegacyId("44:2", Material.STONE_BRICK_SLAB);
+        addLegacyId("44:3", Material.MOSSY_STONE_BRICK_SLAB);
+        addLegacyId("44:4", Material.COBBLESTONE_SLAB);
+        addLegacyId("44:5", Material.MOSSY_COBBLESTONE_SLAB);
+        addLegacyId("44:6", Material.GRANITE_SLAB);
+        addLegacyId("44:7", Material.POLISHED_GRANITE_SLAB);
+        addLegacyId("44:8", Material.DIORITE_SLAB);
+        addLegacyId("44:9", Material.POLISHED_DIORITE_SLAB);
+        addLegacyId("44:10", Material.ANDESITE_SLAB);
+        addLegacyId("44:11", Material.POLISHED_ANDESITE_SLAB);
+        addLegacyId("44:12", Material.COBBLED_DEEPSLATE_SLAB);
+        addLegacyId("44:13", Material.POLISHED_DEEPSLATE_SLAB);
+        addLegacyId("44:14", Material.DEEPSLATE_BRICK_SLAB);
+        addLegacyId("44:15", Material.DEEPSLATE_TILE_SLAB);
+        addLegacyId("44:16", Material.TUFF_SLAB);
+        addLegacyId("44:17", Material.POLISHED_TUFF_SLAB);
+        addLegacyId("44:18", Material.TUFF_BRICK_SLAB);
+        addLegacyId("44:19", Material.BRICK_SLAB);
+        addLegacyId("44:20", Material.MUD_BRICK_SLAB);
+        addLegacyId("44:21", Material.RESIN_BRICK_SLAB);
+        addLegacyId("44:22", Material.SANDSTONE_SLAB);
+        addLegacyId("44:23", Material.SMOOTH_SANDSTONE_SLAB);
+        addLegacyId("44:24", Material.CUT_SANDSTONE_SLAB);
+        addLegacyId("44:25", Material.RED_SANDSTONE_SLAB);
+        addLegacyId("44:26", Material.CUT_RED_SANDSTONE_SLAB);
+        addLegacyId("44:27", Material.SMOOTH_RED_SANDSTONE_SLAB);
+        addLegacyId("44:28", Material.PRISMARINE_SLAB);
+        addLegacyId("44:29", Material.PRISMARINE_BRICK_SLAB);
+        addLegacyId("44:30", Material.DARK_PRISMARINE_SLAB);
+        addLegacyId("44:31", Material.NETHER_BRICK_SLAB);
+        addLegacyId("44:32", Material.RED_NETHER_BRICK_SLAB);
+        addLegacyId("44:33", Material.BLACKSTONE_SLAB);
+        addLegacyId("44:34", Material.POLISHED_BLACKSTONE_SLAB);
+        addLegacyId("44:35", Material.POLISHED_BLACKSTONE_BRICK_SLAB);
+        addLegacyId("44:36", Material.END_STONE_BRICK_SLAB);
+        addLegacyId("44:37", Material.PURPUR_SLAB);
+        addLegacyId("44:38", Material.QUARTZ_SLAB);
+        addLegacyId("44:39", Material.SMOOTH_QUARTZ_SLAB);
+        addLegacyId("44:40", Material.CUT_COPPER_SLAB);
+        addLegacyId("44:41", Material.EXPOSED_CUT_COPPER_SLAB);
+        addLegacyId("44:42", Material.WEATHERED_CUT_COPPER_SLAB);
+        addLegacyId("44:43", Material.OXIDIZED_CUT_COPPER_SLAB);
+        addLegacyId("44:44", Material.WAXED_CUT_COPPER_SLAB);
+        addLegacyId("44:45", Material.WAXED_EXPOSED_CUT_COPPER_SLAB);
+        addLegacyId("44:46", Material.WAXED_WEATHERED_CUT_COPPER_SLAB);
+        addLegacyId("44:47", Material.WAXED_OXIDIZED_CUT_COPPER_SLAB);
+        addLegacyId("45", Material.BRICKS);
+        addLegacyId("46", Material.TNT);
+        addLegacyId("47", Material.BOOKSHELF);
+        addLegacyId("48", Material.CHISELED_BOOKSHELF);
+        addLegacyId("49", Material.OBSIDIAN);
+        addLegacyId("50", Material.TORCH);
+        addLegacyId("50:1", Material.SOUL_TORCH);
+
+
     }
 
     private static void addLegacyId(String legacyId, Material material) {

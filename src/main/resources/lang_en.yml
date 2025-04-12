@@ -25,3 +25,7 @@ commands:
       - "&eLoaded Worlds: &f{worldCount} &7(Total Chunks: &f{totalChunks}&7)"
       - "&eTotal Entities: &f{totalEntities} &7| &eTile Entities: &f{totalTileEntities}"
       - "&7World Details: {worldInfo}"
+  gamemode:
+    invalid-gamemode: "&cInvalid gamemode: &7{gamemode}"
+    success: "&aSwitched to &e{gamemode} &agamemode."
+    success-other: "&aSwitched &e{name}&a to &e{gamemode} &agamemode."

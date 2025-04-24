@@ -53,6 +53,20 @@ public class Heal implements CommandExecutor {
 
         // Check if player has permission to use heal command
         if (!player.hasPermission("core.heal")) {
+            // Add this debug line
+            player.sendMessage("§cDebug: Attempting to send no-permission message");
+
+            // Check if lang is null
+            if (lang == null) {
+                player.sendMessage("§cError: Lang manager is null");
+                return true;
+            }
+
+            // Try to get the message directly
+            String message = lang.get("no-permission");
+            player.sendMessage("§cDebug: Raw message from lang: " + message);
+
+            // Then try the normal way
             Text.sendErrorMessage(player, "no-permission", lang);
             return true;
         }
@@ -61,7 +75,7 @@ public class Heal implements CommandExecutor {
         if (args.length == 0) {
             // Heal self
             healPlayer(player);
-            player.sendMessage("§aYou have been healed!");
+            player.sendMessage(lang.get("heal.self"));
             return true;
         }
 

@@ -16,12 +16,9 @@
 #   <message> - The message being sent.
 #   %{placeholder}% - PlaceholderAPI support.
 
-
-# Enable debug mode to see prefix information in console
-debug-mode: false
-
 enable-chat-formatting: true
 # Vault or forks of Vault are required for this to work.
+block-unicode: true # Set to false to allow Unicode symbols
 
 chat-format:
   default: "<prefix> &a<player>&f: &f<message>"
@@ -63,7 +60,7 @@ explode-command:
   #  Default: 1
 
 ############################################################
-#  World-Specific Defaults                                  #
+#  World-Specific Defaults                                 #
 ############################################################
 
 world-defaults:
@@ -79,3 +76,9 @@ world-defaults:
 #
 #  world_the_end:
 #    - send-command-feedback: false
+
+############################################################
+#  Debug                                                   #
+############################################################
+
+debug-mode: true

@@ -51,6 +51,10 @@ public class Give implements CommandExecutor {
             plugin.getLogger().log(Level.SEVERE, "LanguageManager not initialized when executing GC command");
             return true;
         }
+        if (!sender.hasPermission("core.give")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{command}", label.toLowerCase());
+            return true;
+        }
         try {
             if (label.equalsIgnoreCase("give")) {
                 if (args.length == 3) {
@@ -62,7 +66,15 @@ public class Give implements CommandExecutor {
                 }
             }
         } catch (NumberFormatException e) {
-            sender.sendMessage(lang.get("invalid-amount"));
+            // Determine which argument caused the error based on the command label
+            String invalidArg;
+            if (label.equalsIgnoreCase("give")) {
+                invalidArg = args[2]; // For /give command, the amount is the 3rd argument (index 2)
+            } else {
+                invalidArg = args[1]; // For /i command, the amount is the 2nd argument (index 1)
+            }
+
+            Text.sendErrorMessage(sender, lang.get("invalid"), lang, "{arg}", invalidArg);
             return true;
         }
         switch (label) {
@@ -132,18 +144,18 @@ public class Give implements CommandExecutor {
                 int level = entry.getValue();
 
                 if (!allowUnsafe && level > enchantment.getMaxLevel()) {
-                    sender.sendMessage(lang.get("give.unsafe-level")
-                            .replace("{enchant}", formatName(enchantment.getKey().getKey()))
-                            .replace("{maxLevel}", String.valueOf(enchantment.getMaxLevel())));
+                    Text.sendErrorMessage(sender, "give.unsafe-level", lang,
+                            "{enchant}", formatName(enchantment.getKey().getKey()),
+                            "{maxLevel}", String.valueOf(enchantment.getMaxLevel()));
                     level = enchantment.getMaxLevel();
                 }
 
                 try {
                     bookMeta.addStoredEnchant(enchantment, level, true);
                 } catch (IllegalArgumentException e) {
-                    sender.sendMessage(lang.get("give.unsafe-enchant")
-                            .replace("{enchant}", formatName(enchantment.getKey().getKey()))
-                            .replace("{item}", formatName(material.name())));
+                    Text.sendErrorMessage(sender, "give.unsafe-enchant", lang,
+                            "{enchant}", formatName(enchantment.getKey().getKey()),
+                            "{item}", formatName(material.name()));
                 }
             }
             item.setItemMeta(bookMeta);
@@ -156,9 +168,9 @@ public class Give implements CommandExecutor {
                 try {
                     meta.addEnchant(entry.getKey(), entry.getValue(), true);
                 } catch (IllegalArgumentException e) {
-                    sender.sendMessage(lang.get("give.unsafe-enchant")
-                            .replace("{enchant}", formatName(String.valueOf(entry.getKey().getKey())))
-                            .replace("{item}", formatName(material.name())));
+                    Text.sendErrorMessage(sender, "give.unsafe-enchant", lang,
+                            "{enchant}", formatName(String.valueOf(entry.getKey().getKey())),
+                            "{item}", formatName(material.name()));
                 }
             }
             item.setItemMeta(meta);
@@ -174,17 +186,17 @@ public class Give implements CommandExecutor {
 
             // Check for enchant applicability
             if (!enchantment.canEnchantItem(item)) {
-                sender.sendMessage(lang.get("give.unsafe-enchant")
-                        .replace("{enchant}", formatName(enchantment.getKey().getKey()))
-                        .replace("{item}", formatName(material.name())));
+                Text.sendErrorMessage(sender, "give.unsafe-enchant", lang,
+                        "{enchant}", formatName(enchantment.getKey().getKey()),
+                        "{item}", formatName(material.name()));
                 continue;
             }
 
             // Check enchant max level
             if (level > enchantment.getMaxLevel()) {
-                sender.sendMessage(lang.get("give.unsafe-level")
-                        .replace("{enchant}", formatName(enchantment.getKey().getKey()))
-                        .replace("{maxLevel}", String.valueOf(enchantment.getMaxLevel())));
+                Text.sendErrorMessage(sender, "give.unsafe-level", lang,
+                        "{enchant}", formatName(enchantment.getKey().getKey()),
+                        "{maxLevel}", String.valueOf(enchantment.getMaxLevel()));
                 level = enchantment.getMaxLevel();
             }
 
@@ -195,12 +207,10 @@ public class Give implements CommandExecutor {
                     // Conflicting enchantment found
                     conflicts = true;
 
-                    String conflictMsg = lang.get("give.conflicting-enchants")
-                            .replace("{enchant}", formatName(existingEnch.getKey().getKey()))
-                            .replace("{enchant2}", formatName(enchantment.getKey().getKey()))
-                            .replace("{item}", formatName(material.name()));
-
-                    sender.sendMessage(Text.parseColors(conflictMsg));
+                    Text.sendErrorMessage(sender, "give.conflicting-enchants", lang,
+                            "{enchant}", formatName(existingEnch.getKey().getKey()),
+                            "{enchant2}", formatName(enchantment.getKey().getKey()),
+                            "{item}", formatName(material.name()));
                     break; // Stop checking after found conflict
                 }
             }
@@ -224,7 +234,7 @@ public class Give implements CommandExecutor {
     private void giveItems(String player, String arg, CommandSender sender, int amount, boolean canConsole, Map<Enchantment
         , Integer> enchantments) {
         if (!canConsole && !(sender instanceof Player)) {
-            sender.sendMessage(lang.get("not-a-player"));
+            Text.sendErrorMessage(sender, "not-a-player", lang);
             return;
         }
 
@@ -241,7 +251,7 @@ public class Give implements CommandExecutor {
 
             Player target = Bukkit.getPlayer(player);
             if (target == null) {
-                sender.sendMessage(lang.get("error-prefix") + lang.get("player-not-online"));
+                Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", player);
                 return;
             } else if (amount == 0) {
                 amount = material.getMaxStackSize();
@@ -376,7 +386,7 @@ public class Give implements CommandExecutor {
             remainingAmount = amount;
             int givenAmount = originalAmount - remainingAmount;
             if (givenAmount == 0) {
-                sender.sendMessage(lang.get("give.inventory-full"));
+                Text.sendErrorMessage(sender, "give.inventory-full", lang);
                 return;
             }
 
@@ -400,11 +410,9 @@ public class Give implements CommandExecutor {
 
             sender.sendMessage(message);
         } catch (IllegalArgumentException e) {
-            sender.sendMessage(lang.get("error-prefix") + lang.get("invalid")
-                    .replace("{arg}", "item"));
+            Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "item");
         } catch (Exception e) {
-            sender.sendMessage(lang.get("error-prefix") + lang.get("invalid")
-                    .replace("{arg}", "item"));
+            Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "item");
             e.printStackTrace();
         }
     }
@@ -474,8 +482,7 @@ public class Give implements CommandExecutor {
                     material = Material.valueOf(alias.toUpperCase());
                 } catch (IllegalArgumentException e2) {
                     // Alias doesn't resolve to a valid Material
-                    sender.sendMessage(lang.get("give.invalid-item")
-                            .replace("{item}", itemName));
+                    Text.sendErrorMessage(sender, lang.get("give.invalid-item"), lang, "{item}", itemName);
                     return null; // Indicate failure
                 }
             }
@@ -483,21 +490,16 @@ public class Give implements CommandExecutor {
 
         if (material == null) {
             // Not a valid material, legacy ID, or alias
-            sender.sendMessage(lang.get("give.invalid-item")
-                    .replace("{item}", itemName));
+            Text.sendErrorMessage(sender, lang.get("give.invalid-item"), lang, "{item}", itemName);
             return null; // Indicate failure
         }
 
         if (!isGiveable(material)) {
-            sender.sendMessage(lang.get("give.invalid-item")
-                    .replace("{item}", itemName));
+            Text.sendErrorMessage(sender, lang.get("give.invalid-item"), lang, "{item}", itemName);
             return null; // Indicate failure
         }
 
         return material;
     }
-
-
-
 
 }

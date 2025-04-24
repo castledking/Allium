@@ -4,7 +4,7 @@ main: net.survivalfun.core.PluginStart
 api-version: 1.21
 author: towkio
 description: "Survival Fun Core"
-depend: [Vault]
+depend: [Vault, ProtocolLib]
 soft-depend: [LuckPerms, PlaceholderAPI]
 
 commands:

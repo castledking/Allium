@@ -12,12 +12,13 @@ unknown-locale: "Translation for &7{key} &8(&7{lang} &8| &7{country}&8) &ccould 
 #==========================================#
 
 command-usage: "&7Usage: /{cmd} {args}"
-unknown-command: "Unknown command: {command}. Type /help for a list of commands."
+unknown-command: "Unknown command: /{command}. Do /help for a list of commands."
+unknown-command-suggestion: "Unknown command: /{command}. Did you mean: /{suggestion}?"
 not-a-player: "You must be a player to use this command."
 player-not-found: "Player &7{name} was not found."
 player-not-online: "Player &7{name} is not online."
 invalid: "Invalid {arg}! Please check your syntax."
-no-permission: "You do not have permission to use this command!"
+no-permission: "You do not have permission to use /{command}"
 hold-item: "&cYou must be holding an item to {modify} it."
 contact-admin: "An unexpected error has occurred. Please contact an administrator."
 gc:

@@ -38,12 +38,14 @@ public class FormatChatListener implements Listener {
     private final String defaultFormat;
     private final boolean placeholderAPIEnabled;
     private final Pattern placeholderPattern = Pattern.compile("%\\{([^}]+)\\}%");
+    private final boolean blockUnicode;
 
     public FormatChatListener(JavaPlugin plugin, Chat vaultChat, LuckPerms luckPerms, Config config) {
         this.plugin = plugin;
         this.config = config;
         this.vaultChat = vaultChat;
         this.luckPerms = luckPerms;
+        this.blockUnicode = config.getBoolean("chat-format.block-unicode"); // Default to true
 
         legacyComponentSerializer = LegacyComponentSerializer.builder().hexColors().build();
 
@@ -97,6 +99,20 @@ public class FormatChatListener implements Listener {
         return luckPerms != null || vaultChat != null;
     }
 
+    /**
+     * Checks if a string contains unicode characters
+     * @param input The input string
+     * @return true if the string contains unicode characters, false otherwise
+     */
+    private boolean containsUnicode(String input) {
+        if (input == null) {
+            return false;
+        }
+
+        // Check if the string contains any non-ASCII characters
+        return !input.matches("^[\\u0000-\\u007F]*$");
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerChat(@NotNull AsyncChatEvent event) {
         // Check if chat formatting is enabled
@@ -118,6 +134,23 @@ public class FormatChatListener implements Listener {
 
         if (debugMode) {
             plugin.getLogger().info("Raw message from " + player.getName() + ": " + rawMessage);
+        }
+
+        // Check for Unicode characters if blocking is enabled
+        if (blockUnicode && !player.hasPermission("chat.unicode")) {
+            if (containsUnicode(rawMessage)) {
+                // Cancel the event
+                event.setCancelled(true);
+
+                // Send error message to the player
+                player.sendMessage(Text.parseColors("&cYour message contains unicode characters which are not allowed."));
+
+                if (debugMode) {
+                    plugin.getLogger().info("Blocked message with unicode from " + player.getName() + ": " + rawMessage);
+                }
+
+                return; // Exit the method early
+            }
         }
 
         // Process color codes based on player permissions

@@ -4,6 +4,7 @@ import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.commands.fun.Explode;
 import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.managers.lang.Lang;
+import net.survivalfun.core.utils.Text;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -49,9 +50,13 @@ public class Core implements CommandExecutor, TabCompleter {
 
 
             case "reload":
-                handleReloadCommand(sender);
+                handleReloadCommand(sender, null, (args.length > 1 && args[1]
+                        .equalsIgnoreCase("hide")) ? true : null);
                 break;
 
+            case "debug":
+                handleDebugCommand(sender, args);
+                break;
             default:
                 sender.sendMessage("§cUnknown subcommand. Use /core for help.");
                 break;
@@ -59,7 +64,6 @@ public class Core implements CommandExecutor, TabCompleter {
 
         return true;
     }
-
     private void sendHelpMessage(CommandSender sender) {
         sender.sendMessage("§aAvailable /core subcommands:");
         sender.sendMessage("§e/setgamerule §7- Modify and apply world defaults.");
@@ -104,8 +108,33 @@ public class Core implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void handleDebugCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("core.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang);
+            return;
+        }
+        // Toggle debug mode in config
+        boolean currentDebugMode = plugin.getConfig().getBoolean("debug-mode", false);
+        boolean newDebugMode = !currentDebugMode;
 
-    private void handleReloadCommand(CommandSender sender) {
+        // Update config
+        plugin.getConfig().set("debug-mode", newDebugMode);
+        plugin.saveConfig();
+        handleReloadCommand(sender, true, null);
+
+
+
+        // Log the change
+        plugin.getLogger().info("Debug mode " + (newDebugMode ? "enabled" : "disabled") + " by " + sender.getName());
+    }
+
+
+    private void handleReloadCommand(CommandSender sender, Boolean isDebug, Boolean isHide) {
+        if (isHide != null && isHide && sender.hasPermission("core.admin")) {
+            plugin.reloadCommandBlockerConfig();
+            sender.sendMessage("§7Hidden commands reloaded successfully.");
+            return;
+        }
         try {
             // Reload the main config
             plugin.reloadConfig();
@@ -135,7 +164,16 @@ public class Core implements CommandExecutor, TabCompleter {
                 explodeCommand.reloadConfig();
             }
 
-            sender.sendMessage("§aConfiguration reloaded successfully.");
+            // Build success message with optional debug status
+            StringBuilder successMessage = new StringBuilder("§aConfiguration reloaded successfully.");
+
+            // Add debug status if isDebug is not null (meaning it was explicitly set)
+            if (isDebug != null) {
+                boolean debugMode = plugin.getConfig().getBoolean("debug-mode", false);
+                successMessage.append(" (Debug: ").append(debugMode ? "§aenabled§a" : "§cdisabled§a").append(")");
+            }
+
+            sender.sendMessage(successMessage.toString());
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Error reloading configuration: ", e);
             sender.sendMessage("§cError reloading configuration! Check console for details.");

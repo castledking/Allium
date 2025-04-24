@@ -96,9 +96,12 @@ public class Text {
         return buffer.toString();
     }
 
-    public static String getLastColor(String message) {
+    public static String getLastColor(String message, Boolean isErrorPrefix) {
         String parsedMessage = parseColors(message);
         String lastColor = ChatColor.getLastColors(parsedMessage);
+        if (isErrorPrefix) {
+            return ChatColor.RED.toString();
+        }
         return lastColor.isEmpty() ? ChatColor.RESET.toString() : lastColor;
     }
 
@@ -253,7 +256,7 @@ public class Text {
         }
 
         String errorPrefix = langManager.get("error-prefix");
-        return getLastColor(errorPrefix);
+        return getLastColor(errorPrefix, true);
     }
 
     /**
@@ -293,19 +296,34 @@ public class Text {
      * @param replacements An array of key-value pairs for replacements (key1, value1, key2, value2, ...)
      */
     public static void sendErrorMessage(CommandSender sender, String messageKey, net.survivalfun.core.managers.lang.Lang lang, Object... replacements) {
+        if (lang == null) {
+            sender.sendMessage("§c§lError: §rMissing language manager");
+            return;
+        }
+
+        // Debug logging
+        System.out.println("Sending error message with key: " + messageKey);
+
+        // Get the message from the key
+        String message = lang.get(messageKey);
+
+        // Debug logging
+        System.out.println("Retrieved message: " + message);
+
         // Convert Object[] to String[] for the formatErrorMessage method
         String[] stringReplacements = new String[replacements.length];
         for (int i = 0; i < replacements.length; i++) {
             stringReplacements[i] = String.valueOf(replacements[i]);
         }
 
-        // Get the message from the key
-        String message = lang.get(messageKey);
-
         // Format the message with replacements
         String formattedMessage = formatErrorMessage(message, lang, stringReplacements);
 
-        // Send the formatted message with the error prefix
-        sender.sendMessage(lang.get("error-prefix") + " " + formattedMessage);
+        // Get the last color from the error prefix to maintain consistent coloring
+        String errorColor = getLastColorInErrorPrefix(lang);
+
+        // Send the formatted message with the error prefix, ensuring color consistency
+        sender.sendMessage(lang.get("error-prefix") + errorColor + " " + formattedMessage);
     }
+
 }

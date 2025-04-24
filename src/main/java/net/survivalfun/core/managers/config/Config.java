@@ -30,10 +30,10 @@ public class Config {
 
     private void initializeDefaultConfigValues() {
         // Chat formatting settings
-        defaultConfigValues.put("debug-mode", false);
         defaultConfigValues.put("enable-chat-formatting", true);
+        defaultConfigValues.put("block-unicode", true);
         defaultConfigValues.put("chat-format.default", "<prefix> &a<player>&f: &f<message>");
-        // Note: We don't add chat-format.groups here as it will be handled by the template
+
 
         // General settings
         defaultConfigValues.put("allow-unsafe-enchants", false);
@@ -45,6 +45,8 @@ public class Config {
 
         // World-specific defaults
         defaultConfigValues.put("world-defaults.world.send-command-feedback", false);
+        // Debug
+        defaultConfigValues.put("debug-mode", false);
     }
 
     public void load() {
@@ -86,23 +88,23 @@ public class Config {
 
                 // Add the commented-out groups section manually
                 String commentedGroups =
-                    "  # Group-specific chat formats\n" +
-                    "  # Uncomment and modify these as needed\n" +
-                    "  groups:\n" +
-                    "    #default: \"&7<player>&f: <message>\" # Default Group Format\n" +
-                    "    #admin: \"&4[Admin] &c<player>&f: <message>\"\n" +
-                    "    #moderator: \"&2[Mod] &a<player>&f: <message>\"\n" +
-                    "    #vip: \"&6[VIP] &e<player>&f: <message>\"";
+                        "  # Group-specific chat formats\n" +
+                                "  # Uncomment and modify these as needed\n" +
+                                "  groups:\n" +
+                                "    #default: \"&7<player>&f: <message>\" # Default Group Format\n" +
+                                "    #admin: \"&4[Admin] &c<player>&f: <message>\"\n" +
+                                "    #moderator: \"&2[Mod] &a<player>&f: <message>\"\n" +
+                                "    #vip: \"&6[VIP] &e<player>&f: <message>\"";
 
                 // Save the config with a header comment
                 config.options().header(
-                    "############################################################\n" +
-                    "# +------------------------------------------------------+ #\n" +
-                    "# |                SFCore Configuration                   | #\n" +
-                    "# +------------------------------------------------------+ #\n" +
-                    "############################################################\n\n" +
-                    "# This is the main configuration file for SFCore.\n" +
-                    "# For more information, visit: https://github.com/castledking/SFCore\n"
+                        "############################################################\n" +
+                                "# +------------------------------------------------------+ #\n" +
+                                "# |                SFCore Configuration                   | #\n" +
+                                "# +------------------------------------------------------+ #\n" +
+                                "############################################################\n\n" +
+                                "# This is the main configuration file for SFCore.\n" +
+                                "# For more information, visit: https://github.com/castledking/SFCore\n"
                 );
 
                 // Save the basic config
@@ -137,8 +139,8 @@ public class Config {
                 if (defaultLineEnd != -1) {
                     // Insert our commented groups after the default line
                     String newContent = content.substring(0, defaultLineEnd + 1) +
-                                       commentedGroups +
-                                       content.substring(defaultLineEnd + 1);
+                            commentedGroups +
+                            content.substring(defaultLineEnd + 1);
 
                     // Write the modified content back to the file
                     Files.write(configFile.toPath(), newContent.getBytes());
@@ -180,16 +182,16 @@ public class Config {
 
     public boolean getBoolean(String key) {
         return plugin.getConfig().getBoolean(key,
-            defaultConfigValues.containsKey(key) ? (Boolean) defaultConfigValues.get(key) : false);
+                defaultConfigValues.containsKey(key) ? (Boolean) defaultConfigValues.get(key) : false);
     }
 
     public int getInt(String key) {
         return plugin.getConfig().getInt(key,
-            defaultConfigValues.containsKey(key) ? (Integer) defaultConfigValues.get(key) : 0);
+                defaultConfigValues.containsKey(key) ? (Integer) defaultConfigValues.get(key) : 0);
     }
 
     public String getString(String key, String s) {
         return plugin.getConfig().getString(key,
-            defaultConfigValues.containsKey(key) ? (String) defaultConfigValues.get(key) : "");
+                defaultConfigValues.containsKey(key) ? (String) defaultConfigValues.get(key) : "");
     }
 }

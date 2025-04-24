@@ -1,0 +1,61 @@
+# CommandBlocker Configuration
+
+# Global blocked commands and tab completion
+global:
+  # List of commands that will be blocked for all players
+  commands:
+    - "op"
+    - "minecraft:op"
+    - "bukkit:op"
+    - "deop"
+    - "minecraft:deop"
+    - "plugins"
+    - "pl"
+    - "bukkit:plugins"
+    - "bukkit:pl"
+    - "ver"
+    - "version"
+    - "about"
+    - "help"
+    - "?"
+
+  # List of commands that will have tab completion blocked for all players
+  tab-complete:
+    - "op"
+    - "minecraft:op"
+    - "bukkit:op"
+    - "deop"
+    - "minecraft:deop"
+    - "plugins"
+    - "pl"
+    - "bukkit:plugins"
+    - "bukkit:pl"
+
+# Group-specific blocked commands and tab completion
+# These will be applied based on LuckPerms groups
+groups:
+  default:
+    commands:
+      - "gamemode"
+      - "gm"
+      - "minecraft:gamemode"
+      - "fly"
+      - "god"
+    tab-complete:
+      - "gamemode"
+      - "gm"
+      - "minecraft:gamemode"
+      - "fly"
+      - "god"
+
+  moderator:
+    commands:
+      - "stop"
+      - "reload"
+    tab-complete:
+      - "stop"
+      - "reload"
+
+# Messages
+messages:
+  blocked-command: "§cThis command has been blocked by the server administrator."

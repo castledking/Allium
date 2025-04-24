@@ -34,8 +34,33 @@ public class Lang {
         if (defConfigStream != null) {
             YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(defConfigStream, StandardCharsets.UTF_8));
             defaultMessages.putAll(defaultConfig.getValues(true));
+
+            // Add essential keys if they're missing
+            if (!defaultMessages.containsKey("no-permission")) {
+                defaultMessages.put("no-permission", "You don't have permission to use /{command}");
+                plugin.getLogger().warning("Added missing 'no-permission' key to default messages");
+            }
+            if (!defaultMessages.containsKey("unknown-command")) {
+                defaultMessages.put("unknown-command", "Unknown command: /{command}");
+                plugin.getLogger().warning("Added missing 'unknown-command' key to default messages");
+            }
+            if (!defaultMessages.containsKey("unknown-command-suggestion")) {
+                defaultMessages.put("unknown-command-suggestion", "Unknown command: /{command}. Did you mean: /{suggestion}?");
+                plugin.getLogger().warning("Added missing 'unknown-command-suggestion' key to default messages");
+            }
+            if (!defaultMessages.containsKey("error-prefix")) {
+                defaultMessages.put("error-prefix", "§c[Error]");
+                plugin.getLogger().warning("Added missing 'error-prefix' key to default messages");
+            }
         } else {
             plugin.getLogger().warning("Could not find default language file (lang_en.yml) in plugin resources!");
+
+            // Add essential default messages even if the file is missing
+            defaultMessages.put("no-permission", "You don't have permission to use /{command}");
+            defaultMessages.put("unknown-command", "Unknown command: /{command}");
+            defaultMessages.put("unknown-command-suggestion", "Unknown command: /{command}. Did you mean: /{suggestion}?");
+            defaultMessages.put("error-prefix", "§c[Error]");
+            plugin.getLogger().info("Added essential default messages");
         }
     }
 
@@ -70,10 +95,42 @@ public class Lang {
             langConfig = YamlConfiguration.loadConfiguration(
                     new InputStreamReader(java.nio.file.Files.newInputStream(langFile.toPath()), StandardCharsets.UTF_8)
             );
+            // Debug: Print all keys in the language file
+            plugin.getLogger().info("Language keys loaded from " + langFile.getName() + ":");
+            for (String key : langConfig.getKeys(true)) {
+                plugin.getLogger().info(" - " + key);
+            }
         } catch (Exception e) {
             plugin.getLogger().severe("Failed to load language file with UTF-8 encoding: " + e.getMessage());
             // Fallback to standard loading
             langConfig = YamlConfiguration.loadConfiguration(langFile);
+        }
+
+        // Check for missing keys and add them
+        boolean needsUpdate = false;
+
+        // Check for unknown-command key
+        if (!langConfig.contains("unknown-command")) {
+            langConfig.set("unknown-command", "Unknown command. Type /help for a list of commands.");
+            needsUpdate = true;
+            plugin.getLogger().info("Added missing 'unknown-command' key to " + langFile.getName());
+        }
+
+        // Add more checks for other missing keys here if needed
+
+        // Save the file if any updates were made
+        if (needsUpdate) {
+            try {
+                langConfig.save(langFile);
+                plugin.getLogger().info("Updated " + langFile.getName() + " with missing keys");
+
+                // Reload the config after saving
+                langConfig = YamlConfiguration.loadConfiguration(
+                        new InputStreamReader(java.nio.file.Files.newInputStream(langFile.toPath()), StandardCharsets.UTF_8)
+                );
+            } catch (Exception e) {
+                plugin.getLogger().severe("Failed to save updated language file: " + e.getMessage());
+            }
         }
 
         // Load messages from the language file
@@ -86,6 +143,7 @@ public class Lang {
             }
         }
     }
+
 
     private void loadMessagesRecursive(ConfigurationSection section, String path) {
         for (String key : section.getKeys(false)) {

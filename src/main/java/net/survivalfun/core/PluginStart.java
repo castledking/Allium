@@ -1,7 +1,12 @@
 package net.survivalfun.core;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.events.ListenerPriority;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketEvent;
 import net.milkbowl.vault2.chat.Chat;
-import net.survivalfun.core.listeners.security.CommandErrorHandler;
 import net.survivalfun.core.listeners.security.CreativeManager;
 import net.survivalfun.core.listeners.security.FlyOnRejoinListener;
 import net.survivalfun.core.listeners.chat.FormatChatListener;
@@ -10,11 +15,16 @@ import net.survivalfun.core.commands.utils.*;
 import net.survivalfun.core.commands.fun.Explode;
 import net.survivalfun.core.listeners.security.SpectatorTeleport;
 import net.survivalfun.core.managers.DB.Database;
+import net.survivalfun.core.managers.config.CommandBlockerConfig;
 import net.survivalfun.core.managers.config.Config;
+import net.survivalfun.core.managers.core.Luck;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.listeners.jobs.SlimeCushionListener;
 import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.utils.Item;
+import org.bukkit.Bukkit;
+import org.bukkit.GameRule;
+import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -32,6 +42,83 @@ public class PluginStart extends JavaPlugin {
     private CreativeManager creativeManager;
     private SpectatorTeleport spectatorTeleport;
     private Explode explodeCommand;
+    private Luck luck;
+    private ProtocolManager protocolManager;
+    private CommandBlockerConfig commandBlockerConfig;
+
+    private void initializeCommandBlocker() {
+        // Only proceed if ProtocolLib is available
+        if (getServer().getPluginManager().getPlugin("ProtocolLib") == null) {
+            getLogger().severe("ProtocolLib not found! Command blocking features will be disabled.");
+            return;
+        }
+
+        // Initialize ProtocolManager
+        this.protocolManager = ProtocolLibrary.getProtocolManager();
+
+        // Create the command blocker config
+        this.commandBlockerConfig = new CommandBlockerConfig(this, luck);
+        commandBlockerConfig.saveDefaultConfig();
+
+        // Register command packet listeners
+        registerCommandPacketListeners();
+
+
+        getLogger().info("Command Blocker initialized successfully!");
+    }
+
+    private void registerCommandPacketListeners() {
+        // Command packet listener (for blocking commands)
+        protocolManager.addPacketListener(new PacketAdapter(this,
+                ListenerPriority.NORMAL,
+                PacketType.Play.Client.CHAT_COMMAND) {
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                String command = event.getPacket().getStrings().read(0);
+
+                // Get the first part of the command (the command name)
+                String commandName = command.split(" ")[0].toLowerCase();
+
+                if (commandBlockerConfig.isCommandBlocked(event.getPlayer(), commandName)) {
+                    event.setCancelled(true);
+                    event.getPlayer().sendMessage(commandBlockerConfig.getBlockedCommandMessage());
+                }
+            }
+        });
+
+        // Tab complete packet listener
+        protocolManager.addPacketListener(new PacketAdapter(this,
+                ListenerPriority.NORMAL,
+                PacketType.Play.Client.TAB_COMPLETE) {
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                String text = event.getPacket().getStrings().read(0);
+
+                // Only handle command tab completion (starts with /)
+                if (text.startsWith("/")) {
+                    String input = text.substring(1).toLowerCase();
+                    String commandName = input.split(" ")[0];
+
+                    if (commandBlockerConfig.isTabCompleteBlocked(event.getPlayer(), commandName)) {
+                        event.setCancelled(true);
+                    }
+                }
+            }
+        });
+    }
+
+    // Add this getter for the command blocker config
+    public CommandBlockerConfig getCommandBlockerConfig() {
+        return commandBlockerConfig;
+    }
+
+    // Add this method to reload the command blocker config
+    public void reloadCommandBlockerConfig() {
+        if (commandBlockerConfig != null) {
+            commandBlockerConfig.reloadConfig();
+            getLogger().info("Command Blocker configuration reloaded");
+        }
+    }
 
     // Add this method to PluginStart.java
     public void reloadChatFormatter() {
@@ -70,9 +157,15 @@ public class PluginStart extends JavaPlugin {
 
 
 
+
+
+
     @Override
     public void onEnable() {
         this.configManager = new Config(this);
+
+        //Command Blocker
+        initializeCommandBlocker();
 
         //Vault
         RegisteredServiceProvider<Chat> chatProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault2.chat.Chat.class);
@@ -80,11 +173,20 @@ public class PluginStart extends JavaPlugin {
             vaultChat = chatProvider.getProvider();
         }
 
-        //Luckperms
+        // Try to get LuckPerms
         RegisteredServiceProvider<LuckPerms> luckPermsProvider = getServer().getServicesManager().getRegistration(LuckPerms.class);
         if (luckPermsProvider != null) {
             luckPerms = luckPermsProvider.getProvider();
+        } else {
+            getLogger().warning("LuckPerms not found! Group-specific command blocking will be disabled.");
         }
+
+        luck = new Luck(this);
+
+        // Then pass it to CommandBlockerConfig instead of passing the raw LuckPerms instance
+        commandBlockerConfig = new CommandBlockerConfig(this, luck);
+
+
 
         // Initialize chat formatter
         if (getConfig().getBoolean("enable-chat-formatting", true)) {
@@ -128,7 +230,11 @@ public class PluginStart extends JavaPlugin {
         SlimeCushionListener slimeCushionListener = new SlimeCushionListener(this, 2.0, 0.5, 0.2, 2.0, true, "&aThe slime cushioned your fall!", true);
         getServer().getPluginManager().registerEvents(slimeCushionListener, this);
         new SpectatorTeleport(this, new NV(this));
-        new CommandErrorHandler(this, langManager);
+
+        // Disable command block output (which includes unknown command messages)
+        for (World world : Bukkit.getWorlds()) {
+            world.setGameRule(GameRule.SEND_COMMAND_FEEDBACK, false);
+        }
         // Initialize database
         this.database = new Database(this);
         new FlyOnRejoinListener(this);
@@ -182,6 +288,7 @@ public class PluginStart extends JavaPlugin {
             // Register NV command
             getCommand("nv").setExecutor(new NV(this));
 
+
             // Register Gamemode command
             Gamemode gamemodeCommand = new Gamemode(this);
             PluginCommand gamemodePluginCommand = this.getCommand("gamemode");
@@ -208,6 +315,10 @@ public class PluginStart extends JavaPlugin {
     }
     @Override
     public void onDisable() {
+        // Clean up ProtocolLib packet listeners
+        if (protocolManager != null) {
+            protocolManager.removePacketListeners(this);
+        }
         // Close database connection
         if (database != null) {
             database.closeConnection();

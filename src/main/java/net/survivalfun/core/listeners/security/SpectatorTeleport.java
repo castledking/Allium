@@ -18,37 +18,66 @@ import org.jetbrains.annotations.NotNull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class SpectatorTeleport implements Listener {
 
     private final PluginStart plugin;
-    private final Database database;
+    private Database database;
     private final NV nv;
+    private final Logger logger;
 
     // Cache for player locations to reduce database calls
     private final Map<UUID, Location> survivalLocations = new HashMap<>();
+    // For debugging - track operations
+    private final AtomicInteger savedLocationsCount = new AtomicInteger(0);
+    private final AtomicInteger loadedLocationsCount = new AtomicInteger(0);
+    private final AtomicInteger teleportedPlayersCount = new AtomicInteger(0);
+
 
     public SpectatorTeleport(@NotNull PluginStart plugin, NV nv) {
         this.plugin = plugin;
-        this.database = plugin.getDatabase();
+        this.database = getDatabase(); // Get database from plugin
         this.nv = nv;
+        this.logger = plugin.getLogger();
 
-        if (this.database != null) {
+        if (this.database == null) {
+            plugin.getLogger().severe("Database is null in SpectatorTeleport constructor! Spectator location saving will not work.");
+        } else {
             createLocationTable();
             loadAllSavedLocations(); // Load saved locations after creating table
-        } else {
-            plugin.getLogger().severe("Database is not initialized! Spectator teleport functionality will not work.");
         }
-
-
-
-        // Create the necessary table if it doesn't exist
-        createLocationTable();
 
         // Register this listener
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        plugin.getLogger().info("SpectatorTeleport listener has been registered");
+        logger.info("SpectatorTeleport listener has been registered");
+
+        // Schedule periodic logging of cache status
+        plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+            logCacheStatus("Periodic check");
+        }, 6000L, 6000L); // Log every 5 minutes (6000 ticks)
+    }
+    private Database getDatabase() {
+        return plugin.getDatabase();
+    }
+    /**
+     * Logs the current status of the location cache and operation counters
+     */
+    private void logCacheStatus(String context) {
+        logger.info("=== Spectator Teleport Debug Info (" + context + ") ===");
+        logger.info("Cache size: " + survivalLocations.size() + " locations");
+        logger.info("Total saved locations: " + savedLocationsCount.get());
+        logger.info("Total loaded locations: " + loadedLocationsCount.get());
+        logger.info("Total teleported players: " + teleportedPlayersCount.get());
+
+        // Log memory usage
+        Runtime runtime = Runtime.getRuntime();
+        long usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024;
+        long totalMemory = runtime.totalMemory() / 1024 / 1024;
+        logger.info("Memory usage: " + usedMemory + "MB / " + totalMemory + "MB");
+        logger.info("=============================================");
     }
 
     /**
@@ -94,7 +123,7 @@ public class SpectatorTeleport implements Listener {
         }
 
         try {
-            String query = "SELECT player_uuid, world, x, y, z, yaw, pitch FROM spectator_locations";
+            String query = "SELECT player_uuid, world, x, y, z, yaw, pitch FROM player_spectator_locations";
             database.executeQuery(query, rs -> {
                 while (rs.next()) {
                     UUID playerUUID = UUID.fromString(rs.getString("player_uuid"));
@@ -219,6 +248,13 @@ public class SpectatorTeleport implements Listener {
      * Saves a player's current location to the database
      */
     private void savePlayerLocation(Player player) {
+        if(database == null){
+            database = getDatabase();
+            if(database == null){
+                plugin.getLogger().severe("Database is null in savePlayerLocation! Spectator location saving will not work.");
+                return;
+            }
+        }
         Location location = player.getLocation();
         UUID playerUUID = player.getUniqueId();
 
@@ -280,6 +316,13 @@ public class SpectatorTeleport implements Listener {
      * Loads a player's saved location from the database
      */
     private Location loadSavedLocation(UUID playerUUID) {
+        if (database == null) {
+            database = getDatabase();
+            if (database == null) {
+                plugin.getLogger().severe("Database is null in loadSavedLocation! Spectator location loading will not work.");
+                return null;
+            }
+        }
         try {
             // Query the database for the player's location
             Map<String, Object> locationData = database.queryRow(

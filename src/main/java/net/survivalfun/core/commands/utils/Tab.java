@@ -59,12 +59,32 @@ public class Tab implements TabCompleter {
                 case "adventure" -> getGamemodeSuggestions(sender, "adventure", args);
                 case "spectator" -> getGamemodeSuggestions(sender, "spectator", args);
                 case "fly" -> getFlySuggestions(sender, args);
+                case "core" -> getCoreSuggestions(sender, args);
                 default -> new ArrayList<>();
             };
         } catch (Exception e) {
             plugin.getLogger().warning("Tab completion error: " + e.getMessage());
             return new ArrayList<>();
         }
+    }
+
+    private @Nullable List<String> getCoreSuggestions(@NotNull CommandSender sender
+            , @NotNull String @NotNull [] args) {
+        List<String> suggestions = new ArrayList<>();
+        if (!sender.hasPermission("core.admin")) {
+            return suggestions;
+        }
+        if (args.length == 1 && sender.hasPermission("core.admin")) {
+            suggestions.add("reload");
+            suggestions.add("debug");
+        } else if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("reload")) {
+                suggestions.add("chat");
+                suggestions.add("hide");
+                suggestions.add("lang");
+            }
+        }
+        return suggestions;
     }
 
     private List<String> getFlySuggestions(CommandSender sender, String[] args) {

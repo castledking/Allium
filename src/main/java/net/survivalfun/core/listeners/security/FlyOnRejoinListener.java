@@ -118,7 +118,7 @@ public class FlyOnRejoinListener implements Listener {
         }
 
         // Handle normal flight status restoration
-        if (player.hasPermission("core.fly") || player.hasPermission("core.gamemode.spectator")) {
+        if (player.hasPermission("core.fly")) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 UUID playerUUID = player.getUniqueId();
                 Database.PlayerFlightData flightData = database.getPlayerFlightStatus(playerUUID);

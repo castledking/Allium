@@ -101,9 +101,20 @@ public class FlyOnRejoinListener implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Check if player already has slow falling effect (from previous session)
             if (player.hasPotionEffect(PotionEffectType.SLOW_FALLING)) {
-                // They have the effect, so start a new task to check when they land
-                plugin.getLogger().info("Player " + player.getName() + " rejoined with slow falling effect, starting landing check");
-                startSlowFallLandingCheck(player);
+                PotionEffect slowFalling = player.getPotionEffect(PotionEffectType.SLOW_FALLING);
+                if (slowFalling != null) {
+                    int remainingTicks = slowFalling.getDuration(); // Get current duration in ticks
+                    double remainingSeconds = remainingTicks / 20.0; // Convert ticks to seconds
+
+                    double currentY = player.getLocation().getY();
+                    double requiredTime = currentY / 2.5; // Calculate required seconds for falling safely
+
+                    if (remainingSeconds < requiredTime) {
+                        int newDurationTicks = (int) Math.ceil(requiredTime * 20); // Convert time to ticks
+                        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, newDurationTicks, 0, false, true, true));
+                        plugin.getLogger().info("Reapplied slow falling to " + player.getName() + " with duration " + newDurationTicks + " ticks to ensure safe landing.");
+                    }
+                }
             }
         }, 5L);
 

@@ -1,4 +1,4 @@
-package net.survivalfun.core.utils;
+package net.survivalfun.core.managers.core;
 
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;

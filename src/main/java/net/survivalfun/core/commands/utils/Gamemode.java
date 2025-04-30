@@ -2,7 +2,7 @@ package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
-import net.survivalfun.core.utils.Text;
+import net.survivalfun.core.managers.core.Text;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.command.Command;
@@ -74,7 +74,8 @@ public class Gamemode implements CommandExecutor {
 
         // Check if sender has permission for this gamemode
         if (!hasGameModePermission(sender, mode)) {
-            Text.sendErrorMessage(sender, "no-permission", lang);
+            String commandName = mode.toString().toLowerCase() + " mode";
+            Text.sendErrorMessage(sender, "no-permission", lang, "/{cmd}", commandName);
             return true;
         }
 
@@ -90,9 +91,10 @@ public class Gamemode implements CommandExecutor {
             }
             target = (Player) sender;
         } else {
-            // Check if sender has permission to change other players' gamemode
+            // Check if sender has permission to change other players' gamemod
             if (!sender.hasPermission("core.gamemode.others")) {
-                Text.sendErrorMessage(sender, "no-permission", lang);
+                String commandName = "set " + mode.toString().toLowerCase() + " mode for others";
+                Text.sendErrorMessage(sender, "no-permission", lang, "use /{cmd}", commandName);
                 return true;
             }
 
@@ -111,7 +113,8 @@ public class Gamemode implements CommandExecutor {
     private boolean handleDirectGamemodeCommand(CommandSender sender, GameMode mode, String[] args, String label) {
         // Check if sender has permission for this gamemode
         if (!hasGameModePermission(sender, mode)) {
-            Text.sendErrorMessage(sender, "no-permission", lang);
+            String commandName = mode.toString().toLowerCase() + " mode";
+            Text.sendErrorMessage(sender, "no-permission", lang, "/{cmd}", commandName);
             return true;
         }
 
@@ -122,7 +125,7 @@ public class Gamemode implements CommandExecutor {
             if (!(sender instanceof Player)) {
                 sender.sendMessage(lang.get("command-usage")
                         .replace("{cmd}", label)
-                        .replace("{args}", "<player>"));
+                        .replace("{args}", "<mode> [player]"));
                 return true;
             }
             target = (Player) sender;
@@ -131,7 +134,8 @@ public class Gamemode implements CommandExecutor {
         else if (args.length == 1) {
             // Check if sender has permission to change other players' gamemode
             if (!sender.hasPermission("core.gamemode.others")) {
-                Text.sendErrorMessage(sender, "no-permission", lang);
+                String commandName = "set " + mode.toString().toLowerCase() + " mode for others";
+                Text.sendErrorMessage(sender, "no-permission", lang, "use /{cmd}", commandName);
                 return true;
             }
 
@@ -145,7 +149,7 @@ public class Gamemode implements CommandExecutor {
         else {
             sender.sendMessage(lang.get("command-usage")
                     .replace("{cmd}", label)
-                    .replace("{args}", "[player]"));
+                    .replace("{args}", "<mode> [player]"));
             return true;
         }
 
@@ -161,6 +165,9 @@ public class Gamemode implements CommandExecutor {
      * @return true if the sender has permission, false otherwise
      */
     private boolean hasGameModePermission(CommandSender sender, GameMode mode) {
+        if (!(sender.hasPermission("core.gamemode"))) {
+            return false;
+        }
         // Check for specific gamemode permission
         String permissionSuffix = mode.name().toLowerCase();
 
@@ -172,10 +179,10 @@ public class Gamemode implements CommandExecutor {
         player.setGameMode(mode);
 
         if (sender.equals(player)) {
-            sender.sendMessage(lang.get("gamemode.switch").replace("{gamemode}", mode.toString()));
+            sender.sendMessage(lang.get("gamemode.switch").replace("{mode}", mode.toString()));
         } else {
             sender.sendMessage(lang.get("gamemode.switch-other").replace("{name}", player.getName()).replace("{gamemode}", mode.toString()));
-            player.sendMessage(lang.get("gamemode.switch").replace("{gamemode}", mode.toString()));
+            player.sendMessage(lang.get("gamemode.switch").replace("{mode}", mode.toString()));
         }
     }
 }

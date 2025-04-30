@@ -1,7 +1,8 @@
 package net.survivalfun.core.commands.utils;
 
+import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
-import net.survivalfun.core.utils.Text;
+import net.survivalfun.core.managers.core.Text;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.attribute.Attribute;
@@ -9,111 +10,161 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public class Heal implements CommandExecutor {
 
     private final Lang lang;
+    private final FileConfiguration config;
+    private final PluginStart plugin;
+    private final int healCooldownSeconds;
+    private final Map<UUID, Long> lastHealTime = new HashMap<>();
 
-    public Heal(Lang lang) {
+    public Heal(Lang lang, FileConfiguration config, PluginStart plugin) {
         this.lang = lang;
+        this.config = config;
+        this.plugin = plugin;
+        this.healCooldownSeconds = config.getInt("heal.cooldown", 60);
+        if(!config.contains("heal.cooldown")){
+            config.set("heal.cooldown", 60);
+        }
     }
 
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, @NotNull String label, String @NotNull [] args) {
-        // If sender is console and no arguments provided
-        if (!(sender instanceof Player player)) {
-            if (args.length == 0) {
-                sender.sendMessage("§cUsage: /heal <player>");
-                return true;
-            }
+    private boolean canHeal(Player player) {
+        // Admins with permission bypass cooldown
+        if (player.hasPermission("core.heal.nocooldown")) {
+            return true;
+        }
 
-            if (args.length == 1) {
-                Player target = Bukkit.getPlayer(args[0]);
+        // If player hasn't used the command before, allow it
+        if (!lastHealTime.containsKey(player.getUniqueId())) {
+            return true;
+        }
 
-                if (target == null) {
-                    // Check if the player has ever joined (offline) or doesn't exist
-                    if (Bukkit.getOfflinePlayer(args[0]).hasPlayedBefore()) {
-                        sender.sendMessage("§cPlayer §e" + args[0] + " §cis currently offline.");
-                    } else {
-                        sender.sendMessage("§cPlayer §e" + args[0] + " §chas never joined this server.");
-                    }
-                    return true;
-                }
+        // Check if cooldown has passed
+        long lastUsed = lastHealTime.get(player.getUniqueId());
+        long currentTime = System.currentTimeMillis();
+        long cooldownMillis = healCooldownSeconds * 1000L;
 
-                healPlayer(target);
-                sender.sendMessage("§aHealed §e" + target.getName());
-                target.sendMessage("§aYou have been healed by console.");
-                return true;
-            }
+        if (currentTime - lastUsed < cooldownMillis) {
+            // Cooldown not yet passed
+            int remainingSeconds = (int) ((cooldownMillis - (currentTime - lastUsed)) / 1000);
 
-            sender.sendMessage("§cUsage: /heal <player>");
+            // Format the time in a more readable way
+            String formattedTime = Text.formatTime(remainingSeconds);
+
+            // Send message about remaining cooldown time
+            String cooldownMessage = lang.get("heal.cooldown")
+                    .replace("{time}", formattedTime)
+                    .replace("{cmd}", "/heal");
+            player.sendMessage(cooldownMessage);
+
             return false;
         }
 
-        // Check if player has permission to use heal command
+        return true;
+    }
+
+
+
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, @NotNull String label, String @NotNull [] args) {
+        // Handle console sender
+        if (!(sender instanceof Player player)) {
+            return handleConsoleCommand(sender, args);
+        }
+        // Check permission
         if (!player.hasPermission("core.heal")) {
-            // Add this debug line
-            player.sendMessage("§cDebug: Attempting to send no-permission message");
-
-            // Check if lang is null
-            if (lang == null) {
-                player.sendMessage("§cError: Lang manager is null");
-                return true;
-            }
-
-            // Try to get the message directly
-            String message = lang.get("no-permission");
-            player.sendMessage("§cDebug: Raw message from lang: " + message);
-
-            // Then try the normal way
             Text.sendErrorMessage(player, "no-permission", lang);
             return true;
         }
 
-        // If sender is a player
-        if (args.length == 0) {
-            // Heal self
-            healPlayer(player);
-            player.sendMessage(lang.get("heal.self"));
-            return true;
-        }
-
-        // Heal another player or self with name
-        if (args.length == 1) {
-            if (args[0].equalsIgnoreCase(player.getName())) {
-                // Player is healing themselves with their own name
-                healPlayer(player);
-                player.sendMessage("§aYou have been healed!");
-                return true;
-            }
-
-            if (!player.hasPermission("core.heal.others")) {
-                Text.sendErrorMessage(player, "no-permission", lang);
-                return true;
-            }
-
-            Player target = Bukkit.getPlayer(args[0]);
-
-            if (target != null) {
-                // Player is online
-                healPlayer(target);
-                player.sendMessage("§aHealed §e" + target.getName());
-                target.sendMessage("§aYou have been healed by §e" + player.getName());
-            } else {
-                // Player is offline or doesn't exist
-                OfflinePlayer offlineTarget = Bukkit.getOfflinePlayer(args[0]);
-
-                if (offlineTarget.hasPlayedBefore()) {
-                    Text.sendErrorMessage(player, "player-not-online", lang, "{name}", args[0]);
-                } else {
-                    Text.sendErrorMessage(player, "player-not-found", lang, "{player}", args[0]);
+        // Process command based on number of arguments
+        switch (args.length) {
+            case 0:
+                // Heal self
+                if(!canHeal(player)){
+                    return true;
                 }
-            }
+                healPlayer(player);
+                player.sendMessage(Text.parseColors(lang.get("heal.self")));
+                if(!player.hasPermission("core.heal.nocooldown")){
+                    lastHealTime.put(player.getUniqueId(), System.currentTimeMillis());
+                }
+                return true;
+            case 1:
+                return handlePlayerHealTarget(player, args[0]);
+            default:
+                player.sendMessage("§cUsage: /heal [player]");
+                return true;
+        }
+    }
+
+    private boolean handleConsoleCommand(CommandSender sender, String[] args) {
+        switch (args.length) {
+            case 0:
+                sender.sendMessage("§cUsage: /heal <player>");
+                return true;
+            case 1:
+                Player target = Bukkit.getPlayer(args[0]);
+                if (target == null) {
+                    // Check if player exists but is offline
+                    if (Bukkit.getOfflinePlayer(args[0]).hasPlayedBefore()) {
+                        Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", args[0]);
+                    } else {
+                        Text.sendErrorMessage(sender, "player-not-found", lang, "{player}", args[0]);
+                    }
+                    return true;
+                }
+
+                // Heal target and notify
+                healPlayer(target);
+                sender.sendMessage(Text.parseColors(lang.get("heal.other")
+                        .replace("{name}", target.getName())));
+                target.sendMessage(Text.parseColors(lang.get("heal.self")));
+                return true;
+            default:
+                sender.sendMessage("§cUsage: /heal <player>");
+                return false;
+        }
+    }
+
+    private boolean handlePlayerHealTarget(Player player, String targetName) {
+        // Check if player is trying to heal themselves by name
+        if (targetName.equalsIgnoreCase(player.getName())) {
+            healPlayer(player);
+            player.sendMessage(Text.parseColors(lang.get("heal.self")));
             return true;
         }
 
-        player.sendMessage("§cUsage: /heal [player]");
+        // Check permission for healing others
+        if (!player.hasPermission("core.heal.others")) {
+            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "/heal on others");
+            return true;
+        }
+
+        // Try to find the target player
+        Player target = Bukkit.getPlayer(targetName);
+        if (target != null) {
+            // Target is online - heal and notify
+            healPlayer(target);
+            player.sendMessage(Text.parseColors(lang.get("heal.other")
+                    .replace("{name}", target.getName())));
+            target.sendMessage(Text.parseColors(lang.get("heal.self")));
+        } else {
+            // Target is offline or doesn't exist
+            OfflinePlayer offlineTarget = Bukkit.getOfflinePlayer(targetName);
+            if (offlineTarget.hasPlayedBefore()) {
+                Text.sendErrorMessage(player, "player-not-online", lang, "{name}", targetName);
+            } else {
+                Text.sendErrorMessage(player, "player-not-found", lang, "{player}", targetName);
+            }
+        }
         return true;
     }
 
@@ -132,4 +183,11 @@ public class Heal implements CommandExecutor {
         player.getActivePotionEffects().forEach(effect -> player.removePotionEffect(effect.getType()));
         player.setFireTicks(0);
     }
+    /**
+     * Clean up the cooldown map when plugin disables to prevent memory leaks
+     */
+    public void cleanup() {
+        lastHealTime.clear();
+    }
+
 }

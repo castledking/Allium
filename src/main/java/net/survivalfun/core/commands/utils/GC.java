@@ -134,7 +134,7 @@ public class GC implements CommandExecutor {
                         placeholders.put("totalTileEntities", String.valueOf(totalTileEntities.get()));
                         placeholders.put("worldInfo", worldInfo.toString());
 
-                        // Send messages from lang_en.yml with placeholders replaced
+                        // Send messages from lang.yml with placeholders replaced
                         List<String> messages = lang.getList("gc.message");
                         for (String line : messages) {
                             sender.sendMessage(lang.format(line, placeholders));

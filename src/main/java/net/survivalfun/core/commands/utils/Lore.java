@@ -2,8 +2,8 @@ package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
-import net.survivalfun.core.utils.Text;
-import net.survivalfun.core.utils.LoreHelper;
+import net.survivalfun.core.managers.core.Text;
+import net.survivalfun.core.managers.core.LoreHelper;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

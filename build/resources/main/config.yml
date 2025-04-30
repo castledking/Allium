@@ -46,14 +46,7 @@ chat-format:
 
 creative-manager:
   # Here you can add blocks and entities that will be
-  # blacklisted from being place, broken or spawned in creative mode.
-  #
-  # Note: this blacklist is only used if the player
-  # already has the appropriate bypass permission:
-  # Currently handling:
-  # - core.gamemode.creative.break
-  # - core.gamemode.creative.place
-  # - core.gamemode.creative.spawn
+  # blacklisted from being place or broken in creative mode.
   blacklist:
     blocks: []
     entities: []
@@ -84,22 +77,11 @@ explode-command:
   #  Default: 1
 
 heal:
-
-  cooldown: 60
   # Time in seconds players without core.heal.nocooldown
-
-feed:
-
   cooldown: 60
+feed:
   # Time in seconds players without core.feed.nocooldown
-
-teleport:
-
-  delay: 3 # core.tpa.nodelay permission bypasses this delay
-  #  The delay in seconds between teleporting a player.
-
-  cooldown: 30 # core.tpa.nocooldown permission bypasses this delay
-  #  The delay in seconds between teleporting again.
+  cooldown: 60
 
 ############################################################
 #  World-Specific Defaults                                 #

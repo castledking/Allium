@@ -10,7 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
-import net.survivalfun.core.utils.Text;
+import net.survivalfun.core.managers.core.Text;
 
 import java.util.logging.Level;
 

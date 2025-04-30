@@ -30,6 +30,7 @@ public class Config {
 
     private void initializeDefaultConfigValues() {
         // Chat formatting settings
+        defaultConfigValues.put("lang", "en");
         defaultConfigValues.put("enable-chat-formatting", true);
         defaultConfigValues.put("block-unicode", true);
         defaultConfigValues.put("chat-format.default", "<prefix> &a<player>&f: &f<message>");

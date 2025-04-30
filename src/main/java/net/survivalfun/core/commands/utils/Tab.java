@@ -1,9 +1,9 @@
 package net.survivalfun.core.commands.utils;
 
-import net.survivalfun.core.utils.Alias;
-import net.survivalfun.core.utils.Item;
-import net.survivalfun.core.utils.LegacyID;
-import net.survivalfun.core.utils.LoreHelper;
+import net.survivalfun.core.managers.core.Alias;
+import net.survivalfun.core.managers.core.Item;
+import net.survivalfun.core.managers.core.LegacyID;
+import net.survivalfun.core.managers.core.LoreHelper;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -46,7 +46,7 @@ public class Tab implements TabCompleter {
                 case "explode" -> getExplodeSuggestions(sender, args);
                 case "give" -> getGiveSuggestions(sender, args);
                 case "i" -> getISuggestions(sender, args);
-                case "heal" -> getHealSuggestions(sender, args);
+                case "heal", "feed" -> getHealSuggestions(sender, args);
                 case "lore" -> getLoreSuggestions(sender, args);
                 case "gamemode" -> getGamemodeSuggestions(sender, "gamemode", args);
                 case "gm" -> getGamemodeSuggestions(sender, "gm", args);
@@ -68,20 +68,19 @@ public class Tab implements TabCompleter {
         }
     }
 
+
     private @Nullable List<String> getCoreSuggestions(@NotNull CommandSender sender
             , @NotNull String @NotNull [] args) {
         List<String> suggestions = new ArrayList<>();
         if (!sender.hasPermission("core.admin")) {
             return suggestions;
         }
-        if (args.length == 1 && sender.hasPermission("core.admin")) {
+        if (args.length == 1) {
             suggestions.add("reload");
             suggestions.add("debug");
         } else if (args.length == 2) {
             if (args[0].equalsIgnoreCase("reload")) {
-                suggestions.add("chat");
                 suggestions.add("hide");
-                suggestions.add("lang");
             }
         }
         return suggestions;
@@ -108,9 +107,27 @@ public class Tab implements TabCompleter {
     private List<String> getGamemodeSuggestions(CommandSender sender, String commandName, String[] args) {
         // First argument - gamemode type (for /gamemode and /gm commands)
         if (args.length == 1 && (commandName.equalsIgnoreCase("gamemode") || commandName.equalsIgnoreCase("gm"))) {
-            List<String> suggestions = new ArrayList<>(Arrays.asList("survival", "creative", "adventure", "spectator"));
+            // Check if sender has the base permission for gamemode switching
+            if (!sender.hasPermission("core.gamemode")) {
+                return Collections.emptyList();
+            }
 
-            // If args[0] is empty (just after command), return all options
+            // Create a filtered list of gamemodes the player has permission for
+            List<String> suggestions = new ArrayList<>();
+            if (sender.hasPermission("core.gamemode.survival")) {
+                suggestions.add("survival");
+            }
+            if (sender.hasPermission("core.gamemode.creative")) {
+                suggestions.add("creative");
+            }
+            if (sender.hasPermission("core.gamemode.adventure")) {
+                suggestions.add("adventure");
+            }
+            if (sender.hasPermission("core.gamemode.spectator")) {
+                suggestions.add("spectator");
+            }
+
+            // If args[0] is empty (just after command), return all permitted options
             // Otherwise filter based on what's been typed
             if (args[0].isEmpty()) {
                 return suggestions;
@@ -120,7 +137,7 @@ public class Tab implements TabCompleter {
                         .collect(Collectors.toList());
             }
         }
-        // Handle second argument - player names (for all gamemode commands)
+        //Handle second argument - player names (for all gamemode commands)
         else if (args.length == 2 || (args.length == 1 && !commandName.equalsIgnoreCase("gamemode") && !commandName.equalsIgnoreCase("gm"))) {
             // For specific gamemode commands (gmc, gms, etc.), player name is the first argument
             int playerArgIndex = (commandName.equalsIgnoreCase("gamemode") || commandName.equalsIgnoreCase("gm")) ? 1 : 0;

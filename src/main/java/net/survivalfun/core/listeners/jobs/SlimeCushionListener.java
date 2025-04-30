@@ -1,6 +1,6 @@
 package net.survivalfun.core.listeners.jobs;
 
-import net.survivalfun.core.utils.Text;
+import net.survivalfun.core.managers.core.Text;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Sound;

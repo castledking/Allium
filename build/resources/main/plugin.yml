@@ -73,12 +73,8 @@ commands:
   spy:
     description: "Spy on private messages"
     usage: "/spy [player]"
-  tp:
-    description: "Teleport to player"
-    usage: "/tp <player>"
-    aliases: [teleport, tpa, tppos, tphere, tpahere, tpall, tpaccept, tpdeny, tpyes, tpno, tpcancel,
-              tptoggle, tpo, tpoffline, top, bottom, tpauto]
 permissions:
+
   core.*:
     default: op
   core.admin:
@@ -104,36 +100,6 @@ permissions:
     default: op
   core.nv:
     default: op
-
-  core.tp:
-    default: op
-  core.tp.others:
-    default: op
-  core.tpa:
-    default: true
-  core.tpa.nodelay:
-  core.tpa.nocooldown:
-    default: op
-  core.tppos:
-    default: op
-  core.tphere:
-    default: op
-  core.tpahere:
-    default: true
-  core.tpall:
-    default: op
-  core.tptoggle:
-    default: true
-  core.tptoggle.bypass:
-    default: op
-  core.tp.offline:
-    default: op
-  core.top:
-    default: op
-  core.bottom:
-    default: op
-  core.tpauto:
-    default: true
 
   core.hide.group:
     default: false

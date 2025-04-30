@@ -2,7 +2,7 @@ package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
-import net.survivalfun.core.utils.Text;
+import net.survivalfun.core.managers.core.Text;
 import org.bukkit.GameMode;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

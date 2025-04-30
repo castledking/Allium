@@ -186,7 +186,7 @@ public class SpectatorTeleport implements Listener {
         GameMode newGameMode = event.getNewGameMode();
 
         // Player is entering spectator mode from a non-spectator mode
-        if (newGameMode == GameMode.SPECTATOR && oldGameMode != GameMode.SPECTATOR) {
+        if (newGameMode == GameMode.SPECTATOR && oldGameMode == GameMode.SURVIVAL) {
             // Save their current location
             savePlayerLocation(player);
 
@@ -203,10 +203,12 @@ public class SpectatorTeleport implements Listener {
         // Player is leaving spectator mode
         else if (oldGameMode == GameMode.SPECTATOR && newGameMode != GameMode.SPECTATOR) {
             // Remove night vision if they have it
-            if (player.hasPotionEffect(PotionEffectType.NIGHT_VISION) && player.hasPermission("core.nv")) {
+            if (player.hasPotionEffect(PotionEffectType.NIGHT_VISION)) {
                 player.removePotionEffect(PotionEffectType.NIGHT_VISION);
             }
-
+            if (newGameMode == GameMode.CREATIVE) {
+                return;
+            }
             // Schedule teleport for next tick to ensure gamemode change completes first
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
                 teleportToSavedLocation(player);

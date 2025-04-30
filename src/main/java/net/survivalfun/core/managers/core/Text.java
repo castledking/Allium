@@ -1,4 +1,4 @@
-package net.survivalfun.core.utils;
+package net.survivalfun.core.managers.core;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -12,9 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Text {
-    public static String formatErrorMessage(String errorType, String key, Lang lang) {
-        return parseColors(lang.get("error-prefix") + " " + errorType + ": '" + key + "'");
-    }
+
 
     public enum ColorFormat {
         MINI_MESSAGE, // <gradient:>, <#Hex>
@@ -29,6 +27,45 @@ public class Text {
     private static final Pattern SIMPLE_HEX_PATTERN = Pattern.compile("<#([A-Fa-f0-9]{6})>");
 
     private static final MiniMessage miniMessage = MiniMessage.miniMessage();
+
+    public static String formatTime(int seconds) {
+        if (seconds <= 0) {
+            return "0s";
+        }
+
+        int days = seconds / 86400;
+        seconds %= 86400;
+
+        int hours = seconds / 3600;
+        seconds %= 3600;
+
+        int minutes = seconds / 60;
+        seconds %= 60;
+
+        StringBuilder timeString = new StringBuilder();
+
+        if (days > 0) {
+            timeString.append(days).append("d ");
+        }
+
+        if (hours > 0 || days > 0) {
+            timeString.append(hours).append("h ");
+        }
+
+        if (minutes > 0 || hours > 0 || days > 0) {
+            timeString.append(minutes).append("m ");
+        }
+
+        if (seconds > 0 || timeString.length() == 0) {
+            timeString.append(seconds).append("s");
+        } else {
+            // Remove the trailing space if we added other units
+            timeString.deleteCharAt(timeString.length() - 1);
+        }
+
+        return timeString.toString();
+    }
+
 
     public static String parseColors(String input) {
         if (input == null || input.isEmpty()) return "";
@@ -260,70 +297,61 @@ public class Text {
     }
 
     /**
-     * Applies the error prefix color to a message with placeholders.
-     * This ensures consistent coloring after placeholders are replaced.
-     *
-     * @param message The message with placeholders
-     * @param langManager The language manager to get the error prefix from
-     * @param replacements An array of key-value pairs for replacements (key1, value1, key2, value2, ...)
-     * @return The formatted message with consistent coloring
-     */
-    public static String formatErrorMessage(String message, net.survivalfun.core.managers.lang.Lang langManager, String... replacements) {
-        if (message == null || message.isEmpty()) {
-            return "";
-        }
-
-        String errorColor = getLastColorInErrorPrefix(langManager);
-        String result = message;
-
-        // Apply replacements in pairs
-        for (int i = 0; i < replacements.length - 1; i += 2) {
-            String placeholder = replacements[i];
-            String value = replacements[i + 1];
-
-            // Add the error color after each replacement to maintain consistent coloring
-            result = result.replace(placeholder, value + errorColor);
-        }
-
-        return result;
-    }
-    /**
      * Formats and sends an error message to a command sender with consistent color formatting.
      *
-     * @param sender The command sender to receive the message
+     * @param sender The command sender to receive the message (Player or CommandSender)
      * @param messageKey The language key for the error message
      * @param lang The language manager to get messages from
      * @param replacements An array of key-value pairs for replacements (key1, value1, key2, value2, ...)
      */
-    public static void sendErrorMessage(CommandSender sender, String messageKey, net.survivalfun.core.managers.lang.Lang lang, Object... replacements) {
+    public static void sendErrorMessage(CommandSender sender, String messageKey,
+                                        net.survivalfun.core.managers.lang.Lang lang,
+                                        Object... replacements) {
+        if (sender == null) {
+            return;
+        }
+
         if (lang == null) {
             sender.sendMessage("§c§lError: §rMissing language manager");
             return;
         }
 
-        // Debug logging
-        System.out.println("Sending error message with key: " + messageKey);
-
         // Get the message from the key
         String message = lang.get(messageKey);
-
-        // Debug logging
-        System.out.println("Retrieved message: " + message);
-
-        // Convert Object[] to String[] for the formatErrorMessage method
-        String[] stringReplacements = new String[replacements.length];
-        for (int i = 0; i < replacements.length; i++) {
-            stringReplacements[i] = String.valueOf(replacements[i]);
+        if (message == null || message.isEmpty()) {
+            sender.sendMessage("§c§lError: §rMissing error message for key: " + messageKey);
+            return;
         }
 
-        // Format the message with replacements
-        String formattedMessage = formatErrorMessage(message, lang, stringReplacements);
+        // Get the error prefix and handle empty prefix case
+        String errorPrefix = lang.get("error-prefix");
+        boolean hasPrefix = !errorPrefix.isEmpty();
 
         // Get the last color from the error prefix to maintain consistent coloring
-        String errorColor = getLastColorInErrorPrefix(lang);
+        String errorColor = hasPrefix ? getLastColorInErrorPrefix(lang) : "§c";
 
-        // Send the formatted message with the error prefix, ensuring color consistency
-        sender.sendMessage(lang.get("error-prefix") + errorColor + " " + formattedMessage);
+        // Convert the replacements to strings and apply them in pairs
+        String formattedMessage = message;
+        for (int i = 0; i < replacements.length - 1; i += 2) {
+            String placeholder = String.valueOf(replacements[i]);
+            String value = String.valueOf(replacements[i + 1]);
+
+            // Only add error color after replacements if we have a prefix
+            if (hasPrefix) {
+                formattedMessage = formattedMessage.replace(placeholder, value + errorColor);
+            } else {
+                formattedMessage = formattedMessage.replace(placeholder, value);
+            }
+        }
+
+        // Send the formatted message with the error prefix
+        if (!hasPrefix) {
+            // When there's no prefix, parse the colors in the message itself
+            sender.sendMessage(parseColors(formattedMessage));
+        } else {
+            // When there's a prefix, use the traditional approach
+            sender.sendMessage(errorPrefix + errorColor + " " + formattedMessage);
+        }
     }
 
 }

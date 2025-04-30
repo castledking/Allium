@@ -10,7 +10,7 @@ import net.luckperms.api.cacheddata.CachedMetaData;
 import net.luckperms.api.query.QueryOptions;
 import net.milkbowl.vault2.chat.Chat;
 import net.survivalfun.core.managers.config.Config;
-import net.survivalfun.core.utils.Text;
+import net.survivalfun.core.managers.core.Text;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -45,7 +45,7 @@ public class FormatChatListener implements Listener {
         this.config = config;
         this.vaultChat = vaultChat;
         this.luckPerms = luckPerms;
-        this.blockUnicode = config.getBoolean("chat-format.block-unicode"); // Default to true
+        this.blockUnicode = config.getBoolean("block-unicode"); // Default to true
 
         legacyComponentSerializer = LegacyComponentSerializer.builder().hexColors().build();
 

@@ -4,7 +4,7 @@ import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.commands.fun.Explode;
 import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.managers.lang.Lang;
-import net.survivalfun.core.utils.Text;
+import net.survivalfun.core.managers.core.Text;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -50,8 +50,8 @@ public class Core implements CommandExecutor, TabCompleter {
 
 
             case "reload":
-                handleReloadCommand(sender, null, (args.length > 1 && args[1]
-                        .equalsIgnoreCase("hide")) ? true : null);
+                handleReloadCommand(sender, null,
+                        (args.length > 1 && args[1].equalsIgnoreCase("hide")) ? true : null);
                 break;
 
             case "debug":
@@ -65,8 +65,12 @@ public class Core implements CommandExecutor, TabCompleter {
         return true;
     }
     private void sendHelpMessage(CommandSender sender) {
+        if(!sender.hasPermission("core.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
+            return;
+        }
         sender.sendMessage("§aAvailable /core subcommands:");
-        sender.sendMessage("§e/setgamerule §7- Modify and apply world defaults.");
+        sender.sendMessage("§e/debug §7- Toggle debug mode.");
         sender.sendMessage("§e/reload §7- Reload the plugin configuration.");
     }
 
@@ -130,9 +134,12 @@ public class Core implements CommandExecutor, TabCompleter {
 
 
     private void handleReloadCommand(CommandSender sender, Boolean isDebug, Boolean isHide) {
-        if (isHide != null && isHide && sender.hasPermission("core.admin")) {
+        if ((isHide != null && isHide && sender.hasPermission("core.admin"))) {
             plugin.reloadCommandBlockerConfig();
             sender.sendMessage("§7Hidden commands reloaded successfully.");
+            return;
+        } else if (!sender.hasPermission("core.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
             return;
         }
         try {
@@ -179,7 +186,6 @@ public class Core implements CommandExecutor, TabCompleter {
             sender.sendMessage("§cError reloading configuration! Check console for details.");
         }
     }
-
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String @NotNull [] args) {
         if (!command.getName().equalsIgnoreCase("core")) {

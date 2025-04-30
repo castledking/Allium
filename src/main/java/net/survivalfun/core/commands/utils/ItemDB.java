@@ -1,6 +1,6 @@
 package net.survivalfun.core.commands.utils;
 
-import net.survivalfun.core.utils.LegacyID;
+import net.survivalfun.core.managers.core.LegacyID;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;

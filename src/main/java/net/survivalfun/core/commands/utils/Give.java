@@ -2,9 +2,9 @@ package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
-import net.survivalfun.core.utils.Alias;
-import net.survivalfun.core.utils.Text;
-import net.survivalfun.core.utils.LegacyID;
+import net.survivalfun.core.managers.core.Alias;
+import net.survivalfun.core.managers.core.Text;
+import net.survivalfun.core.managers.core.LegacyID;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -26,7 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 import java.util.logging.Level;
 
-import static net.survivalfun.core.utils.Item.isGiveable;
+import static net.survivalfun.core.managers.core.Item.isGiveable;
 
 public class Give implements CommandExecutor {
     private final FileConfiguration config;

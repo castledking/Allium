@@ -109,6 +109,18 @@ public class Database {
                             "last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                             ")"
             );
+            statement.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS mail_messages (" +
+                            "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                            "recipient VARCHAR(36) NOT NULL, " +
+                            "sender VARCHAR(36) NOT NULL, " +
+                            "sender_name VARCHAR(36) NOT NULL, " +
+                            "message TEXT NOT NULL, " +
+                            "sent_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                            "is_read BOOLEAN DEFAULT FALSE" +
+                            ")"
+            );
+
         }
     }
 

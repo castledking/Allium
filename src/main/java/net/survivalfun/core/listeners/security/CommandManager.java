@@ -1,608 +1,800 @@
 package net.survivalfun.core.listeners.security;
 
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
 import net.survivalfun.core.PluginStart;
-import net.survivalfun.core.managers.config.CommandBlockerConfig;
-import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.core.Text;
+import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.command.Command;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.command.SimpleCommandMap;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerCommandSendEvent;
+import org.bukkit.event.server.TabCompleteEvent;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.logging.Level;
 
 public class CommandManager implements Listener {
 
     private final PluginStart plugin;
+    private static boolean hideNamespacedCommandsForBypass;
+    private File configFile;
+    private FileConfiguration config;
     private final Lang lang;
+    private final Map<String, CommandGroup> commandGroups = new HashMap<>();
 
-    // Cache of command names for quick lookups
-    private List<String> availableCommands;
-    private Map<String, String> commandPermissions;
-    private ProtocolManager protocolManager;
-    private Map<String, String> commandAliases;
-
-
-    public CommandManager(PluginStart plugin, Lang lang) {
+    public CommandManager(PluginStart plugin) {
         this.plugin = plugin;
-        this.lang = lang;
-        this.availableCommands = new ArrayList<>();
-        this.commandPermissions = new HashMap<>();
-        this.protocolManager = ProtocolLibrary.getProtocolManager();
-        this.commandAliases = new HashMap<>();
+        this.lang = plugin.getLangManager();
+        loadConfig();
+        registerEvents();
+    }
 
-        // Initial load of available commands
-        refreshCommandList();
-        discoverCommandPermissions();
-        discoverCommandAliases();
-
-        // Register the listener
+    private void registerEvents() {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        Bukkit.getScheduler().runTaskLater(plugin, this::discoverCommandPermissions, 40L);
 
     }
 
-    /**
-     * Refreshes the list of available commands from the server
-     */
-    private void refreshCommandList() {
-        availableCommands.clear();
+    private void loadConfig() {
+        configFile = new File(plugin.getDataFolder(), "hide.yml");
 
-        // Get all available commands
-        Map<String, Command> knownCommands = new TreeMap<>();
-        try {
-            // Use reflection to get the server's command map
-            org.bukkit.command.CommandMap commandMap = (org.bukkit.command.CommandMap)
-                    Bukkit.getServer().getClass().getDeclaredMethod("getCommandMap").invoke(Bukkit.getServer());
+        if (!configFile.exists()) {
+            try {
+                configFile.getParentFile().mkdirs();
+                plugin.saveResource("hide.yml", false);
+            } catch (Exception e) {
+                // If there's no embedded hide.yml in the plugin jar, create one
+                try {
+                    configFile.createNewFile();
+                    config = YamlConfiguration.loadConfiguration(configFile);
 
-            // Get the known commands field through reflection
-            java.lang.reflect.Field knownCommandsField = org.bukkit.command.SimpleCommandMap.class.getDeclaredField("knownCommands");
-            knownCommandsField.setAccessible(true);
+                    // Create example structure
+                    config.set("settings.hide-namespaced-commands-for-bypass", true);
+                    config.set("groups.admin.whitelist", true);
+                    config.set("groups.admin.commands", List.of("op", "deop", "ban", "kick"));
+                    config.set("groups.admin.tabcompletes", List.of("op", "deop"));
 
-            // Get all known commands
-            knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
-        } catch (Exception e) {
-            plugin.getLogger().warning("Failed to access server commands: " + e.getMessage());
-        }
+                    config.set("groups.moderator.whitelist", false);
+                    config.set("groups.moderator.commands", List.of("op", "deop"));
+                    config.set("groups.moderator.tabcompletes", List.of("op", "deop"));
 
-        // Add all command names to our list
-        for (String cmdName : knownCommands.keySet()) {
-            // Filter out namespace commands (plugin:command)
-            if (!cmdName.contains(":")) {
-                availableCommands.add(cmdName);
-                Command cmd = knownCommands.get(cmdName);
-                if (cmd != null && cmd.getPermission() != null && !cmd.getPermission().isEmpty()) {
-                    commandPermissions.put(cmdName, cmd.getPermission());
+                    config.save(configFile);
+                } catch (IOException ex) {
+                    plugin.getLogger().log(Level.SEVERE, "Could not create hide.yml", ex);
                 }
             }
         }
+
+        config = YamlConfiguration.loadConfiguration(configFile);
+        hideNamespacedCommandsForBypass = config.getBoolean("settings.hide-namespaced-commands-for-bypass", true);
+        if(plugin.getConfig().getBoolean("debug-mode")) {
+            plugin.getLogger().info("Namespaced commands for bypass users will be "
+                    + (hideNamespacedCommandsForBypass ? "hidden" : "shown") + " in tab completion.");
+        }
+        loadGroups();
+    }
+
+    public void reload() {
+        config = YamlConfiguration.loadConfiguration(configFile);
+        commandGroups.clear();
+        loadGroups();
+    }
+
+    public boolean shouldHideNamespacedCommandsForBypass() {
+        return hideNamespacedCommandsForBypass;
     }
 
 
-    /**
-     * Finds a similar command to the attempted one, only suggesting commands
-     * the player has permission to use.
-     *
-     * @param attempted The attempted command
-     * @param player The player to check permissions for
-     * @return A similar command the player has permission to use, or null if none found
-     */
-    private String findSimilarCommand(String attempted, Player player) {
-        String bestMatch = null;
-        int lowestDistance = Integer.MAX_VALUE;
-
-        for (String command : availableCommands) {
-            // Skip vanilla commands
-            if (isVanillaCommand(command) && !player.hasPermission("core.*")) {
-                continue;
-            }
-
-            // Skip commands the player doesn't have permission to use
-            if (!playerHasPermission(player, command)) {
-                continue;
-            }
-
-            int distance = levenshteinDistance(attempted, command);
-            if (distance < lowestDistance) {
-                lowestDistance = distance;
-                bestMatch = command;
-            }
-        }
-
-        // Only suggest if it's a reasonably close match (adjust threshold as needed)
-        return lowestDistance <= 3 ? bestMatch : null;
-    }
-
-
-    /**
-     * Checks if a player has permission to use a command.
-     *
-     * @param player The player to check
-     * @param command The command to check permission for
-     * @return True if the player has permission, false otherwise
-     */
-    private boolean playerHasPermission(Player player, String command) {
-        // If player is null, return false
-        if (player == null) {
-            return false;
-        }
-
-        // Get permission for this command
-        String permission = getCommandPermission(command);
-
-        // If no specific permission is required, return true
-        if (permission == null || permission.isEmpty()) {
-            return true;
-        }
-
-        // Check if player has permission
-        return player.hasPermission(permission);
-    }
-
-    /**
-     * Gets the permission required for a command.
-     *
-     * @param command The command to get permission for
-     * @return The permission string, or null if no permission is required
-     */
-    private String getCommandPermission(String command) {
-        String baseCommand = command.split(" ")[0]; // Get just the base command without arguments
-        return commandPermissions.get(baseCommand.toLowerCase());
-    }
-
-
-
-    /**
-     * Calculate the Levenshtein distance between two strings
-     * This measures how many single-character edits are needed to change one string into another
-     */
-    private int levenshteinDistance(String a, String b) {
-        int[] costs = new int[b.length() + 1];
-
-        for (int j = 0; j <= b.length(); j++) {
-            costs[j] = j;
-        }
-
-        for (int i = 1; i <= a.length(); i++) {
-            costs[0] = i;
-            int nw = i - 1;
-
-            for (int j = 1; j <= b.length(); j++) {
-                int cj = Math.min(1 + Math.min(costs[j], costs[j - 1]),
-                        a.charAt(i - 1) == b.charAt(j - 1) ? nw : nw + 1);
-                nw = costs[j];
-                costs[j] = cj;
-            }
-        }
-
-        return costs[b.length()];
-    }
-
-    @EventHandler
-    public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
-        if (event.isCancelled()) {
+    private void loadGroups() {
+        ConfigurationSection groupsSection = config.getConfigurationSection("groups");
+        if (groupsSection == null) {
+            plugin.getLogger().warning("No groups found in hide.yml");
             return;
         }
 
-        Player player = event.getPlayer();
-        String message = event.getMessage().trim();
+        for (String groupName : groupsSection.getKeys(false)) {
+            ConfigurationSection groupSection = groupsSection.getConfigurationSection(groupName);
+            if (groupSection == null) continue;
 
-        // Check if this is a command (starts with /)
-        if (!message.startsWith("/")) {
-            return;
-        }
+            boolean whitelist = groupSection.getBoolean("whitelist", true);
+            List<String> commands = groupSection.getStringList("commands");
+            List<String> tabCompletes = groupSection.getStringList("tabcompletes");
 
-        // Extract the command without the slash
-        String fullCommand = message.substring(1);
-        String[] parts = fullCommand.split(" ", 2);
-        String command = parts[0].toLowerCase();
+            // Process wildcards in commands for plugin prefixes
+            List<String> expandedCommands = expandWildcardCommands(commands);
 
-        // Check if this is an alias and get the primary command
-        String primaryCommand = getPrimaryCommand(command);
-
-        // Check if the command is registered (either directly or through its primary command)
-        if (isCommandRegistered(command) || isCommandRegistered(primaryCommand)) {
-            if (lackPermissionForCommand(player, primaryCommand)) {
-                // Check if it might be targeting other players
-                String basePermission = getCommandPermission(primaryCommand);
-                boolean isOthersCommand = false;
-
-                if (basePermission != null) {
-                    // Check if this could be an "others" command
-                    String othersPermission = basePermission + ".others";
-                    String pluginName = basePermission.split("\\.")[0];
-                    String commandName = primaryCommand.split(" ")[0]; // Get just the base command
-                    String alternateOthersPermission = pluginName + ".command." + commandName + ".others";
-
-                    // Check if the player has either form of the "others" permission
-                    if (player.hasPermission(othersPermission) || player.hasPermission(alternateOthersPermission)) {
-                        isOthersCommand = true;
-                    }
-                }
-
-                if (!isOthersCommand) {
-                    // Find a similar command suggestion
-                    String suggestion = findSimilarCommand(command, player);
-
-                    if (suggestion != null) {
-                        // Send message with the suggestion
-                        Text.sendErrorMessage(player, "unknown-command-suggestion", lang,
-                                "{cmd}", command,
-                                "{suggestion}", suggestion);
-                    } else {
-                        // No suggestion found, send regular unknown command message
-                        Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", command);
-                    }
-                } else {
-                    // Player has ".others" permission - allow the command with "to others" appended
-                    String modifiedCommand = command + " to others";
-                    Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", modifiedCommand);
-                }
-
-                event.setCancelled(true);
+            // Special handling for "^" in tabCompletes
+            if (tabCompletes.contains("^")) {
+                // Replace "^" with all commands from this group
+                tabCompletes.remove("^");
+                // Use the original commands list from the config, not already expanded ones
+                tabCompletes.addAll(commands);
             }
 
+            // Now expand wildcards in tab completions
+            List<String> expandedTabCompletes = expandWildcardCommands(tabCompletes);
 
-        } else {
-            // Command is not registered, show suggestion or unknown command message
-            String suggestion = findSimilarCommand(command, player);
-            String errorMessage;
+            CommandGroup group = new CommandGroup(groupName, whitelist, expandedCommands, expandedTabCompletes, hideNamespacedCommandsForBypass);
+            commandGroups.put(groupName, group);
 
-            if (suggestion != null) {
-                errorMessage = lang.get("unknown-command-suggestion");
-                if (errorMessage == null || errorMessage.isEmpty()) {
-                    errorMessage = "&cUnknown command: /{cmd}. Did you mean: /{suggestion}?"
-                            .replace("{cmd}", command)
-                            .replace("{suggestion}", suggestion);
-                    player.sendMessage(Text.parseColors(errorMessage));
-                } else {
-                    Text.sendErrorMessage(player, "unknown-command-suggestion", lang, "{cmd}",
-                            command, "{suggestion}", suggestion);
+            if(plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info("Loaded command group: " + groupName +
+                        " (whitelist: " + whitelist +
+                        ", commands: " + expandedCommands.size() +
+                        ", tabcompletes: " + expandedTabCompletes.size() + ")");
+            }
+        }
+    }
+
+
+
+    /**
+     * Expands wildcard commands like "<plugin>:*" to include all commands from that plugin
+     * Strips namespace prefixes from the command names
+     */
+    private List<String> expandWildcardCommands(List<String> commands) {
+        List<String> expandedCommands = new ArrayList<>();
+
+        for (String command : commands) {
+            if (command.equals("^")) {
+                // Just pass through the special ^ symbol
+                expandedCommands.add(command);
+            } else if (command.endsWith(":*")) {
+                // Wildcard command pattern detected
+                String pluginName = command.substring(0, command.length() - 2);
+                Plugin targetPlugin = Bukkit.getPluginManager().getPlugin(pluginName);
+
+                if (targetPlugin != null) {
+                    // Find all commands from this plugin
+                    Map<String, Command> knownCommands = getKnownCommands();
+                    for (Map.Entry<String, Command> entry : knownCommands.entrySet()) {
+                        if (isCommandFromPlugin(entry.getValue(), targetPlugin)) {
+                            // Store the original command name with namespace for proper command checking
+                            expandedCommands.add(entry.getKey());
+                        }
+                    }
                 }
             } else {
-                errorMessage = lang.get("unknown-command");
-                if (errorMessage == null || errorMessage.isEmpty()) {
-                    errorMessage = "&cUnknown command: /{cmd}. Do /help for a list of commands."
-                            .replace("{cmd}", command);
-                    player.sendMessage(Text.parseColors(errorMessage));
-                } else {
-                    Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", command);
+                // For regular commands, resolve the command to its full name with namespace if applicable
+                String fullCommandName = resolveFullCommandName(command);
+                expandedCommands.add(fullCommandName);
+            }
+        }
+
+        return expandedCommands;
+    }
+
+    /**
+     * Resolves a command name to its full name with namespace if needed
+     */
+    private String resolveFullCommandName(String commandName) {
+        // If the command already has a namespace, return as is
+        if (commandName.contains(":")) {
+            return commandName.toLowerCase();
+        }
+
+        // Try to find the command in the command map
+        Command command = Bukkit.getCommandMap().getCommand(commandName);
+
+        if (command == null) {
+            // Command not found in command map, return as is
+            return commandName.toLowerCase();
+        }
+
+        if (command instanceof PluginCommand) {
+            // For plugin commands, include the plugin name as namespace
+            PluginCommand pluginCommand = (PluginCommand) command;
+            return pluginCommand.getPlugin().getName().toLowerCase() + ":" + commandName.toLowerCase();
+        }
+
+        // For built-in commands or unknown commands, return as is
+        return commandName.toLowerCase();
+    }
+
+    /**
+     * Get known commands from the server's command map
+     */
+    private Map<String, Command> getKnownCommands() {
+        try {
+            SimpleCommandMap commandMap = (SimpleCommandMap) Bukkit.getServer().getClass()
+                    .getMethod("getCommandMap")
+                    .invoke(Bukkit.getServer());
+
+            Field knownCommandsField = SimpleCommandMap.class.getDeclaredField("knownCommands");
+            knownCommandsField.setAccessible(true);
+
+            @SuppressWarnings("unchecked")
+            Map<String, Command> knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
+
+            Map<String, Command> filteredCommands = new HashMap<>();
+            for (Map.Entry<String, Command> entry : knownCommands.entrySet()) {
+                if (entry.getKey() != null && entry.getValue() != null) {
+                    filteredCommands.put(entry.getKey(), entry.getValue());
                 }
             }
 
+            return filteredCommands;
+
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to access server command map", e);
+            return Collections.emptyMap();
+        }
+    }
+
+    /**
+     * Determine if a command belongs to a specific plugin
+     */
+    private boolean isCommandFromPlugin(Command command, Plugin targetPlugin) {
+        // For PluginCommand instances, we can directly check the owning plugin
+        if (command instanceof PluginCommand) {
+            return ((PluginCommand) command).getPlugin() == targetPlugin;
+        }
+
+        // For other command types, check the name prefix or command description
+        String cmdName = command.getName().toLowerCase();
+        String pluginName = targetPlugin.getName().toLowerCase();
+
+        return cmdName.startsWith(pluginName + ":") ||
+                (command.getDescription() != null &&
+                        command.getDescription().toLowerCase().contains(pluginName));
+    }
+
+
+
+
+    /**
+     * Checks if a player belongs to a specific group
+     * In a real implementation, this would check permissions or group membership
+     */
+    private boolean playerBelongsToGroup(Player player, String groupName) {
+        // In a real implementation, you would check permissions like:
+        return player.hasPermission("group." + groupName);
+    }
+
+    private String findSimilarCommand(Player player, String attemptedCommand) {
+        // Get all available commands on the server
+        Collection<String> availableCommands = new ArrayList<>();
+
+        // Add commands from all plugins
+        Bukkit.getServer().getCommandMap().getKnownCommands().keySet().stream()
+                .map(String::toLowerCase)
+                .filter(cmd -> shouldShowCommand(player, cmd))
+                .forEach(availableCommands::add);
+
+        String bestMatch = null;
+        int bestDistance = Integer.MAX_VALUE;
+
+        // Find command with the lowest Levenshtein distance
+        for (String cmd : availableCommands) {
+            // Skip the exact same command
+            if (cmd.equals(attemptedCommand)) {
+                continue;
+            }
+
+            int distance = levenshteinDistance(attemptedCommand, cmd);
+
+            // Consider it a match if the distance is less than half the length of the command
+            // and better than any match found so far
+            if (distance < bestDistance && distance < Math.max(attemptedCommand.length(), cmd.length()) / 2) {
+                bestMatch = cmd;
+                bestDistance = distance;
+            }
+        }
+
+        return bestMatch;
+    }
+
+
+    /**
+     * Calculate Levenshtein distance between two strings
+     */
+    private int levenshteinDistance(String s1, String s2) {
+        int[] costs = new int[s2.length() + 1];
+
+        for (int i = 0; i <= s1.length(); i++) {
+            int lastValue = i;
+            for (int j = 0; j <= s2.length(); j++) {
+                if (i == 0) {
+                    costs[j] = j;
+                } else if (j > 0) {
+                    int newValue = costs[j - 1];
+                    if (s1.charAt(i - 1) != s2.charAt(j - 1)) {
+                        newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                    }
+                    costs[j - 1] = lastValue;
+                    lastValue = newValue;
+                }
+            }
+            if (i > 0) {
+                costs[s2.length()] = lastValue;
+            }
+        }
+        return costs[s2.length()];
+    }
+
+    private CommandGroup getWildcardGroup() {
+        return new CommandGroup(
+                "op",
+                true,
+                Collections.singletonList("*"),
+                Collections.singletonList("*"),
+                hideNamespacedCommandsForBypass // Pass the setting
+        );
+    }
+
+
+
+
+
+
+
+
+    /**
+     * Get all groups a player belongs to
+     */
+    private List<CommandGroup> getPlayerGroups(Player player) {
+        List<CommandGroup> groups = new ArrayList<>();
+
+        if (player.hasPermission("core.hide.bypass")) {
+            CommandGroup wildcardGroup = getWildcardGroup();
+            groups.add(wildcardGroup);
+        }
+
+        // First check for explicit groups
+        for (Map.Entry<String, CommandGroup> entry : commandGroups.entrySet()) {
+            if (playerBelongsToGroup(player, entry.getKey())) {
+                groups.add(entry.getValue());
+            }
+        }
+
+        // If no explicit groups, use default group
+        if (groups.isEmpty() && commandGroups.containsKey("default")) {
+            groups.add(commandGroups.get("default"));
+        }
+
+        return groups;
+    }
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerCommandSend(PlayerCommandSendEvent event) {
+        Player player = event.getPlayer();
+        List<CommandGroup> groups = getPlayerGroups(player);
+
+        // No need to process if player has no restrictions
+        if (groups.isEmpty()) {
+            return;
+        }
+
+        // First check if the player has a wildcard permission in any group
+        boolean hasWildcard = groups.stream()
+                .anyMatch(group -> group.whitelist() && group.commands().contains("*"));
+
+        // If player has wildcard permission and it's in a whitelist group, allow all commands
+        if (hasWildcard) {
+            return; // Keep all commands in the tab completion
+        }
+
+        // Otherwise, filter commands as usual
+        Iterator<String> iterator = event.getCommands().iterator();
+        while (iterator.hasNext()) {
+            String command = iterator.next();
+
+            // Check if this command should be shown based on player's groups
+            boolean shouldShow = false;
+            for (CommandGroup group : groups) {
+                if (group.isTabCompletionAllowed(command)) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+
+            if (!shouldShow) {
+                iterator.remove();
+            }
+        }
+    }
+
+
+
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
+        if (event.isCancelled()) return;
+
+        Player player = event.getPlayer();
+        String message = event.getMessage().substring(1); // Remove the leading slash
+
+        // Get just the command part without args
+        String fullCommand = message.split(" ")[0].toLowerCase();
+        boolean isNamespacedCommand = fullCommand.contains(":");
+
+        // Get player's permission groups
+        List<CommandGroup> playerGroups = getPlayerGroups(player);
+
+        // If player has no groups, deny all commands
+        if (playerGroups.isEmpty()) {
+            event.setCancelled(true);
+            player.sendMessage("§cYou can't use any commands at this time.");
+            player.sendMessage("§cContact admin if you think this is an error.");
+            return;
+        }
+
+        // Check if player can use this command
+        boolean canUseCommand = false;
+        for (CommandGroup group : playerGroups) {
+            // Check for wildcard permission first
+            if (group.commands().contains("*") && group.whitelist()) {
+                canUseCommand = true;
+                break;
+            }
+
+            // Check the full command
+            boolean commandInList = group.commands().contains(fullCommand);
+
+            // If not found in the list && it's a namespaced command, check the base command
+            if (!commandInList && isNamespacedCommand) {
+                String baseCommand = fullCommand.substring(fullCommand.indexOf(':') + 1);
+                commandInList = group.commands().contains(baseCommand);
+            }
+
+            if ((group.whitelist() && commandInList) || (!group.whitelist() && !commandInList)) {
+                canUseCommand = true;
+                break;
+            }
+        }
+
+        // If command is not allowed, cancel the event and send appropriate message
+        if (!canUseCommand) {
+            event.setCancelled(true);
+
+            if (isNamespacedCommand) {
+                // Special message for namespaced commands
+                Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", fullCommand);
+            } else {
+                // Find a similar allowed command for suggestion
+                String similar = findSimilarCommand(player, fullCommand);
+
+                if (similar != null) {
+                    Text.sendErrorMessage(player, "unknown-command-suggestion", lang,
+                            "{cmd}", fullCommand, "{suggestion}", similar);
+                } else {
+                    Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", fullCommand);
+                }
+            }
+        }
+    }
+
+
+
+
+
+    /**
+     * Updates the tab completion list for a specific player
+     */
+    public void updatePlayerTabCompletion(Player player) {
+        // Create a new PlayerCommandSendEvent for this player with all available commands
+        List<String> allCommands = new ArrayList<>(Bukkit.getCommandMap().getKnownCommands().keySet());
+        PlayerCommandSendEvent event = new PlayerCommandSendEvent(player, allCommands);
+
+        // Process the event using our existing handler
+        onCommandSend(event);
+
+        // Force update the client's command list using packets
+        try {
+            // Get the player's connection through reflection
+            Object entityPlayer = player.getClass().getMethod("getHandle").invoke(player);
+            Object playerConnection = entityPlayer.getClass().getField("playerConnection").get(entityPlayer);
+
+            // Create a command list packet
+            Constructor<?> packetConstructor = getNMSClass("PacketPlayOutCommands").getConstructor();
+            Object packet = packetConstructor.newInstance();
+
+            // Set the commands field
+            Field commandsField = packet.getClass().getDeclaredField("commands");
+            commandsField.setAccessible(true);
+            commandsField.set(packet, event.getCommands());
+
+            // Send the packet
+            playerConnection.getClass().getMethod("sendPacket", getNMSClass("Packet")).invoke(playerConnection, packet);
+
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info("Updated tab completion for " + player.getName() + " with " + event.getCommands().size() + " commands");
+            }
+        } catch (Exception e) {
+            // Fallback method if reflection fails
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().warning("Failed to update tab completion for "
+                        + player.getName() + " using packets. Using fallback method.");
+                plugin.getLogger().info("4dev: PacketEvents TBD");
+            }
+
+
+            // Force a temporary gamemode change to trigger client update
+            GameMode originalMode = player.getGameMode();
+            GameMode tempMode = originalMode == GameMode.CREATIVE ? GameMode.SURVIVAL : GameMode.CREATIVE;
+
+            player.setGameMode(tempMode);
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> player.setGameMode(originalMode), 1L);
+        }
+    }
+
+    // Helper method to get NMS classes - adjust for your server version
+    private Class<?> getNMSClass(String className) throws ClassNotFoundException {
+        String version = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
+        return Class.forName("net.minecraft.server." + version + "." + className);
+    }
+
+
+
+    private boolean shouldShowCommand(Player player, String commandName) {
+        List<CommandGroup> playerGroups = getPlayerGroups(player);
+
+        if (playerGroups.isEmpty()) {
+            return true; // If player has no groups, show all commands
+        }
+
+        // Normalize the command name to lowercase
+        commandName = commandName.toLowerCase();
+
+        // Check if this is a base command that might have a namespace in our configuration
+        // Try to find its full namespaced version if needed
+        String fullCommandName = commandName;
+        if (!commandName.contains(":")) {
+            fullCommandName = resolveFullCommandName(commandName);
+        }
+
+        // Check if any of the player's groups allow this command or its namespaced version
+        for (CommandGroup group : playerGroups) {
+            if (group.isCommandAllowed(commandName) || group.isCommandAllowed(fullCommandName)) {
+                return true;
+            }
+        }
+
+        // If no group explicitly allows the command, don't show it
+        return false;
+    }
+
+
+
+
+
+    /**
+     * Determine if a command should be tab-completable by a player based on their groups
+     */
+    private boolean shouldAllowTabComplete(Player player, String commandName) {
+        List<CommandGroup> groups = getPlayerGroups(player);
+
+        if (groups.isEmpty()) {
+            return true; // No restrictions
+        }
+
+        boolean hasWhitelistGroup = groups.stream().anyMatch(CommandGroup::whitelist);
+
+        if (hasWhitelistGroup) {
+            // In whitelist mode, the command is allowed only if at least one whitelist group allows it
+            for (CommandGroup group : groups) {
+                if (group.whitelist() && group.isTabCompletionAllowed(commandName)) {
+                    return true;
+                }
+            }
+            return false; // No whitelist group allowed it
+        } else {
+            // In blacklist-only mode, the command is allowed unless a blacklist group blocks it
+            for (CommandGroup group : groups) {
+                if (!group.isTabCompletionAllowed(commandName)) {
+                    return false;
+                }
+            }
+            return true; // No blacklist group blocked it
+        }
+    }
+
+
+
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onCommandSend(PlayerCommandSendEvent event) {
+        Player player = event.getPlayer();
+
+        if (player.hasPermission("core.hide.bypass")) {
+            return; // Skip filtering for players with bypass permission
+        }
+
+        List<CommandGroup> groups = getPlayerGroups(player);
+
+        // No need to process if player has no restrictions
+        if (groups.isEmpty()) {
+            return;
+        }
+
+        // For players with whitelist groups, we need to completely clear the list first
+        // and then only add commands that are explicitly allowed
+        boolean hasWhitelistGroup = groups.stream().anyMatch(CommandGroup::whitelist);
+
+        // Create a map to store only the base command (without namespace) for commands that are allowed
+        Map<String, String> baseCommandsMap = new HashMap<>();
+
+        // First, determine which commands should be allowed
+        List<String> currentCommands = new ArrayList<>(event.getCommands());
+
+        if (hasWhitelistGroup) {
+            Set<String> allowedBaseCommands = new HashSet<>();
+
+            // For each command in the event, check if it's allowed by any group
+            for (String command : currentCommands) {
+                // Get the base command (strip namespace)
+                String baseCommand = command.contains(":")
+                        ? command.substring(command.indexOf(':') + 1)
+                        : command;
+
+                for (CommandGroup group : groups) {
+                    if (group.isTabCompletionAllowed(command)) {
+                        // Store the base command as allowed, keeping a mapping to the original for reference
+                        allowedBaseCommands.add(baseCommand);
+                        baseCommandsMap.put(baseCommand, command);
+                        break;
+                    }
+                }
+            }
+
+            // Clear the original list and add only the base commands for allowed commands
+            event.getCommands().clear();
+            event.getCommands().addAll(allowedBaseCommands);
+        } else {
+            // For blacklist mode
+            List<String> filteredCommands = new ArrayList<>();
+
+            for (String command : currentCommands) {
+                // Get the base command (strip namespace)
+                String baseCommand = command.contains(":")
+                        ? command.substring(command.indexOf(':') + 1)
+                        : command;
+
+                boolean allowed = false;
+                for (CommandGroup group : groups) {
+                    if (group.isTabCompletionAllowed(command)) {
+                        allowed = true;
+                        break;
+                    }
+                }
+
+                if (allowed) {
+                    filteredCommands.add(baseCommand);
+                    baseCommandsMap.put(baseCommand, command);
+                }
+            }
+
+            // Replace with filtered commands using base names
+            event.getCommands().clear();
+            event.getCommands().addAll(filteredCommands);
+        }
+    }
+
+
+
+
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onTabComplete(TabCompleteEvent event) {
+        if (!(event.getSender() instanceof Player)) {
+            return;
+        }
+
+        Player player = (Player) event.getSender();
+
+        if (player.hasPermission("core.hide.bypass")) {
+            return; // Skip filtering for players with bypass permission
+        }
+
+        String buffer = event.getBuffer();
+
+        // Only process command tab completions
+        if (!buffer.startsWith("/")) {
+            return;
+        }
+
+        // Get the command without the slash
+        String commandString = buffer.substring(1).split(" ")[0];
+
+        // Check if this command (or its namespaced version) should be allowed for tab completion
+        if (!shouldAllowTabComplete(player, commandString)) {
             event.setCancelled(true);
         }
     }
 
 
     /**
-     * Check if a player lacks permission to use a command
-     *
-     * @param player The player to check
-     * @param command The command being attempted
-     * @return true if the player doesn't have permission, false if they do
+     * Class to represent a group of commands and tab completions
      */
-    private boolean lackPermissionForCommand(Player player, String command) {
-        // Skip permission check for operators if desired
-        if (player.isOp()) {
-            return false;
+    private record CommandGroup(String name, boolean whitelist, List<String> commands,
+                                List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
+
+        private CommandGroup(String name, boolean whitelist, List<String> commands, List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
+            this.name = name;
+            this.whitelist = whitelist;
+            // Store both namespaced and non-namespaced versions of commands
+            this.commands = commands.stream()
+                    .map(String::toLowerCase)
+                    .toList();
+            this.tabCompletes = tabCompletes.stream()
+                    .map(String::toLowerCase)
+                    .toList();
+            this.hideNamespacedCommandsForBypass = hideNamespacedCommandsForBypass;
         }
 
-        // Get the primary command if this is an alias
-        String primaryCommand = getPrimaryCommand(command);
+        public boolean isCommandAllowed(String commandName) {
+            // Convert to lowercase for case-insensitive comparison
+            commandName = commandName.toLowerCase();
 
-        try {
-            // Try to get the plugin command instance using the primary command
-            PluginCommand pluginCmd = Bukkit.getPluginCommand(primaryCommand);
-
-            if (pluginCmd != null) {
-                // 1. Check the command's explicit permission if available
-                String permission = pluginCmd.getPermission();
-                if (permission != null && !permission.isEmpty()) {
-                    return !player.hasPermission(permission);
-                }
-
-                // 2. Check from our cached permissions map
-                permission = commandPermissions.get(primaryCommand);
-                if (permission != null && !permission.isEmpty()) {
-                    return !player.hasPermission(permission);
-                }
-
-                // 3. Try to infer from plugin name
-                String pluginName = pluginCmd.getPlugin().getName().toLowerCase();
-                String[] permissionFormats = {
-                        pluginName + "." + primaryCommand,
-                        pluginName + ".command." + primaryCommand,
-                        pluginName + ".cmd." + primaryCommand,
-                        "core." + primaryCommand,
-                        primaryCommand
-                };
-
-                for (String format : permissionFormats) {
-                    if (!player.hasPermission(format)) {
-                        // We found a permission node that matches common patterns and player doesn't have it
-                        return true;
-                    }
-                }
-            } else {
-                // This might be a vanilla command
-
-                // Check for vanilla permission pattern
-                if (isVanillaCommand(primaryCommand) && !player.hasPermission("core.*")) {
-                    return true;
-                }
-
-                // Check in our permissions map as fallback
-                String permission = commandPermissions.get(primaryCommand);
-                if (permission != null && !permission.isEmpty()) {
-                    return !player.hasPermission(permission);
-                }
-            }
-        } catch (Exception e) {
-            // If any error occurs, fall back to default behavior
-            plugin.getLogger().warning("Error checking permission for " + primaryCommand + ": " + e.getMessage());
-        }
-
-        // By default, assume the player has permission (let the command handler handle permissions)
-        return false;
-    }
-
-    /**
-     * Check if a command is likely a vanilla Minecraft command
-     */
-    private boolean isVanillaCommand(String command) {
-        // Get the CommandBlockerConfig
-        CommandBlockerConfig blockerConfig = plugin.getCommandBlockerConfig();
-
-        // If we shouldn't block vanilla commands, return false immediately
-        if (!blockerConfig.shouldBlockVanillaCommands()) {
-            return false;
-        }
-
-        String[] vanillaCommands = {
-                "advancement", "attribute", "ban", "ban-ip", "banlist", "bossbar", "clear", "clone",
-                "damage", "data", "datapack", "debug", "defaultgamemode", "deop", "difficulty", "effect",
-                "enchant", "execute", "experience", "fill", "forceload", "function", "gamemode", "gamerule",
-                "give", "help", "item", "jfr", "kick", "kill", "list", "locate", "loot", "me", "msg",
-                "op", "pardon", "pardon-ip", "particle", "place", "playsound", "recipe", "reload",
-                "return", "ride", "say", "schedule", "scoreboard", "seed", "setblock", "setidletimeout",
-                "setworldspawn", "spawnpoint", "spectate", "spreadplayers", "stop", "stopsound", "summon",
-                "tag", "team", "teleport", "tellraw", "time", "title", "tm", "toggle", "tp", "trigger",
-                "w", "weather", "whitelist", "worldborder", "xp"
-        };
-
-
-        for (String vanilla : vanillaCommands) {
-            if (command.equalsIgnoreCase(vanilla)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-
-    /**
-     * Check if a command is registered with the server
-     */
-    private boolean isCommandRegistered(String command) {
-        // Refresh command list periodically to catch new commands from other plugins
-        if (availableCommands.isEmpty() || Math.random() < 0.01) { // 1% chance to refresh
-            refreshCommandList();
-            if (Math.random() < 0.05) {
-                discoverCommandAliases();
-            }
-        }
-
-        // First check if the command itself is registered
-        if (availableCommands.contains(command)) {
-            return true;
-        }
-
-        // Check if it's an alias and the primary command is registered
-        String primaryCommand = getPrimaryCommand(command);
-        if (!command.equals(primaryCommand)) {
-            return availableCommands.contains(primaryCommand);
-        }
-
-        return false;
-    }
-
-
-
-    /**
-     * When commands are being sent to a player, refresh our command list
-     */
-    @EventHandler
-    public void onPlayerCommandSend(PlayerCommandSendEvent event) {
-        // This event fires when the server sends available commands to a player
-        // It's a good time to refresh our command list
-        refreshCommandList();
-
-        // Also rediscover command permissions
-        discoverCommandPermissions();
-        discoverCommandAliases();
-
-        event.getCommands().removeIf(cmd -> cmd.contains(":"));
-    }
-    /**
-     * Discover and collect command permissions from all registered commands
-     */
-    public void discoverCommandPermissions() {
-        plugin.getLogger().info("Discovering command permissions...");
-        int found = 0;
-
-        // First try to extract permissions from PluginCommands
-        for (Plugin serverPlugin : Bukkit.getPluginManager().getPlugins()) {
-            // Skip disabled plugins
-            if (!serverPlugin.isEnabled()) {
-                continue;
+            // First check if the exact command (with namespace) is in the list
+            if (commands.contains(commandName)) {
+                return whitelist; // Allow in whitelist, deny in blacklist
             }
 
-            try {
-                // Extract commands from plugin.yml
-                Map<String, Map<String, Object>> commandsMap = serverPlugin.getDescription().getCommands();
-                if (commandsMap != null) {
-                    for (Map.Entry<String, Map<String, Object>> entry : commandsMap.entrySet()) {
-                        String cmdName = entry.getKey().toLowerCase();
-                        Map<String, Object> cmdData = entry.getValue();
+            // Extract base command without namespace
+            String baseCommand = commandName.contains(":")
+                    ? commandName.substring(commandName.indexOf(':') + 1)
+                    : commandName;
 
-                        // Check if the command has a permission defined
-                        if (cmdData.containsKey("permission")) {
-                            String permission = cmdData.get("permission").toString();
-                            commandPermissions.put(cmdName, permission);
-                            found++;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // Skip errors and continue with next plugin
+            // Check if the base command is in the list
+            if (commands.contains(baseCommand)) {
+                return whitelist; // Allow in whitelist, deny in blacklist
             }
+
+            // If not found, return the opposite of whitelist mode
+            return !whitelist;
         }
 
-        // Now try to get permissions from CommandMap
-        try {
-            org.bukkit.command.CommandMap commandMap = (org.bukkit.command.CommandMap)
-                    Bukkit.getServer().getClass().getDeclaredMethod("getCommandMap").invoke(Bukkit.getServer());
 
-            Field knownCommandsField = org.bukkit.command.SimpleCommandMap.class.getDeclaredField("knownCommands");
-            knownCommandsField.setAccessible(true);
 
-            Map<String, Command> knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
+        /**
+         * Checks if a command should be shown in tab completion for this group
+         */
+        public boolean isTabCompletionAllowed(String commandName) {
+            // Check for specific allowed commands first
+            if (commands.contains(commandName)) {
+                return whitelist;
+            }
 
-            for (Map.Entry<String, Command> entry : knownCommands.entrySet()) {
-                String commandName = entry.getKey();
-                Command command = entry.getValue();
-
-                // Skip plugin namespace commands but store the base command
-                if (commandName.contains(":")) {
-                    commandName = commandName.split(":")[1].toLowerCase();
+            // For namespaced commands, check base command
+            if (commandName.contains(":")) {
+                String baseCommand = commandName.substring(commandName.indexOf(':') + 1);
+                if (commands.contains(baseCommand)) {
+                    return whitelist;
                 }
 
-                // Get the permission if set
-                String permission = command.getPermission();
-                if (permission != null && !permission.isEmpty()) {
-                    commandPermissions.put(commandName, permission);
-                    found++;
+                // If it is the wildcard group, and we're hiding namespaced commands
+                if (commands.contains("*") && hideNamespacedCommandsForBypass) {
+                    return false; // Hide this namespaced command
                 }
             }
-        } catch (Exception e) {
-            plugin.getLogger().warning("Error discovering permissions from CommandMap: " + e.getMessage());
-        }
 
-        plugin.getLogger().info("Command permission discovery complete. Found " + found + " permissions.");
-    }
-
-    /**
-     * Manually register a command permission
-     * @param command The command name (without slash)
-     * @param permission The permission node
-     */
-    public void registerCommandPermission(String command, String permission) {
-        commandPermissions.put(command.toLowerCase(), permission);
-    }
-    public void discoverCommandAliases() {
-        // Clear existing aliases to avoid stale data
-        commandAliases.clear();
-
-        // Get all plugins
-        for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
-            try {
-                // Get command map from each plugin
-                Map<String, Map<String, Object>> commands = plugin.getDescription().getCommands();
-                if (commands == null) continue;
-
-                // Process each command
-                for (Map.Entry<String, Map<String, Object>> entry : commands.entrySet()) {
-                    String primaryCommand = entry.getKey().toLowerCase();
-                    Map<String, Object> commandProperties = entry.getValue();
-
-                    // Check if the command has aliases
-                    if (commandProperties.containsKey("aliases")) {
-                        Object aliasObj = commandProperties.get("aliases");
-                        List<String> aliases = new ArrayList<>();
-
-                        // Handle different ways aliases can be defined in plugin.yml
-                        if (aliasObj instanceof List) {
-                            // Handle list format: aliases: [a, b, c]
-                            aliases.addAll((List<String>) aliasObj);
-                        } else if (aliasObj instanceof String) {
-                            // Handle string format: aliases: "a, b, c"
-                            String[] splitAliases = ((String) aliasObj).split(",");
-                            for (String alias : splitAliases) {
-                                aliases.add(alias.trim());
-                            }
-                        }
-
-                        // Register each alias
-                        for (String alias : aliases) {
-                            registerCommandAlias(alias.toLowerCase(), primaryCommand);
-
-                            // Also check if the plugin has registered permission for this command
-                            if (commandProperties.containsKey("permission")) {
-                                String permission = (String) commandProperties.get("permission");
-                                registerCommandPermission(alias.toLowerCase(), permission);
-                            }
-                        }
-
-                        // Log discovery of aliases if desired
-                        if (!aliases.isEmpty()) {
-                            plugin.getLogger().info("Registered " + aliases.size() + " aliases for command '" +
-                                    primaryCommand + "' from plugin " + plugin.getName());
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // Handle exceptions gracefully
-                plugin.getLogger().warning("Failed to process command aliases for plugin " +
-                        plugin.getName() + ": " + e.getMessage());
+            // Check for wildcard
+            if (commands.contains("*")) {
+                return whitelist;
             }
+
+            // Default case
+            return !whitelist;
         }
 
-        plugin.getLogger().info("Discovered and registered " + commandAliases.size() +
-                " command aliases from all plugins");
+
+
+
     }
 
-    /**
-     * Registers a command alias, mapping it to its primary command
-     * @param alias The alias command name
-     * @param primaryCommand The primary command it should map to
-     */
-    public void registerCommandAlias(String alias, String primaryCommand) {
-        alias = alias.toLowerCase();
-        primaryCommand = primaryCommand.toLowerCase();
-        commandAliases.put(alias, primaryCommand);
-    }
-
-    /**
-     * Gets the primary command for an alias, or returns the original if it's not an alias
-     * @param command The command to check
-     * @return The primary command if this is an alias, or the original command
-     */
-    private String getPrimaryCommand(String command) {
-        return commandAliases.getOrDefault(command, command);
-    }
-
-
-    /**
-     * For debugging: dumps all known command permissions to console
-     */
-    public void dumpCommandPermissions() {
-        plugin.getLogger().info("=== Command Permissions ===");
-        List<String> sorted = new ArrayList<>(commandPermissions.keySet());
-        Collections.sort(sorted);
-
-        for (String cmd : sorted) {
-            plugin.getLogger().info(cmd + " => " + commandPermissions.get(cmd));
-        }
-        plugin.getLogger().info("=== " + commandPermissions.size() + " permissions mapped ===");
-    }
 }

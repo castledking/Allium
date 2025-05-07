@@ -1,22 +1,46 @@
-# CommandBlocker Configuration
-
-# Block commands with namespace format (plugin:command)
-block-namespace: true
-block-vanilla-commands: true
-
-# Messages
-messages:
-  blocked-command: "§cThis command has been blocked by the server administrator."
-
-# Group-specific blocked commands and tab completion
-# These will be applied based on LuckPerms groups
+############################################################
+# +------------------------------------------------------+ #
+# |                     Hide Config                      | #
+# +------------------------------------------------------+ #
+############################################################
+# Here you can configure the hidden commands.
+# You can use the following formats:
+# - command
+# - <plugin>:*
+# - *
+# - ^
+# Relies on the LuckPerms group permission (group.<group-name>)
+# Not required to have LuckPerms installed.
+# For more information, visit: https://github.com/castledking/SFCore
 groups:
-  default:
+  op: # (core.hide.bypass permission)
+    whitelist: true
     commands:
-      - gamemode
-      - gm
-      - minecraft:gamemode
-      - fly
-      - god
-    tab-complete:
+      - "*"
+    tabcompletes:
+      - ^
+  admin:
+    whitelist: true
+    commands:
+      - "essentials:*"  # All Essentials commands
+      - "worldedit:*"   # All WorldEdit commands
+      - op
+      - deop
+    tabcompletes:
+      - ^ # Uses commands list
+
+  moderator:
+    whitelist: false
+    commands:
+      - op
+      - deop
+    tabcompletes:
+      - op
+      - deop
+
+  default:
+    whitelist: true
+    commands:
+      - help
+    tabcompletes:
       - ^

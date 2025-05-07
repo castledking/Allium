@@ -83,8 +83,10 @@ public class Give implements CommandExecutor {
                     case 0 -> sender.sendMessage(lang.get("command-usage")
                             .replace("{cmd}", label)
                             .replace("{args}", "[player] <item> [amount]"));
-                    case 1 -> giveItems(sender.getName(), args[0], sender, 0, false
-                            , getEnchantments(args[0]));
+                    case 1 -> sender.sendMessage(lang.get("command-usage")
+                            .replace("{cmd}", label)
+                            .replace("{args}", "<player> <item> [amount]"));
+
                     case 2 -> giveItems(args[0], args[1], sender, 0, true
                             , getEnchantments(args[1])); // Default amount if not specified
                     case 3 -> giveItems(args[0], args[1], sender, Integer.parseInt(args[2])
@@ -134,6 +136,7 @@ public class Give implements CommandExecutor {
         if (meta == null) return;
 
         boolean allowUnsafe = config.getBoolean("allow-unsafe-enchants");
+        plugin.getLogger().log(Level.INFO, "Enchantments: " + enchantments);
         boolean isEnchantedBook = meta instanceof EnchantmentStorageMeta;
 
         if (isEnchantedBook) {
@@ -163,6 +166,7 @@ public class Give implements CommandExecutor {
         }
 
         if (allowUnsafe) {
+
             // Unsafe enchants allowed, directly apply everything
             for (Map.Entry<Enchantment, Integer> entry : enchantments.entrySet()) {
                 try {

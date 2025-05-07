@@ -1,6 +1,9 @@
 package net.survivalfun.core.commands.utils;
 
+import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.LegacyID;
+import net.survivalfun.core.managers.core.Text;
+import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -14,11 +17,20 @@ import java.util.stream.Collectors;
 
 public class ItemDB implements CommandExecutor {
 
+    private final Lang lang;
+
+    public ItemDB(PluginStart plugin) {
+        this.lang = plugin.getLangManager();
+    }
+
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage("This command can only be used by players.");
             return true;
+        }
+        if (!player.hasPermission("core.itemdb")) {
+            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label);
         }
 
         ItemStack itemInHand = player.getInventory().getItemInMainHand();

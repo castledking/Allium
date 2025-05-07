@@ -4,7 +4,7 @@ main: net.survivalfun.core.PluginStart
 api-version: 1.21
 author: towkio
 description: "Survival Fun Core"
-depend: [Vault, ProtocolLib]
+depend: [Vault]
 soft-depend: [LuckPerms, PlaceholderAPI]
 
 commands:
@@ -76,8 +76,13 @@ commands:
   tp:
     description: "Teleport to player"
     usage: "/tp <player>"
-    aliases: [teleport, tpa, tppos, tphere, tpahere, tpall, tpaccept, tpdeny, tpyes, tpno, tpcancel,
+    aliases: [teleport, tpa, tppos, tphere, s, tpahere, tpall, tpaccept, tpdeny, tpyes, tpno, tpcancel,
               tptoggle, tpo, tpoffline, top, bottom, tpauto]
+  help:
+    description: "Displays help"
+    usage: "/help [command]"
+    aliases: [commands]
+    
 permissions:
   core.*:
     default: op
@@ -112,6 +117,7 @@ permissions:
   core.tpa:
     default: true
   core.tpa.nodelay:
+    default: op
   core.tpa.nocooldown:
     default: op
   core.tppos:
@@ -134,6 +140,8 @@ permissions:
     default: op
   core.tpauto:
     default: true
+  core.help:
+    default: true
 
   core.hide.group:
     default: false
@@ -148,7 +156,7 @@ permissions:
     default: op
   core.explode:
     default: op
-  core.explode.self:
+  core.explode.others:
     default: op
   core.explode.exempt:
     default: op

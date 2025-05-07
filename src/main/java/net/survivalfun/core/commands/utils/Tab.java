@@ -5,6 +5,7 @@ import net.survivalfun.core.managers.core.Item;
 import net.survivalfun.core.managers.core.LegacyID;
 import net.survivalfun.core.managers.core.LoreHelper;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -104,67 +105,152 @@ public class Tab implements TabCompleter {
     }
 
 
-    private List<String> getGamemodeSuggestions(CommandSender sender, String commandName, String[] args) {
-        // First argument - gamemode type (for /gamemode and /gm commands)
-        if (args.length == 1 && (commandName.equalsIgnoreCase("gamemode") || commandName.equalsIgnoreCase("gm"))) {
-            // Check if sender has the base permission for gamemode switching
-            if (!sender.hasPermission("core.gamemode")) {
-                return Collections.emptyList();
-            }
-
-            // Create a filtered list of gamemodes the player has permission for
-            List<String> suggestions = new ArrayList<>();
-            if (sender.hasPermission("core.gamemode.survival")) {
-                suggestions.add("survival");
-            }
-            if (sender.hasPermission("core.gamemode.creative")) {
-                suggestions.add("creative");
-            }
-            if (sender.hasPermission("core.gamemode.adventure")) {
-                suggestions.add("adventure");
-            }
-            if (sender.hasPermission("core.gamemode.spectator")) {
-                suggestions.add("spectator");
-            }
-
-            // If args[0] is empty (just after command), return all permitted options
-            // Otherwise filter based on what's been typed
-            if (args[0].isEmpty()) {
-                return suggestions;
-            } else {
-                return suggestions.stream()
-                        .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
-                        .collect(Collectors.toList());
-            }
+    private List<String> getGamemodeSuggestions(CommandSender sender, String command, String[] args) {
+        // Return empty list if sender doesn't have basic gamemode permission
+        if (!sender.hasPermission("core.gamemode")) {
+            return Collections.emptyList();
         }
-        //Handle second argument - player names (for all gamemode commands)
-        else if (args.length == 2 || (args.length == 1 && !commandName.equalsIgnoreCase("gamemode") && !commandName.equalsIgnoreCase("gm"))) {
-            // For specific gamemode commands (gmc, gms, etc.), player name is the first argument
-            int playerArgIndex = (commandName.equalsIgnoreCase("gamemode") || commandName.equalsIgnoreCase("gm")) ? 1 : 0;
 
-            // Only suggest players if sender has permission
-            if (!sender.hasPermission("core.gamemode.others")) {
-                return Collections.emptyList();
+        List<String> suggestions = new ArrayList<>();
+
+        // Handle specific gamemode alias commands (/creative, /survival, etc.)
+        if (command.equalsIgnoreCase("creative") ||
+                command.equalsIgnoreCase("survival") ||
+                command.equalsIgnoreCase("adventure") ||
+                command.equalsIgnoreCase("spectator")) {
+
+            // For direct gamemode aliases, we only want to suggest player names if sender has permission
+            if (args.length == 1) {
+                // Check for specific permission for this gamemode
+                String modePermission = "core.gamemode." + command.toLowerCase();
+                if (sender.hasPermission(modePermission)) {
+                    return getOnlinePlayerNames(sender);
+                } else {
+                    return Collections.emptyList();
+                }
             }
 
-            List<String> playerNames = Bukkit.getOnlinePlayers().stream()
-                    .map(Player::getName)
-                    .collect(Collectors.toList());
+            // No suggestions for more arguments
+            return Collections.emptyList();
+        }
 
-            // If the relevant arg is empty, return all players
-            // Otherwise filter based on what's been typed
-            String currentArg = args[playerArgIndex];
-            if (currentArg.isEmpty()) {
-                return playerNames;
-            } else {
-                return playerNames.stream()
-                        .filter(s -> s.toLowerCase().startsWith(currentArg.toLowerCase()))
-                        .collect(Collectors.toList());
+        // Handle gamemode and gm commands
+        if (command.equalsIgnoreCase("gamemode") || command.equalsIgnoreCase("gm")) {
+            if (args.length == 1) {
+                // Only suggest gamemodes the sender has permission for
+                if (sender.hasPermission("core.gamemode.creative") || sender.hasPermission("core.gamemode.*")) {
+                    suggestions.add("creative");
+                    suggestions.add("1");
+                }
+                if (sender.hasPermission("core.gamemode.survival") || sender.hasPermission("core.gamemode.*")) {
+                    suggestions.add("survival");
+                    suggestions.add("0");
+                }
+                if (sender.hasPermission("core.gamemode.adventure") || sender.hasPermission("core.gamemode.*")) {
+                    suggestions.add("adventure");
+                    suggestions.add("2");
+                }
+                if (sender.hasPermission("core.gamemode.spectator") || sender.hasPermission("core.gamemode.*")) {
+                    suggestions.add("spectator");
+                    suggestions.add("3");
+                }
+
+                return filterByStart(suggestions, args[0]);
+            } else if (args.length == 2) {
+                // First check if they have permission for the specified gamemode
+                GameMode targetMode = null;
+                try {
+                    targetMode = getGameModeFromArg(args[0]);
+                } catch (IllegalArgumentException e) {
+                    return Collections.emptyList(); // Invalid gamemode, no player suggestions
+                }
+
+                // Check permission for the specified gamemode
+                String modePermission = "core.gamemode." + targetMode.name().toLowerCase();
+                if (sender.hasPermission(modePermission) || sender.hasPermission("core.gamemode.*")) {
+                    return getOnlinePlayerNames(sender);
+                }
+            }
+
+            return Collections.emptyList();
+        }
+
+        // Handle specific gamemode shortcut commands (gmc, gms, etc.)
+        if (command.equalsIgnoreCase("gmc")) {
+            if (args.length == 1 && sender.hasPermission("core.gamemode.creative")) {
+                return getOnlinePlayerNames(sender);
+            }
+        } else if (command.equalsIgnoreCase("gms")) {
+            if (args.length == 1 && sender.hasPermission("core.gamemode.survival")) {
+                return getOnlinePlayerNames(sender);
+            }
+        } else if (command.equalsIgnoreCase("gma")) {
+            if (args.length == 1 && sender.hasPermission("core.gamemode.adventure")) {
+                return getOnlinePlayerNames(sender);
+            }
+        } else if (command.equalsIgnoreCase("gmsp")) {
+            if (args.length == 1 && sender.hasPermission("core.gamemode.spectator")) {
+                return getOnlinePlayerNames(sender);
             }
         }
 
         return Collections.emptyList();
     }
+
+    // Helper method to get GameMode from argument
+    private GameMode getGameModeFromArg(String arg) {
+        try {
+            // Try parsing as a number first
+            int modeId = Integer.parseInt(arg);
+            switch (modeId) {
+                case 0: return GameMode.SURVIVAL;
+                case 1: return GameMode.CREATIVE;
+                case 2: return GameMode.ADVENTURE;
+                case 3: return GameMode.SPECTATOR;
+                default: throw new IllegalArgumentException("Invalid gamemode number: " + modeId);
+            }
+        } catch (NumberFormatException e) {
+            // Not a number, try matching by name
+            if (arg.equalsIgnoreCase("s") || arg.equalsIgnoreCase("survival")) {
+                return GameMode.SURVIVAL;
+            } else if (arg.equalsIgnoreCase("c") || arg.equalsIgnoreCase("creative")) {
+                return GameMode.CREATIVE;
+            } else if (arg.equalsIgnoreCase("a") || arg.equalsIgnoreCase("adventure")) {
+                return GameMode.ADVENTURE;
+            } else if (arg.equalsIgnoreCase("sp") || arg.equalsIgnoreCase("spectator")) {
+                return GameMode.SPECTATOR;
+            } else {
+                throw new IllegalArgumentException("Invalid gamemode name: " + arg);
+            }
+        }
+    }
+
+    // Helper method to get online player names
+    private List<String> getOnlinePlayerNames(CommandSender sender) {
+        List<String> playerNames = new ArrayList<>();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            // Only include players that the sender can see
+            if (sender instanceof Player && !((Player) sender).canSee(player)) {
+                continue;
+            }
+            playerNames.add(player.getName());
+        }
+        return playerNames;
+    }
+
+    // Helper method to filter suggestions by prefix
+    private List<String> filterByStart(List<String> list, String prefix) {
+        if (prefix.isEmpty()) {
+            return list;
+        }
+
+        String lowerPrefix = prefix.toLowerCase();
+        return list.stream()
+                .filter(str -> str.toLowerCase().startsWith(lowerPrefix))
+                .collect(Collectors.toList());
+    }
+
+
 
 
     private List<String> getLoreSuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
@@ -323,10 +409,6 @@ public class Tab implements TabCompleter {
                         suggestions.add(itemName + ";");
                     }
                 }
-            }
-            // Enchantment suggestions
-            else {
-                // ... [rest of enchantment suggestion code remains the same]
             }
             return suggestions;
         } else if (args.length == 3) {

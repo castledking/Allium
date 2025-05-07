@@ -66,6 +66,17 @@ public class Text {
         return timeString.toString();
     }
 
+    /**
+     * Converts a string with color codes to a Kyori Adventure Component
+     *
+     * @param text Text with color codes (using & symbol)
+     * @return A formatted Component with applied colors
+     */
+    public static Component colorize(String text) {
+        return LegacyComponentSerializer.legacyAmpersand().deserialize(text);
+    }
+
+
 
     public static String parseColors(String input) {
         if (input == null || input.isEmpty()) return "";

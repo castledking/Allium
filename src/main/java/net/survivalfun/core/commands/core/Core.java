@@ -2,14 +2,18 @@ package net.survivalfun.core.commands.core;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.commands.fun.Explode;
+import net.survivalfun.core.listeners.security.CommandManager;
 import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.core.Text;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -22,12 +26,14 @@ public class Core implements CommandExecutor, TabCompleter {
     private final PluginStart plugin;
     private final FileConfiguration config;
     private final Lang lang;
+    private final CommandManager commandManager;
 
-    public Core(WorldDefaults worldDefaults, PluginStart plugin, FileConfiguration config, Lang lang) {
+    public Core(WorldDefaults worldDefaults, PluginStart plugin, FileConfiguration config, Lang lang, CommandManager commandManager) {
         this.worldDefaults = worldDefaults;
         this.plugin = plugin;
         this.config = config;
         this.lang = plugin.getLangManager();
+        this.commandManager = commandManager;
     }
 
     @Override
@@ -50,12 +56,14 @@ public class Core implements CommandExecutor, TabCompleter {
 
 
             case "reload":
-                handleReloadCommand(sender, null,
-                        (args.length > 1 && args[1].equalsIgnoreCase("hide")) ? true : null);
+                handleReloadCommand(sender, null);
                 break;
 
             case "debug":
                 handleDebugCommand(sender, args);
+                break;
+            case "hideupdate":
+                handleHideUpdateCommand(sender, args);
                 break;
             default:
                 sender.sendMessage("§cUnknown subcommand. Use /core for help.");
@@ -64,14 +72,39 @@ public class Core implements CommandExecutor, TabCompleter {
 
         return true;
     }
+
+    private void handleHideUpdateCommand(@NotNull CommandSender sender, String @NotNull [] args) {
+        if(!sender.hasPermission("core.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
+            return;
+        }
+        if(args.length == 2 || args[1].equalsIgnoreCase("all")) {
+            int count = 0;
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                commandManager.updatePlayerTabCompletion(player);
+                count++;
+            }
+            sender.sendMessage(ChatColor.GREEN + "Updated tab completion for " + count + " players.");
+            return;
+        }
+        Player target = Bukkit.getPlayer(args[0]);
+        if (target == null) {
+            Text.sendErrorMessage(sender, "player-not-found", lang, "{player}", args[0]);
+            return;
+        }
+        commandManager.updatePlayerTabCompletion(target);
+        sender.sendMessage(ChatColor.GREEN + "Updated tab completion for " + target.getName());
+    }
+
     private void sendHelpMessage(CommandSender sender) {
         if(!sender.hasPermission("core.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
             return;
         }
         sender.sendMessage("§aAvailable /core subcommands:");
-        sender.sendMessage("§e/debug §7- Toggle debug mode.");
-        sender.sendMessage("§e/reload §7- Reload the plugin configuration.");
+        sender.sendMessage("§edebug §7- Toggle debug mode.");
+        sender.sendMessage("§ereload §7- Reload the plugin configuration.");
+        sender.sendMessage("§ehideupdate §7- Refresh tab completion for player.");
     }
 
     private void handleSetGameruleCommand(CommandSender sender, String[] args) {
@@ -124,7 +157,7 @@ public class Core implements CommandExecutor, TabCompleter {
         // Update config
         plugin.getConfig().set("debug-mode", newDebugMode);
         plugin.saveConfig();
-        handleReloadCommand(sender, true, null);
+        handleReloadCommand(sender, true);
 
 
 
@@ -133,18 +166,17 @@ public class Core implements CommandExecutor, TabCompleter {
     }
 
 
-    private void handleReloadCommand(CommandSender sender, Boolean isDebug, Boolean isHide) {
-        if ((isHide != null && isHide && sender.hasPermission("core.admin"))) {
-            plugin.reloadCommandBlockerConfig();
-            sender.sendMessage("§7Hidden commands reloaded successfully.");
-            return;
-        } else if (!sender.hasPermission("core.admin")) {
+    private void handleReloadCommand(CommandSender sender, Boolean isDebug) {
+        if (!sender.hasPermission("core.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
             return;
         }
         try {
             // Reload the main config
             plugin.reloadConfig();
+
+            // Reload the command manager
+            commandManager.reload();
 
             // Re-initialize the ConfigManager to apply changes
             if (plugin.getConfigManager() != null) {
@@ -200,9 +232,11 @@ public class Core implements CommandExecutor, TabCompleter {
 
         if (args.length == 1) {
             // Suggest subcommands for /core
-            suggestions.addAll(List.of("worlddefaults", "heal", "reload"));
+            suggestions.addAll(List.of("reload", "debug", "hideupdate"));
         } else if (args.length > 1 && args[0].equalsIgnoreCase("worlddefaults")) {
             suggestions.addAll(getWorldDefaultsSuggestions(sender, args));
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("updatehide")) {
+            suggestions.addAll(getUpdateHideSuggestions(args));
         }
 
         return filterSuggestions(suggestions, args[args.length - 1]);
@@ -221,6 +255,18 @@ public class Core implements CommandExecutor, TabCompleter {
             suggestions.addAll(List.of("true", "false", "1", "0"));
         }
 
+        return suggestions;
+    }
+
+    private List<String> getUpdateHideSuggestions(String[] args) {
+        List<String> suggestions = new ArrayList<>();
+        if(args.length == 1) {
+            suggestions.add("all");
+
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                suggestions.add(player.getName());
+            }
+        }
         return suggestions;
     }
 

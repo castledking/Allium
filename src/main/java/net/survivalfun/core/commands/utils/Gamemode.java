@@ -52,6 +52,10 @@ public class Gamemode implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
+        if(!sender.hasPermission("core.gamemode")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label);
+            return true;
+        }
         // Check if using a direct gamemode command (gmc, gms, gma, gmsp)
         GameMode directMode = commandAliases.get(label.toLowerCase());
         if (directMode != null) {
@@ -93,7 +97,7 @@ public class Gamemode implements CommandExecutor {
         } else {
             // Check if sender has permission to change other players' gamemod
             if (!sender.hasPermission("core.gamemode.others")) {
-                String commandName = "set " + mode.toString().toLowerCase() + " mode for others";
+                String commandName = "set " + mode.toString().toLowerCase() + " mode for others.";
                 Text.sendErrorMessage(sender, "no-permission", lang, "use /{cmd}", commandName);
                 return true;
             }
@@ -134,7 +138,7 @@ public class Gamemode implements CommandExecutor {
         else if (args.length == 1) {
             // Check if sender has permission to change other players' gamemode
             if (!sender.hasPermission("core.gamemode.others")) {
-                String commandName = "set " + mode.toString().toLowerCase() + " mode for others";
+                String commandName = "set " + mode.toString().toLowerCase() + " mode for others.";
                 Text.sendErrorMessage(sender, "no-permission", lang, "use /{cmd}", commandName);
                 return true;
             }
@@ -165,9 +169,6 @@ public class Gamemode implements CommandExecutor {
      * @return true if the sender has permission, false otherwise
      */
     private boolean hasGameModePermission(CommandSender sender, GameMode mode) {
-        if (!(sender.hasPermission("core.gamemode"))) {
-            return false;
-        }
         // Check for specific gamemode permission
         String permissionSuffix = mode.name().toLowerCase();
 

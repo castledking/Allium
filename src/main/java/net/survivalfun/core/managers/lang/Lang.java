@@ -287,6 +287,7 @@ public class Lang {
             defaultMessages.put("msg.mail-format", "&e{i}. &6{sender}&e: &r{message}");
             defaultMessages.put("msg.mail-footer", "&6=== [{date}] &6===");
 
+
             plugin.getLogger().info("Added all default messages");
         }
 
@@ -450,7 +451,7 @@ public class Lang {
                 if (key.equals("error-prefix")) {
                     return "&c[Error]";
                 }
-                return "&c[Missing translation: " + key + "]";
+                return Text.parseColors("&c[Missing translation: " + key + "]");
             }
         }
 

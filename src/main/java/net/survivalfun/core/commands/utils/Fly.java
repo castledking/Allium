@@ -1,8 +1,10 @@
 package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -30,8 +32,7 @@ public class Fly implements CommandExecutor {
                     return true;
                 }
                 if (!player.hasPermission("core.fly")) {
-                    player.sendMessage(lang.get("error-prefix")
-                            + lang.get("no-permission"));
+                    Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label);
                     return true;
                 }
                 toggleFly(player, sender);
@@ -39,18 +40,23 @@ public class Fly implements CommandExecutor {
             } else if (args.length == 1) {
                 // /fly <player>
                 if (!sender.hasPermission("core.fly.others")) {
-                    sender.sendMessage(lang.get("error-prefix")
-                            + lang.get("no-permission"));
+                    Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label + " on others.");
                     return true;
                 }
 
                 Player target = Bukkit.getPlayer(args[0]);
                 if (target == null) {
-                    sender.sendMessage(lang.get("error-prefix")
-                            + lang.get("player-not-found")
-                            .replace("{name}", args[0]));
+                    Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                     return true;
                 }
+
+                // Check if the target player is in spectator mode
+                if (target.getGameMode() == GameMode.SPECTATOR) {
+                    // Send special error message for spectator mode players
+                    Text.sendErrorMessage(sender, lang.get("player-not-found"), lang, "{name}", target.getName());
+                    return true;
+                }
+
                 toggleFly(target, sender);
             } else {
                 sender.sendMessage(lang.get("command-usage")
@@ -64,22 +70,31 @@ public class Fly implements CommandExecutor {
     }
 
     private void toggleFly(Player player, CommandSender sender) {
+        // Prevent flight disabling for spectator mode players
+        if (player.getGameMode() == GameMode.SPECTATOR) {
+            // If attempt to disable flight for a spectator, silently return
+            if (player.getAllowFlight()) {
+                return;
+            }
+        }
+
         if (player.getAllowFlight()) {
             player.setAllowFlight(false);
             player.setFlying(false); //Important: disable flight if they are currently flying
 
             // Check if the sender is the same as the player being toggled.
             if (!(sender instanceof Player && ((Player) sender).getUniqueId().equals(player.getUniqueId()))) {
-                if (sender instanceof Player) {
-                    sender.sendMessage(lang.get("fly.disable-other")
-                            .replace("{name}", player.getName()));
-                } else {
-                    sender.sendMessage(lang.get("fly.disable-other")
-                            .replace("{name}", player.getName())); // Console message
-                }
-                player.sendMessage(lang.get("fly.disable"));
+                // Console message
+                sender.sendMessage(lang.get("fly.toggle")
+                        .replace("{state}", "§c§ndisabled§r")
+                        .replace("{name}", "for " + player.getName()));
+                player.sendMessage(lang.get("fly.toggle")
+                        .replace("{state}", "§c§ndisabled§r")
+                        .replace("{name}", ""));
             } else {
-                player.sendMessage(lang.get("fly.disable"));
+                player.sendMessage(lang.get("fly.toggle")
+                        .replace("{state}", "§c§ndisabled§r")
+                        .replace("{name}", ""));
                 if (!player.isOnGround()) {
                     // Apply slow falling effect
                     player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, Integer.MAX_VALUE, 0, true, false));
@@ -102,16 +117,16 @@ public class Fly implements CommandExecutor {
 
             // Check if the sender is the same as the player being toggled.
             if (!(sender instanceof Player && ((Player) sender).getUniqueId().equals(player.getUniqueId()))) {
-                if (sender instanceof Player) {
-                    sender.sendMessage(lang.get("fly.enable-other")
-                            .replace("{name}", player.getName()));
-                } else {
-                    sender.sendMessage(lang.get("fly.enable-other")
-                            .replace("{name}", player.getName()));
-                }
-                player.sendMessage(lang.get("fly.enable"));
+                sender.sendMessage(lang.get("fly.toggle")
+                        .replace("{state}", "§a§nenabled§r")
+                        .replace("{name}", "for " + player.getName()));
+                player.sendMessage(lang.get("fly.toggle")
+                        .replace("{state}", "§a§nenabled§r")
+                        .replace("{name}", ""));
             } else {
-                player.sendMessage(lang.get("fly.enable"));
+                player.sendMessage(lang.get("fly.toggle")
+                        .replace("{state}", "§a§nenabled§r")
+                        .replace("{name}", ""));
             }
         }
     }

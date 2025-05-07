@@ -15,7 +15,7 @@
 # placeholder use.
 #
 # For example:
-# player-not-found: "Player &7{player} was not found!"
+# player-not-found: "Player &7{name} was not found!"
 #
 # Results in:
 # Error: Player &7player&c was not found!
@@ -50,7 +50,9 @@ player-not-online: "Player &7{name} is not online."
 invalid: "Invalid {arg}! Please check your syntax."
 no-permission: "You do not have permission to use /{cmd}"
 hold-item: "&cYou must be holding an item to {modify} it."
+inventory-full: "Inventory full, make some space before giving more items."
 cooldown: "You must wait &7{time} seconds before using &7{cmd} again."
+cannot-self: "You cannot {action} yourself."
 contact-admin: An unexpected error has occurred. Please contact an administrator.
 command-usage: "&7Usage: /{cmd} {args}"
 #==========================================#
@@ -91,7 +93,6 @@ feed:
   self: "&aYour appetite was sated."
   other: "&aYou have satiated &e{name}&a."
 give:
-  inventory-full: "Inventory full, make some space before giving more items."
   success: "&aYou have given yourself {amount} {item}."
   success-other: "&aYou have given &e{name} &a{amount} {item}."
   receive: "&aYou have received {amount} {item}."
@@ -114,7 +115,6 @@ lore:
   failure: "This item's lore cannot be modified."
 nv:
   toggle: "&aNight vision is now {state} {name}"
-  spectator-only: "You must be in spectator mode to use night vision."
 msg:
   sent: "&7(To &f{recipient}&7) &r{message}"
   received: "&7(From &f{sender}&7) &r{message}"
@@ -126,9 +126,40 @@ msg:
   mail-header: "&6=== {n}{title} &6==="
   mail-format: "&e{i}. &6{sender}&e: &r{message}"
   mail-footer: "&6=== [{date}] &6==="
-
+  gift: "&5&lGift:"
+  gift-format: "&5{i}. &d{sender}"
+  gift-help:
+    - "&5&lGifting &r{name}&5..."
+    - "&aDrop a gift in the box and"
+    - "&apress E to close inventory."
+  gift-sent: "&aGift sent to &e{name}&a."
+  gift-received: "&aYou have received a gift from &e{name}&a."
+  gift-failed: "Couldn't send gift to &7{name}!"
+  gift-not-found: "Couldn't find gift {id}"
+  gift-claim: "&aClaimed &e{name}&a's gift."
 spy:
   toggle: "&aSpying is now {state} {name}"
   self: "You can't spy on yourself."
   format: "&8[&7SPY&8] &f{name} &7sent message to &f{target}&8: &7{message}"
   exempt: "You cannot spy on this player."
+tp:
+  success: "&aTeleporting..."
+  sent: "&6You have sent a teleport request to &e{name}&6."
+  no-request: "&6You have no pending teleport requests."
+  expired: "&6Your teleport request has expired."
+  accept: "&6Teleport request from &e{name} &6accepted."
+  deny: "&6Teleport request from &e{name} &6denied."
+  denied: "&e{name} &6denied your teleport request."
+  cancel: "&6Teleport request cancelled."
+  toggle: "&6Teleport requests are now {state} {name}"
+  blocked: "Player &7{name} has teleportation disabled."
+  format: |
+    &6======&e =✦==❖= =❖==✦= &6======
+    &f
+    &e{name} &7would like {action}
+    &f
+    {acceptCmd} to accept &7or {denyCmd} to deny
+    &f
+    &6======&e =✦==❖= =❖==✦= &6======
+  
+  

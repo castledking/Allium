@@ -11,9 +11,17 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.*;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -25,6 +33,10 @@ public class CreativeManager implements Listener {
     private final Set<Material> badBlocks;
     private final Set<EntityType> badEntities;
     private final Map<UUID, Long> lastErrorMessageTime;
+    private final Map<UUID, GameMode> lastKnownGamemodes = new HashMap<>();
+    private BukkitTask gamemodeCheckTask;
+    private final Map<UUID, Long> recentRestorations = new HashMap<>();
+    private static final long RESTORATION_COOLDOWN = 5000;
 
     public CreativeManager(@NotNull PluginStart plugin) {
         this.plugin = plugin;
@@ -86,6 +98,24 @@ public class CreativeManager implements Listener {
         loadBlacklists();
     }
 
+    private final Map<UUID, Boolean> cachedCreativePermissions = new HashMap<>();
+    private final Map<UUID, Boolean> cachedSpectatorPermissions = new HashMap<>();
+
+    // Add this method to cache permissions when a player changes gamemode or joins
+    private void cachePlayerPermissions(Player player) {
+        UUID uuid = player.getUniqueId();
+        if (player.hasPermission("core.gamemode")) {
+            cachedCreativePermissions.put(uuid, player.hasPermission("core.gamemode.creative"));
+            cachedSpectatorPermissions.put(uuid, player.hasPermission("core.gamemode.spectator"));
+            if(plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info("Cached permissions for " + player.getName() +
+                        ": creative=" + cachedCreativePermissions.get(uuid) +
+                        ", spectator=" + cachedSpectatorPermissions.get(uuid));
+            }
+        }
+
+    }
+
     private boolean canPlace(Player player) {
         return player.hasPermission("core.gamemode.creative.place");
     }
@@ -136,6 +166,24 @@ public class CreativeManager implements Listener {
                 0.5f,  // Volume (quieter than normal)
                 1.2f   // Slightly higher pitch for a "blocked" feel
         );
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerDamageEntity(EntityDamageByEntityEvent event) {
+        if(event.getDamager() instanceof Player) {
+            Player player = (Player) event.getDamager();
+            if (player.getGameMode() != GameMode.CREATIVE) return;
+            if (canInteract(player)) return;
+            event.setCancelled(true);
+            // Send error message to player
+            sendErrorMessageWithCooldown(
+                    player,
+                    "creative-manager.restrict",
+                    plugin.getLangManager(),
+                    "{action}", "hurt that " + event.getEntity().getType().name().toLowerCase()
+            );
+            createFizzleEffect(event.getEntity().getLocation());
+        }
     }
 
 
@@ -189,6 +237,10 @@ public class CreativeManager implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
+        cachePlayerPermissions(player);
+
+        lastKnownGamemodes.put(player.getUniqueId(), player.getGameMode());
+
         // First check for any pending gamemode resets
         checkAndApplyGameModeReset(player);
 
@@ -210,35 +262,296 @@ public class CreativeManager implements Listener {
         }, 20L);
     }
 
+    // Then modify your onPlayerQuit method to use the cached permissions
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-        GameMode currentGameMode = player.getGameMode();
+        final Player player = event.getPlayer();
+        final GameMode currentGameMode = player.getGameMode();
+        final UUID playerUUID = player.getUniqueId();
+        final String playerName = player.getName();
 
-        // First check if player has the general gamemode permission
-        if (player.hasPermission("core.gamemode")) {
-            // If they have the general permission, check if they have the specific gamemode permission
-            if ((currentGameMode == GameMode.CREATIVE && player.hasPermission("core.gamemode.creative")) ||
-                    (currentGameMode == GameMode.SPECTATOR && player.hasPermission("core.gamemode.spectator"))) {
+        // Capture inventory contents immediately to avoid issues with player object becoming invalid
+        final ItemStack[] inventoryContents = player.getInventory().getContents().clone();
+        final ItemStack[] armorContents = player.getInventory().getArmorContents().clone();
+        final ItemStack offhandItem = player.getInventory().getItemInOffHand().clone();
+
+        // Schedule the inventory saving for the next tick to ensure all inventory changes are processed
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            // Use cached permissions instead of checking directly
+            boolean hasGeneralPermission = player.hasPermission("core.gamemode");
+            boolean hasCreativePermission = currentGameMode == GameMode.CREATIVE &&
+                    cachedCreativePermissions.getOrDefault(playerUUID, false);
+            boolean hasSpectatorPermission = currentGameMode == GameMode.SPECTATOR &&
+                    cachedSpectatorPermissions.getOrDefault(playerUUID, false);
+            boolean shouldKeepGamemode = hasGeneralPermission || hasCreativePermission || hasSpectatorPermission;
+
+            plugin.getLogger().info("Should keep gamemode: " + shouldKeepGamemode +
+                    " (General: " + hasGeneralPermission +
+                    ", Creative: " + hasCreativePermission +
+                    ", Spectator: " + hasSpectatorPermission + ")");
+
+            if (shouldKeepGamemode) {
                 // Player has permission to keep their gamemode, so we'll save it
-                saveCurrentInventory(player, currentGameMode);
+                saveInventoryDirectly(playerUUID, playerName, currentGameMode,
+                        inventoryContents, armorContents, offhandItem);
+
+                plugin.getLogger().info("Player " + playerName + " has permission to keep their gamemode.");
+            } else if (currentGameMode == GameMode.CREATIVE || currentGameMode == GameMode.SPECTATOR) {
+                // Save their current inventory before changing gamemode
+                saveInventoryDirectly(playerUUID, playerName, currentGameMode,
+                        inventoryContents, armorContents, offhandItem);
+
+                // Store the player's UUID and intended gamemode in the database for reset on next login
+                storeGameModeReset(playerUUID);
+
+                // Log the gamemode reset for audit purposes
+                plugin.getLogger().info("Player " + playerName + " logged out with " +
+                        currentGameMode.name() + " gamemode without permission to keep it. " +
+                        "Their gamemode will be reset to SURVIVAL on next login.");
+            }
+
+            // Clean up cached permissions
+            cachedCreativePermissions.remove(playerUUID);
+            cachedSpectatorPermissions.remove(playerUUID);
+            lastKnownGamemodes.remove(playerUUID);
+            recentRestorations.remove(playerUUID);
+        }, 1L);
+    }
+
+    // Add this to track gamemode changes initiated by your plugin
+    public void setPlayerGamemode(Player player, GameMode gameMode) {
+        player.setGameMode(gameMode);
+        lastKnownGamemodes.put(player.getUniqueId(), gameMode);
+    }
+
+    // Add this to your onGameModeChange event handler
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onGameModeChangeTrack(PlayerGameModeChangeEvent event) {
+        // Only track changes that aren't from Multiverse
+        Plugin sourcePlugin = detectSourcePlugin();
+        if (sourcePlugin == null || !sourcePlugin.getName().equals("Multiverse-Core")) {
+            lastKnownGamemodes.put(event.getPlayer().getUniqueId(), event.getNewGameMode());
+        }
+    }
+
+    // Modify the onGamemodeSwitchRevert method to track restorations
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onGamemodeSwitchRevert(PlayerGameModeChangeEvent event) {
+        Player player = event.getPlayer();
+        GameMode newGamemode = event.getNewGameMode();
+        GameMode oldGamemode = player.getGameMode();
+        UUID playerUUID = player.getUniqueId();
+
+        // Check if this player had a recent restoration - if so, skip
+        long currentTime = System.currentTimeMillis();
+        if (recentRestorations.containsKey(playerUUID)) {
+            long lastRestoration = recentRestorations.get(playerUUID);
+            if (currentTime - lastRestoration < RESTORATION_COOLDOWN) {
+                // Skip this event, we've recently handled a restoration for this player
                 return;
             }
         }
 
-        // If we get here, the player doesn't have permission to keep their gamemode
-        if (currentGameMode == GameMode.CREATIVE || currentGameMode == GameMode.SPECTATOR) {
-            // Save their current inventory before changing gamemode
-            saveCurrentInventory(player, currentGameMode);
+        // Only check for Multiverse-initiated changes
+        Plugin sourcePlugin = detectSourcePlugin();
+        if (sourcePlugin != null && sourcePlugin.getName().equals("Multiverse-Core")) {
+            // Check if player has permission to keep their gamemode
+            if ((oldGamemode == GameMode.CREATIVE && player.hasPermission("core.gamemode.creative")) ||
+                    (oldGamemode == GameMode.SPECTATOR && player.hasPermission("core.gamemode.spectator")) ||
+                    player.hasPermission("core.gamemode")) {
 
-            // Store the player's UUID and intended gamemode in the database for reset on next login
-            storeGameModeReset(player.getUniqueId());
+                // Log that we're going to revert this change
+                if(plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().info("Detected Multiverse changing " + player.getName() +
+                            "'s gamemode from " + oldGamemode + " to " + newGamemode +
+                            ". Will revert this change.");
 
-            // Log the gamemode reset for audit purposes
-            plugin.getLogger().info("Player " + player.getName() + " logged out with " +
-                    currentGameMode.name() + " gamemode without permission to keep it. " +
-                    "Their gamemode will be reset to SURVIVAL on next login.");
+                }
+
+                // Schedule a task to revert the gamemode change
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.setGameMode(oldGamemode);
+
+                    // Record this restoration
+                    recentRestorations.put(playerUUID, System.currentTimeMillis());
+
+                    if(plugin.getConfig().getBoolean("debug-mode")) {
+
+                        plugin.getLogger().info("Reverted " + player.getName() +
+                                "'s gamemode back to " + oldGamemode +
+                                " after Multiverse changed it to " + newGamemode);
+                    }
+                }, 2L);
+            }
         }
+    }
+
+    // Modify the periodic check task to respect the cooldown
+    private void startGamemodeCheckTask() {
+        // Cancel any existing task
+        if (gamemodeCheckTask != null) {
+            gamemodeCheckTask.cancel();
+        }
+
+        // Start a new task that runs every 5 seconds
+        gamemodeCheckTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            long currentTime = System.currentTimeMillis();
+
+            // Clean up old restoration records first
+            Iterator<Map.Entry<UUID, Long>> iterator = recentRestorations.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<UUID, Long> entry = iterator.next();
+                if (currentTime - entry.getValue() > RESTORATION_COOLDOWN) {
+                    iterator.remove();
+                }
+            }
+
+            // Now check each player
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                UUID playerUUID = player.getUniqueId();
+
+                // Skip players who had a recent restoration
+                if (recentRestorations.containsKey(playerUUID)) {
+                    continue; // Skip this player, they had a recent restoration
+                }
+
+                // Check if player should be in creative mode
+                if (player.hasPermission("core.gamemode.creative") &&
+                        player.getGameMode() != GameMode.CREATIVE) {
+
+                    // Get the last known gamemode for this player
+                    GameMode lastKnownGamemode = getLastKnownGamemode(playerUUID);
+
+                    if (lastKnownGamemode == GameMode.CREATIVE) {
+                        // Record this restoration BEFORE we do it
+                        recentRestorations.put(playerUUID, currentTime);
+
+                        player.setGameMode(GameMode.CREATIVE);
+
+                        if(plugin.getConfig().getBoolean("debug-mode")) {
+
+                            plugin.getLogger().info("Restored " + player.getName() +
+                                    "'s gamemode to CREATIVE during periodic check");
+                        }
+
+                        // Send a message to the player
+                        player.sendMessage(ChatColor.GREEN + "Your gamemode has been restored to creative mode.");
+                    }
+                }
+
+                // Similar check for spectator mode
+                if (player.hasPermission("core.gamemode.spectator") &&
+                        player.getGameMode() != GameMode.SPECTATOR) {
+
+                    GameMode lastKnownGamemode = getLastKnownGamemode(playerUUID);
+
+                    if (lastKnownGamemode == GameMode.SPECTATOR) {
+                        // Record this restoration BEFORE we do it
+                        recentRestorations.put(playerUUID, currentTime);
+
+                        player.setGameMode(GameMode.SPECTATOR);
+                        if(plugin.getConfig().getBoolean("debug-mode")) {
+
+                            plugin.getLogger().info("Restored " + player.getName() +
+                                    "'s gamemode to SPECTATOR during periodic check");
+                        }
+
+                        // Send a message to the player
+                        player.sendMessage(ChatColor.GREEN + "Your gamemode has been restored to spectator mode.");
+                    }
+                }
+            }
+        }, 100L, 100L); // Check every 5 seconds (100 ticks)
+    }
+
+    // Add this method to detect the source plugin (as you already have)
+    private Plugin detectSourcePlugin() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+
+        // Create a list of plugin names to check against class names in the stack trace
+        List<String> pluginPackagePrefixes = new ArrayList<>();
+        for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
+            // Skip our own plugin
+            if (plugin.equals(this.plugin)) continue;
+
+            // Add the plugin's package prefix to our list
+            String mainClass = plugin.getDescription().getMain();
+            String packagePrefix = mainClass.substring(0, mainClass.lastIndexOf('.'));
+            pluginPackagePrefixes.add(packagePrefix);
+        }
+
+        // Examine the stack trace to find which plugin might have triggered this
+        for (StackTraceElement element : stackTrace) {
+            String className = element.getClassName();
+
+            // Check if this class belongs to a plugin
+            for (String prefix : pluginPackagePrefixes) {
+                if (className.startsWith(prefix)) {
+                    // Found a match, get the plugin instance
+                    for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
+                        String mainClass = plugin.getDescription().getMain();
+                        String packagePrefix = mainClass.substring(0, mainClass.lastIndexOf('.'));
+
+                        if (className.startsWith(packagePrefix)) {
+                            return plugin;
+                        }
+                    }
+                }
+            }
+
+            // Special case for Multiverse (which is likely the culprit)
+            if (className.contains("Multiverse") || className.contains("multiverse")) {
+                Plugin mvPlugin = Bukkit.getPluginManager().getPlugin("Multiverse-Core");
+                if (mvPlugin != null) {
+                    return mvPlugin;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // New method to save inventory directly without using Player object
+    private void saveInventoryDirectly(UUID playerUUID, String playerName, GameMode gameMode,
+                                       ItemStack[] inventory, ItemStack[] armor, ItemStack offhand) {
+        // Get existing inventories from database
+        Database.PlayerInventories inventories = database.getPlayerInventories(playerUUID);
+
+        // Initialize inventory arrays
+        ItemStack[] survivalInventory = null;
+        ItemStack[] survivalArmor = null;
+        ItemStack survivalOffhand = null;
+        ItemStack[] creativeInventory = null;
+        ItemStack[] creativeArmor = null;
+        ItemStack creativeOffhand = null;
+
+        // If we have existing inventories, load them
+        if (inventories != null) {
+            survivalInventory = inventories.getSurvivalInventory();
+            survivalArmor = inventories.getSurvivalArmor();
+            survivalOffhand = inventories.getSurvivalOffhand();
+            creativeInventory = inventories.getCreativeInventory();
+            creativeArmor = inventories.getCreativeArmor();
+            creativeOffhand = inventories.getCreativeOffhand();
+        }
+
+        // Update the appropriate inventory based on game mode
+        if (gameMode == GameMode.CREATIVE) {
+            creativeInventory = inventory;
+            creativeArmor = armor;
+            creativeOffhand = offhand;
+        } else {
+            survivalInventory = inventory;
+            survivalArmor = armor;
+            survivalOffhand = offhand;
+        }
+
+        // Save to database
+        database.savePlayerInventories(
+                playerUUID, playerName,
+                survivalInventory, survivalArmor, survivalOffhand,
+                creativeInventory, creativeArmor, creativeOffhand
+        );
     }
 
     /**
@@ -309,6 +622,170 @@ public class CreativeManager implements Listener {
                 createFizzleEffect(player.getLocation());
             }
         }
+    }
+
+    /**
+     * Checks if a player has permission to use containers in creative mode
+     */
+    private boolean canUseContainers(Player player) {
+        return player.hasPermission("core.gamemode.creative.container");
+    }
+
+    /**
+     * Checks if a player has permission to pick up items in creative mode
+     */
+    private boolean canPickupItems(Player player) {
+        return player.hasPermission("core.gamemode.creative.pickup");
+    }
+
+    /**
+     * Handles inventory open events to restrict creative mode players
+     * from opening containers without permission
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onInventoryOpen(InventoryOpenEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) return;
+
+        // Only apply to creative mode players
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+
+        // Skip if player has permission
+        if (canUseContainers(player)) return;
+
+        Inventory inventory = event.getInventory();
+        String title = event.getView().getTitle().toLowerCase();
+
+        // List of restricted inventory types
+        Set<InventoryType> restrictedTypes = new HashSet<>(Arrays.asList(
+                InventoryType.CHEST, InventoryType.BARREL, InventoryType.DISPENSER,
+                InventoryType.DROPPER, InventoryType.HOPPER, InventoryType.FURNACE,
+                InventoryType.BLAST_FURNACE, InventoryType.SMOKER, InventoryType.BREWING,
+                InventoryType.ENCHANTING, InventoryType.ANVIL, InventoryType.GRINDSTONE,
+                InventoryType.LOOM, InventoryType.CARTOGRAPHY, InventoryType.SMITHING,
+                InventoryType.STONECUTTER, InventoryType.BEACON, InventoryType.SHULKER_BOX,
+                InventoryType.CRAFTING, InventoryType.WORKBENCH
+        ));
+
+        // List of restricted container titles
+        Set<String> restrictedTitles = new HashSet<>(Arrays.asList(
+                "chest", "large chest", "barrel", "shulker box", "dispenser", "dropper",
+                "hopper", "furnace", "blast furnace", "smoker", "brewing stand", "anvil",
+                "grindstone", "enchanting table", "loom", "cartography table", "smithing table",
+                "stonecutter", "beacon", "crafting table"
+        ));
+
+        // Check if this is a restricted inventory type
+        if (restrictedTypes.contains(inventory.getType())) {
+            // Cancel the event
+            event.setCancelled(true);
+
+            // Send error message
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict",
+                    plugin.getLangManager(), "{action}", "use this container");
+
+            // Create visual feedback
+            org.bukkit.block.Block targetBlock = player.getTargetBlock(null, 5);
+            if (targetBlock.getType() != Material.AIR) {
+                createFizzleEffect(targetBlock.getLocation());
+            } else {
+                // Fallback to player's location if no valid target block
+                createFizzleEffect(player.getLocation());
+            }
+            return;
+        }
+
+        // Check if the title contains any restricted container names
+        for (String restrictedTitle : restrictedTitles) {
+            if (title.contains(restrictedTitle)) {
+                // Cancel the event
+                event.setCancelled(true);
+
+                // Send error message
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict",
+                        plugin.getLangManager(), "{action}", "use this container");
+
+                // Create visual feedback
+                org.bukkit.block.Block targetBlock = player.getTargetBlock(null, 5);
+                if (targetBlock.getType() != Material.AIR) {
+                    createFizzleEffect(targetBlock.getLocation());
+                } else {
+                    // Fallback to player's location if no valid target block
+                    createFizzleEffect(player.getLocation());
+                }
+
+                break;
+            }
+        }
+    }
+
+    /**
+     * Handles inventory click events to prevent creative mode players
+     * from interacting with restricted containers
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+
+        Player player = (Player) event.getWhoClicked();
+
+        // Only apply to creative mode players
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+
+        // Skip if player has permission
+        if (canUseContainers(player)) return;
+
+        Inventory inventory = event.getClickedInventory();
+
+        // Skip if the clicked inventory is null or player inventory
+        if (inventory == null || inventory.equals(player.getInventory())) return;
+
+        // List of restricted inventory types
+        Set<InventoryType> restrictedTypes = new HashSet<>(Arrays.asList(
+                InventoryType.CHEST, InventoryType.BARREL, InventoryType.DISPENSER,
+                InventoryType.DROPPER, InventoryType.HOPPER, InventoryType.FURNACE,
+                InventoryType.BLAST_FURNACE, InventoryType.SMOKER, InventoryType.BREWING,
+                InventoryType.ENCHANTING, InventoryType.ANVIL, InventoryType.GRINDSTONE,
+                InventoryType.LOOM, InventoryType.CARTOGRAPHY, InventoryType.SMITHING,
+                InventoryType.STONECUTTER, InventoryType.BEACON, InventoryType.SHULKER_BOX,
+                InventoryType.CRAFTING, InventoryType.WORKBENCH
+        ));
+
+        // Check if this is a restricted inventory type
+        if (restrictedTypes.contains(inventory.getType())) {
+            // Cancel the event
+            event.setCancelled(true);
+
+            // Send error message
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict",
+                    plugin.getLangManager(), "{action}", "use this container");
+        }
+    }
+
+    /**
+     * Handles item pickup events to prevent creative mode players
+     * from picking up items without permission
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onItemPickup(EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+
+        Player player = (Player) event.getEntity();
+
+        // Only apply to creative mode players
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+
+        // Skip if player has permission
+        if (canPickupItems(player)) return;
+
+        // Cancel the event
+        event.setCancelled(true);
+
+        // Send error message
+        sendErrorMessageWithCooldown(player, "creative-manager.restrict",
+                plugin.getLangManager(), "{action}", "pick that up");
+
+        // Create visual feedback
+        createFizzleEffect(event.getItem().getLocation());
     }
 
 
@@ -480,6 +957,8 @@ public class CreativeManager implements Listener {
         GameMode newGameMode = event.getNewGameMode();
         GameMode oldGameMode = player.getGameMode();
 
+        cachePlayerPermissions(player);
+
         // Skip if player has bypass permission
         if (player.hasPermission("core.gamemode.creative.inventory")) {
             return;
@@ -536,8 +1015,10 @@ public class CreativeManager implements Listener {
                     .replace("{gamemode}", GameMode.SURVIVAL.toString()));
 
             // Log the reset
-            plugin.getLogger().info("Reset " + player.getName() + "'s gamemode from " +
-                    currentMode.name() + " to SURVIVAL (no permission)");
+            if(plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info("Reset " + player.getName() + "'s gamemode from " +
+                        currentMode.name() + " to SURVIVAL (no permission)");
+            }
         }
     }
 
@@ -643,5 +1124,15 @@ public class CreativeManager implements Listener {
         player.getInventory().setArmorContents(new ItemStack[4]);
         player.getInventory().setItemInOffHand(null);
         player.updateInventory();
+    }
+
+    public GameMode getLastKnownGamemode(UUID playerUUID) {
+        return lastKnownGamemodes.getOrDefault(playerUUID, GameMode.SURVIVAL);
+    }
+    public void cleanup() {
+        if (gamemodeCheckTask != null) {
+            gamemodeCheckTask.cancel();
+            gamemodeCheckTask = null;
+        }
     }
 }

@@ -63,21 +63,21 @@ public class Spy implements CommandExecutor, TabCompleter {
                 // Turn off global spying
                 spyingPlayers.remove(playerUUID);
                 sender.sendMessage(lang.get("spy.toggle")
-                        .replace("{state}", Text.parseColors("&c&ndisabled"))
+                        .replace("{state}", Text.parseColors("&c&ndisabled&r"))
                         .replace("{name}", ""));
                 return true;
             } else if (hasTargetedSpy) {
                 // Turn off all targeted spying
                 targetedSpying.remove(playerUUID);
                 sender.sendMessage(lang.get("spy.toggle")
-                        .replace("{state}", Text.parseColors("&c&ndisabled"))
+                        .replace("{state}", Text.parseColors("&c&ndisabled&r"))
                         .replace("{name}", ""));
                 return true;
             } else {
                 // Turn on global spying
                 spyingPlayers.add(playerUUID);
                 sender.sendMessage(lang.get("spy.toggle")
-                        .replace("{state}", Text.parseColors("&c&ndisabled"))
+                        .replace("{state}", Text.parseColors("&c&ndisabled&r"))
                         .replace("{name}", ""));
                 return true;
             }
@@ -135,18 +135,18 @@ public class Spy implements CommandExecutor, TabCompleter {
                 // If not listening to anyone, remove the entry altogether
                 targetedSpying.remove(playerUUID);
                 sender.sendMessage(lang.get("spy.toggle")
-                        .replace("{state}", Text.parseColors("&c&ndisabled"))
+                        .replace("{state}", Text.parseColors("&c&ndisabled&r"))
                         .replace("{name}", Text.parseColors("&afor " + targetPlayerName)));
             } else {
                 sender.sendMessage(lang.get("spy.toggle")
-                        .replace("{state}", Text.parseColors("&c&ndisabled"))
+                        .replace("{state}", Text.parseColors("&c&ndisabled&r"))
                         .replace("{name}", Text.parseColors("&afor " + targetPlayerName)));
             }
         } else {
             // Start listening to this player
             playersBeingListenedTo.add(targetUUID);
             sender.sendMessage(lang.get("spy.toggle")
-                    .replace("{state}", Text.parseColors("&a&nenabled"))
+                    .replace("{state}", Text.parseColors("&a&nenabled&r"))
                     .replace("{name}", Text.parseColors("&afor " + targetPlayerName)));
         }
 

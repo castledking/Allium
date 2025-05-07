@@ -41,9 +41,18 @@ public class NV implements CommandExecutor {
 
         // Check if player is in spectator mode
         if (player.getGameMode() != GameMode.SPECTATOR) {
-            Text.sendErrorMessage(player, "nv.spectator-only", lang);
-            return true;
+            // For other gamemodes, check for gamemode-specific permission
+            String gameModePermission = "core.gamemode." + player.getGameMode().name().toLowerCase() + ".nv";
+
+            if (!player.hasPermission(gameModePermission)) {
+                Text.sendErrorMessage(player, "no-permission", lang, "{cmd}",
+                        label + " in " + player.getGameMode().name().toLowerCase() + ".");
+
+                return true; // Block command execution
+            }
+
         }
+
 
 
         // Toggle night vision

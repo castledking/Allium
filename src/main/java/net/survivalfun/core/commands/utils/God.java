@@ -1,6 +1,7 @@
 package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -38,14 +39,18 @@ public class God implements CommandExecutor {
                     return true;
                 }
                 if (!player.hasPermission("core.god")) {
-                    sender.sendMessage(lang.get("no-permission"));
+                    Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label);
                     return true;
                 }
                 boolean godModeToggled = toggleGodMode(player);
                 if (godModeToggled) {
-                    sender.sendMessage(lang.get("god.enable"));
+                    sender.sendMessage(lang.get("god.toggle")
+                            .replace("{state}", "§a§nenabled§r")
+                            .replace("{name}", ""));
                 } else {
-                    sender.sendMessage(lang.get("god.disable"));
+                    sender.sendMessage(lang.get("god.toggle")
+                            .replace("{state}", "§c§ndisabled§r")
+                            .replace("{name}", ""));
                 }
 
 
@@ -54,23 +59,28 @@ public class God implements CommandExecutor {
                 if (sender.hasPermission("core.god.others")) {
                     Player target = Bukkit.getPlayer(args[0]);
                     if (target == null) {
-                        sender.sendMessage(lang.get("player-not-found")
-                                .replace("{name}", args[0]));
+                        Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                         return true;
                     }
                     boolean godModeToggled = toggleGodMode(target);
                     if (godModeToggled) {
-                        sender.sendMessage(lang.get("god.enable-other")
-                                .replace("{name}", target.getName()));
-                        target.sendMessage(lang.get("god.enable"));
+                        sender.sendMessage(lang.get("god.toggle")
+                                .replace("{state}", "§a§nenabled§r")
+                                .replace("{name}", "for " + target.getName()));
+                        target.sendMessage(lang.get("god.toggle")
+                                .replace("{state}", "§a§nenabled§r")
+                                .replace("{name}", ""));
                     } else {
-                        sender.sendMessage(lang.get("god.disable-other")
-                                .replace("{name}", target.getName()));
-                        target.sendMessage(lang.get("god.disable"));
+                        sender.sendMessage(lang.get("god.toggle")
+                                .replace("{state}", "§c§ndisabled§r")
+                                .replace("{name}", "for " + target.getName()));
+                        target.sendMessage(lang.get("god.toggle")
+                                .replace("{state}", "§c§ndisabled§r")
+                                .replace("{name}", ""));
                     }
 
                 } else {
-                    sender.sendMessage(lang.get("no-permission"));
+                    Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label + " on others.");
                     return true;
                 }
 

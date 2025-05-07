@@ -1,11 +1,5 @@
 package net.survivalfun.core;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
 import net.milkbowl.vault2.chat.Chat;
 import net.survivalfun.core.listeners.jobs.MailRemindListener;
 import net.survivalfun.core.listeners.jobs.SummonMessageListener;
@@ -18,7 +12,6 @@ import net.survivalfun.core.commands.utils.*;
 import net.survivalfun.core.commands.fun.Explode;
 import net.survivalfun.core.listeners.security.SpectatorTeleport;
 import net.survivalfun.core.managers.DB.Database;
-import net.survivalfun.core.managers.config.CommandBlockerConfig;
 import net.survivalfun.core.managers.config.Config;
 import net.survivalfun.core.managers.core.Luck;
 import net.survivalfun.core.managers.lang.Lang;
@@ -28,7 +21,8 @@ import net.survivalfun.core.managers.core.Item;
 import org.bukkit.Bukkit;
 import org.bukkit.GameRule;
 import org.bukkit.World;
-import org.bukkit.command.PluginCommand;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import net.luckperms.api.LuckPerms;
@@ -46,87 +40,10 @@ public class PluginStart extends JavaPlugin {
     private SpectatorTeleport spectatorTeleport;
     private Explode explodeCommand;
     private Luck luck;
-    private ProtocolManager protocolManager;
-    private CommandBlockerConfig commandBlockerConfig;
-    private CommandManager commandManager;
     private Msg msgCommand;
     private Spy spyCommand;
-    private TeleportCommandManager tpCommand;
-
-
-    private void initializeCommandBlocker() {
-        // Only proceed if ProtocolLib is available
-        if (getServer().getPluginManager().getPlugin("ProtocolLib") == null) {
-            getLogger().severe("ProtocolLib not found! Command blocking features will be disabled.");
-            return;
-        }
-
-        // Initialize ProtocolManager
-        this.protocolManager = ProtocolLibrary.getProtocolManager();
-
-        // Create the command blocker config
-        this.commandBlockerConfig = new CommandBlockerConfig(this);
-        commandBlockerConfig.saveDefaultConfig();
-
-        // Register command packet listeners
-        registerCommandPacketListeners();
-
-        getLogger().info("Command Blocker initialized successfully!");
-    }
-
-
-    private void registerCommandPacketListeners() {
-        // Command packet listener (for blocking commands)
-        protocolManager.addPacketListener(new PacketAdapter(this,
-                ListenerPriority.NORMAL,
-                PacketType.Play.Client.CHAT_COMMAND) {
-            @Override
-            public void onPacketReceiving(PacketEvent event) {
-                String command = event.getPacket().getStrings().read(0);
-
-                // Get the first part of the command (the command name)
-                String commandName = command.split(" ")[0].toLowerCase();
-
-                if (commandBlockerConfig.isCommandBlocked(event.getPlayer(), commandName)) {
-                    event.setCancelled(true);
-                    event.getPlayer().sendMessage(commandBlockerConfig.getBlockedCommandMessage());
-                }
-            }
-        });
-
-        // Tab complete packet listener
-        protocolManager.addPacketListener(new PacketAdapter(this,
-                ListenerPriority.NORMAL,
-                PacketType.Play.Client.TAB_COMPLETE) {
-            @Override
-            public void onPacketReceiving(PacketEvent event) {
-                String text = event.getPacket().getStrings().read(0);
-
-                // Only handle command tab completion (starts with /)
-                if (text.startsWith("/")) {
-                    String input = text.substring(1).toLowerCase();
-                    String commandName = input.split(" ")[0];
-
-                    if (commandBlockerConfig.isTabCompleteBlocked(event.getPlayer(), commandName)) {
-                        event.setCancelled(true);
-                    }
-                }
-            }
-        });
-    }
-
-    // Add this getter for the command blocker config
-    public CommandBlockerConfig getCommandBlockerConfig() {
-        return commandBlockerConfig;
-    }
-
-    // Add this method to reload the command blocker config
-    public void reloadCommandBlockerConfig() {
-        if (commandBlockerConfig != null) {
-            commandBlockerConfig.reloadConfig();
-            getLogger().info("Command Blocker configuration reloaded");
-        }
-    }
+    private TP tpCommand;
+    private CommandManager commandManager;
 
     // Add this method to PluginStart.java
     public void reloadChatFormatter() {
@@ -135,7 +52,7 @@ public class PluginStart extends JavaPlugin {
             // If we already have a chat formatter, unregister it
             if (formatChatListener != null) {
                 // Unregister the old listener
-                org.bukkit.event.HandlerList.unregisterAll(formatChatListener);
+                HandlerList.unregisterAll(formatChatListener);
             }
 
             // Create a new formatter with the updated config
@@ -162,20 +79,11 @@ public class PluginStart extends JavaPlugin {
         return explodeCommand; // You'll need to store the Explode instance in a field
     }
 
-    public CommandManager getCommandManager() {
-        return commandManager;
-    }
-
 
 
     @Override
     public void onEnable() {
         this.configManager = new Config(this);
-
-        //Command Blocker
-        initializeCommandBlocker();
-
-
         //Vault
         RegisteredServiceProvider<Chat> chatProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault2.chat.Chat.class);
         if (chatProvider != null) {
@@ -191,11 +99,6 @@ public class PluginStart extends JavaPlugin {
         }
 
         luck = new Luck(this);
-
-        // Then pass it to CommandBlockerConfig instead of passing the raw LuckPerms instance
-        commandBlockerConfig = new CommandBlockerConfig(this);
-
-
 
         // Initialize chat formatter
         if (getConfig().getBoolean("enable-chat-formatting", true)) {
@@ -228,22 +131,14 @@ public class PluginStart extends JavaPlugin {
 
         super.onEnable();
 
-        // Initialize your managers:
-        WorldDefaults worldDefaults = new WorldDefaults(this);
-        Core coreCommand = new Core(worldDefaults, this, getConfig(), langManager);
-        // Register the Core command:
-        getCommand("core").setExecutor(coreCommand);
-        getCommand("core").setTabCompleter(coreCommand);
-
-
-        Item.initialize();
-
         // Register events
         SlimeCushionListener slimeCushionListener = new SlimeCushionListener(this, 2.0, 0.5, 0.2, 2.0, true, "&aThe slime cushioned your fall!", true);
         getServer().getPluginManager().registerEvents(slimeCushionListener, this);
         new SpectatorTeleport(this, new NV(this));
-        getServer().getPluginManager().registerEvents(new MailRemindListener(msgCommand), this);
+
+
         getServer().getPluginManager().registerEvents(new SummonMessageListener(), this);
+
 
         // Disable command block output (which includes unknown command messages)
         for (World world : Bukkit.getWorlds()) {
@@ -254,11 +149,17 @@ public class PluginStart extends JavaPlugin {
         new FlyOnRejoinListener(this);
         this.creativeManager = new CreativeManager(this);
         this.spectatorTeleport = new SpectatorTeleport(this, new NV(this));
-        // Initialize ProtocolManager first
-        if (getServer().getPluginManager().getPlugin("ProtocolLib") != null) {
-            this.protocolManager = ProtocolLibrary.getProtocolManager();
-            this.commandManager = new CommandManager(this, langManager);
-        }
+        commandManager = new CommandManager(this);
+
+        // Initialize your managers:
+        WorldDefaults worldDefaults = new WorldDefaults(this);
+        Core coreCommand = new Core(worldDefaults, this, getConfig(), langManager, commandManager);
+        // Register the Core command:
+        getCommand("core").setExecutor(coreCommand);
+        getCommand("core").setTabCompleter(coreCommand);
+
+
+        Item.initialize();
 
         // Register commands
         try {
@@ -277,7 +178,7 @@ public class PluginStart extends JavaPlugin {
             getCommand("give").setTabCompleter(new Tab(this));
 
             // Register ItemDB command
-            getCommand("itemdb").setExecutor(new ItemDB());
+            getCommand("itemdb").setExecutor(new ItemDB(this));
 
             // Register Heal command
             getCommand("heal").setExecutor(new Heal(langManager, getConfig(), this));
@@ -311,29 +212,36 @@ public class PluginStart extends JavaPlugin {
 
             // Register Msg & Spy commands
             this.spyCommand = new Spy(this);
-            this.msgCommand = new Msg(this, spyCommand);
             getCommand("spy").setExecutor(spyCommand);
             getCommand("spy").setTabCompleter(spyCommand);
+
+            this.msgCommand = new Msg(this, new Spy(this));
             getCommand("msg").setExecutor(msgCommand);
             getCommand("msg").setTabCompleter(msgCommand);
 
-            // Register TP commands
-            getCommand("tp").setExecutor(new TeleportCommandManager(this, langManager));
+            getServer().getPluginManager().registerEvents(msgCommand, this);
+            getServer().getPluginManager().registerEvents(new MailRemindListener(msgCommand), this);
 
-            // Register Gamemode command
-            Gamemode gamemodeCommand = new Gamemode(this);
-            PluginCommand gamemodePluginCommand = this.getCommand("gamemode");
-            if (gamemodePluginCommand != null) {
-                gamemodePluginCommand.setExecutor(gamemodeCommand);
-                getCommand(gamemodePluginCommand.getName()).setTabCompleter(new Tab(this));
-            } else {
-                getLogger().severe("Command 'gamemode' not defined in plugin.yml!");
-            }
+
+            // Register TP commands
+            this.tpCommand = new TP(this);
+            getCommand("tp").setExecutor(tpCommand);
+            getCommand("tp").setTabCompleter(tpCommand);
+
+            // Register Help command
+
+            Help helpCommand = new Help(this, langManager);
+            helpCommand.register();
+
+            // Register Gamemode command and its variants
+            getCommand("gamemode").setExecutor(new Gamemode(this));
+            getCommand("gamemode").setTabCompleter(new Tab(this));
 
         } catch (Exception e) {
             getLogger().severe("Failed to register commands: " + e.getMessage());
             getServer().getPluginManager().disablePlugin(this);
         }
+
     }
 
     public Msg getMsgCommand() {
@@ -355,16 +263,15 @@ public class PluginStart extends JavaPlugin {
         if(msgCommand != null){
             msgCommand.savePendingMessages();
         }
-        // Clean up ProtocolLib packet listeners
-        if (protocolManager != null) {
-            protocolManager.removePacketListeners(this);
-        }
         if (spectatorTeleport != null) {
             spectatorTeleport.saveAllLocations();
         }
         // Close database connection
         if (database != null) {
             database.closeConnection();
+        }
+        if (creativeManager != null) {
+            creativeManager.cleanup();
         }
 
 

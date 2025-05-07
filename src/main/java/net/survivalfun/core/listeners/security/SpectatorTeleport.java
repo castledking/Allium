@@ -66,18 +66,20 @@ public class SpectatorTeleport implements Listener {
      * Logs the current status of the location cache and operation counters
      */
     private void logCacheStatus(String context) {
-        logger.info("=== Spectator Teleport Debug Info (" + context + ") ===");
-        logger.info("Cache size: " + survivalLocations.size() + " locations");
-        logger.info("Total saved locations: " + savedLocationsCount.get());
-        logger.info("Total loaded locations: " + loadedLocationsCount.get());
-        logger.info("Total teleported players: " + teleportedPlayersCount.get());
+        if(plugin.getConfig().getBoolean("debug-mode")) {
+            logger.info("=== Spectator Teleport Debug Info (" + context + ") ===");
+            logger.info("Cache size: " + survivalLocations.size() + " locations");
+            logger.info("Total saved locations: " + savedLocationsCount.get());
+            logger.info("Total loaded locations: " + loadedLocationsCount.get());
+            logger.info("Total teleported players: " + teleportedPlayersCount.get());
 
-        // Log memory usage
-        Runtime runtime = Runtime.getRuntime();
-        long usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024;
-        long totalMemory = runtime.totalMemory() / 1024 / 1024;
-        logger.info("Memory usage: " + usedMemory + "MB / " + totalMemory + "MB");
-        logger.info("=============================================");
+            // Log memory usage
+            Runtime runtime = Runtime.getRuntime();
+            long usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024;
+            long totalMemory = runtime.totalMemory() / 1024 / 1024;
+            logger.info("Memory usage: " + usedMemory + "MB / " + totalMemory + "MB");
+            logger.info("=============================================");
+        }
     }
 
     /**
@@ -94,7 +96,13 @@ public class SpectatorTeleport implements Listener {
             Location location = entry.getValue();
 
             try {
-                String query = "REPLACE INTO spectator_locations (player_uuid, world, x, y, z, yaw, pitch) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                // Add null check for world
+                if (location.getWorld() == null) {
+                    plugin.getLogger().warning("Cannot save location for player " + playerUUID + " - world is null");
+                    continue;
+                }
+
+                String query = "REPLACE INTO player_spectator_locations (player_uuid, world, x, y, z, yaw, pitch) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 database.executeUpdate(query,
                         playerUUID.toString(),
                         location.getWorld().getName(),
@@ -108,8 +116,9 @@ public class SpectatorTeleport implements Listener {
                 plugin.getLogger().log(Level.SEVERE, "Failed to save player location to database during shutdown", e);
             }
         }
-
-        plugin.getLogger().info("Saved " + survivalLocations.size() + " spectator locations to database");
+        if(plugin.getConfig().getBoolean("debug-mode")){
+            plugin.getLogger().info("Saved " + survivalLocations.size() + " spectator locations to database");
+        }
     }
 
 
@@ -118,7 +127,9 @@ public class SpectatorTeleport implements Listener {
      */
     public void loadAllSavedLocations() {
         if (database == null) {
-            plugin.getLogger().severe("Cannot load spectator locations: database is null");
+            if(plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().severe("Cannot load spectator locations: database is null");
+            }
             return;
         }
 
@@ -141,8 +152,10 @@ public class SpectatorTeleport implements Listener {
 
                     survivalLocations.put(playerUUID, location);
                 }
+                if(plugin.getConfig().getBoolean("debug-mode")) {
 
-                plugin.getLogger().info("Loaded " + survivalLocations.size() + " saved spectator locations");
+                    plugin.getLogger().info("Loaded " + survivalLocations.size() + " saved spectator locations");
+                }
             });
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load saved spectator locations", e);
@@ -253,7 +266,9 @@ public class SpectatorTeleport implements Listener {
         if(database == null){
             database = getDatabase();
             if(database == null){
-                plugin.getLogger().severe("Database is null in savePlayerLocation! Spectator location saving will not work.");
+                if(plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().severe("Spectator location database is null");
+                }
                 return;
             }
         }
@@ -275,8 +290,9 @@ public class SpectatorTeleport implements Listener {
                     location.getYaw(),
                     location.getPitch()
             );
-
-            plugin.getLogger().fine("Saved spectator return location for " + player.getName());
+            if(plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().fine("Saved spectator return location for " + player.getName());
+            }
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "Failed to save spectator location for " + player.getName(), e);
         }
@@ -306,7 +322,9 @@ public class SpectatorTeleport implements Listener {
 
                 // Teleport the player
                 player.teleport(savedLocation);
-                plugin.getLogger().fine("Teleported " + player.getName() + " to their saved location");
+                if(plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().fine("Teleported " + player.getName() + " to their saved location");
+                }
             } else {
                 plugin.getLogger().warning("Could not teleport " + player.getName() +
                         " - world " + savedLocation.getWorld().getName() + " is not loaded");
@@ -321,7 +339,9 @@ public class SpectatorTeleport implements Listener {
         if (database == null) {
             database = getDatabase();
             if (database == null) {
-                plugin.getLogger().severe("Database is null in loadSavedLocation! Spectator location loading will not work.");
+                if(plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().severe("loadSavedLocation: Database is null");
+                }
                 return null;
             }
         }

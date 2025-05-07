@@ -181,7 +181,7 @@ public class Feed implements CommandExecutor {
             String formattedTime = Text.formatTime(remainingSeconds);
 
             // Send message about remaining cooldown time
-            String cooldownMessage = lang.get("feed.cooldown")
+            String cooldownMessage = lang.get("cooldown")
                     .replace("{time}", formattedTime)
                     .replace("{cmd}", "/feed");
             player.sendMessage(cooldownMessage);

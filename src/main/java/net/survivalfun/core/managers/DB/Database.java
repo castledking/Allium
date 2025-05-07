@@ -120,6 +120,17 @@ public class Database {
                             "is_read BOOLEAN DEFAULT FALSE" +
                             ")"
             );
+            statement.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS mail_gifts (" +
+                            "id INT PRIMARY KEY AUTO_INCREMENT, " +
+                            "sender VARCHAR(36) NOT NULL, " +
+                            "sender_name VARCHAR(36) NOT NULL, " +
+                            "recipient VARCHAR(36) NOT NULL, " +
+                            "items LONGTEXT NOT NULL, " +
+                            "sent_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " + // Added comma here
+                            "is_claimed BOOLEAN DEFAULT FALSE" +
+                            ")"
+            );
 
         }
     }
@@ -419,22 +430,7 @@ public class Database {
     }
 
     // Data class to hold flight status
-    public static class PlayerFlightData {
-        private final boolean allowFlight;
-        private final boolean isFlying;
-
-        public PlayerFlightData(boolean allowFlight, boolean isFlying) {
-            this.allowFlight = allowFlight;
-            this.isFlying = isFlying;
-        }
-
-        public boolean isAllowFlight() {
-            return allowFlight;
-        }
-
-        public boolean isFlying() {
-            return isFlying;
-        }
+        public record PlayerFlightData(boolean allowFlight, boolean isFlying) {
     }
 
     // Serialize ItemStack array to Base64 string

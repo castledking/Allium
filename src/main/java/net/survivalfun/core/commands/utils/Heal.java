@@ -30,9 +30,9 @@ public class Heal implements CommandExecutor {
         this.lang = lang;
         this.config = config;
         this.plugin = plugin;
-        this.healCooldownSeconds = config.getInt("heal.cooldown", 60);
-        if(!config.contains("heal.cooldown")){
-            config.set("heal.cooldown", 60);
+        this.healCooldownSeconds = config.getInt("cooldown", 60);
+        if(!config.contains("cooldown")){
+            config.set("cooldown", 60);
         }
     }
 
@@ -60,7 +60,7 @@ public class Heal implements CommandExecutor {
             String formattedTime = Text.formatTime(remainingSeconds);
 
             // Send message about remaining cooldown time
-            String cooldownMessage = lang.get("heal.cooldown")
+            String cooldownMessage = lang.get("cooldown")
                     .replace("{time}", formattedTime)
                     .replace("{cmd}", "/heal");
             player.sendMessage(cooldownMessage);
@@ -80,7 +80,7 @@ public class Heal implements CommandExecutor {
         }
         // Check permission
         if (!player.hasPermission("core.heal")) {
-            Text.sendErrorMessage(player, "no-permission", lang);
+            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "/heal" );
             return true;
         }
 
@@ -100,7 +100,8 @@ public class Heal implements CommandExecutor {
             case 1:
                 return handlePlayerHealTarget(player, args[0]);
             default:
-                player.sendMessage("§cUsage: /heal [player]");
+                player.sendMessage(lang.get("command-usage").replace("{cmd}", "/heal")
+                        .replace("{args}", "[player]"));
                 return true;
         }
     }
@@ -108,7 +109,8 @@ public class Heal implements CommandExecutor {
     private boolean handleConsoleCommand(CommandSender sender, String[] args) {
         switch (args.length) {
             case 0:
-                sender.sendMessage("§cUsage: /heal <player>");
+                sender.sendMessage(lang.get("command-usage").replace("{cmd}", "/heal")
+                        .replace("{args}", "[player]"));
                 return true;
             case 1:
                 Player target = Bukkit.getPlayer(args[0]);
@@ -117,7 +119,7 @@ public class Heal implements CommandExecutor {
                     if (Bukkit.getOfflinePlayer(args[0]).hasPlayedBefore()) {
                         Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", args[0]);
                     } else {
-                        Text.sendErrorMessage(sender, "player-not-found", lang, "{player}", args[0]);
+                        Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                     }
                     return true;
                 }
@@ -129,7 +131,8 @@ public class Heal implements CommandExecutor {
                 target.sendMessage(Text.parseColors(lang.get("heal.self")));
                 return true;
             default:
-                sender.sendMessage("§cUsage: /heal <player>");
+                sender.sendMessage(lang.get("command-usage").replace("{cmd}", "/heal")
+                        .replace("{args}", "[player]"));
                 return false;
         }
     }
@@ -162,7 +165,7 @@ public class Heal implements CommandExecutor {
             if (offlineTarget.hasPlayedBefore()) {
                 Text.sendErrorMessage(player, "player-not-online", lang, "{name}", targetName);
             } else {
-                Text.sendErrorMessage(player, "player-not-found", lang, "{player}", targetName);
+                Text.sendErrorMessage(player, "player-not-found", lang, "{name}", targetName);
             }
         }
         return true;

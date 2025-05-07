@@ -1,6 +1,18 @@
 package net.survivalfun.core.commands.utils;
 
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.platform.bukkit.BukkitAudiences;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentBuilder;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.survivalfun.core.managers.DB.Database;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -11,10 +23,23 @@ import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.config.Config;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.core.Text;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.io.BukkitObjectInputStream;
+import org.bukkit.util.io.BukkitObjectOutputStream;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -27,7 +52,7 @@ import java.util.stream.Collectors;
  * This command supports messaging between players, console to players,
  * and storing messages for offline players to read when they log in.
  */
-public class Msg implements CommandExecutor, TabCompleter {
+public class Msg implements CommandExecutor, TabCompleter, Listener {
 
     private final PluginStart plugin;
     private final Config config;
@@ -43,6 +68,8 @@ public class Msg implements CommandExecutor, TabCompleter {
     // Maps to store conversation history and mail messages
     private final Map<UUID, UUID> lastMessageSender;
     private final Map<String, List<MailMessage>> offlineMessages;
+    private final Map<UUID, GiftSession> pendingGifts = new ConcurrentHashMap<>();
+
 
     /**
      * Constructs a new MessageHandler with the necessary plugin instance and configurations.
@@ -211,7 +238,7 @@ public class Msg implements CommandExecutor, TabCompleter {
         // Check arguments
         if (args.length < 1) {
             sender.sendMessage(lang.get("command-usage").replace("{cmd}", "mail")
-                    .replace("{args}", "<read|send|clear> [player] [message...]"));
+                    .replace("{args}", "<read|send|clear|gift|claim> [player] [message...]"));
             return true;
         }
 
@@ -231,15 +258,207 @@ public class Msg implements CommandExecutor, TabCompleter {
                 String message = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
                 return sendMailMessage(sender, recipient, message);
 
+            case "gift":
+                return handleMailGift(sender, Arrays.copyOfRange(args, 0, args.length));
+
+            case "claim":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(lang.get("not-a-player"));
+                    return true;
+                }
+                return handleMailClaim((Player) sender, args);
+
             case "clear":
                 return handleMailClear((Player) sender);
 
             default:
                 sender.sendMessage(lang.get("command-usage").replace("{cmd}", "mail")
-                        .replace("{args}", "<read|send|clear> [player] [message...]"));
+                        .replace("{args}", "<read|send|clear|gift|claim> [player] [message...]"));
                 return true;
         }
+
     }
+
+    private boolean handleMailGift(CommandSender sender, String[] args) {
+        // Check if the sender is a player
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(lang.get("not-a-player"));
+            return true;
+        }
+
+        // Check if player has permission
+        if (!player.hasPermission("core.mail.gift")) {
+            Text.sendErrorMessage(sender, lang.get("no-permission"), lang, "{cmd}", "mail gift");
+            return true;
+        }
+
+        // Check if args length is at least 2 (subcommand + recipient username)
+        if (args.length < 2) {
+            player.sendMessage(lang.get("command-usage").replace("{cmd}", "mail gift")
+                    .replace("{args}", "<player>"));
+            return true;
+        }
+
+        String recipient = args[1];
+
+        // Check if recipient exists by checking if they've played before
+        OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(recipient);
+        if (!offlinePlayer.hasPlayedBefore()) {
+            Text.sendErrorMessage(sender, lang.get("player-not-found"), lang, "{name}", recipient);
+            return true;
+        }
+
+        // Create a dispenser inventory (3x3)
+        Inventory giftInventory = Bukkit.createInventory(player, InventoryType.DISPENSER,
+                Text.parseColors("&5&lGIFT:" + recipient));
+
+        // Store the inventory session for this player
+        pendingGifts.put(player.getUniqueId(), new GiftSession(recipient, giftInventory));
+
+        // Open the inventory for the player
+        player.openInventory(giftInventory);
+
+        // Send instructions
+        player.sendMessage(lang.get("msg.mail-gift-help")
+                .replace("{name}", recipient));
+
+        return true;
+    }
+
+    /**
+     * Process the gift when a player closes the gift inventory
+     *
+     * @param event The InventoryCloseEvent
+     */
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        // Check if the inventory holder is a player
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+
+        // Check if this player has a pending gift session
+        GiftSession session = pendingGifts.get(player.getUniqueId());
+        if (session == null) {
+            return;
+        }
+
+        // Check if this is the gift inventory that was closed
+        if (!event.getInventory().equals(session.getInventory())) {
+            return;
+        }
+
+        // Remove the session
+        pendingGifts.remove(player.getUniqueId());
+
+        // Check if there are any items in the inventory
+        boolean hasItems = false;
+        for (ItemStack item : event.getInventory().getContents()) {
+            if (item != null && item.getType() != Material.AIR) {
+                hasItems = true;
+                break;
+            }
+        }
+
+        if (!hasItems) {
+            player.sendMessage(lang.get("msg.mail-empty"));
+            return;
+        }
+
+        // Store the gift in the database
+        try {
+            storeGiftInDatabase(player, session.getRecipient(), event.getInventory().getContents());
+            player.sendMessage(lang.get("msg.gift-sent").replace("{name}", session.getRecipient()));
+        } catch (Exception e) {
+            Text.sendErrorMessage(player, lang.get("msg.gift-failed"), lang, "{name}", session.getRecipient());
+            plugin.getLogger().log(Level.SEVERE, "Failed to store gift in database", e);
+        }
+    }
+
+
+    /**
+     * Stores a gift in the database for the recipient
+     *
+     * @param sender The player sending the gift
+     * @param recipient The recipient's name
+     * @param items The gift items
+     */
+    private void storeGiftInDatabase(Player sender, String recipient, ItemStack[] items) {
+        try {
+            // Serialize the items to a Base64 string
+            String serializedItems = serializeItems(items);
+
+            // Create a database record with the gift information
+            String sql = "INSERT INTO mail_gifts (sender, sender_name, recipient, items) VALUES (?, ?, ?, ?)";
+
+            database.executeUpdate(sql,
+                    sender.getUniqueId().toString(),
+                    sender.getName(),
+                    recipient.toLowerCase(),
+                    serializedItems
+            );
+
+            // Send notification if recipient is online
+            Player recipientPlayer = plugin.getServer().getPlayer(recipient);
+            if (recipientPlayer != null && recipientPlayer.isOnline()) {
+                recipientPlayer.sendMessage(lang.get("msg.gift-received")
+                        .replace("{name}", sender.getName()));
+            }
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to store gift in database", e);
+            sender.sendMessage(lang.get("error.gift-save-failed"));
+        }
+    }
+
+    /**
+     * Serializes an array of ItemStacks to a Base64 string
+     *
+     * @param items The items to serialize
+     * @return The serialized items as a Base64 string
+     */
+    private String serializeItems(ItemStack[] items) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream);
+
+        // Write the length of the array
+        dataOutput.writeInt(items.length);
+
+        // Write each item
+        for (ItemStack item : items) {
+            dataOutput.writeObject(item);
+        }
+
+        // Cleanup and return as Base64
+        dataOutput.close();
+        return Base64.getEncoder().encodeToString(outputStream.toByteArray());
+    }
+
+    /**
+     * Deserializes a Base64 string back to an array of ItemStacks
+     *
+     * @param data The Base64 encoded string
+     * @return The deserialized ItemStack array
+     */
+    private ItemStack[] deserializeItems(String data) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data));
+        BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
+
+        // Read the length of the array
+        ItemStack[] items = new ItemStack[dataInput.readInt()];
+
+        // Read each item
+        for (int i = 0; i < items.length; i++) {
+            items[i] = (ItemStack) dataInput.readObject();
+        }
+
+        // Cleanup and return
+        dataInput.close();
+        return items;
+    }
+
+
+
+
 
     private boolean sendDirectMessage(CommandSender sender, Player recipient, String message) {
         // Format and send messages
@@ -306,7 +525,7 @@ public class Msg implements CommandExecutor, TabCompleter {
         OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(recipient);
         if (!offlinePlayer.hasPlayedBefore()) {
             // Player hasn't played before
-            sender.sendMessage(lang.get("player-not-found").replace("{player}", recipient));
+            sender.sendMessage(lang.get("player-not-found").replace("{name}", recipient));
             return false;
         }
 
@@ -329,48 +548,77 @@ public class Msg implements CommandExecutor, TabCompleter {
         offlineMessages.computeIfAbsent(recipient.toLowerCase(), k -> new ArrayList<>())
                 .add(mailMessage);
 
-        sender.sendMessage(lang.get("msg.mail-sent").replace("{player}", recipient));
+        sender.sendMessage(lang.get("msg.mail-sent").replace("{name}", recipient));
         return true;
     }
 
 
-    /**
-     * Displays all mail messages to a player and clears their mailbox
-     *
-     * @param player The player reading their mail
-     * @return true if mail was displayed
-     */
     private boolean handleMailRead(Player player) {
         String playerName = player.getName().toLowerCase();
         List<MailMessage> messages = offlineMessages.get(playerName);
 
-        if (messages == null || messages.isEmpty()) {
+        // Get any gifts for the player
+        List<GiftEntry> gifts = getGiftsFromDatabase(playerName);
+
+        boolean hasMessages = messages != null && !messages.isEmpty();
+        boolean hasGifts = gifts != null && !gifts.isEmpty();
+
+        if (!hasMessages && !hasGifts) {
             player.sendMessage(lang.get("msg.mail-empty"));
             return true;
         }
 
-        player.sendMessage(lang.get("msg.mail-header"));
+        player.sendMessage(lang.get("msg.mail-header").replace("{title}", "new messages"));
 
         // Display all messages
-        for (MailMessage message : messages) {
-            String formattedTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                    .format(new java.util.Date(message.getTimestamp()));
+        if (hasMessages) {
+            for (int i = 0; i < messages.size(); i++) {
+                MailMessage message = messages.get(i);
 
-            player.sendMessage(lang.get("msg.mail-format")
-                    .replace("{sender}", message.getSenderName())
-                    .replace("{time}", formattedTime)
-                    .replace("{message}", message.getMessage()));
+                // Replace {n} dynamically with the current index (e.g., #1, #2)
+                String mailIndex = String.valueOf(i + 1);
+
+                player.sendMessage(lang.get("msg.mail-format")
+                        .replace("{i}", mailIndex)
+                        .replace("{sender}", message.senderName())
+                        .replace("{message}", message.message()));
+            }
+
+            // Mark messages as read in database
+            markMailMessagesAsRead(playerName);
+
+            // Clear messages from memory
+            offlineMessages.remove(playerName);
         }
 
-        // Mark messages as read in database
-        markMailMessagesAsRead(playerName);
+        // Display gifts if there are any
+        if (hasGifts) {
+            // Get adventure audience for this player
+            Audience audience = BukkitAudiences.create(plugin).player(player);
 
-        // Clear messages from memory
-        offlineMessages.remove(playerName);
+            audience.sendMessage(Component.text(lang.get("msg.gift")));
 
-        player.sendMessage(lang.get("msg.mail-footer"));
+            for (int i = 0; i < gifts.size(); i++) {
+                GiftEntry gift = gifts.get(i);
+
+                // Create a clickable message to claim the gift
+                Component message = Component.text(lang.get("msg.gift-format")
+                                .replace("{i}", String.valueOf(i + 1))
+                                .replace("{sender}", gift.senderName))
+                        .clickEvent(ClickEvent.runCommand("/mail claim " + gift.id))
+                        .hoverEvent(HoverEvent.showText(
+                                Component.text("Click to claim this gift")
+                                        .color(NamedTextColor.GRAY)
+                        ));
+                audience.sendMessage(message);
+            }
+        }
+
+
+        player.sendMessage(lang.get("msg.mail-footer").replace("{date}", new SimpleDateFormat("dd/MM/yyyy").format(new Date())));
         return true;
     }
+
 
     /**
      * Clears all mail for a player without reading it
@@ -399,15 +647,132 @@ public class Msg implements CommandExecutor, TabCompleter {
 
 
     /**
-     * Saves all offline messages to persistent storage
-     * In a complete implementation, this would save to a database or file
+     * Handles the claim subcommand to give the player their gift items
      */
-    private void saveOfflineMessages() {
-        // Implementation would depend on your storage mechanism
-        // For example, using a YAML config:
-        // config.set("mail-messages", offlineMessages);
-        // config.save();
+    private boolean handleMailClaim(Player player, String[] args) {
+        if (args.length < 2) {
+            player.sendMessage(lang.get("command-usate").replace("{command}", "/mail claim")
+                    .replace("{args}", "<id>"));
+            return true;
+        }
+
+        int giftId;
+        try {
+            giftId = Integer.parseInt(args[1]);
+        } catch (NumberFormatException e) {
+            Text.sendErrorMessage(player, "invalid", lang, "{arg}", args[1]);
+            return true;
+        }
+
+        // Get the gift from the database
+        GiftEntry gift = getGiftById(giftId, player.getName().toLowerCase());
+        if (gift == null) {
+            Text.sendErrorMessage(player, "msg.gift-not-found", lang, "{id}", String.valueOf(giftId));
+            return true;
+        }
+
+        try {
+            // Deserialize the items
+            ItemStack[] items = deserializeItems(gift.serializedItems());
+
+            // Check if player has enough inventory space
+            int emptySlots = getEmptySlots(player.getInventory());
+            int itemCount = countNonNullItems(items);
+
+            if (emptySlots < itemCount) {
+                Text.sendErrorMessage(player, "inventory-full", lang);
+                return true;
+            }
+
+            // Add items to player's inventory
+            for (ItemStack item : items) {
+                if (item != null && item.getType() != Material.AIR) {
+                    player.getInventory().addItem(item);
+                }
+            }
+
+            // Mark gift as claimed
+            markGiftAsClaimed(giftId);
+
+            player.sendMessage(lang.get("msg.gift-claim").replace("{name}", gift.senderName()));
+
+            return true;
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to process gift claim", e);
+            Text.sendErrorMessage(player, "msg.gift-not-found", lang);
+            return true;
+        }
     }
+
+    /**
+     * Gets a gift by its ID and recipient
+     */
+    private GiftEntry getGiftById(int giftId, String recipient) {
+        try {
+            String sql = "SELECT * FROM mail_gifts WHERE id = ? AND recipient = ? AND is_claimed = FALSE";
+
+            AtomicReference<GiftEntry> result = new AtomicReference<>(null);
+
+            database.executeQuery(sql, resultSet -> {
+                try {
+                    if (resultSet.next()) {
+                        String sender = resultSet.getString("sender");
+                        String senderName = resultSet.getString("sender_name");
+                        String items = resultSet.getString("items");
+                        long sentTime = resultSet.getTimestamp("sent_time").getTime();
+
+                        result.set(new GiftEntry(giftId, UUID.fromString(sender), senderName, items, sentTime));
+                    }
+                } catch (SQLException e) {
+                    plugin.getLogger().log(Level.SEVERE, "Error retrieving gift from database", e);
+                }
+            }, giftId, recipient.toLowerCase());
+
+            return result.get();
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to retrieve gift from database", e);
+            return null;
+        }
+    }
+
+    /**
+     * Marks a gift as claimed in the database
+     */
+    private void markGiftAsClaimed(int giftId) {
+        try {
+            String sql = "UPDATE mail_gifts SET is_claimed = TRUE WHERE id = ?";
+            database.executeUpdate(sql, giftId);
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to mark gift as claimed", e);
+        }
+    }
+
+    /**
+     * Counts the number of empty slots in an inventory
+     */
+    private int getEmptySlots(Inventory inventory) {
+        int count = 0;
+        for (ItemStack item : inventory.getStorageContents()) {
+            if (item == null || item.getType() == Material.AIR) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Counts the number of non-null items in an array
+     */
+    private int countNonNullItems(ItemStack[] items) {
+        int count = 0;
+        for (ItemStack item : items) {
+            if (item != null && item.getType() != Material.AIR) {
+                count++;
+            }
+        }
+        return count;
+    }
+
 
     /**
      * Formats a timestamp into a readable date/time string
@@ -503,29 +868,76 @@ public class Msg implements CommandExecutor, TabCompleter {
     }
 
 
-        /**
-         * Delivers any stored messages to a player when they log in
-         *
-         * @param player The player who logged in
-         */
     public void deliverOfflineMessages(Player player) {
-        String playerName = player.getName().toLowerCase();
-        List<MailMessage> messages = offlineMessages.get(playerName);
+        try {
+            if (player == null) {
+                plugin.getLogger().warning("Attempted to deliver offline messages to null player");
+                return;
+            }
 
-        if (messages == null || messages.isEmpty()) {
-            return;
+            String playerName = player.getName().toLowerCase();
+            List<MailMessage> messages = offlineMessages.get(playerName);
+
+            if (messages == null || messages.isEmpty()) {
+                return;
+            }
+
+            // Add a slight delay to ensure the message is seen after join messages
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                try {
+                    // Send notification about unread mail
+                    player.sendMessage(lang.get("msg.mail-remind")
+                            .replace("{count}", String.valueOf(messages.size())));
+
+                    // Add a reminder to check mail
+                    player.sendMessage(lang.get("msg.mail-remind"));
+                } catch (Exception e) {
+                    plugin.getLogger().log(Level.SEVERE, "Error delivering offline messages to " + playerName, e);
+                }
+            }, 40L); // Increased from 20 to 40 ticks (2 seconds) for more reliable delivery
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Error in deliverOfflineMessages", e);
+        }
+    }
+    /**
+     * Gets a list of online player names that match the beginning of the input string
+     * Optionally can filter based on sender permissions
+     *
+     * @param input The beginning of the player name to match
+     * @param sender The command sender performing the tab completion
+     * @param requirePermission Whether to check permissions before including players
+     * @return List of matching online player names
+     */
+    private List<String> getOnlinePlayerNames(String input, CommandSender sender, boolean requirePermission) {
+        List<String> names = new ArrayList<>();
+        String lowercaseInput = input.toLowerCase();
+
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            // Skip vanished players or those the sender can't see
+            if (requirePermission && sender instanceof Player &&
+                    !((Player) sender).canSee(player)) {
+                continue;
+            }
+
+            String playerName = player.getName();
+            if (playerName.toLowerCase().startsWith(lowercaseInput)) {
+                names.add(playerName);
+            }
         }
 
-        // Add a slight delay to ensure the message is seen after join messages
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            // Send notification about unread mail
-            player.sendMessage(lang.get("msg.mail-remind")
-                    .replace("{count}", String.valueOf(messages.size())));
-
-            // Add a reminder to check mail
-            player.sendMessage(lang.get("msg.mail-remind"));
-        }, 20L); // 20 ticks = 1 second delay
+        return names;
     }
+
+    /**
+     * Gets a list of online player names that match the beginning of the input string
+     *
+     * @param input The beginning of the player name to match
+     * @return List of matching online player names
+     */
+    private List<String> getOnlinePlayerNames(String input) {
+        return getOnlinePlayerNames(input, null, false);
+    }
+
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
@@ -533,7 +945,7 @@ public class Msg implements CommandExecutor, TabCompleter {
 
         // Tab completion for /msg and similar commands
         if (messageCommandAliases.contains(commandName)) {
-            if (args.length == 1) {
+            if (args.length == 1 && !args[0].equalsIgnoreCase("clear") && !args[0].equalsIgnoreCase("claim")) {
                 return getOnlinePlayerNames(args[0]);
             }
         }
@@ -541,9 +953,11 @@ public class Msg implements CommandExecutor, TabCompleter {
         // Tab completion for /mail command
         if (mailCommandAliases.contains(commandName)) {
             if (args.length == 1) {
-                return filterStartingWith(Arrays.asList("read", "send", "clear"), args[0]);
-            } else if (args.length == 2 && "send".equalsIgnoreCase(args[0])) {
-                return getOnlinePlayerNames(args[1]);
+                return filterStartingWith(Arrays.asList("read", "send", "clear", "gift", "claim"), args[0]);
+            } else if (args.length == 2) {
+                if ("send".equalsIgnoreCase(args[0]) || "gift".equalsIgnoreCase(args[0])) {
+                    return getAllPlayerNames(args[1]);
+                }
             }
         }
 
@@ -551,17 +965,29 @@ public class Msg implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * Gets a list of online player names that match the beginning of the input string
+     * Gets a list of all player names (online and offline) that match
+     * the beginning of the input string
      *
      * @param input The beginning of the player name to match
      * @return List of matching player names
      */
-    private List<String> getOnlinePlayerNames(String input) {
-        return plugin.getServer().getOnlinePlayers().stream()
-                .map(Player::getName)
-                .filter(name -> name.toLowerCase().startsWith(input.toLowerCase()))
-                .collect(Collectors.toList());
+    private List<String> getAllPlayerNames(String input) {
+        List<String> names = new ArrayList<>();
+
+        // Add online players
+        names.addAll(getOnlinePlayerNames(input));
+
+        // Add offline players who have played before
+        for (OfflinePlayer offlinePlayer : plugin.getServer().getOfflinePlayers()) {
+            String name = offlinePlayer.getName();
+            if (name != null && name.toLowerCase().startsWith(input.toLowerCase()) && !names.contains(name)) {
+                names.add(name);
+            }
+        }
+
+        return names;
     }
+
 
     /**
      * Filters a list of strings to only those starting with the given input
@@ -575,45 +1001,80 @@ public class Msg implements CommandExecutor, TabCompleter {
                 .filter(option -> option.toLowerCase().startsWith(input.toLowerCase()))
                 .collect(Collectors.toList());
     }
+    /**
+     * Retrieves gifts for a player from the database
+     *
+     * @param playerName The player's name
+     * @return A list of gifts for the player
+     */
+    private List<GiftEntry> getGiftsFromDatabase(String playerName) {
+        List<GiftEntry> gifts = new ArrayList<>();
+
+        try {
+            String sql = "SELECT * FROM mail_gifts WHERE recipient = ? AND is_claimed = FALSE";
+
+            database.executeQuery(sql, resultSet -> {
+                try {
+                    while (resultSet.next()) {
+                        int id = resultSet.getInt("id");
+                        String sender = resultSet.getString("sender");
+                        String senderName = resultSet.getString("sender_name");
+                        String items = resultSet.getString("items");
+                        long sentTime = resultSet.getTimestamp("sent_time").getTime();
+
+                        GiftEntry gift = new GiftEntry(id, UUID.fromString(sender), senderName, items, sentTime);
+                        gifts.add(gift);
+                    }
+                } catch (SQLException e) {
+                    plugin.getLogger().log(Level.SEVERE, "Error loading gifts from database", e);
+                }
+            }, playerName.toLowerCase());
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to load gifts from database", e);
+        }
+
+        return gifts;
+    }
+
+    /**
+     * Represents a gift entry from the database
+     */
+    private record GiftEntry(int id, UUID sender, String senderName, String serializedItems, long timestamp) {
+    }
+
 
     /**
      * Represents a mail message that can be stored and retrieved later
+     *
+     * @param id Add ID field for database reference
      */
-    private static class MailMessage {
-        private final UUID sender;
-        private final String senderName;
-        private final String message;
+        private record MailMessage(UUID sender, String senderName, String message, long timestamp, int id) {
+    }
+    // Class to store gift session data
+    private class GiftSession {
+        private final String recipient;
+        private final Inventory inventory;
         private final long timestamp;
-        private final int id; // Add ID field for database reference
 
-        public MailMessage(UUID sender, String senderName, String message, long timestamp, int id) {
-            this.sender = sender;
-            this.senderName = senderName;
-            this.message = message;
-            this.timestamp = timestamp;
-            this.id = id;
+        public GiftSession(String recipient, Inventory inventory) {
+            this.recipient = recipient;
+            this.inventory = inventory;
+            this.timestamp = System.currentTimeMillis();
         }
 
-        // Add getters for all fields
-        public UUID getSender() {
-            return sender;
+        // Getters
+        public String getRecipient() {
+            return recipient;
         }
 
-        public String getSenderName() {
-            return senderName;
-        }
-
-        public String getMessage() {
-            return message;
+        public Inventory getInventory() {
+            return inventory;
         }
 
         public long getTimestamp() {
             return timestamp;
         }
-
-        public int getId() {
-            return id;
-        }
     }
+
 
 }

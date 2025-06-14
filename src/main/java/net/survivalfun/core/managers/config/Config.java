@@ -57,13 +57,14 @@ public class Config {
             createDefaultConfig();
         } else {
             // Config exists, reload it
-            plugin.reloadConfig();
+            plugin.reloadConfig(); 
 
             // Check for missing values and add them
             updateConfig();
         }
-
-        plugin.getLogger().info("Configuration loaded from disk");
+        if(plugin.getConfig().getBoolean("debug-mode")) {
+            plugin.getLogger().info("Configuration loaded from disk");
+        }
     }
 
     private void createDefaultConfig() {
@@ -152,7 +153,7 @@ public class Config {
         }
     }
 
-    private void updateConfig() {
+    public void updateConfig() {
         FileConfiguration config = plugin.getConfig();
         boolean updated = false;
 
@@ -163,12 +164,13 @@ public class Config {
                 updated = true;
                 plugin.getLogger().info("Added missing config value: " + entry.getKey());
             }
+
         }
 
         // Save if updates were made
         if (updated) {
             try {
-                // We need to use the config's save method to preserve comments
+                // We need to use the config's safe method to preserve comments
                 config.save(configFile);
                 plugin.reloadConfig(); // Reload after saving
             } catch (IOException e) {

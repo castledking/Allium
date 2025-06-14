@@ -7,11 +7,15 @@
 # You can use the following formats:
 # - command
 # - <plugin>:*
-# - *
-# - ^
+# - ^ (uses commands list)
+# - * (all commands)
 # Relies on the LuckPerms group permission (group.<group-name>)
 # Not required to have LuckPerms installed.
 # For more information, visit: https://github.com/castledking/SFCore
+
+settings:
+  enabled: true
+  hide-namespaced-commands-for-ops: false
 groups:
   op: # (core.hide.bypass permission)
     whitelist: true
@@ -22,12 +26,12 @@ groups:
   admin:
     whitelist: true
     commands:
-      - "essentials:*"  # All Essentials commands
-      - "worldedit:*"   # All WorldEdit commands
+      - "essentials:*"
+      - "worldedit:*"
       - op
       - deop
     tabcompletes:
-      - ^ # Uses commands list
+      - ^
 
   moderator:
     whitelist: false
@@ -35,12 +39,22 @@ groups:
       - op
       - deop
     tabcompletes:
-      - op
-      - deop
+      - ^
 
   default:
     whitelist: true
     commands:
+      - tpa
+      - tpahere
       - help
+      - tpaccept
+      - tpdeny
+      - tpyes
+      - tpno
+      - tpcancel
+      - tptoggle
+      - tpoffline
+      - tpauto
+      - tppet
     tabcompletes:
       - ^

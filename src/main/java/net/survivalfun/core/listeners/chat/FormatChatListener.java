@@ -1,5 +1,9 @@
 package net.survivalfun.core.listeners.chat;
 
+
+import net.survivalfun.core.PluginStart;
+
+
 import io.papermc.paper.event.player.AsyncChatEvent;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
@@ -17,18 +21,20 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.plugin.java.JavaPlugin;
+
 import org.bukkit.configuration.file.FileConfiguration;
 import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Objects;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class FormatChatListener implements Listener {
 
-    private final JavaPlugin plugin;
+    private final PluginStart plugin;
+
     private final LegacyComponentSerializer legacyComponentSerializer;
     private final LuckPerms luckPerms;
     private final Chat vaultChat;
@@ -40,8 +46,9 @@ public class FormatChatListener implements Listener {
     private final Pattern placeholderPattern = Pattern.compile("%\\{([^}]+)\\}%");
     private final boolean blockUnicode;
 
-    public FormatChatListener(JavaPlugin plugin, Chat vaultChat, LuckPerms luckPerms, Config config) {
-        this.plugin = plugin;
+        public FormatChatListener(PluginStart plugin, Chat vaultChat, LuckPerms luckPerms, Config config) {
+                this.plugin = plugin;
+
         this.config = config;
         this.vaultChat = vaultChat;
         this.luckPerms = luckPerms;
@@ -54,22 +61,17 @@ public class FormatChatListener implements Listener {
 
         // Check if PlaceholderAPI is available
         this.placeholderAPIEnabled = Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
-        if (placeholderAPIEnabled) {
-            plugin.getLogger().info("PlaceholderAPI found! Chat format will support placeholders.");
-        } else {
+        if (!placeholderAPIEnabled) {
             plugin.getLogger().info("PlaceholderAPI not found. Placeholders in chat format will not work.");
         }
 
         // Determine Group Mode and Load Formats
         if (vaultChat != null && luckPerms == null) {
             useVaultGroups = true;
-            plugin.getLogger().info("Using Vault for group formatting.");
         } else if (luckPerms != null) {
             useVaultGroups = false;
-            plugin.getLogger().info("Using LuckPerms for group formatting.");
         } else {
             useVaultGroups = false;
-            plugin.getLogger().warning("Neither LuckPerms nor Vault found, disabling group formatting.");
         }
 
         // Load group formats safely
@@ -89,9 +91,10 @@ public class FormatChatListener implements Listener {
             for (Map.Entry<String, Object> entry : tempMap.entrySet()) {
                 groupFormats.put(entry.getKey(), entry.getValue().toString());
             }
-            plugin.getLogger().info("Loaded " + groupFormats.size() + " group chat formats.");
-        } else {
-            plugin.getLogger().info("No group chat formats found in config. Using default format for all groups.");
+            if( config.getBoolean("debug-mode")) {
+                plugin.getLogger().info("Loaded " + groupFormats.size() + " group chat formats.");
+            }
+
         }
     }
 
@@ -115,7 +118,6 @@ public class FormatChatListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerChat(@NotNull AsyncChatEvent event) {
-        // Check if chat formatting is enabled
         if (!config.getBoolean("enable-chat-formatting")) {
             return;
         }
@@ -123,75 +125,44 @@ public class FormatChatListener implements Listener {
         boolean debugMode = config.getBoolean("debug-mode");
         Player player = event.getPlayer();
 
-        // Safety check for player
         if (player == null) {
             plugin.getLogger().warning("Received chat event with null player, skipping formatting");
             return;
         }
 
         Component messageComponent = event.message();
-        String rawMessage = legacyComponentSerializer.serialize(messageComponent); // Serialize the message
+        String rawMessage = legacyComponentSerializer.serialize(messageComponent);
 
         if (debugMode) {
             plugin.getLogger().info("Raw message from " + player.getName() + ": " + rawMessage);
         }
 
-        // Check for Unicode characters if blocking is enabled
         if (blockUnicode && !player.hasPermission("chat.unicode")) {
             if (containsUnicode(rawMessage)) {
-                // Cancel the event
                 event.setCancelled(true);
-
-                // Send error message to the player
                 player.sendMessage(Text.parseColors("&cYour message contains unicode characters which are not allowed."));
-
                 if (debugMode) {
                     plugin.getLogger().info("Blocked message with unicode from " + player.getName() + ": " + rawMessage);
                 }
-
-                return; // Exit the method early
+                return;
             }
         }
 
-        // Process color codes based on player permissions
         String processedMessage;
         if (player.hasPermission("chat.color")) {
-            // Apply color codes based on specific permissions
             processedMessage = Text.stripColor(rawMessage, player);
-            // Parse the colors in the message
             processedMessage = Text.parseColors(processedMessage);
-
-            if (debugMode) {
-                plugin.getLogger().info("Processed message with colors: " + processedMessage);
-            }
         } else {
-            // Strip all color codes if player doesn't have permission
             processedMessage = Text.stripColor(rawMessage, null);
-
-            if (debugMode) {
-                plugin.getLogger().info("Processed message without colors: " + processedMessage);
-            }
         }
 
-        String chatFormat = getChatFormat(player); // Get the appropriate chat format
-        if (debugMode) {
-            plugin.getLogger().info("Chat format: " + chatFormat);
-        }
-
-        String formattedMessage = replacePlaceholders(chatFormat, player, processedMessage); // Replace placeholders
-
-        // Parse colors in the entire formatted message (including format, prefix, etc.)
+        String chatFormat = getChatFormat(player);
+        String formattedMessage = replacePlaceholders(chatFormat, player, processedMessage);
         formattedMessage = Text.parseColors(formattedMessage);
 
-        if (debugMode) {
-            plugin.getLogger().info("Final formatted message: " + formattedMessage);
-        }
+        Component finalFormattedComponent = legacyComponentSerializer.deserialize(formattedMessage);
 
-        // Create a component from the formatted message
-        Component formattedComponent = legacyComponentSerializer.deserialize(formattedMessage);
-
-        // Set the message to our formatted component instead of cancelling
-        event.renderer((source, sourceDisplayName, message, viewer) -> formattedComponent);
+        event.renderer((source, sourceDisplayName, message, viewer) -> finalFormattedComponent);
     }
 
     private String getChatFormat(Player player) {

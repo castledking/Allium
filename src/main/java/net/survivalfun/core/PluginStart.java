@@ -3,33 +3,46 @@ package net.survivalfun.core;
 import net.milkbowl.vault2.chat.Chat;
 import net.survivalfun.core.listeners.jobs.MailRemindListener;
 import net.survivalfun.core.listeners.jobs.SummonMessageListener;
+import net.survivalfun.core.listeners.jobs.CreeperExplosionListener;
 import net.survivalfun.core.listeners.security.CommandManager;
 import net.survivalfun.core.listeners.security.CreativeManager;
 import net.survivalfun.core.listeners.security.FlyOnRejoinListener;
 import net.survivalfun.core.listeners.chat.FormatChatListener;
 import net.survivalfun.core.commands.core.Core;
 import net.survivalfun.core.commands.utils.*;
+import net.survivalfun.core.commands.RedeemCommand;
 import net.survivalfun.core.commands.fun.Explode;
 import net.survivalfun.core.listeners.security.SpectatorTeleport;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.config.Config;
-import net.survivalfun.core.managers.core.Luck;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.listeners.jobs.SlimeCushionListener;
+import net.survivalfun.core.listeners.FabricModDetector;
+import net.survivalfun.core.listeners.FireballExplosionListener;
 import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.managers.core.Item;
 import org.bukkit.Bukkit;
 import org.bukkit.GameRule;
 import org.bukkit.World;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
+
 import net.luckperms.api.LuckPerms;
+import net.survivalfun.core.commands.WhoisCommand;
 
 import java.io.File;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PluginStart extends JavaPlugin {
+    private static PluginStart instance;
     private Lang langManager;
     private Chat vaultChat = null;
     private LuckPerms luckPerms = null;
@@ -39,13 +52,36 @@ public class PluginStart extends JavaPlugin {
     private CreativeManager creativeManager;
     private SpectatorTeleport spectatorTeleport;
     private Explode explodeCommand;
-    private Luck luck;
     private Msg msgCommand;
     private Spy spyCommand;
     private TP tpCommand;
     private CommandManager commandManager;
+    private final Map<UUID, Long> playerLoginTimes = new ConcurrentHashMap<>();
 
-    // Add this method to PluginStart.java
+    public CommandManager getCommandManager() {
+        return commandManager;
+    }
+
+    public static PluginStart getInstance() {
+        return instance;
+    }
+
+    public FabricModDetector getFabricModDetector() {
+        return fabricModDetector;
+    }
+
+    public Lang getLangManager() {
+        return langManager;
+    }
+
+    public Chat getVaultChat() {
+        return vaultChat;
+    }
+
+    public Map<UUID, Long> getPlayerLoginTimes() {
+        return playerLoginTimes;
+    }
+
     public void reloadChatFormatter() {
         // Only proceed if chat formatting is enabled in config
         if (getConfig().getBoolean("enable-chat-formatting", true)) {
@@ -74,21 +110,42 @@ public class PluginStart extends JavaPlugin {
         return database;
     }
 
-    // Add this method to PluginStart.java
+
     public Explode getExplodeCommand() {
-        return explodeCommand; // You'll need to store the Explode instance in a field
+        return explodeCommand;
+    }
+
+    private FabricModDetector fabricModDetector;
+    
+    @Override
+    public void onLoad() {
+        try {
+            getLogger().info("Initializing PacketEvents API...");
+            PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
+            PacketEvents.getAPI().load();
+            getLogger().info("PacketEvents API initialized successfully.");
+            // FabricModDetector initialization has been moved to onEnable to ensure
+            // dependent managers (like LangManager) are available.
+        } catch (Exception e) {
+            getLogger().severe("Failed to initialize PacketEvents API in onLoad: " + e.getMessage());
+            e.printStackTrace();
+            // Rethrowing to align with original behavior for PacketEvents initialization failure.
+            throw new RuntimeException("Failed to initialize PacketEvents API", e);
+        }
     }
 
 
 
     @Override
     public void onEnable() {
+        instance = this;
         this.configManager = new Config(this);
-        //Vault
-        RegisteredServiceProvider<Chat> chatProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault2.chat.Chat.class);
+        RegisteredServiceProvider<Chat> chatProvider = getServer().getServicesManager().getRegistration(
+                net.milkbowl.vault2.chat.Chat.class);
         if (chatProvider != null) {
             vaultChat = chatProvider.getProvider();
         }
+
 
         // Try to get LuckPerms
         RegisteredServiceProvider<LuckPerms> luckPermsProvider = getServer().getServicesManager().getRegistration(LuckPerms.class);
@@ -97,8 +154,6 @@ public class PluginStart extends JavaPlugin {
         } else {
             getLogger().warning("LuckPerms not found! Group-specific command blocking will be disabled.");
         }
-
-        luck = new Luck(this);
 
         // Initialize chat formatter
         if (getConfig().getBoolean("enable-chat-formatting", true)) {
@@ -112,6 +167,8 @@ public class PluginStart extends JavaPlugin {
             getLogger().info("Chat formatting is disabled in config.yml.");
         }
 
+        // Voucher feature removed - only using redeem command
+
         File langFile = new File(getDataFolder(), "lang.yml");
         if (!langFile.exists()) {
             saveResource("lang.yml", false);
@@ -120,18 +177,46 @@ public class PluginStart extends JavaPlugin {
         // Initialize LangManager
         try {
             langManager = new Lang(getDataFolder(), this, getConfig());
+            getLogger().info("LangManager initialized.");
         } catch (Exception e) {
             getLogger().severe("Failed to initialize LangManager: " + e.getMessage());
+            e.printStackTrace(); // Added for more detailed error logging
             getServer().getPluginManager().disablePlugin(this);
             return;
+        }
+
+        // Register PlayerConnectionListener to manage playerLoginTimes
+        getServer().getPluginManager().registerEvents(new net.survivalfun.core.listeners.PlayerConnectionListener(this), this);
+        getLogger().info("PlayerConnectionListener registered.");
+
+        // Initialize FabricModDetector AFTER LangManager and PacketEvents API
+        if (PacketEvents.getAPI() != null && PacketEvents.getAPI().isLoaded()) {
+            getLogger().info("Registering FabricModDetector listener...");
+            this.fabricModDetector = new FabricModDetector(this, langManager); 
+            PacketEvents.getAPI().getEventManager().registerListener(
+                fabricModDetector,
+                PacketListenerPriority.NORMAL
+            );
+            getLogger().info("FabricModDetector listener registered.");
+
+        } else {
+            getLogger().severe("PacketEvents API not loaded or not initialized. FabricModDetector cannot be registered.");
+        
         }
 
         // Initialize database
         this.database = new Database(this);
 
+        // Register commands
+        PluginCommand redeemCmd = getCommand("redeem");
+        if (redeemCmd != null) {
+            redeemCmd.setExecutor(new RedeemCommand(this));
+        } else {
+            getLogger().warning("Could not register 'redeem' command - not found in plugin.yml?");
+        }
+
         super.onEnable();
 
-        // Register events
         SlimeCushionListener slimeCushionListener = new SlimeCushionListener(this, 2.0, 0.5, 0.2, 2.0, true, "&aThe slime cushioned your fall!", true);
         getServer().getPluginManager().registerEvents(slimeCushionListener, this);
         new SpectatorTeleport(this, new NV(this));
@@ -150,14 +235,23 @@ public class PluginStart extends JavaPlugin {
         this.creativeManager = new CreativeManager(this);
         this.spectatorTeleport = new SpectatorTeleport(this, new NV(this));
         commandManager = new CommandManager(this);
+        
+        // Initialize PacketEvents
+        PacketEvents.getAPI().init();
+
+        // Register creeper explosion listener
+        getServer().getPluginManager().registerEvents(new CreeperExplosionListener(this), this);
+
+        // Register fireball explosion listener
+        getServer().getPluginManager().registerEvents(new FireballExplosionListener(this), this);
+
 
         // Initialize your managers:
         WorldDefaults worldDefaults = new WorldDefaults(this);
-        Core coreCommand = new Core(worldDefaults, this, getConfig(), langManager, commandManager);
+        Core coreCommand = new Core(worldDefaults, this, getConfig(), commandManager, creativeManager);
         // Register the Core command:
         getCommand("core").setExecutor(coreCommand);
         getCommand("core").setTabCompleter(coreCommand);
-
 
         Item.initialize();
 
@@ -174,7 +268,7 @@ public class PluginStart extends JavaPlugin {
             getCommand("gc").setTabCompleter(new Tab(this));
 
             // Register give command
-            getCommand("give").setExecutor(new Give(this, getConfig(), langManager));
+            getCommand("give").setExecutor(new Give(this));
             getCommand("give").setTabCompleter(new Tab(this));
 
             // Register ItemDB command
@@ -191,6 +285,21 @@ public class PluginStart extends JavaPlugin {
             // Register Rename command
             getCommand("rename").setExecutor(new Rename(this));
             getCommand("rename").setTabCompleter(new Tab(this));
+
+            // Initialize TP command handler
+            this.tpCommand = new TP(this);
+
+            // Register Teleport commands defined in plugin.yml
+            String[] tpCommands = {"tp", "tpa", "tpaccept", "tpdeny", "tppet", "tppos", "tphere", "tpahere", "tptoggle", "top", "bottom"};
+            for (String cmdName : tpCommands) {
+                PluginCommand command = getCommand(cmdName);
+                if (command != null) {
+                    command.setExecutor(this.tpCommand);
+                    command.setTabCompleter(this.tpCommand);
+                } else {
+                    getLogger().warning("Failed to register teleport command: " + cmdName + " - not found in plugin.yml or already registered by another plugin?");
+                }
+            }
 
             // Register Lore command
             getCommand("lore").setExecutor(new Lore(this));
@@ -215,27 +324,45 @@ public class PluginStart extends JavaPlugin {
             getCommand("spy").setExecutor(spyCommand);
             getCommand("spy").setTabCompleter(spyCommand);
 
-            this.msgCommand = new Msg(this, new Spy(this));
+            Msg msgCommand = new Msg(this, spyCommand);
             getCommand("msg").setExecutor(msgCommand);
             getCommand("msg").setTabCompleter(msgCommand);
+            getCommand("reply").setExecutor(msgCommand);
+            getCommand("reply").setTabCompleter(msgCommand);
+            getCommand("mail").setExecutor(msgCommand);
+            getCommand("mail").setTabCompleter(msgCommand);
+
 
             getServer().getPluginManager().registerEvents(msgCommand, this);
             getServer().getPluginManager().registerEvents(new MailRemindListener(msgCommand), this);
 
-
-            // Register TP commands
-            this.tpCommand = new TP(this);
-            getCommand("tp").setExecutor(tpCommand);
-            getCommand("tp").setTabCompleter(tpCommand);
-
             // Register Help command
 
-            Help helpCommand = new Help(this, langManager);
+            Help helpCommand = new Help(this);
             helpCommand.register();
 
-            // Register Gamemode command and its variants
-            getCommand("gamemode").setExecutor(new Gamemode(this));
-            getCommand("gamemode").setTabCompleter(new Tab(this));
+            // Register Gamemode command
+            Gamemode gamemodeCommand = new Gamemode(this);
+            gamemodeCommand.register();
+            
+            // Register Spawn command
+            Spawn spawnCommand = new Spawn(this, database);
+            getCommand("spawn").setExecutor(spawnCommand);
+            getCommand("setspawn").setExecutor(spawnCommand);
+            
+
+            
+            // Register creeper explosion listener for block regeneration
+            getServer().getPluginManager().registerEvents(new CreeperExplosionListener(this), this);
+
+            // Register Whois command
+            PluginCommand whoisCmd = getCommand("whois");
+            if (whoisCmd != null) {
+                whoisCmd.setExecutor(new WhoisCommand(this));
+                // whoisCmd.setTabCompleter(new WhoisTabCompleter(this)); // Placeholder for future tab completer
+            } else {
+                getLogger().warning("Could not register 'whois' command - not found in plugin.yml?");
+            }
 
         } catch (Exception e) {
             getLogger().severe("Failed to register commands: " + e.getMessage());
@@ -244,19 +371,10 @@ public class PluginStart extends JavaPlugin {
 
     }
 
-    public Msg getMsgCommand() {
-        return msgCommand;
-    }
-
-
-
     public Config getConfigManager() {
         return configManager;
     }
 
-    public Lang getLangManager() {
-        return langManager;
-    }
     @Override
     public void onDisable() {
 
@@ -272,6 +390,10 @@ public class PluginStart extends JavaPlugin {
         }
         if (creativeManager != null) {
             creativeManager.cleanup();
+        }
+
+        if (PacketEvents.getAPI() != null) {
+            PacketEvents.getAPI().terminate();
         }
 
 

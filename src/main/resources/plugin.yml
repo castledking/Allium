@@ -4,10 +4,13 @@ main: net.survivalfun.core.PluginStart
 api-version: 1.21
 author: towkio
 description: "Survival Fun Core"
-depend: [Vault]
-soft-depend: [LuckPerms, PlaceholderAPI]
+soft-depend: [LuckPerms, PlaceholderAPI, Vault]
 
 commands:
+  redeem:
+    description: Allows eligible players to redeem a rank and rewards.
+    usage: /redeem
+    aliases: [claimrank] # Optional alias
   explode:
     description: "Explodes target player"
     usage: "/explode <player> [modifier]"
@@ -34,7 +37,7 @@ commands:
     usage: "/feed [player]"
     permission: core.feed
   core:
-    description: "Core commands"
+    description: "Core plugin command. Subcommands: reload, debug, voucher, etc."
     usage: "/core"
     permission: core.admin
   rename:
@@ -69,20 +72,94 @@ commands:
   msg:
     description: "Send a private message to player"
     usage: "/msg <player> <message>"
-    aliases: [tell, w, whisper, r, reply, pm, message, m, t, mail]
+    aliases: [ tell, w, whisper, pm, message, m, t ]
+
+  reply:
+    description: "Reply to the last message received"
+    usage: "/reply <message>"
+    aliases: [ r ]
+
+  mail:
+    description: "Send or read offline messages"
+    usage: "/mail <read|send|clear|gift|claim> [player] [message]"
+
   spy:
     description: "Spy on private messages"
     usage: "/spy [player]"
-  tp:
-    description: "Teleport to player"
-    usage: "/tp <player>"
-    aliases: [teleport, tpa, tppos, tphere, s, tpahere, tpall, tpaccept, tpdeny, tpyes, tpno, tpcancel,
-              tptoggle, tpo, tpoffline, top, bottom, tpauto]
   help:
     description: "Displays help"
     usage: "/help [command]"
     aliases: [commands]
-    
+  spawn:
+    description: "Teleports you to spawn"
+    usage: "/spawn"
+    aliases: [setspawn]
+  
+  # Teleport Commands
+  tp:
+    description: "Teleport to a player or location"
+    usage: "/tp [player] or /tp [x] [y] [z]"
+    aliases: [tpo, teleport, back]
+    permission: core.tp
+  
+  tpa:
+    description: "Request to teleport to a player"
+    usage: "/tpa <player>"
+    permission: core.tpa
+  
+  tpaccept:
+    description: "Accept a teleport request"
+    usage: "/tpaccept [player]"
+    aliases: [tpyes]
+    permission: core.tpa
+  
+  tpdeny:
+    description: "Deny a teleport request"
+    usage: "/tpdeny [player]"
+    aliases: [tpno]
+    permission: core.tpa
+  
+  tppet:
+    description: "Teleport to your pets"
+    usage: "/tppet"
+    permission: core.tp
+  
+  tppos:
+    description: "Teleport to specific coordinates"
+    usage: "/tppos <x> <y> <z> [yaw] [pitch]"
+    permission: core.tppos
+  
+  tphere:
+    description: "Bring a player to your location"
+    usage: "/tphere <player>"
+    aliases: [s]
+    permission: core.tphere
+  
+  tpahere:
+    description: "Request a player to teleport to you"
+    usage: "/tpahere <player>"
+    permission: core.tpahere
+  
+  tptoggle:
+    description: "Toggle teleport requests"
+    usage: "/tptoggle [player]"
+    permission: core.tptoggle
+  
+  top:
+    description: "Teleport to the highest block"
+    usage: "/top"
+    permission: core.top
+  
+  bottom:
+    description: "Teleport to the lowest block"
+    usage: "/bottom"
+    permission: core.bottom
+
+  whois:
+    description: "Displays detailed information about a player."
+    usage: "/whois <player>"
+    permission: core.whois
+
 permissions:
   core.*:
     default: op
@@ -100,7 +177,7 @@ permissions:
   core.gamemode.creative.bypass.*:
     default: op
   core.gamemode.creative.bypass.inventory:
-    default: false
+    default: op
   core.gamemode.adventure:
     default: op
   core.gamemode.spectator:
@@ -120,6 +197,9 @@ permissions:
     default: op
   core.tpa.nocooldown:
     default: op
+  core.voucher.give:
+    description: "Allows giving rank vouchers via /core voucher give"
+    default: op # Or 'false' if you want only core.admin to grant it implicitly
   core.tppos:
     default: op
   core.tphere:
@@ -138,8 +218,15 @@ permissions:
     default: op
   core.bottom:
     default: op
+  core.whois:
+    description: "Allows using the /whois command."
+    default: true
   core.tpauto:
     default: true
+  core.spawn:
+    default: true
+  core.setspawn:
+    default: op
   core.help:
     default: true
 

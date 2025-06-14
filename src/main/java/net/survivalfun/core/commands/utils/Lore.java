@@ -3,8 +3,10 @@ package net.survivalfun.core.commands.utils;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.core.Text;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.survivalfun.core.managers.core.LoreHelper;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -45,27 +47,28 @@ public class Lore implements CommandExecutor {
         List<String> lore = LoreHelper.getLore(item);
 
         if (args.length == 0) {
-            player.sendMessage(ChatColor.RED + "Lore Command Usage:");
-            player.sendMessage(lang.get("command-usage")
-                            .replace("{cmd}", label)
-                            .replace("{args}", "add <text> - "
-                            + ChatColor.GRAY + "Adds a line to the item's lore."));
-            player.sendMessage(lang.get("command-usage")
-                    .replace("{cmd}", label + " remove <line> -")
-                    .replace("{args}", ChatColor.GRAY
-                            + "Removes a line from the lore at the specified index."));
+            player.sendMessage(Component.text("Lore Command Usage:", NamedTextColor.RED));
+            String usageTemplate = lang.get("command-usage");
 
-            player.sendMessage(lang.get("command-usage")
-                    .replace("{cmd}", label + " insert <line> <text> -")
-                    .replace("{args}", ChatColor.GRAY
-                            + "Inserts a line into the lore at the specified index."));
+            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(
+                    usageTemplate.replace("{cmd}", label)
+                            .replace("{args}", "add <text> - &7Adds a line to the item's lore.")
+            ));
 
-            player.sendMessage(lang.get("command-usage")
-                    .replace("{cmd}", label + " clear -")
-                    .replace("{args}", ChatColor.GRAY
-                            + "Clears all lore from the item."));
+            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(
+                    usageTemplate.replace("{cmd}", label)
+                            .replace("{args}", "remove <line> - &7Removes a line from the lore at the specified index.")
+            ));
 
+            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(
+                    usageTemplate.replace("{cmd}", label)
+                            .replace("{args}", "insert <line> <text> - &7Inserts a line into the lore at the specified index.")
+            ));
 
+            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(
+                    usageTemplate.replace("{cmd}", label)
+                            .replace("{args}", "clear - &7Clears all lore from the item.")
+            ));
             return true;
         }
 
@@ -152,30 +155,36 @@ public class Lore implements CommandExecutor {
                 break;
 
             default:
-                player.sendMessage(ChatColor.RED + "Lore Command Usage:");
-                player.sendMessage(lang.get("command-usage")
-                        .replace("{cmd}", label)
-                        .replace("{args}", "add <text> - "
-                                + ChatColor.GRAY + "Adds a line to the item's lore."));
-                player.sendMessage(lang.get("command-usage")
-                        .replace("{cmd}", label + " remove <line> -")
-                        .replace("{args}", ChatColor.GRAY
-                                + "Removes a line from the lore at the specified index."));
+                player.sendMessage(Component.text("Lore Command Usage:", NamedTextColor.RED));
+                String usageTemplate = lang.get("command-usage");
 
-                player.sendMessage(lang.get("command-usage")
-                        .replace("{cmd}", label + " insert <line> <text> -")
-                        .replace("{args}", ChatColor.GRAY
-                                + "Inserts a line into the lore at the specified index."));
+                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(
+                        usageTemplate.replace("{cmd}", label)
+                                .replace("{args}", "add <text> - &7Adds a line to the item's lore.")
+                ));
 
-                player.sendMessage(lang.get("command-usage")
-                        .replace("{cmd}", label + " clear -")
-                        .replace("{args}", ChatColor.GRAY
-                                + "Clears all lore from the item."));
+                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(
+                        usageTemplate.replace("{cmd}", label)
+                                .replace("{args}", "remove <line> - &7Removes a line from the lore at the specified index.")
+                ));
+
+                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(
+                        usageTemplate.replace("{cmd}", label)
+                                .replace("{args}", "insert <line> <text> - &7Inserts a line into the lore at the specified index.")
+                ));
+
+                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(
+                        usageTemplate.replace("{cmd}", label)
+                                .replace("{args}", "clear - &7Clears all lore from the item.")
+                ));
                 return true;
         }
 
-        LoreHelper.setLore(item, lore);
+        // Update the item's meta with the new lore
+        meta.setLore(lore);
         item.setItemMeta(meta);
+        
+        // Update the player's inventory to reflect the changes
         player.updateInventory();
         return true;
     }

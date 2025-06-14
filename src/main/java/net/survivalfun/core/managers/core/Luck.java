@@ -32,7 +32,6 @@ public class Luck {
             if (plugin.getServer().getPluginManager().getPlugin("LuckPerms") != null) {
                 luckPermsApi = LuckPermsProvider.get();
                 isLuckPermsAvailable = true;
-                plugin.getLogger().info("Successfully hooked into LuckPerms!");
             } else {
                 plugin.getLogger().warning("LuckPerms not found. Group-based command blocking will be disabled.");
                 isLuckPermsAvailable = false;

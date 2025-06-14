@@ -1,12 +1,18 @@
 package net.survivalfun.core.listeners.security;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextReplacementConfig;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandMap;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.configuration.ConfigurationSection;
@@ -20,7 +26,8 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerCommandSendEvent;
 import org.bukkit.event.server.TabCompleteEvent;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +40,7 @@ public class CommandManager implements Listener {
 
     private final PluginStart plugin;
     private static boolean hideNamespacedCommandsForBypass;
+    private static boolean enabled;
     private File configFile;
     private FileConfiguration config;
     private final Lang lang;
@@ -64,7 +72,7 @@ public class CommandManager implements Listener {
                     config = YamlConfiguration.loadConfiguration(configFile);
 
                     // Create example structure
-                    config.set("settings.hide-namespaced-commands-for-bypass", true);
+                    config.set("settings.hide-namespaced-commands-for-ops", true);
                     config.set("groups.admin.whitelist", true);
                     config.set("groups.admin.commands", List.of("op", "deop", "ban", "kick"));
                     config.set("groups.admin.tabcompletes", List.of("op", "deop"));
@@ -81,11 +89,8 @@ public class CommandManager implements Listener {
         }
 
         config = YamlConfiguration.loadConfiguration(configFile);
-        hideNamespacedCommandsForBypass = config.getBoolean("settings.hide-namespaced-commands-for-bypass", true);
-        if(plugin.getConfig().getBoolean("debug-mode")) {
-            plugin.getLogger().info("Namespaced commands for bypass users will be "
-                    + (hideNamespacedCommandsForBypass ? "hidden" : "shown") + " in tab completion.");
-        }
+        hideNamespacedCommandsForBypass = config.getBoolean("settings.hide-namespaced-commands-for-ops", true);
+        enabled = config.getBoolean("settings.enabled", true);
         loadGroups();
     }
 
@@ -122,8 +127,16 @@ public class CommandManager implements Listener {
             if (tabCompletes.contains("^")) {
                 // Replace "^" with all commands from this group
                 tabCompletes.remove("^");
-                // Use the original commands list from the config, not already expanded ones
-                tabCompletes.addAll(commands);
+                // Add both the original commands and their namespaced versions
+                for (String command : commands) {
+                    // Add the original command
+                    tabCompletes.add(command);
+                    // Add the namespaced version if it exists
+                    String fullCommand = resolveFullCommandName(command);
+                    if (!command.equals(fullCommand)) {
+                        tabCompletes.add(fullCommand);
+                    }
+                }
             }
 
             // Now expand wildcards in tab completions
@@ -164,15 +177,25 @@ public class CommandManager implements Listener {
                     Map<String, Command> knownCommands = getKnownCommands();
                     for (Map.Entry<String, Command> entry : knownCommands.entrySet()) {
                         if (isCommandFromPlugin(entry.getValue(), targetPlugin)) {
-                            // Store the original command name with namespace for proper command checking
-                            expandedCommands.add(entry.getKey());
+                            // Store both the original command name and its namespaced version
+                            String commandName = entry.getKey();
+                            String baseCommand = commandName.contains(":") 
+                                ? commandName.substring(commandName.indexOf(':') + 1)
+                                : commandName;
+                            expandedCommands.add(commandName);
+                            if (!commandName.equals(baseCommand)) {
+                                expandedCommands.add(baseCommand);
+                            }
                         }
                     }
                 }
             } else {
-                // For regular commands, resolve the command to its full name with namespace if applicable
+                // For regular commands, store both the original and namespaced versions
                 String fullCommandName = resolveFullCommandName(command);
-                expandedCommands.add(fullCommandName);
+                expandedCommands.add(command);
+                if (!command.equals(fullCommandName)) {
+                    expandedCommands.add(fullCommandName);
+                }
             }
         }
 
@@ -183,26 +206,23 @@ public class CommandManager implements Listener {
      * Resolves a command name to its full name with namespace if needed
      */
     private String resolveFullCommandName(String commandName) {
-        // If the command already has a namespace, return as is
-        if (commandName.contains(":")) {
-            return commandName.toLowerCase();
-        }
-
-        // Try to find the command in the command map
-        Command command = Bukkit.getCommandMap().getCommand(commandName);
+        // First try to find the command in the command map
+        Command command = Bukkit.getCommandMap().getCommand(commandName.toLowerCase());
 
         if (command == null) {
-            // Command not found in command map, return as is
+            // If command doesn't exist in command map, return as is
             return commandName.toLowerCase();
         }
 
-        if (command instanceof PluginCommand) {
-            // For plugin commands, include the plugin name as namespace
-            PluginCommand pluginCommand = (PluginCommand) command;
-            return pluginCommand.getPlugin().getName().toLowerCase() + ":" + commandName.toLowerCase();
+        // Get the plugin name for this command
+        String pluginName = getPluginForCommand(command, commandName);
+        
+        // Return the command with proper namespace if needed
+        if (pluginName != null && !pluginName.isEmpty()) {
+            return pluginName.toLowerCase() + ":" + commandName.toLowerCase();
         }
 
-        // For built-in commands or unknown commands, return as is
+        // For built-in commands, return as is
         return commandName.toLowerCase();
     }
 
@@ -371,6 +391,11 @@ public class CommandManager implements Listener {
     }
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerCommandSend(PlayerCommandSendEvent event) {
+        // Skip processing if command manager is disabled
+        if (!enabled) {
+            return;
+        }
+        
         Player player = event.getPlayer();
         List<CommandGroup> groups = getPlayerGroups(player);
 
@@ -413,7 +438,7 @@ public class CommandManager implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
-        if (event.isCancelled()) return;
+        if (event.isCancelled() || !enabled) return;
 
         Player player = event.getPlayer();
         String message = event.getMessage().substring(1); // Remove the leading slash
@@ -433,7 +458,7 @@ public class CommandManager implements Listener {
             return;
         }
 
-        // Check if player can use this command
+        // Check if player can use this command via groups
         boolean canUseCommand = false;
         for (CommandGroup group : playerGroups) {
             // Check for wildcard permission first
@@ -442,23 +467,28 @@ public class CommandManager implements Listener {
                 break;
             }
 
-            // Check the full command
-            boolean commandInList = group.commands().contains(fullCommand);
-
-            // If not found in the list && it's a namespaced command, check the base command
-            if (!commandInList && isNamespacedCommand) {
-                String baseCommand = fullCommand.substring(fullCommand.indexOf(':') + 1);
-                commandInList = group.commands().contains(baseCommand);
+            // Check both the full command and its base name
+            String commandToCheck = fullCommand.toLowerCase();
+            String baseCommand = commandToCheck;
+            
+            // If it's a namespaced command, get the base command
+            if (isNamespacedCommand) {
+                baseCommand = commandToCheck.substring(commandToCheck.indexOf(':') + 1);
             }
 
-            if ((group.whitelist() && commandInList) || (!group.whitelist() && !commandInList)) {
+            // Check if either the full command or base command is in the list
+            boolean commandInList = group.commands().contains(commandToCheck) || 
+                                   group.commands().contains(baseCommand);
+
+            // For whitelist groups, command must be in list
+            // For blacklist groups, command must NOT be in list
+            if (group.whitelist() ? commandInList : !commandInList) {
                 canUseCommand = true;
                 break;
             }
         }
 
-        // If command is not allowed, cancel the event and send appropriate message
-        if (!canUseCommand) {
+        if (!canUseCommand || (canUseCommand && lackPermissionForCommand(player, fullCommand))) {
             event.setCancelled(true);
 
             if (isNamespacedCommand) {
@@ -469,14 +499,210 @@ public class CommandManager implements Listener {
                 String similar = findSimilarCommand(player, fullCommand);
 
                 if (similar != null) {
-                    Text.sendErrorMessage(player, "unknown-command-suggestion", lang,
-                            "{cmd}", fullCommand, "{suggestion}", similar);
+                    // Construct the suggestion component directly in the call
+                    Component suggestionComponent = Component.text(similar)
+                            .hoverEvent(HoverEvent.showText(
+                                    Component.text("Click to run: /" + similar).color(NamedTextColor.GRAY)
+                            ))
+                            .clickEvent(ClickEvent.suggestCommand("/" + similar));
+
+                    // Build the entire message as a Component
+                    String errorMessage = lang.get("unknown-command-suggestion"); // Get language string
+
+                    if (errorMessage != null) {
+                        // Split the string around the "{suggestion}" placeholder
+                        String[] parts = errorMessage.split("\\{suggestion\\}");
+
+                        Component finalMessage = Component.empty();
+
+                        if (parts.length > 0) {
+                            finalMessage = finalMessage.append(Component.text(parts[0].replace("{cmd}", fullCommand))); // Add the first part + replace cmd
+                        }
+
+                        finalMessage = finalMessage.append(suggestionComponent); // Add the suggestion
+
+                        if (parts.length > 1) {
+                            finalMessage = finalMessage.append(Component.text(parts[1].replace("{cmd}", fullCommand))); // Add the second part + replace cmd
+                        }
+
+                        // Send the final message using sendErrorMessage (with Component overload)
+                        Text.sendErrorMessage(player, finalMessage, lang);
+
+                    } else {
+                        Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", fullCommand);
+                    }
                 } else {
                     Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", fullCommand);
                 }
             }
+        } else {
+            // If command is allowed, allow it to proceed
+            return;
         }
     }
+
+
+/**
+     * Universal method to check if a player lacks permission for a command
+     * @param player The player to check
+     * @param commandName The command name (without slash)
+     * @return true if the player lacks permission, false if they have permission
+     */
+    public boolean lackPermissionForCommand(Player player, String commandName) {
+        // If command manager is disabled, player doesn't lack permission
+        if (!enabled) {
+            return false;
+        }
+        
+        // First check if the command is allowed in hide.yml
+        List<CommandGroup> playerGroups = getPlayerGroups(player);
+        boolean isCommandAllowed = false;
+        
+        for (CommandGroup group : playerGroups) {
+            // Check if command is in the list for whitelist groups
+            if (group.whitelist() && group.commands().contains(commandName.toLowerCase())) {
+                isCommandAllowed = true;
+                break;
+            }
+            // Check if command is NOT in the list for blacklist groups
+            if (!group.whitelist() && !group.commands().contains(commandName.toLowerCase())) {
+                isCommandAllowed = true;
+                break;
+            }
+        }
+        
+        if (isCommandAllowed) {
+            return false; // Command is allowed in hide.yml
+        }
+
+        // Always allow basic commands if they're not denied by hide.yml
+        List<String> alwaysAllowedCommands = Arrays.asList("help", "spawn", "rules", "tpa", "tpahere", "tpaccept", "tpdeny");
+        if (alwaysAllowedCommands.contains(commandName.toLowerCase())) {
+            return false; // Player doesn't lack permission
+        }
+
+        // Get the actual command from the command map
+        Command command = getCommandFromMap(commandName);
+        if (command == null) {
+            // If command doesn't exist, we can't check permission
+            return false;
+        }
+
+        // Get the plugin that owns this command
+        String pluginName = getPluginForCommand(command, commandName);
+
+        // Build permission nodes to check
+        List<String> permNodes = getStrings(commandName, pluginName, command);
+
+        // Check all permission nodes
+        for (String permNode : permNodes) {
+            if (player.hasPermission(permNode)) {
+                return false; // Player has permission
+            }
+        }
+
+        // Special case: OP has all permissions
+        return !player.isOp() && !player.hasPermission("*") && !player.hasPermission(pluginName + ".*"); // Player has permission
+
+        // If we get here, player lacks permission
+    }
+
+    private static @NotNull List<String> getStrings(String commandName, String pluginName, Command command) {
+        List<String> permNodes = new ArrayList<>();
+
+        // Handle namespaced commands (plugin:command)
+        String baseCommand = commandName;
+        if (commandName.contains(":")) {
+            baseCommand = commandName.substring(commandName.indexOf(':') + 1);
+        }
+
+        // Check if the pluginName is SFCore and modify it for permission testing
+        String permissionPluginName = pluginName;
+        if ("SFCore".equals(pluginName)) {
+            permissionPluginName = "core";
+        }
+
+        // Special case for core plugin - only check core.<command>
+        if ("core".equals(permissionPluginName)) {
+            permNodes.add(permissionPluginName + "." + baseCommand);
+        } else {
+            // For other plugins, keep the standard formats
+            // <plugin>.command.<command>
+            permNodes.add(permissionPluginName + ".command." + baseCommand);
+            // <plugin>.<command>
+            permNodes.add(permissionPluginName + "." + baseCommand);
+        }
+
+        // Add command's defined permission if it has one and we're not handling core
+        if (!("core".equals(permissionPluginName)) &&
+                command.getPermission() != null &&
+                !command.getPermission().isEmpty()) {
+            permNodes.add(command.getPermission());
+        }
+
+        return permNodes;
+    }
+
+
+
+    /**
+     * Get a command from the server's command map
+     */
+    private Command getCommandFromMap(String commandName) {
+        try {
+            // Get the server's command map via reflection
+            final Field commandMapField = Bukkit.getServer().getClass().getDeclaredField("commandMap");
+            commandMapField.setAccessible(true);
+            Command command = getCommand(commandName, commandMapField);
+
+            return command;
+        } catch (Exception e) {
+            plugin.getLogger().warning("Failed to access command map: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private static @Nullable Command getCommand(String commandName, Field commandMapField) throws IllegalAccessException {
+        CommandMap commandMap = (CommandMap) commandMapField.get(Bukkit.getServer());
+
+        // Handle namespaced commands
+        String baseCommand = commandName;
+        if (commandName.contains(":")) {
+            baseCommand = commandName.substring(commandName.indexOf(':') + 1);
+        }
+
+        // Try to get the command by both full name and base name
+        Command command = commandMap.getCommand(commandName);
+        if (command == null && !baseCommand.equals(commandName)) {
+            command = commandMap.getCommand(baseCommand);
+        }
+        return command;
+    }
+
+    /**
+     * Determine which plugin provides a command
+     */
+    private String getPluginForCommand(Command command, String commandName) {
+        String pluginName = "minecraft"; // Default to minecraft
+
+        // Try to get plugin name from command itself
+        if (command instanceof PluginCommand) {
+            Plugin owningPlugin = ((PluginCommand) command).getPlugin();
+            pluginName = owningPlugin.getName().toLowerCase();
+        }
+        // Handle namespaced commands like "minecraft:tp"
+        else if (commandName.contains(":")) {
+            pluginName = commandName.substring(0, commandName.indexOf(':'));
+        }
+
+        // Convert sfcore to core
+        if ("sfcore".equals(pluginName)) {
+            pluginName = "core";
+        }
+
+        return pluginName;
+    }
+
 
 
 
@@ -486,6 +712,11 @@ public class CommandManager implements Listener {
      * Updates the tab completion list for a specific player
      */
     public void updatePlayerTabCompletion(Player player) {
+        // Skip processing if command manager is disabled
+        if (!enabled) {
+            return;
+        }
+        
         // Create a new PlayerCommandSendEvent for this player with all available commands
         List<String> allCommands = new ArrayList<>(Bukkit.getCommandMap().getKnownCommands().keySet());
         PlayerCommandSendEvent event = new PlayerCommandSendEvent(player, allCommands);
@@ -512,7 +743,8 @@ public class CommandManager implements Listener {
             playerConnection.getClass().getMethod("sendPacket", getNMSClass("Packet")).invoke(playerConnection, packet);
 
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info("Updated tab completion for " + player.getName() + " with " + event.getCommands().size() + " commands");
+                plugin.getLogger().info("Updated tab completion for " + player.getName() + " with " + event.getCommands()
+                .size() + " commands");
             }
         } catch (Exception e) {
             // Fallback method if reflection fails
@@ -540,7 +772,18 @@ public class CommandManager implements Listener {
 
 
 
-    private boolean shouldShowCommand(Player player, String commandName) {
+    /**
+     * Checks if a player has permission to see and use a command based on their group permissions
+     * @param player The player to check
+     * @param commandName The command name (without slash)
+     * @return true if the player has permission to see/use the command, false otherwise
+     */
+    public boolean shouldShowCommand(Player player, String commandName) {
+        // If command manager is disabled, show all commands
+        if (!enabled) {
+            return true;
+        }
+        
         List<CommandGroup> playerGroups = getPlayerGroups(player);
 
         if (playerGroups.isEmpty()) {
@@ -608,6 +851,10 @@ public class CommandManager implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onCommandSend(PlayerCommandSendEvent event) {
+        // Skip processing if command manager is disabled
+        if (!enabled) {
+            return;
+        }
         Player player = event.getPlayer();
 
         if (player.hasPermission("core.hide.bypass")) {
@@ -690,6 +937,7 @@ public class CommandManager implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onTabComplete(TabCompleteEvent event) {
+        if (event.isCancelled() || !enabled) return;
         if (!(event.getSender() instanceof Player)) {
             return;
         }
@@ -712,7 +960,7 @@ public class CommandManager implements Listener {
 
         // Check if this command (or its namespaced version) should be allowed for tab completion
         if (!shouldAllowTabComplete(player, commandString)) {
-            event.setCancelled(true);
+            event.setCompletions(new ArrayList<>());
         }
     }
 
@@ -763,38 +1011,35 @@ public class CommandManager implements Listener {
 
         /**
          * Checks if a command should be shown in tab completion for this group
+         * @param commandName The command name (without slash)
+         * @return true if the command should be shown in tab completion, false otherwise
          */
         public boolean isTabCompletionAllowed(String commandName) {
-            // Check for specific allowed commands first
+            // Convert to lowercase
+            commandName = commandName.toLowerCase();
+
+            // First check if the exact command (with namespace) is in the list
             if (commands.contains(commandName)) {
                 return whitelist;
             }
 
-            // For namespaced commands, check base command
-            if (commandName.contains(":")) {
-                String baseCommand = commandName.substring(commandName.indexOf(':') + 1);
-                if (commands.contains(baseCommand)) {
-                    return whitelist;
-                }
+            // Extract base command without namespace
+            String baseCommand = commandName.contains(":")
+                    ? commandName.substring(commandName.indexOf(':') + 1)
+                    : commandName;
 
-                // If it is the wildcard group, and we're hiding namespaced commands
-                if (commands.contains("*") && hideNamespacedCommandsForBypass) {
-                    return false; // Hide this namespaced command
-                }
-            }
-
-            // Check for wildcard
-            if (commands.contains("*")) {
+            // Check if the base command is in the list
+            if (commands.contains(baseCommand)) {
                 return whitelist;
             }
 
-            // Default case
-            return !whitelist;
+            // Check for wildcard
+        if (commands.contains("*")) {
+            return whitelist;
         }
 
-
-
-
+        // Default case
+        return !whitelist;
     }
-
+}
 }

@@ -27,8 +27,9 @@ public class Fly implements CommandExecutor {
             if (args.length == 0) {
                 // /fly (self)
                 if (!(sender instanceof Player player)) {
-                    sender.sendMessage(lang.get("error-prefix")
-                            + lang.get("not-a-player"));
+                    sender.sendMessage(lang.get("command-usage")
+                            .replace("{cmd}", label)
+                            .replace("{args}", "<player>"));
                     return true;
                 }
                 if (!player.hasPermission("core.fly")) {
@@ -39,7 +40,7 @@ public class Fly implements CommandExecutor {
 
             } else if (args.length == 1) {
                 // /fly <player>
-                if (!sender.hasPermission("core.fly.others")) {
+                if (!(sender instanceof Player) && !sender.hasPermission("core.fly.others")) {
                     Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label + " on others.");
                     return true;
                 }
@@ -61,7 +62,7 @@ public class Fly implements CommandExecutor {
             } else {
                 sender.sendMessage(lang.get("command-usage")
                         .replace("{cmd}", label)
-                        .replace("{args}", "[player]"));
+                        .replace("{args}", "<player>"));
                 return true;
             }
             return true;
@@ -78,23 +79,29 @@ public class Fly implements CommandExecutor {
             }
         }
 
+        String flyToggleMessage = lang.get("fly.toggle");
+        String firstColorOfFlyToggle = lang.getFirstColorCode("fly.toggle");
+
         if (player.getAllowFlight()) {
             player.setAllowFlight(false);
-            player.setFlying(false); //Important: disable flight if they are currently flying
+            player.removePotionEffect(PotionEffectType.SLOW_FALLING);
+
+            // Get the style for disabled state
+            String disabledStyle = lang.get("styles.state.false");
 
             // Check if the sender is the same as the player being toggled.
+            // Add ChatColor.RESET (which is §r) before firstColorOfFlyToggle to stop previous formatting like underline
+            String message = flyToggleMessage
+                    .replace("{state}", disabledStyle + "disabled" + firstColorOfFlyToggle)
+                    .replace(" {name}", ""); // Remove the space before {name} when it's empty
             if (!(sender instanceof Player && ((Player) sender).getUniqueId().equals(player.getUniqueId()))) {
                 // Console message
-                sender.sendMessage(lang.get("fly.toggle")
-                        .replace("{state}", "§c§ndisabled§r")
+                sender.sendMessage(flyToggleMessage
+                        .replace("{state}", disabledStyle + "disabled" + firstColorOfFlyToggle)
                         .replace("{name}", "for " + player.getName()));
-                player.sendMessage(lang.get("fly.toggle")
-                        .replace("{state}", "§c§ndisabled§r")
-                        .replace("{name}", ""));
+                player.sendMessage(message);
             } else {
-                player.sendMessage(lang.get("fly.toggle")
-                        .replace("{state}", "§c§ndisabled§r")
-                        .replace("{name}", ""));
+                player.sendMessage(message);
                 if (!player.isOnGround()) {
                     // Apply slow falling effect
                     player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, Integer.MAX_VALUE, 0, true, false));
@@ -115,18 +122,21 @@ public class Fly implements CommandExecutor {
         } else {
             player.setAllowFlight(true);
 
+            // Get the style for enabled state
+            String enabledStyle = lang.get("styles.state.true");
+
             // Check if the sender is the same as the player being toggled.
+            // Add ChatColor.RESET (which is §r) before firstColorOfFlyToggle to stop previous formatting like underline
+            String message = flyToggleMessage
+                    .replace("{state}", enabledStyle + "enabled" + firstColorOfFlyToggle)
+                    .replace(" {name}", ""); // Remove the space before {name} when it's empty
             if (!(sender instanceof Player && ((Player) sender).getUniqueId().equals(player.getUniqueId()))) {
-                sender.sendMessage(lang.get("fly.toggle")
-                        .replace("{state}", "§a§nenabled§r")
+                sender.sendMessage(flyToggleMessage
+                        .replace("{state}", enabledStyle + "enabled" + firstColorOfFlyToggle)
                         .replace("{name}", "for " + player.getName()));
-                player.sendMessage(lang.get("fly.toggle")
-                        .replace("{state}", "§a§nenabled§r")
-                        .replace("{name}", ""));
+                player.sendMessage(message);
             } else {
-                player.sendMessage(lang.get("fly.toggle")
-                        .replace("{state}", "§a§nenabled§r")
-                        .replace("{name}", ""));
+                player.sendMessage(message);
             }
         }
     }

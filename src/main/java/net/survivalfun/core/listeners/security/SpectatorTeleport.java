@@ -52,34 +52,9 @@ public class SpectatorTeleport implements Listener {
 
         // Register this listener
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        logger.info("SpectatorTeleport listener has been registered");
-
-        // Schedule periodic logging of cache status
-        plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
-            logCacheStatus("Periodic check");
-        }, 6000L, 6000L); // Log every 5 minutes (6000 ticks)
     }
     private Database getDatabase() {
         return plugin.getDatabase();
-    }
-    /**
-     * Logs the current status of the location cache and operation counters
-     */
-    private void logCacheStatus(String context) {
-        if(plugin.getConfig().getBoolean("debug-mode")) {
-            logger.info("=== Spectator Teleport Debug Info (" + context + ") ===");
-            logger.info("Cache size: " + survivalLocations.size() + " locations");
-            logger.info("Total saved locations: " + savedLocationsCount.get());
-            logger.info("Total loaded locations: " + loadedLocationsCount.get());
-            logger.info("Total teleported players: " + teleportedPlayersCount.get());
-
-            // Log memory usage
-            Runtime runtime = Runtime.getRuntime();
-            long usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024;
-            long totalMemory = runtime.totalMemory() / 1024 / 1024;
-            logger.info("Memory usage: " + usedMemory + "MB / " + totalMemory + "MB");
-            logger.info("=============================================");
-        }
     }
 
     /**
@@ -151,10 +126,6 @@ public class SpectatorTeleport implements Listener {
                     );
 
                     survivalLocations.put(playerUUID, location);
-                }
-                if(plugin.getConfig().getBoolean("debug-mode")) {
-
-                    plugin.getLogger().info("Loaded " + survivalLocations.size() + " saved spectator locations");
                 }
             });
         } catch (Exception e) {

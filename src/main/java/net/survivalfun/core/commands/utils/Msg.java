@@ -3,15 +3,11 @@ package net.survivalfun.core.commands.utils;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.ComponentBuilder;
-import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import net.survivalfun.core.managers.DB.Database;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -29,12 +25,12 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.util.io.BukkitObjectInputStream;
-import org.bukkit.util.io.BukkitObjectOutputStream;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.DataOutputStream;
+import java.io.DataInputStream;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -148,7 +144,8 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
             return sendDirectMessage(sender, targetPlayer, message);
         } else {
             // Offer to send mail instead
-            Text.sendErrorMessage(sender, lang.get("player-not-found").replace("{player}", targetPlayerName), lang);
+            Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", targetPlayerName);
+
             return true;
         }
     }
@@ -238,7 +235,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
         // Check arguments
         if (args.length < 1) {
             sender.sendMessage(lang.get("command-usage").replace("{cmd}", "mail")
-                    .replace("{args}", "<read|send|clear|gift|claim> [player] [message...]"));
+                    .replace("{args}", "<read§8|§7send§8|§7clear§8|§7gift§8|§7claim> <player> <message...>"));
             return true;
         }
 
@@ -273,7 +270,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
 
             default:
                 sender.sendMessage(lang.get("command-usage").replace("{cmd}", "mail")
-                        .replace("{args}", "<read|send|clear|gift|claim> [player] [message...]"));
+                        .replace("{args}", "<read|send|clear|gift|claim> <player> <message...>"));
                 return true;
         }
 
@@ -310,7 +307,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
 
         // Create a dispenser inventory (3x3)
         Inventory giftInventory = Bukkit.createInventory(player, InventoryType.DISPENSER,
-                Text.parseColors("&5&lGIFT:" + recipient));
+                Text.parseColors("&5&lGIFT: &d" + recipient));
 
         // Store the inventory session for this player
         pendingGifts.put(player.getUniqueId(), new GiftSession(recipient, giftInventory));
@@ -319,7 +316,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
         player.openInventory(giftInventory);
 
         // Send instructions
-        player.sendMessage(lang.get("msg.mail-gift-help")
+        player.sendMessage(lang.get("msg.gift-help")
                 .replace("{name}", recipient));
 
         return true;
@@ -418,17 +415,20 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
      */
     private String serializeItems(ItemStack[] items) throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream);
+        DataOutputStream dataOutput = new DataOutputStream(outputStream);
 
-        // Write the length of the array
-        dataOutput.writeInt(items.length);
+        dataOutput.writeInt(items.length); // Write the number of items
 
-        // Write each item
         for (ItemStack item : items) {
-            dataOutput.writeObject(item);
+            if (item == null || item.getType() == Material.AIR) {
+                dataOutput.writeInt(0); // Indicate a null or air item with 0 byte length
+            } else {
+                byte[] itemBytes = item.serializeAsBytes();
+                dataOutput.writeInt(itemBytes.length); // Write the length of the byte array
+                dataOutput.write(itemBytes);           // Write the byte array
+            }
         }
 
-        // Cleanup and return as Base64
         dataOutput.close();
         return Base64.getEncoder().encodeToString(outputStream.toByteArray());
     }
@@ -439,26 +439,27 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
      * @param data The Base64 encoded string
      * @return The deserialized ItemStack array
      */
-    private ItemStack[] deserializeItems(String data) throws IOException, ClassNotFoundException {
+    private ItemStack[] deserializeItems(String data) throws IOException {
         ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data));
-        BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
+        DataInputStream dataInput = new DataInputStream(inputStream);
 
-        // Read the length of the array
-        ItemStack[] items = new ItemStack[dataInput.readInt()];
+        int arrayLength = dataInput.readInt(); // Read the number of items
+        ItemStack[] items = new ItemStack[arrayLength];
 
-        // Read each item
-        for (int i = 0; i < items.length; i++) {
-            items[i] = (ItemStack) dataInput.readObject();
+        for (int i = 0; i < arrayLength; i++) {
+            int itemBytesLength = dataInput.readInt(); // Read the length of the byte array for the item
+            if (itemBytesLength == 0) {
+                items[i] = null; // Represents a null or air item
+            } else {
+                byte[] itemBytes = new byte[itemBytesLength];
+                dataInput.readFully(itemBytes); // Read the byte array
+                items[i] = ItemStack.deserializeBytes(itemBytes);
+            }
         }
 
-        // Cleanup and return
         dataInput.close();
         return items;
     }
-
-
-
-
 
     private boolean sendDirectMessage(CommandSender sender, Player recipient, String message) {
         // Format and send messages
@@ -491,23 +492,14 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
 
         // Send spy message
         UUID recipientUUID = recipient.getUniqueId();
+        
+        String spyMessage = lang.get("spy.format")
+                .replace("{sender}", sender.getName())
+                .replace("{recipient}", recipient.getName())
+                .replace("{message}", message);
 
-        // Only send spy messages if the participants aren't themselves spying
-        boolean senderIsSpying = (sender instanceof Player) &&
-                (spyCommand.isGloballySpying(senderUUID) ||
-                        spyCommand.isSpyingOn(senderUUID, recipientUUID));
-
-        boolean recipientIsSpying = spyCommand.isGloballySpying(recipientUUID) ||
-                spyCommand.isSpyingOn(recipientUUID, senderUUID);
-
-        if (!(senderIsSpying || recipientIsSpying)) {
-            String spyMessage = lang.get("spy.format")
-                    .replace("{sender}", sender.getName())
-                    .replace("{recipient}", recipient.getName())
-                    .replace("{message}", message);
-
-            spyCommand.broadcastSpyMessage(spyMessage, senderUUID, recipientUUID);
-        }
+        spyCommand.broadcastSpyMessage(spyMessage, senderUUID, recipientUUID);
+    
 
         return true;
     }
@@ -568,11 +560,16 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
             return true;
         }
 
-        player.sendMessage(lang.get("msg.mail-header").replace("{title}", "new messages"));
+        int messageCount = messages != null ? messages.size() : 0;
+        int giftCount = gifts != null ? gifts.size() : 0;
+
+        player.sendMessage(lang.get("msg.mail-header")
+        .replace("{n}", String.valueOf(messageCount + giftCount))
+        .replace("{title}", "new messages"));
 
         // Display all messages
         if (hasMessages) {
-            for (int i = 0; i < messages.size(); i++) {
+            for (int i = 0; i < messageCount; i++) {
                 MailMessage message = messages.get(i);
 
                 // Replace {n} dynamically with the current index (e.g., #1, #2)
@@ -887,10 +884,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
                 try {
                     // Send notification about unread mail
                     player.sendMessage(lang.get("msg.mail-remind")
-                            .replace("{count}", String.valueOf(messages.size())));
-
-                    // Add a reminder to check mail
-                    player.sendMessage(lang.get("msg.mail-remind"));
+                            .replace("{n}", String.valueOf(messages.size())));
                 } catch (Exception e) {
                     plugin.getLogger().log(Level.SEVERE, "Error delivering offline messages to " + playerName, e);
                 }
@@ -941,27 +935,37 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        String commandName = command.getName().toLowerCase();
+        List<String> completions = new ArrayList<>();
+        String lowerAlias = alias.toLowerCase(); // Use the actual alias used by the player
 
-        // Tab completion for /msg and similar commands
-        if (messageCommandAliases.contains(commandName)) {
-            if (args.length == 1 && !args[0].equalsIgnoreCase("clear") && !args[0].equalsIgnoreCase("claim")) {
-                return getOnlinePlayerNames(args[0]);
-            }
-        }
-
-        // Tab completion for /mail command
-        if (mailCommandAliases.contains(commandName)) {
+        // Tab completion for /msg and its direct aliases (tell, w, whisper, etc.)
+        if (messageCommandAliases.contains(lowerAlias)) {
             if (args.length == 1) {
-                return filterStartingWith(Arrays.asList("read", "send", "clear", "gift", "claim"), args[0]);
-            } else if (args.length == 2) {
-                if ("send".equalsIgnoreCase(args[0]) || "gift".equalsIgnoreCase(args[0])) {
-                    return getAllPlayerNames(args[1]);
-                }
+                // Suggest online players, considering visibility if sender is a player
+                completions.addAll(getOnlinePlayerNames(args[0], sender, true));
             }
         }
 
-        return Collections.emptyList();
+        // Tab completion specifically for /mail (which is an alias of msg command but has unique subcommands)
+        if ("mail".equals(lowerAlias)) { // Correctly check if the command used was "mail"
+            List<String> mailSubcommands = Arrays.asList("read", "send", "clear", "gift", "claim");
+            if (args.length == 1) { // For the first argument (subcommand)
+                completions.addAll(filterStartingWith(mailSubcommands, args[0]));
+            } else if (args.length == 2) { // For the second argument (typically player name)
+                String subCommand = args[0].toLowerCase();
+                if ("send".equals(subCommand) || "gift".equals(subCommand)) {
+                    // Suggest online players, considering visibility
+                    completions.addAll(getOnlinePlayerNames(args[1], sender, true));
+                }
+                // Add other suggestions for args[1] based on subCommand if needed
+                // e.g., if 'claim' expects a gift ID, you might suggest available gift IDs
+            }
+        }
+        // Note: /reply (r) typically doesn't take a player name as the first arg in this setup,
+        // it implies replying to the last person. If it could, tab completion would be added here.
+
+        // Filter and sort completions to avoid duplicates if different blocks add same suggestions
+        return completions.stream().distinct().sorted().collect(Collectors.toList());
     }
 
     /**
@@ -975,17 +979,17 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
         List<String> names = new ArrayList<>();
 
         // Add online players
-        names.addAll(getOnlinePlayerNames(input));
+        names.addAll(getOnlinePlayerNames(input)); // This will use the overload that doesn't check permissions by default
 
         // Add offline players who have played before
         for (OfflinePlayer offlinePlayer : plugin.getServer().getOfflinePlayers()) {
-            String name = offlinePlayer.getName();
-            if (name != null && name.toLowerCase().startsWith(input.toLowerCase()) && !names.contains(name)) {
-                names.add(name);
+            // Ensure offlinePlayer.getName() is not null before using it
+            if (offlinePlayer.hasPlayedBefore() && offlinePlayer.getName() != null && offlinePlayer.getName().toLowerCase().startsWith(input.toLowerCase())) {
+                names.add(offlinePlayer.getName());
             }
         }
-
-        return names;
+        // Deduplicate and sort if necessary, though distinct players should be handled by how they are added.
+        return names.stream().distinct().sorted().collect(Collectors.toList());
     }
 
 
@@ -1001,6 +1005,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
                 .filter(option -> option.toLowerCase().startsWith(input.toLowerCase()))
                 .collect(Collectors.toList());
     }
+
     /**
      * Retrieves gifts for a player from the database
      *

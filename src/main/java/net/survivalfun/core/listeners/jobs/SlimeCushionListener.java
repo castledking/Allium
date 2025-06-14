@@ -58,7 +58,6 @@ public class SlimeCushionListener implements Listener {
         this.playSound = playSound;
 
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        plugin.getLogger().info("SlimeCushionListener registered with radius: " + checkRadius);
     }
 
     /**

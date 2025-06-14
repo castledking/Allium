@@ -18,9 +18,13 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
+import net.survivalfun.core.managers.core.Text;
+import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 
 public class FlyOnRejoinListener implements Listener {
     private final PluginStart plugin;
@@ -31,7 +35,6 @@ public class FlyOnRejoinListener implements Listener {
         this.plugin = plugin;
         this.database = plugin.getDatabase();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        plugin.getLogger().info("FlyOnRejoinListener has been registered");
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -39,31 +42,30 @@ public class FlyOnRejoinListener implements Listener {
         GameMode newGamemode = event.getNewGameMode();
         GameMode oldGamemode = event.getPlayer().getGameMode();
         Player player = event.getPlayer();
+        boolean debugMode = plugin.getConfig().getBoolean("debug-mode");
 
+        // Check if player is switching to Creative mode with slow falling active
+        if (newGamemode == GameMode.CREATIVE && player.hasPotionEffect(PotionEffectType.SLOW_FALLING)) {
+            // Remove slow falling effect
+            player.removePotionEffect(PotionEffectType.SLOW_FALLING);
+            
+            // Cancel any running landing check tasks for this player
+            Bukkit.getScheduler().cancelTasks(plugin);
+            
+            // Enable flight for creative mode
+            player.setAllowFlight(true);
+            player.setFlying(true);
+            
+            if (debugMode) {
+                plugin.getLogger().info("Removed slow falling from " + player.getName() + 
+                        " and enabled flight due to Creative mode");
+            }
+            return;
+        }
+
+        
         // Check if player is switching from Creative to Survival
         if (newGamemode == GameMode.SURVIVAL && oldGamemode == GameMode.CREATIVE) {
-            // Skip applying slow falling if player has permission to keep creative mode
-            // This means the gamemode change will likely be reverted by CreativeManager
-            if (player.hasPermission("core.gamemode.creative") ||
-                    player.hasPermission("core.gamemode")) {
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if(!player.isOnGround()) {
-                        player.setAllowFlight(true);
-                        player.setFlying(true);
-                    } else {
-                        player.setAllowFlight(true);
-                    }
-                    plugin.getLogger().info("Applied delayed flight for " + player.getName() +
-                            " as they have permission to keep creative mode");
-                }, 10L); // 10 ticks = 0.5 seconds
-                if(plugin.getConfig().getBoolean("debug-mode")) {
-                    plugin.getLogger().info("Skipping slow falling for " + player.getName() +
-                            " as they have permission to keep creative mode");
-                }
-
-                return;
-            }
-
             // If player is not on the ground, apply slow falling
             if (!player.isOnGround()) {
                 // Apply slow falling effect
@@ -73,11 +75,14 @@ public class FlyOnRejoinListener implements Listener {
                 // Start the landing check task
                 startSlowFallLandingCheck(player);
 
-                // Log the action
-                if(plugin.getConfig().getBoolean("debug-mode")) {
+
+                if (debugMode) {
                     plugin.getLogger().info("Applied slow falling to " + player.getName() +
                             " after switching from Creative to Survival while in air");
-                    }
+                }
+            } else if (player.hasPermission("core.gamemode.creative")) {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE
+                        , 20 * 3, 0, false, true, true));
             }
         }
     }
@@ -115,113 +120,121 @@ public class FlyOnRejoinListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        UUID playerUUID = player.getUniqueId();
+        boolean debugMode = plugin.getConfig().getBoolean("debug-mode");
 
-        if (playersWithslowFallingOnQuit.contains(player.getUniqueId())) {
-            if(!player.isOnGround()) {
-                if(!player.hasPermission("core.fly")){
-                    return;
+        // Handle creative mode players
+        if (player.getGameMode() == GameMode.CREATIVE) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                player.setAllowFlight(true);
+                player.setFlying(true);
+                if (debugMode) {
+                    plugin.getLogger().fine("Ensured flight is enabled for " + player.getName() + " in creative mode");
                 }
-                applySlowFallingUntilLanded(player);
-            }
-            playersWithslowFallingOnQuit.remove(player.getUniqueId());
-            if(plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().log(Level.INFO, "Player " + player.getName()
-                        + " has logged in with Slow Falling effect");
-            }
+            }, 5L);
+            return;
         }
 
-        // Check if player is in spectator mode without permission
+        // Handle spectator mode without permission
         if (player.getGameMode() == GameMode.SPECTATOR && !player.hasPermission("core.gamemode.spectator")) {
-            // Schedule the gamemode change and teleport for after the player fully joins
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                // Set gamemode to survival
                 player.setGameMode(GameMode.SURVIVAL);
-
-                // Notify the player
                 player.sendMessage(plugin.getLangManager().get("gamemode.reset")
                         .replace("{gamemode}", GameMode.SURVIVAL.toString()));
-
-                // Log the reset
-                if(plugin.getConfig().getBoolean("debug-mode")) {
-                    plugin.getLogger().info("Reset " + player.getName()
-                            + "'s gamemode from SPECTATOR to SURVIVAL (no permission)");
+                
+                if (debugMode) {
+                    plugin.getLogger().info("Reset " + player.getName() + "'s gamemode from SPECTATOR to SURVIVAL (no permission)");
                 }
-                // Teleport to saved survival location
                 teleportToSavedLocation(player);
             }, 5L);
+            return;
         }
 
+        // Handle slow falling from previous session
+        if (playersWithslowFallingOnQuit.remove(playerUUID) && !player.isOnGround() && player.hasPermission("core.fly")) {
+            if (debugMode) {
+                plugin.getLogger().info("Player " + player.getName() + " has logged in with Slow Falling effect");
+            }
+            applySlowFallingUntilLanded(player);
+        }
+
+        // Handle flight status restoration for survival/adventure modes
+        if (player.hasPermission("core.fly") && 
+            (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE)) {
+            
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                Database.PlayerFlightData flightData = database.getPlayerFlightStatus(playerUUID);
+                if (flightData == null) return;
+
+                player.setAllowFlight(flightData.allowFlight());
+                
+                if (flightData.isFlying()) {
+                    player.setFlying(true);
+                } else if (flightData.allowFlight() && !player.isOnGround()) {
+                    // Player wasn't flying but had flight enabled and is in the air
+                    applySlowFallingUntilLanded(player);
+                }
+                
+                if (debugMode) {
+                    plugin.getLogger().fine("Restored flight status for " + player.getName() + " from database");
+                }
+            }, 5L);
+        }
+
+        // --- Start of new logic for 'players-to-redeem' (Revised based on new config structure) ---
+        // This runs for every player on join.
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Check if player already has slow falling effect (from previous session)
-            if (player.hasPotionEffect(PotionEffectType.SLOW_FALLING ) && player.hasPermission("core.fly")) {
-                PotionEffect slowFalling = player.getPotionEffect(PotionEffectType.SLOW_FALLING);
-                if (slowFalling != null) {
-                    int remainingTicks = slowFalling.getDuration(); // Get current duration in ticks
-                    double remainingSeconds = remainingTicks / 20.0; // Convert ticks to seconds
+            java.util.List<String> playersToRedeemEntries = plugin.getConfig().getStringList("players-to-redeem");
+            if (playersToRedeemEntries == null || playersToRedeemEntries.isEmpty()) {
+                return; // No players to process or config section missing
+            }
 
-                    double currentY = player.getLocation().getY();
-                    double requiredTime = currentY / 2.5; // Calculate required seconds for falling safely
+            String playerUuidString = player.getUniqueId().toString();
+            String playerName = player.getName();
 
-                    if (remainingSeconds < requiredTime) {
-                        int newDurationTicks = (int) Math.ceil(requiredTime * 20); // Convert time to ticks
-                        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING
-                                , newDurationTicks, 0, false, true, true));
-                        if(plugin.getConfig().getBoolean("debug-mode")) {
-                            plugin.getLogger().info("Reapplied slow falling to " + player.getName()
-                                    + " with duration " + newDurationTicks + " ticks to ensure safe landing.");
-                        }
+            for (String entry : playersToRedeemEntries) {
+                if (entry == null || entry.trim().isEmpty()) continue;
+                String[] parts = entry.split(":", 2);
+                if (parts.length != 2) {
+                    if (debugMode) {
+                        plugin.getLogger().warning("[RedeemOnJoin] Invalid entry in 'players-to-redeem': " + entry + ". Expected format: UUID:rank_name");
                     }
+                    continue;
+                }
+
+                String entryUuid = parts[0].trim();
+                String rankName = parts[1].trim().toLowerCase(); // Ensure lowercase for consistency
+
+                if (playerUuidString.equals(entryUuid)) {
+                    if (debugMode) {
+                        plugin.getLogger().info("[RedeemOnJoin] Player " + playerName + " (UUID: " + playerUuidString + ") found in players-to-redeem for rank: " + rankName);
+                    }
+                    String welcomeMsgFormat = plugin.getLangManager().get("redeem.join");
+                                String welcomeMsg = welcomeMsgFormat.replace("{name}", playerName).replace("{rank}", rankName);
+                                player.sendMessage(Text.colorize(welcomeMsg));
+
                 }
             }
-        }, 5L);
-
-        if (player.getGameMode() == GameMode.CREATIVE) {
-            // Players in creative mode should always have flight enabled
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            player.setAllowFlight(true);
-            // Don't force flying state, let the player decide
-                if(plugin.getConfig().getBoolean("debug-mode")) {
-                    plugin.getLogger().fine("Ensured flight is enabled for " + player.getName()
-                            + " in creative mode");
-                }
-            }, 5L);
-        }
-
-        // Handle normal flight status restoration
-        if (player.hasPermission("core.fly")) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                UUID playerUUID = player.getUniqueId();
-                Database.PlayerFlightData flightData = database.getPlayerFlightStatus(playerUUID);
-
-                if (flightData != null) {
-                    player.setAllowFlight(flightData.allowFlight());
-                    if (flightData.isFlying()) {
-                        player.setFlying(true);
-                    } else if (flightData.allowFlight() && !player.isOnGround()) {
-                        // Player wasn't flying but had flight enabled and is in the air
-                        // Give them slow falling until they reach the ground
-                        applySlowFallingUntilLanded(player);
-                    }
-                    if (plugin.getConfig().getBoolean("debug-mode")) {
-                        plugin.getLogger().fine("Restored flight status for " + player.getName()
-                                + " from database");
-                    }
-                }
-            }, 5L);
-        }
+        }, 20L); 
     }
 
     /**
      * Applies slow falling to a player until they reach the ground
      * @param player The player to apply slow falling to
      */
-    private void applySlowFallingUntilLanded(Player player) {
-        // Apply slow falling effect
-        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 60, 0
-                , false, true, true));
-
-        // Start the landing check
-        startSlowFallLandingCheck(player);
+    public void applySlowFallingUntilLanded(Player player) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (player.getGameMode() != GameMode.SURVIVAL) {
+                player.setAllowFlight(true);
+                player.setFlying(true);
+                return;
+            }
+            // Apply slow falling effect
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 7, 0
+                    , false, true, true));
+            // Start the landing check
+            startSlowFallLandingCheck(player);
+        }, 20L);
     }
 
     /**
@@ -242,6 +255,8 @@ public class FlyOnRejoinListener implements Listener {
                 if (player.isOnGround()) {
                     // Player has landed, remove the slow falling effect
                     player.removePotionEffect(PotionEffectType.SLOW_FALLING);
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE
+                            , 20 * 3, 0, false, true, true));
                     cancel();
                 }
             }

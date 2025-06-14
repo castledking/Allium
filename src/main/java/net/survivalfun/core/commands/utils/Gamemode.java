@@ -5,12 +5,11 @@ import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.core.Text;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
+import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,6 +48,47 @@ public class Gamemode implements CommandExecutor {
         commandAliases.put("adventure", GameMode.ADVENTURE);
         commandAliases.put("spectator", GameMode.SPECTATOR);
     }
+    /**
+     * Registers all gamemode command aliases with the plugin.
+     */
+    public void register() {
+        // Register the main gamemode command if it exists in plugin.yml
+        PluginCommand gamemodeCmd = plugin.getCommand("gamemode");
+        if (gamemodeCmd != null) {
+            gamemodeCmd.setExecutor(this);
+        }
+
+        try {
+            // Get the server's command map via reflection
+            final Field commandMapField = Bukkit.getServer().getClass().getDeclaredField("commandMap");
+            commandMapField.setAccessible(true);
+            CommandMap commandMap = (CommandMap) commandMapField.get(Bukkit.getServer());
+
+            // Register all aliases in the commandAliases map
+            for (String alias : commandAliases.keySet()) {
+                GameMode mode = commandAliases.get(alias);
+
+                // Create a new command for each alias
+                Command newCommand = new Command(alias) {
+                    @Override
+                    public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+                        return Gamemode.this.onCommand(sender, this, commandLabel, args);
+                    }
+                };
+
+                // Set command properties
+                newCommand.setDescription("Switches to " + mode.name().toLowerCase() + " mode");
+
+                // Register command with the server's command map
+                commandMap.register(plugin.getName(), newCommand);
+            }
+        } catch (Exception e) {
+            plugin.getLogger().severe("Failed to register commands: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
@@ -65,7 +105,7 @@ public class Gamemode implements CommandExecutor {
         // Standard gamemode command handling
         if (args.length == 0 || args.length > 2) {
             sender.sendMessage(lang.get("command-usage")
-                    .replace("{cmd}", label)
+                    .replace("{cmd}", "gm")
                     .replace("{args}", "<mode> [player]"));
             return true;
         }
@@ -105,7 +145,7 @@ public class Gamemode implements CommandExecutor {
             // Attempt to find target player
             target = Bukkit.getPlayer(args[1]);
             if (target == null) {
-                Text.sendErrorMessage(sender, "player-not-found", lang, "{player}", args[1]);
+                Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[1]);
                 return true;
             }
         }
@@ -129,7 +169,7 @@ public class Gamemode implements CommandExecutor {
             if (!(sender instanceof Player)) {
                 sender.sendMessage(lang.get("command-usage")
                         .replace("{cmd}", label)
-                        .replace("{args}", "<mode> [player]"));
+                        .replace("{args}", "[player]"));
                 return true;
             }
             target = (Player) sender;
@@ -145,7 +185,7 @@ public class Gamemode implements CommandExecutor {
 
             target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                Text.sendErrorMessage(sender, "player-not-found", lang, "{player}", args[0]);
+                Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                 return true;
             }
         }
@@ -153,7 +193,7 @@ public class Gamemode implements CommandExecutor {
         else {
             sender.sendMessage(lang.get("command-usage")
                     .replace("{cmd}", label)
-                    .replace("{args}", "<mode> [player]"));
+                    .replace("{args}", "[player]"));
             return true;
         }
 
@@ -178,12 +218,26 @@ public class Gamemode implements CommandExecutor {
 
     private void setGamemode(Player player, GameMode mode, CommandSender sender) {
         player.setGameMode(mode);
-
+        
         if (sender.equals(player)) {
-            sender.sendMessage(lang.get("gamemode.switch").replace("{mode}", mode.toString()));
+            // For self, remove the name placeholder
+            sender.sendMessage(lang.get("gamemode.switch")
+                .replace("{name}", player.getName())
+                .replace("{mode}", mode.toString()));
         } else {
-            sender.sendMessage(lang.get("gamemode.switch-other").replace("{name}", player.getName()).replace("{gamemode}", mode.toString()));
-            player.sendMessage(lang.get("gamemode.switch").replace("{mode}", mode.toString()));
+            // For others, show the player's name
+            sender.sendMessage(lang.get("gamemode.switch")
+                .replace("{name}", player.getName())
+                .replace("{mode}", mode.toString()));
+                
+            // Also notify the player
+            String message = lang.get("gamemode.switch")
+            .replaceAll("\\s+([&§][0-9a-fk-orA-FK-OR])*\\{name\\}", "")
+            .replace("{mode}", mode.toString());
+            player.sendMessage(message);
         }
     }
+
+
+
 }

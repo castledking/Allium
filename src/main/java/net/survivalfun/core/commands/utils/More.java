@@ -1,6 +1,7 @@
 package net.survivalfun.core.commands.utils;
 
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -25,33 +26,49 @@ public class More implements CommandExecutor {
             plugin.getLogger().log(Level.SEVERE, "LanguageManager not initialized when executing GC command");
             return true;
         }
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("§cThis command can only be used by players.");
-            return true;
+        Player target;
+        if (sender instanceof Player player) {
+            if (!player.hasPermission("core.more")) {
+                player.sendMessage(lang.get("no-permission"));
+                return true;
+            }
+            target = player;
+        } else {
+            // Console or other sender: require player name as first argument
+            if (args.length == 0) {
+                sender.sendMessage("Usage: /more <player>");
+                return true;
+            }
+            target = org.bukkit.Bukkit.getPlayer(args[0]);
+            if (target == null || !target.isOnline()) {
+                Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", args[0]);
+                return true;
+            }
         }
 
-        if (!player.hasPermission("core.more")) {
-            player.sendMessage(lang.get("no-permission"));
-            return true;
-        }
-
-        ItemStack itemInHand = player.getInventory().getItemInMainHand();
-
+        ItemStack itemInHand = target.getInventory().getItemInMainHand();
         if (itemInHand.getType().isAir()) {
-            player.sendMessage("§cYou must be holding an item to use this command.");
+            Text.sendErrorMessage(sender, "hold-item", lang, "{modify}", "more");
             return true;
         }
 
         int maxStackSize = itemInHand.getMaxStackSize();
-
         if (maxStackSize <= 0) {
-            player.sendMessage("§cThis item cannot be stacked.");
+            if (sender instanceof Player && sender.equals(target)) {
+                target.sendMessage("§cThis item cannot be stacked.");
+            } else {
+                sender.sendMessage("§cThis item cannot be stacked.");
+            }
             return true;
         }
         itemInHand.setAmount(maxStackSize);
-        player.getInventory().setItemInMainHand(itemInHand);
-        player.sendMessage("§aGiving you " + maxStackSize + " of the item.");
-
+        target.getInventory().setItemInMainHand(itemInHand);
+        if (sender instanceof Player && sender.equals(target)) {
+            target.sendMessage("§aGiving you " + maxStackSize + " of the item.");
+        } else {
+            sender.sendMessage("§aGiving " + target.getName() + " " + maxStackSize + " of the item in their hand.");
+            target.sendMessage("§aYour held item has been stacked to " + maxStackSize + " by an admin.");
+        }
         return true;
     }
 }

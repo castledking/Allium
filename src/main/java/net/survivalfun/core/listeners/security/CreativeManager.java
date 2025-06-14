@@ -2,29 +2,44 @@ package net.survivalfun.core.listeners.security;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.Database;
+import net.survivalfun.core.managers.DB.PlayerInventories;
+
+import org.bukkit.event.entity.PlayerDeathEvent; // Added for handling player death inventory
+import org.bukkit.event.player.PlayerInteractAtEntityEvent; // For entity interactions like armor stands and item frames
 import net.survivalfun.core.managers.core.Text;
+
+// Added for onPlayerDeath
 import org.bukkit.*;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.ItemFrame;
+import org.bukkit.entity.Painting;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.entity.EntityShootBowEvent;
+import org.bukkit.event.entity.PotionSplashEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.logging.Level;
 
 public class CreativeManager implements Listener {
 
@@ -46,7 +61,6 @@ public class CreativeManager implements Listener {
         this.lastErrorMessageTime = new HashMap<>();
         loadBlacklists();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        plugin.getLogger().info("CreativeModeInventoryManager has been registered");
     }
 
     private boolean isOnErrorCooldown(Player player){
@@ -139,6 +153,10 @@ public class CreativeManager implements Listener {
         return player.hasPermission("core.gamemode.creative.drop");
     }
 
+    private boolean canUse(Player player) {
+        return player.hasPermission("core.gamemode.creative.use");
+    }
+
     /**
      * Creates a "fizzle" effect at the given location to indicate a failed action.
      */
@@ -168,19 +186,306 @@ public class CreativeManager implements Listener {
         );
     }
 
+    // --- START OF NEW INTERACTION LISTENERS ---
+
+    // Potion drinking
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerDrinkPotion(PlayerInteractEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) return;
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+        if (canInteract(player)) return;
+        if (event.getItem().getType() != Material.POTION && event.getAction().isRightClick()) return;
+
+        event.setCancelled(true);
+        sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "drink that");
+        createFizzleEffect(player.getLocation());
+    }
+
+    // Arrow shooting (bow, crossbow)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityShootBow(EntityShootBowEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+        if (canInteract(player)) return;
+
+        event.setCancelled(true);
+        sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "shoot that");
+        createFizzleEffect(player.getEyeLocation()); // Fizzle from player's view
+    }
+
+    // Firework use
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerUseFirework(PlayerInteractEvent event) { // Re-uses PlayerInteractEvent
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+
+        // Check for right-click action with a firework
+        if (event.getAction().isRightClick() && event.hasItem() && event.getItem().getType() == Material.FIREWORK_ROCKET) {
+            if (canInteract(player)) return;
+
+            event.setCancelled(true);
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "use fireworks");
+            createFizzleEffect(player.getLocation());
+        }
+    }
+
+    // Prevent breaking hanging entities (item frames, paintings)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onHangingBreakByEntity(HangingBreakByEntityEvent event) {
+        if (!(event.getRemover() instanceof Player player)) {
+            return;
+        }
+        if (player.getGameMode() != GameMode.CREATIVE) {
+            return;
+        }
+        if (!canInteract(player)) {
+            event.setCancelled(true);
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "break that");
+            createFizzleEffect(player.getLocation());
+        }
+    }
+
+    // Prevent rotating items in item frames in creative without 'canInteract' permission
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerRotateItemFrame(PlayerInteractEntityEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.CREATIVE) {
+            return;
+        }
+
+        if (event.getRightClicked() instanceof ItemFrame) { // Check if it's an ItemFrame
+            if (!canInteract(player)) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(
+                        player,
+                        "creative-manager.restrict",
+                        plugin.getLangManager(),
+                        "{action}", "rotate items in frames"
+                );
+                createFizzleEffect(player.getLocation());
+            }
+        }
+    }
+
+    // Prevent placing paintings in creative without 'canInteract' permission
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPaintingPlaceCreative(HangingPlaceEvent event) {
+        Player player = event.getPlayer();
+        if (player == null || player.getGameMode() != GameMode.CREATIVE) {
+            return;
+        }
+
+        if (event.getEntity() instanceof Painting) {
+            if (!canInteract(player)) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(
+                        player,
+                        "creative-manager.restrict",
+                        plugin.getLangManager(),
+                        "{action}", "place paintings"
+                );
+                createFizzleEffect(player.getLocation());
+            }
+        }
+    }
+
+    // Prevent interacting with armor stands in creative without 'canInteract' permission
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onArmorStandInteractCreative(PlayerInteractAtEntityEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.CREATIVE) {
+            return;
+        }
+
+        if (event.getRightClicked().getType() == EntityType.ARMOR_STAND) {
+            if (!canInteract(player)) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(
+                        player,
+                        "creative-manager.restrict",
+                        plugin.getLangManager(),
+                        "{action}", "interact with armor stands"
+                );
+                createFizzleEffect(player.getLocation());
+            }
+        }
+    }
+
+    // Prevent taking flowers from flower pots in creative without 'canInteract' permission
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onFlowerPotInteractCreative(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.CREATIVE) {
+            return;
+        }
+
+        // Covers both placing into and taking from flower pots
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null && event.getClickedBlock().getType() == Material.FLOWER_POT) {
+            if (!canInteract(player)) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(
+                        player,
+                        "creative-manager.restrict",
+                        plugin.getLangManager(),
+                        "{action}", "interact with flower pots"
+                );
+                createFizzleEffect(player.getLocation());
+            }
+        }
+    }
+
+    public void onPlayerCastFishingRod(PlayerFishEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+
+        // Check if the player is attempting to cast the rod (bobber thrown)
+        if (event.getState() == PlayerFishEvent.State.FISHING) {
+            if (canInteract(player)) return;
+
+            event.setCancelled(true);
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "use fishing rods");
+            createFizzleEffect(player.getLocation()); // Or event.getHook().getLocation() if preferred
+        }
+    }
+
+    // Splash potions and lingering potions
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPotionSplash(PotionSplashEvent event) {
+        if (!(event.getEntity().getShooter() instanceof Player player)) return;
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+        if (canInteract(player)) return;
+
+        event.setCancelled(true);
+        sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw potions");
+        createFizzleEffect(player.getLocation());
+    }
+
+    // Trident/Ender pearl throw
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onProjectileLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity().getShooter() instanceof Player player)) return;
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+
+        if (event.getEntityType() == EntityType.TRIDENT) {
+            if (canInteract(player)) return;
+            event.setCancelled(true);
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw tridents");
+            createFizzleEffect(player.getLocation());
+        }
+        if (event.getEntityType() == EntityType.ENDER_PEARL) {
+            if (canInteract(player)) return;
+            event.setCancelled(true);
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw ender pearls");
+            createFizzleEffect(player.getLocation());
+        }
+    }
+
+    // Prevent managing inventory in creative without 'canUse' permission, with exceptions for destroying items
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onCreativeInventoryManagement(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        if (player.getGameMode() != GameMode.CREATIVE) {
+            return;
+        }
+
+        // --- Item Destruction Logic ---
+        // This must happen BEFORE the canUse permission check.
+        Inventory clickedInventory = event.getClickedInventory();
+        ItemStack itemOnCursor = player.getItemOnCursor(); // Use player's cursor item
+
+        // Case 1: Clicking the "destroy item" slot (slot -999) in the creative inventory GUI with an item on cursor.
+        // The destroy slot is part of the CREATIVE inventory type.
+        if (event.getSlot() == -999 && clickedInventory != null && clickedInventory.getType() == InventoryType.CREATIVE) {
+            if (itemOnCursor != null && itemOnCursor.getType() != Material.AIR) {
+                // Bukkit.getLogger().info("[CreativeManager] Allowing item destruction via X slot (slot -999).");
+                return; // Allow this action, do not proceed to permission checks
+            }
+        }
+
+        // Case 2: Clicking an empty slot within the *main creative item panel* (not player inventory part)
+        // with an item on cursor. This is how players "drop" items into the void in the creative GUI.
+        // The clicked slot must be part of the CREATIVE inventory type and be empty.
+        if (clickedInventory != null && clickedInventory.getType() == InventoryType.CREATIVE &&
+            (event.getCurrentItem() == null || event.getCurrentItem().getType() == Material.AIR)) {
+            if (itemOnCursor != null && itemOnCursor.getType() != Material.AIR) {
+                // Bukkit.getLogger().info("[CreativeManager] Allowing item destruction via empty creative panel slot.");
+                return; // Allow this action, do not proceed to permission checks
+            }
+        }
+        // --- End of Item Destruction Logic ---
+
+        // If the player does not have the 'canUse' permission, block other inventory interactions.
+        if (!canUse(player)) {
+            event.setCancelled(true); // Cancel the event first
+
+            // Basic anti-duplication: clear cursor and update inventory on the next tick.
+            // This attempts to revert client-side assumptions about the click.
+            org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                player.setItemOnCursor(null);
+                player.updateInventory();
+            });
+
+            sendErrorMessageWithCooldown(
+                    player,
+                    "creative-manager.restrict",
+                    plugin.getLangManager(),
+                    "{action}", "manage your inventory"
+            );
+            createFizzleEffect(player.getLocation());
+            return; // Important to return after handling a restricted action
+        }
+    }
+
+    // Equip armor in creative via inventory click
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerEquipArmorCreative(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+
+        if (event.getSlotType() == InventoryType.SlotType.ARMOR) {
+            if (event.getClickedInventory() != null && event.getClickedInventory().getType() == InventoryType.PLAYER) {
+                if (canInteract(player)) return;
+
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "equip armor");
+                createFizzleEffect(player.getLocation());
+            }
+        }
+    }
+
+    // Prevent right-clicking any mob in creative without permission
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerInteractEntityCreative(PlayerInteractEntityEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+        if (canInteract(player)) return;
+
+        // Check if the right-clicked entity is a LivingEntity (covers most mobs)
+        if (event.getRightClicked() instanceof org.bukkit.entity.LivingEntity) {
+            event.setCancelled(true);
+            String entityName = event.getRightClicked().getType().name().toLowerCase().replace("_", " ");
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "interact with that " + entityName);
+            createFizzleEffect(event.getRightClicked().getLocation());
+        }
+    }
+    // --- END OF NEW INTERACTION LISTENERS ---
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerDamageEntity(EntityDamageByEntityEvent event) {
         if(event.getDamager() instanceof Player) {
             Player player = (Player) event.getDamager();
             if (player.getGameMode() != GameMode.CREATIVE) return;
             if (canInteract(player)) return;
+            String entityName = event.getEntity().getType().name().toLowerCase().replace("_", " ");
             event.setCancelled(true);
             // Send error message to player
             sendErrorMessageWithCooldown(
                     player,
                     "creative-manager.restrict",
                     plugin.getLangManager(),
-                    "{action}", "hurt that " + event.getEntity().getType().name().toLowerCase()
+                    "{action}", "hurt that " + entityName
             );
             createFizzleEffect(event.getEntity().getLocation());
         }
@@ -290,24 +595,37 @@ public class CreativeManager implements Listener {
                     ", Creative: " + hasCreativePermission +
                     ", Spectator: " + hasSpectatorPermission + ")");
 
-            if (shouldKeepGamemode) {
-                // Player has permission to keep their gamemode, so we'll save it
-                saveInventoryDirectly(playerUUID, playerName, currentGameMode,
-                        inventoryContents, armorContents, offhandItem);
+            if (currentGameMode == GameMode.SURVIVAL) {
+                // Always save survival inventory on quit
+                plugin.getLogger().info(String.format("[CreativeManager] Async Quit Save (%s): Starting for %s (UUID: %s), GameMode: %s. Inv items: %d, Armor items: %d, Offhand: %s",
+                    playerName, playerName, playerUUID, currentGameMode,
+                    inventoryContents != null ? inventoryContents.length : -1,
+                    armorContents != null ? armorContents.length : -1,
+                    offhandItem != null && offhandItem.getType() != Material.AIR ? "present" : "empty"));
 
-                plugin.getLogger().info("Player " + playerName + " has permission to keep their gamemode.");
+                saveInventoryDirectly(playerUUID, playerName, currentGameMode, inventoryContents, armorContents, offhandItem);
+
+                plugin.getLogger().info(String.format("[CreativeManager] Async Quit Save (%s): Finished saveInventoryDirectly call.", playerName));
             } else if (currentGameMode == GameMode.CREATIVE || currentGameMode == GameMode.SPECTATOR) {
-                // Save their current inventory before changing gamemode
+                // Always save the inventory they had in Creative or Spectator mode, so it's not lost.
                 saveInventoryDirectly(playerUUID, playerName, currentGameMode,
                         inventoryContents, armorContents, offhandItem);
 
-                // Store the player's UUID and intended gamemode in the database for reset on next login
-                storeGameModeReset(playerUUID);
-
-                // Log the gamemode reset for audit purposes
-                plugin.getLogger().info("Player " + playerName + " logged out with " +
-                        currentGameMode.name() + " gamemode without permission to keep it. " +
-                        "Their gamemode will be reset to SURVIVAL on next login.");
+                if (shouldKeepGamemode) {
+                    // Player has permission to keep their Creative/Spectator mode
+                    if (plugin.getConfig().getBoolean("debug-mode", false)) {
+                        plugin.getLogger().info("[CreativeManager] Player " + playerName + " quit in " + currentGameMode + " with permission. Inventory saved.");
+                    }
+                } else {
+                    // Player does NOT have permission to keep Creative/Spectator mode.
+                    // Their C/S inventory is saved (above). Flag them for reset to SURVIVAL on next login.
+                    // When they rejoin, checkAndApplyGameModeReset will set them to SURVIVAL,
+                    // and then onPlayerJoin will load their SURVIVAL inventory.
+                    storeGameModeReset(playerUUID);
+                    if (plugin.getConfig().getBoolean("debug-mode", false)) {
+                        plugin.getLogger().info("[CreativeManager] Player " + playerName + " quit in " + currentGameMode + " without permission. Inventory saved. Flagged for reset to SURVIVAL.");
+                    }
+                }
             }
 
             // Clean up cached permissions
@@ -318,10 +636,23 @@ public class CreativeManager implements Listener {
         }, 1L);
     }
 
-    // Add this to track gamemode changes initiated by your plugin
-    public void setPlayerGamemode(Player player, GameMode gameMode) {
-        player.setGameMode(gameMode);
-        lastKnownGamemodes.put(player.getUniqueId(), gameMode);
+    @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+
+        // Only handle if the player was in survival mode
+        if (player.getGameMode() == GameMode.SURVIVAL) {
+            // Schedule a task to save the (now empty) survival inventory after 1 tick
+            // This delay helps ensure Minecraft's death processing (inventory clearing) has completed
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (player.isOnline()) { // Ensure player is still online
+                    if (plugin.getConfig().getBoolean("debug-mode")) {
+                        plugin.getLogger().info("Player " + player.getName() + " died in survival. Saving their (now empty) inventory.");
+                    }
+                    saveCurrentInventory(player, GameMode.SURVIVAL);
+                }
+            }, 1L);
+        }
     }
 
     // Add this to your onGameModeChange event handler
@@ -383,85 +714,8 @@ public class CreativeManager implements Listener {
                     }
                 }, 2L);
             }
+
         }
-    }
-
-    // Modify the periodic check task to respect the cooldown
-    private void startGamemodeCheckTask() {
-        // Cancel any existing task
-        if (gamemodeCheckTask != null) {
-            gamemodeCheckTask.cancel();
-        }
-
-        // Start a new task that runs every 5 seconds
-        gamemodeCheckTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            long currentTime = System.currentTimeMillis();
-
-            // Clean up old restoration records first
-            Iterator<Map.Entry<UUID, Long>> iterator = recentRestorations.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<UUID, Long> entry = iterator.next();
-                if (currentTime - entry.getValue() > RESTORATION_COOLDOWN) {
-                    iterator.remove();
-                }
-            }
-
-            // Now check each player
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                UUID playerUUID = player.getUniqueId();
-
-                // Skip players who had a recent restoration
-                if (recentRestorations.containsKey(playerUUID)) {
-                    continue; // Skip this player, they had a recent restoration
-                }
-
-                // Check if player should be in creative mode
-                if (player.hasPermission("core.gamemode.creative") &&
-                        player.getGameMode() != GameMode.CREATIVE) {
-
-                    // Get the last known gamemode for this player
-                    GameMode lastKnownGamemode = getLastKnownGamemode(playerUUID);
-
-                    if (lastKnownGamemode == GameMode.CREATIVE) {
-                        // Record this restoration BEFORE we do it
-                        recentRestorations.put(playerUUID, currentTime);
-
-                        player.setGameMode(GameMode.CREATIVE);
-
-                        if(plugin.getConfig().getBoolean("debug-mode")) {
-
-                            plugin.getLogger().info("Restored " + player.getName() +
-                                    "'s gamemode to CREATIVE during periodic check");
-                        }
-
-                        // Send a message to the player
-                        player.sendMessage(ChatColor.GREEN + "Your gamemode has been restored to creative mode.");
-                    }
-                }
-
-                // Similar check for spectator mode
-                if (player.hasPermission("core.gamemode.spectator") &&
-                        player.getGameMode() != GameMode.SPECTATOR) {
-
-                    GameMode lastKnownGamemode = getLastKnownGamemode(playerUUID);
-
-                    if (lastKnownGamemode == GameMode.SPECTATOR) {
-                        // Record this restoration BEFORE we do it
-                        recentRestorations.put(playerUUID, currentTime);
-
-                        player.setGameMode(GameMode.SPECTATOR);
-                        if(plugin.getConfig().getBoolean("debug-mode")) {
-
-                            plugin.getLogger().info("Restored " + player.getName() +
-                                    "'s gamemode to SPECTATOR during periodic check");
-                        }
-
-                        // Send a message to the player
-                        player.sendMessage(ChatColor.GREEN + "Your gamemode has been restored to spectator mode.");
-                    }
-                }
-            }
-        }, 100L, 100L); // Check every 5 seconds (100 ticks)
     }
 
     // Add this method to detect the source plugin (as you already have)
@@ -475,7 +729,7 @@ public class CreativeManager implements Listener {
             if (plugin.equals(this.plugin)) continue;
 
             // Add the plugin's package prefix to our list
-            String mainClass = plugin.getDescription().getMain();
+            String mainClass = plugin.getPluginMeta().getMainClass();
             String packagePrefix = mainClass.substring(0, mainClass.lastIndexOf('.'));
             pluginPackagePrefixes.add(packagePrefix);
         }
@@ -489,7 +743,7 @@ public class CreativeManager implements Listener {
                 if (className.startsWith(prefix)) {
                     // Found a match, get the plugin instance
                     for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
-                        String mainClass = plugin.getDescription().getMain();
+                        String mainClass = plugin.getPluginMeta().getMainClass();
                         String packagePrefix = mainClass.substring(0, mainClass.lastIndexOf('.'));
 
                         if (className.startsWith(packagePrefix)) {
@@ -514,8 +768,14 @@ public class CreativeManager implements Listener {
     // New method to save inventory directly without using Player object
     private void saveInventoryDirectly(UUID playerUUID, String playerName, GameMode gameMode,
                                        ItemStack[] inventory, ItemStack[] armor, ItemStack offhand) {
+        plugin.getLogger().info(String.format("[CreativeManager] saveInventoryDirectly (%s): Entered. Player: %s (UUID: %s), Target GameMode: %s. Input Inv items: %d, Armor items: %d, Offhand: %s",
+                playerName, playerName, playerUUID, gameMode,
+                inventory != null ? inventory.length : -1,
+                armor != null ? armor.length : -1,
+                offhand != null && offhand.getType() != Material.AIR ? "present" : "empty"));
+
         // Get existing inventories from database
-        Database.PlayerInventories inventories = database.getPlayerInventories(playerUUID);
+        PlayerInventories inventories = database.getPlayerInventories(playerUUID);
 
         // Initialize inventory arrays
         ItemStack[] survivalInventory = null;
@@ -527,12 +787,12 @@ public class CreativeManager implements Listener {
 
         // If we have existing inventories, load them
         if (inventories != null) {
-            survivalInventory = inventories.getSurvivalInventory();
-            survivalArmor = inventories.getSurvivalArmor();
-            survivalOffhand = inventories.getSurvivalOffhand();
-            creativeInventory = inventories.getCreativeInventory();
-            creativeArmor = inventories.getCreativeArmor();
-            creativeOffhand = inventories.getCreativeOffhand();
+            survivalInventory = inventories.survivalInventory();
+            survivalArmor = inventories.survivalArmor();
+            survivalOffhand = inventories.survivalOffhand();
+            creativeInventory = inventories.creativeInventory();
+            creativeArmor = inventories.creativeArmor();
+            creativeOffhand = inventories.creativeOffhand();
         }
 
         // Update the appropriate inventory based on game mode
@@ -545,6 +805,17 @@ public class CreativeManager implements Listener {
             survivalArmor = armor;
             survivalOffhand = offhand;
         }
+
+        // Log contents just before saving to database
+        plugin.getLogger().info(String.format("[CreativeManager] saveInventoryDirectly (%s): Pre-DB Save State. Target Mode: %s", playerName, gameMode));
+        plugin.getLogger().info(String.format("  Survival Inv: %d items (isNull: %b), Armor: %d items (isNull: %b), Offhand: %s (isNull: %b)",
+                survivalInventory != null ? survivalInventory.length : -1, survivalInventory == null,
+                survivalArmor != null ? survivalArmor.length : -1, survivalArmor == null,
+                survivalOffhand != null && survivalOffhand.getType() != Material.AIR ? survivalOffhand.getType().name() : "empty", survivalOffhand == null));
+        plugin.getLogger().info(String.format("  Creative Inv: %d items (isNull: %b), Armor: %d items (isNull: %b), Offhand: %s (isNull: %b)",
+                creativeInventory != null ? creativeInventory.length : -1, creativeInventory == null,
+                creativeArmor != null ? creativeArmor.length : -1, creativeArmor == null,
+                creativeOffhand != null && creativeOffhand.getType() != Material.AIR ? creativeOffhand.getType().name() : "empty", creativeOffhand == null));
 
         // Save to database
         database.savePlayerInventories(
@@ -653,7 +924,7 @@ public class CreativeManager implements Listener {
         if (canUseContainers(player)) return;
 
         Inventory inventory = event.getInventory();
-        String title = event.getView().getTitle().toLowerCase();
+        String title = PlainTextComponentSerializer.plainText().serialize(event.getView().title()).toLowerCase();
 
         // List of restricted inventory types
         Set<InventoryType> restrictedTypes = new HashSet<>(Arrays.asList(
@@ -1028,45 +1299,60 @@ public class CreativeManager implements Listener {
     private void saveCurrentInventory(@NotNull Player player, @NotNull GameMode gameMode) {
         UUID playerUUID = player.getUniqueId();
         String playerName = player.getName();
+        
+        try {
+            // Get existing inventories from database
+            PlayerInventories inventories = database.getPlayerInventories(playerUUID);
+            
+            // Initialize with empty arrays instead of null
+            ItemStack[] survivalInventory = new ItemStack[0];
+            ItemStack[] survivalArmor = new ItemStack[0];
+            ItemStack survivalOffhand = null;
+            ItemStack[] creativeInventory = new ItemStack[0];
+            ItemStack[] creativeArmor = new ItemStack[0];
+            ItemStack creativeOffhand = null;
 
-        // Get existing inventories from database
-        Database.PlayerInventories inventories = database.getPlayerInventories(playerUUID);
+            // If we have existing inventories, load them
+            if (inventories != null) {
+                // Use the getter methods that handle null checks
+                survivalInventory = inventories.getSurvivalInventory();
+                survivalArmor = inventories.getSurvivalArmor();
+                survivalOffhand = inventories.getSurvivalOffhand();
+                creativeInventory = inventories.getCreativeInventory();
+                creativeArmor = inventories.getCreativeArmor();
+                creativeOffhand = inventories.getCreativeOffhand();
+            }
 
-        // Initialize inventory arrays
-        ItemStack[] survivalInventory = null;
-        ItemStack[] survivalArmor = null;
-        ItemStack survivalOffhand = null;
-        ItemStack[] creativeInventory = null;
-        ItemStack[] creativeArmor = null;
-        ItemStack creativeOffhand = null;
+            // Get current inventory and make defensive copies
+            ItemStack[] currentContents = player.getInventory().getContents();
+            ItemStack[] currentArmor = player.getInventory().getArmorContents();
+            ItemStack currentOffhand = player.getInventory().getItemInOffHand();
 
-        // If we have existing inventories, load them
-        if (inventories != null) {
-            survivalInventory = inventories.getSurvivalInventory();
-            survivalArmor = inventories.getSurvivalArmor();
-            survivalOffhand = inventories.getSurvivalOffhand();
-            creativeInventory = inventories.getCreativeInventory();
-            creativeArmor = inventories.getCreativeArmor();
-            creativeOffhand = inventories.getCreativeOffhand();
+            // Update the appropriate inventory based on game mode
+            if (gameMode == GameMode.CREATIVE) {
+                creativeInventory = Arrays.copyOf(currentContents, currentContents.length);
+                creativeArmor = Arrays.copyOf(currentArmor, currentArmor.length);
+                creativeOffhand = currentOffhand != null ? currentOffhand.clone() : null;
+            } else {
+                survivalInventory = Arrays.copyOf(currentContents, currentContents.length);
+                survivalArmor = Arrays.copyOf(currentArmor, currentArmor.length);
+                survivalOffhand = currentOffhand != null ? currentOffhand.clone() : null;
+            }
+
+            // Save to database
+            database.savePlayerInventories(
+                    playerUUID, 
+                    playerName,
+                    survivalInventory, 
+                    survivalArmor, 
+                    survivalOffhand,
+                    creativeInventory, 
+                    creativeArmor, 
+                    creativeOffhand
+            );
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to save inventory for player: " + playerName, e);
         }
-
-        // Update the appropriate inventory based on game mode
-        if (gameMode == GameMode.CREATIVE) {
-            creativeInventory = player.getInventory().getContents();
-            creativeArmor = player.getInventory().getArmorContents();
-            creativeOffhand = player.getInventory().getItemInOffHand();
-        } else {
-            survivalInventory = player.getInventory().getContents();
-            survivalArmor = player.getInventory().getArmorContents();
-            survivalOffhand = player.getInventory().getItemInOffHand();
-        }
-
-        // Save to database
-        database.savePlayerInventories(
-                playerUUID, playerName,
-                survivalInventory, survivalArmor, survivalOffhand,
-                creativeInventory, creativeArmor, creativeOffhand
-        );
     }
 
     /**
@@ -1075,45 +1361,50 @@ public class CreativeManager implements Listener {
     private void loadInventory(@NotNull Player player, @NotNull GameMode gameMode) {
         UUID playerUUID = player.getUniqueId();
 
-        // Get inventories from database
-        Database.PlayerInventories inventories = database.getPlayerInventories(playerUUID);
+        try {
+            // Get inventories from database
+            PlayerInventories inventories = database.getPlayerInventories(playerUUID);
 
-        if (inventories == null) {
-            // No saved inventories, just clear their inventory
+            // Clear current inventory first
             clearInventory(player);
-            return;
-        }
 
-        // Clear current inventory first
-        clearInventory(player);
+            if (inventories == null) {
+                // No saved inventories, just clear their inventory
+                return;
+            }
 
-        // Load the appropriate inventory based on game mode
-        ItemStack[] inventory;
-        ItemStack[] armor;
-        ItemStack offhand;
-        if (gameMode == GameMode.CREATIVE) {
-            inventory = inventories.getCreativeInventory();
-            armor = inventories.getCreativeArmor();
-            offhand = inventories.getCreativeOffhand();
+            // Load the appropriate inventory based on game mode
+            ItemStack[] inventory;
+            ItemStack[] armor;
+            ItemStack offhand;
 
-        } else {
-            inventory = inventories.getSurvivalInventory();
-            armor = inventories.getSurvivalArmor();
-            offhand = inventories.getSurvivalOffhand();
+            if (gameMode == GameMode.CREATIVE) {
+                inventory = inventories.getCreativeInventory();
+                armor = inventories.getCreativeArmor();
+                offhand = inventories.getCreativeOffhand();
+            } else {
+                inventory = inventories.getSurvivalInventory();
+                armor = inventories.getSurvivalArmor();
+                offhand = inventories.getSurvivalOffhand();
+            }
 
-        }
-        if (inventory != null) {
-            player.getInventory().setContents(inventory);
-        }
-        if (armor != null) {
-            player.getInventory().setArmorContents(armor);
-        }
-        if (offhand != null) {
-            player.getInventory().setItemInOffHand(offhand);
-        }
+            // Apply the inventory
+            if (inventory != null && inventory.length > 0) {
+                player.getInventory().setContents(inventory);
+            }
+            if (armor != null && armor.length > 0) {
+                player.getInventory().setArmorContents(armor);
+            }
+            if (offhand != null) {
+                player.getInventory().setItemInOffHand(offhand);
+            }
 
-        // Update the player's inventory view
-        player.updateInventory();
+            // Update the player's inventory view
+            player.updateInventory();
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to load inventory for player: " + player.getName(), e);
+            clearInventory(player); // Clear inventory if loading failed
+        }
     }
 
     /**

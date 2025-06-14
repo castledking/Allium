@@ -70,21 +70,117 @@ public class Tab implements TabCompleter {
     }
 
 
-    private @Nullable List<String> getCoreSuggestions(@NotNull CommandSender sender
-            , @NotNull String @NotNull [] args) {
+    private @Nullable List<String> getCoreSuggestions(@NotNull CommandSender sender, @NotNull String @NotNull [] args) {
         List<String> suggestions = new ArrayList<>();
-        if (!sender.hasPermission("core.admin")) {
+        String currentArgToFilter;
+    
+        if (args.length == 0) { // Should not happen with Bukkit's tab completer, but good for safety
             return suggestions;
         }
+    
+        // Level 1: Subcommand names (e.g., /core <subcommand>)
         if (args.length == 1) {
-            suggestions.add("reload");
-            suggestions.add("debug");
-        } else if (args.length == 2) {
-            if (args[0].equalsIgnoreCase("reload")) {
-                suggestions.add("hide");
+            currentArgToFilter = args[0].toLowerCase();
+    
+            // Subcommands requiring core.admin
+            if (sender.hasPermission("core.admin")) {
+                if ("reload".startsWith(currentArgToFilter)) {
+                    suggestions.add("reload");
+                }
+                if ("debug".startsWith(currentArgToFilter)) {
+                    suggestions.add("debug");
+                }
+                if ("hideupdate".startsWith(currentArgToFilter)) {
+                    suggestions.add("hideupdate");
+                }
             }
+    
+            // Modalerts subcommand available to core.staff or core.admin
+            if (sender.hasPermission("core.staff") || sender.hasPermission("core.admin")) {
+                if ("modalerts".startsWith(currentArgToFilter)) {
+                    suggestions.add("modalerts");
+                }
+            }
+            return suggestions;
         }
-        return suggestions;
+    
+        String subCommand = args[0].toLowerCase();
+    
+        // Level 2: Arguments for subcommands (e.g., /core subcommand <arg1>)
+        if (args.length == 2) {
+            currentArgToFilter = args[1].toLowerCase();
+    
+            switch (subCommand) {
+                case "reload":
+                    if (sender.hasPermission("core.admin")) {
+                        if ("hide".startsWith(currentArgToFilter)) {
+                            suggestions.add("hide");
+                        }
+                    }
+                    break;
+                case "hideupdate":
+                    if (sender.hasPermission("core.admin")) {
+                        if ("all".startsWith(currentArgToFilter)) {
+                            suggestions.add("all");
+                        }
+                        // Assuming getOnlinePlayerNames(sender) is available in your Tab class
+                        for (String playerName : getOnlinePlayerNames(sender)) {
+                            if (playerName.toLowerCase().startsWith(currentArgToFilter)) {
+                                suggestions.add(playerName);
+                            }
+                        }
+                    }
+                    break;
+                case "modalerts":
+                    // For /core modalerts <arg1>
+                    // arg1 can be on/off (for self if staff/admin) or a player name (if admin)
+                    if (sender.hasPermission("core.staff") || sender.hasPermission("core.admin")) {
+                        if ("on".startsWith(currentArgToFilter)) {
+                            suggestions.add("on");
+                        }
+                        if ("off".startsWith(currentArgToFilter)) {
+                            suggestions.add("off");
+                        }
+                    }
+                    if (sender.hasPermission("core.admin")) {
+                        // Suggest player names for admins to target others
+                        // Assuming getOnlinePlayerNames(sender) is available
+                        for (String playerName : getOnlinePlayerNames(sender)) {
+                            if (playerName.toLowerCase().startsWith(currentArgToFilter)) {
+                                suggestions.add(playerName);
+                            }
+                        }
+                    }
+                    break;
+            }
+            return suggestions;
+        }
+    
+        // Level 3: Second argument for subcommands (e.g., /core subcommand arg1 <arg2>)
+        if (args.length == 3) {
+            currentArgToFilter = args[2].toLowerCase();
+    
+            if (subCommand.equals("modalerts")) {
+                // For /core modalerts <player> <on|off>
+                // This case is primarily for admins who have specified a player in args[1]
+                if (sender.hasPermission("core.admin")) {
+                    // A simple heuristic: if args[1] is not "on" or "off", it might be a player name.
+                    // For robust behavior, the actual command execution would validate if args[1] is a real player.
+                    boolean firstArgIsLikelyPlayer = !args[1].equalsIgnoreCase("on") && !args[1].equalsIgnoreCase("off");
+                    if (firstArgIsLikelyPlayer) {
+                        if ("on".startsWith(currentArgToFilter)) {
+                            suggestions.add("on");
+                        }
+                        if ("off".startsWith(currentArgToFilter)) {
+                            suggestions.add("off");
+                        }
+                    }
+                }
+            }
+            return suggestions;
+        }
+    
+        return suggestions; // Return empty list for args.length > 3 or unhandled cases
     }
 
     private List<String> getFlySuggestions(CommandSender sender, String[] args) {
@@ -443,6 +539,33 @@ public class Tab implements TabCompleter {
 
         if (itemName.contains(";")) {
             baseItemName = itemName.substring(0, itemName.indexOf(";"));
+        }
+
+        // New logic: support alias:legacyID
+        if (baseItemName.contains(":")) {
+            String[] parts = baseItemName.split(":", 2);
+            String aliasPart = parts[0];
+            String legacyIdPart = parts[1];
+
+            // Try resolving alias first
+            String alias = Alias.getAlias(aliasPart);
+            if (alias != null) {
+                try {
+                    material = Material.valueOf(alias.toUpperCase());
+                    return material;
+                } catch (IllegalArgumentException e) {
+                    // Alias does not resolve directly, try legacyID
+                }
+            }
+            // Try resolving legacyID part
+            material = LegacyID.getMaterialFromLegacyId(legacyIdPart);
+            if (material != null) {
+                return material;
+            }
+            // Try combining alias and legacyID (e.g., alias maps to a base, legacyID as variant)
+            // If you have custom logic for this, add here.
+            // If not found, fallback to AIR
+            return Material.AIR;
         }
 
         try {

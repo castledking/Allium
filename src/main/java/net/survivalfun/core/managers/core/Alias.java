@@ -10,6 +10,7 @@ public class Alias {
     static {
         // Define aliases for materials
         ALIASES.put("enderpearl", "ENDER_PEARL");
+        ALIASES.put("water_bottle", "POTION");
         ALIASES.put("pearl", "ENDER_PEARL");
         ALIASES.put("stonebrick", "STONE_BRICKS");
         ALIASES.put("goldapple", "GOLDEN_APPLE");
@@ -29,6 +30,16 @@ public class Alias {
         ALIASES.put("aleaves", "acacia_leaves");
         ALIASES.put("fazleaves", "flowering_azalea_leaves");
         ALIASES.put("azleaves", "azalea_leaves");
+        ALIASES.put("oakleaf", "OAK_LEAVES");
+        ALIASES.put("birchleaf", "BIRCH_LEAVES");
+        ALIASES.put("spruceleaf", "SPRUCE_LEAVES");
+        ALIASES.put("jungleaf", "JUNGLE_LEAVES");
+        ALIASES.put("acacialeaf", "ACACIA_LEAVES");
+        ALIASES.put("darkleaf", "DARK_OAK_LEAVES");
+        ALIASES.put("mangroveleaf", "MANGROVE_LEAVES");
+        ALIASES.put("cherryleaf", "CHERRY_LEAVES");
+        ALIASES.put("flowerpot", "FLOWER_POT");
+        ALIASES.put("lilypad", "LILY_PAD");
         ALIASES.put("nwart", "nether_wart");
         ALIASES.put("pseed", "pumpkin_seeds");
         ALIASES.put("pseeds", "pumpkin_seeds");
@@ -189,6 +200,17 @@ public class Alias {
         ALIASES.put("badoor", "bamboo_door");
         ALIASES.put("crdoor", "crimson_door");
         ALIASES.put("wdoor", "warped_door");
+
+        ALIASES.put("oakdoor", "OAK_DOOR");
+        ALIASES.put("birchdoor", "BIRCH_DOOR");
+        ALIASES.put("sprucedoor", "SPRUCE_DOOR");
+        ALIASES.put("jungdoor", "JUNGLE_DOOR");
+        ALIASES.put("acaciadoor", "ACACIA_DOOR");
+        ALIASES.put("darkdoor", "DARK_OAK_DOOR");
+        ALIASES.put("mangrovedoor", "MANGROVE_DOOR");
+        ALIASES.put("bamboodoor", "BAMBOO_DOOR");
+        ALIASES.put("irondoor", "IRON_DOOR");
+        ALIASES.put("ironbar", "IRON_BARS");
 
         ALIASES.put("trapdoor", "oak_trapdoor");
         ALIASES.put("strapdoor", "spruce_trapdoor");
@@ -685,12 +707,295 @@ public class Alias {
         ALIASES.put("drail", "detector_rail");
         ALIASES.put("detectrail", "detector_rail"); // or "drail"
         ALIASES.put("fire", "flint_and_steel");
-        ALIASES.put("minecart", "minecart");      // or "cart"
+        ALIASES.put("fns", "flint_and_steel");
+        ALIASES.put("cart", "minecart");      // or "cart"
         ALIASES.put("chestcart", "chest_minecart");
         ALIASES.put("hoppercart", "hopper_minecart");
         ALIASES.put("cmd", "command_block");      // /give @p cmd
         ALIASES.put("chaincmd", "chain_command_block");
         ALIASES.put("repeatcmd", "repeating_command_block");
+
+        // --- Additional Common Aliases (Abbreviations & Natural Language) ---
+
+        // Building Blocks
+        ALIASES.put("stonebricks", "STONE_BRICKS");
+        ALIASES.put("sbrick", "STONE_BRICKS");
+        ALIASES.put("mossycobblestone", "MOSSY_COBBLESTONE");
+        ALIASES.put("mcobble", "MOSSY_COBBLESTONE");
+        ALIASES.put("sandstoneblk", "SANDSTONE"); // To distinguish from item if ever needed
+        ALIASES.put("glassblk", "GLASS");
+        ALIASES.put("netherbricks", "NETHER_BRICKS");
+        ALIASES.put("nbricks", "NETHER_BRICKS");
+        ALIASES.put("quartzblk", "QUARTZ_BLOCK");
+        ALIASES.put("qblk", "QUARTZ_BLOCK");
+        ALIASES.put("glowstoneblk", "GLOWSTONE"); // 'glowst' exists
+        ALIASES.put("dirtblk", "DIRT");
+        ALIASES.put("gravelblk", "GRAVEL");
+        ALIASES.put("sandblk", "SAND");
+        ALIASES.put("wool", "WHITE_WOOL"); // Default wool to white
+        ALIASES.put("redwool", "RED_WOOL");
+        ALIASES.put("bluewool", "BLUE_WOOL");
+        ALIASES.put("greenwool", "GREEN_WOOL");
+        ALIASES.put("blackwool", "BLACK_WOOL");
+        ALIASES.put("concrete", "WHITE_CONCRETE"); // Default concrete to white
+        ALIASES.put("redconcrete", "RED_CONCRETE");
+        ALIASES.put("blueconcrete", "BLUE_CONCRETE");
+        ALIASES.put("blackconcrete", "BLACK_CONCRETE");
+        ALIASES.put("obs", "OBSIDIAN"); // 'obsidian' exists
+
+        // Ores & Minerals
+        ALIASES.put("coalore", "COAL_ORE");
+        ALIASES.put("ironore", "IRON_ORE");
+        ALIASES.put("goldore", "GOLD_ORE");
+        ALIASES.put("diamondore", "DIAMOND_ORE");
+        ALIASES.put("emeraldore", "EMERALD_ORE");
+        ALIASES.put("lapisore", "LAPIS_ORE");
+        ALIASES.put("redstoneore", "REDSTONE_ORE");
+        ALIASES.put("nethergoldore", "NETHER_GOLD_ORE");
+        ALIASES.put("ngoldore", "NETHER_GOLD_ORE");
+        ALIASES.put("netherquartzore", "NETHER_QUARTZ_ORE");
+        ALIASES.put("nquartzore", "NETHER_QUARTZ_ORE");
+        ALIASES.put("debris", "ANCIENT_DEBRIS");
+        ALIASES.put("ancdebris", "ANCIENT_DEBRIS");
+        ALIASES.put("coalitem", "COAL"); // 'coal' can be ambiguous with block
+        ALIASES.put("ironingot", "IRON_INGOT");
+        ALIASES.put("goldingot", "GOLD_INGOT");
+        ALIASES.put("diamonditem", "DIAMOND"); // 'diamond' can be ambiguous with block
+        ALIASES.put("dia", "DIAMOND");
+        ALIASES.put("emeralditem", "EMERALD"); // 'emerald' can be ambiguous
+        ALIASES.put("emmy", "EMERALD");
+        ALIASES.put("lapis", "LAPIS_LAZULI");
+        ALIASES.put("lapislaz", "LAPIS_LAZULI");
+        ALIASES.put("netheriteingot", "NETHERITE_INGOT");
+        ALIASES.put("ningot", "NETHERITE_INGOT");
+        ALIASES.put("netheritescrap", "NETHERITE_SCRAP");
+        ALIASES.put("nscrap", "NETHERITE_SCRAP");
+        ALIASES.put("quartzitem", "QUARTZ");
+        ALIASES.put("nquartz", "QUARTZ");
+
+        // Tools & Weapons
+        ALIASES.put("dsword", "DIAMOND_SWORD");
+        ALIASES.put("isword", "IRON_SWORD");
+        ALIASES.put("gsword", "GOLDEN_SWORD");
+        ALIASES.put("ssword", "STONE_SWORD"); // careful with stripped spruce wood
+        ALIASES.put("wsword", "WOODEN_SWORD");
+        ALIASES.put("dpick", "DIAMOND_PICKAXE");
+        ALIASES.put("ipick", "IRON_PICKAXE");
+        ALIASES.put("gpick", "GOLDEN_PICKAXE");
+        ALIASES.put("spick", "STONE_PICKAXE");
+        ALIASES.put("wpick", "WOODEN_PICKAXE");
+        ALIASES.put("daxe", "DIAMOND_AXE");
+        ALIASES.put("dshovel", "DIAMOND_SHOVEL");
+        ALIASES.put("dhoe", "DIAMOND_HOE");
+        ALIASES.put("fishrod", "FISHING_ROD");
+        ALIASES.put("flintsteel", "FLINT_AND_STEEL"); // 'fns' exists
+
+        // Armor
+        ALIASES.put("dhelm", "DIAMOND_HELMET");
+        ALIASES.put("dchest", "DIAMOND_CHESTPLATE");
+        ALIASES.put("dlegs", "DIAMOND_LEGGINGS");
+        ALIASES.put("dboots", "DIAMOND_BOOTS");
+        ALIASES.put("ihelm", "IRON_HELMET");
+        ALIASES.put("ichest", "IRON_CHESTPLATE");
+        ALIASES.put("ilegs", "IRON_LEGGINGS");
+        ALIASES.put("iboots", "IRON_BOOTS");
+        ALIASES.put("wings", "ELYTRA"); // 'elytra' is good too
+
+        // Food & Farming
+        ALIASES.put("gapple", "GOLDEN_APPLE"); // 'goldapple' exists
+        ALIASES.put("gap", "GOLDEN_APPLE");
+        ALIASES.put("egapple", "ENCHANTED_GOLDEN_APPLE"); // 'godapple' exists
+        ALIASES.put("egap", "ENCHANTED_GOLDEN_APPLE");
+        ALIASES.put("notchapple", "ENCHANTED_GOLDEN_APPLE");
+        ALIASES.put("bakedpotato", "BAKED_POTATO");
+        ALIASES.put("bpotato", "BAKED_POTATO");
+        ALIASES.put("pumpkinpie", "PUMPKIN_PIE");
+        ALIASES.put("ppie", "PUMPKIN_PIE");
+        ALIASES.put("sugarcane", "SUGAR_CANE");
+        ALIASES.put("reeds", "SUGAR_CANE");
+        ALIASES.put("melonslice", "MELON_SLICE");
+        ALIASES.put("gmslice", "GLISTERING_MELON_SLICE");
+        ALIASES.put("gmelon", "GLISTERING_MELON_SLICE");
+        ALIASES.put("bonemeal", "BONE_MEAL"); // 'fert' exists
+        ALIASES.put("bmeal", "BONE_MEAL");
+
+        // Redstone & Utility
+        ALIASES.put("rtorch", "REDSTONE_TORCH");
+        ALIASES.put("redtorch", "REDSTONE_TORCH");
+        ALIASES.put("sbutton", "STONE_BUTTON");
+        ALIASES.put("stonebutton", "STONE_BUTTON");
+        ALIASES.put("obutton", "OAK_BUTTON");
+        ALIASES.put("oakbutton", "OAK_BUTTON");
+        ALIASES.put("splate", "STONE_PRESSURE_PLATE");
+        ALIASES.put("stoneplate", "STONE_PRESSURE_PLATE");
+        ALIASES.put("oplate", "OAK_PRESSURE_PLATE");
+        ALIASES.put("oakplate", "OAK_PRESSURE_PLATE");
+        ALIASES.put("spiston", "STICKY_PISTON"); // 'sticky' exists
+        ALIASES.put("rep", "REPEATER");
+        ALIASES.put("trapchest", "TRAPPED_CHEST");
+        ALIASES.put("tchest", "TRAPPED_CHEST");
+        ALIASES.put("epearl", "ENDER_PEARL"); // 'enderpearl', 'pearl' exist
+        ALIASES.put("ep", "ENDER_PEARL");
+        ALIASES.put("eeye", "EYE_OF_ENDER");
+        ALIASES.put("endereye", "EYE_OF_ENDER");
+        ALIASES.put("shulker", "SHULKER_BOX"); // Defaults to undyed
+        ALIASES.put("sbox", "SHULKER_BOX");
+        ALIASES.put("redshulker", "RED_SHULKER_BOX");
+        ALIASES.put("bed", "RED_BED"); // Default bed to red
+        ALIASES.put("whitebed", "WHITE_BED");
+        ALIASES.put("bluebed", "BLUE_BED");
+
+        // Potions & Brewing
+        ALIASES.put("gbottle", "GLASS_BOTTLE");
+        ALIASES.put("netherwartitem", "NETHER_WART"); // 'nwart' exists
+        ALIASES.put("bpowder", "BLAZE_POWDER");
+        ALIASES.put("blazepowder", "BLAZE_POWDER");
+        ALIASES.put("gtear", "GHAST_TEAR");
+        ALIASES.put("ghasttear", "GHAST_TEAR");
+        ALIASES.put("mcream", "MAGMA_CREAM");
+        ALIASES.put("magmacream", "MAGMA_CREAM");
+        ALIASES.put("fspidereye", "FERMENTED_SPIDER_EYE");
+        ALIASES.put("fermenteye", "FERMENTED_SPIDER_EYE");
+        ALIASES.put("gpowder", "GUNPOWDER");
+        ALIASES.put("sulfur", "GUNPOWDER"); // Common alternative name
+        ALIASES.put("dbreath", "DRAGON_BREATH");
+        ALIASES.put("dragonbreath", "DRAGON_BREATH");
+        ALIASES.put("pmembrane", "PHANTOM_MEMBRANE");
+
+        // Miscellaneous
+        ALIASES.put("wbook", "WRITABLE_BOOK");
+        ALIASES.put("writebook", "WRITABLE_BOOK");
+        ALIASES.put("emptymap", "MAP");
+        ALIASES.put("iframe", "ITEM_FRAME");
+        ALIASES.put("itemframe", "ITEM_FRAME");
+        ALIASES.put("giframe", "GLOW_ITEM_FRAME");
+        ALIASES.put("glowitemframe", "GLOW_ITEM_FRAME");
+        ALIASES.put("leash", "LEAD"); // 'lead' is good too
+        ALIASES.put("ntag", "NAME_TAG");
+        ALIASES.put("nametag", "NAME_TAG");
+        ALIASES.put("totem", "TOTEM_OF_UNDYING");
+        ALIASES.put("firework", "FIREWORK_ROCKET");
+        ALIASES.put("frocket", "FIREWORK_ROCKET");
+        ALIASES.put("nautilus", "NAUTILUS_SHELL");
+        ALIASES.put("nshell", "NAUTILUS_SHELL");
+        ALIASES.put("hots", "HEART_OF_THE_SEA");
+        ALIASES.put("wbucket", "WATER_BUCKET"); // 'watercan' exists
+        ALIASES.put("lbucket", "LAVA_BUCKET");
+        ALIASES.put("lavabucket", "LAVA_BUCKET");
+        ALIASES.put("mbucket", "MILK_BUCKET");
+        ALIASES.put("milkbucket", "MILK_BUCKET");
+        ALIASES.put("xpbottle", "EXPERIENCE_BOTTLE"); // 'xp' exists
+        ALIASES.put("expbottle", "EXPERIENCE_BOTTLE");
+        ALIASES.put("brickitem", "BRICK");
+        ALIASES.put("netherbrickitem", "NETHER_BRICK");
+        ALIASES.put("nbrickitem", "NETHER_BRICK");
+        ALIASES.put("catdisc", "MUSIC_DISC_CAT");
+        ALIASES.put("warddisc", "MUSIC_DISC_WARD");
+        ALIASES.put("blocksdisc", "MUSIC_DISC_BLOCKS");
+        ALIASES.put("chirpdisc", "MUSIC_DISC_CHIRP");
+        ALIASES.put("fardisc", "MUSIC_DISC_FAR");
+        ALIASES.put("malldisc", "MUSIC_DISC_MALL");
+        ALIASES.put("mellohidisc", "MUSIC_DISC_MELLOHI");
+        ALIASES.put("staldisc", "MUSIC_DISC_STAL");
+        ALIASES.put("straddisc", "MUSIC_DISC_STRAD");
+        ALIASES.put("waitdisc", "MUSIC_DISC_WAIT");
+        ALIASES.put("pigstepdisc", "MUSIC_DISC_PIGSTEP");
+        ALIASES.put("othersidedisc", "MUSIC_DISC_OTHERSIDE");
+        ALIASES.put("5disc", "MUSIC_DISC_5");
+        ALIASES.put("relicdisc", "MUSIC_DISC_RELIC");
+
+        // --- Even More Unique Short Aliases for Common Blocks ---
+        // Building blocks
+        ALIASES.put("slab", "STONE_SLAB");
+        ALIASES.put("sstairs", "STONE_STAIRS");
+        ALIASES.put("brick", "BRICKS");
+        ALIASES.put("bricks", "BRICKS");
+        ALIASES.put("plank", "OAK_PLANKS");
+        ALIASES.put("stairs", "OAK_STAIRS");
+        ALIASES.put("dplank", "DARK_OAK_PLANKS");
+        ALIASES.put("spruce", "SPRUCE_PLANKS");
+        ALIASES.put("birch", "BIRCH_PLANKS");
+        ALIASES.put("acacia", "ACACIA_PLANKS");
+        ALIASES.put("jungle", "JUNGLE_PLANKS");
+        ALIASES.put("mangrove", "MANGROVE_PLANKS");
+        ALIASES.put("bamboo", "BAMBOO_BLOCK");
+        ALIASES.put("mud", "MUD");
+        ALIASES.put("packedmud", "PACKED_MUD");
+        ALIASES.put("mudbrick", "MUD_BRICKS");
+        ALIASES.put("mudbricks", "MUD_BRICKS");
+        ALIASES.put("cobblewall", "COBBLESTONE_WALL");
+        ALIASES.put("brickwall", "BRICK_WALL");
+        ALIASES.put("sandwall", "SANDSTONE_WALL");
+        ALIASES.put("redwall", "RED_SANDSTONE_WALL");
+        ALIASES.put("netherwall", "NETHER_BRICK_WALL");
+        ALIASES.put("prismwall", "PRISMARINE_WALL");
+        ALIASES.put("deepslate", "DEEPSLATE");
+        ALIASES.put("dsbrick", "DEEPSLATE_BRICKS");
+        ALIASES.put("dsbrickwall", "DEEPSLATE_BRICK_WALL");
+        ALIASES.put("dstitles", "DEEPSLATE_TILES");
+        ALIASES.put("dstitleswall", "DEEPSLATE_TILE_WALL");
+        ALIASES.put("tuff", "TUFF");
+        ALIASES.put("tuffbrick", "TUFF_BRICKS");
+        ALIASES.put("tuffwall", "TUFF_WALL");
+        ALIASES.put("granite", "GRANITE");
+        ALIASES.put("diorite", "DIORITE");
+        ALIASES.put("andesite", "ANDESITE");
+        ALIASES.put("polishedgranite", "POLISHED_GRANITE");
+        ALIASES.put("polisheddiorite", "POLISHED_DIORITE");
+        ALIASES.put("polishedandesite", "POLISHED_ANDESITE");
+        ALIASES.put("calcite", "CALCITE");
+        ALIASES.put("dripstone", "DRIPSTONE_BLOCK");
+        ALIASES.put("basalt", "BASALT");
+        ALIASES.put("smoothbasalt", "SMOOTH_BASALT");
+        ALIASES.put("blackstone", "BLACKSTONE");
+        ALIASES.put("gildedblack", "GILDED_BLACKSTONE");
+        ALIASES.put("polishedblack", "POLISHED_BLACKSTONE");
+        ALIASES.put("pbbrick", "POLISHED_BLACKSTONE_BRICKS");
+        ALIASES.put("pbbrickwall", "POLISHED_BLACKSTONE_BRICK_WALL");
+        ALIASES.put("polishedwall", "POLISHED_BLACKSTONE_WALL");
+        // Utility/Redstone
+        ALIASES.put("note", "NOTE_BLOCK");
+        ALIASES.put("jukebox", "JUKEBOX");
+        ALIASES.put("observer", "OBSERVER");
+        ALIASES.put("dropper", "DROPPER");
+        ALIASES.put("hopper", "HOPPER");
+        ALIASES.put("daylight", "DAYLIGHT_DETECTOR");
+        ALIASES.put("furnace", "FURNACE");
+        ALIASES.put("blast", "BLAST_FURNACE");
+        ALIASES.put("loom", "LOOM");
+        ALIASES.put("compost", "COMPOSTER");
+        ALIASES.put("anvil", "ANVIL");
+        ALIASES.put("grind", "GRINDSTONE");
+        ALIASES.put("smith", "SMITHING_TABLE");
+        ALIASES.put("fletch", "FLETCHING_TABLE");
+        ALIASES.put("carto", "CARTOGRAPHY_TABLE");
+        ALIASES.put("barrel", "BARREL");
+        // Glass
+        ALIASES.put("bglass", "BLUE_STAINED_GLASS");
+        ALIASES.put("rglass", "RED_STAINED_GLASS");
+        ALIASES.put("gglass", "GREEN_STAINED_GLASS");
+        ALIASES.put("yglass", "YELLOW_STAINED_GLASS");
+        // Stripped logs
+        ALIASES.put("strippedoak", "STRIPPED_OAK_LOG");
+        ALIASES.put("strippedspruce", "STRIPPED_SPRUCE_LOG");
+        ALIASES.put("strippedbirch", "STRIPPED_BIRCH_LOG");
+        ALIASES.put("strippedacacia", "STRIPPED_ACACIA_LOG");
+        ALIASES.put("strippedjungle", "STRIPPED_JUNGLE_LOG");
+        ALIASES.put("strippeddark", "STRIPPED_DARK_OAK_LOG");
+        ALIASES.put("strippedmangrove", "STRIPPED_MANGROVE_LOG");
+        // Wool
+        ALIASES.put("wwool", "WHITE_WOOL");
+        ALIASES.put("rwool", "RED_WOOL");
+        ALIASES.put("bwool", "BLUE_WOOL");
+        ALIASES.put("gwool", "GREEN_WOOL");
+        ALIASES.put("ywool", "YELLOW_WOOL");
+        // Terracotta/Concrete
+        ALIASES.put("terracotta", "TERRACOTTA");
+        ALIASES.put("redterra", "RED_TERRACOTTA");
+        ALIASES.put("blterra", "BLUE_TERRACOTTA");
+        ALIASES.put("concrete", "WHITE_CONCRETE");
+        ALIASES.put("rconcrete", "RED_CONCRETE");
+        ALIASES.put("bconcrete", "BLUE_CONCRETE");
         // Add more aliases as needed...
     }
     public static String getAlias(String alias) {

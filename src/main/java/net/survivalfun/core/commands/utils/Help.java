@@ -6,30 +6,28 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.survivalfun.core.PluginStart;
-import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.core.Text;
+import net.survivalfun.core.listeners.security.CommandManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.plugin.Plugin;
 
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.lang.reflect.Method;
 
 public class Help implements CommandExecutor, Listener, TabCompleter {
 
     private final PluginStart plugin;
-    private final Lang lang;
+    private final CommandManager commandManager;
     private final int COMMANDS_PER_PAGE = 8;
 
-    public Help(PluginStart plugin, Lang lang) {
+    public Help(PluginStart plugin) {
         this.plugin = plugin;
-        this.lang = lang;
+        this.commandManager = plugin.getCommandManager();
     }
 
     @Override
@@ -51,7 +49,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
 
             // Add command names
             if (sender instanceof Player) {
-                List<String> availableCommands = getAvailableCommands((Player) sender);
+                List<String> availableCommands = getAvailableCommands(sender);
                 completions.addAll(availableCommands);
             }
         } else if (args.length == 2) {
@@ -168,7 +166,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         if (totalPages == 0) totalPages = 1; // Prevent division by zero
 
         // Header
-        sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+        sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
         sender.sendMessage(Text.colorize("&6&lHelp Menu &7- &ePage " + page + "/" + totalPages));
         sender.sendMessage(Text.colorize("&7Commands you have access to:"));
         sender.sendMessage(Component.empty());
@@ -176,7 +174,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         // No entries available
         if (helpEntries.isEmpty()) {
             sender.sendMessage(Text.colorize("&cNo commands available."));
-            sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+            sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
             return;
         }
 
@@ -196,7 +194,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         // Footer
         sender.sendMessage(Component.empty());
         sendNavigationButtons(sender, page, totalPages);
-        sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+        sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
     }
 
     /**
@@ -238,6 +236,8 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         List<String> result = new ArrayList<>();
         Set<String> processedCommands = new HashSet<>(); // To avoid duplicates
 
+        // Only apply group filtering for players
+        Player player = sender instanceof Player ? (Player) sender : null;
 
         // Get commands directly from the server's command map
         Map<String, Command> knownCommands;
@@ -281,8 +281,23 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
                 continue;
             }
 
-            // Check if player has permission to use this command
-            if ((command.getPermission() == null || sender.hasPermission(command.getPermission()))) {
+            // Check command visibility based on group permissions
+            boolean canShow = true;
+            if (player != null) {
+                // Use reflection to call shouldShowCommand
+                try {
+                    Class<?> commandManagerClass = Class.forName("net.survivalfun.core.listeners.security.CommandManager");
+                    Object commandManagerInstance = plugin.getClass().getDeclaredMethod("getCommandManager").invoke(plugin);
+                    Method shouldShowCommandMethod = commandManagerClass.getDeclaredMethod("shouldShowCommand", Player.class, String.class);
+                    canShow = (boolean) shouldShowCommandMethod.invoke(commandManagerInstance, player, cmdName);
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to check command visibility: " + e.getMessage());
+                    canShow = true; // Default to showing if reflection fails
+                }
+            }
+
+            // Check if player has permission and command is allowed
+            if (canShow && (command.getPermission() == null || sender.hasPermission(command.getPermission()))) {
                 result.add(cmdName);
                 processedCommands.add(cmdName);
 
@@ -290,8 +305,24 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
                 for (String alias : command.getAliases()) {
                     if (alias != null && !processedCommands.contains(alias) &&
                             !isVanillaCommand(alias)) {  // Also check aliases against vanilla commands
-                        result.add(alias);
-                        processedCommands.add(alias);
+                        // Check alias visibility as well
+                        boolean aliasCanShow = true;
+                        if (player != null) {
+                            try {
+                                Class<?> commandManagerClass = Class.forName("net.survivalfun.core.listeners.security.CommandManager");
+                                Object commandManagerInstance = plugin.getClass().getDeclaredMethod("getCommandManager").invoke(plugin);
+                                Method shouldShowCommandMethod = commandManagerClass.getDeclaredMethod("shouldShowCommand", Player.class, String.class);
+                                aliasCanShow = (boolean) shouldShowCommandMethod.invoke(commandManagerInstance, player, alias);
+                            } catch (Exception e) {
+                                plugin.getLogger().warning("Failed to check alias visibility: " + e.getMessage());
+                                aliasCanShow = true;
+                            }
+                        }
+
+                        if (aliasCanShow) {
+                            result.add(alias);
+                            processedCommands.add(alias);
+                        }
                     }
                 }
             }
@@ -317,7 +348,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
                 "return", "ride", "say", "schedule", "scoreboard", "seed", "setblock", "setidletimeout",
                 "setworldspawn", "spawnpoint", "spectate", "spreadplayers", "stop", "stopsound", "summon",
                 "tag", "team", "teleport", "tellraw", "time", "title", "tm", "toggle", "tp", "trigger",
-                "w", "weather", "whitelist", "worldborder", "xp", "version", "ver", "plugins", "pl", "plugin"
+                "w", "weather", "whitelist", "worldborder", "xp", "version", "ver", "plugins", "pl", "plugin", "callback"
         };
 
         for (String vanilla : vanillaCommands) {
@@ -335,24 +366,70 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
      * Sends command info with hover and click events using Kyori Adventure API
      */
     private void sendCommandInfo(CommandSender sender, String cmdName) {
-        PluginCommand cmd = Bukkit.getPluginCommand(cmdName);
-        String description = (cmd != null && cmd.getDescription() != null) ? cmd.getDescription() : "No description available";
-        String usage = (cmd != null && cmd.getUsage() != null) ? cmd.getUsage() : "/" + cmdName;
+        // Sanitize cmdName (remove leading '/' if present)
+        String cleanCmdName = cmdName.startsWith("/") ? cmdName.substring(1) : cmdName;
+
+        String description = "No description available";
+        String usage = "/" + cleanCmdName; // Default usage
+
+        // 1. Try to get command from SFCore's plugin.yml first
+        // 'plugin' is the instance of PluginStart for SFCore
+        PluginCommand sfCoreCommand = plugin.getCommand(cleanCmdName);
+
+        if (sfCoreCommand != null) {
+            // Command found in SFCore's plugin.yml
+            if (sfCoreCommand.getDescription() != null && !sfCoreCommand.getDescription().isEmpty()) {
+                description = sfCoreCommand.getDescription();
+            }
+            if (sfCoreCommand.getUsage() != null && !sfCoreCommand.getUsage().isEmpty()) {
+                // plugin.yml usage might be like "/<command> [player]"
+                // We need to replace /<command> with the actual command alias
+                usage = sfCoreCommand.getUsage().replace("<command>", cleanCmdName);
+                if (!usage.startsWith("/")) {
+                    usage = "/" + usage;
+                }
+            }
+        } else {
+            // 2. Fallback: Try Bukkit.getPluginCommand for other plugins or if not in SFCore's yml
+            PluginCommand bukkitCmd = Bukkit.getPluginCommand(cleanCmdName);
+            if (bukkitCmd != null) {
+                if (bukkitCmd.getDescription() != null && !bukkitCmd.getDescription().isEmpty()) {
+                    description = bukkitCmd.getDescription();
+                }
+                if (bukkitCmd.getUsage() != null && !bukkitCmd.getUsage().isEmpty()) {
+                    usage = bukkitCmd.getUsage();
+                    // Ensure usage starts with /
+                    if (!usage.startsWith("/")) {
+                        usage = "/" + usage;
+                    }
+                }
+            }
+            // If still not found, defaults remain "No description available" and "/" + cleanCmdName
+        }
+        
+        // Ensure usage string always starts with a '/' if it's not empty and not null
+        if (usage != null && !usage.isEmpty() && !usage.startsWith("/")) {
+            usage = "/" + usage;
+        } else if (usage == null || usage.isEmpty()) { // Final fallback if usage is still undetermined
+            usage = "/" + cleanCmdName;
+        }
 
         // Create the hover tooltip
         Component hoverTooltip = Component.text()
                 .append(Text.colorize("&6Description: &f" + description + "\n"))
-                .append(Text.colorize("&6Usage: &f" + usage + "\n"))
+                .append(Text.colorize("&6Usage: &f" + usage + "\n")) // Display the processed usage
                 .append(Text.colorize("&7Click to use this command"))
                 .build();
 
         // Create the command component with hover and click events
+        // The clickable part is " • /<actual_command_name>"
+        // The suggested command should be "/<actual_command_name> "
         Component commandComponent = Component.text(" • /")
                 .color(NamedTextColor.GOLD)
-                .append(Component.text(cmdName)
+                .append(Component.text(cleanCmdName) // Use cleanCmdName for the displayed command
                         .color(NamedTextColor.GOLD)
                         .hoverEvent(HoverEvent.showText(hoverTooltip))
-                        .clickEvent(ClickEvent.suggestCommand("/" + cmdName + " ")));
+                        .clickEvent(ClickEvent.suggestCommand("/" + cleanCmdName + " "))); // Suggest the base command
 
         // Send the component
         sender.sendMessage(commandComponent);
@@ -409,67 +486,162 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
      * Display help for a specific plugin with pagination
      */
     private void displayPluginHelp(CommandSender sender, Plugin targetPlugin, int page) {
-        // Header - only send it here, not in the calling method
-        sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+        // Header
+        sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
 
-        // Get commands specific to this plugin
-        Map<String, Map<String, Object>> commands = targetPlugin.getDescription().getCommands();
-        if (commands == null || commands.isEmpty()) {
-            // Show plugin version only to admins
-            if (sender.hasPermission("core.admin")) {
-                sender.sendMessage(Text.colorize("&6&lHelp Menu &7- &e" + targetPlugin.getName() + " v"
-                        + targetPlugin.getDescription().getVersion()));
-            } else {
-                sender.sendMessage(Text.colorize("&6&lHelp Menu &7- &e" + targetPlugin.getName()));
+        // Get plugin version for display
+        String version = targetPlugin.getDescription().getVersion();
+        String pluginName = targetPlugin.getName();
+
+        // Create a list to store all commands from this plugin
+        List<Command> pluginCommands = new ArrayList<>();
+
+        // Method 1: Get commands directly from the server's command map
+        Map<String, Command> knownCommands = new HashMap<>();
+        try {
+            CommandMap commandMap = Bukkit.getServer().getCommandMap();
+            if (commandMap != null && commandMap instanceof SimpleCommandMap) {
+                // Use reflection to access the knownCommands map
+                Field knownCommandsField = SimpleCommandMap.class.getDeclaredField("knownCommands");
+                knownCommandsField.setAccessible(true);
+                knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
             }
-
-            sender.sendMessage("");
-            sender.sendMessage(Text.colorize("&cNo commands available for this plugin."));
-            sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
-            return;
+        } catch (Exception e) {
+            // If reflection fails, we'll continue with other methods
+            sender.sendMessage(Text.colorize("&cDebug: Failed to access command map: " + e.getMessage()));
         }
 
-        // Get available commands from this plugin
+        // Check for PluginCommands that belong to this plugin
+        for (Command command : knownCommands.values()) {
+            if (command instanceof PluginCommand) {
+                PluginCommand pluginCommand = (PluginCommand) command;
+                if (pluginCommand.getPlugin() == targetPlugin) {
+                    if (!pluginCommands.contains(command)) {
+                        pluginCommands.add(command);
+                    }
+                }
+            }
+
+            // Also check for commands with plugin name prefix
+            String key = command.getName().toLowerCase();
+            if (key.startsWith(pluginName.toLowerCase() + ":")) {
+                if (!pluginCommands.contains(command)) {
+                    pluginCommands.add(command);
+                }
+            }
+        }
+
+        // Method 2: Get commands from plugin.yml
+        Map<String, Map<String, Object>> commandsFromYml = targetPlugin.getDescription().getCommands();
+        if (commandsFromYml != null) {
+            for (String cmdName : commandsFromYml.keySet()) {
+                PluginCommand cmd = Bukkit.getPluginCommand(cmdName);
+                if (cmd != null && !pluginCommands.contains(cmd)) {
+                    pluginCommands.add(cmd);
+                } else if (cmd == null) {
+                    // Try to find in known commands
+                    Command foundCmd = knownCommands.get(cmdName.toLowerCase());
+                    if (foundCmd != null && !pluginCommands.contains(foundCmd)) {
+                        pluginCommands.add(foundCmd);
+                    }
+
+                    // Also try with plugin prefix
+                    String prefixed = pluginName.toLowerCase() + ":" + cmdName.toLowerCase();
+                    Command prefixedCmd = knownCommands.get(prefixed);
+                    if (prefixedCmd != null && !pluginCommands.contains(prefixedCmd)) {
+                        pluginCommands.add(prefixedCmd);
+                    }
+                }
+            }
+        }
+
+        // Filter out duplicates and commands the sender can't access
         List<String> availableCommands = new ArrayList<>();
-        for (String cmdName : commands.keySet()) {
-            // Check if player has access to this command
-            String cmdPerm = Bukkit.getPluginCommand(cmdName).getPermission();
-            if (sender.hasPermission(cmdPerm != null ? cmdPerm : "core.admin")) {
-                availableCommands.add(cmdName);
+        Set<String> addedCommands = new HashSet<>();
+
+        for (Command cmd : pluginCommands) {
+            // Skip if the command has a permission and the sender doesn't have it
+            if (cmd.getPermission() != null && !sender.hasPermission(cmd.getPermission())) {
+                continue;
+            }
+
+            // For players, check additional command visibility
+            if (sender instanceof Player && commandManager != null) {
+                if (!commandManager.shouldShowCommand((Player) sender, cmd.getName())) {
+                    continue;
+                }
+            }
+
+            // Get the base command name (without namespace)
+            String baseName = cmd.getName();
+            if (baseName.contains(":")) {
+                baseName = baseName.split(":")[1];
+            }
+
+            // Only add if we haven't added this command yet (case-insensitive check)
+            if (!addedCommands.contains(baseName.toLowerCase())) {
+                availableCommands.add(baseName);
+                addedCommands.add(baseName.toLowerCase());
             }
         }
 
-        // Sort alphabetically
+        // Fallback: If no commands found, directly use plugin.yml
+        if (availableCommands.isEmpty()) {
+            Map<String, Map<String, Object>> yml = targetPlugin.getDescription().getCommands();
+            if (yml != null && !yml.isEmpty()) {
+                for (String cmdName : yml.keySet()) {
+                    // Check permission if available in plugin.yml
+                    Map<String, Object> cmdData = yml.get(cmdName);
+                    if (cmdData.containsKey("permission")) {
+                        String perm = cmdData.get("permission").toString();
+                        if (!perm.isEmpty() && !sender.hasPermission(perm)) {
+                            continue;
+                        }
+                    }
+
+                    if (!addedCommands.contains(cmdName.toLowerCase())) {
+                        availableCommands.add(cmdName);
+                        addedCommands.add(cmdName.toLowerCase());
+                    }
+                }
+            }
+        }
+
+        // Sort commands alphabetically
         Collections.sort(availableCommands);
 
         // Calculate total pages
         int totalPages = (int) Math.ceil((double) availableCommands.size() / COMMANDS_PER_PAGE);
         if (page > totalPages) page = totalPages;
+        if (page < 1) page = 1;
         if (totalPages == 0) totalPages = 1; // Prevent division by zero
 
-        // Show plugin version only to admins
+        // Display plugin header
         if (sender.hasPermission("core.admin")) {
-            sender.sendMessage(Text.colorize("&6&lHelp Menu &7- &e" + targetPlugin.getName() + " v"
-                    + targetPlugin.getDescription().getVersion() + " &7- &ePage " + page + "/" + totalPages));
+            sender.sendMessage(Text.colorize("&6&lPlugin Help &7- &e" + pluginName +
+                    (version.isEmpty() ? "" : " v" + version) + " &7- &ePage " + page + "/" + totalPages));
         } else {
-            sender.sendMessage(Text.colorize("&6&lHelp Menu &7- &e" + targetPlugin.getName() + " &7- &ePage " + page + "/" + totalPages));
+            sender.sendMessage(Text.colorize("&6&lPlugin Help &7- &e" + pluginName + " &7- &ePage " + page + "/" + totalPages));
+        }
+        sender.sendMessage("");
+
+        // If no commands available, show message and return
+        if (availableCommands.isEmpty()) {
+            sender.sendMessage(Text.colorize("&cNo commands available for this plugin."));
+            sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
+            return;
         }
 
+        // Show command count
+        sender.sendMessage(Text.colorize("&7Available commands (" + availableCommands.size() + "):"));
         sender.sendMessage("");
 
         // Display commands for the current page
-        if (availableCommands.isEmpty()) {
-            sender.sendMessage(Text.colorize("&cYou don't have access to any commands from this plugin."));
-        } else {
-            sender.sendMessage(Text.colorize("&7Commands you have access to:"));
-            sender.sendMessage("");
+        int startIndex = (page - 1) * COMMANDS_PER_PAGE;
+        int endIndex = Math.min(startIndex + COMMANDS_PER_PAGE, availableCommands.size());
 
-            int startIndex = (page - 1) * COMMANDS_PER_PAGE;
-            int endIndex = Math.min(startIndex + COMMANDS_PER_PAGE, availableCommands.size());
-
-            for (int i = startIndex; i < endIndex; i++) {
-                sendCommandInfo(sender, availableCommands.get(i));
-            }
+        for (int i = startIndex; i < endIndex; i++) {
+            sendCommandInfo(sender, availableCommands.get(i));
         }
 
         // Footer with navigation
@@ -477,11 +649,14 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
 
         // Only show navigation if there's more than one page
         if (totalPages > 1) {
-            sendPluginNavigationButtons(sender, page, totalPages, targetPlugin.getName());
+            sendPluginNavigationButtons(sender, page, totalPages, pluginName);
         }
 
-        sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+        sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
     }
+
+
+
 
     /**
      * Sends navigation buttons for plugin-specific help pagination
@@ -540,68 +715,74 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
                 } else {
                     // Non-admin trying to see plugin help, show empty plugin help
                     // Header (only send it here, not in displayPluginHelp)
-                    sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+                    sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
                     sender.sendMessage(Text.colorize("&6&lHelp Menu &7- &eHelp for &6" + query));
                     sender.sendMessage("");
                     sender.sendMessage(Text.colorize("&cNo commands available."));
-                    sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+                    sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
                 }
                 return;
             }
 
             // If not a plugin, check if it's a command
             PluginCommand cmd = Bukkit.getPluginCommand(query);
-            String cmdPerm = Bukkit.getPluginCommand(query).getPermission();
-
-            if (cmd != null && sender.hasPermission(cmdPerm != null ? cmdPerm : "core.admin")) {
-                // It's a valid command that the player has permission for, show command-specific help
+            
+            // Only show command info to admins
+            if (cmd != null && sender.hasPermission("core.admin")) {
+                // It's a valid command and user is admin, show command-specific help
                 displayCommandHelp(sender, cmd);
                 return;
             }
 
 
             // Display help title for unknown query
-            // Header (send it here for unknown queries)
-            sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+            sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
             sender.sendMessage(Text.colorize("&6&lHelp Menu &7- &eHelp for &6" + query));
-
-            // Message with suggestion
             sender.sendMessage("");
             
+            // Show error message
+            sender.sendMessage(Text.colorize("&cUnknown command or plugin: &e" + query));
+            
+            // Find similar commands and plugins
+            List<String> suggestions = new ArrayList<>();
+            
+            // 1. Check for similar commands
             String similarCommand = findSimilarCommand(sender, query);
-
             if (similarCommand != null) {
-                // Found a similar command
-                sender.sendMessage(Text.colorize("&7Did you mean:"));
-                sendCommandInfo(sender, similarCommand);
+                suggestions.add(similarCommand);
+            }
+            
+            // 2. Check for similar plugins (if sender is admin)
+            if (sender.hasPermission("core.admin")) {
+                for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
+                    if (plugin.isEnabled() && !plugin.getName().equalsIgnoreCase(query) && 
+                        calculateLevenshteinDistance(query.toLowerCase(), plugin.getName().toLowerCase()) <= 3) {
+                        suggestions.add(plugin.getName());
+                    }
+                }
+            }
+            
+            // Show suggestions if any
+            if (!suggestions.isEmpty()) {
+                sender.sendMessage(Text.colorize("&7Did you mean one of these?"));
+                for (String suggestion : suggestions) {
+                    sender.sendMessage(Text.colorize("&7- &e/" + suggestion));
+                }
             }
 
-            // Create clickable suggestion component
-            Component helpSuggestion = Component.text("Type ")
-                    .color(NamedTextColor.GRAY)
-                    .append(Component.text("/help")
-                            .color(NamedTextColor.WHITE)
-                            .clickEvent(ClickEvent.suggestCommand("/help "))
-                            .hoverEvent(HoverEvent.showText(Text.colorize("&7Click to run this command"))))
-                    .append(Component.text(" to see available commands.")
-                            .color(NamedTextColor.GRAY));
-
-            sender.sendMessage("");
-            sender.sendMessage(helpSuggestion);
-
             // Footer (send regardless of result)
-            sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+            sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
         } catch (Exception e) {
             // Log error and provide fallback message
             plugin.getLogger().severe("Error in sendPluginSpecificHelp: " + e.getMessage());
             e.printStackTrace();
 
             // Make sure we still send header and footer even if an error occurs
-            sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+            sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
             sender.sendMessage(Text.colorize("&6&lHelp Menu &7- &eHelp for " + query));
             sender.sendMessage("");
             sender.sendMessage(Text.colorize("&cNo commands available."));
-            sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+            sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
         }
     }
 
@@ -657,7 +838,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
      */
     private void displayCommandHelp(CommandSender sender, PluginCommand cmd) {
         // Header
-        sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+        sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
         sender.sendMessage(Text.colorize("&6&lCommand Help &7- &e/" + cmd.getName()));
         sender.sendMessage("");
 
@@ -681,7 +862,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
 
         // Footer
         sender.sendMessage("");
-        sender.sendMessage(Text.colorize("&8&m----------------------------------------"));
+        sender.sendMessage(Text.colorize("&8&m᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆᠆"));
     }
 
 

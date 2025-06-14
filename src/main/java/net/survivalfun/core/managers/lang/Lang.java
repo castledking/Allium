@@ -24,6 +24,44 @@ public class Lang {
     private Locale currentLocale;
     private String configLangCode;
     // Map of short language codes to full language codes
+
+    /**
+     * Retrieves a style string from the language configuration.
+     *
+     * @param styleKey The dot-separated key for the style (e.g., "styles.error.message-color").
+     * @param defaultValue The default value to return if the key is not found.
+     * @return The style string or the default value.
+     */
+    public String getStyle(String styleKey, String defaultValue) {
+        Object value = messages.get(styleKey);
+        if (value instanceof String) {
+            return (String) value;
+        }
+        // Attempt to get from default messages if not found in current
+        value = defaultMessages.get(styleKey);
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return defaultValue;
+    }
+
+    /**
+     * Retrieves the error prefix string from the language configuration.
+     *
+     * @return The error prefix string or a hardcoded default.
+     */
+    public String getErrorPrefixString() {
+        Object prefix = messages.get("error-prefix");
+        if (prefix instanceof String) {
+            return (String) prefix;
+        }
+        prefix = defaultMessages.get("error-prefix");
+        if (prefix instanceof String) {
+            return (String) prefix;
+        }
+        return "<gradient:#CD2B39:#B82E3A>Error:</gradient><red>"; // Hardcoded fallback
+    }
+
     private static final Map<String, String> LANGUAGE_SHORTCUTS = new HashMap<>();
 
     // List of supported languages with their display names
@@ -75,7 +113,9 @@ public class Lang {
         this.configLangCode = resolveLanguageCode(rawLangCode);
 
         // Log the language being used
-        plugin.getLogger().info("Using language: " + getLanguageName(this.configLangCode) + " (" + this.configLangCode + ")");
+        if(config.getBoolean("debug-mode")) {
+            plugin.getLogger().info("Using language: " + getLanguageName(this.configLangCode) + " (" + this.configLangCode + ")");
+        }
 
         // Log available languages for reference if using a non-standard language
         if (!SUPPORTED_LANGUAGES.containsKey(this.configLangCode)) {
@@ -93,28 +133,31 @@ public class Lang {
         // Load language file
         load();
     }
-    /**
-     * Resolve a language code, supporting shortcuts like "en" for "en_US"
-     */
     private String resolveLanguageCode(String langCode) {
         if (langCode == null || langCode.isEmpty()) {
             return "en_US"; // Default to English if unspecified
         }
 
+        // Trim the language code and convert to lowercase for consistent lookup
+        String normalizedCode = langCode.trim().toLowerCase();
+
         // If it's a short code, resolve it to the full code
-        if (LANGUAGE_SHORTCUTS.containsKey(langCode.toLowerCase())) {
-            return LANGUAGE_SHORTCUTS.get(langCode.toLowerCase());
+        if (LANGUAGE_SHORTCUTS.containsKey(normalizedCode)) {
+            return LANGUAGE_SHORTCUTS.get(normalizedCode);
         }
 
         // If it already contains an underscore, assume it's a full code
-        if (langCode.contains("_")) {
-            return langCode;
+        if (normalizedCode.contains("_")) {
+            // Preserve the original casing for the full code
+            return langCode.trim();
         }
 
         // For any other short code not in our map, try to guess the full code
         // by appending the country code (uppercase version of language code)
-        return langCode.toLowerCase() + "_" + langCode.toUpperCase();
+        return normalizedCode + "_" + normalizedCode.toUpperCase();
     }
+
+
 
 
     /**
@@ -169,8 +212,6 @@ public class Lang {
             YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(
                     new InputStreamReader(defConfigStream, StandardCharsets.UTF_8));
             defaultMessages.putAll(defaultConfig.getValues(true));
-
-            plugin.getLogger().info("Loaded " + defaultMessages.size() + " default messages from lang.yml");
         } else {
             plugin.getLogger().warning("Could not find default language file (lang.yml) in plugin resources!");
 
@@ -313,10 +354,20 @@ public class Lang {
             // Check if the langfile setting in config.yml differs from what we have in the file
             String configLangCode = plugin.getConfig().getString("lang");
             if (configLangCode != null && !configLangCode.equals(langCode)) {
-                plugin.getLogger().info("Note: Config 'langfile' setting (" + configLangCode +
-                        ") differs from the language file's code (" + langCode + ")");
-                plugin.getLogger().info("To change language, delete lang.yml and set 'langfile' in config.yml");
+                // Check if configLangCode is a language shortcut
+                String resolvedShortcut = configLangCode;
+                if (LANGUAGE_SHORTCUTS.containsKey(configLangCode.toLowerCase())) {
+                    resolvedShortcut = LANGUAGE_SHORTCUTS.get(configLangCode.toLowerCase());
+                }
+
+                // Only show the warning if the resolved code doesn't match either
+                if (!resolvedShortcut.equals(langCode)) {
+                    plugin.getLogger().info("Note: Config 'langfile' setting (" + configLangCode +
+                            ") differs from the language file's code (" + langCode + ")");
+                    plugin.getLogger().info("To change language, delete lang.yml and set 'lang' in config.yml");
+                }
             }
+
 
             // Load all messages
             loadMessagesRecursive(langConfig, "");
@@ -337,7 +388,6 @@ public class Lang {
 
         // Log if any default messages were added
         if (missingMessages) {
-            plugin.getLogger().info("Added missing messages from defaults");
 
             // Update the language file with the missing messages
             try {
@@ -353,7 +403,6 @@ public class Lang {
 
                 if (updated) {
                     langConfig.save(langFile);
-                    plugin.getLogger().info("Updated language file with missing message keys");
                 }
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to update language file with missing messages", e);
@@ -440,6 +489,23 @@ public class Lang {
     /**
      * Get a message string from the language file
      */
+    public String getRaw(String key) {
+        Object message = messages.get(key);
+        if (message == null) {
+            message = defaultMessages.get(key);
+            if (message == null) {
+                if (key.equals("error-prefix")) { // consistent with get()
+                    return "&c[Error]";
+                }
+                return "&c[Missing translation: " + key + "]"; // Raw error string
+            }
+        }
+        return message.toString(); // Return raw string
+    }
+
+    /**
+     * Get a message string from the language file
+     */
     public String get(String key) {
         Object message = messages.get(key);
         if (message == null) {
@@ -457,6 +523,36 @@ public class Lang {
 
         // Convert to string and parse colors
         return Text.parseColors(message.toString());
+    }
+
+    /**
+     * Get the first raw Bukkit color code (e.g., &a) from a message string by its key.
+     * This method accesses the raw message before Text.parseColors is applied.
+     *
+     * @param key The key of the message.
+     * @return The first color code (e.g., "§a") or an empty string if not found or invalid.
+     */
+    public String getFirstColorCode(String key) {
+        Object messageObj = messages.get(key);
+        if (messageObj == null) {
+            messageObj = defaultMessages.get(key);
+        }
+
+        if (messageObj == null) {
+            return ""; // Key not found in messages or defaultMessages
+        }
+
+        String rawMessage = messageObj.toString();
+        int ampersandIndex = rawMessage.indexOf('&');
+
+        if (ampersandIndex != -1 && ampersandIndex + 1 < rawMessage.length()) {
+            char colorChar = rawMessage.charAt(ampersandIndex + 1);
+            // Validate if it's a known Minecraft color/format code
+            if ("0123456789abcdefklmnor".indexOf(Character.toLowerCase(colorChar)) != -1) {
+                return "§" + colorChar;
+            }
+        }
+        return ""; // No valid color code found at the beginning
     }
 
 

@@ -46,6 +46,10 @@ public class Spy implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        String spyToggleMessage = lang.get("spy.toggle");
+        // Use the new Lang method to get the first color code (e.g., "&a")
+        String firstColorOfSpyToggle = lang.getFirstColorCode("spy.toggle");
+
         // Check if sender is a player
         if (!(sender instanceof Player player)) {
             sender.sendMessage(lang.get("not-a-player"));
@@ -62,28 +66,31 @@ public class Spy implements CommandExecutor, TabCompleter {
             if (isGloballySpying) {
                 // Turn off global spying
                 spyingPlayers.remove(playerUUID);
-                sender.sendMessage(lang.get("spy.toggle")
-                        .replace("{state}", Text.parseColors("&c&ndisabled&r"))
-                        .replace("{name}", ""));
+                String disabledStyle = lang.get("styles.state.false");
+                sender.sendMessage(spyToggleMessage
+                        .replace("{state}", disabledStyle + "disabled" + firstColorOfSpyToggle)
+                        .replace(" {name}", ""));
                 return true;
             } else if (hasTargetedSpy) {
                 // Turn off all targeted spying
                 targetedSpying.remove(playerUUID);
-                sender.sendMessage(lang.get("spy.toggle")
-                        .replace("{state}", Text.parseColors("&c&ndisabled&r"))
-                        .replace("{name}", ""));
+                String disabledStyle = lang.get("styles.state.false");
+                sender.sendMessage(spyToggleMessage
+                        .replace("{state}", disabledStyle + "disabled" + firstColorOfSpyToggle)
+                        .replace(" {name}", ""));
                 return true;
             } else {
                 // Turn on global spying
                 spyingPlayers.add(playerUUID);
-                sender.sendMessage(lang.get("spy.toggle")
-                        .replace("{state}", Text.parseColors("&c&ndisabled&r"))
-                        .replace("{name}", ""));
+                String enabledStyle = lang.get("styles.state.true");
+                sender.sendMessage(spyToggleMessage
+                        .replace("{state}", enabledStyle + "enabled" + firstColorOfSpyToggle)
+                        .replace(" {name}", ""));
                 return true;
             }
         }
 
-        // Case 2: /spy <player> - Toggle spying on a specific player
+        // Case 2: /spy <player> - Spy on a specific player only
         String targetPlayerName = args[0];
         Player targetPlayer = plugin.getServer().getPlayer(targetPlayerName);
 
@@ -106,54 +113,41 @@ public class Spy implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // If currently globally spying, switch to targeted spying
-        if (spyingPlayers.contains(playerUUID)) {
-            // Remove from global spying
-            spyingPlayers.remove(playerUUID);
+        // Remove from global spying if currently active
+        boolean wasGloballySpying = spyingPlayers.remove(playerUUID);
 
-            // Initialize targeted spying for this spy
-            Set<UUID> playersBeingListenedTo = new HashSet<>();
-            playersBeingListenedTo.add(targetUUID);
-            targetedSpying.put(playerUUID, playersBeingListenedTo);
+        // Get existing targeted spying, if any
+        Set<UUID> currentTargets = targetedSpying.get(playerUUID);
+        boolean wasTargetingPlayer = currentTargets != null && currentTargets.contains(targetUUID);
 
-            // Inform the player about the change
-            sender.sendMessage(lang.get("spy.toggle")
-                    .replace("{state}", Text.parseColors("&a&nswitched"))
-                    .replace("{name}", Text.parseColors("&ato " + targetPlayerName)));
-            return true;
-        }
+        // Clear any existing targets and create a new set with just this player
+        Set<UUID> newTargets = new HashSet<>();
+        newTargets.add(targetUUID);
+        targetedSpying.put(playerUUID, newTargets);
 
-        // Get or create the set of players being listened to by this spy
-        Set<UUID> playersBeingListenedTo = targetedSpying.computeIfAbsent(playerUUID, k -> new HashSet<>());
-
-        // Toggle listening for this player's messages
-        if (playersBeingListenedTo.contains(targetUUID)) {
-            // Stop listening to this player
-            playersBeingListenedTo.remove(targetUUID);
-
-            if (playersBeingListenedTo.isEmpty()) {
-                // If not listening to anyone, remove the entry altogether
-                targetedSpying.remove(playerUUID);
-                sender.sendMessage(lang.get("spy.toggle")
-                        .replace("{state}", Text.parseColors("&c&ndisabled&r"))
-                        .replace("{name}", Text.parseColors("&afor " + targetPlayerName)));
-            } else {
-                sender.sendMessage(lang.get("spy.toggle")
-                        .replace("{state}", Text.parseColors("&c&ndisabled&r"))
-                        .replace("{name}", Text.parseColors("&afor " + targetPlayerName)));
-            }
+        // Send appropriate message
+        String message;
+        if (wasGloballySpying) {
+            message = lang.get("spy.toggle")
+                    .replace("{state}", Text.parseColors("&aswitched to " + targetPlayerName))
+                    .replace(" {name}", "");
+        } else if (wasTargetingPlayer) {
+            // If already targeting this player, toggle off
+            targetedSpying.remove(playerUUID);
+            message = lang.get("spy.toggle")
+                    .replace("{state}", lang.get("styles.state.false") + "disabled" + "§r")
+                    .replace("{name}", "for " + targetPlayerName);
         } else {
-            // Start listening to this player
-            playersBeingListenedTo.add(targetUUID);
-            sender.sendMessage(lang.get("spy.toggle")
-                    .replace("{state}", Text.parseColors("&a&nenabled&r"))
-                    .replace("{name}", Text.parseColors("&afor " + targetPlayerName)));
+            message = lang.get("spy.toggle")
+                    .replace("{state}", Text.parseColors("&anow spying on " + targetPlayerName))
+                    .replace(" {name}", "");
         }
+
+        sender.sendMessage(message);
 
         return true;
 
     }
-
 
     @Override
     public List<String> onTabComplete(CommandSender sender, @NotNull Command command, @NotNull String alias
@@ -212,26 +206,34 @@ public class Spy implements CommandExecutor, TabCompleter {
      * @param recipientUUID UUID of the message recipient
      */
     public void broadcastSpyMessage(String message, UUID senderUUID, UUID recipientUUID) {
+        // Create a set to track who we've already sent the message to
+        Set<UUID> messagedPlayers = new HashSet<>();
+        
         // First, send to global spies
-        for (UUID spyUUID : spyingPlayers) {
-            // Don't send to participants
-            if (spyUUID.equals(senderUUID) || spyUUID.equals(recipientUUID)) {
+        for (UUID spyUUID : new HashSet<>(spyingPlayers)) {
+            // Skip if we've already messaged this player or they're a participant
+            if (messagedPlayers.contains(spyUUID) || spyUUID.equals(senderUUID) || spyUUID.equals(recipientUUID)) {
                 continue;
             }
 
             Player spy = plugin.getServer().getPlayer(spyUUID);
             if (spy != null && spy.isOnline()) {
                 spy.sendMessage(message);
+                messagedPlayers.add(spyUUID);
+                if (plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().info("Sent spy message to global spy: " + spy.getName());
+                }
             }
         }
 
+
         // Then check targeted spies
-        for (Map.Entry<UUID, Set<UUID>> entry : targetedSpying.entrySet()) {
+        for (Map.Entry<UUID, Set<UUID>> entry : new HashMap<>(targetedSpying).entrySet()) {
             UUID spyUUID = entry.getKey();
             Set<UUID> targets = entry.getValue();
 
-            // Skip if the spy is one of the conversation participants
-            if (spyUUID.equals(senderUUID) || spyUUID.equals(recipientUUID)) {
+            // Skip if we've already messaged this player or they're a participant
+            if (messagedPlayers.contains(spyUUID) || spyUUID.equals(senderUUID) || spyUUID.equals(recipientUUID)) {
                 continue;
             }
 
@@ -240,8 +242,19 @@ public class Spy implements CommandExecutor, TabCompleter {
                 Player spy = plugin.getServer().getPlayer(spyUUID);
                 if (spy != null && spy.isOnline()) {
                     spy.sendMessage(message);
+                    messagedPlayers.add(spyUUID);
+                    if (plugin.getConfig().getBoolean("debug-mode")) {
+                        plugin.getLogger().info("Sent spy message to targeted spy: " + spy.getName() + 
+                            " (watching " + (targets.contains(senderUUID) ? "sender" : "") + 
+                            (targets.contains(recipientUUID) ? " recipient" : "") + ")");
+                    }
                 }
             }
+        }
+        
+        if (plugin.getConfig().getBoolean("debug-mode")) {
+            plugin.getLogger().info("Broadcast spy message from " + senderUUID + " to " + recipientUUID + 
+                " - Sent to " + messagedPlayers.size() + " spies");
         }
     }
 }

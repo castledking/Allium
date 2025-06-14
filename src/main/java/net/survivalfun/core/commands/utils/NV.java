@@ -33,6 +33,37 @@ public class NV implements CommandExecutor {
             return true;
         }
 
+        // /nv <player> (toggle for others)
+        if (args.length == 1) {
+            if (!player.hasPermission("core.nv.others")) {
+                Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label + " others");
+                return true;
+            }
+            Player target = plugin.getServer().getPlayer(args[0]);
+            if (target == null || !target.isOnline()) {
+                Text.sendErrorMessage(player, "player-not-found", lang, "{name}", args[0]);
+                return true;
+            }
+            boolean enabled = toggleNightVision(target);
+            String lastColor = lang.getFirstColorCode("nv.toggle");
+            if (enabled) {
+                player.sendMessage(lang.get("nv.toggle")
+                        .replace("{state}", lang.get("styles.state.true") + "enabled" + lastColor)
+                        .replace("{player}", target.getName()));
+                target.sendMessage(lang.get("nv.toggle")
+                        .replace("{state}", lang.get("styles.state.true") + "enabled" + lastColor)
+                        .replace("{player}", target.getName()));
+            } else {
+                player.sendMessage(lang.get("nv.toggle")
+                        .replace("{state}", lang.get("styles.state.false") + "disabled" + lastColor)
+                        .replace("{player}", target.getName()));
+                target.sendMessage(lang.get("nv.toggle")
+                        .replace("{state}", lang.get("styles.state.false") + "disabled" + lastColor)
+                        .replace("{player}", target.getName()));
+            }
+            return true;
+        }
+
         // Check if player has permission
         if (!player.hasPermission("core.nv")) {
             Text.sendErrorMessage(player, "no-permission", lang);
@@ -43,20 +74,27 @@ public class NV implements CommandExecutor {
         if (player.getGameMode() != GameMode.SPECTATOR) {
             // For other gamemodes, check for gamemode-specific permission
             String gameModePermission = "core.gamemode." + player.getGameMode().name().toLowerCase() + ".nv";
+            String nvGameModePermission = "core.nv." + player.getGameMode().name().toLowerCase();
 
-            if (!player.hasPermission(gameModePermission)) {
+            if (!player.hasPermission(gameModePermission) && !player.hasPermission(nvGameModePermission)) {
                 Text.sendErrorMessage(player, "no-permission", lang, "{cmd}",
                         label + " in " + player.getGameMode().name().toLowerCase() + ".");
-
                 return true; // Block command execution
             }
-
         }
 
-
-
-        // Toggle night vision
-        this.toggleNightVision(player);
+        // Toggle night vision for self
+        boolean enabled = toggleNightVision(player);
+        String lastColor = lang.getFirstColorCode("nv.toggle");
+        if (enabled) {
+            player.sendMessage(lang.get("nv.toggle")
+                    .replace("{state}", lang.get("styles.state.true") + "enabled" + lastColor)
+                    .replace("{player}", player.getName()));
+        } else {
+            player.sendMessage(lang.get("nv.toggle")
+                    .replace("{state}", lang.get("styles.state.false") + "disabled" + lastColor)
+                    .replace("{player}", player.getName()));
+        }
         return true;
     }
 
@@ -64,18 +102,18 @@ public class NV implements CommandExecutor {
      * Toggles night vision effect for a player
      *
      * @param player The player to toggle night vision for
+     * @return true if enabled, false if disabled
      */
-    public void toggleNightVision(Player player) {
+    public boolean toggleNightVision(Player player) {
         // Check if player already has night vision
         boolean hasNightVision = player.hasPotionEffect(PotionEffectType.NIGHT_VISION);
 
         if (hasNightVision) {
             // Remove night vision
             player.removePotionEffect(PotionEffectType.NIGHT_VISION);
-            player.sendMessage(lang.get("nv.disabled"));
+            return false;
         } else {
             // Add night vision with infinite duration (999999 seconds = ~11.5 days)
-            // Using a very high amplifier (9) for maximum brightness
             player.addPotionEffect(new PotionEffect(
                     PotionEffectType.NIGHT_VISION,
                     999999 * 20, // Duration in ticks (20 ticks = 1 second)
@@ -84,7 +122,7 @@ public class NV implements CommandExecutor {
                     false,       // No particles
                     true         // Show icon in inventory
             ));
-            player.sendMessage(lang.get("nv.enabled"));
+            return true;
         }
     }
 }

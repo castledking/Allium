@@ -261,5 +261,14 @@ whois:
   action-ban-history: "&7- &fBan History &7(LiteBans)"
   action-chat-sentry: "&7- &fChat Violations &7(ChatSentry)"
   footer: "&6&l---------------------------"
-  
-  
+
+#==========================================#
+#                 ITEMDB                   #
+#==========================================#
+
+itemdb:
+  header: "&6&l--- Item Information {name} ---"
+  name: "&7Name: &f{item}"
+  amount: "&7Amount: &f{amount}"
+  legacy-id: "&7Legacy ID: &f{legacy_id}"
+  modern-id: "&7Modern ID: &f{modern_id}"

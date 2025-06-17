@@ -9,6 +9,8 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
+import net.survivalfun.core.managers.DB.Database;
+import net.survivalfun.core.managers.DB.Database.LocationType;
 import net.survivalfun.core.listeners.jobs.PlayerDeathListener;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -22,9 +24,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -37,6 +39,7 @@ public class TP implements CommandExecutor, TabCompleter {
     private final PluginStart plugin;
     private final Lang lang;
     private final net.survivalfun.core.managers.config.Config config;
+    private final Database database;
 
     // Command aliases for different functionalities
     private final List<String> teleportCommandAliases;
@@ -87,6 +90,7 @@ public class TP implements CommandExecutor, TabCompleter {
         this.plugin = plugin;
         this.lang = plugin.getLangManager();
         this.config = plugin.getConfigManager();
+        this.database = plugin.getDatabase();
 
         // Initialize command aliases
         this.teleportCommandAliases = Arrays.asList("tp", "tpo", "teleport", "back");
@@ -711,22 +715,39 @@ public class TP implements CommandExecutor, TabCompleter {
                 float yaw = currentLoc.getYaw();
                 float pitch = currentLoc.getPitch();
                 
-                if (coordIndex + 3 < args.length && isNumeric(args[coordIndex + 3])) {
+                int worldArgIndex = 3; // Default index for world argument if no yaw/pitch
+                
+                // Check for yaw argument (4th or 5th argument)
+                if (args.length > 3 && isNumeric(args[coordIndex + 3])) {
                     yaw = Float.parseFloat(args[coordIndex + 3]);
-                    // Minecraft yaw is -180 to 180, normalize it
+                    // Normalize yaw to -180 to 180
                     while (yaw < -180.0F) yaw += 360.0F;
                     while (yaw >= 180.0F) yaw -= 360.0F;
+                    worldArgIndex = 4;
+                    
+                    // Check for pitch argument (5th argument)
+                    if (args.length > 4 && isNumeric(args[coordIndex + 4])) {
+                        pitch = Float.parseFloat(args[coordIndex + 4]);
+                        // Clamp pitch between -90 and 90 degrees
+                        pitch = Math.max(-90.0F, Math.min(90.0F, pitch));
+                        worldArgIndex = 5;
+                    }
                 }
                 
-                if (coordIndex + 4 < args.length && isNumeric(args[coordIndex + 4])) {
-                    pitch = Float.parseFloat(args[coordIndex + 4]);
-                    // Clamp pitch between -90 and 90 degrees
-                    pitch = Math.max(-90.0F, Math.min(90.0F, pitch));
+                // Get world (default to current world if not specified)
+                World world = targetPlayer.getWorld();
+                if (args.length > worldArgIndex) {
+                    World targetWorld = Bukkit.getWorld(args[worldArgIndex]);
+                    if (targetWorld == null) {
+                        sender.sendMessage(lang.get("world-not-found").replace("{world}", args[worldArgIndex]));
+                        return true;
+                    }
+                    world = targetWorld;
                 }
                 
                 // Create target location with specified yaw/pitch
                 Location targetLocation = new Location(
-                    currentLoc.getWorld(),
+                    world,
                     x,
                     y,
                     z,
@@ -735,9 +756,9 @@ public class TP implements CommandExecutor, TabCompleter {
                 );
                 
                 // Store last location before teleporting
-                lastLocation.put(targetPlayer.getUniqueId(), targetPlayer.getLocation());
+                saveLastLocation(targetPlayer.getUniqueId(), targetPlayer.getLocation());
                 
-                // Teleport the player
+                // Teleport player to target location
                 targetPlayer.teleport(targetLocation);
                 
                 // Send appropriate messages
@@ -750,7 +771,7 @@ public class TP implements CommandExecutor, TabCompleter {
                     .replace("{z}", String.valueOf(z)));
 
                     // Check if player has pets selected via /tppet
-                    if (hasPets) {
+                    if (hasPets(targetPlayer)) {
                         teleportSelectedPets(targetPlayer, targetLocation);
                     } else {
                         teleportPets(targetPlayer.getUniqueId(), targetPlayer, playerPets);
@@ -803,6 +824,7 @@ public class TP implements CommandExecutor, TabCompleter {
 
             // Check for death location first if player has the permission
             if (player.hasPermission("core.back.ondeath")) {
+                // Get death location from database via PlayerDeathListener
                 Location deathLocation = PlayerDeathListener.getDeathLocation(player);
                 if (deathLocation != null) {
                     // Check if death location is not too old (2 minutes = 120,000 milliseconds)
@@ -815,37 +837,37 @@ public class TP implements CommandExecutor, TabCompleter {
                 }
             }
 
-
-            // If no death location or permission, use regular last location
+            // If no death location or no permission, use regular last location from database
             if (targetLocation == null) {
-                if (!lastLocation.containsKey(playerUUID)) {
-                    Text.sendErrorMessage(player, "tp.no-previous-location", lang);
-                    return true;
+                // Get the last teleport location from database
+                Location teleportLocation = database.getPlayerLocation(playerUUID, LocationType.TELEPORT);
+                if (teleportLocation == null) {
+                    // Try in-memory cache as fallback (for backward compatibility)
+                    teleportLocation = lastLocation.get(playerUUID);
+                    if (teleportLocation == null) {
+                        Text.sendErrorMessage(player, "tp.no-previous-location", lang);
+                        return true;
+                    }
                 }
-                targetLocation = lastLocation.get(playerUUID);
+                targetLocation = teleportLocation;
             }
 
             // Store current location before teleporting
-            Location currentLocation = player.getLocation();
-
+            saveLastLocation(player.getUniqueId(), player.getLocation());
+            
             // Teleport player to target location
             player.teleport(targetLocation);
-
-
-            // Update the last location to their current position before teleporting
-            lastLocation.put(playerUUID, currentLocation);
-
-
-            // Teleport selected pets if any
-            if (hasPets(player)) {
-                teleportSelectedPets(player, targetLocation);
-            }
-
+            
             // Send appropriate message
             if (isDeathLocation) {
                 player.sendMessage(lang.get("tp.back-death-location"));
             } else {
                 player.sendMessage(lang.get("tp.back"));
+            }
+
+            // Teleport selected pets if any
+            if (hasPets(player)) {
+                teleportSelectedPets(player, targetLocation);
             }
 
             return true;
@@ -907,7 +929,7 @@ public class TP implements CommandExecutor, TabCompleter {
                 }
 
                 // Store last location before teleporting
-                lastLocation.put(player.getUniqueId(), player.getLocation());
+                saveLastLocation(player.getUniqueId(), player.getLocation());
                 
                 // Get target's location and apply current yaw/pitch if specified in args
                 Location targetLoc = onlineTarget.getLocation();
@@ -930,9 +952,8 @@ public class TP implements CommandExecutor, TabCompleter {
                 
                 // Teleport player to target with specified yaw/pitch
                 player.teleport(targetLoc);
-                player.sendMessage(lang.get("tp.success")
-                .replace("{name}", "to " + onlineTarget.getName())
-                .replace("{target}", ""));
+                player.sendMessage(lang.get("tp.success").replace("{name}", "to " + onlineTarget.getName())
+                        .replace("{target}", ""));
                 
                 // Teleport selected pets if any
                 if (hasPets) {
@@ -955,7 +976,7 @@ public class TP implements CommandExecutor, TabCompleter {
             }
 
             // Store last location before teleporting
-            lastLocation.put(player.getUniqueId(), player.getLocation());
+            saveLastLocation(player.getUniqueId(), player.getLocation());
             
             // Teleport player to last known location
             player.teleport(lastKnownLocation);
@@ -1011,19 +1032,15 @@ public class TP implements CommandExecutor, TabCompleter {
                 }
 
                 // Store last location of player1 before teleporting
-                lastLocation.put(player1.getUniqueId(), player1.getLocation());
+                saveLastLocation(player1.getUniqueId(), player1.getLocation());
                 
                 // Teleport player1 to player2
                 player1.teleport(onlinePlayer2.getLocation());
                 player1.sendMessage(lang.get("tp.success").replace("{name}", "to " + onlinePlayer2.getName())
                         .replace("{target}", ""));
                 
-                // Check if player1 has pets selected via /tppet
-                List<org.bukkit.entity.Entity> player1Pets = selectedPets.get(player1.getUniqueId());
-                boolean player1HasPets = player1Pets != null && !player1Pets.isEmpty();
-                
                 // Teleport selected pets if any
-                if (player1HasPets) {
+                if (hasPets) {
                     teleportSelectedPets(player1, onlinePlayer2.getLocation());
                 }
                 return true;
@@ -1037,7 +1054,7 @@ public class TP implements CommandExecutor, TabCompleter {
             }
 
             // Store last location of player1 before teleporting
-            lastLocation.put(player1.getUniqueId(), player1.getLocation());
+            saveLastLocation(player1.getUniqueId(), player1.getLocation());
             
             // Teleport player1 to last known location
             player1.teleport(lastKnownLocation);
@@ -1059,7 +1076,7 @@ public class TP implements CommandExecutor, TabCompleter {
                 return true;
             }
             // Store last location before teleporting
-            lastLocation.put(player1.getUniqueId(), player1.getLocation());
+            saveLastLocation(player1.getUniqueId(), player1.getLocation());
             // Teleport player1 to player2
             player1.teleport(player2.getLocation());
             
@@ -1410,7 +1427,7 @@ public class TP implements CommandExecutor, TabCompleter {
         // Teleport the player with delay and cooldown handling
         if (teleportingPlayer.hasPermission("core.tpa.nodelay")) {
             // Store last location before teleporting
-            lastLocation.put(teleportingPlayer.getUniqueId(), teleportingPlayer.getLocation());
+            saveLastLocation(teleportingPlayer.getUniqueId(), teleportingPlayer.getLocation());
 
             // Teleport the player
             teleportingPlayer.teleport(destinationPlayer.getLocation());
@@ -1440,7 +1457,7 @@ public class TP implements CommandExecutor, TabCompleter {
                 // Check if player has moved.
                 if (teleportingPlayer.getLocation().getBlock().getLocation().equals(originalLocation.getBlock().getLocation())) {
                     // Store last location before teleporting
-                    lastLocation.put(teleportingPlayer.getUniqueId(), teleportingPlayer.getLocation());
+                    saveLastLocation(teleportingPlayer.getUniqueId(), teleportingPlayer.getLocation());
                     teleportingPlayer.teleport(destinationPlayer.getLocation());
                     teleportingPlayer.sendMessage(lang.get("tp.success")
                             .replace("{name}", "to " + destinationPlayer.getName())
@@ -1640,7 +1657,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Store last location before teleporting
-        lastLocation.put(target.getUniqueId(), target.getLocation());
+        saveLastLocation(target.getUniqueId(), target.getLocation());
 
         // Teleport target to player
         target.teleport(player.getLocation());
@@ -1724,10 +1741,17 @@ public class TP implements CommandExecutor, TabCompleter {
             }
             
             // Create location with specified yaw and pitch
-            Location location = new Location(world, x, y, z, yaw, pitch);
+            Location location = new Location(
+                world,
+                x,
+                y,
+                z,
+                yaw,
+                pitch
+            );
             
             // Store last location before teleporting
-            lastLocation.put(player.getUniqueId(), player.getLocation());
+            saveLastLocation(player.getUniqueId(), player.getLocation());
             
             // Teleport player
             player.teleport(location);
@@ -1798,7 +1822,6 @@ public class TP implements CommandExecutor, TabCompleter {
                 sender.sendMessage(lang.get("tp.toggle")
                         .replace("{state}", enabledStyle + "enabled" + lang.getFirstColorCode("tp.toggle"))
                         .replace("{name}", isSelf ? "" : namePrefix + targetPlayer.getName()));
-
             } else {
                 teleportToggled.add(targetUUID);
 
@@ -1810,7 +1833,6 @@ public class TP implements CommandExecutor, TabCompleter {
                 sender.sendMessage(lang.get("tp.toggle")
                         .replace("{state}", disabledStyle + "disabled" + lang.getFirstColorCode("tp.toggle"))
                         .replace("{name}", isSelf ? "" : namePrefix + targetPlayer.getName()));
-
             }
 
             return true;
@@ -1885,13 +1907,20 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Store last location before teleporting
-        lastLocation.put(player.getUniqueId(), player.getLocation());
+        saveLastLocation(player.getUniqueId(), player.getLocation());
 
         int x = current.getBlockX();
         int z = current.getBlockZ();
         int y = world.getHighestBlockYAt(x, z);
 
-        Location destination = new Location(world, x + 0.5, y + 1, z + 0.5, current.getYaw(), current.getPitch());
+        Location destination = new Location(
+            world,
+            x + 0.5,
+            y + 1,
+            z + 0.5,
+            current.getYaw(),
+            current.getPitch()
+        );
         player.teleport(destination);
         player.sendMessage(lang.get("tp.success")
         .replace("{name}", "to top.")
@@ -1939,7 +1968,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Store last location before teleporting
-        lastLocation.put(player.getUniqueId(), player.getLocation());
+        saveLastLocation(player.getUniqueId(), player.getLocation());
 
         int x = current.getBlockX();
         int z = current.getBlockZ();
@@ -1959,7 +1988,14 @@ public class TP implements CommandExecutor, TabCompleter {
             y++;
         }
 
-        Location destination = new Location(world, x + 0.5, y + 1, z + 0.5, current.getYaw(), current.getPitch());
+        Location destination = new Location(
+            world,
+            x + 0.5,
+            y + 1,
+            z + 0.5,
+            current.getYaw(),
+            current.getPitch()
+        );
         player.teleport(destination);
         player.sendMessage(lang.get("tp.success")
         .replace("{name}", "to bottom.")
@@ -2007,7 +2043,28 @@ public class TP implements CommandExecutor, TabCompleter {
      * @return The last location, or null if not available
      */
     public Location getLastLocation(UUID playerUUID) {
+        // First try to get from database
+        Location dbLocation = database.getPlayerLocation(playerUUID, LocationType.TELEPORT);
+        if (dbLocation != null) {
+            return dbLocation;
+        }
+        
+        // Fall back to in-memory cache for backward compatibility
         return lastLocation.get(playerUUID);
+    }
+    
+    /**
+     * Saves a player's last location before teleporting
+     *
+     * @param playerUUID The UUID of the player
+     * @param location The location to save
+     */
+    private void saveLastLocation(UUID playerUUID, Location location) {
+        // Save to database with current timestamp
+        database.savePlayerLocation(playerUUID, LocationType.TELEPORT, location, System.currentTimeMillis());
+        
+        // Also update in-memory cache for backward compatibility
+        lastLocation.put(playerUUID, location);
     }
 
     /**

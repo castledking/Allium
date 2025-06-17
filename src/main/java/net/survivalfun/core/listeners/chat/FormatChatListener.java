@@ -46,8 +46,8 @@ public class FormatChatListener implements Listener {
     private final Pattern placeholderPattern = Pattern.compile("%\\{([^}]+)\\}%");
     private final boolean blockUnicode;
 
-        public FormatChatListener(PluginStart plugin, Chat vaultChat, LuckPerms luckPerms, Config config) {
-                this.plugin = plugin;
+    public FormatChatListener(PluginStart plugin, Chat vaultChat, LuckPerms luckPerms, Config config) {
+        this.plugin = plugin;
 
         this.config = config;
         this.vaultChat = vaultChat;

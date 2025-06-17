@@ -239,8 +239,8 @@ public class FireballExplosionListener implements Listener {
 
         Bukkit.dispatchCommand(console, "/world " + worldName); 
         Bukkit.dispatchCommand(console, "/sel cuboid"); 
-        Bukkit.dispatchCommand(console, String.format("pos1 %d,%d,%d", x1, y1, z1));
-        Bukkit.dispatchCommand(console, String.format("pos2 %d,%d,%d", x2, y2, z2));
+        Bukkit.dispatchCommand(console, String.format("/pos1 %d,%d,%d", x1, y1, z1));
+        Bukkit.dispatchCommand(console, String.format("/pos2 %d,%d,%d", x2, y2, z2));
         Bukkit.dispatchCommand(console, "/replace fire air");
         Bukkit.dispatchCommand(console, "/sel"); 
 

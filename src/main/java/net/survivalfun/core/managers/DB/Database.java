@@ -1,6 +1,8 @@
 package net.survivalfun.core.managers.DB;
 
 import net.survivalfun.core.PluginStart;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -149,6 +151,38 @@ public class Database {
                             "is_claimed BOOLEAN DEFAULT FALSE" +
                             ")"
             );
+            
+            // Create player locations table for persistent /back command and other location tracking
+            statement.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS player_locations (" +
+                            "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                            "player_uuid VARCHAR(36) NOT NULL, " +
+                            "location_type VARCHAR(50) NOT NULL, " +
+                            "world VARCHAR(255) NOT NULL, " +
+                            "x DOUBLE NOT NULL, " +
+                            "y DOUBLE NOT NULL, " +
+                            "z DOUBLE NOT NULL, " +
+                            "yaw FLOAT NOT NULL, " +
+                            "pitch FLOAT NOT NULL, " +
+                            "timestamp BIGINT NOT NULL, " +
+                            "last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                            "INDEX (player_uuid, location_type)" +
+                            ")"
+            );
+            
+            // Migrate data from old player_death_locations table if it exists
+            try {
+                if (tableExists("player_death_locations")) {
+                    statement.executeUpdate(
+                            "INSERT INTO player_locations (player_uuid, location_type, world, x, y, z, yaw, pitch, timestamp) " +
+                            "SELECT player_uuid, 'DEATH', world, x, y, z, yaw, pitch, death_time " +
+                            "FROM player_death_locations"
+                    );
+                }
+            } catch (SQLException e) {
+                // Migration failed, but we can continue
+                plugin.getLogger().log(Level.WARNING, "Failed to migrate death locations data", e);
+            }
             statement.executeUpdate(
                     "CREATE TABLE IF NOT EXISTS player_balances (" +
                             "uuid VARCHAR(36) PRIMARY KEY, " +
@@ -169,6 +203,268 @@ public class Database {
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "Error closing database connection", e);
+        }
+    }
+    
+    /**
+     * Location types for player location tracking
+     */
+    public enum LocationType {
+        DEATH,      // Death location
+        TELEPORT,   // Last location before teleporting
+        COMMAND,    // Last location before executing a command
+        LOGIN,      // Location at login
+        LOGOUT      // Location at logout
+    }
+    
+    /**
+     * Saves a player's location with a specific type to the database
+     * 
+     * @param playerUUID The UUID of the player
+     * @param locationType The type of location being saved
+     * @param location The location to save
+     * @param timestamp The timestamp when the location was recorded (milliseconds since epoch)
+     */
+    public void savePlayerLocation(UUID playerUUID, LocationType locationType, Location location, long timestamp) {
+        try {
+            openConnection();
+            
+            String sql = "INSERT INTO player_locations (player_uuid, location_type, world, x, y, z, yaw, pitch, timestamp, last_updated) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+                    
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, playerUUID.toString());
+                statement.setString(2, locationType.name());
+                statement.setString(3, location.getWorld().getName());
+                statement.setDouble(4, location.getX());
+                statement.setDouble(5, location.getY());
+                statement.setDouble(6, location.getZ());
+                statement.setFloat(7, location.getYaw());
+                statement.setFloat(8, location.getPitch());
+                statement.setLong(9, timestamp);
+                
+                statement.executeUpdate();
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to save " + locationType + " location for player UUID: " + playerUUID, e);
+        }
+    }
+    
+    /**
+     * Gets a player's most recent location of a specific type from the database
+     * 
+     * @param playerUUID The UUID of the player
+     * @param locationType The type of location to retrieve
+     * @return The location, or null if not found
+     */
+    public Location getPlayerLocation(UUID playerUUID, LocationType locationType) {
+        try {
+            openConnection();
+            
+            String sql = "SELECT world, x, y, z, yaw, pitch FROM player_locations " +
+                         "WHERE player_uuid = ? AND location_type = ? " +
+                         "ORDER BY timestamp DESC LIMIT 1";
+            
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, playerUUID.toString());
+                statement.setString(2, locationType.name());
+                
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    if (resultSet.next()) {
+                        String worldName = resultSet.getString("world");
+                        double x = resultSet.getDouble("x");
+                        double y = resultSet.getDouble("y");
+                        double z = resultSet.getDouble("z");
+                        float yaw = resultSet.getFloat("yaw");
+                        float pitch = resultSet.getFloat("pitch");
+                        
+                        World world = plugin.getServer().getWorld(worldName);
+                        if (world != null) {
+                            return new Location(world, x, y, z, yaw, pitch);
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to get " + locationType + " location for player UUID: " + playerUUID, e);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Gets the timestamp of a player's most recent location of a specific type
+     * 
+     * @param playerUUID The UUID of the player
+     * @param locationType The type of location
+     * @return The timestamp in milliseconds since epoch, or 0 if not found
+     */
+    public long getPlayerLocationTimestamp(UUID playerUUID, LocationType locationType) {
+        try {
+            openConnection();
+            
+            String sql = "SELECT timestamp FROM player_locations " +
+                         "WHERE player_uuid = ? AND location_type = ? " +
+                         "ORDER BY timestamp DESC LIMIT 1";
+            
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, playerUUID.toString());
+                statement.setString(2, locationType.name());
+                
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    if (resultSet.next()) {
+                        return resultSet.getLong("timestamp");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to get " + locationType + " timestamp for player UUID: " + playerUUID, e);
+        }
+        
+        return 0L;
+    }
+    
+    /**
+     * Gets the most recent player location of any type
+     * 
+     * @param playerUUID The UUID of the player
+     * @return A Map containing location data and type, or null if not found
+     */
+    public Map<String, Object> getLastPlayerLocation(UUID playerUUID) {
+        try {
+            openConnection();
+            
+            String sql = "SELECT location_type, world, x, y, z, yaw, pitch, timestamp " +
+                         "FROM player_locations WHERE player_uuid = ? " +
+                         "ORDER BY timestamp DESC LIMIT 1";
+            
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, playerUUID.toString());
+                
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    if (resultSet.next()) {
+                        Map<String, Object> locationData = new HashMap<>();
+                        locationData.put("location_type", resultSet.getString("location_type"));
+                        locationData.put("world", resultSet.getString("world"));
+                        locationData.put("x", resultSet.getDouble("x"));
+                        locationData.put("y", resultSet.getDouble("y"));
+                        locationData.put("z", resultSet.getDouble("z"));
+                        locationData.put("yaw", resultSet.getFloat("yaw"));
+                        locationData.put("pitch", resultSet.getFloat("pitch"));
+                        locationData.put("timestamp", resultSet.getLong("timestamp"));
+                        return locationData;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to get last location for player UUID: " + playerUUID, e);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Gets the most recent non-death location for a player
+     * 
+     * @param playerUUID The UUID of the player
+     * @return The location, or null if not found
+     */
+    public Location getLastNonDeathLocation(UUID playerUUID) {
+        try {
+            openConnection();
+            
+            String sql = "SELECT world, x, y, z, yaw, pitch FROM player_locations " +
+                         "WHERE player_uuid = ? AND location_type != 'DEATH' " +
+                         "ORDER BY timestamp DESC LIMIT 1";
+            
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, playerUUID.toString());
+                
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    if (resultSet.next()) {
+                        String worldName = resultSet.getString("world");
+                        double x = resultSet.getDouble("x");
+                        double y = resultSet.getDouble("y");
+                        double z = resultSet.getDouble("z");
+                        float yaw = resultSet.getFloat("yaw");
+                        float pitch = resultSet.getFloat("pitch");
+                        
+                        World world = plugin.getServer().getWorld(worldName);
+                        if (world != null) {
+                            return new Location(world, x, y, z, yaw, pitch);
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to get last non-death location for player UUID: " + playerUUID, e);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * For backward compatibility - saves a player's death location and time to the database
+     * 
+     * @param playerUUID The UUID of the player
+     * @param location The location where the player died
+     * @param deathTime The time when the player died (milliseconds since epoch)
+     */
+    public void savePlayerDeathLocation(UUID playerUUID, Location location, long deathTime) {
+        savePlayerLocation(playerUUID, LocationType.DEATH, location, deathTime);
+    }
+    
+    /**
+     * For backward compatibility - gets a player's death location from the database
+     * 
+     * @param playerUUID The UUID of the player
+     * @return The location where the player died, or null if not found
+     */
+    public Location getPlayerDeathLocation(UUID playerUUID) {
+        return getPlayerLocation(playerUUID, LocationType.DEATH);
+    }
+    
+    /**
+     * For backward compatibility - gets the time when a player died from the database
+     * 
+     * @param playerUUID The UUID of the player
+     * @return The time of death in milliseconds since epoch, or 0 if not found
+     */
+    public long getPlayerDeathTime(UUID playerUUID) {
+        return getPlayerLocationTimestamp(playerUUID, LocationType.DEATH);
+    }
+    
+    /**
+     * For backward compatibility - removes a player's death location and time from the database
+     * 
+     * @param playerUUID The UUID of the player
+     */
+    public void clearPlayerDeathLocation(UUID playerUUID) {
+        deletePlayerLocation(playerUUID, LocationType.DEATH);
+    }
+    
+    /**
+     * Deletes a player's location of a specific type from the database
+     * 
+     * @param playerUUID The UUID of the player
+     * @param locationType The type of location to delete
+     * @return true if successful, false otherwise
+     */
+    public boolean deletePlayerLocation(UUID playerUUID, LocationType locationType) {
+        try {
+            openConnection();
+            
+            String sql = "DELETE FROM player_locations WHERE player_uuid = ? AND location_type = ?";
+            
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, playerUUID.toString());
+                statement.setString(2, locationType.name());
+                statement.executeUpdate();
+                return true;
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().warning("Failed to delete " + locationType + " location for player UUID: " + playerUUID);
+            return false;
         }
     }
 
@@ -628,15 +924,41 @@ public class Database {
     }
     
     /**
+     * Checks if a table exists in the database
+     * @param tableName The name of the table
+     * @return true if the table exists, false otherwise
+     */
+    private boolean tableExists(String tableName) {
+        try {
+            openConnection();
+            
+            DatabaseMetaData metaData = connection.getMetaData();
+            try (ResultSet tables = metaData.getTables(null, null, tableName.toUpperCase(), null)) {
+                return tables.next(); // If there's at least one result, the table exists
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Error checking if table exists: " + tableName, e);
+            return false;
+        }
+    }
+    
+    /**
      * Checks if a column exists in a table
      * @param tableName The name of the table
      * @param columnName The name of the column
      * @return true if the column exists, false otherwise
      */
-    private boolean columnExists(String tableName, String columnName) throws SQLException {
-        DatabaseMetaData meta = connection.getMetaData();
-        try (ResultSet rs = meta.getColumns(null, null, tableName.toUpperCase(), columnName.toUpperCase())) {
-            return rs.next(); // If there's a result, the column exists
+    private boolean columnExists(String tableName, String columnName) {
+        try {
+            openConnection();
+            
+            DatabaseMetaData metaData = connection.getMetaData();
+            try (ResultSet columns = metaData.getColumns(null, null, tableName.toUpperCase(), columnName.toUpperCase())) {
+                return columns.next(); // If there's at least one result, the column exists
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Error checking if column exists: " + columnName, e);
+            return false;
         }
     }
     

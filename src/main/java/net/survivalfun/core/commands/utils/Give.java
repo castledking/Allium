@@ -3,16 +3,10 @@ package net.survivalfun.core.commands.utils;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.core.Alias;
-import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.core.LegacyID;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Color;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
+import net.survivalfun.core.managers.core.Text;
+import org.bukkit.*;
+import org.bukkit.command.*;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -20,16 +14,13 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
-import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.logging.Level;
 
 import static net.survivalfun.core.managers.core.Item.isGiveable;
@@ -38,7 +29,46 @@ public class Give implements CommandExecutor {
     private final PluginStart plugin;
     private final Lang lang;
     private final net.survivalfun.core.managers.config.Config configManager;
-
+    
+    // Default durations in seconds for potion effects when not specified
+    private static final Map<PotionEffectType, Integer> DEFAULT_POTION_DURATIONS = new HashMap<>();
+    
+    static {
+        // Set default durations for common potion effects (in seconds)
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.SPEED, 180);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.SLOWNESS, 90);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.HASTE, 90);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.MINING_FATIGUE, 300);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.STRENGTH, 180);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.HEALTH_BOOST, 30);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.INSTANT_DAMAGE, -1);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.INSTANT_HEALTH, -1);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.JUMP_BOOST, 180);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.NAUSEA, 15);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.REGENERATION, 45);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.RESISTANCE, 300);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.FIRE_RESISTANCE, 180);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.WATER_BREATHING, 180);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.INVISIBILITY, 180);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.BLINDNESS, 15);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.NIGHT_VISION, 180);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.HUNGER, 30);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.WEAKNESS, 90);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.POISON, 45);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.WITHER, 7);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.ABSORPTION, 120);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.SATURATION, 45);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.GLOWING, 30);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.LEVITATION, 10);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.LUCK, 300);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.UNLUCK, 300);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.SLOW_FALLING, 300);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.CONDUIT_POWER, 90);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.DOLPHINS_GRACE, 30);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.BAD_OMEN, 60);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.HERO_OF_THE_VILLAGE, 60);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.DARKNESS, 10);
+    }
 
     public Give(PluginStart plugin) {
         this.plugin = plugin;
@@ -46,11 +76,8 @@ public class Give implements CommandExecutor {
         this.configManager = plugin.getConfigManager();
     }
 
-
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command
-            , @NotNull String label
-            , String @NotNull [] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
         Lang lang = plugin.getLangManager();
         if (lang == null) {
             sender.sendMessage("Error: Language system not initialized");
@@ -245,13 +272,23 @@ public class Give implements CommandExecutor {
             return;
         }
 
+        Player target = Bukkit.getPlayer(player);
+        if (target == null) {
+            Text.sendErrorMessage(sender, "player-not-found", lang, "{player}", player);
+            return;
+        }
+
+        Material material = null;
+        ItemMeta meta = null;
+        ItemStack item = null;
+        int specialPotionType = 0;
+
         try {
             // Extract base item name
             String[] parts = arg.split(";");
             String itemName = parts[0];
-            
+
             // Check for special potion types (potion:1, potion:2, potion:3)
-            int specialPotionType = 0;
             if (itemName.toLowerCase().startsWith("potion:")) {
                 try {
                     int potionId = Integer.parseInt(itemName.substring(7));
@@ -271,282 +308,291 @@ public class Give implements CommandExecutor {
                 }
             }
 
-            Material material = getMaterial(itemName, sender);
+            material = getMaterial(itemName, sender);
             if (material == null) {
                 return;
             }
-            
-            // Show usage guidance for potions and tipped arrows if no parameters are provided
-            if (parts.length == 1) {
-                if (material == Material.POTION || material == Material.SPLASH_POTION || material == Material.LINGERING_POTION) {
-                    String potionGuide = "potion;effect:<effect>;duration:<seconds>;amplifier:<level>;ambient:<true/false>;particles:<true/false>;icon:<true/false>;type:<potion_type>";
-                    sender.sendMessage(lang.get("command-usage")
-                            .replace("{cmd}", "give")
-                            .replace("{args}", potionGuide));
-                } else if (material == Material.TIPPED_ARROW) {
-                    String arrowGuide = "tipped_arrow;effect:<effect>;duration:<seconds>;amplifier:<level>;ambient:<true/false>;particles:<true/false>;icon:<true/false>";
-                    sender.sendMessage(lang.get("command-usage")
-                            .replace("{cmd}", "give")
-                            .replace("{args}", arrowGuide));
-                }
-            }
 
             // Check if this is a potion or tipped arrow item
-            boolean isPotion = material == Material.POTION || material == Material.SPLASH_POTION ||
-                    material == Material.LINGERING_POTION || material == Material.TIPPED_ARROW;
+            boolean isPotion = material == Material.POTION || material == Material.SPLASH_POTION || 
+                material == Material.LINGERING_POTION || material == Material.TIPPED_ARROW;
 
-            Player target = Bukkit.getPlayer(player);
-            if (target == null) {
-                Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", player);
+            // Show usage guidance for potions and tipped arrows if no parameters are provided
+            if (parts.length == 1 && isPotion) {
+                String guide = material == Material.TIPPED_ARROW ? 
+                    "tipped_arrow;<effect> OR tipped_arrow;effect:<effect>;duration:<seconds>;amplifier:<level>;ambient:<true/false>;particles:<true/false>;icon:<true/false>" :
+                    "potion;<effect> OR potion;effect:<effect>;duration:<seconds>;amplifier:<level>;ambient:<true/false>;particles:<true/false>;icon:<true/false>;type:<potion_type>";
+                
+                sender.sendMessage(lang.get("command-usage")
+                        .replace("{cmd}", "give")
+                        .replace("{args}", guide));
                 return;
-            } else if (amount == 0) {
+            }
+
+            if (amount == 0) {
                 amount = material.getMaxStackSize();
             }
 
-            ItemStack item = new ItemStack(material, amount);
-            ItemMeta meta = item.getItemMeta();
+            item = new ItemStack(material, amount);
+            meta = item.getItemMeta();
 
             String name = null;
             String potionEffect = null;
-            int potionDuration = 200; // Default 10 seconds (200 ticks)
-            int potionAmplifier = 0; // Default level 1
+            int potionAmplifier = 0;
+            int potionDuration = 0; // seconds
             boolean potionAmbient = false;
             boolean potionParticles = true;
             boolean potionIcon = true;
-            PotionType potionType = null;
+            boolean customPotion = false;
 
-            for (int i = 1; i < parts.length; i++) {
-                String part = parts[i];
-                if (part.startsWith("name=") || part.startsWith("name:")) {
-                    // Extract the name part, keeping both spaces and underscores
-                    name = part.substring(5);
-                    
-                    // Only replace underscores with spaces if they're not part of color codes
-                    // This allows both actual spaces and underscores via _ in the command
-                    StringBuilder processedName = new StringBuilder();
-                    boolean inColorCode = false;
-                    
-                    for (int j = 0; j < name.length(); j++) {
-                        char c = name.charAt(j);
-                        
-                        if (c == '&' || c == '§') {
-                            inColorCode = true;
-                            processedName.append(c);
-                        } else if (inColorCode) {
-                            inColorCode = false;
-                            processedName.append(c);
-                        } else if (c == '_') {
-                            processedName.append(' '); // Replace underscore with space
-                        } else {
-                            processedName.append(c);
+            // Parse potion arguments
+            if (parts.length > 1) {
+                // Check if the first argument after 'potion' is in named format (contains ':' or '=')
+                boolean isNamed = parts[1].contains(":") || parts[1].contains("=");
+                
+                if (isNamed) {
+                    // Named parameters: e.g. effect:speed;duration:300;amplifier:1
+                    Map<String, String> namedParams = new HashMap<>();
+                    for (int i = 1; i < parts.length; i++) {
+                        String[] keyValue = parts[i].split("[:=]");
+                        if (keyValue.length >= 2) {
+                            String key = keyValue[0].toLowerCase();
+                            String value = keyValue[1];
+                            namedParams.put(key, value);
                         }
                     }
                     
-                    name = Text.parseColors(processedName.toString());
-                } else if (part.startsWith("effect=") || part.startsWith("effect:")) {
-                    potionEffect = part.substring(7).toUpperCase();
-                } else if (part.startsWith("duration=") || part.startsWith("duration:")) {
-                    try {
-                        potionDuration = Integer.parseInt(part.substring(9)) * 20; // Convert seconds to ticks
-                    } catch (NumberFormatException e) {
-                        Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "duration");
+                    // Extract values
+                    potionEffect = namedParams.get("effect");
+                    if (namedParams.containsKey("duration")) {
+                        potionDuration = Integer.parseInt(namedParams.get("duration"));
                     }
-                } else if (part.startsWith("amplifier=") || part.startsWith("amplifier:")) {
-                    try {
-                        potionAmplifier = Integer.parseInt(part.substring(10));
-                    } catch (NumberFormatException e) {
-                        Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "amplifier");
+                    if (namedParams.containsKey("amplifier")) {
+                        potionAmplifier = Integer.parseInt(namedParams.get("amplifier"));
                     }
-                } else if (part.startsWith("ambient=") || part.startsWith("ambient:")) {
-                    potionAmbient = Boolean.parseBoolean(part.substring(8));
-                } else if (part.startsWith("particles=") || part.startsWith("particles:")) {
-                    potionParticles = Boolean.parseBoolean(part.substring(10));
-                } else if (part.startsWith("icon=") || part.startsWith("icon:")) {
-                    potionIcon = Boolean.parseBoolean(part.substring(5));
-                } else if (part.startsWith("type=") || part.startsWith("type:")) {
-                    try {
-                        potionType = PotionType.valueOf(part.substring(5).toUpperCase());
-                    } catch (IllegalArgumentException e) {
-                        Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "potion type");
-                    }
-                }
-            }
-
-            if (meta != null) {
-                if (name != null) {
-                    Plugin plugin = Bukkit.getPluginManager().getPlugin("SFCore");
-                    if (plugin == null) {
-                        sender.sendMessage("Plugin not found.");
-                        return;
-                    }
-                    NamespacedKey key = new NamespacedKey(plugin, "display_name");
-                    PersistentDataContainer dataContainer = meta.getPersistentDataContainer();
-                    dataContainer.set(key, PersistentDataType.STRING, name);
-                    meta.setDisplayName(name);
-                }
-                
-                // Apply potion effects if this is a potion or tipped arrow
-                if (isPotion && meta instanceof PotionMeta) {
-                    PotionMeta potionMeta = (PotionMeta) meta;
-                    
-                    // Handle special potion types (Mundane, Thick, Awkward)
-                    if (specialPotionType > 0) {
-                        switch (specialPotionType) {
-                            case 1:
-                                potionMeta.setBasePotionData(new PotionData(PotionType.MUNDANE));
-                                break;
-                            case 2:
-                                potionMeta.setBasePotionData(new PotionData(PotionType.THICK));
-                                break;
-                            case 3:
-                                potionMeta.setBasePotionData(new PotionData(PotionType.AWKWARD));
-                                break;
-                        }
-                    }
-                    // Apply base potion type if specified
-                    else if (potionType != null) {
-                        potionMeta.setBasePotionData(new PotionData(potionType));
-                    }
-                    
-                    // Apply custom effect if specified
-                    if (potionEffect != null) {
-                        try {
-                            // Get potion effect type by name
-                            PotionEffectType effectType = PotionEffectType.getByName(potionEffect);
-                            
-                            if (effectType != null) {
-                                PotionEffect effect = new PotionEffect(
-                                    effectType, 
-                                    potionDuration, 
-                                    potionAmplifier,
-                                    potionAmbient,
-                                    potionParticles,
-                                    potionIcon
-                                );
-                                potionMeta.addCustomEffect(effect, true);
-                                
-                                // Set color based on effect (optional)
-                                if (effectType.getColor() != null) {
-                                    potionMeta.setColor(effectType.getColor());
-                                }
-                            } else {
-                                Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "potion effect");
-                            }
-                        } catch (IllegalArgumentException e) {
-                            Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "potion effect");
-                        }
-                    }
-                }
-                
-                item.setItemMeta(meta);
-            }
-            
-            // Apply enchantments if any
-            if (enchantments != null && !enchantments.isEmpty()) {
-                applyEnchantments(sender, item, material, enchantments);
-            }
-            
-            // Give the item to the player
-            PlayerInventory inventory = target.getInventory();
-            inventory.addItem(item);
-            
-            // Generate a proper display name for potions and tipped arrows
-            String itemDisplayName;
-            if (isPotion && meta instanceof PotionMeta) {
-                String potionTypeStr = "";
-                String effectStr = "";
-                
-                // Get potion type prefix (splash, lingering, etc.)
-                if (material == Material.SPLASH_POTION) {
-                    potionTypeStr = "Splash ";
-                } else if (material == Material.LINGERING_POTION) {
-                    potionTypeStr = "Lingering ";
-                } else if (material == Material.TIPPED_ARROW) {
-                    potionTypeStr = "Arrow of ";
-                }
-                
-                // Get effect name and create the display name
-                if (specialPotionType > 0) {
-                    // Special potion types
-                    switch (specialPotionType) {
-                        case 1:
-                            itemDisplayName = potionTypeStr + "Mundane Potion";
-                            break;
-                        case 2:
-                            itemDisplayName = potionTypeStr + "Thick Potion";
-                            break;
-                        case 3:
-                            itemDisplayName = potionTypeStr + "Awkward Potion";
-                            break;
-                        default:
-                            itemDisplayName = potionTypeStr + "Water Bottle";
-                    }
-                } else if (potionEffect != null) {
-                    effectStr = formatName(potionEffect);
-                    if (material == Material.TIPPED_ARROW) {
-                        itemDisplayName = potionTypeStr + effectStr;
-                    } else {
-                        itemDisplayName = potionTypeStr + "Potion of " + effectStr;
-                    }
-                } else if (potionType != null) {
-                    effectStr = formatName(potionType.name());
-                    if (material == Material.TIPPED_ARROW) {
-                        itemDisplayName = potionTypeStr + effectStr;
-                    } else {
-                        itemDisplayName = potionTypeStr + "Potion of " + effectStr;
+                    if (namedParams.containsKey("name")) {
+                        name = Text.parseColors(namedParams.get("name").replace('_', ' '));
                     }
                 } else {
-                    // Default water bottle
-                    if (material == Material.TIPPED_ARROW) {
-                        itemDisplayName = "Arrow of Water";
-                    } else {
-                        itemDisplayName = potionTypeStr + "Water Bottle";
+                    // Positional parameters: effect, duration, amplifier, [name]
+                    int paramIndex = 1;
+                    if (parts.length > paramIndex && !parts[paramIndex].contains(":")) {
+                        potionEffect = parts[paramIndex++];
+                    }
+                    if (parts.length > paramIndex && !parts[paramIndex].contains(":")) {
+                        try {
+                            potionDuration = Integer.parseInt(parts[paramIndex++]);
+                        } catch (NumberFormatException e) {
+                            // If it's not a number, it might be a name parameter without value
+                            if (parts[paramIndex].startsWith("name:")) {
+                                name = Text.parseColors(parts[paramIndex++].substring(5).replace('_', ' '));
+                            }
+                        }
+                    }
+                    if (parts.length > paramIndex && !parts[paramIndex].contains(":")) {
+                        try {
+                            potionAmplifier = Integer.parseInt(parts[paramIndex++]);
+                        } catch (NumberFormatException e) {
+                            // If it's not a number, it might be a name parameter without value
+                            if (parts[paramIndex].startsWith("name:")) {
+                                name = Text.parseColors(parts[paramIndex++].substring(5).replace('_', ' '));
+                            }
+                        }
+                    }
+                    // Check for name parameter in any remaining parts
+                    for (int i = paramIndex; i < parts.length; i++) {
+                        if (parts[i].startsWith("name:")) {
+                            name = Text.parseColors(parts[i].substring(5).replace('_', ' '));
+                            break;
+                        }
                     }
                 }
-                
-                // Set the display name on the item itself
-                ItemMeta updatedMeta = item.getItemMeta();
-                if (updatedMeta != null) {
-                    updatedMeta.setDisplayName(ChatColor.RESET + itemDisplayName);
-                    item.setItemMeta(updatedMeta);
+            }
+
+            // Handle potion metadata if this is a potion
+            if (material != null && (material == Material.POTION || material == Material.SPLASH_POTION || 
+                material == Material.LINGERING_POTION || material == Material.TIPPED_ARROW) && meta instanceof PotionMeta) {
+                PotionMeta potionMeta = (PotionMeta) meta;
+
+                // If no effect specified but we have a potion, use default
+                if (potionEffect == null) {
+                    potionMeta.setBasePotionType(PotionType.WATER);
+                    item.setItemMeta(potionMeta);
+                    // Skip the rest of the potion handling
+                    return;
                 }
-            } else {
-                itemDisplayName = formatName(material.name());
-            }
-            
-            // Send success message
-            if (sender.getName().equals(target.getName())) {
-                // Self-give
-                sender.sendMessage(lang.get("give.success")
-                        .replace("{amount}", String.valueOf(amount))
-                        .replace("{item}", itemDisplayName));
-            } else {
-                // Giving to another player
-                sender.sendMessage(lang.get("give.success-other")
-                        .replace("{name}", target.getName())
-                        .replace("{amount}", String.valueOf(amount))
-                        .replace("{item}", itemDisplayName));
+
+                // Find the effect type using the registry
+                PotionEffectType effectType = Registry.EFFECT.get(NamespacedKey.minecraft(potionEffect.toLowerCase()));
+                if (effectType == null) {
+                    // Fallback to direct registry lookup by key
+                    effectType = Registry.EFFECT.get(NamespacedKey.fromString(potionEffect.toLowerCase()));
+                }
+
+                if (effectType == null) {
+                    Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "potion effect");
+                    return;
+                }
+
+                // Duration calculation - handles both custom and default durations
+                int durationTicks;
+                int finalDurationSeconds;
+                plugin.getLogger().info("potionDuration before calculation: " + potionDuration); // ADDED
+                if (potionDuration > 0) {
+                    durationTicks = potionDuration * 20;
+                    plugin.getLogger().info("durationTicks before arrow reduction: " + durationTicks); // ADDED
+                    if (material == Material.TIPPED_ARROW) {
+                        durationTicks = (int) Math.round(durationTicks * 8.0); // Floating-point division and rounding
+                        plugin.getLogger().info("durationTicks after arrow reduction: " + durationTicks); // ADDED
+                    }
+                    finalDurationSeconds = durationTicks / 20; // Actual duration after arrow reduction
+                    plugin.getLogger().info("finalDurationSeconds after arrow reduction: " + finalDurationSeconds); // ADDED
+                } else {
+                    durationTicks = DEFAULT_POTION_DURATIONS.getOrDefault(effectType, 30) * 20;
+                    finalDurationSeconds = durationTicks / 20; // Use default duration
+                }
+
+// Log the duration calculation details
+                plugin.getLogger().log(Level.INFO, "Potion effect: {0}, duration: {1} seconds, amplifier: {2}, material: {3}",
+                        new Object[]{effectType.getKey().getKey(), finalDurationSeconds, potionAmplifier, material});
+
+                plugin.getLogger().log(Level.INFO, "Duration in ticks: {0}", durationTicks);
+
+
+
+
+// Create the potion effect
+                PotionEffect effect = new PotionEffect(
+                        effectType,
+                        durationTicks,
+                        potionAmplifier,
+                        potionAmbient,
+                        potionParticles,
+                        potionIcon
+                );
+
+
+                // Clear effects and lore (let Minecraft handle default display)
+                potionMeta.clearCustomEffects();
+                potionMeta.lore(new ArrayList<>());
+                potionMeta.addCustomEffect(effect, true);
                 
-                // Send message to receiver
-                target.sendMessage(lang.get("give.receive")
-                        .replace("{amount}", String.valueOf(amount))
-                        .replace("{item}", itemDisplayName));
+                // Set proper display name
+                if (name != null) {
+                    // Parse the name with Text.parseColors to handle all formats including MiniMessage
+                    String parsedName = Text.parseColors(name);
+                    // Convert to Adventure Component and ensure no italics
+                    net.kyori.adventure.text.Component component = 
+                        net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                            .deserialize(parsedName)
+                            .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false);
+                    potionMeta.displayName(component);
+                } else {
+                    // Automatically generate name based on effect and amplifier
+                    String displayEffectName;
+                    if (effectType.equals(PotionEffectType.SPEED)) {
+                        displayEffectName = "Swiftness";
+                    } else {
+                        String effectName = effectType.getName().toLowerCase().replace('_', ' ');
+                        displayEffectName = effectName.substring(0, 1).toUpperCase() + effectName.substring(1);
+                    }
+                    String amplifierStr = toRomanNumeral(potionAmplifier);
+                    String displayName = "Potion of " + displayEffectName;
+                    if (potionAmplifier > 0) {
+                        displayName += " " + amplifierStr;
+                    }
+                    potionMeta.displayName(net.kyori.adventure.text.Component.text(displayName)
+                        .color(net.kyori.adventure.text.format.TextColor.color(255, 255, 255))
+                        .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
+                }
+                
+                // Set base potion type to WATER to prevent "Uncraftable" text
+                potionMeta.setBasePotionType(PotionType.WATER);
+                
+                item.setItemMeta(potionMeta);
             }
-            
+
+            // Apply the name to the item if specified (for non-potion items)
+            if (name != null && !isPotion) {
+                // Parse the name with Text.parseColors to handle all formats including MiniMessage
+                String parsedName = Text.parseColors(name);
+                // Convert to Adventure Component and ensure no italics
+                net.kyori.adventure.text.Component component = 
+                    net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                        .deserialize(parsedName)
+                        .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false);
+                meta.displayName(component);
+            }
+
+            item.setItemMeta(meta);
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Error giving items", e);
-            Text.sendErrorMessage(sender, "give.error", lang);
+            // Log the error and notify the sender
+            plugin.getLogger().log(Level.SEVERE, "Error while giving item: " + e.getMessage(), e);
+            Text.sendErrorMessage(sender, "An error occurred while processing the give command: {0}", lang, "error", e.getMessage());
+            return;
+        }
+
+        // Apply enchantments if any
+        if (enchantments != null && !enchantments.isEmpty()) {
+            applyEnchantments(sender, item, material, enchantments);
+        }
+
+        // Give the item to the player
+        PlayerInventory inventory = target.getInventory();
+        inventory.addItem(item);
+
+        // Send success message
+        String finalItemName = formatName(material.name());
+        if (sender.getName().equals(target.getName())) {
+            // Self-give
+            sender.sendMessage(lang.get("give.success")
+                    .replace("{amount}", String.valueOf(amount))
+                    .replace("{item}", finalItemName));
+        } else {
+            // Giving to another player
+            sender.sendMessage(lang.get("give.success-other")
+                    .replace("{name}", target.getName())
+                    .replace("{amount}", String.valueOf(amount))
+                    .replace("{item}", finalItemName));
+            
+            // Send message to receiver
+            target.sendMessage(lang.get("give.receive")
+                    .replace("{amount}", String.valueOf(amount))
+                    .replace("{item}", finalItemName));
         }
     }
 
-
-
+    /**
+     * Converts an integer to a Roman numeral string.
+     * @param number The number to convert (1-10)
+     * @return The Roman numeral string
+     */
+    private String toRomanNumeral(int number) {
+        return switch (number) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            case 5 -> "V";
+            case 6 -> "VI";
+            case 7 -> "VII";
+            case 8 -> "VIII";
+            case 9 -> "IX";
+            case 10 -> "X";
+            default -> String.valueOf(number);
+        };
+    }
+    
 
     /**
      * Converts an alias or legacy item ID to a valid Material name.
      * - If input is a number or in "number:number" format (legacy ID), it checks the legacy ID map.
      * - If input is an alias, it uses the alias map.
      * - Otherwise, it returns the input in uppercase as a fallback.
+     *
+     * @param itemName The item name or alias to convert
+     * @param sender The command sender for error messages
+     * @return The corresponding Material, or null if not found
      */
     private Material getMaterial(String itemName, CommandSender sender) {
         Material material = null;
@@ -555,6 +601,14 @@ public class Give implements CommandExecutor {
         if (itemName.contains(";")) {
             baseItemName = itemName.substring(0, itemName.indexOf(";"));
         }
+
+        // First try direct material lookup (case-insensitive)
+        try {
+            material = Material.matchMaterial(baseItemName);
+            if (material != null && isGiveable(material)) {
+                return material;
+            }
+        } catch (IllegalArgumentException ignored) {}
 
         // Check if the input contains a colon
         if (baseItemName.contains(":")) {
@@ -566,12 +620,10 @@ public class Give implements CommandExecutor {
             String fullAlias = Alias.getAlias(baseItemName);
             if (fullAlias != null) {
                 try {
-                    material = Material.valueOf(fullAlias.toUpperCase());
-                    if (!isGiveable(material)) {
-                        Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
-                        return null;
+                    material = Material.matchMaterial(fullAlias);
+                    if (material != null && isGiveable(material)) {
+                        return material;
                     }
-                    return material;
                 } catch (IllegalArgumentException ignored) {}
             }
 
@@ -580,79 +632,39 @@ public class Give implements CommandExecutor {
             String legacyBase = alias != null ? alias : left;
             String legacyId = legacyBase + ":" + right;
             material = LegacyID.getMaterialFromLegacyId(legacyId);
-            if (material != null) {
-                if (!isGiveable(material)) {
-                    Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
-                    return null;
-                }
+            if (material != null && isGiveable(material)) {
                 return material;
             }
+        }
 
-            // If full legacy ID fails, try alias as material
-            if (alias != null) {
-                try {
-                    material = Material.valueOf(alias.toUpperCase());
-                    if (!isGiveable(material)) {
-                        Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
-                        return null;
-                    }
-                    return material;
-                } catch (IllegalArgumentException ignored) {}
+        // Try to resolve the input as an alias
+        String alias = Alias.getAlias(baseItemName);
+        if (alias != null) {
+            material = Material.matchMaterial(alias);
+            if (material != null && isGiveable(material)) {
+                return material;
             }
+        }
 
-            // fallback: try left as material
+        // Try to resolve the input as a legacy ID (e.g., "1" or "1:0")
+        material = LegacyID.getMaterialFromLegacyId(baseItemName);
+        if (material != null && isGiveable(material)) {
+            return material;
+        }
+
+        // Last attempt: Try with uppercase and underscores if not already tried
+        if (!baseItemName.equals(baseItemName.toUpperCase())) {
             try {
-                material = Material.valueOf(left.toUpperCase());
-                if (!isGiveable(material)) {
-                    Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
-                    return null;
+                material = Material.matchMaterial(baseItemName.toUpperCase().replace(' ', '_'));
+                if (material != null && isGiveable(material)) {
+                    return material;
                 }
-                return material;
             } catch (IllegalArgumentException ignored) {}
-
-            // If none worked, error
-            Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
-            return null;
         }
 
-        // 1. Try direct Material name (e.g., "DIAMOND_SWORD")
-        try {
-            material = Material.valueOf(baseItemName.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            // Not a direct Material name, try other methods
-        }
-
-        // 2. Check Legacy IDs
-        if (material == null) {
-            material = LegacyID.getMaterialFromLegacyId(baseItemName);
-        }
-
-        // 3. Check Aliases
-        if (material == null) {
-            String alias = Alias.getAlias(baseItemName);
-            if (alias != null) {
-                try {
-                    material = Material.valueOf(alias.toUpperCase());
-                } catch (IllegalArgumentException e2) {
-                    // Alias doesn't resolve to a valid Material
-                    Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
-                    return null; // Indicate failure
-                }
-            }
-        }
-
-        if (material == null) {
-            // Not a valid material, legacy ID, or alias
-            Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
-            return null; // Indicate failure
-        }
-
-        if (!isGiveable(material)) {
-            Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
-            return null; // Indicate failure
-        }
-
-        return material;
+        // If we get here, the material couldn't be found
+        Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
+        return null;
     }
     
     /**
@@ -686,31 +698,32 @@ public class Give implements CommandExecutor {
      * Gets a list of all available potion effect types
      * @return A formatted string of all potion effect types
      */
-    private String getAvailablePotionEffects() {
-        StringBuilder sb = new StringBuilder();
-        for (PotionEffectType type : PotionEffectType.values()) {
-            if (type != null) {
-                sb.append(type.getName()).append(", ");
+    @SuppressWarnings("deprecation") // PotionEffectType.values() is deprecated but still widely used
+    public static String getAvailablePotionEffects() {
+        List<String> effectNames = new ArrayList<>();
+        PotionEffectType[] effects = PotionEffectType.values();
+        for (PotionEffectType type : effects) {
+            if (type != null && type.getKey() != null) {
+                effectNames.add(type.getKey().getKey().toLowerCase());
             }
         }
-        if (sb.length() > 2) {
-            sb.setLength(sb.length() - 2); // Remove the last comma and space
-        }
-        return sb.toString();
+        return String.join(", ", effectNames);
     }
-    
+
     /**
      * Gets a list of all available potion types
      * @return A formatted string of all potion types
      */
-    private String getAvailablePotionTypes() {
-        StringBuilder sb = new StringBuilder();
-        for (PotionType type : PotionType.values()) {
-            sb.append(type.name()).append(", ");
+    @SuppressWarnings("deprecation") // PotionType.values() is deprecated but still widely used
+    public static String getAvailablePotionTypes() {
+        List<String> typeNames = new ArrayList<>();
+        PotionType[] types = PotionType.values();
+        // Get all potion types
+        for (PotionType type : types) {
+            if (type != null && type.name() != null) {
+                typeNames.add(type.name().toLowerCase());
+            }
         }
-        if (sb.length() > 2) {
-            sb.setLength(sb.length() - 2); // Remove the last comma and space
-        }
-        return sb.toString();
+        return String.join(", ", typeNames);
     }
 }

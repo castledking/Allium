@@ -20,9 +20,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 
 public class Core implements CommandExecutor, TabCompleter {
@@ -79,6 +77,7 @@ public class Core implements CommandExecutor, TabCompleter {
                 handleHideSubcommand(sender, args);
                 break;
 
+
             // Voucher command removed - only using redeem command
 
             default:
@@ -88,6 +87,7 @@ public class Core implements CommandExecutor, TabCompleter {
 
         return true;
     }
+
 
     private void handleHideUpdateCommand(@NotNull CommandSender sender, String @NotNull [] args) {
         if(!sender.hasPermission("core.admin")) {
@@ -129,7 +129,8 @@ public class Core implements CommandExecutor, TabCompleter {
         sender.sendMessage("§ereload §7- Reload the plugin configuration.");
         sender.sendMessage("§ehideupdate §7- Refresh tab completion for player.");
         sender.sendMessage("§emodalerts [player] [on|off] §7- Toggle Fabric mod alerts for self or a player.");
-        sender.sendMessage("§evoucher give <player> <rank> §7- Gives a player a rank voucher.");
+        sender.sendMessage("§echatmod §7- Manage chat moderation actions.");
+
 
     }
 
@@ -406,12 +407,7 @@ public class Core implements CommandExecutor, TabCompleter {
                 suggestions.add("hideupdate");
                 suggestions.add("hide");
                 suggestions.add("modalerts");
-                // Voucher command removed - only using redeem command
             }
-            // Add other permission-based subcommands if necessary
-            // e.g., if (sender.hasPermission("core.worlddefaults")) suggestions.add("setgamerule");
-
-        // Voucher command tab completion removed - only using redeem command
         } else if (args.length > 1 && args[0].equalsIgnoreCase("hide")) {
             if (args.length == 2) {
                 suggestions.addAll(List.of("creategroup", "deletegroup", "group"));

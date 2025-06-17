@@ -1,15 +1,156 @@
 package net.survivalfun.core.managers.core;
 
 import org.bukkit.Material;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.java.JavaPlugin;
+import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class LegacyID {
     private static final Map<String, Material> LEGACY_IDS = new HashMap<>();
     private static final Map<Material, String> MATERIAL_TO_LEGACY = new HashMap<>();
+    private static JavaPlugin plugin;
+    private static boolean initialized = false;
 
     static {
-        initializeLegacyIds();
+        // Static initialization - will be replaced by initialize() call from plugin
+        if (!initialized) {
+            initializeLegacyIds();
+        }
+    }
+
+    /**
+     * Initialize the LegacyID system with plugin instance and load configuration
+     * @param pluginInstance The plugin instance for file access
+     */
+    public static void initialize(JavaPlugin pluginInstance) {
+        plugin = pluginInstance;
+        loadLegacyIds();
+        initialized = true;
+    }
+
+    /**
+     * Load legacy IDs from itemdb.yml configuration file
+     */
+    private static void loadLegacyIds() {
+        LEGACY_IDS.clear();
+        MATERIAL_TO_LEGACY.clear();
+
+        if (plugin == null) {
+            plugin.getLogger().warning("LegacyID plugin instance is null, falling back to hardcoded legacy IDs");
+            initializeLegacyIds();
+            return;
+        }
+
+        try {
+            // Ensure data folder exists
+            if (!plugin.getDataFolder().exists()) {
+                plugin.getDataFolder().mkdirs();
+            }
+
+            File configFile = new File(plugin.getDataFolder(), "itemdb.yml");
+            
+            // Create default itemdb.yml if it doesn't exist
+            if (!configFile.exists()) {
+                InputStream defaultConfig = plugin.getResource("itemdb.yml");
+                if (defaultConfig != null) {
+                    Files.copy(defaultConfig, configFile.toPath());
+                    plugin.getLogger().info("Created default itemdb.yml configuration file");
+                } else {
+                    plugin.getLogger().warning("Default itemdb.yml not found in resources, falling back to hardcoded mappings");
+                    initializeLegacyIds();
+                    return;
+                }
+            }
+
+            // Load configuration
+            YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
+            
+            if (config.contains("legacy-ids")) {
+                Set<String> keys = config.getConfigurationSection("legacy-ids").getKeys(false);
+                int loadedCount = 0;
+                
+                for (String legacyId : keys) {
+                    String materialName = config.getString("legacy-ids." + legacyId);
+                    
+                    try {
+                        Material material = Material.valueOf(materialName.toUpperCase());
+                        addLegacyId(legacyId, material);
+                        loadedCount++;
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("Invalid material '" + materialName + "' for legacy ID '" + legacyId + "' in itemdb.yml");
+                    }
+                }
+                
+                plugin.getLogger().info("Loaded " + loadedCount + " legacy ID mappings from itemdb.yml");
+                
+                if (loadedCount == 0) {
+                    plugin.getLogger().warning("No valid legacy IDs loaded from itemdb.yml, falling back to hardcoded mappings");
+                    initializeLegacyIds();
+                }
+            } else {
+                plugin.getLogger().warning("No 'legacy-ids' section found in itemdb.yml, falling back to hardcoded mappings");
+                initializeLegacyIds();
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error loading itemdb.yml: " + e.getMessage());
+            plugin.getLogger().info("Falling back to hardcoded legacy ID mappings");
+            initializeLegacyIds();
+        }
+    }
+
+    /**
+     * Reload legacy IDs from configuration file
+     */
+    public static void reload() {
+        if (plugin != null) {
+            loadLegacyIds();
+            plugin.getLogger().info("Reloaded legacy ID mappings from itemdb.yml");
+        }
+    }
+
+    /**
+     * Add runtime legacy ID mapping
+     */
+    public static void addLegacyId(String legacyId, Material material) {
+        LEGACY_IDS.put(legacyId, material);
+        MATERIAL_TO_LEGACY.put(material, legacyId);
+    }
+
+    /**
+     * Remove legacy ID mapping
+     */
+    public static void removeLegacyId(String legacyId) {
+        Material material = LEGACY_IDS.remove(legacyId);
+        if (material != null) {
+            MATERIAL_TO_LEGACY.remove(material);
+        }
+    }
+
+    /**
+     * Check if legacy ID exists
+     */
+    public static boolean hasLegacyId(String legacyId) {
+        return LEGACY_IDS.containsKey(legacyId);
+    }
+
+    /**
+     * Get all legacy IDs
+     */
+    public static Set<String> getAllLegacyIds() {
+        return LEGACY_IDS.keySet();
+    }
+
+    /**
+     * Check if the LegacyID system is initialized
+     */
+    public static boolean isInitialized() {
+        return initialized;
     }
 
     private static void initializeLegacyIds() {
@@ -352,8 +493,10 @@ public class LegacyID {
         addLegacyId("43", Material.RAW_COPPER_BLOCK);
         addLegacyId("43:1", Material.RAW_GOLD_BLOCK);
         addLegacyId("43:2", Material.RAW_IRON_BLOCK);
-        addLegacyId("43:4", Material.AMETHYST_BLOCK);
-        addLegacyId("43:5", Material.BUDDING_AMETHYST);
+        addLegacyId("43:3", Material.AMETHYST_BLOCK);
+        addLegacyId("43:4", Material.BUDDING_AMETHYST);
+        addLegacyId("43:5", Material.SMOOTH_QUARTZ);
+        addLegacyId("43:6", Material.SMOOTH_STONE);
         addLegacyId("44", Material.STONE_SLAB);
         addLegacyId("44:1", Material.SMOOTH_STONE_SLAB);
         addLegacyId("44:2", Material.STONE_BRICK_SLAB);
@@ -693,14 +836,176 @@ public class LegacyID {
         addLegacyId("2265", Material.MUSIC_DISC_WARD);
         addLegacyId("2266", Material.MUSIC_DISC_11);
         addLegacyId("2267", Material.MUSIC_DISC_WAIT);
-        
+        addLegacyId("162", Material.ACACIA_LOG);
+        addLegacyId("162:1", Material.DARK_OAK_LOG);
+        addLegacyId("161", Material.ACACIA_LEAVES);
+        addLegacyId("161:1", Material.DARK_OAK_LEAVES);
+        addLegacyId("182", Material.RED_SANDSTONE_SLAB);
+        addLegacyId("205", Material.PURPUR_SLAB);
+        addLegacyId("43:7", Material.SMOOTH_QUARTZ);
+        addLegacyId("43:8", Material.SMOOTH_STONE);
+        addLegacyId("198", Material.END_ROD);
+        addLegacyId("201", Material.PURPUR_BLOCK);
+        addLegacyId("202", Material.PURPUR_PILLAR);
+        addLegacyId("203", Material.PURPUR_STAIRS);
+        addLegacyId("53", Material.OAK_STAIRS);
+        addLegacyId("53:1", Material.SPRUCE_STAIRS);
+        addLegacyId("53:2", Material.BIRCH_STAIRS);
+        addLegacyId("53:3", Material.JUNGLE_STAIRS);
+        addLegacyId("53:4", Material.ACACIA_STAIRS);
+        addLegacyId("53:5", Material.DARK_OAK_STAIRS);
+        addLegacyId("53:6", Material.CHERRY_STAIRS);
+        addLegacyId("53:7", Material.MANGROVE_STAIRS);
+        addLegacyId("53:8", Material.BAMBOO_STAIRS);
+        addLegacyId("53:9", Material.CRIMSON_STAIRS);
+        addLegacyId("53:10", Material.WARPED_STAIRS);
+        addLegacyId("53:11", Material.BAMBOO_MOSAIC_STAIRS);
+        addLegacyId("107", Material.OAK_FENCE_GATE);
+        addLegacyId("107:1", Material.SPRUCE_FENCE_GATE);
+        addLegacyId("107:2", Material.BIRCH_FENCE_GATE);
+        addLegacyId("107:3", Material.JUNGLE_FENCE_GATE);
+        addLegacyId("107:4", Material.ACACIA_FENCE_GATE);
+        addLegacyId("107:5", Material.DARK_OAK_FENCE_GATE);
+        addLegacyId("107:6", Material.CHERRY_FENCE_GATE);
+        addLegacyId("107:7", Material.MANGROVE_FENCE_GATE);
+        addLegacyId("107:8", Material.BAMBOO_FENCE_GATE);
+        addLegacyId("107:9", Material.CRIMSON_FENCE_GATE);
+        addLegacyId("107:10", Material.WARPED_FENCE_GATE);
+        addLegacyId("183", Material.SPRUCE_FENCE_GATE);
+        addLegacyId("184", Material.BIRCH_FENCE_GATE);
+        addLegacyId("185", Material.JUNGLE_FENCE_GATE);
+        addLegacyId("187", Material.ACACIA_FENCE_GATE);
+        addLegacyId("186", Material.DARK_OAK_FENCE_GATE);
+        addLegacyId("112", Material.NETHER_BRICKS);
+        addLegacyId("116", Material.ENCHANTING_TABLE);
+        addLegacyId("206", Material.END_STONE_BRICKS);
+        addLegacyId("133", Material.EMERALD_BLOCK);
+        addLegacyId("57", Material.DIAMOND_BLOCK);
+        addLegacyId("134", Material.SPRUCE_STAIRS);
+        addLegacyId("135", Material.BIRCH_STAIRS);
+        addLegacyId("136", Material.JUNGLE_STAIRS);
+        addLegacyId("151", Material.DAYLIGHT_DETECTOR);
+        addLegacyId("155:1", Material.CHISELED_QUARTZ_BLOCK);
+        addLegacyId("155:2", Material.QUARTZ_PILLAR);
+        addLegacyId("156", Material.QUARTZ_STAIRS);
+        addLegacyId("159", Material.WHITE_TERRACOTTA);
+        addLegacyId("159:1", Material.ORANGE_TERRACOTTA);
+        addLegacyId("159:2", Material.MAGENTA_TERRACOTTA);
+        addLegacyId("159:3", Material.LIGHT_BLUE_TERRACOTTA);
+        addLegacyId("159:4", Material.YELLOW_TERRACOTTA);
+        addLegacyId("159:5", Material.LIME_TERRACOTTA);
+        addLegacyId("159:6", Material.PINK_TERRACOTTA);
+        addLegacyId("159:7", Material.GRAY_TERRACOTTA);
+        addLegacyId("159:8", Material.LIGHT_GRAY_TERRACOTTA);
+        addLegacyId("159:9", Material.CYAN_TERRACOTTA);
+        addLegacyId("159:10", Material.PURPLE_TERRACOTTA);
+        addLegacyId("159:11", Material.BLUE_TERRACOTTA);
+        addLegacyId("159:12", Material.BROWN_TERRACOTTA);
+        addLegacyId("159:13", Material.GREEN_TERRACOTTA);
+        addLegacyId("159:14", Material.RED_TERRACOTTA);
+        addLegacyId("159:15", Material.BLACK_TERRACOTTA);
+        addLegacyId("166", Material.BARRIER);
+        addLegacyId("171", Material.WHITE_CARPET);
+        addLegacyId("171:1", Material.ORANGE_CARPET);
+        addLegacyId("171:2", Material.MAGENTA_CARPET);
+        addLegacyId("171:3", Material.LIGHT_BLUE_CARPET);
+        addLegacyId("171:4", Material.YELLOW_CARPET);
+        addLegacyId("171:5", Material.LIME_CARPET);
+        addLegacyId("171:6", Material.PINK_CARPET);
+        addLegacyId("171:7", Material.GRAY_CARPET);
+        addLegacyId("171:8", Material.LIGHT_GRAY_CARPET);
+        addLegacyId("171:9", Material.CYAN_CARPET);
+        addLegacyId("171:10", Material.PURPLE_CARPET);
+        addLegacyId("171:11", Material.BLUE_CARPET);
+        addLegacyId("171:12", Material.BROWN_CARPET);
+        addLegacyId("171:13", Material.GREEN_CARPET);
+        addLegacyId("171:14", Material.RED_CARPET);
+        addLegacyId("171:15", Material.BLACK_CARPET);
+        addLegacyId("172", Material.TERRACOTTA);
+        addLegacyId("173", Material.COAL_BLOCK);
+        addLegacyId("174", Material.PACKED_ICE);
+        addLegacyId("163", Material.ACACIA_STAIRS);
+        addLegacyId("164", Material.DARK_OAK_STAIRS);
+        addLegacyId("165", Material.SLIME_BLOCK);
+        addLegacyId("208", Material.DIRT_PATH);
+        addLegacyId("95", Material.WHITE_STAINED_GLASS);
+        addLegacyId("95:1", Material.ORANGE_STAINED_GLASS);
+        addLegacyId("95:2", Material.MAGENTA_STAINED_GLASS);
+        addLegacyId("95:3", Material.LIGHT_BLUE_STAINED_GLASS);
+        addLegacyId("95:4", Material.YELLOW_STAINED_GLASS);
+        addLegacyId("95:5", Material.LIME_STAINED_GLASS);
+        addLegacyId("95:6", Material.PINK_STAINED_GLASS);
+        addLegacyId("95:7", Material.GRAY_STAINED_GLASS);
+        addLegacyId("95:8", Material.LIGHT_GRAY_STAINED_GLASS);
+        addLegacyId("95:9", Material.CYAN_STAINED_GLASS);
+        addLegacyId("95:10", Material.PURPLE_STAINED_GLASS);
+        addLegacyId("95:11", Material.BLUE_STAINED_GLASS);
+        addLegacyId("95:12", Material.BROWN_STAINED_GLASS);
+        addLegacyId("95:13", Material.GREEN_STAINED_GLASS);
+        addLegacyId("95:14", Material.RED_STAINED_GLASS);
+        addLegacyId("95:15", Material.BLACK_STAINED_GLASS);
+        addLegacyId("160", Material.WHITE_STAINED_GLASS_PANE);
+        addLegacyId("160:1", Material.ORANGE_STAINED_GLASS_PANE);
+        addLegacyId("160:2", Material.MAGENTA_STAINED_GLASS_PANE);
+        addLegacyId("160:3", Material.LIGHT_BLUE_STAINED_GLASS_PANE);
+        addLegacyId("160:4", Material.YELLOW_STAINED_GLASS_PANE);
+        addLegacyId("160:5", Material.LIME_STAINED_GLASS_PANE);
+        addLegacyId("160:6", Material.PINK_STAINED_GLASS_PANE);
+        addLegacyId("160:7", Material.GRAY_STAINED_GLASS_PANE);
+        addLegacyId("160:8", Material.LIGHT_GRAY_STAINED_GLASS_PANE);
+        addLegacyId("160:9", Material.CYAN_STAINED_GLASS_PANE);
+        addLegacyId("160:10", Material.PURPLE_STAINED_GLASS_PANE);
+        addLegacyId("160:11", Material.BLUE_STAINED_GLASS_PANE);
+        addLegacyId("160:12", Material.BROWN_STAINED_GLASS_PANE);
+        addLegacyId("160:13", Material.GREEN_STAINED_GLASS_PANE);
+        addLegacyId("160:14", Material.RED_STAINED_GLASS_PANE);
+        addLegacyId("160:15", Material.BLACK_STAINED_GLASS_PANE);
+        addLegacyId("168", Material.PRISMARINE);
+        addLegacyId("168:1", Material.PRISMARINE_BRICKS);
+        addLegacyId("168:2", Material.DARK_PRISMARINE);
+        addLegacyId("169", Material.SEA_LANTERN);
+        addLegacyId("179", Material.RED_SANDSTONE);
+        addLegacyId("179:1", Material.CHISELED_RED_SANDSTONE);
+        addLegacyId("179:2", Material.CUT_RED_SANDSTONE);
+        addLegacyId("210", Material.REPEATING_COMMAND_BLOCK);
+        addLegacyId("211", Material.CHAIN_COMMAND_BLOCK);
+        addLegacyId("213", Material.MAGMA_BLOCK);
+        addLegacyId("214", Material.NETHER_WART_BLOCK);
+        addLegacyId("215", Material.RED_NETHER_BRICKS);
+        addLegacyId("216", Material.BONE_BLOCK);
+        addLegacyId("235", Material.WHITE_GLAZED_TERRACOTTA);
+        addLegacyId("236", Material.ORANGE_GLAZED_TERRACOTTA);
+        addLegacyId("237", Material.MAGENTA_GLAZED_TERRACOTTA);
+        addLegacyId("238", Material.LIGHT_BLUE_GLAZED_TERRACOTTA);
+        addLegacyId("239", Material.YELLOW_GLAZED_TERRACOTTA);
+        addLegacyId("240", Material.LIME_GLAZED_TERRACOTTA);
+        addLegacyId("241", Material.PINK_GLAZED_TERRACOTTA);
+        addLegacyId("242", Material.GRAY_GLAZED_TERRACOTTA);
+        addLegacyId("243", Material.LIGHT_GRAY_GLAZED_TERRACOTTA);
+        addLegacyId("244", Material.CYAN_GLAZED_TERRACOTTA);
+        addLegacyId("245", Material.PURPLE_GLAZED_TERRACOTTA);
+        addLegacyId("246", Material.BLUE_GLAZED_TERRACOTTA);
+        addLegacyId("247", Material.BROWN_GLAZED_TERRACOTTA);
+        addLegacyId("248", Material.GREEN_GLAZED_TERRACOTTA);
+        addLegacyId("249", Material.RED_GLAZED_TERRACOTTA);
+        addLegacyId("250", Material.BLACK_GLAZED_TERRACOTTA);
+        addLegacyId("251", Material.WHITE_CONCRETE);
+        addLegacyId("251:1", Material.ORANGE_CONCRETE);
+        addLegacyId("251:2", Material.MAGENTA_CONCRETE);
+        addLegacyId("251:3", Material.LIGHT_BLUE_CONCRETE);
+        addLegacyId("251:4", Material.YELLOW_CONCRETE);
+        addLegacyId("251:5", Material.LIME_CONCRETE);
+        addLegacyId("251:6", Material.PINK_CONCRETE);
+        addLegacyId("251:7", Material.GRAY_CONCRETE);
+        addLegacyId("251:8", Material.LIGHT_GRAY_CONCRETE);
+        addLegacyId("251:9", Material.CYAN_CONCRETE);
+        addLegacyId("251:10", Material.PURPLE_CONCRETE);
+        addLegacyId("251:11", Material.BLUE_CONCRETE);
+        addLegacyId("251:12", Material.BROWN_CONCRETE);
+        addLegacyId("251:13", Material.GREEN_CONCRETE);
+        addLegacyId("251:14", Material.RED_CONCRETE);
+        addLegacyId("251:15", Material.BLACK_CONCRETE);
 
-
-    }
-
-    private static void addLegacyId(String legacyId, Material material) {
-        LEGACY_IDS.put(legacyId, material);
-        MATERIAL_TO_LEGACY.put(material, legacyId);
     }
 
     public static Material getMaterialFromLegacyId(String legacyId) {

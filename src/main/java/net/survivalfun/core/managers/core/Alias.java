@@ -1,13 +1,81 @@
 package net.survivalfun.core.managers.core;
 
+import net.survivalfun.core.PluginStart;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
+
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 
 public class Alias {
 
     private static final Map<String, String> ALIASES = new HashMap<>();
+    private static PluginStart plugin;
+    private static File aliasFile;
+    private static FileConfiguration aliasConfig;
+    private static boolean initialized = false;
 
-    static {
+    /**
+     * Initialize the alias system with the plugin instance
+     * @param pluginInstance The main plugin instance
+     */
+    public static void initialize(PluginStart pluginInstance) {
+        if (initialized) return;
+        
+        plugin = pluginInstance;
+        setupAliasFile();
+        loadAliases();
+        initialized = true;
+    }
+
+    /**
+     * Setup the itemdb.yml file - create it if it doesn't exist
+     */
+    private static void setupAliasFile() {
+        aliasFile = new File(plugin.getDataFolder(), "itemdb.yml");
+        
+        if (!aliasFile.exists()) {
+            try {
+                aliasFile.getParentFile().mkdirs();
+                plugin.saveResource("itemdb.yml", false);
+                plugin.getLogger().info("Created itemdb.yml configuration file");
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.SEVERE, "Could not create itemdb.yml", e);
+                // Fall back to hardcoded aliases if file creation fails
+                loadHardcodedAliases();
+                return;
+            }
+        }
+        
+        aliasConfig = YamlConfiguration.loadConfiguration(aliasFile);
+    }
+
+    /**
+     * Load aliases from the configuration file
+     */
+    private static void loadAliases() {
+        ALIASES.clear();
+        
+        if (aliasConfig != null && aliasConfig.getConfigurationSection("aliases") != null) {
+            for (String alias : aliasConfig.getConfigurationSection("aliases").getKeys(false)) {
+                String material = aliasConfig.getString("aliases." + alias);
+                if (material != null) {
+                    ALIASES.put(alias.toLowerCase(), material.toUpperCase());
+                }
+            }
+            plugin.getLogger().info("Loaded " + ALIASES.size() + " material aliases from itemdb.yml");
+        } else {
+            plugin.getLogger().warning("No aliases section found in itemdb.yml, using hardcoded aliases");
+            loadHardcodedAliases();
+        }
+    }
+
+    /**
+     * Load hardcoded aliases as fallback
+     */
+    private static void loadHardcodedAliases() {
         // Define aliases for materials
         ALIASES.put("enderpearl", "ENDER_PEARL");
         ALIASES.put("water_bottle", "POTION");
@@ -100,7 +168,6 @@ public class Alias {
         ALIASES.put("balog", "bamboo_block");
         ALIASES.put("crstem", "crimson_stem");
         ALIASES.put("wstem", "warped_stem");
-
 
         ALIASES.put("wood", "oak_wood");
         ALIASES.put("owood", "oak_wood");
@@ -237,7 +304,6 @@ public class Alias {
         ALIASES.put("crslab", "crimson_slab");
         ALIASES.put("wslab", "warped_slab");
 
-
         ALIASES.put("stairs", "oak_stairs");
         ALIASES.put("sstairs", "spruce_stairs");
         ALIASES.put("bstairs", "birch_stairs");
@@ -262,7 +328,6 @@ public class Alias {
         ALIASES.put("basign", "bamboo_sign");
         ALIASES.put("crsign", "crimson_sign");
         ALIASES.put("wsign", "warped_sign");
-
 
         ALIASES.put("hsign", "oak_hanging_sign");
         ALIASES.put("shsign", "spruce_hanging_sign");
@@ -998,8 +1063,39 @@ public class Alias {
         ALIASES.put("bconcrete", "BLUE_CONCRETE");
         // Add more aliases as needed...
     }
+
+    /**
+     * Get the alias for a given material name
+     * @param alias The material name
+     * @return The alias for the material
+     */
     public static String getAlias(String alias) {
-        return ALIASES.get(alias);
+        return ALIASES.get(alias.toLowerCase());
     }
 
+    /**
+     * Add an alias for a given material name
+     * @param alias The material name
+     * @param material The material to alias
+     */
+    public static void addAlias(String alias, String material) {
+        ALIASES.put(alias.toLowerCase(), material.toUpperCase());
+    }
+
+    /**
+     * Remove an alias for a given material name
+     * @param alias The material name
+     */
+    public static void removeAlias(String alias) {
+        ALIASES.remove(alias.toLowerCase());
+    }
+
+    /**
+     * Check if an alias exists for a given material name
+     * @param alias The material name
+     * @return True if the alias exists, false otherwise
+     */
+    public static boolean hasAlias(String alias) {
+        return ALIASES.containsKey(alias.toLowerCase());
+    }
 }

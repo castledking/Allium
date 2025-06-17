@@ -38,20 +38,14 @@ public class ItemDB implements CommandExecutor {
                 return true;
             }
 
-            int amount = itemInHand.getAmount();
-            String legacyId = LegacyID.getLegacyIdFromMaterial(itemInHand.getType());
-
-            player.sendMessage("§6Item Information:");
-            player.sendMessage("§7Name: §f" + formatMaterialName(itemInHand.getType()));
-            player.sendMessage("§7Amount: §f" + amount);
-            player.sendMessage("§7Legacy ID: §f" + (legacyId != null ? legacyId : "Unable to find legacy ID."));
-            player.sendMessage("§7Modern ID: §f" + itemInHand.getType().getKey());
-
+            sendItemInfo(player, itemInHand, null);
             return true;
         } else {
             // Console or other sender: require player name as first argument
             if (args.length == 0) {
-                sender.sendMessage("Usage: /itemdb <player>");
+                sender.sendMessage(lang.get("command-usage")
+                .replace("{cmd}", label)
+                .replace("{args}", "<player>"));
                 return true;
             }
             Player target = org.bukkit.Bukkit.getPlayer(args[0]);
@@ -64,16 +58,29 @@ public class ItemDB implements CommandExecutor {
                 Text.sendErrorMessage(sender, "hold-item", lang, "{modify}", "inspect");
                 return true;
             }
-            int amount = itemInHand.getAmount();
-            String legacyId = LegacyID.getLegacyIdFromMaterial(itemInHand.getType());
-
-            sender.sendMessage("§6Item Information for " + target.getName() + ":");
-            sender.sendMessage("§7Name: §f" + formatMaterialName(itemInHand.getType()));
-            sender.sendMessage("§7Amount: §f" + amount);
-            sender.sendMessage("§7Legacy ID: §f" + (legacyId != null ? legacyId : "Unable to find legacy ID."));
-            sender.sendMessage("§7Modern ID: §f" + itemInHand.getType().getKey());
+            
+            sendItemInfo(sender, itemInHand, target.getName());
             return true;
         }
+    }
+
+    private void sendItemInfo(CommandSender sender, ItemStack item, String targetPlayerName) {
+        int amount = item.getAmount();
+        String legacyId = LegacyID.getLegacyIdFromMaterial(item.getType());
+        String formattedName = formatMaterialName(item.getType());
+        String modernId = item.getType().getKey().toString();
+
+        // Send header with conditional name suffix
+        String nameSuffix = (targetPlayerName != null) ? " for " + targetPlayerName : "";
+        sender.sendMessage(lang.get("itemdb.header").replace(" {name}", nameSuffix));
+
+        // Send item information
+        sender.sendMessage(lang.get("itemdb.name").replace("{item}", formattedName));
+        sender.sendMessage(lang.get("itemdb.amount").replace("{amount}", String.valueOf(amount)));
+        if (legacyId != null) {
+            sender.sendMessage(lang.get("itemdb.legacy-id").replace("{legacy_id}", legacyId));
+        }
+        sender.sendMessage(lang.get("itemdb.modern-id").replace("{modern_id}", modernId));
     }
 
     private String formatMaterialName(Material material) {

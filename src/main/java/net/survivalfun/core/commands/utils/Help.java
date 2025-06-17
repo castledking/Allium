@@ -37,6 +37,8 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         if (args.length == 1) {
             // First argument: offer page numbers and plugin names
             completions.add("1"); // Suggest first page
+            completions.add("2"); // Suggest second page
+            completions.add("3"); // Suggest third page
 
             // Add plugin names if sender has admin permission
             if (sender.hasPermission("core.admin")) {
@@ -47,14 +49,14 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
                 }
             }
 
-            // Add command names
-            if (sender instanceof Player) {
-                List<String> availableCommands = getAvailableCommands(sender);
-                completions.addAll(availableCommands);
-            }
+            // Add command names for both console and players
+            List<String> availableCommands = getAvailableCommands(sender);
+            completions.addAll(availableCommands);
         } else if (args.length == 2) {
-            // Second argument: offer page numbers if first arg is a plugin name
+            // Second argument: offer page numbers if first arg is a plugin name or command
             completions.add("1");
+            completions.add("2");
+            completions.add("3");
         }
 
         // Filter based on what's already been typed
@@ -71,24 +73,18 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            if (args.length > 0) {
-                showMainHelpPage(sender, 1);
-                return true;
-            }
-            return true;
-        }
-
-        Player player = (Player) sender;
-
         // If no args provided, show main help page
         if (args.length == 0) {
-            showMainHelpPage(player, 1);
+            showMainHelpPage(sender, 1);
             return true;
         }
 
-
-        return handleHelpArg(args, player);
+        // Handle arguments for both console and players
+        if (sender instanceof Player) {
+            return handleHelpArg(args, (Player)sender);
+        } else {
+            return handleHelpArgConsole(args, sender);
+        }
     }
 
     private boolean handleHelpArg(String[] args, Player player) {
@@ -107,8 +103,8 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             }
             return true;
         } catch (NumberFormatException e) {
-            // First argument is not a number, it's likely a plugin name
-            String pluginName = args[0];
+            // First argument is not a number, it's a query (plugin name or command)
+            String query = args[0];
 
             // Check if there's a second argument that might be a page number
             int page = 1;
@@ -121,7 +117,42 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
                 }
             }
 
-            sendPluginSpecificHelp(player, pluginName, page);
+            sendPluginSpecificHelp(player, query, page);
+            return true;
+        }
+    }
+    
+    private boolean handleHelpArgConsole(String[] args, CommandSender sender) {
+        // Check if the first argument is a page number
+        try {
+            int page = Integer.parseInt(args[0]);
+            if (page < 1) page = 1;
+
+            // If there's a second argument, it might be a plugin name with a page number
+            if (args.length > 1) {
+                String pluginName = args[1];
+                sendPluginSpecificHelp(sender, pluginName, page);
+            } else {
+                // Just a page number for the main help
+                showMainHelpPage(sender, page);
+            }
+            return true;
+        } catch (NumberFormatException e) {
+            // First argument is not a number, it's a query (plugin name or command)
+            String query = args[0];
+
+            // Check if there's a second argument that might be a page number
+            int page = 1;
+            if (args.length > 1) {
+                try {
+                    page = Integer.parseInt(args[1]);
+                    if (page < 1) page = 1;
+                } catch (NumberFormatException ex) {
+                    // Second argument is not a page number, ignore it
+                }
+            }
+
+            sendPluginSpecificHelp(sender, query, page);
             return true;
         }
     }
@@ -343,7 +374,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
                 "advancement", "attribute", "ban", "ban-ip", "banlist", "bossbar", "clear", "clone",
                 "damage", "data", "datapack", "debug", "defaultgamemode", "deop", "difficulty", "effect",
                 "enchant", "execute", "experience", "fill", "forceload", "function", "gamemode", "gamerule",
-                "give", "help", "item", "jfr", "kick", "kill", "list", "locate", "loot", "me", "msg",
+                "give", "item", "jfr", "kick", "kill", "list", "locate", "loot", "me", "msg",
                 "op", "pardon", "pardon-ip", "particle", "place", "playsound", "recipe", "reload",
                 "return", "ride", "say", "schedule", "scoreboard", "seed", "setblock", "setidletimeout",
                 "setworldspawn", "spawnpoint", "spectate", "spreadplayers", "stop", "stopsound", "summon",
@@ -872,12 +903,27 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         if (helpCommand != null) {
             helpCommand.setExecutor(this);
             helpCommand.setTabCompleter(this);
-
+            
+            // Make sure to override the vanilla help command
+            try {
+                // Get the server's command map
+                CommandMap commandMap = (CommandMap) Bukkit.getServer().getClass()
+                        .getDeclaredMethod("getCommandMap").invoke(Bukkit.getServer());
+                
+                // Register our help command with higher priority
+                commandMap.register("sfcore", helpCommand);
+                
+                // Log success
+                plugin.getLogger().info("Successfully registered custom help command");
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to override vanilla help command: " + e.getMessage());
+            }
+        } else {
+            plugin.getLogger().warning("Could not find help command in plugin.yml");
         }
 
         // Register this class as an event listener
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-
     }
 
 }

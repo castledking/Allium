@@ -21,6 +21,8 @@ import net.survivalfun.core.listeners.FabricModDetector;
 import net.survivalfun.core.listeners.FireballExplosionListener;
 import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.managers.core.Item;
+import net.survivalfun.core.managers.core.Alias;
+import net.survivalfun.core.managers.core.LegacyID;
 import org.bukkit.Bukkit;
 import org.bukkit.GameRule;
 import org.bukkit.World;
@@ -57,7 +59,6 @@ public class PluginStart extends JavaPlugin {
     private TP tpCommand;
     private CommandManager commandManager;
     private final Map<UUID, Long> playerLoginTimes = new ConcurrentHashMap<>();
-
     public CommandManager getCommandManager() {
         return commandManager;
     }
@@ -83,6 +84,7 @@ public class PluginStart extends JavaPlugin {
     }
 
     public void reloadChatFormatter() {
+
         // Only proceed if chat formatting is enabled in config
         if (getConfig().getBoolean("enable-chat-formatting", true)) {
             // If we already have a chat formatter, unregister it
@@ -114,6 +116,9 @@ public class PluginStart extends JavaPlugin {
     public Explode getExplodeCommand() {
         return explodeCommand;
     }
+
+
+
 
     private FabricModDetector fabricModDetector;
     
@@ -155,7 +160,6 @@ public class PluginStart extends JavaPlugin {
             getLogger().warning("LuckPerms not found! Group-specific command blocking will be disabled.");
         }
 
-        // Initialize chat formatter
         if (getConfig().getBoolean("enable-chat-formatting", true)) {
             formatChatListener = new FormatChatListener(this, vaultChat, luckPerms, configManager);
             if (formatChatListener.canEnable()) {
@@ -185,6 +189,26 @@ public class PluginStart extends JavaPlugin {
             return;
         }
 
+        // Initialize Alias system
+        try {
+            Alias.initialize(this);
+            getLogger().info("Alias system initialized.");
+        } catch (Exception e) {
+            getLogger().severe("Failed to initialize Alias system: " + e.getMessage());
+            e.printStackTrace();
+            // Don't disable plugin for alias failure, just log the error
+        }
+
+        // Initialize LegacyID system
+        try {
+            LegacyID.initialize(this);
+            getLogger().info("LegacyID system initialized.");
+        } catch (Exception e) {
+            getLogger().severe("Failed to initialize LegacyID system: " + e.getMessage());
+            e.printStackTrace();
+            // Don't disable plugin for legacy ID failure, just log the error
+        }
+
         // Register PlayerConnectionListener to manage playerLoginTimes
         getServer().getPluginManager().registerEvents(new net.survivalfun.core.listeners.PlayerConnectionListener(this), this);
         getLogger().info("PlayerConnectionListener registered.");
@@ -206,6 +230,10 @@ public class PluginStart extends JavaPlugin {
 
         // Initialize database
         this.database = new Database(this);
+        
+        // Initialize PlayerDeathListener for handling player deaths and the /back command
+        new net.survivalfun.core.listeners.jobs.PlayerDeathListener(this, this.database);
+        getLogger().info("PlayerDeathListener registered.");
 
         // Register commands
         PluginCommand redeemCmd = getCommand("redeem");
@@ -246,7 +274,6 @@ public class PluginStart extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new FireballExplosionListener(this), this);
 
 
-        // Initialize your managers:
         WorldDefaults worldDefaults = new WorldDefaults(this);
         Core coreCommand = new Core(worldDefaults, this, getConfig(), commandManager, creativeManager);
         // Register the Core command:
@@ -259,6 +286,7 @@ public class PluginStart extends JavaPlugin {
         try {
             // Register explode command
             // In your onEnable method, when registering commands
+
             this.explodeCommand = new Explode(this);
             getCommand("explode").setExecutor(explodeCommand);
             getCommand("explode").setTabCompleter(new Tab(this));

@@ -1,6 +1,7 @@
 package net.survivalfun.core.managers.core;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.md_5.bungee.api.ChatColor;
@@ -75,7 +76,27 @@ public class Text {
      * @return A formatted Component with applied colors
      */
     public static Component colorize(String text) {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(text);
+        if (text == null || text.isEmpty()) {
+            return Component.empty();
+        }
+        ColorFormat format = detectColorFormat(text);
+        if (format == ColorFormat.MINI_MESSAGE) {
+            try {
+                // Log MiniMessage input for debugging
+                System.out.println("Parsing MiniMessage: " + text);
+                Component result = miniMessage.deserialize(text);
+                System.out.println("Parsed component: " + result);
+                return result;
+            } catch (Exception e) {
+                System.err.println("MiniMessage parsing failed: " + e.getMessage());
+                e.printStackTrace();
+                String legacy = parseColors(text);
+                return LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+            }
+        } else {
+            String legacy = parseColors(text);
+            return LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        }
     }
 
 
@@ -104,7 +125,9 @@ public class Text {
     }
 
     public static ColorFormat detectColorFormat(String input) {
-        if (input.contains("<gradient:") || input.contains("</gradient>") || SIMPLE_HEX_PATTERN.matcher(input).find()) {
+        if (input.contains("<gradient:") || input.contains("</gradient>") || 
+            SIMPLE_HEX_PATTERN.matcher(input).find() ||
+            (input.contains("<") && input.contains(">"))) {
             return ColorFormat.MINI_MESSAGE;
         }
 
@@ -542,4 +565,15 @@ public class Text {
         }
     }
 
+    public static Component createDisplayNameComponent(String name) {
+        if (name == null || name.isEmpty()) {
+            return Component.empty();
+        }
+        String displayName = name.replace('_', ' ');
+        Component component = colorize(displayName);
+        if (component.style().decoration(TextDecoration.ITALIC) == TextDecoration.State.NOT_SET) {
+            component = component.decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE);
+        }
+        return component;
+    }
 }

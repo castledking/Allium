@@ -1,65 +1,98 @@
 package net.survivalfun.core.commands.utils;
 
-import net.survivalfun.core.managers.core.Alias;
 import net.survivalfun.core.managers.core.Item;
-import net.survivalfun.core.managers.core.LegacyID;
 import net.survivalfun.core.managers.core.LoreHelper;
-import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
-import org.bukkit.Material;
+import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 public class Tab implements TabCompleter {
 
     private final JavaPlugin plugin;
-    private final FileConfiguration config;
-    private final List<String> cachedMaterialNames; // Cache material names for better performance
+    private List<String> cachedMaterialNames;
+    private final Set<String> cachedAliases = new HashSet<>();
+    private final List<String> potionEffects = Arrays.asList(
+        "turtle_master", "speed", "slowness", "strength", "jump_boost",
+        "regeneration", "fire_resistance", "water_breathing", "invisibility",
+        "night_vision", "poison", "weakness", "luck"
+    );
 
     public Tab(JavaPlugin plugin) {
         this.plugin = plugin;
-        this.config = plugin.getConfig();
-        Item.initialize(); // Ensure ItemUtils is initialized
-        this.cachedMaterialNames = Arrays.stream(Material.values())
-                .filter(Item::isGiveable) // Filter out non-giveable materials
-                .map(Enum::name)
-                .collect(Collectors.toList());
+        
+        loadAliases();
     }
 
+    private void loadAliases() {
+        // Load material names that are giveable
+        cachedMaterialNames = Arrays.stream(Material.values())
+            .filter(Item::isGiveable)
+            .map(Material::name)
+            .map(String::toLowerCase)
+            .collect(Collectors.toList());
+            
+        // Load and cache aliases from itemdb.yml
+        try {
+            FileConfiguration config = YamlConfiguration.loadConfiguration(
+                new File(plugin.getDataFolder(), "itemdb.yml"));
+            ConfigurationSection aliases = config.getConfigurationSection("aliases");
+            if (aliases != null) {
+                aliases.getKeys(false).forEach(alias -> {
+                    String aliasLower = alias.toLowerCase();
+                    cachedAliases.add(aliasLower);
+                    // Also add the alias to cachedMaterialNames for direct matching
+                    cachedMaterialNames.add(aliasLower);
+                });
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("Failed to load aliases from itemdb.yml: " + e.getMessage());
+        }
+    }
+
+    private List<String> filterSuggestions(List<String> suggestions, String input) {
+        if (input.isEmpty()) {
+            return suggestions;
+        }
+        String lowerInput = input.toLowerCase();
+        return suggestions.stream()
+            .filter(s -> s.toLowerCase().startsWith(lowerInput))
+            .collect(Collectors.toList());
+    }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
-                                                @NotNull String alias, @NotNull String @NotNull [] args) {
+                                              @NotNull String alias, @NotNull String @NotNull [] args) {
         try {
             return switch (alias.toLowerCase(Locale.ENGLISH)) {
-                case "explode" -> getExplodeSuggestions(sender, args);
                 case "give" -> getGiveSuggestions(sender, args);
-                case "i" -> getISuggestions(sender, args);
-                case "heal", "feed" -> getHealSuggestions(sender, args);
-                case "lore" -> getLoreSuggestions(sender, args);
-                case "gamemode" -> getGamemodeSuggestions(sender, "gamemode", args);
-                case "gm" -> getGamemodeSuggestions(sender, "gm", args);
-                case "gmc" -> getGamemodeSuggestions(sender, "gmc", args);
-                case "gma" -> getGamemodeSuggestions(sender, "gma", args);
-                case "gms" -> getGamemodeSuggestions(sender, "gms", args);
-                case "gmsp" -> getGamemodeSuggestions(sender,"gmsp", args);
-                case "survival" -> getGamemodeSuggestions(sender, "survival", args);
-                case "creative" -> getGamemodeSuggestions(sender, "creative", args);
-                case "adventure" -> getGamemodeSuggestions(sender, "adventure", args);
-                case "spectator" -> getGamemodeSuggestions(sender, "spectator", args);
                 case "fly" -> getFlySuggestions(sender, args);
+                case "gamemode" -> getGamemodeSuggestions(sender, alias, args);
+                case "gmc" -> getGamemodeSuggestions(sender, alias, args);
+                case "gms" -> getGamemodeSuggestions(sender, alias, args);
+                case "gma" -> getGamemodeSuggestions(sender, alias, args);
+                case "gmsp" -> getGamemodeSuggestions(sender, alias, args);
+                case "creative" -> getGamemodeSuggestions(sender, alias, args);
+                case "survival" -> getGamemodeSuggestions(sender, alias, args);
+                case "adventure" -> getGamemodeSuggestions(sender, alias, args);
+                case "spectator" -> getGamemodeSuggestions(sender, alias, args);
+                case "heal" -> getHealSuggestions(sender, args);
+                case "explode" -> getExplodeSuggestions(sender, args);
+                case "i" -> getISuggestions(sender, args);
+                case "lore" -> getLoreSuggestions(sender, args);
                 case "core" -> getCoreSuggestions(sender, args);
                 default -> new ArrayList<>();
             };
@@ -69,8 +102,7 @@ public class Tab implements TabCompleter {
         }
     }
 
-
-    private @Nullable List<String> getCoreSuggestions(@NotNull CommandSender sender, @NotNull String @NotNull [] args) {
+    private List<String> getCoreSuggestions(@NotNull CommandSender sender, @NotNull String @NotNull [] args) {
         List<String> suggestions = new ArrayList<>();
         String currentArgToFilter;
     
@@ -346,8 +378,76 @@ public class Tab implements TabCompleter {
                 .collect(Collectors.toList());
     }
 
-
-
+    private List<String> getGiveSuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
+        List<String> suggestions = new ArrayList<>();
+        
+        if (args.length == 1) {
+            // Player name suggestions
+            if (sender.hasPermission("core.give.other")) {
+                return Bukkit.getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+            return Collections.emptyList();
+        } 
+        else if (args.length == 2) {
+            // Material and alias suggestions (same as i command but after player name)
+            suggestions.addAll(cachedMaterialNames);
+            suggestions = filterSuggestions(suggestions, args[1]);
+        }
+        else if (args.length == 3) {
+            // Handle potion suggestions (same as i command but args offset by 1)
+            String itemName = args[1];
+            if (itemName.contains(";")) {
+                String[] parts = itemName.split(";");
+                
+                if (parts.length == 1 && itemName.endsWith(";")) {
+                    if (parts[0].matches("(?i)(potion|splash_potion|lingering_potion|tipped_arrow)")) {
+                        return potionEffects.stream()
+                            .map(effect -> itemName + effect)
+                            .collect(Collectors.toList());
+                    }
+                }
+                else if (parts.length == 2) {
+                    return potionEffects.stream()
+                        .filter(effect -> effect.startsWith(parts[1].toLowerCase()))
+                        .map(effect -> parts[0] + ";" + effect)
+                        .collect(Collectors.toList());
+                }
+                else if (parts.length == 2 && parts[1].equalsIgnoreCase("turtle_master")) {
+                    return Arrays.asList("300", "60", "20").stream()
+                        .map(duration -> itemName + ";" + duration)
+                        .collect(Collectors.toList());
+                }
+            }
+            else if (isMaterial(itemName)) {
+                suggestions.add(itemName + ";");
+            }
+            
+            suggestions = filterSuggestions(suggestions, args[2]);
+        }
+        else if (args.length == 4) {
+            // Amount suggestions (same as i command but args offset by 1)
+            try {
+                String materialName = args[1].split(";")[0];
+                Material material = Material.matchMaterial(materialName);
+                int maxStack = material != null ? material.getMaxStackSize() : 64;
+                
+                List<String> amounts = new ArrayList<>();
+                amounts.add("1");
+                if (maxStack >= 16) amounts.add("16");
+                if (maxStack >= 32) amounts.add("32");
+                if (maxStack >= 64) amounts.add("64");
+                
+                return amounts.stream()
+                    .filter(amount -> amount.startsWith(args[3]))
+                    .collect(Collectors.toList());
+            } catch (Exception ignored) {}
+        }
+        
+        return suggestions;
+    }
 
     private List<String> getLoreSuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
         List<String> suggestions = new ArrayList<>();
@@ -417,9 +517,9 @@ public class Tab implements TabCompleter {
     private List<String> getExplodeSuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
         List<String> suggestions = new ArrayList<>();
 
-        int min = config.getInt("explode-command.min", 1);
-        int max = config.getInt("explode-command.max", 10);
-        int defaultValue = config.getInt("explode-command.default", 2);
+        int min = 1;
+        int max = 10;
+        int defaultValue = 2;
 
         switch (args.length) {
             case 1:
@@ -448,246 +548,22 @@ public class Tab implements TabCompleter {
         return filterSuggestions(suggestions, args.length > 0 ? args[args.length - 1] : "");
     }
 
-
-    private List<String> getGiveSuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
-        List<String> suggestions = new ArrayList<>();
-
-        if (args.length == 1) {
-            // Check if the input is at least 5 characters and might be a material name
-            if (args[0].length() >= 5) {
-                // First suggest materials that match the input
-                List<String> materialSuggestions = cachedMaterialNames.stream()
-                        .map(String::toLowerCase)
-                        .filter(name -> name.contains(args[0].toLowerCase()))
-                        .collect(Collectors.toList());
-
-                // Add material suggestions with a special prefix to distinguish them from player names
-                // You could use something like "ITEM:" or any other prefix
-                suggestions.addAll(materialSuggestions);
-            }
-
-            // Then add player name suggestions (these will appear after material suggestions)
-            suggestions.addAll(Bukkit.getOnlinePlayers().stream()
-                    .map(Player::getName)
-                    .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))
-                    .toList());
-
-            return suggestions;
-        } else if (args.length == 2) {
-            // Check if the first argument is a player name
-            Player targetPlayer = Bukkit.getPlayer(args[0]);
-
-            // If first arg isn't a player, it might be a material name that was auto-completed
-            if (targetPlayer == null && isMaterial(args[0])) {
-                // In this case, the second argument would be the amount
-                suggestions.addAll(Arrays.asList("1", "16", "32", "64"));
-                return suggestions.stream()
-                        .filter(s -> s.startsWith(args[1]))
-                        .collect(Collectors.toList());
-            }
-
-            // Normal material suggestion logic for second argument
-            String itemName = args[1];
-
-            // Material name suggestions (partial completion)
-            if (!itemName.contains(";")) {
-                List<String> materialSuggestions = cachedMaterialNames.stream()
-                        .map(String::toLowerCase)
-                        .filter(name -> name.startsWith(itemName.toLowerCase()))
-                        .collect(Collectors.toList());
-
-                suggestions.addAll(materialSuggestions);
-
-                // If there is a direct match, add the semicolon option
-                if (cachedMaterialNames.stream().map(String::toLowerCase).anyMatch(name -> name.equalsIgnoreCase(itemName))) {
-                    Material material = getMaterial(itemName);
-                    if (material != null) {
-                        suggestions.add(itemName + ";");
-                    }
-                }
-            }
-            return suggestions;
-        } else if (args.length == 3) {
-            // Check if the first argument is a player name
-            Player targetPlayer = Bukkit.getPlayer(args[0]);
-
-            // If first arg isn't a player, it might be a material name that was auto-completed
-            if (targetPlayer == null && isMaterial(args[0])) {
-                // In this case, we're already at the amount, so no suggestions needed
-                return suggestions;
-            }
-
-            // Normal amount suggestion logic for third argument
-            suggestions.addAll(Arrays.asList("1", "16", "32", "64"));
-            return suggestions.stream()
-                    .filter(s -> s.startsWith(args[2]))
-                    .collect(Collectors.toList());
-        }
-
-        return suggestions;
-    }
-
-    // Helper method to check if a string is a valid material name
-    private boolean isMaterial(String name) {
-        return cachedMaterialNames.stream()
-                .anyMatch(mat -> mat.equalsIgnoreCase(name));
-    }
-
-    private Material getMaterial(String itemName) {
-        Material material;
-        String baseItemName = itemName;
-
-        if (itemName.contains(";")) {
-            baseItemName = itemName.substring(0, itemName.indexOf(";"));
-        }
-
-        // New logic: support alias:legacyID
-        if (baseItemName.contains(":")) {
-            String[] parts = baseItemName.split(":", 2);
-            String aliasPart = parts[0];
-            String legacyIdPart = parts[1];
-
-            // Try resolving alias first
-            String alias = Alias.getAlias(aliasPart);
-            if (alias != null) {
-                try {
-                    material = Material.valueOf(alias.toUpperCase());
-                    return material;
-                } catch (IllegalArgumentException e) {
-                    // Alias does not resolve directly, try legacyID
-                }
-            }
-            // Try resolving legacyID part
-            material = LegacyID.getMaterialFromLegacyId(legacyIdPart);
-            if (material != null) {
-                return material;
-            }
-            // Try combining alias and legacyID (e.g., alias maps to a base, legacyID as variant)
-            // If you have custom logic for this, add here.
-            // If not found, fallback to AIR
-            return Material.AIR;
-        }
-
-        try {
-            // 1. Try direct Material name (e.g., "DIAMOND_SWORD")
-            material = Material.valueOf(baseItemName.toUpperCase());
-
-        } catch (IllegalArgumentException e) {
-            // Not a direct Material name, try other methods
-            // 2. Check Legacy IDs
-            material = LegacyID.getMaterialFromLegacyId(baseItemName);
-
-            if (material == null) {
-                // 3. Check Aliases
-                String alias = Alias.getAlias(baseItemName);
-                if (alias != null) {
-                    try {
-                        material = Material.valueOf(alias.toUpperCase());
-                    } catch (IllegalArgumentException e2) {
-                        // Alias doesn't resolve to a valid Material // Or handle the error as you see fit
-                        return Material.AIR;
-                    }
-                } else {
-                    // Not a valid material, legacy ID, or alias
-                    return Material.AIR;
-                }
-            }
-        }
-
-        return material;
-    }
-
-
     private List<String> getISuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
         List<String> suggestions = new ArrayList<>();
-
-        if (!(sender instanceof Player)) return suggestions;
-
-        switch (args.length) {
-            case 1:
-                String itemName = args[0];
-
-
-                // Material name suggestions (partial completion)
-                if (!itemName.contains(";")) {
-                    List<String> materialSuggestions = cachedMaterialNames.stream()
-                            .map(String::toLowerCase)
-                            .filter(name -> name.startsWith(itemName.toLowerCase()))
-                            .collect(Collectors.toList());
-
-                    suggestions.addAll(materialSuggestions);
-
-                    //If there is a direct match, add the semicolon option
-                    if (cachedMaterialNames.stream().map(String::toLowerCase).anyMatch(name -> name.equalsIgnoreCase(itemName))) {
-                        Material material = getMaterial(itemName);
-                        if (material != null) {
-                            suggestions.add(itemName + ";");
-                        }
-
-
-                    }
-
-                }
-
-                // Enchantment suggestions
-                else {
-                    String[] itemNameParts = itemName.split(";", -1); // Limit to -1 to include trailing empty strings
-                    String itemNameWithoutEnchants = itemNameParts[0];
-                    Material material = getMaterial(itemNameWithoutEnchants);
-
-                    // Determine what's been typed so far after the last semicolon
-                    String lastPart = itemNameParts[itemNameParts.length - 1];
-
-                    if (material != null) {
-                        ItemStack testItem = new ItemStack(material);
-
-                        // If the material is an enchanted book, ensure the ItemStack has EnchantmentStorageMeta
-                        if (material == Material.ENCHANTED_BOOK) {
-                            // Create an enchanted book meta
-                            EnchantmentStorageMeta meta = (EnchantmentStorageMeta) Bukkit.getItemFactory().getItemMeta(Material.ENCHANTED_BOOK);
-                            testItem.setItemMeta(meta);
-                        }
-
-                        for (Enchantment enchantment : Enchantment.values()) {
-                            //Check if it is an enchanted book, if so, ignore the item check, otherwise, do it
-                            if(material == Material.ENCHANTED_BOOK || enchantment.canEnchantItem(testItem)) {
-                                String enchantName = enchantment.getKey().getKey();
-
-                                // Check if the enchantment name (or part of it) matches what the user has typed *after* the last semicolon
-                                if (enchantName.toLowerCase().startsWith(lastPart.toLowerCase())) {
-                                    // Suggest only the *remaining* part of the enchantment name
-                                    String remainingEnchantName = enchantName.substring(lastPart.length());
-                                    String suggestion = itemName + remainingEnchantName + ":" + enchantment.getMaxLevel();
-
-                                    suggestions.add(suggestion);
-                                }
-                            }
-                        }
-                    }
-                }
-
-
-
-
-                break;
-
-            case 2:
-                suggestions.addAll(List.of("1", "16", "32", "64"));
-                break;
+        
+        if (args.length == 1) {
+            // Material and alias suggestions
+            suggestions.addAll(cachedMaterialNames);
+            suggestions = filterSuggestions(suggestions, args[0]);
         }
-
+        
         return suggestions;
     }
 
-
-
-
-    private List<String> filterSuggestions(@NotNull List<String> suggestions, @NotNull String partial) {
-        if (partial.isEmpty()) return suggestions;
-
-        String lowerPartial = partial.toLowerCase(Locale.ENGLISH);
-        return suggestions.stream()
-                .filter(s -> s.toLowerCase(Locale.ENGLISH).startsWith(lowerPartial))
-                .collect(Collectors.toList());
+    private boolean isMaterial(String name) {
+        String lowerName = name.toLowerCase();
+        return cachedMaterialNames.stream()
+                .anyMatch(mat -> mat.equalsIgnoreCase(lowerName)) ||
+               cachedAliases.contains(lowerName);
     }
 }

@@ -1,10 +1,10 @@
 package net.survivalfun.core.commands.utils;
 
-import net.survivalfun.core.PluginStart;
-import net.survivalfun.core.managers.lang.Lang;
-import net.survivalfun.core.managers.core.Alias;
-import net.survivalfun.core.managers.core.LegacyID;
-import net.survivalfun.core.managers.core.Text;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.command.*;
 import org.bukkit.enchantments.Enchantment;
@@ -18,6 +18,12 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 import org.jetbrains.annotations.NotNull;
+import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.managers.config.Config;
+import net.survivalfun.core.managers.lang.Lang;
+import net.survivalfun.core.managers.core.Alias;
+import net.survivalfun.core.managers.core.LegacyID;
+import net.survivalfun.core.managers.core.Text;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,7 +34,7 @@ import static net.survivalfun.core.managers.core.Item.isGiveable;
 public class Give implements CommandExecutor {
     private final PluginStart plugin;
     private final Lang lang;
-    private final net.survivalfun.core.managers.config.Config configManager;
+    private final Config configManager;
     
     // Default durations in seconds for potion effects when not specified
     private static final Map<PotionEffectType, Integer> DEFAULT_POTION_DURATIONS = new HashMap<>();
@@ -68,6 +74,9 @@ public class Give implements CommandExecutor {
         DEFAULT_POTION_DURATIONS.put(PotionEffectType.BAD_OMEN, 60);
         DEFAULT_POTION_DURATIONS.put(PotionEffectType.HERO_OF_THE_VILLAGE, 60);
         DEFAULT_POTION_DURATIONS.put(PotionEffectType.DARKNESS, 10);
+        // Turtle Master effects
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.SLOWNESS, 20);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.RESISTANCE, 20);
     }
 
     public Give(PluginStart plugin) {
@@ -152,9 +161,7 @@ public class Give implements CommandExecutor {
         for (String enchantmentString : enchantmentsArray) {
             String[] enchantmentParts = enchantmentString.split(":");
             if (enchantmentParts.length == 2) {
-                Enchantment enchantment = Enchantment.getByKey(NamespacedKey
-                        .minecraft(enchantmentParts[0]
-                        .toLowerCase()));
+                Enchantment enchantment = getEnchantment(enchantmentParts[0].toLowerCase());
                 if (enchantment != null) {
                     int level = Integer.parseInt(enchantmentParts[1]);
                     enchantments.put(enchantment, level);
@@ -266,6 +273,87 @@ public class Give implements CommandExecutor {
         item.setItemMeta(meta);
     }
 
+    @SuppressWarnings("deprecation")
+    private static Enchantment getEnchantment(String name) {
+        return Enchantment.getByKey(NamespacedKey.minecraft(name.toLowerCase().replace(" ", "_")));
+    }
+
+    private int calculatePotionDurationTicks(int potionDuration, Material material, PotionEffectType effectType) {
+        int ticks;
+        if (potionDuration > 0) {
+            ticks = potionDuration * 20;
+            if (material == Material.TIPPED_ARROW) {
+                ticks = (int) Math.round(ticks * 8.0);
+            }
+        } else {
+            // Default duration (apply 8x division for arrows)
+            ticks = DEFAULT_POTION_DURATIONS.getOrDefault(effectType, 30) * 20;
+            if (material == Material.TIPPED_ARROW) {
+                ticks = (int) Math.round(ticks / 8.0);
+            }
+        }
+        return ticks;
+    }
+    
+    private PotionEffect createPotionEffect(PotionEffectType type, int ticks, int amplifier, 
+                                          boolean ambient, boolean particles, boolean icon) {
+        return new PotionEffect(type, ticks, amplifier, ambient, particles, icon);
+    }
+    
+    private Component generatePotionDisplayName(PotionEffectType effectType, Material material, int amplifier) {
+        String displayEffectName = getEffectDisplayName(effectType);
+        String itemType = getPotionItemType(material);
+        String amplifierStr = toRomanNumeral(amplifier);
+        
+        String displayName = itemType + displayEffectName;
+        if (amplifier > 0) {
+            displayName += " " + amplifierStr;
+        }
+        return createAdventureComponent(displayName);
+    }
+    
+    private String getEffectDisplayName(PotionEffectType effectType) {
+        String effectName = effectType.getKey().getKey(); // Use getKey() instead of deprecated getName()
+        switch (effectName) {
+            case "speed": return "Swiftness";
+            case "slowness": return "Turtle Master";
+            case "resistance": return "Turtle Master";
+            case "jump_boost": return "Leaping";
+            case "instant_health": return "Healing";
+            case "instant_damage": return "Harming";
+            case "weaving": return "Weaving";
+            case "wind_charged": return "Wind Charging";
+            case "infested": return "Infestation";
+            default: 
+                return Arrays.stream(effectName.split("_"))
+                    .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1))
+                    .collect(Collectors.joining(" "));
+        }
+    }
+    
+    private String getPotionItemType(Material material) {
+        switch (material) {
+            case SPLASH_POTION: return "Splash Potion of ";
+            case LINGERING_POTION: return "Lingering Potion of ";
+            case TIPPED_ARROW: return "Arrow of ";
+            default: return "Potion of ";
+        }
+    }
+    
+    private Component createAdventureComponent(String text) {
+        if (text == null || text.isEmpty()) {
+            return Component.empty();
+        }
+        String displayName = text.replace('_', ' ');
+        System.out.println("Creating component from: " + displayName);
+        System.out.println("Detected format: " + Text.detectColorFormat(displayName));
+        Component component = Text.colorize(displayName);
+        if (component.style().decoration(TextDecoration.ITALIC) == TextDecoration.State.NOT_SET) {
+            component = component.decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE);
+        }
+        return component;
+    }
+
     private void giveItems(String player, String arg, CommandSender sender, int amount, boolean canConsole, Map<Enchantment, Integer> enchantments) {
         if (!canConsole && !(sender instanceof Player)) {
             Text.sendErrorMessage(sender, "not-a-player", lang);
@@ -281,12 +369,169 @@ public class Give implements CommandExecutor {
         Material material = null;
         ItemMeta meta = null;
         ItemStack item = null;
-        int specialPotionType = 0;
 
         try {
-            // Extract base item name
-            String[] parts = arg.split(";");
+            // First, check if the argument contains a gradient tag
+            boolean hasGradient = arg.contains("<gradient");
+            
+            // Split the arguments, but be careful with gradient tags
+            String[] parts;
+            if (hasGradient) {
+                // If there's a gradient tag, we need to be more careful with splitting
+                // to avoid breaking the gradient syntax
+                parts = arg.split(";(?![^<]*>)");
+            } else {
+                // No gradient, safe to split normally
+                parts = arg.split(";");
+            }
+            
             String itemName = parts[0];
+
+            // Handle Turtle Master specifically
+            if (parts.length > 1 && (parts[1].equalsIgnoreCase("turtle_master") || parts[1].startsWith("turtle_master"))) {
+                // Determine material based on first part
+                material = Material.POTION;
+                if (parts[0].equalsIgnoreCase("splash_potion")) {
+                    material = Material.SPLASH_POTION;
+                } else if (parts[0].equalsIgnoreCase("lingering_potion")) {
+                    material = Material.LINGERING_POTION;
+                } else if (parts[0].equalsIgnoreCase("tipped_arrow")) {
+                    material = Material.TIPPED_ARROW;
+                }
+                
+                item = new ItemStack(material, amount > 0 ? amount : 1);
+                PotionMeta potionMeta = (PotionMeta) item.getItemMeta();
+                
+                if (potionMeta != null) {
+                    // Default values
+                    int duration = 20;
+                    String customName = null;
+                    
+                    // Parse named parameters if present
+                    if (parts[1].contains(":") || parts[1].contains("=")) {
+                        // Handle named parameters format
+                        Map<String, String> namedParams = new HashMap<>();
+                        for (int i = 1; i < parts.length; i++) {
+                            String part = parts[i];
+                            // Check if this part might contain a gradient tag that was split
+                            if (part.contains("<gradient") && !part.contains(">")) {
+                                // Reconstruct the gradient tag by combining with next parts
+                                StringBuilder gradientValue = new StringBuilder(part);
+                                while (i + 1 < parts.length && !gradientValue.toString().contains(">")) {
+                                    gradientValue.append(";").append(parts[++i]);
+                                }
+                                part = gradientValue.toString();
+                            }
+                            
+                            // Split on first occurrence of : or =
+                            int splitIndex = Math.min(
+                                part.indexOf(':') > 0 ? part.indexOf(':') : Integer.MAX_VALUE,
+                                part.indexOf('=') > 0 ? part.indexOf('=') : Integer.MAX_VALUE
+                            );
+                            
+                            if (splitIndex != Integer.MAX_VALUE) {
+                                String key = part.substring(0, splitIndex).toLowerCase();
+                                String value = part.substring(splitIndex + 1);
+                                namedParams.put(key, value);
+                            }
+                        }
+                        
+                        // Extract values from named parameters
+                        if (namedParams.containsKey("duration")) {
+                            try {
+                                duration = Integer.parseInt(namedParams.get("duration"));
+                            } catch (NumberFormatException e) {
+                                // Use default duration if parsing fails
+                            }
+                        }
+                        
+                        if (namedParams.containsKey("name")) {
+                            String nameValue = namedParams.get("name");
+                            // For gradient tags, we need to ensure they're properly formatted
+                            if (nameValue.contains("<gradient")) {
+                                // If the gradient tag is incomplete, try to reconstruct it
+                                if (!nameValue.contains(">")) {
+                                    // Look for the closing tag in subsequent parts
+                                    for (int k = 1; k < parts.length; k++) {
+                                        nameValue += ";" + parts[k];
+                                        if (parts[k].contains(">")) {
+                                            // We've found the end of the gradient tag
+                                            break;
+                                        }
+                                    }
+                                }
+                                // Ensure proper MiniMessage format
+                                nameValue = nameValue.replace('_', ' ');
+                                customName = Text.parseColors(nameValue);
+                            } else {
+                                // No gradient, just parse normally
+                                customName = Text.parseColors(nameValue.replace('_', ' '));
+                            }
+                        }
+                    } else if (parts.length > 2) {
+                        // Handle legacy positional parameters
+                        try {
+                            duration = Integer.parseInt(parts[2]);
+                        } catch (NumberFormatException e) {
+                            // It's not a number, so we leave duration as default
+                        }
+
+                        // Now, look for a name parameter in any of the parts from index 2 onwards
+                        for (int i = 2; i < parts.length; i++) {
+                            if (parts[i].startsWith("name:")) {
+                                customName = parts[i].substring(5);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Calculate duration ticks
+                    int durationTicks = calculatePotionDurationTicks(duration, material, PotionEffectType.SLOWNESS);
+                    
+                    // Add both Turtle Master effects
+                    PotionEffect slowness = createPotionEffect(
+                        PotionEffectType.SLOWNESS,
+                        durationTicks,
+                        3,   // Slowness IV
+                        false,
+                        true,
+                        true
+                    );
+                    
+                    PotionEffect resistance = createPotionEffect(
+                        PotionEffectType.RESISTANCE,
+                        durationTicks,
+                        2,   // Resistance III
+                        false,
+                        true,
+                        true
+                    );
+                    
+                    potionMeta.addCustomEffect(slowness, true);
+                    potionMeta.addCustomEffect(resistance, true);
+                    
+                    // Set the display name
+                    Component displayName;
+                    if (customName != null) {
+                        // Parse the custom name with gradient support
+                        displayName = Text.colorize(customName.replace('_', ' '));
+                    } else {
+                        displayName = Component.text("Potion of the Turtle Master")
+                            .color(TextColor.color(255, 255, 255));
+                    }
+                    
+                    // Ensure no italics by default
+                    potionMeta.displayName(displayName.decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE));
+                    
+                    item.setItemMeta(potionMeta);
+                    
+                    // Give the item to the player
+                    target.getInventory().addItem(item);
+                    target.updateInventory();
+                    
+                    return;
+                }
+            }
 
             // Check for special potion types (potion:1, potion:2, potion:3)
             if (itemName.toLowerCase().startsWith("potion:")) {
@@ -294,7 +539,6 @@ public class Give implements CommandExecutor {
                     int potionId = Integer.parseInt(itemName.substring(7));
                     if (potionId >= 1 && potionId <= 3) {
                         // Valid special potion type
-                        specialPotionType = potionId;
                         itemName = "potion";
                     } else {
                         // Invalid potion ID
@@ -343,7 +587,6 @@ public class Give implements CommandExecutor {
             boolean potionAmbient = false;
             boolean potionParticles = true;
             boolean potionIcon = true;
-            boolean customPotion = false;
 
             // Parse potion arguments
             if (parts.length > 1) {
@@ -354,10 +597,26 @@ public class Give implements CommandExecutor {
                     // Named parameters: e.g. effect:speed;duration:300;amplifier:1
                     Map<String, String> namedParams = new HashMap<>();
                     for (int i = 1; i < parts.length; i++) {
-                        String[] keyValue = parts[i].split("[:=]");
-                        if (keyValue.length >= 2) {
-                            String key = keyValue[0].toLowerCase();
-                            String value = keyValue[1];
+                        String part = parts[i];
+                        // Check if this part contains a gradient tag
+                        if (part.contains("<gradient") && !part.contains(">")) {
+                            // This is a gradient tag that was split, combine with next parts until we find the closing tag
+                            StringBuilder gradientValue = new StringBuilder(part);
+                            while (i + 1 < parts.length && !gradientValue.toString().contains(">")) {
+                                gradientValue.append(";").append(parts[++i]);
+                            }
+                            part = gradientValue.toString();
+                        }
+                        
+                        // Split on first occurrence of : or =
+                        int splitIndex = Math.min(
+                            part.indexOf(':') > 0 ? part.indexOf(':') : Integer.MAX_VALUE,
+                            part.indexOf('=') > 0 ? part.indexOf('=') : Integer.MAX_VALUE
+                        );
+                        
+                        if (splitIndex != Integer.MAX_VALUE) {
+                            String key = part.substring(0, splitIndex).toLowerCase();
+                            String value = part.substring(splitIndex + 1);
                             namedParams.put(key, value);
                         }
                     }
@@ -371,7 +630,27 @@ public class Give implements CommandExecutor {
                         potionAmplifier = Integer.parseInt(namedParams.get("amplifier"));
                     }
                     if (namedParams.containsKey("name")) {
-                        name = Text.parseColors(namedParams.get("name").replace('_', ' '));
+                        String nameValue = namedParams.get("name");
+                        // For gradient tags, we need to ensure they're properly formatted
+                        if (nameValue.contains("<gradient")) {
+                            // If the gradient tag is incomplete, try to reconstruct it
+                            if (!nameValue.contains(">")) {
+                                // Look for the closing tag in subsequent parts
+                                for (int k = 1; k < parts.length; k++) {
+                                    nameValue += ";" + parts[k];
+                                    if (parts[k].contains(">")) {
+                                        // We've found the end of the gradient tag
+                                        break;
+                                    }
+                                }
+                            }
+                            // Ensure proper MiniMessage format
+                            nameValue = nameValue.replace('_', ' ');
+                            name = Text.parseColors(nameValue);
+                        } else {
+                            // No gradient, just parse normally
+                            name = Text.parseColors(nameValue.replace('_', ' '));
+                        }
                     }
                 } else {
                     // Positional parameters: effect, duration, amplifier, [name]
@@ -400,9 +679,23 @@ public class Give implements CommandExecutor {
                         }
                     }
                     // Check for name parameter in any remaining parts
-                    for (int i = paramIndex; i < parts.length; i++) {
-                        if (parts[i].startsWith("name:")) {
-                            name = Text.parseColors(parts[i].substring(5).replace('_', ' '));
+                    for (int j = paramIndex; j < parts.length; j++) {
+                        if (parts[j].startsWith("name:")) {
+                            String nameValue = parts[j].substring(5);
+                            // Check if the name contains a gradient tag that might have been split
+                            if (nameValue.contains("<gradient") && !nameValue.contains(">")) {
+                                // Reconstruct the gradient tag by combining with remaining parts
+                                StringBuilder gradientName = new StringBuilder(nameValue);
+                                for (int k = j + 1; k < parts.length; k++) {
+                                    gradientName.append(" ").append(parts[k]);
+                                    if (parts[k].contains(">")) {
+                                        j = k; // Skip the parts we've already processed
+                                        break;
+                                    }
+                                }
+                                nameValue = gradientName.toString();
+                            }
+                            name = Text.parseColors(nameValue.replace('_', ' '));
                             break;
                         }
                     }
@@ -422,88 +715,44 @@ public class Give implements CommandExecutor {
                     return;
                 }
 
-                // Find the effect type using the registry
-                PotionEffectType effectType = Registry.EFFECT.get(NamespacedKey.minecraft(potionEffect.toLowerCase()));
+                // Find potion effect type using modern API
+                final PotionEffectType effectType = getPotionEffectType(potionEffect);
+                
                 if (effectType == null) {
-                    // Fallback to direct registry lookup by key
-                    effectType = Registry.EFFECT.get(NamespacedKey.fromString(potionEffect.toLowerCase()));
-                }
-
-                if (effectType == null) {
-                    Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "potion effect");
+                    sender.sendMessage(Text.parseColors(lang.get("commands.give.invalid-potion-effect")
+                        .replace("{effect}", potionEffect)));
                     return;
                 }
-
-                // Duration calculation - handles both custom and default durations
-                int durationTicks;
-                int finalDurationSeconds;
-                plugin.getLogger().info("potionDuration before calculation: " + potionDuration); // ADDED
-                if (potionDuration > 0) {
-                    durationTicks = potionDuration * 20;
-                    plugin.getLogger().info("durationTicks before arrow reduction: " + durationTicks); // ADDED
-                    if (material == Material.TIPPED_ARROW) {
-                        durationTicks = (int) Math.round(durationTicks * 8.0); // Floating-point division and rounding
-                        plugin.getLogger().info("durationTicks after arrow reduction: " + durationTicks); // ADDED
-                    }
-                    finalDurationSeconds = durationTicks / 20; // Actual duration after arrow reduction
-                    plugin.getLogger().info("finalDurationSeconds after arrow reduction: " + finalDurationSeconds); // ADDED
-                } else {
-                    durationTicks = DEFAULT_POTION_DURATIONS.getOrDefault(effectType, 30) * 20;
-                    finalDurationSeconds = durationTicks / 20; // Use default duration
-                }
-
-// Log the duration calculation details
-                plugin.getLogger().log(Level.INFO, "Potion effect: {0}, duration: {1} seconds, amplifier: {2}, material: {3}",
-                        new Object[]{effectType.getKey().getKey(), finalDurationSeconds, potionAmplifier, material});
-
-                plugin.getLogger().log(Level.INFO, "Duration in ticks: {0}", durationTicks);
-
-
-
-
-// Create the potion effect
-                PotionEffect effect = new PotionEffect(
-                        effectType,
-                        durationTicks,
-                        potionAmplifier,
-                        potionAmbient,
-                        potionParticles,
-                        potionIcon
+                
+                int durationTicks = calculatePotionDurationTicks(potionDuration, material, effectType);
+                
+                PotionEffect effect = createPotionEffect(
+                    effectType, durationTicks, potionAmplifier, 
+                    potionAmbient, potionParticles, potionIcon
                 );
-
-
-                // Clear effects and lore (let Minecraft handle default display)
+                
                 potionMeta.clearCustomEffects();
                 potionMeta.lore(new ArrayList<>());
-                potionMeta.addCustomEffect(effect, true);
                 
-                // Set proper display name
-                if (name != null) {
-                    // Parse the name with Text.parseColors to handle all formats including MiniMessage
-                    String parsedName = Text.parseColors(name);
-                    // Convert to Adventure Component and ensure no italics
-                    net.kyori.adventure.text.Component component = 
-                        net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
-                            .deserialize(parsedName)
-                            .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false);
-                    potionMeta.displayName(component);
+                if (PotionEffectType.RESISTANCE.equals(effectType)) {
+                    potionMeta.addCustomEffect(createPotionEffect(
+                        PotionEffectType.RESISTANCE, durationTicks, 
+                        potionAmplifier, potionAmbient, potionParticles, potionIcon
+                    ), true);
                 } else {
-                    // Automatically generate name based on effect and amplifier
-                    String displayEffectName;
-                    if (effectType.equals(PotionEffectType.SPEED)) {
-                        displayEffectName = "Swiftness";
-                    } else {
-                        String effectName = effectType.getName().toLowerCase().replace('_', ' ');
-                        displayEffectName = effectName.substring(0, 1).toUpperCase() + effectName.substring(1);
-                    }
-                    String amplifierStr = toRomanNumeral(potionAmplifier);
-                    String displayName = "Potion of " + displayEffectName;
+                    potionMeta.addCustomEffect(effect, true);
+                }
+                
+                // Set display name for potion
+                if (name != null) {
+                    potionMeta.setDisplayName(Text.parseColors(name));
+                } else {
+                    // Generate default potion name if no custom name provided
+                    String displayName = getPotionItemType(material) + getEffectDisplayName(effectType);
                     if (potionAmplifier > 0) {
-                        displayName += " " + amplifierStr;
+                        displayName += " " + toRomanNumeral(potionAmplifier);
                     }
-                    potionMeta.displayName(net.kyori.adventure.text.Component.text(displayName)
-                        .color(net.kyori.adventure.text.format.TextColor.color(255, 255, 255))
-                        .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
+                    potionMeta.setDisplayName(Text.parseColors(displayName));
                 }
                 
                 // Set base potion type to WATER to prevent "Uncraftable" text
@@ -514,17 +763,11 @@ public class Give implements CommandExecutor {
 
             // Apply the name to the item if specified (for non-potion items)
             if (name != null && !isPotion) {
-                // Parse the name with Text.parseColors to handle all formats including MiniMessage
-                String parsedName = Text.parseColors(name);
-                // Convert to Adventure Component and ensure no italics
-                net.kyori.adventure.text.Component component = 
-                    net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
-                        .deserialize(parsedName)
-                        .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false);
-                meta.displayName(component);
+                meta.setDisplayName(Text.parseColors(name));
             }
 
             item.setItemMeta(meta);
+            
         } catch (Exception e) {
             // Log the error and notify the sender
             plugin.getLogger().log(Level.SEVERE, "Error while giving item: " + e.getMessage(), e);
@@ -562,11 +805,15 @@ public class Give implements CommandExecutor {
         }
     }
 
-    /**
-     * Converts an integer to a Roman numeral string.
-     * @param number The number to convert (1-10)
-     * @return The Roman numeral string
-     */
+    private static PotionEffectType getPotionEffectType(String name) {
+        final PotionEffectType potionEffect = Arrays.stream(PotionEffectType.values())
+            .filter(type -> type != null && type.getKey() != null 
+                && type.getKey().getKey().equalsIgnoreCase(name))
+            .findFirst()
+            .orElse(null);
+        return potionEffect;
+    }
+
     private String toRomanNumeral(int number) {
         return switch (number) {
             case 1 -> "I";
@@ -585,82 +832,95 @@ public class Give implements CommandExecutor {
     
 
     /**
-     * Converts an alias or legacy item ID to a valid Material name.
-     * - If input is a number or in "number:number" format (legacy ID), it checks the legacy ID map.
-     * - If input is an alias, it uses the alias map.
-     * - Otherwise, it returns the input in uppercase as a fallback.
-     *
+     * Converts an alias or legacy item ID to a valid Material.
      * @param itemName The item name or alias to convert
      * @param sender The command sender for error messages
      * @return The corresponding Material, or null if not found
      */
     private Material getMaterial(String itemName, CommandSender sender) {
-        Material material = null;
-        String baseItemName = itemName;
+    Material material = null;
+    String baseItemName = itemName;
 
-        if (itemName.contains(";")) {
-            baseItemName = itemName.substring(0, itemName.indexOf(";"));
+    // Handle NBT data after semicolon if present
+    if (itemName.contains(";")) {
+        baseItemName = itemName.substring(0, itemName.indexOf(";"));
+    }
+
+    // First try direct material match (e.g., "STONE")
+    try {
+        material = Material.matchMaterial(baseItemName);
+        if (material != null && isGiveable(material)) {
+            return material;
+        }
+    } catch (IllegalArgumentException ignored) {}
+
+    // Handle colon syntax (e.g., "stone:1" or "1:1")
+    if (baseItemName.contains(":")) {
+        String[] parts = baseItemName.split(":", 2);
+        String left = parts[0];
+        String right = parts[1];
+
+        // Try to resolve the left part through aliases first
+        String resolvedLeft = Alias.getAlias(left.toLowerCase());
+        if (resolvedLeft == null) {
+            resolvedLeft = left; // Use as-is if no alias found
         }
 
-        // First try direct material lookup (case-insensitive)
-        try {
-            material = Material.matchMaterial(baseItemName);
-            if (material != null && isGiveable(material)) {
-                return material;
-            }
-        } catch (IllegalArgumentException ignored) {}
-
-        // Check if the input contains a colon
-        if (baseItemName.contains(":")) {
-            String[] parts = baseItemName.split(":", 2);
-            String left = parts[0];
-            String right = parts[1];
-
-            // First try to resolve the full string as an alias (e.g., "bed:1")
-            String fullAlias = Alias.getAlias(baseItemName);
-            if (fullAlias != null) {
-                try {
-                    material = Material.matchMaterial(fullAlias);
-                    if (material != null && isGiveable(material)) {
-                        return material;
-                    }
-                } catch (IllegalArgumentException ignored) {}
-            }
-
-            // Try to resolve left as alias to legacy base id (e.g., stone -> 1)
-            String alias = Alias.getAlias(left);
-            String legacyBase = alias != null ? alias : left;
-            String legacyId = legacyBase + ":" + right;
-            material = LegacyID.getMaterialFromLegacyId(legacyId);
-            if (material != null && isGiveable(material)) {
-                return material;
-            }
-        }
-
-        // Try to resolve the input as an alias
-        String alias = Alias.getAlias(baseItemName);
-        if (alias != null) {
-            material = Material.matchMaterial(alias);
-            if (material != null && isGiveable(material)) {
-                return material;
+        // Try to get the material directly if the left part is a material name
+        Material baseMaterial = Material.matchMaterial(resolvedLeft);
+        if (baseMaterial != null) {
+            // Get the legacy ID for this material
+            String legacyId = LegacyID.getLegacyIdFromMaterial(baseMaterial);
+            if (legacyId != null) {
+                // If legacy ID has its own data, use it as is
+                if (legacyId.contains(":")) {
+                    material = LegacyID.getMaterialFromLegacyId(legacyId);
+                } else {
+                    // Otherwise combine with the provided data
+                    material = LegacyID.getMaterialFromLegacyId(legacyId + ":" + right);
+                }
+                if (material != null && isGiveable(material)) {
+                    return material;
+                }
             }
         }
 
-        // Try to resolve the input as a legacy ID (e.g., "1" or "1:0")
+        // Try the direct legacy ID lookup with the original parts
         material = LegacyID.getMaterialFromLegacyId(baseItemName);
         if (material != null && isGiveable(material)) {
             return material;
         }
+    }
 
-        // Last attempt: Try with uppercase and underscores if not already tried
-        if (!baseItemName.equals(baseItemName.toUpperCase())) {
-            try {
-                material = Material.matchMaterial(baseItemName.toUpperCase().replace(' ', '_'));
-                if (material != null && isGiveable(material)) {
-                    return material;
-                }
-            } catch (IllegalArgumentException ignored) {}
+    // Try alias lookup for the full item name
+    String alias = Alias.getAlias(baseItemName.toLowerCase());
+    if (alias != null) {
+        material = Material.matchMaterial(alias);
+        if (material != null && isGiveable(material)) {
+            return material;
         }
+        // If alias didn't resolve to a material, try it as a legacy ID
+        material = LegacyID.getMaterialFromLegacyId(alias);
+        if (material != null && isGiveable(material)) {
+            return material;
+        }
+    }
+
+    // Try direct legacy ID lookup
+    material = LegacyID.getMaterialFromLegacyId(baseItemName);
+    if (material != null && isGiveable(material)) {
+        return material;
+    }
+
+    // Try uppercase version as a last resort
+    try {
+        material = Material.matchMaterial(baseItemName.toUpperCase());
+        if (material != null && isGiveable(material)) {
+            return material;
+        }
+    } catch (IllegalArgumentException ignored) {
+
+    }
 
         // If we get here, the material couldn't be found
         Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
@@ -698,15 +958,12 @@ public class Give implements CommandExecutor {
      * Gets a list of all available potion effect types
      * @return A formatted string of all potion effect types
      */
-    @SuppressWarnings("deprecation") // PotionEffectType.values() is deprecated but still widely used
     public static String getAvailablePotionEffects() {
-        List<String> effectNames = new ArrayList<>();
-        PotionEffectType[] effects = PotionEffectType.values();
-        for (PotionEffectType type : effects) {
-            if (type != null && type.getKey() != null) {
-                effectNames.add(type.getKey().getKey().toLowerCase());
-            }
-        }
+        List<String> effectNames = Arrays.stream(PotionEffectType.values())
+            .filter(Objects::nonNull)
+            .map(type -> type.getKey().getKey())
+            .sorted()
+            .collect(Collectors.toList());
         return String.join(", ", effectNames);
     }
 
@@ -714,7 +971,6 @@ public class Give implements CommandExecutor {
      * Gets a list of all available potion types
      * @return A formatted string of all potion types
      */
-    @SuppressWarnings("deprecation") // PotionType.values() is deprecated but still widely used
     public static String getAvailablePotionTypes() {
         List<String> typeNames = new ArrayList<>();
         PotionType[] types = PotionType.values();

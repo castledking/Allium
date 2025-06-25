@@ -27,6 +27,7 @@ public class ItemDB implements CommandExecutor {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
         if (sender instanceof Player player) {
             if (!player.hasPermission("core.itemdb")) {
+                label = "§c" + label;
                 Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label);
                 return true;
             }
@@ -34,7 +35,7 @@ public class ItemDB implements CommandExecutor {
             ItemStack itemInHand = player.getInventory().getItemInMainHand();
 
             if (itemInHand.getType() == Material.AIR) {
-                Text.sendErrorMessage(player, "hold-item", lang, "{modify}", "inspect");
+                Text.sendErrorMessage(player, "hold-item", lang, "{modify}", "§cinspect");
                 return true;
             }
 
@@ -55,7 +56,7 @@ public class ItemDB implements CommandExecutor {
             }
             ItemStack itemInHand = target.getInventory().getItemInMainHand();
             if (itemInHand.getType() == Material.AIR) {
-                Text.sendErrorMessage(sender, "hold-item", lang, "{modify}", "inspect");
+                Text.sendErrorMessage(sender, "hold-item", lang, "{modify}", "§cinspect");
                 return true;
             }
             

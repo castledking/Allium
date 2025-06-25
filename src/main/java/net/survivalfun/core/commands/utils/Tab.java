@@ -1,11 +1,14 @@
 package net.survivalfun.core.commands.utils;
 
+import net.survivalfun.core.managers.core.Alias;
 import net.survivalfun.core.managers.core.Item;
-import net.survivalfun.core.managers.core.LoreHelper;
+import net.survivalfun.core.managers.core.LegacyID;
+import net.survivalfun.core.managers.core.Lore;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -38,9 +41,8 @@ public class Tab implements TabCompleter {
     }
 
     private void loadAliases() {
-        // Load material names that are giveable
-        cachedMaterialNames = Arrays.stream(Material.values())
-            .filter(Item::isGiveable)
+        // Use the centralized list of giveable items
+        cachedMaterialNames = Item.getGiveableItems().stream()
             .map(Material::name)
             .map(String::toLowerCase)
             .collect(Collectors.toList());
@@ -392,60 +394,83 @@ public class Tab implements TabCompleter {
             return Collections.emptyList();
         } 
         else if (args.length == 2) {
-            // Material and alias suggestions (same as i command but after player name)
-            suggestions.addAll(cachedMaterialNames);
-            suggestions = filterSuggestions(suggestions, args[1]);
-        }
-        else if (args.length == 3) {
-            // Handle potion suggestions (same as i command but args offset by 1)
-            String itemName = args[1];
-            if (itemName.contains(";")) {
-                String[] parts = itemName.split(";");
-                
-                if (parts.length == 1 && itemName.endsWith(";")) {
-                    if (parts[0].matches("(?i)(potion|splash_potion|lingering_potion|tipped_arrow)")) {
-                        return potionEffects.stream()
-                            .map(effect -> itemName + effect)
-                            .collect(Collectors.toList());
-                    }
+            String[] parts = args[1].split(";", -1);
+            String firstPart = parts.length > 0 ? parts[0] : "";
+            
+            // Handle potion types with semicolon
+            if (parts.length > 1 && parts[1].isEmpty() && 
+                Arrays.asList("potion", "splash_potion", "lingering_potion", "tipped_arrow")
+                    .contains(firstPart.toLowerCase())) {
+                List<String> fullSuggestions = new ArrayList<>();
+                for (String effect : getEffectSuggestions()) {
+                    fullSuggestions.add(firstPart + ";" + effect);
                 }
-                else if (parts.length == 2) {
-                    return potionEffects.stream()
-                        .filter(effect -> effect.startsWith(parts[1].toLowerCase()))
-                        .map(effect -> parts[0] + ";" + effect)
-                        .collect(Collectors.toList());
-                }
-                else if (parts.length == 2 && parts[1].equalsIgnoreCase("turtle_master")) {
-                    return Arrays.asList("300", "60", "20").stream()
-                        .map(duration -> itemName + ";" + duration)
-                        .collect(Collectors.toList());
-                }
-            }
-            else if (isMaterial(itemName)) {
-                suggestions.add(itemName + ";");
+                return filterSuggestions(fullSuggestions, args[1]);
             }
             
-            suggestions = filterSuggestions(suggestions, args[2]);
+            // Handle enchantment suggestions for materials, aliases, and legacy IDs with semicolon
+            if (parts.length > 1) {
+                // Check if we're at the level of adding enchantment levels (e.g., "diamond_sword;sharpness:")
+                if (parts.length > 2 || (parts[1].contains(":") && !parts[1].endsWith(":"))) {
+                    // Already have an enchantment with level, no more suggestions
+                    return Collections.emptyList();
+                } else if (parts[1].contains(":")) {
+                    // We have an enchantment with a colon, suggest levels
+                    String[] enchantParts = parts[1].split(":");
+                    if (enchantParts.length == 2 && enchantParts[1].isEmpty()) {
+                        List<String> levelSuggestions = getEnchantmentLevelSuggestions(enchantParts[0]);
+                        List<String> fullSuggestions = new ArrayList<>();
+                        for (String level : levelSuggestions) {
+                            fullSuggestions.add(firstPart + ";" + enchantParts[0] + ":" + level);
+                        }
+                        return filterSuggestions(fullSuggestions, args[1]);
+                    }
+                    return Collections.emptyList();
+                } else if (parts[1].isEmpty()) {
+                    // We have a semicolon but no enchantment yet, suggest enchantments
+                    String materialName = null;
+                    
+                    // First try to resolve as an alias
+                    String aliasResolution = Alias.getMaterialFromAlias(firstPart.toLowerCase());
+                    if (aliasResolution != null) {
+                        materialName = aliasResolution;
+                    }
+                    
+                    // If not an alias, try to resolve as a legacy ID
+                    if (materialName == null) {
+                        Material legacyMaterial = LegacyID.getMaterialFromLegacyId(firstPart);
+                        if (legacyMaterial != null) {
+                            materialName = legacyMaterial.name();
+                        }
+                    }
+                    
+                    // If still not found, check if it's a direct material name
+                    if (materialName == null && isMaterial(firstPart)) {
+                        materialName = firstPart.toUpperCase();
+                    }
+                    
+                    // If we found a valid material, get enchantment suggestions
+                    if (materialName != null) {
+                        List<String> enchantmentSuggestions = getEnchantmentSuggestions(materialName);
+                        List<String> fullSuggestions = new ArrayList<>();
+                        for (String enchantment : enchantmentSuggestions) {
+                            fullSuggestions.add(firstPart + ";" + enchantment);
+                            // Also add the enchantment with a colon for level specification
+                            fullSuggestions.add(firstPart + ";" + enchantment + ":");
+                        }
+                        return filterSuggestions(fullSuggestions, args[1]);
+                    }
+            }
+            
+            // Default material suggestions
+            suggestions.addAll(cachedMaterialNames);
+            return filterSuggestions(suggestions, firstPart);
         }
-        else if (args.length == 4) {
-            // Amount suggestions (same as i command but args offset by 1)
-            try {
-                String materialName = args[1].split(";")[0];
-                Material material = Material.matchMaterial(materialName);
-                int maxStack = material != null ? material.getMaxStackSize() : 64;
-                
-                List<String> amounts = new ArrayList<>();
-                amounts.add("1");
-                if (maxStack >= 16) amounts.add("16");
-                if (maxStack >= 32) amounts.add("32");
-                if (maxStack >= 64) amounts.add("64");
-                
-                return amounts.stream()
-                    .filter(amount -> amount.startsWith(args[3]))
-                    .collect(Collectors.toList());
-            } catch (Exception ignored) {}
+        else if (args.length == 3) {
+            // Amount suggestions
+            return Arrays.asList("1", "16", "32", "64");
         }
-        
+    }
         return suggestions;
     }
 
@@ -470,7 +495,7 @@ public class Tab implements TabCompleter {
 
                     ItemStack item = player.getInventory().getItemInMainHand();
 
-                    List<String> lore = LoreHelper.getLore(item);
+                    List<String> lore = Lore.getLore(item);
                     int loreSize = lore.size();
 
                     // Generate suggestions based on lore size
@@ -550,14 +575,197 @@ public class Tab implements TabCompleter {
 
     private List<String> getISuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
         List<String> suggestions = new ArrayList<>();
-        
+        String[] subArgs = args[0].split(";", -1);
+        String firstPart = subArgs.length > 0 ? subArgs[0] : "";
+
         if (args.length == 1) {
-            // Material and alias suggestions
+            // Handle potion types with semicolon
+            if (subArgs.length > 1 && subArgs[1].isEmpty() && 
+                Arrays.asList("potion", "splash_potion", "lingering_potion", "tipped_arrow")
+                    .contains(firstPart.toLowerCase())) {
+                List<String> fullSuggestions = new ArrayList<>();
+                for (String effect : getEffectSuggestions()) {
+                    fullSuggestions.add(firstPart + ";" + effect);
+                }
+                return filterSuggestions(fullSuggestions, args[0]);
+            }
+
+            // Handle enchantment suggestions for materials, aliases, and legacy IDs with semicolon
+            if (subArgs.length > 1) {
+                // Check if we're at the level of adding enchantment levels (e.g., "diamond_sword;sharpness:")
+                if (subArgs.length > 2 || (subArgs[1].contains(":") && !subArgs[1].endsWith(":"))) {
+                    // Already have an enchantment with level, no more suggestions
+                    return Collections.emptyList();
+                } else if (subArgs[1].contains(":")) {
+                    // We have an enchantment with a colon, suggest levels
+                    String[] enchantParts = subArgs[1].split(":");
+                    if (enchantParts.length == 2 && enchantParts[1].isEmpty()) {
+                        List<String> levelSuggestions = getEnchantmentLevelSuggestions(enchantParts[0]);
+                        List<String> fullSuggestions = new ArrayList<>();
+                        for (String level : levelSuggestions) {
+                            fullSuggestions.add(firstPart + ";" + enchantParts[0] + ":" + level);
+                        }
+                        return filterSuggestions(fullSuggestions, args[0]);
+                    }
+                    return Collections.emptyList();
+                } else if (subArgs[1].isEmpty()) {
+                    // We have a semicolon but no enchantment yet, suggest enchantments
+                    String materialName = null;
+                    
+                    // First try to resolve as an alias
+                    String aliasResolution = Alias.getMaterialFromAlias(firstPart.toLowerCase());
+                    if (aliasResolution != null) {
+                        materialName = aliasResolution;
+                    }
+                    
+                    // If not an alias, try to resolve as a legacy ID
+                    if (materialName == null) {
+                        Material legacyMaterial = LegacyID.getMaterialFromLegacyId(firstPart);
+                        if (legacyMaterial != null) {
+                            materialName = legacyMaterial.name();
+                        }
+                    }
+                    
+                    // If still not found, check if it's a direct material name
+                    if (materialName == null && isMaterial(firstPart)) {
+                        materialName = firstPart.toUpperCase();
+                    }
+                    
+                    // If we found a valid material, get enchantment suggestions
+                    if (materialName != null) {
+                        List<String> enchantmentSuggestions = getEnchantmentSuggestions(materialName);
+                        List<String> fullSuggestions = new ArrayList<>();
+                        for (String enchantment : enchantmentSuggestions) {
+                            fullSuggestions.add(firstPart + ";" + enchantment);
+                            // Also add the enchantment with a colon for level specification
+                            fullSuggestions.add(firstPart + ";" + enchantment + ":");
+                        }
+                        return filterSuggestions(fullSuggestions, args[0]);
+                    }
+                }
+            }
+            // Material suggestions
             suggestions.addAll(cachedMaterialNames);
-            suggestions = filterSuggestions(suggestions, args[0]);
+            return filterSuggestions(suggestions, firstPart);
+        } else if (args.length == 2) {
+            // Duration suggestions
+            suggestions.addAll(getDurationSuggestions());
+            return filterSuggestions(suggestions, args[1]);
+        }
+
+        return Collections.emptyList();
+    }
+
+    private List<String> getEnchantmentLevelSuggestions(String enchantmentName) {
+        List<String> levels = new ArrayList<>();
+        try {
+            // Try to get the enchantment by name
+            NamespacedKey key = NamespacedKey.minecraft(enchantmentName.toLowerCase());
+            Enchantment enchantment = Bukkit.getRegistry(Enchantment.class).get(key);
+            // Fallback to legacy method if needed
+            if (enchantment == null) {
+                enchantment = Enchantment.getByKey(key);
+            }
+            
+            if (enchantment != null) {
+                int maxLevel = enchantment.getMaxLevel();
+                // Add levels from 1 to maxLevel, and also include the maxLevel + 1 for convenience
+                for (int i = 1; i <= maxLevel + 1; i++) {
+                    levels.add(String.valueOf(i));
+                }
+            }
+        } catch (Exception e) {
+            // If there's any error, just return empty list
+        }
+        return levels;
+    }
+
+    private List<String> getEffectSuggestions() {
+        return Arrays.asList(
+            "speed", "slowness", "haste", "mining_fatigue", "strength",
+            "instant_health", "instant_damage", "jump_boost", "nausea", "regeneration",
+            "resistance", "fire_resistance", "water_breathing", "invisibility", "blindness",
+            "night_vision", "hunger", "weakness", "poison", "wither", "health_boost",
+            "absorption", "saturation", "glowing", "levitation", "luck", "unluck",
+            "slow_falling", "conduit_power", "dolphins_grace", "bad_omen", "hero_of_the_village"
+        );
+    }
+
+    private List<String> getDurationSuggestions() {
+        return Arrays.asList("30", "60", "180", "300", "600", "1200", "2400");
+    }
+
+    private List<String> getEnchantmentSuggestions(String materialName) {
+        // First try to resolve alias to material
+        String resolvedMaterial = Alias.getMaterialFromAlias(materialName.toLowerCase());
+        if (resolvedMaterial == null) {
+            resolvedMaterial = materialName.toUpperCase();
+        } else {
+            resolvedMaterial = resolvedMaterial.toUpperCase();
+        }
+
+        // Try to get the Material enum
+        Material material;
+        try {
+            material = Material.valueOf(resolvedMaterial);
+        } catch (IllegalArgumentException e) {
+            // If material is not found, return empty list
+            return Collections.emptyList();
+        }
+
+        // Get applicable enchantments for this material
+        List<String> enchantments = new ArrayList<>();
+        try {
+            for (Enchantment enchantment : Bukkit.getServer().getRegistry(Enchantment.class)) {
+                if (enchantment.canEnchantItem(new ItemStack(material))) {
+                    enchantments.add(enchantment.getKey().getKey().toLowerCase());
+                }
+            }
+        } catch (Exception e) {
+            // Fallback to hardcoded enchantments if registry access fails
+            enchantments.addAll(getHardcodedEnchantmentSuggestions(material));
+        }
+
+        return enchantments;
+    }
+
+    private List<String> getHardcodedEnchantmentSuggestions(Material material) {
+        List<String> enchantments = new ArrayList<>();
+        
+        // Common enchantments for tools and weapons
+        if (material.name().contains("SWORD")) {
+            enchantments.addAll(Arrays.asList("sharpness", "smite", "bane_of_arthropods", "knockback", "fire_aspect", "looting", "sweeping", "unbreaking", "mending"));
+        } else if (material.name().contains("BOW")) {
+            enchantments.addAll(Arrays.asList("power", "punch", "flame", "infinity", "unbreaking", "mending"));
+        } else if (material.name().contains("CROSSBOW")) {
+            enchantments.addAll(Arrays.asList("multishot", "piercing", "quick_charge", "unbreaking", "mending"));
+        } else if (material.name().contains("PICKAXE")) {
+            enchantments.addAll(Arrays.asList("efficiency", "fortune", "silk_touch", "unbreaking", "mending"));
+        } else if (material.name().contains("AXE")) {
+            enchantments.addAll(Arrays.asList("efficiency", "fortune", "silk_touch", "unbreaking", "mending", "sharpness", "smite", "bane_of_arthropods"));
+        } else if (material.name().contains("SHOVEL")) {
+            enchantments.addAll(Arrays.asList("efficiency", "fortune", "silk_touch", "unbreaking", "mending"));
+        } else if (material.name().contains("HOE")) {
+            enchantments.addAll(Arrays.asList("efficiency", "fortune", "silk_touch", "unbreaking", "mending"));
+        } else if (material.name().contains("HELMET")) {
+            enchantments.addAll(Arrays.asList("protection", "fire_protection", "blast_protection", "projectile_protection", "respiration", "aqua_affinity", "thorns", "unbreaking", "mending"));
+        } else if (material.name().contains("CHESTPLATE")) {
+            enchantments.addAll(Arrays.asList("protection", "fire_protection", "blast_protection", "projectile_protection", "thorns", "unbreaking", "mending"));
+        } else if (material.name().contains("LEGGINGS")) {
+            enchantments.addAll(Arrays.asList("protection", "fire_protection", "blast_protection", "projectile_protection", "swift_sneak", "thorns", "unbreaking", "mending"));
+        } else if (material.name().contains("BOOTS")) {
+            enchantments.addAll(Arrays.asList("protection", "fire_protection", "blast_protection", "projectile_protection", "feather_falling", "depth_strider", "frost_walker", "soul_speed", "thorns", "unbreaking", "mending"));
+        } else if (material == Material.TRIDENT) {
+            enchantments.addAll(Arrays.asList("loyalty", "channeling", "riptide", "impaling", "unbreaking", "mending"));
+        } else if (material == Material.FISHING_ROD) {
+            enchantments.addAll(Arrays.asList("luck_of_the_sea", "lure", "unbreaking", "mending"));
+        } else if (material == Material.SHIELD) {
+            enchantments.addAll(Arrays.asList("unbreaking", "mending"));
+        } else if (material == Material.ELYTRA) {
+            enchantments.addAll(Arrays.asList("unbreaking", "mending"));
         }
         
-        return suggestions;
+        return enchantments;
     }
 
     private boolean isMaterial(String name) {

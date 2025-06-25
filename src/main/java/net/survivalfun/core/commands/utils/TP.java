@@ -1140,7 +1140,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         if (target.getUniqueId().equals(player.getUniqueId())) {
-            Text.sendErrorMessage(player, "cannot-self", lang, "{action}", "request to teleport to");
+            Text.sendErrorMessage(player, "cannot-self", lang, "{action}", "§crequest to teleport to");
             return true;
         }
 

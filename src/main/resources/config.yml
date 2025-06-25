@@ -37,8 +37,6 @@ chat-format:
     #moderator: "&2[Mod] &a<player>&f: <message>"
     #vip: "&6[VIP] &e<player>&f: <message>"
 
-
-
 ############################################################
 # +------------------------------------------------------+ #
 # |                 General Settings                     | #
@@ -187,6 +185,20 @@ redeem-items:
     #     - "WHITE:BORDER"            # Border around the edge
     #     - "RED:SKULL"               # Skull pattern in the middle
     #   glow: true
+
+############################################################
+# +------------------------------------------------------+ #
+# |                   Give Settings                      | #
+# +------------------------------------------------------+ #
+############################################################
+
+give:
+  # Whether to drop overflow items when player's inventory is full
+  drop-overflow-items: true
+  
+  # Maximum number of items that can be dropped when inventory is full
+  # Set to -1 for unlimited, or any positive number to limit drops
+  max-items-dropped: 64
 
 ############################################################
 # +------------------------------------------------------+ #

@@ -6,7 +6,6 @@ import net.survivalfun.core.managers.core.Text;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.survivalfun.core.managers.core.LoreHelper;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -44,7 +43,7 @@ public class Lore implements CommandExecutor {
             return true;
         }
 
-        List<String> lore = LoreHelper.getLore(item);
+        List<String> lore = net.survivalfun.core.managers.core.Lore.getLore(item);
 
         if (args.length == 0) {
             player.sendMessage(Component.text("Lore Command Usage:", NamedTextColor.RED));
@@ -74,7 +73,7 @@ public class Lore implements CommandExecutor {
 
         if (item.getType().isAir()) {
             player.sendMessage(lang.get("error-prefix") + lang.get("hold-item")
-                    .replace("{modify}", "add lore to"));
+                    .replace("{modify}", " §cadd lore to"));
             return true;
         }
 

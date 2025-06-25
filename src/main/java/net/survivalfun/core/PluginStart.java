@@ -15,6 +15,7 @@ import net.survivalfun.core.commands.fun.Explode;
 import net.survivalfun.core.listeners.security.SpectatorTeleport;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.config.Config;
+import net.survivalfun.core.managers.core.Skull;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.listeners.jobs.SlimeCushionListener;
 import net.survivalfun.core.listeners.FabricModDetector;
@@ -298,6 +299,9 @@ public class PluginStart extends JavaPlugin {
             // Register give command
             getCommand("give").setExecutor(new Give(this));
             getCommand("give").setTabCompleter(new Tab(this));
+            
+            // Register skull command
+            getCommand("skull").setExecutor(new Skull(this));
 
             // Register ItemDB command
             getCommand("itemdb").setExecutor(new ItemDB(this));

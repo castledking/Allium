@@ -29,7 +29,8 @@ public class More implements CommandExecutor {
         Player target;
         if (sender instanceof Player player) {
             if (!player.hasPermission("core.more")) {
-                player.sendMessage(lang.get("no-permission"));
+                label = "§cmore";
+                player.sendMessage(lang.get("no-permission").replace("{cmd}", label));
                 return true;
             }
             target = player;
@@ -48,7 +49,7 @@ public class More implements CommandExecutor {
 
         ItemStack itemInHand = target.getInventory().getItemInMainHand();
         if (itemInHand.getType().isAir()) {
-            Text.sendErrorMessage(sender, "hold-item", lang, "{modify}", "more");
+            Text.sendErrorMessage(sender, "hold-item", lang, "{modify}", label);
             return true;
         }
 

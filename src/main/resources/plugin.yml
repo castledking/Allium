@@ -95,6 +95,12 @@ commands:
     usage: "/spawn"
     aliases: [setspawn]
   
+  skull:
+    description: "Get a player's head"
+    usage: "/skull <player>"
+    permission: core.skull
+    aliases: [head, playerhead]
+  
   # Teleport Commands
   tp:
     description: "Teleport to a player or location"

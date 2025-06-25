@@ -105,11 +105,6 @@ explode:
   self: "&aExploding with power &e{power}&a."
   other: "&aExploding &e{name} &awith power &e{power}&a."
 
-give:
-  success: "&aGave &e{amount}x {item} &ato &e{player}&a."
-  error: "&cAn error occurred while giving the item."
-  invalid-item: "&cInvalid item: &7{item}"
-
 feed:
   self: "&aYou are now sated."
   other: "&aYou have satiated &e{name}&a."
@@ -145,11 +140,16 @@ gc:
 give:
   success: "&aYou have given yourself {amount} {item}."
   success-other: "&aYou have given &e{name} &a{amount} {item}."
+  equipped: "&aYou equipped {amount} {item}."
   receive: "&aYou have received {amount} {item}."
   invalid-item: "Item {item} not found."
+  error: "&cAn error occurred while giving the item."
   unsafe-level: "Enchantment {enchant} exceeds maximum level. Limiting to {maxLevel}."
   unsafe-enchant: "Enchantment {enchant} can't be applied to {item}!"
   conflicting-enchants: "Enchantment {enchant} cannot be combined with {enchant2} on {item}!"
+  invalid-head-spec: "&cInvalid player head specification: {spec}"
+  invalid-hdb-id: "&cInvalid HDB ID: {id}"
+  invalid-base64: "&cInvalid base64 texture: {error}"
 
 god:
   toggle: "&aGod mode is now {state} {name}"
@@ -190,6 +190,13 @@ msg:
   gift-failed: "Couldn't send gift to &7{name}!"
   gift-not-found: "Couldn't find gift {id}"
   gift-claim: "&aClaimed &e{name}&a's gift."
+
+skull:
+  success: "&aSuccessfully gave you the head of &e{player}&a."
+  invalid-player: "&cCould not find a player with the name '&7{player}&c'."
+  error: "&cAn error occurred while getting the player head."
+  usage: "&7Usage: /skull <player>"
+  no-permission: "&cYou don't have permission to use this command."
 
 nv:
   toggle: "&aNight vision is now {state} {name}"

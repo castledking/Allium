@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 
-public class LoreHelper {
+public class Lore {
 
     public static List<String> getLore(ItemStack item) {
         if (item == null || !item.hasItemMeta()) {

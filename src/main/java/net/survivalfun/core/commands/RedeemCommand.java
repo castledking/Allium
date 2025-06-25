@@ -86,7 +86,7 @@ public class RedeemCommand implements CommandExecutor {
             // Player not found in list or rank is invalid
             Map<String, String> noPermPlaceholders = new HashMap<>();
             noPermPlaceholders.put("cmd", "redeem");
-            Text.sendErrorMessage(player, lang.getRaw("no-permission"), lang, noPermPlaceholders);
+            Text.sendErrorMessage(player, "no-permission", lang, noPermPlaceholders);
         }
         return true;
     }

@@ -285,7 +285,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
 
         // Check if player has permission
         if (!player.hasPermission("core.mail.gift")) {
-            Text.sendErrorMessage(sender, lang.get("no-permission"), lang, "{cmd}", "mail gift");
+            Text.sendErrorMessage(sender, lang.get("no-permission"), lang, "{cmd}", "§cmail gift");
             return true;
         }
 
@@ -302,6 +302,11 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
         OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(recipient);
         if (!offlinePlayer.hasPlayedBefore()) {
             Text.sendErrorMessage(sender, lang.get("player-not-found"), lang, "{name}", recipient);
+            return true;
+        }
+
+        if (recipient.equals(player.getName())) {
+            Text.sendErrorMessage(sender, "cannot-self", lang, "{action}", "§csend a gift");
             return true;
         }
 

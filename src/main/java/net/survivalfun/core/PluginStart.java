@@ -18,7 +18,6 @@ import net.survivalfun.core.managers.config.Config;
 import net.survivalfun.core.managers.core.Skull;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.listeners.jobs.SlimeCushionListener;
-import net.survivalfun.core.listeners.FabricModDetector;
 import net.survivalfun.core.listeners.FireballExplosionListener;
 import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.managers.core.Item;
@@ -32,9 +31,6 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import com.github.retrooper.packetevents.PacketEvents;
-import com.github.retrooper.packetevents.event.PacketListenerPriority;
-import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 
 import net.luckperms.api.LuckPerms;
 import net.survivalfun.core.commands.WhoisCommand;
@@ -68,9 +64,7 @@ public class PluginStart extends JavaPlugin {
         return instance;
     }
 
-    public FabricModDetector getFabricModDetector() {
-        return fabricModDetector;
-    }
+
 
     public Lang getLangManager() {
         return langManager;
@@ -121,24 +115,8 @@ public class PluginStart extends JavaPlugin {
 
 
 
-    private FabricModDetector fabricModDetector;
+
     
-    @Override
-    public void onLoad() {
-        try {
-            getLogger().info("Initializing PacketEvents API...");
-            PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
-            PacketEvents.getAPI().load();
-            getLogger().info("PacketEvents API initialized successfully.");
-            // FabricModDetector initialization has been moved to onEnable to ensure
-            // dependent managers (like LangManager) are available.
-        } catch (Exception e) {
-            getLogger().severe("Failed to initialize PacketEvents API in onLoad: " + e.getMessage());
-            e.printStackTrace();
-            // Rethrowing to align with original behavior for PacketEvents initialization failure.
-            throw new RuntimeException("Failed to initialize PacketEvents API", e);
-        }
-    }
 
 
 
@@ -214,20 +192,7 @@ public class PluginStart extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new net.survivalfun.core.listeners.PlayerConnectionListener(this), this);
         getLogger().info("PlayerConnectionListener registered.");
 
-        // Initialize FabricModDetector AFTER LangManager and PacketEvents API
-        if (PacketEvents.getAPI() != null && PacketEvents.getAPI().isLoaded()) {
-            getLogger().info("Registering FabricModDetector listener...");
-            this.fabricModDetector = new FabricModDetector(this, langManager); 
-            PacketEvents.getAPI().getEventManager().registerListener(
-                fabricModDetector,
-                PacketListenerPriority.NORMAL
-            );
-            getLogger().info("FabricModDetector listener registered.");
 
-        } else {
-            getLogger().severe("PacketEvents API not loaded or not initialized. FabricModDetector cannot be registered.");
-        
-        }
 
         // Initialize database
         this.database = new Database(this);
@@ -265,8 +230,7 @@ public class PluginStart extends JavaPlugin {
         this.spectatorTeleport = new SpectatorTeleport(this, new NV(this));
         commandManager = new CommandManager(this);
         
-        // Initialize PacketEvents
-        PacketEvents.getAPI().init();
+
 
         // Register creeper explosion listener
         getServer().getPluginManager().registerEvents(new CreeperExplosionListener(this), this);
@@ -424,9 +388,7 @@ public class PluginStart extends JavaPlugin {
             creativeManager.cleanup();
         }
 
-        if (PacketEvents.getAPI() != null) {
-            PacketEvents.getAPI().terminate();
-        }
+
 
 
         super.onDisable();

@@ -138,8 +138,7 @@ gc:
     - "&7World Details: &f{worldInfo}"
 
 give:
-  success: "&aYou have given yourself {amount} {item}."
-  success-other: "&aYou have given &e{name} &a{amount} {item}."
+  success: "&aYou have given {name} {amount} {item}."
   equipped: "&aYou equipped {amount} {item}."
   receive: "&aYou have received {amount} {item}."
   invalid-item: "Item {item} not found."

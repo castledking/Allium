@@ -245,10 +245,12 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
      * Sends plugin info with hover and click events
      */
     private void sendPluginInfo(CommandSender sender, String pluginName) {
-        // Create the hover tooltip
+        // Create the hover tooltip using pure Adventure API (no Text.colorize mixing)
         Component hoverTooltip = Component.text()
-                .append(Text.colorize("&ePlugin: &f" + pluginName + "\n"))
-                .append(Text.colorize("&7Click to view commands for this plugin"))
+                .append(Component.text("Plugin: ", NamedTextColor.YELLOW)
+                        .append(Component.text(pluginName, NamedTextColor.WHITE))
+                        .append(Component.newline()))
+                .append(Component.text("Click to view commands for this plugin", NamedTextColor.GRAY))
                 .build();
 
         // Create the plugin component with hover and click events
@@ -445,11 +447,15 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             usage = "/" + cleanCmdName;
         }
 
-        // Create the hover tooltip
+        // Create the hover tooltip using pure Adventure API
         Component hoverTooltip = Component.text()
-                .append(Text.colorize("&6Description: &f" + description + "\n"))
-                .append(Text.colorize("&6Usage: &f" + usage + "\n")) // Display the processed usage
-                .append(Text.colorize("&7Click to use this command"))
+                .append(Component.text("Description: ", NamedTextColor.GOLD)
+                        .append(Component.text(description, NamedTextColor.WHITE))
+                        .append(Component.newline()))
+                .append(Component.text("Usage: ", NamedTextColor.GOLD)
+                        .append(Component.text(usage, NamedTextColor.WHITE))
+                        .append(Component.newline()))
+                .append(Component.text("Click to use this command", NamedTextColor.GRAY))
                 .build();
 
         // Create the command component with hover and click events
@@ -480,8 +486,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         if (currentPage > 1) {
             Component previousButton = Component.text("« Previous ")
                     .color(NamedTextColor.GOLD)
-                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText
-                            (Text.colorize("&7Click to go to page " + (currentPage - 1))))
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to go to page " + (currentPage - 1), NamedTextColor.GRAY)))
                     .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/help " + (currentPage - 1)));
             navigationBar.append(previousButton);
         } else {
@@ -500,8 +505,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         if (currentPage < totalPages) {
             Component nextButton = Component.text("Next »")
                     .color(NamedTextColor.GOLD)
-                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText
-                            (Text.colorize("&7Click to go to page " + (currentPage + 1))))
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to go to page " + (currentPage + 1), NamedTextColor.GRAY)))
                     .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/help " + (currentPage + 1)));
             navigationBar.append(nextButton);
         } else {
@@ -700,7 +704,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         if (currentPage > 1) {
             Component previousButton = Component.text("« Previous ")
                     .color(NamedTextColor.GOLD)
-                    .hoverEvent(HoverEvent.showText(Text.colorize("&7Click to go to page " + (currentPage - 1))))
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to go to page " + (currentPage - 1), NamedTextColor.GRAY)))
                     .clickEvent(ClickEvent.runCommand("/help " + pluginName + " " + (currentPage - 1)));
             navigationBar.append(previousButton);
         } else {
@@ -719,7 +723,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         if (currentPage < totalPages) {
             Component nextButton = Component.text("Next »")
                     .color(NamedTextColor.GOLD)
-                    .hoverEvent(HoverEvent.showText(Text.colorize("&7Click to go to page " + (currentPage + 1))))
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to go to page " + (currentPage + 1), NamedTextColor.GRAY)))
                     .clickEvent(ClickEvent.runCommand("/help " + pluginName + " " + (currentPage + 1)));
             navigationBar.append(nextButton);
         } else {

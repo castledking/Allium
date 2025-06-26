@@ -15,8 +15,10 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Potion {
 
@@ -122,7 +124,7 @@ public class Potion {
             } else if (item.getType() == Material.TIPPED_ARROW) {
                 prefix = "Arrow of ";
             }
-            String generatedName = prefix + Meta.formatName(effectType.getKey().getKey());
+            String generatedName = prefix + getEffectDisplayName(effectType);
             potionMeta.displayName(Component.text(generatedName).decoration(TextDecoration.ITALIC, false));
         }
 
@@ -154,10 +156,18 @@ public class Potion {
             // Option 2: Use custom effects with specific duration
             int durationTicks = specifiedDuration * 20;
             
-            // Apply the same division factor for tipped arrows
+            // Apply multiplication factors to counteract Minecraft's internal divisions
             if (item.getType() == Material.TIPPED_ARROW) {
-                durationTicks /= 64;
+                // Tipped arrows have effects reduced to 1/8 of their original duration
+                durationTicks *= 8;
+            } else if (item.getType() == Material.SPLASH_POTION) {
+                // Splash potions have effects reduced to 3/4 of their original duration
+                durationTicks = (int)(durationTicks * (4.0/3.0));
+            } else if (item.getType() == Material.LINGERING_POTION) {
+                // Lingering potions have effects reduced to 1/4 of their original duration
+                durationTicks *= 4;
             }
+            // Regular potions (Material.POTION) don't have their durations modified
             
             // Create custom effects with the specified duration
             PotionEffect slowness = new PotionEffect(PotionEffectType.SLOWNESS, durationTicks, 3, false, true, true);
@@ -182,8 +192,7 @@ public class Potion {
             prefix = "Arrow of ";
         }
         String finalName = displayName != null ? displayName : prefix + "the Turtle Master";
-        Component component = Component.text(finalName)
-                .decoration(TextDecoration.ITALIC, false);
+        Component component = Text.colorize(finalName).decoration(TextDecoration.ITALIC, false);
         potionMeta.displayName(component);
     }
 
@@ -195,12 +204,39 @@ public class Potion {
         int durationSeconds = specifiedDuration > 0 ? specifiedDuration : DEFAULT_POTION_DURATIONS.getOrDefault(type, 30);
         int durationTicks = durationSeconds * 20;
 
+        // Apply multiplication factors to counteract Minecraft's internal divisions
         if (material == Material.TIPPED_ARROW) {
-            // Using division factor of 64 for tipped arrows as requested
-            // This means for a 5-minute (300 second) effect, you need duration:19200
-            durationTicks /= 64;
+            // Tipped arrows have effects reduced to 1/8 of their original duration
+            durationTicks *= 8;
+        } else if (material == Material.SPLASH_POTION) {
+            // Splash potions have effects reduced to 3/4 of their original duration
+            durationTicks = (int)(durationTicks * (4.0/3.0));
+        } else if (material == Material.LINGERING_POTION) {
+            // Lingering potions have effects reduced to 1/4 of their original duration
+            durationTicks *= 4;
         }
-
+        // Regular potions (Material.POTION) don't have their durations modified
+        
         return Math.max(1, durationTicks);
+    }
+    
+    private static String getEffectDisplayName(PotionEffectType effectType) {
+        String effectName = effectType.getKey().getKey(); // Use getKey() instead of deprecated getName()
+
+        switch (effectName) {
+            case "speed": return "Swiftness";
+            case "slowness": return "Turtle Master";
+            case "resistance": return "Turtle Master";
+            case "jump_boost": return "Leaping";
+            case "instant_health": return "Healing";
+            case "instant_damage": return "Harming";
+            case "weaving": return "Weaving";
+            case "wind_charged": return "Wind Charging";
+            case "infested": return "Infestation";
+            default: 
+                return Arrays.stream(effectName.split("_"))
+                    .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1))
+                    .collect(Collectors.joining(" "));
+        }
     }
 }

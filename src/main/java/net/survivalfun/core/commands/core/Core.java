@@ -2,7 +2,7 @@ package net.survivalfun.core.commands.core;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.commands.fun.Explode;
-import net.survivalfun.core.listeners.FabricModDetector;
+
 import net.survivalfun.core.listeners.security.CommandManager;
 import net.survivalfun.core.listeners.security.CreativeManager;
 import net.survivalfun.core.managers.config.WorldDefaults;
@@ -11,7 +11,6 @@ import net.survivalfun.core.managers.core.Text;
 import org.bukkit.Bukkit;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -70,9 +69,7 @@ public class Core implements CommandExecutor, TabCompleter {
             case "hideupdate":
                 handleHideUpdateCommand(sender, args);
                 break;
-            case "modalerts":
-                handleModAlertsCommand(sender, args);
-                break;
+            // modalerts case removed
             case "hide":
                 handleHideSubcommand(sender, args);
                 break;
@@ -128,7 +125,7 @@ public class Core implements CommandExecutor, TabCompleter {
         sender.sendMessage("§edebug §7- Toggle debug mode.");
         sender.sendMessage("§ereload §7- Reload the plugin configuration.");
         sender.sendMessage("§ehideupdate §7- Refresh tab completion for player.");
-        sender.sendMessage("§emodalerts [player] [on|off] §7- Toggle Fabric mod alerts for self or a player.");
+        // modalerts command removed
         sender.sendMessage("§echatmod §7- Manage chat moderation actions.");
 
 
@@ -192,130 +189,7 @@ public class Core implements CommandExecutor, TabCompleter {
         plugin.getLogger().info("Debug mode " + (newDebugMode ? "enabled" : "disabled") + " by " + sender.getName());
     }
 
-    private void handleModAlertsCommand(CommandSender sender, String[] args) {
-        FabricModDetector detector = plugin.getFabricModDetector();
-        if (detector == null) {
-            sender.sendMessage(Component.text("Error: FabricModDetector is not available.", NamedTextColor.RED));
-            return;
-        }
-
-        Player targetPlayer = null;
-        Boolean specificState = null; // null for toggle, true for on, false for off
-        boolean targetingSelf = false;
-
-        // Assuming args[0] is "modalerts" if args.length > 0, based on user feedback.
-        // Effective arguments for this command's logic start from args[1].
-
-        // Case 1: /core modalerts (self toggle)
-        // Actual args received: {"modalerts"} -> length 1
-        if (args.length <= 1) { // Covers actual empty or just {"modalerts"}
-            if (!(sender instanceof Player)) {
-                sender.sendMessage(Component.text("Console must specify a player. Usage: /core modalerts <player> [on|off]", NamedTextColor.RED));
-                return;
-            }
-            targetPlayer = (Player) sender;
-            targetingSelf = true;
-            // specificState remains null for toggle
-        }
-        // Case 2: /core modalerts on|off (self set state) OR /core modalerts <player> (other player toggle)
-        // Actual args received: {"modalerts", "on|off"} OR {"modalerts", "<player>"} -> length 2
-        else if (args.length == 2) {
-            String arg1 = args[1]; // This is the first *meaningful* argument
-            if (arg1.equalsIgnoreCase("on") || arg1.equalsIgnoreCase("off")) {
-                // Self set state: /core modalerts on|off
-                if (!(sender instanceof Player)) {
-                    sender.sendMessage(Component.text("Console must specify a player. Usage: /core modalerts <player> [on|off]", NamedTextColor.RED));
-                    return;
-                }
-                targetPlayer = (Player) sender;
-                specificState = arg1.equalsIgnoreCase("on");
-                targetingSelf = true;
-            } else {
-                // Other player toggle: /core modalerts <player>
-                targetPlayer = Bukkit.getPlayer(arg1);
-                if (targetPlayer == null) {
-                    Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", arg1);
-                    return;
-                }
-                targetingSelf = false;
-                // specificState remains null for toggle
-            }
-        }
-        // Case 3: /core modalerts <player> on|off (other player set state)
-        // Actual args received: {"modalerts", "<player>", "on|off"} -> length 3
-        else if (args.length == 3) {
-            String playerName = args[1]; // Player name is now args[1]
-            String stateArg = args[2];   // State is now args[2]
-
-            targetPlayer = Bukkit.getPlayer(playerName);
-            if (targetPlayer == null) {
-                Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", playerName);
-                return;
-            }
-
-            if (stateArg.equalsIgnoreCase("on")) {
-                specificState = true;
-            } else if (stateArg.equalsIgnoreCase("off")) {
-                specificState = false;
-            } else {
-                sender.sendMessage(Component.text("Invalid state '" + stateArg + "'. Use 'on' or 'off'.", NamedTextColor.RED));
-                return;
-            }
-            targetingSelf = false;
-        } else {
-            // Invalid number of arguments (e.g., {"modalerts", "p", "on", "extra"} -> length 4)
-            sender.sendMessage(Component.text("Usage: /core modalerts OR /core modalerts [on|off] OR /core modalerts <player> [on|off]", NamedTextColor.RED));
-            return;
-        }
-
-        // Permission Checks (logic remains the same, relies on correctly set targetingSelf and targetPlayer)
-        if (targetingSelf) {
-            if (!sender.hasPermission("core.staff")) {
-                Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core modalerts (self)");
-                return;
-            }
-        } else { // Targeting another player
-            if (!sender.hasPermission("core.admin")) {
-                Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core modalerts (other)");
-                return;
-            }
-        }
-
-        // Apply the action (logic remains the same)
-        boolean newState;
-        if (specificState != null) {
-            detector.setAlerts(targetPlayer.getUniqueId(), specificState);
-            newState = specificState;
-        } else {
-            newState = detector.toggleAlerts(targetPlayer.getUniqueId());
-        }
-
-        // Determine if a message should be sent (logic remains the same)
-        boolean sendMessage = true;
-        if (targetingSelf && specificState != null) {
-            sendMessage = false;
-        }
-
-        if (sendMessage) {
-            // Message construction logic
-            String enabledStyle = lang.getRaw("styles.state.true"); // Use getRaw
-            String disabledStyle = lang.getRaw("styles.state.false"); // Use getRaw
-            String stateWord = newState ? "enabled" : "disabled"; // Plain word
-            String styledStateWord = (newState ? enabledStyle : disabledStyle) + stateWord; // Combine style and word
-
-            String toggleMessageTemplate = lang.getRaw("fabric.toggle"); // Use getRaw
-            String messageBeingBuilt = toggleMessageTemplate.replace("{state}", styledStateWord);
-
-            if (targetPlayer.equals(sender)) {
-                messageBeingBuilt = messageBeingBuilt.replace(" {name}", ""); // Original logic for removing name
-            } else {
-                messageBeingBuilt = messageBeingBuilt.replace("{name}", "for " + targetPlayer.getName());
-            }
-            
-            String finalMessage = messageBeingBuilt + "."; // Appending period as in original logic
-            sender.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(finalMessage));
-        }
-    }
+    // modalerts command handler removed
 
     private void handleReloadCommand(CommandSender sender, Boolean isDebug) {
         if (!sender.hasPermission("core.admin")) {
@@ -406,7 +280,7 @@ public class Core implements CommandExecutor, TabCompleter {
                 suggestions.add("debug");
                 suggestions.add("hideupdate");
                 suggestions.add("hide");
-                suggestions.add("modalerts");
+                // modalerts command removed
             }
         } else if (args.length > 1 && args[0].equalsIgnoreCase("hide")) {
             if (args.length == 2) {

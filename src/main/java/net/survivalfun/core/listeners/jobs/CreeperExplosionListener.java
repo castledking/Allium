@@ -63,13 +63,14 @@ public class CreeperExplosionListener implements Listener {
         // Unregister the previous instance if it exists
         if (instance != null) {
             HandlerList.unregisterAll(instance);
-            plugin.getLogger().info("[SFCore] Unregistered previous CreeperExplosionListener instance");
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info("[SFCore] Unregistered previous CreeperExplosionListener instance");
+            }
         }
         
         instance = this;
         reloadConfig();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        plugin.getLogger().info("[SFCore] Registered new CreeperExplosionListener instance");
         
         // Start cleanup task for player tracking
         startCleanupTask();
@@ -106,7 +107,9 @@ public class CreeperExplosionListener implements Listener {
 
         // Debug: Check if we're already processing layers
         if (isProcessingLayers) {
-            plugin.getLogger().warning(String.format("[SFCore] WARNING: New explosion while already processing layers! Queue size: %d", layerQueue.size()));
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().warning(String.format("[SFCore] WARNING: New explosion while already processing layers! Queue size: %d", layerQueue.size()));
+            }
             // Don't cancel - just log the warning and continue processing
         }
 
@@ -126,8 +129,10 @@ public class CreeperExplosionListener implements Listener {
         blocks.sort(Comparator.comparingInt(Block::getY));
 
         // Log the explosion
-        plugin.getLogger().info(String.format("Creeper explosion at %s destroyed %d blocks (minY=%d)",
-            event.getLocation().toString(), blocks.size(), minY));
+        if (plugin.getConfig().getBoolean("debug-mode")) {
+            plugin.getLogger().info(String.format("Creeper explosion at %s destroyed %d blocks (minY=%d)",
+                event.getLocation().toString(), blocks.size(), minY));
+        }
 
         // Group blocks by Y-level
         Map<Integer, List<Block>> blocksByLayer = new HashMap<>();
@@ -171,7 +176,9 @@ public class CreeperExplosionListener implements Listener {
             
             // Log summary of skipped blocks for this layer
             if (skippedCount > 0) {
-                plugin.getLogger().info(String.format("[SFCore] Layer Y=%d: Skipped %d blocks already being regenerated", yLevel, skippedCount));
+                if (plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().info(String.format("[SFCore] Layer Y=%d: Skipped %d blocks already being regenerated", yLevel, skippedCount));
+                }
             }
         }
 
@@ -180,13 +187,16 @@ public class CreeperExplosionListener implements Listener {
             // Get all Y-levels and sort them (lowest first)
             List<Integer> sortedYLevels = new ArrayList<>(blocksByLayer.keySet());
             sortedYLevels.sort(Integer::compareTo); // Sort ascending - lowest Y first
-            
-            plugin.getLogger().info(String.format("[SFCore] Adding layers to queue: %s", sortedYLevels.toString()));
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info(String.format("[SFCore] Adding layers to queue: %s", sortedYLevels.toString()));
+            }
             
             // Add each Y-level to the queue in the correct order
             for (int yLevel : sortedYLevels) {
                 layerQueue.add(yLevel);
-                plugin.getLogger().info(String.format("[SFCore] Added layer Y=%d to queue (queue size: %d)", yLevel, layerQueue.size()));
+                if (plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().info(String.format("[SFCore] Added layer Y=%d to queue (queue size: %d)", yLevel, layerQueue.size()));
+                }
             }
         }
 
@@ -246,10 +256,12 @@ public class CreeperExplosionListener implements Listener {
         
         if (safeLoc != null) {
             // Add debug logging
-            plugin.getLogger().info(String.format("[SFCore] Teleporting player %s from %s to %s for regeneration safety", 
-                player.getName(), 
-                String.format("%.1f,%.1f,%.1f", playerLoc.getX(), playerLoc.getY(), playerLoc.getZ()),
-                String.format("%.1f,%.1f,%.1f", safeLoc.getX(), safeLoc.getY(), safeLoc.getZ())));
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info(String.format("[SFCore] Teleporting player %s from %s to %s for regeneration safety", 
+                    player.getName(), 
+                    String.format("%.1f,%.1f,%.1f", playerLoc.getX(), playerLoc.getY(), playerLoc.getZ()),
+                    String.format("%.1f,%.1f,%.1f", safeLoc.getX(), safeLoc.getY(), safeLoc.getZ())));
+            }
             
             // Use async teleport to avoid anti-cheat issues
             new BukkitRunnable() {
@@ -284,9 +296,11 @@ public class CreeperExplosionListener implements Listener {
         } else {
             // If no regeneration queue found, just push player up slightly
             Location pushLoc = playerLoc.clone().add(0, 5, 0); // Increased from 2 to 5 blocks
-            plugin.getLogger().info(String.format("[SFCore] No regen queue found, pushing player %s up 5 blocks to %s", 
-                player.getName(), 
-                String.format("%.1f,%.1f,%.1f", pushLoc.getX(), pushLoc.getY(), pushLoc.getZ())));
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info(String.format("[SFCore] No regen queue found, pushing player %s up 5 blocks to %s", 
+                    player.getName(), 
+                    String.format("%.1f,%.1f,%.1f", pushLoc.getX(), pushLoc.getY(), pushLoc.getZ())));
+            }
             player.teleport(pushLoc);
             
             // Also show love for fallback teleportation
@@ -422,95 +436,42 @@ public class CreeperExplosionListener implements Listener {
     }
     
     private boolean isPassableBlock(Material material) {
-        // List of blocks that players can pass through safely
-        switch (material) {
-            case SHORT_GRASS:
-            case TALL_GRASS:
-            case FERN:
-            case LARGE_FERN:
-            case DANDELION:
-            case POPPY:
-            case BLUE_ORCHID:
-            case ALLIUM:
-            case AZURE_BLUET:
-            case RED_TULIP:
-            case ORANGE_TULIP:
-            case WHITE_TULIP:
-            case PINK_TULIP:
-            case OXEYE_DAISY:
-            case CORNFLOWER:
-            case LILY_OF_THE_VALLEY:
-            case SUNFLOWER:
-            case LILAC:
-            case ROSE_BUSH:
-            case PEONY:
-            case DEAD_BUSH:
-            case SEAGRASS:
-            case TALL_SEAGRASS:
-            case KELP:
-            case KELP_PLANT:
-            case VINE:
-            case WHEAT:
-            case CARROTS:
-            case POTATOES:
-            case BEETROOTS:
-            case SWEET_BERRY_BUSH:
-            case BAMBOO_SAPLING:
-            case BAMBOO:
-            case SUGAR_CANE:
-            case SNOW:
-            case TORCH:
-            case WALL_TORCH:
-            case REDSTONE_TORCH:
-            case REDSTONE_WALL_TORCH:
-            case LEVER:
-            case STONE_BUTTON:
-            case OAK_BUTTON:
-            case SPRUCE_BUTTON:
-            case BIRCH_BUTTON:
-            case JUNGLE_BUTTON:
-            case ACACIA_BUTTON:
-            case DARK_OAK_BUTTON:
-            case CRIMSON_BUTTON:
-            case WARPED_BUTTON:
-            case POLISHED_BLACKSTONE_BUTTON:
-            case TRIPWIRE_HOOK:
-            case TRIPWIRE:
-            case REDSTONE_WIRE:
-            case RAIL:
-            case POWERED_RAIL:
-            case DETECTOR_RAIL:
-            case ACTIVATOR_RAIL:
-            case COBWEB:
-                return true;
-            default:
-                return false;
+        if (material.isCollidable()) {
+            return false;
         }
+        return true;
     }
 
     private void processNextLayer() {
         synchronized (layerQueue) {
             if (layerQueue.isEmpty()) {
-                plugin.getLogger().info("[SFCore] Layer queue is empty, stopping regeneration processing");
+                if (plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().info("[SFCore] Layer queue is empty, stopping regeneration processing");
+                }
                 isProcessingLayers = false;
                 return;
             }
 
             // Get the next layer to process (lowest Y-level first)
             int currentLayer = layerQueue.poll();
-            plugin.getLogger().info(String.format("[SFCore] Processing layer Y=%d (queue remaining: %d)", currentLayer, layerQueue.size()));
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info(String.format("[SFCore] Processing layer Y=%d (queue remaining: %d)", currentLayer, layerQueue.size()));
+            }
             
             // Get and remove tasks for this layer
             List<RegenerationTask> currentLayerTasks = regenerationLayers.remove(currentLayer);
 
             if (currentLayerTasks == null || currentLayerTasks.isEmpty()) {
-                plugin.getLogger().warning(String.format("[SFCore] No tasks found for layer Y=%d, skipping to next layer", currentLayer));
+                if (plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().warning(String.format("[SFCore] No tasks found for layer Y=%d, skipping to next layer", currentLayer));
+                }
                 // No tasks in this layer, move to next
                 processNextLayer();
                 return;
             }
-
-            plugin.getLogger().info(String.format("[SFCore] Found %d tasks for layer Y=%d", currentLayerTasks.size(), currentLayer));
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info(String.format("[SFCore] Found %d tasks for layer Y=%d", currentLayerTasks.size(), currentLayer));
+            }
             isProcessingLayers = true;
 
             // Track completion of this layer
@@ -551,8 +512,10 @@ public class CreeperExplosionListener implements Listener {
                         // Check if this was the last task in the layer
                         int remaining = remainingTasks.decrementAndGet();
                         if (remaining == 0) {
-                            plugin.getLogger().info(String.format("[SFCore] Layer Y=%d completed (%d/%d tasks), moving to next layer", 
-                                currentLayer, totalTasks, totalTasks));
+                            if (plugin.getConfig().getBoolean("debug-mode")) {
+                                plugin.getLogger().info(String.format("[SFCore] Layer Y=%d completed (%d/%d tasks), moving to next layer", 
+                                    currentLayer, totalTasks, totalTasks));
+                            }
                             // All tasks in this layer completed, move to next layer
                             scheduleNextLayer();
                         }

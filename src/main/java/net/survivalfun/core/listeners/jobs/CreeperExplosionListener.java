@@ -3,6 +3,7 @@ package net.survivalfun.core.listeners.jobs;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.Container;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -12,6 +13,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.Particle;
@@ -442,6 +444,51 @@ public class CreeperExplosionListener implements Listener {
         return true;
     }
 
+    private boolean isContainerMaterial(Material material) {
+        switch (material) {
+            case CHEST:
+            case TRAPPED_CHEST:
+            case BARREL:
+            case DISPENSER:
+            case DROPPER:
+            case HOPPER:
+            case FURNACE:
+            case BLAST_FURNACE:
+            case SMOKER:
+            case BREWING_STAND:
+            case BEACON:
+            case CAMPFIRE:
+            case SOUL_CAMPFIRE:
+            case LECTERN:
+            case COMPOSTER:
+            case CAULDRON:
+            case LAVA_CAULDRON:
+            case WATER_CAULDRON:
+            case POWDER_SNOW_CAULDRON:
+            case ENDER_CHEST:
+            case SHULKER_BOX:
+            case WHITE_SHULKER_BOX:
+            case ORANGE_SHULKER_BOX:
+            case MAGENTA_SHULKER_BOX:
+            case LIGHT_BLUE_SHULKER_BOX:
+            case YELLOW_SHULKER_BOX:
+            case LIME_SHULKER_BOX:
+            case PINK_SHULKER_BOX:
+            case GRAY_SHULKER_BOX:
+            case LIGHT_GRAY_SHULKER_BOX:
+            case CYAN_SHULKER_BOX:
+            case PURPLE_SHULKER_BOX:
+            case BLUE_SHULKER_BOX:
+            case BROWN_SHULKER_BOX:
+            case GREEN_SHULKER_BOX:
+            case RED_SHULKER_BOX:
+            case BLACK_SHULKER_BOX:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private void processNextLayer() {
         synchronized (layerQueue) {
             if (layerQueue.isEmpty()) {
@@ -503,8 +550,28 @@ public class CreeperExplosionListener implements Listener {
                             // Play regeneration effect
                             playRegenEffect(task.location);
 
-                            // Actually regenerate the block
-                            task.state.update(true, false);
+                            // Actually regenerate the block first
+                            BlockState state = task.state;
+                            state.update(true, false);
+                            
+                            // Then clear container inventory to prevent duping (must be done after placing)
+                            if (state instanceof Container && isContainerMaterial(state.getType())) {
+                                // Get the newly placed block and clear its inventory
+                                Block placedBlock = task.location.getBlock();
+                                if (placedBlock.getState() instanceof Container) {
+                                    Container container = (Container) placedBlock.getState();
+                                    Inventory inventory = container.getInventory();
+                                    inventory.clear();
+                                    
+                                    // Debug logging for container regeneration
+                                    if (plugin.getConfig().getBoolean("debug-mode")) {
+                                        plugin.getLogger().info(String.format("[SFCore] Cleared inventory of regenerated container: %s at %s to prevent duping", 
+                                            state.getType().name(), 
+                                            String.format("%.0f,%.0f,%.0f", task.location.getX(), task.location.getY(), task.location.getZ())));
+                                    }
+                                }
+                            }
+                            
                             pendingRegeneration.remove(task.location);
                             activeRegenerationAreas.remove(task.location);
                         }

@@ -26,6 +26,7 @@ public class Give implements CommandExecutor {
         this.lang = plugin.getLangManager();
         Meta.initialize(plugin);
         Potion.initialize(plugin);
+        Spawner.initialize(plugin);
     }
 
     @Override
@@ -77,8 +78,47 @@ public class Give implements CommandExecutor {
         }
 
         try {
-            String[] parts = arg.split(";", -1); // Use -1 limit to include trailing empty strings
-            String itemName = parts[0];
+            // Check if this is an alias that contains potion/enchantment parameters
+            // Extract just the alias name (before any semicolon) for lookup
+            String aliasName = arg.contains(";") ? arg.split(";")[0] : arg;
+            
+            String aliasParams = Alias.getParametersFromAlias(aliasName);
+            String[] parts;
+            String itemName;
+            
+            if (aliasParams != null) {
+                // This is a complex alias with parameters
+                // Get just the material part from the alias (e.g., POTION)
+                itemName = Alias.getMaterialPartFromAlias(aliasName);
+                
+                // Check if the user specified additional parameters in the command (like name:)
+                if (arg.contains(";")) {
+                    // Get user parameters portion
+                    String userParams = arg.substring(arg.indexOf(";") + 1);
+                    
+                    // For regular processing, use the user parameters combined with alias parameters
+                    // but keep the base itemName from the alias
+                    parts = new String[] {itemName}; // Start with just the material name
+                    // Add alias parameters
+                    String[] aliasParts = aliasParams.split(";");
+                    // Add user parameters
+                    String[] userParts = userParams.split(";");
+                    
+                    // Combine all parts into a single array
+                    String[] combinedParts = new String[1 + aliasParts.length + userParts.length];
+                    combinedParts[0] = itemName;
+                    System.arraycopy(aliasParts, 0, combinedParts, 1, aliasParts.length);
+                    System.arraycopy(userParts, 0, combinedParts, 1 + aliasParts.length, userParts.length);
+                    parts = combinedParts;
+                } else {
+                    // No user parameters, just use the alias parameters
+                    parts = (itemName + ";" + aliasParams).split(";", -1);
+                }
+            } else {
+                // Regular processing
+                parts = arg.split(";", -1); // Use -1 limit to include trailing empty strings
+                itemName = parts[0];
+            }
 
             ItemStack item;
             // Parse all parts for enchantments
@@ -90,6 +130,12 @@ public class Give implements CommandExecutor {
             } else {
                 Material material = getMaterial(itemName, sender);
                 if (material == null) return; // Error handled in method
+
+                // Extra check to ensure the material is in the isGiveable list
+                if (!Item.isGiveable(material)) {
+                    Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
+                    return;
+                }
 
                 if (amount <= 0) {
                     amount = material.getMaxStackSize();
@@ -112,9 +158,22 @@ public class Give implements CommandExecutor {
                 // Apply enchantments
                 Meta.applyEnchantments(sender, item, enchantments);
 
+                // Check for potion with only a semicolon (special case for showing usage)
+                if (itemName.equalsIgnoreCase("potion") && parts.length > 1 && parts[1].isEmpty()) {
+                    // The Potion class will handle displaying the usage message
+                    // We still create a normal potion as fallback
+                }
+
                 // Apply potion effects if applicable
                 if (item.getType() == Material.POTION || item.getType() == Material.SPLASH_POTION || item.getType() == Material.LINGERING_POTION || item.getType() == Material.TIPPED_ARROW) {
+                    // The parts array already contains the merged alias and user parameters
+                    // No need to recreate it - just use it directly
                     Potion.applyPotionMeta(sender, item, parts);
+                }
+
+                // Apply spawner entity type if applicable
+                if (item.getType() == Material.SPAWNER) {
+                    Spawner.applySpawnerMeta(sender, item, parts);
                 }
             }
 
@@ -378,13 +437,16 @@ public class Give implements CommandExecutor {
         Material material = null;
         String baseItemName = itemName;
 
-        // First try direct material lookup (case-insensitive)
-        try {
-            material = Material.matchMaterial(baseItemName);
-            if (material != null && Item.isGiveable(material)) {
-                return material;
-            }
-        } catch (IllegalArgumentException ignored) {}
+        // First check if we're dealing with an alias that might have potion parameters
+        String materialPart = Alias.getMaterialPartFromAlias(baseItemName);
+        if (materialPart != null) {
+            try {
+                material = Material.matchMaterial(materialPart);
+                if (material != null && Item.isGiveable(material)) {
+                    return material;
+                }
+            } catch (IllegalArgumentException ignored) {}
+        }
 
         // Check if the input contains a colon (for legacy data values)
         if (baseItemName.contains(":")) {
@@ -419,6 +481,14 @@ public class Give implements CommandExecutor {
         if (material != null && Item.isGiveable(material)) {
             return material;
         }
+
+        // Then try direct material lookup (case-insensitive)
+        try {
+            material = Material.matchMaterial(baseItemName);
+            if (material != null && Item.isGiveable(material)) {
+                return material;
+            }
+        } catch (IllegalArgumentException ignored) {}
 
         // Last attempt: Try with uppercase (official enum name)
         if (!baseItemName.equals(baseItemName.toUpperCase())) {

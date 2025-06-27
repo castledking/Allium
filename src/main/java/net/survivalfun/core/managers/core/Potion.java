@@ -80,17 +80,109 @@ public class Potion {
         Map<String, String> params = parsePotionArgs(parts);
         String effectName = params.get("effect");
         String displayName = params.get("name");
-        int duration = params.containsKey("duration") ? Integer.parseInt(params.get("duration")) : 0;
-        int amplifier = params.containsKey("amplifier") ? Integer.parseInt(params.get("amplifier")) : 0;
+        int duration = params.containsKey("duration") ? parseIntOrDefault(params.get("duration"), 0) : 0;
+        int amplifier = params.containsKey("amplifier") ? parseIntOrDefault(params.get("amplifier"), 0) : 0;
+        boolean particles = !params.containsKey("particles") || parseBoolean(params.get("particles"));
+        boolean icon = !params.containsKey("icon") || parseBoolean(params.get("icon")); // Whether to show the icon in inventory
 
-        if (effectName == null) {
+        if (effectName == null || effectName.isEmpty()) {
+            // Check if this is a semicolon with no arguments
+            if (parts.length > 1 && parts[1].isEmpty()) {
+                // Show usage guide instead of invalid message
+                String usageMessage = lang.get("command-usage")
+                    .replace("{cmd}", "i")
+                    .replace("{args}", "potion;<effect>;[duration];[amplifier];[particles];[icon]");
+                sender.sendMessage(usageMessage);
+                sender.sendMessage("§eExample: §f/i potion;speed;60;1;true");
+                sender.sendMessage("§eAlternative: §f/i potion;effect=speed;amplifier=1;duration=60");
+                sender.sendMessage("§eBase Potions: §f/i potion;awkward §7| §f/i potion;mundane §7| §f/i potion;thick");
+                sender.sendMessage("§eWater Bottles: §f/i splash_potion;water §7| §f/i lingering_potion;water");
+            }
+
             potionMeta.setBasePotionType(PotionType.WATER);
             item.setItemMeta(potionMeta);
             return;
         }
 
         if (effectName.equalsIgnoreCase("turtle_master")) {
-            applyTurtleMaster(potionMeta, displayName, item, duration);
+            applyTurtleMaster(potionMeta, displayName, item, duration, particles, icon);
+            item.setItemMeta(potionMeta);
+            return;
+        }
+
+        // Handle base potion types (awkward, mundane, thick)
+        if (effectName.equalsIgnoreCase("awkward")) {
+            potionMeta.setBasePotionType(PotionType.AWKWARD);
+            if (displayName != null) {
+                Meta.applyDisplayName(potionMeta, displayName);
+            } else {
+                String prefix;
+                if (item.getType() == Material.SPLASH_POTION) {
+                    prefix = "Awkward Splash Potion";
+                } else if (item.getType() == Material.LINGERING_POTION) {
+                    prefix = "Awkward Lingering Potion";
+                } else {
+                    prefix = "Awkward Potion";
+                }
+                potionMeta.displayName(Component.text(prefix).decoration(TextDecoration.ITALIC, false));
+            }
+            item.setItemMeta(potionMeta);
+            return;
+        }
+        
+        if (effectName.equalsIgnoreCase("mundane")) {
+            potionMeta.setBasePotionType(PotionType.MUNDANE);
+            if (displayName != null) {
+                Meta.applyDisplayName(potionMeta, displayName);
+            } else {
+                String prefix;
+                if (item.getType() == Material.SPLASH_POTION) {
+                    prefix = "Mundane Splash Potion";
+                } else if (item.getType() == Material.LINGERING_POTION) {
+                    prefix = "Mundane Lingering Potion";
+                } else {
+                    prefix = "Mundane Potion";
+                }
+                potionMeta.displayName(Component.text(prefix).decoration(TextDecoration.ITALIC, false));
+            }
+            item.setItemMeta(potionMeta);
+            return;
+        }
+        
+        if (effectName.equalsIgnoreCase("thick")) {
+            potionMeta.setBasePotionType(PotionType.THICK);
+            if (displayName != null) {
+                Meta.applyDisplayName(potionMeta, displayName);
+            } else {
+                String prefix;
+                if (item.getType() == Material.SPLASH_POTION) {
+                    prefix = "Thick Splash Potion";
+                } else if (item.getType() == Material.LINGERING_POTION) {
+                    prefix = "Thick Lingering Potion";
+                } else {
+                    prefix = "Thick Potion";
+                }
+                potionMeta.displayName(Component.text(prefix).decoration(TextDecoration.ITALIC, false));
+            }
+            item.setItemMeta(potionMeta);
+            return;
+        }
+
+        if (effectName.equalsIgnoreCase("water")) {
+            potionMeta.setBasePotionType(PotionType.WATER);
+            if (displayName != null) {
+                Meta.applyDisplayName(potionMeta, displayName);
+            } else {
+                String prefix;
+                if (item.getType() == Material.SPLASH_POTION) {
+                    prefix = "Splash Water Bottle";
+                } else if (item.getType() == Material.LINGERING_POTION) {
+                    prefix = "Lingering Water Bottle";
+                } else {
+                    prefix = "Water Bottle";
+                }
+                potionMeta.displayName(Component.text(prefix).decoration(TextDecoration.ITALIC, false));
+            }
             item.setItemMeta(potionMeta);
             return;
         }
@@ -102,7 +194,7 @@ public class Potion {
         }
 
         int durationTicks = calculateDurationTicks(effectType, duration, item.getType());
-        PotionEffect effect = new PotionEffect(effectType, durationTicks, amplifier, false, true, true);
+        PotionEffect effect = new PotionEffect(effectType, durationTicks, amplifier, false, particles, icon);
 
         potionMeta.clearCustomEffects();
         potionMeta.lore(new ArrayList<>());
@@ -134,20 +226,34 @@ public class Potion {
     private static Map<String, String> parsePotionArgs(String[] parts) {
         Map<String, String> params = new HashMap<>();
         if (parts.length <= 1) return params;
-
+        
+        // Process parameters - handle mixed ordered and named parameters
+        String[] orderedParams = {"effect", "duration", "amplifier", "particles", "icon"};
+        int orderedIndex = 0;
+        
         for (int i = 1; i < parts.length; i++) {
             String part = parts[i];
-            String[] keyValue = part.split("[:=]", 2);
-            if (keyValue.length == 2) {
-                params.put(keyValue[0].toLowerCase(), keyValue[1]);
-            } else if (i == 1) {
-                params.put("effect", part);
+            if (part.isEmpty()) continue;
+            
+            // Check if this is a named parameter (key:value or key=value)
+            if (part.contains(":") || part.contains("=")) {
+                String[] keyValue = part.split("[:=]", 2);
+                if (keyValue.length == 2) {
+                    params.put(keyValue[0].toLowerCase(), keyValue[1]);
+                }
+            } else {
+                // This is an ordered parameter - assign it to the next available ordered slot
+                if (orderedIndex < orderedParams.length) {
+                    params.put(orderedParams[orderedIndex], part);
+                    orderedIndex++;
+                }
             }
         }
+        
         return params;
     }
 
-    private static void applyTurtleMaster(PotionMeta potionMeta, String displayName, ItemStack item, int specifiedDuration) {
+    private static void applyTurtleMaster(PotionMeta potionMeta, String displayName, ItemStack item, int specifiedDuration, boolean particles, boolean icon) {
         // Clear any existing effects and lore
         potionMeta.clearCustomEffects();
         potionMeta.lore(new ArrayList<>());
@@ -169,9 +275,9 @@ public class Potion {
             }
             // Regular potions (Material.POTION) don't have their durations modified
             
-            // Create custom effects with the specified duration
-            PotionEffect slowness = new PotionEffect(PotionEffectType.SLOWNESS, durationTicks, 3, false, true, true);
-            PotionEffect resistance = new PotionEffect(PotionEffectType.RESISTANCE, durationTicks, 2, false, true, true);
+            // Create custom effects with the specified duration and respect particles and icon settings
+            PotionEffect slowness = new PotionEffect(PotionEffectType.SLOWNESS, durationTicks, 3, false, particles, icon);
+            PotionEffect resistance = new PotionEffect(PotionEffectType.RESISTANCE, durationTicks, 2, false, particles, icon);
             
             // Add the custom effects
             potionMeta.addCustomEffect(slowness, true);
@@ -201,10 +307,18 @@ public class Potion {
     }
 
     private static int calculateDurationTicks(PotionEffectType type, int specifiedDuration, Material material) {
-        int durationSeconds = specifiedDuration > 0 ? specifiedDuration : DEFAULT_POTION_DURATIONS.getOrDefault(type, 30);
-        int durationTicks = durationSeconds * 20;
+        // Handle the case where duration was not specified - use appropriate defaults without multipliers
+        if (specifiedDuration <= 0) {
+            // For all potion types, just use the default duration from the map directly
+            // Let Minecraft handle any internal adjustments based on potion type
+            int defaultDuration = DEFAULT_POTION_DURATIONS.getOrDefault(type, 30);
+            return defaultDuration * 20; // Convert seconds to ticks
+        }
+        
+        // If duration was specified, convert to ticks and apply multiplication factors
+        int durationTicks = specifiedDuration * 20;
 
-        // Apply multiplication factors to counteract Minecraft's internal divisions
+        // Apply multiplication factors to counteract Minecraft's internal divisions for specified durations
         if (material == Material.TIPPED_ARROW) {
             // Tipped arrows have effects reduced to 1/8 of their original duration
             durationTicks *= 8;
@@ -218,6 +332,29 @@ public class Potion {
         // Regular potions (Material.POTION) don't have their durations modified
         
         return Math.max(1, durationTicks);
+    }
+    
+    /**
+     * Helper method to parse an integer with a default value if parsing fails
+     */
+    private static int parseIntOrDefault(String value, int defaultValue) {
+        if (value == null) return defaultValue;
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+    
+    /**
+     * Helper method to parse a boolean value
+     */
+    private static boolean parseBoolean(String value) {
+        if (value == null) return true;
+        return !value.equalsIgnoreCase("false") && 
+               !value.equalsIgnoreCase("0") && 
+               !value.equalsIgnoreCase("off") && 
+               !value.equalsIgnoreCase("no");
     }
     
     private static String getEffectDisplayName(PotionEffectType effectType) {

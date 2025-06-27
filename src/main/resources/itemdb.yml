@@ -41,6 +41,208 @@ aliases:
   smoothstone: SMOOTH_STONE
   mossycobblestone: MOSSY_COBBLESTONE
   mcobble: MOSSY_COBBLESTONE
+  and: ANDESITE
+  andb: ANDESITE
+  andbl: ANDESITE
+  andblock: ANDESITE
+  andesiteb: ANDESITE
+  andesiteblock: ANDESITE
+  andesitehalfblock: ANDESITE_SLAB
+  andesiteslab: ANDESITE_SLAB
+  andesitestair: ANDESITE_STAIRS
+  andesitestairs: ANDESITE_STAIRS
+  andesitestep: ANDESITE_SLAB
+  andesitewall: ANDESITE_WALL
+  andhalfblock: ANDESITE_SLAB
+  andstair: ANDESITE_STAIRS
+  andstairs: ANDESITE_STAIRS
+  andstep: ANDESITE_SLAB
+  andstone: ANDESITE
+  andstoneb: ANDESITE
+  andstoneblock: ANDESITE
+  andstonehalfblock: ANDESITE_SLAB
+  andstoneslab: ANDESITE_SLAB
+  andstonestair: ANDESITE_STAIRS
+  andstonestairs: ANDESITE_STAIRS
+  andstonestep: ANDESITE_SLAB
+  andstonewall: ANDESITE_WALL
+  andwall: ANDESITE_WALL
+
+  # Wood Materials
+  abarelog: STRIPPED_ACACIA_LOG
+  acaciabarelog: STRIPPED_ACACIA_LOG
+  abarewood: STRIPPED_ACACIA_WOOD
+  acaciabarewood: STRIPPED_ACACIA_WOOD
+  abutton: ACACIA_BUTTON
+  acaciabutton: ACACIA_BUTTON
+  acaciadoor: ACACIA_DOOR
+  acaciadoort: ACACIA_TRAPDOOR
+  acaciadoortrap: ACACIA_TRAPDOOR
+  acaciadtrap: ACACIA_TRAPDOOR
+  acaciafence: ACACIA_FENCE
+  acaciafencegate: ACACIA_FENCE_GATE
+  acaciagate: ACACIA_FENCE_GATE
+  acaciahalfblock: ACACIA_SLAB
+  acaciahangingsign: ACACIA_HANGING_SIGN
+  acaciahangsign: ACACIA_HANGING_SIGN
+  acaciahatch: ACACIA_TRAPDOOR
+  acaciahsign: ACACIA_HANGING_SIGN
+  acaciaplank: ACACIA_PLANKS
+  acaciaplanks: ACACIA_PLANKS
+  acaciaplankw: ACACIA_PLANKS
+  acaciaplankwood: ACACIA_PLANKS
+  acaciaplankwooden: ACACIA_PLANKS
+  acaciaplate: ACACIA_PRESSURE_PLATE
+  acaciapplate: ACACIA_PRESSURE_PLATE
+  acaciapressureplate: ACACIA_PRESSURE_PLATE
+  acaciaraft: ACACIA_BOAT
+  acaciasign: ACACIA_SIGN
+  acaciaslab: ACACIA_SLAB
+  acaciastair: ACACIA_STAIRS
+  acaciastairs: ACACIA_STAIRS
+  acaciastep: ACACIA_SLAB
+  acaciastrippedlog: STRIPPED_ACACIA_LOG
+  acaciastrippedwood: STRIPPED_ACACIA_WOOD
+  acaciatdoor: ACACIA_TRAPDOOR
+  acaciatrapd: ACACIA_TRAPDOOR
+  acaciatrapdoor: ACACIA_TRAPDOOR
+  acaciatree: ACACIA_LOG
+  acaciatreeall: ACACIA_WOOD
+  acaciatreeleaf: ACACIA_LEAVES
+  acaciatreeleave: ACACIA_LEAVES
+  acaciatreeleaves: ACACIA_LEAVES
+  acaciatreesapling: ACACIA_SAPLING
+  acaciatrunk: ACACIA_LOG
+  acaciatrunkall: ACACIA_WOOD
+  acaciatrunkleaf: ACACIA_LEAVES
+  acaciatrunkleave: ACACIA_LEAVES
+  acaciatrunkleaves: ACACIA_LEAVES
+  acaciatrunksapling: ACACIA_SAPLING
+  acaciatrunksappling: ACACIA_SAPLING
+  acaciawhalfblock: ACACIA_SLAB
+  acaciawood: ACACIA_WOOD
+  acaciawoodenhalfblock: ACACIA_SLAB
+  acaciawoodenplank: ACACIA_PLANKS
+  acaciawoodenslab: ACACIA_SLAB
+  acaciawoodenstair: ACACIA_STAIRS
+  acaciawoodenstairs: ACACIA_STAIRS
+  acaciawoodenstep: ACACIA_SLAB
+  acaciawoodhalfblock: ACACIA_SLAB
+  acaciawoodleaf: ACACIA_LEAVES
+  acaciawoodleave: ACACIA_LEAVES
+  acaciawoodleaves: ACACIA_LEAVES
+  acaciawoodplank: ACACIA_PLANKS
+  acaciawoodsapling: ACACIA_SAPLING
+  acaciawoodslab: ACACIA_SLAB
+  acaciawoodstairs: ACACIA_STAIRS
+  acaciawoodstep: ACACIA_SLAB
+  acaciawplank: ACACIA_PLANKS
+  acaciawslab: ACACIA_SLAB
+  acaciawstair: ACACIA_STAIRS
+  acaciawstairs: ACACIA_STAIRS
+  acaciawstep: ACACIA_SLAB
+  acbarelog: STRIPPED_ACACIA_LOG
+  acbarewood: STRIPPED_ACACIA_WOOD
+  acbutton: ACACIA_BUTTON
+  acdoor: ACACIA_DOOR
+  acdoort: ACACIA_TRAPDOOR
+  acdoortrap: ACACIA_TRAPDOOR
+  acdtrap: ACACIA_TRAPDOOR
+  acfence: ACACIA_FENCE
+  acfencegate: ACACIA_FENCE_GATE
+  acgate: ACACIA_FENCE_GATE
+  achalfblock: ACACIA_SLAB
+  achangsign: ACACIA_HANGING_SIGN
+  achatch: ACACIA_HANGING_SIGN
+  achsign: ACACIA_HANGING_SIGN
+  acleaf: ACACIA_LEAVES
+  acleave: ACACIA_LEAVES
+  acleaves: ACACIA_LEAVES
+  aclog: ACACIA_LOG
+  aclogall: ACACIA_WOOD
+  aclogleaf: ACACIA_LEAVES
+  aclogleave: ACACIA_LEAVES
+  aclogleaves: ACACIA_LEAVES
+  aclogsapling: ACACIA_SAPLING
+  acplank: ACACIA_PLANKS
+  acplankwood: ACACIA_PLANKS
+  acplankwooden: ACACIA_PLANKS
+  acsapling: ACACIA_SAPLING
+  acsign: ACACIA_SIGN
+  acstair: ACACIA_STAIRS
+  acstep: ACACIA_SLAB
+  acstrippedlog: STRIPPED_ACACIA_LOG
+  acstrippedwood: STRIPPED_ACACIA_WOOD
+  actdoor: ACACIA_TRAPDOOR
+  activaterail: ACTIVATOR_RAIL
+  activaterails: ACTIVATOR_RAIL
+  activatetrack: ACTIVATOR_RAIL
+  activatorrail: ACTIVATOR_RAIL
+  activatorrails: ACTIVATOR_RAIL
+  activatortrack: ACTIVATOR_RAIL
+  actrail: ACTIVATOR_RAIL
+  actrails: ACTIVATOR_RAIL
+  actrapd: ACACIA_TRAPDOOR
+  actrapdoor: ACACIA_TRAPDOOR
+  actree: ACACIA_LOG
+  actreeall: ACACIA_WOOD
+  actreeleaf: ACACIA_LEAVES
+  actreeleave: ACACIA_LEAVES
+  actreeleaves: ACACIA_LEAVES
+  actreesapling: ACACIA_SAPLING
+  actrunk: ACACIA_LOG
+  actrunkall: ACACIA_WOOD
+  actrunkleaf: ACACIA_LEAVES
+  actrunkleave: ACACIA_LEAVES
+  actrunkleaves: ACACIA_LEAVES
+  actrunksapling: ACACIA_SAPLING
+  acttrack: ACTIVATOR_RAIL
+  acwhalfblock: ACACIA_SLAB
+  acwood: ACACIA_WOOD
+  acwoodenhalfblock: ACACIA_SLAB
+  acwoodenplank: ACACIA_PLANKS
+  acwoodenslab: ACACIA_SLAB
+  acwoodenstair: ACACIA_STAIRS
+  acwoodenstairs: ACACIA_STAIRS
+  acwoodenstep: ACACIA_SLAB
+  acwoodhalfblock: ACACIA_SLAB
+  acwoodleaf: ACACIA_LEAVES
+  acwoodleave: ACACIA_LEAVES
+  acwoodleaves: ACACIA_LEAVES
+  acwoodplank: ACACIA_PLANKS
+  acwoodsapling: ACACIA_SAPLING
+  acwoodslab: ACACIA_SLAB
+  acwoodstairs: ACACIA_STAIRS
+  acwoodstep: ACACIA_SLAB
+  acwplank: ACACIA_PLANKS
+  acwslab: ACACIA_SLAB
+  acwstair: ACACIA_STAIRS
+  acwstep: ACACIA_SLAB
+  adoor: ACACIA_DOOR
+  adoort: ACACIA_TRAPDOOR
+  adoortrap: ACACIA_TRAPDOOR
+  adtrap: ACACIA_TRAPDOOR
+  afence: ACACIA_FENCE
+  afencegate: ACACIA_FENCE_GATE
+  ahalfblock: ACACIA_SLAB
+  ahangsign: ACACIA_HANGING_SIGN
+  ahatch: ACACIA_HANGING_SIGN
+  ahsign: ACACIA_HANGING_SIGN
+  aleaf: ACACIA_LEAVES
+  aleave: ACACIA_LEAVES
+  aleaves: ACACIA_LEAVES
+  alog: ACACIA_LOG
+  alogall: ACACIA_WOOD
+  alogleaf: ACACIA_LEAVES
+  alogleaves: ACACIA_LEAVES
+  alogplank: ACACIA_PLANKS
+  alogsapling: ACACIA_SAPLING
+  
+
+
+
+  
+
 
   # Concrete - Full Color System
   concrete: WHITE_CONCRETE
@@ -349,6 +551,7 @@ aliases:
   nscrap: NETHERITE_SCRAP
   quartzitem: QUARTZ
   nquartz: QUARTZ
+  ancientdebris: ANCIENT_DEBRIS
 
   # Material Blocks
   coalb: COAL_BLOCK
@@ -419,6 +622,7 @@ aliases:
   sugarcane: SUGAR_CANE
   reeds: SUGAR_CANE
   berry: SWEET_BERRIES
+  abluet: AZURE_BLUET
 
   # Saplings and Wood
   saplings: OAK_SAPLING
@@ -436,6 +640,7 @@ aliases:
   birchlog: BIRCH_LOG
   junglelog: JUNGLE_LOG
   acacialog: ACACIA_LOG
+  acacialogall: ACACIA_WOOD
   darkoaklog: DARK_OAK_LOG
   wood: OAK_WOOD
   oakwood: OAK_WOOD
@@ -447,6 +652,18 @@ aliases:
   spruceleaves: SPRUCE_LEAVES
   birchleaves: BIRCH_LEAVES
   jungleleaves: JUNGLE_LEAVES
+  acacialeaf: ACACIA_LEAVES
+  acacialeave: ACACIA_LEAVES
+  acacialeaves: ACACIA_LEAVES
+  acacialogleaf: ACACIA_LEAVES
+  acacialogleave: ACACIA_LEAVES
+  acacialogleaves: ACACIA_LEAVES
+  acacialogsapling: ACACIA_SAPLING
+
+  # === DECORATION ===
+
+  anglerpotterysherd: ANGLER_POTTERY_SHERD
+  
 
   # === FOOD ===
   bread: BREAD
@@ -506,6 +723,10 @@ aliases:
   stoneplate: STONE_PRESSURE_PLATE
   oplate: OAK_PRESSURE_PLATE
   oakplate: OAK_PRESSURE_PLATE
+  acplate: ACACIA_PRESSURE_PLATE
+  acpplate: ACACIA_PRESSURE_PLATE
+  acpressureplate: ACACIA_PRESSURE_PLATE
+  acpressurepplate: ACACIA_PRESSURE_PLATE
   torch: TORCH
   rtorch: REDSTONE_TORCH
   redtorch: REDSTONE_TORCH
@@ -527,6 +748,13 @@ aliases:
   chestcart: CHEST_MINECART
   hoppercart: HOPPER_MINECART
   boat: OAK_BOAT
+  aboat: ACACIA_BOAT
+  acaciaboat: ACACIA_BOAT
+  acaciachboat: ACACIA_CHEST_BOAT
+  acaciachestboat: ACACIA_CHEST_BOAT
+  achboat: ACACIA_CHEST_BOAT
+  acboat: ACACIA_BOAT
+  acraft: ACACIA_BOAT
   oakboat: OAK_BOAT
   rail: RAIL
   rails: RAIL
@@ -642,6 +870,17 @@ aliases:
   lbucket: LAVA_BUCKET
 
   # === SPECIAL ITEMS ===
+  amethyst: AMETHYST_BLOCK
+  amethystblock: AMETHYST_BLOCK
+  amethystbudl: LARGE_AMETHYST_BUD
+  amethystbudm: MEDIUM_AMETHYST_BUD
+  amethystbuds: SMALL_AMETHYST_BUD
+  amethystclump: AMETHYST_CLUSTER
+  amethystcluster: AMETHYST_CLUSTER
+  amethystfragment: AMETHYST_SHARD
+  amethystshard: AMETHYST_SHARD
+  amongusgravel: SUSPICIOUS_GRAVEL
+  amongussand: SUSPICIOUS_SAND
   glistering_melon_slice: GLISTERING_MELON_SLICE
   gmslice: GLISTERING_MELON_SLICE
   gmelon: GLISTERING_MELON_SLICE
@@ -649,9 +888,124 @@ aliases:
   netherbrickitem: NETHER_BRICK
   nbrickitem: NETHER_BRICK
   salt: QUARTZ_BLOCK
+  adminblock: BEDROCK
+  adminium: BEDROCK
+  adminrock: BEDROCK
+
 
   # === MUSIC DISCS ===
-  catdisc: MUSIC_DISC_CAT
+  10cd: MUSIC_DISC_WARD
+  10disc: MUSIC_DISC_WARD
+  10disk: MUSIC_DISC_WARD
+  10mdisc: MUSIC_DISC_WARD
+  10musicdisc: MUSIC_DISC_WARD
+  10musicrecord: MUSIC_DISC_WARD
+  10record: MUSIC_DISC_WARD
+  11cd: MUSIC_DISC_11
+  11disc: MUSIC_DISC_11
+  11disk: MUSIC_DISC_11
+  11mdisc: MUSIC_DISC_11
+  11musicdisc: MUSIC_DISC_11
+  11musicrecord: MUSIC_DISC_11
+  11record: MUSIC_DISC_11
+  12cd: MUSIC_DISC_WAIT
+  12disc: MUSIC_DISC_WAIT
+  12disk: MUSIC_DISC_WAIT
+  12mdisc: MUSIC_DISC_WAIT
+  12musicdisc: MUSIC_DISC_WAIT
+  12musicrecord: MUSIC_DISC_WAIT
+  12record: MUSIC_DISC_WAIT
+  13cd: MUSIC_DISC_13
+  13disc: MUSIC_DISC_13
+  13disk: MUSIC_DISC_13
+  13mdisc: MUSIC_DISC_13
+  13musicdisc: MUSIC_DISC_13
+  13musicrecord: MUSIC_DISC_13
+  13record: MUSIC_DISC_13
+  14cd: MUSIC_DISC_PIGSTEP
+  14disc: MUSIC_DISC_PIGSTEP
+  14disk: MUSIC_DISC_PIGSTEP
+  14mdisc: MUSIC_DISC_PIGSTEP
+  14musicdisc: MUSIC_DISC_PIGSTEP
+  14musicrecord: MUSIC_DISC_PIGSTEP
+  14record: MUSIC_DISC_PIGSTEP
+  15cd: MUSIC_DISC_OTHERSIDE
+  15disc: MUSIC_DISC_OTHERSIDE
+  15disk: MUSIC_DISC_OTHERSIDE
+  15mdisc: MUSIC_DISC_OTHERSIDE
+  15musicdisc: MUSIC_DISC_OTHERSIDE
+  15musicrecord: MUSIC_DISC_OTHERSIDE
+  15record: MUSIC_DISC_OTHERSIDE
+  16cd: MUSIC_DISC_5
+  16disc: MUSIC_DISC_5
+  16disk: MUSIC_DISC_5
+  16mdisc: MUSIC_DISC_5
+  16musicdisc: MUSIC_DISC_5
+  16musicrecord: MUSIC_DISC_5
+  16record: MUSIC_DISC_5
+  1cd: MUSIC_DISC_13
+  1disc: MUSIC_DISC_13
+  1disk: MUSIC_DISC_13
+  1mdisc: MUSIC_DISC_13
+  1musicdisc: MUSIC_DISC_13
+  1musicrecord: MUSIC_DISC_13
+  1record: MUSIC_DISC_13
+  2cd: MUSIC_DISC_CAT
+  2disc: MUSIC_DISC_CAT
+  2disk: MUSIC_DISC_CAT
+  2mdisc: MUSIC_DISC_CAT
+  2musicdisc: MUSIC_DISC_CAT
+  2musicrecord: MUSIC_DISC_CAT
+  2record: MUSIC_DISC_CAT
+  3cd: MUSIC_DISC_BLOCKS
+  3disc: MUSIC_DISC_BLOCKS
+  3disk: MUSIC_DISC_BLOCKS
+  3mdisc: MUSIC_DISC_BLOCKS
+  3musicdisc: MUSIC_DISC_BLOCKS
+  3musicrecord: MUSIC_DISC_BLOCKS
+  3record: MUSIC_DISC_BLOCKS
+  4cd: MUSIC_DISC_CHIRP
+  4disc: MUSIC_DISC_CHIRP
+  4disk: MUSIC_DISC_CHIRP
+  4mdisc: MUSIC_DISC_CHIRP
+  4musicdisc: MUSIC_DISC_CHIRP
+  4musicrecord: MUSIC_DISC_CHIRP
+  4record: MUSIC_DISC_CHIRP
+  5cd: MUSIC_DISC_5
+  5disc: MUSIC_DISC_5
+  5disk: MUSIC_DISC_5
+  5mdisc: MUSIC_DISC_5
+  5musicdisc: MUSIC_DISC_5
+  5musicrecord: MUSIC_DISC_5
+  5record: MUSIC_DISC_5
+  6cd: MUSIC_DISC_MALL
+  6disc: MUSIC_DISC_MALL
+  6disk: MUSIC_DISC_MALL
+  6mdisc: MUSIC_DISC_MALL
+  6musicdisc: MUSIC_DISC_MALL
+  6musicrecord: MUSIC_DISC_MALL
+  6record: MUSIC_DISC_MALL
+  7cd: MUSIC_DISC_MELLOHI
+  7disc: MUSIC_DISC_MELLOHI
+  7disk: MUSIC_DISC_MELLOHI
+  7mdisc: MUSIC_DISC_MELLOHI
+  7musicdisc: MUSIC_DISC_MELLOHI
+  7musicrecord: MUSIC_DISC_MELLOHI
+  7record: MUSIC_DISC_MELLOHI
+  8cd: MUSIC_DISC_STAL
+  8disc: MUSIC_DISC_STAL
+  8disk: MUSIC_DISC_STAL
+  8mdisc: MUSIC_DISC_STAL
+  8musicdisc: MUSIC_DISC_STAL
+  8musicrecord: MUSIC_DISC_STAL
+  8record: MUSIC_DISC_STAL
+  9cd: MUSIC_DISC_STRAD
+  9disc: MUSIC_DISC_STRAD
+  9disk: MUSIC_DISC_STRAD
+  9mdisc: MUSIC_DISC_STRAD
+  9musicdisc: MUSIC_DISC_STRAD
+  9musicrecord: MUSIC_DISC_STRAD
+  9record: MUSIC_DISC_STRAD
   warddisc: MUSIC_DISC_WARD
   blocksdisc: MUSIC_DISC_BLOCKS
   chirpdisc: MUSIC_DISC_CHIRP
@@ -663,8 +1017,181 @@ aliases:
   waitdisc: MUSIC_DISC_WAIT
   pigstepdisc: MUSIC_DISC_PIGSTEP
   othersidedisc: MUSIC_DISC_OTHERSIDE
-  "5disc": MUSIC_DISC_5
   relicdisc: MUSIC_DISC_RELIC
+
+  # === SPAWNERS / SPAWN EGGS ===
+  allaycage: ALLAY_SPAWNER
+  allayegg: ALLAY_SPAWN_EGG
+  allaymcage: ALLAY_SPAWNER
+  allaymobcage: ALLAY_SPAWNER
+  allaymobspawner: ALLAY_SPAWNER
+  allaymonstercage: ALLAY_SPAWNER
+  allaymonsterspawner: ALLAY_SPAWNER
+  allaymspawner: ALLAY_SPAWNER
+  allaysegg: ALLAY_SPAWN_EGG
+  allayspawn: ALLAY_SPAWN_EGG
+  allayspawnegg: ALLAY_SPAWN_EGG
+  allayspawner: ALLAY_SPAWNER
+  angrypigcage: HOGLIN_SPAWNER
+  angrypigegg: HOGLIN_SPAWN_EGG
+  angrypigmcage: HOGLIN_SPAWNER
+  angrypigmobcage: HOGLIN_SPAWNER
+  angrypigmobspawner: HOGLIN_SPAWNER
+  angrypigmonstercage: HOGLIN_SPAWNER
+  angrypigmonsterspawner: HOGLIN_SPAWNER
+  angrypigmspawner: HOGLIN_SPAWNER
+  angrypigsegg: HOGLIN_SPAWN_EGG
+  angrypigspawn: HOGLIN_SPAWN_EGG
+  angrypigspawnegg: HOGLIN_SPAWN_EGG
+  angrypigspawner: HOGLIN_SPAWNER
+
+  
+
+  # === POTIONS, ARROWS ===
+  acid2pot: POTION;POISON;90
+  acid2potion: POTION;POISON;90
+  acid2splashpot: SPLASH_POTION;POISON;90
+  acid2tarr: TIPPED_ARROW;POISON;11
+  acid2tarrow: TIPPED_ARROW;POISON;11
+  acid2tippedarrow: TIPPED_ARROW;POISON;11
+  acidaoepoiont: LINGERING_POTION;POISON
+  acidaoepoiont2: LINGERING_POTION;POISON;22
+  acidaoepoiontex: LINGERING_POTION;POISON;22
+  acidaoepoiontextended: LINGERING_POTION;POISON;22
+  acidaoepoiontii: LINGERING_POTION;POISON;5;1
+  acidaoepoiontlevel2: LINGERING_POTION;POISON;22
+  acidaoepoiontlong: LINGERING_POTION;POISON;22
+  acidaoepoiontstrong: LINGERING_POTION;POISON;5;1
+  acidaoepot: LINGERING_POTION;POISON
+  acidaoepot2: LINGERING_POTION;POISON;22
+  acidaoepotex: LINGERING_POTION;POISON;22
+  acidaoepotextended: LINGERING_POTION;POISON;22
+  acidaoepotii: LINGERING_POTION;POISON;5;1
+  acidaoepotlevel2: LINGERING_POTION;POISON;22
+  acidaoepotlevelii: LINGERING_POTION;POISON;5;1
+  acidaoepotlong: LINGERING_POTION;POISON;22
+  acidaoepotstrong: LINGERING_POTION;POISON;5;1
+  acidareapot: LINGERING_POTION;POISON
+  acidareapot2: LINGERING_POTION;POISON;22
+  acidareapotex: LINGERING_POTION;POISON;22
+  acidareapotextended: LINGERING_POTION;POISON;22
+  acidareapotii: LINGERING_POTION;POISON;5;1
+  acidareapotion: LINGERING_POTION;POISON
+  acidareapotion2: LINGERING_POTION;POISON;22
+  acidareapotionex: LINGERING_POTION;POISON;22
+  acidareapotionextended: LINGERING_POTION;POISON;22
+  acidareapotionii: LINGERING_POTION;POISON;5;1
+  acidareapotionlevel2: LINGERING_POTION;POISON;22
+  acidareapotionlevelii: LINGERING_POTION;POISON;5;1
+  acidareapotionlong: LINGERING_POTION;POISON;22
+  acidareapotionstrong: LINGERING_POTION;POISON;5;1
+  acidareapotlevel2: LINGERING_POTION;POISON;22
+  acidareapotlevelii: LINGERING_POTION;POISON;5;1
+  aciddareapotlong: LINGERING_POTION;POISON;22
+  aciddareapotstrong: LINGERING_POTION;POISON;5;1
+  acidarrow: TIPPED_ARROW;POISON
+  acidarrow2: TIPPED_ARROW;POISON;22
+  acidarrowex: TIPPED_ARROW;POISON;22
+  acidarrowextended: TIPPED_ARROW;POISON;22
+  acidarrowii: TIPPED_ARROW;POISON;2;1
+  acidarrowlevel2: TIPPED_ARROW;POISON;22
+  acidarrowlevelii: TIPPED_ARROW;POISON;2;1
+  acidarrowlong: TIPPED_ARROW;POISON;22
+  acidarrowstrong: TIPPED_ARROW;POISON;2;1
+  acidcloudpot: LINGERING_POTION;POISON
+  acidcloudpot2: LINGERING_POTION;POISON;22
+  acidcloudpotex: LINGERING_POTION;POISON;22
+  acidcloudpotextended: LINGERING_POTION;POISON;22
+  acidcloudpotii: LINGERING_POTION;POISON;5;1
+  acidcloudpotion: LINGERING_POTION;POISON
+  acidcloudpotion2: LINGERING_POTION;POISON;22
+  acidcloudpotionex: LINGERING_POTION;POISON;22
+  acidcloudpotionextended: LINGERING_POTION;POISON;22
+  acidcloudpotionii: LINGERING_POTION;POISON;5;1
+  acidcloudpotionlevel2: LINGERING_POTION;POISON;5;1
+  acidcloudpotionlevelii: LINGERING_POTION;POISON;5;1
+  acidcloudpotionlong: LINGERING_POTION;POISON;22
+  acidcloudpotionstrong: LINGERING_POTION;POISON;5;1
+  acidcloudpotlevel2: LINGERING_POTION;POISON;5;1
+  acidcloudpotlevelii: LINGERING_POTION;POISON;5;1
+  acidcloudpotlong: LINGERING_POTION;POISON;22
+  acidcloudpotstrong: LINGERING_POTION;POISON;5;1
+  acidexpot: POTION;POISON;90
+  acidexpotion: POTION;POISON;90
+  acidexsplashpot: SPLASH_POTION;POISON;90
+  acidexsplashpotion: SPLASH_POTION;POISON;90
+  acidextarr: TIPPED_ARROW;POISON;11
+  acidextarrow: TIPPED_ARROW;POISON;11
+  acidextendedpot: POTION;POISON;90
+  acidextendedpotion: POTION;POISON;90
+  acidextendedsplashpot: SPLASH_POTION;POISON;90
+  acidextendedsplashpotion: SPLASH_POTION;POISON;90
+  acidextendearr: TIPPED_ARROW;POISON;11
+  acidextendarrow: TIPPED_ARROW;POISON;11
+  acidextendtippedarrow: TIPPED_ARROW;POISON;11
+  acidextippedarrow: TIPPED_ARROW;POISON;11
+  acidiipot: POTION;POISON;21;1
+  acidiipotion: POTION;POISON;21;1
+  acidiisplashpot: SPLASH_POTION;POISON;21;1
+  acidiisplashpotion: SPLASH_POTION;POISON;21;1
+  acidiitarr: TIPPED_ARROW;POISON;2;1
+  acidiitarrow: TIPPED_ARROW;POISON;2;1
+  acidiitippedarrow: TIPPED_ARROW;POISON;2;1
+  acidlevel2pot: POTION;POISON;90
+  acidlevel2potion: POTION;POISON;90
+  acidlevel2splashpot: SPLASH_POTION;POISON;90
+  acidlevel2splashpotion: SPLASH_POTION;POISON;90
+  acidlevel2tarr: TIPPED_ARROW;POISON;11
+  acidlevel2tarrow: TIPPED_ARROW;POISON;11
+  acidlevel2tippedarrow: TIPPED_ARROW;POISON;11
+  acidleveliipot: POTION;POISON;21;1
+  acidleveliipotion: POTION;POISON;21;1
+  acidleveliisplashpot: SPLASH_POTION;POISON;21;1
+  acidleveliisplashpotion: SPLASH_POTION;POISON;21;1
+  acidleveliitarr: TIPPED_ARROW;POISON;2;1
+  acidleveliitarrow: TIPPED_ARROW;POISON;2;1
+  acidleveliitippedarrow: TIPPED_ARROW;POISON;2;1
+  acidlingerpot: LINGERING_POTION;POISON;11
+  acidlingerpot2: LINGERING_POTION;POISON;22
+  acidlingerpotex: LINGERING_POTION;POISON;22
+  acidlingerpotextended: LINGERING_POTION;POISON;22
+  acidlingerpotii: LINGERING_POTION;POISON;5;1
+  acidlingerpotlong: LINGERING_POTION;POISON;22
+  acidlingerpotstrong: LINGERING_POTION;POISON;5;1
+  acidlongpot: POTION;POISON;180
+  acidlongpotion: POTION;POISON;180
+  acidlongsplashpot: SPLASH_POTION;POISON;180
+  acidlongsplashpotion: SPLASH_POTION;POISON;180
+  acidlongtarr: TIPPED_ARROW;POISON;11
+  acidlongarrow: TIPPED_ARROW;POISON;11
+  acidlongtippedarrow: TIPPED_ARROW;POISON;11
+  acidpot: POTION;POISON
+  acidpotion: POTION;POISON
+  acidsplashpot: SPLASH_POTION;POISON
+  acidsplashpotion: SPLASH_POTION;POISON
+  acidstrongpot: POTION;POISON;21;1
+  acidstrongpotion: POTION;POISON;21;1
+  acidstrongsplashpot: SPLASH_POTION;POISON;21;1
+  acidstrongsplashpotion: SPLASH_POTION;POISON;21;1
+  acidstrongtarr: TIPPED_ARROW;POISON;2;1
+  acidstrongtarrow: TIPPED_ARROW;POISON;2;1
+  acidstrongtippedarrow: TIPPED_ARROW;POISON;2;1
+  acidtarr: TIPPED_ARROW;POISON
+  acidtarrow: TIPPED_ARROW;POISON
+  acidtippedarrow: TIPPED_ARROW;POISON
+  aoepotacid: LINGERING_POTION;POISON
+  aoepotacid2: LINGERING_POTION;POISON;22
+  aoepotacidex: LINGERING_POTION;POISON;22
+  aoepotacidextended: LINGERING_POTION;POISON;22
+  aoepotacidii: LINGERING_POTION;POISON;5;1
+  aoepotacidlevel2: LINGERING_POTION;POISON;22
+  aoepotacidlevelii: LINGERING_POTION;POISON;5;1
+  aoepotacidlong: LINGERING_POTION;POISON;22
+  aoepotacidstrong: LINGERING_POTION;POISON;5;1
+  aoepotawkward: LINGERING_POTION;AWKWARD
+  aoepotbreath: LINGERING_POTION;WATER_BREATHING
+  aoepotbreath2: LINGERING_POTION;WATER_BREATHING;120
+  
 
 # === LEGACY IDs ===
 # This section contains legacy IDs that are used in commands

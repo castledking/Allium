@@ -77,6 +77,34 @@ public class Alias {
     public static String getAlias(String alias) {
         return ALIASES.get(alias.toLowerCase());
     }
+    
+    /**
+     * Get the material part from a complex alias that may contain semicolons
+     * @param alias The alias to look up
+     * @return Just the material part of the alias
+     */
+    public static String getMaterialPartFromAlias(String alias) {
+        String value = ALIASES.get(alias.toLowerCase());
+        if (value != null && value.contains(";")) {
+            // Return just the material part (before the first semicolon)
+            return value.split(";", 2)[0];
+        }
+        return value;
+    }
+    
+    /**
+     * Get the effects/parameter part from a complex alias
+     * @param alias The alias to look up
+     * @return The effects/parameters part after the semicolon, or null if there are none
+     */
+    public static String getParametersFromAlias(String alias) {
+        String value = ALIASES.get(alias.toLowerCase());
+        if (value != null && value.contains(";")) {
+            String[] parts = value.split(";", 2);
+            return parts.length > 1 ? parts[1] : null;
+        }
+        return null;
+    }
 
     /**
      * Add an alias for a given material name

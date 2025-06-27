@@ -7,7 +7,9 @@ import net.survivalfun.core.listeners.security.CommandManager;
 import net.survivalfun.core.listeners.security.CreativeManager;
 import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.managers.lang.Lang;
+import net.survivalfun.core.managers.core.Alias;
 import net.survivalfun.core.managers.core.Text;
+import net.survivalfun.core.managers.core.LegacyID;
 import org.bukkit.Bukkit;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -214,6 +216,15 @@ public class Core implements CommandExecutor, TabCompleter {
             // Reload language files
             if (lang != null) {
                 lang.reload();
+            }
+            
+            // Reload item aliases and legacy IDs from itemdb.yml
+            try {
+                Alias.initialize(plugin); // This will reinitialize and reload all aliases
+                LegacyID.reload(); // This will reload all legacy IDs
+                plugin.getLogger().info("Successfully reloaded item aliases and legacy IDs from itemdb.yml");
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to reload itemdb.yml data: " + e.getMessage());
             }
 
             // Reload world defaults

@@ -6,6 +6,7 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.DB.Database.PlayerFlightData;
+import net.survivalfun.core.managers.DB.Database.LocationType;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 
@@ -195,8 +196,33 @@ public class WhoisCommand implements CommandExecutor {
                     .hoverEvent(HoverEvent.showText(Component.text("Click to teleport to this location")));
             sender.sendMessage(worldPosMsg);
         } else {
-            // For offline players, just show a simple message
-            sender.sendMessage(Text.colorize("&eLocation: &fUnknown (player offline)"));
+            // For offline players, try to get their last logout location from database
+            Location lastLogoutLocation = plugin.getDatabase().getPlayerLocation(targetUUID, LocationType.LOGOUT);
+            if (lastLogoutLocation != null) {
+                String worldPosMsgTemplate = lang.getRaw("whois.world-position-offline");
+                if (worldPosMsgTemplate.equals("whois.world-position-offline")) {
+                    // Fallback if lang key doesn't exist
+                    worldPosMsgTemplate = "&eLocation: &f{world} ({x}, {y}, {z}) &7(offline)";
+                }
+                String worldPosMsgRaw = worldPosMsgTemplate
+                        .replace("{world}", lastLogoutLocation.getWorld().getName())
+                        .replace("{x}", String.format("%.2f", lastLogoutLocation.getX()))
+                        .replace("{y}", String.format("%.2f", lastLogoutLocation.getY()))
+                        .replace("{z}", String.format("%.2f", lastLogoutLocation.getZ()));
+                
+                if (sender instanceof Player && sender.hasPermission("core.teleport")) {
+                    Component worldPosMsg = Text.colorize(worldPosMsgRaw)
+                            .clickEvent(ClickEvent.runCommand("/tppos " + lastLogoutLocation.getX() + " " + lastLogoutLocation.getY() + " " + lastLogoutLocation.getZ() + " " + lastLogoutLocation.getWorld().getName()))
+                            .hoverEvent(HoverEvent.showText(Component.text("Click to teleport to this location")));
+                    sender.sendMessage(worldPosMsg);
+                } else {
+                    sender.sendMessage(Text.colorize(worldPosMsgRaw));
+                }
+            } else {
+                // No logout location found in database
+                String unknownLocationTemplate = "&eLocation: &fUnknown (player offline)";
+                sender.sendMessage(Text.colorize(unknownLocationTemplate));
+            }
         }
 
         Location deathLoc = effectiveTarget.getLastDeathLocation();

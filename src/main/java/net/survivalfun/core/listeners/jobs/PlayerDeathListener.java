@@ -137,8 +137,22 @@ public class PlayerDeathListener implements Listener {
         Player player = event.getPlayer();
         plugin.getLogger().info("Player " + player.getName() + " is respawning...");
         
-        // If respawn location is already set (e.g., by bed), don't override it
-        if (event.getRespawnLocation() != null && !event.isBedSpawn() && !event.isAnchorSpawn()) {
+        // Check if player has a bed spawn point
+        Location bedLocation = player.getBedSpawnLocation();
+        if (bedLocation != null) {
+            plugin.getLogger().info("Respawning " + player.getName() + " at their bed location");
+            event.setRespawnLocation(bedLocation);
+            return;
+        }
+        
+        // Check if this is already a bed or anchor spawn from the event
+        if (event.isBedSpawn() || event.isAnchorSpawn()) {
+            plugin.getLogger().info("Using existing bed/anchor respawn location for " + player.getName());
+            return;
+        }
+        
+        // If respawn location is already set by another plugin, don't override it
+        if (event.getRespawnLocation() != null) {
             plugin.getLogger().info("Using existing respawn location for " + player.getName());
             return;
         }
@@ -166,6 +180,7 @@ public class PlayerDeathListener implements Listener {
         );
 
         // Set the respawn location to our custom spawn
+        plugin.getLogger().info("Setting respawn location to server spawn for " + player.getName());
         event.setRespawnLocation(spawnLocation);
     }
 }

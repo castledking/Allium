@@ -16,6 +16,9 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+
+import net.survivalfun.core.PluginStart;
+
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -59,7 +62,7 @@ public class CreeperExplosionListener implements Listener {
         }
     }
 
-    public CreeperExplosionListener(JavaPlugin plugin) {
+    public CreeperExplosionListener(PluginStart plugin) {
         this.plugin = plugin;
         
         // Unregister the previous instance if it exists

@@ -2,6 +2,7 @@ package net.survivalfun.core.listeners.security;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.Database;
+import net.survivalfun.core.managers.DB.Database.LocationType;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -113,8 +114,19 @@ public class FlyOnRejoinListener implements Listener {
         // Save slow falling status
         boolean hasSlowFalling = player.hasPotionEffect(PotionEffectType.SLOW_FALLING);
         database.savePlayerSlowFallingStatus(player.getUniqueId(), hasSlowFalling);
-        plugin.getLogger().fine("Saved slow falling status to database for " + player.getName() + ": "
-                + hasSlowFalling);
+        if(plugin.getConfig().getBoolean("debug-mode")) {
+            plugin.getLogger().fine("Saved slow falling status to database for " + player.getName() + ": "
+                    + hasSlowFalling);
+        }
+        
+        // Save logout location for offline whois command
+        Location logoutLocation = player.getLocation();
+        database.savePlayerLocation(player.getUniqueId(), LocationType.LOGOUT, logoutLocation, System.currentTimeMillis());
+        if(plugin.getConfig().getBoolean("debug-mode")) {
+            plugin.getLogger().fine("Saved logout location to database for " + player.getName() + 
+                " at " + logoutLocation.getWorld().getName() + " (" + 
+                String.format("%.2f, %.2f, %.2f", logoutLocation.getX(), logoutLocation.getY(), logoutLocation.getZ()) + ")");
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

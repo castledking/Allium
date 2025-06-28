@@ -17,6 +17,7 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class Spawn implements CommandExecutor {
@@ -190,6 +191,9 @@ public class Spawn implements CommandExecutor {
         // Check if player has selected pets via /tppet and teleport them
         teleportPlayerPets(player, spawnLocation);
         
+        // Check if player has selected entities via /tpe and teleport them
+        teleportPlayerEntities(player, spawnLocation);
+        
         player.sendMessage(Text.colorize("&aTeleported to spawn!"));
     }
 
@@ -245,12 +249,248 @@ public class Spawn implements CommandExecutor {
                 
                 // Check if player has selected pets and teleport them
                 if (tpCommand.hasPets(player)) {
+                    // First teleport the pets using the existing method
                     tpCommand.teleportSelectedPets(player, location);
                     plugin.getLogger().info("[SFCore] Teleported pets for player " + player.getName() + " to spawn");
+                    
+                    // Then run cleanup immediately to deselect pets and show auto-disable message
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        try {
+                            // Get the selectedPets field
+                            java.lang.reflect.Field selectedPetsField = TP.class.getDeclaredField("selectedPets");
+                            selectedPetsField.setAccessible(true);
+                            
+                            // Get the selectedPets map
+                            @SuppressWarnings("unchecked")
+                            Map<UUID, Set<UUID>> selectedPets = 
+                                (Map<UUID, Set<UUID>>) selectedPetsField.get(tpCommand);
+                            
+                            // Clear the player's selected pets
+                            Set<UUID> playerPets = selectedPets.remove(player.getUniqueId());
+                            
+                            if (playerPets != null && !playerPets.isEmpty()) {
+                                // Remove glowing effect from pets
+                                for (UUID petId : playerPets) {
+                                    org.bukkit.entity.Entity pet = Bukkit.getEntity(petId);
+                                    if (pet != null) {
+                                        pet.setGlowing(false);
+                                    }
+                                }
+                                
+                                // Get the TP command's lang manager for consistent messaging
+                                java.lang.reflect.Field langField = TP.class.getDeclaredField("lang");
+                                langField.setAccessible(true);
+                                Lang tpLang = (Lang) langField.get(tpCommand);
+                                
+                                // Get the first color code and disabled style
+                                String firstColorOfToggle = tpLang.getFirstColorCode("tp.tppet-toggle");
+                                String disabledStyle = tpLang.get("styles.state.false");
+                                
+                                // Show auto-disable message
+                                if (player.isOnline()) {
+                                    player.sendMessage(tpLang.get("tp.tppet-toggle")
+                                            .replace("{state}", disabledStyle + "disabled" + firstColorOfToggle)
+                                            .replace("{name}", "")
+                                            .replace("{info}", "Auto-disabled after teleport to spawn"));
+                                }
+                            }
+                        } catch (Exception e) {
+                            plugin.getLogger().warning("[SFCore] Error cleaning up pet teleport: " + e.getMessage());
+                            // Fallback message if we can't access the TP lang
+                            if (player.isOnline()) {
+                                player.sendMessage(Text.colorize("&cPet teleport mode auto-disabled after teleport to spawn"));
+                            }
+                        }
+                    });
                 }
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("[SFCore] Error teleporting pets to spawn: " + e.getMessage());
+            plugin.getLogger().warning("[SFCore] Error teleporting pets: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Teleports a player's selected entities to a location if they have any
+     * This uses the entity selection system from the TP command (/tpe)
+     * Uses the latest entity teleportation technology with instant teleporting
+     * and persistence for selected entities
+     * 
+     * @param player The player whose entities to teleport
+     * @param location The location to teleport entities to
+     */
+    private void teleportPlayerEntities(Player player, Location location) {
+        try {
+            // Get the TP command instance from the plugin's command map
+            CommandExecutor cmdExecutor = plugin.getCommand("tp").getExecutor();
+            
+            // Check if the executor is our TP class
+            if (cmdExecutor instanceof TP) {
+                TP tpCommand = (TP) cmdExecutor;
+                
+                // Check if player has permission to teleport entities
+                if (player.hasPermission("core.tpmob")) {
+                    try {
+                        // Get the hasSelectedEntities method from TP class
+                        java.lang.reflect.Method hasSelectedEntitiesMethod = TP.class.getDeclaredMethod("hasSelectedEntities", Player.class);
+                        hasSelectedEntitiesMethod.setAccessible(true);
+                        
+                        // Check if player has selected entities
+                        boolean hasEntities = (boolean) hasSelectedEntitiesMethod.invoke(tpCommand, player);
+                        
+                        if (hasEntities) {
+                            // Get the selectedEntities field
+                            java.lang.reflect.Field selectedEntitiesField = TP.class.getDeclaredField("selectedEntities");
+                            selectedEntitiesField.setAccessible(true);
+                            
+                            // Get the selectedEntities map
+                            @SuppressWarnings("unchecked")
+                            Map<UUID, Map<UUID, org.bukkit.entity.Entity>> selectedEntities = 
+                                (Map<UUID, Map<UUID, org.bukkit.entity.Entity>>) selectedEntitiesField.get(tpCommand);
+                            
+                            // Get player's selected entities
+                            Map<UUID, org.bukkit.entity.Entity> playerEntities = selectedEntities.get(player.getUniqueId());
+                            if (playerEntities != null && !playerEntities.isEmpty()) {
+                                // Convert map values to list for teleportation
+                                java.util.List<org.bukkit.entity.Entity> entitiesToTeleport = 
+                                    new java.util.ArrayList<>(playerEntities.values());
+                                
+                                // Get the EntityTeleportListener class to disable distance checking
+                                java.lang.reflect.Method disableDistanceCheckingMethod = null;
+                                try {
+                                    // Find the EntityTeleportListener inner class
+                                    Class<?>[] innerClasses = TP.class.getDeclaredClasses();
+                                    for (Class<?> innerClass : innerClasses) {
+                                        if (innerClass.getSimpleName().equals("EntityTeleportListener")) {
+                                            // Get the instance of the listener
+                                            java.lang.reflect.Field listenerField = TP.class.getDeclaredField("entityTeleportListener");
+                                            listenerField.setAccessible(true);
+                                            Object listener = listenerField.get(tpCommand);
+                                            
+                                            // Get the disableDistanceChecking method
+                                            disableDistanceCheckingMethod = innerClass.getDeclaredMethod("disableDistanceChecking");
+                                            disableDistanceCheckingMethod.setAccessible(true);
+                                            
+                                            // Call the method to disable distance checking
+                                            disableDistanceCheckingMethod.invoke(listener);
+                                            plugin.getLogger().info("[SFCore] Disabled distance checking for entity teleportation");
+                                        }
+                                    }
+                                } catch (Exception e) {
+                                    plugin.getLogger().warning("[SFCore] Could not disable distance checking: " + e.getMessage());
+                                }
+                                
+                                // Now teleport entities directly without delay
+                                int successCount = 0;
+                                double radius = 2.0;
+                                int numEntities = entitiesToTeleport.size();
+                                
+                                plugin.getLogger().info("[SFCore] Teleporting " + numEntities + " entities INSTANTLY for player " + player.getName());
+                                
+                                // Teleport each entity to a position around the player
+                                for (int i = 0; i < entitiesToTeleport.size(); i++) {
+                                    org.bukkit.entity.Entity entity = entitiesToTeleport.get(i);
+                                    
+                                    // Skip invalid entities
+                                    if (entity == null || !entity.isValid()) {
+                                        plugin.getLogger().warning("[SFCore] Skipping invalid entity during teleport");
+                                        continue;
+                                    }
+                                    
+                                    // Check if entity is in the same world as the target location
+                                    if (!entity.getWorld().equals(location.getWorld())) {
+                                        plugin.getLogger().warning("[SFCore] Entity is in a different world, cannot teleport");
+                                        continue;
+                                    }
+                                    
+                                    // Calculate position in a circle around the player
+                                    double angle = 2 * Math.PI * i / numEntities;
+                                    double x = location.getX() + radius * Math.cos(angle);
+                                    double z = location.getZ() + radius * Math.sin(angle);
+                                    
+                                    // Create the teleport location
+                                    Location entityLocation = new Location(
+                                        location.getWorld(),
+                                        x,
+                                        location.getY(),
+                                        z,
+                                        location.getYaw(),
+                                        location.getPitch()
+                                    );
+                                    
+                                    // Teleport the entity
+                                    boolean success = entity.teleport(entityLocation);
+                                    
+                                    if (success) {
+                                        successCount++;
+                                        plugin.getLogger().info("[SFCore] Successfully teleported entity " + entity.getType().name() + 
+                                                           " to spawn for player " + player.getName());
+                                        // Remove glowing effect immediately
+                                        entity.setGlowing(false);
+                                    }
+                                }
+                                
+                                plugin.getLogger().info("[SFCore] Successfully teleported " + successCount + 
+                                    " entities for player " + player.getName() + " to spawn");
+                                    
+                                // Clear selected entities and show auto-disable message immediately
+                                Bukkit.getScheduler().runTask(plugin, () -> {
+                                    // Clear the player's selected entities
+                                    playerEntities.clear();
+                                    selectedEntities.remove(player.getUniqueId());
+                                    
+                                    // Get the TP command's lang manager for consistent messaging
+                                    try {
+                                        java.lang.reflect.Field langField = TP.class.getDeclaredField("lang");
+                                        langField.setAccessible(true);
+                                        Lang tpLang = (Lang) langField.get(tpCommand);
+                                        
+                                        // Get the first color code and disabled style
+                                        String firstColorOfToggle = tpLang.getFirstColorCode("tp.tpe-toggle");
+                                        String disabledStyle = tpLang.get("styles.state.false");
+                                        
+                                        // Show auto-disable message
+                                        if (player.isOnline()) {
+                                            player.sendMessage(tpLang.get("tp.tpe-toggle")
+                                                    .replace("{state}", disabledStyle + "disabled" + firstColorOfToggle)
+                                                    .replace("{name}", "")
+                                                    .replace("{info}", "Auto-disabled after teleport to spawn"));
+                                        }
+                                    } catch (Exception e) {
+                                        plugin.getLogger().warning("[SFCore] Error showing auto-disable message: " + e.getMessage());
+                                        // Fallback message if we can't access the TP lang
+                                        player.sendMessage(Text.colorize("&cEntity teleport mode auto-disabled after teleport to spawn"));
+                                    }
+                                    
+                                    // Try to unregister the entity teleport listener
+                                    try {
+                                        java.lang.reflect.Field listenersField = TP.class.getDeclaredField("activeEntityTeleportListeners");
+                                        listenersField.setAccessible(true);
+                                        @SuppressWarnings("unchecked")
+                                        Map<UUID, Object> listeners = (Map<UUID, Object>) listenersField.get(tpCommand);
+                                        Object listener = listeners.remove(player.getUniqueId());
+                                        
+                                        if (listener != null) {
+                                            // Call unregisterListener method
+                                            Class<?> listenerClass = listener.getClass();
+                                            java.lang.reflect.Method unregisterMethod = listenerClass.getDeclaredMethod("unregisterListener");
+                                            unregisterMethod.setAccessible(true);
+                                            unregisterMethod.invoke(listener);
+                                            plugin.getLogger().info("[SFCore] Unregistered entity teleport listener for player " + player.getName());
+                                        }
+                                    } catch (Exception e) {
+                                        plugin.getLogger().warning("[SFCore] Error unregistering entity teleport listener: " + e.getMessage());
+                                    }
+                                });
+                            }
+                        }
+                    } catch (Exception e) {
+                        plugin.getLogger().warning("[SFCore] Error teleporting entities: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("[SFCore] Error teleporting entities: " + e.getMessage());
         }
     }
     

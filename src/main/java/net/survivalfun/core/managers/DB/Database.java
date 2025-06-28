@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
 import java.util.logging.Level;
+import net.survivalfun.core.managers.economy.BalanceEntry;
 
 public class Database {
     private final PluginStart plugin;
@@ -194,6 +195,140 @@ public class Database {
 
 
         }
+    }
+
+
+    /**
+     * Create a default balance record for a new player
+     * @param playerUUID The UUID of the player
+     * @param defaultBalance The default balance to set
+     * @return true if successful, false otherwise
+     */
+    public boolean createDefaultPlayerBalance(UUID playerUUID, BigDecimal defaultBalance) {
+        try {
+            openConnection();
+            String sql = "INSERT INTO player_balances (uuid, balance) VALUES (?, ?)";
+            return executeUpdate(sql, playerUUID.toString(), defaultBalance) > 0;
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to create default player balance", e);
+            return false;
+        }
+    }
+
+    /**
+     * Set player balance
+     * @param playerUUID The UUID of the player
+     * @param amount The new balance
+     * @return true if successful, false otherwise
+     */
+    public boolean setPlayerBalance(UUID playerUUID, BigDecimal amount) {
+        try {
+            openConnection();
+            // Check if player has a balance record
+            if (getPlayerBalance(playerUUID) == null) {
+                return createDefaultPlayerBalance(playerUUID, amount);
+            }
+            
+            String sql = "UPDATE player_balances SET balance = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?";
+            return executeUpdate(sql, amount, playerUUID.toString()) > 0;
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to set player balance", e);
+            return false;
+        }
+    }
+
+    /**
+     * Add to player balance (deposit)
+     * @param playerUUID The UUID of the player
+     * @param amount The amount to add
+     * @return true if successful, false otherwise
+     */
+    public boolean addToPlayerBalance(UUID playerUUID, BigDecimal amount) {
+        try {
+            openConnection();
+            BigDecimal currentBalance = getPlayerBalance(playerUUID);
+            
+            // If player doesn't have a balance record, create one
+            if (currentBalance == null) {
+                return createDefaultPlayerBalance(playerUUID, amount);
+            }
+            
+            BigDecimal newBalance = currentBalance.add(amount);
+            return setPlayerBalance(playerUUID, newBalance);
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to add to player balance", e);
+            return false;
+        }
+    }
+
+    /**
+     * Subtract from player balance (withdraw)
+     * @param playerUUID The UUID of the player
+     * @param amount The amount to subtract
+     * @return true if successful, false otherwise
+     */
+    public boolean subtractFromPlayerBalance(UUID playerUUID, BigDecimal amount) {
+        try {
+            openConnection();
+            BigDecimal currentBalance = getPlayerBalance(playerUUID);
+            
+            // If player doesn't have a balance record or not enough balance
+            if (currentBalance == null || currentBalance.compareTo(amount) < 0) {
+                return false;
+            }
+            
+            BigDecimal newBalance = currentBalance.subtract(amount);
+            return setPlayerBalance(playerUUID, newBalance);
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to subtract from player balance", e);
+            return false;
+        }
+    }
+
+    /**
+     * Check if player has enough balance
+     * @param playerUUID The UUID of the player
+     * @param amount The amount to check
+     * @return true if player has enough balance, false otherwise
+     */
+    public boolean hasEnoughBalance(UUID playerUUID, BigDecimal amount) {
+        BigDecimal currentBalance = getPlayerBalance(playerUUID);
+        return currentBalance != null && currentBalance.compareTo(amount) >= 0;
+    }
+    
+    /**
+     * Get top player balances
+     * @param limit Maximum number of entries to return
+     * @return List of BalanceEntry objects
+     */
+    public List<BalanceEntry> getTopBalances(int limit) {
+        List<BalanceEntry> topBalances = new ArrayList<>();
+        try {
+            openConnection();
+            String sql = "SELECT b.uuid, p.name, b.balance FROM player_balances b "
+                    + "LEFT JOIN player_data p ON b.uuid = p.uuid "
+                    + "ORDER BY b.balance DESC LIMIT ?";
+            
+            try (PreparedStatement statement = prepareStatement(sql, limit)) {
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    while (resultSet.next()) {
+                        UUID uuid = UUID.fromString(resultSet.getString("uuid"));
+                        String name = resultSet.getString("name");
+                        BigDecimal balance = resultSet.getBigDecimal("balance");
+                        
+                        // If name is null (player not in player_data table), use UUID as name
+                        if (name == null) {
+                            name = uuid.toString().substring(0, 8);
+                        }
+                        
+                        topBalances.add(new BalanceEntry(uuid, name, balance));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to get top balances", e);
+        }
+        return topBalances;
     }
 
     public void closeConnection() {
@@ -752,125 +887,6 @@ public class Database {
         }
         return defaultBalance;
     }
-
-    // Set player balance
-    public boolean setPlayerBalance(UUID playerUUID, BigDecimal amount) {
-        try {
-            openConnection();
-
-            String sql = "MERGE INTO player_balances (uuid, balance, last_updated) " +
-                    "KEY (uuid) VALUES (?, ?, CURRENT_TIMESTAMP)";
-
-            try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, playerUUID.toString());
-                statement.setBigDecimal(2, amount);
-                int rowsAffected = statement.executeUpdate();
-                return rowsAffected > 0;
-            }
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to set balance for player UUID: " + playerUUID, e);
-            return false;
-        }
-    }
-
-
-    // Add to player balance (deposit)
-    public boolean addToPlayerBalance(UUID playerUUID, BigDecimal amount) {
-        try {
-            openConnection();
-
-            // First, check if player exists in the database
-            String checkSql = "SELECT balance FROM player_balances WHERE uuid = ?";
-            try (PreparedStatement checkStatement = connection.prepareStatement(checkSql)) {
-                checkStatement.setString(1, playerUUID.toString());
-                try (ResultSet resultSet = checkStatement.executeQuery()) {
-                    if (resultSet.next()) {
-                        // Player exists, update balance
-                        BigDecimal currentBalance = resultSet.getBigDecimal("balance");
-                        BigDecimal newBalance = currentBalance.add(amount);
-
-                        String updateSql = "UPDATE player_balances SET balance = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?";
-                        try (PreparedStatement updateStatement = connection.prepareStatement(updateSql)) {
-                            updateStatement.setBigDecimal(1, newBalance);
-                            updateStatement.setString(2, playerUUID.toString());
-                            return updateStatement.executeUpdate() > 0;
-                        }
-                    } else {
-                        // Player doesn't exist, create new record
-                        String insertSql = "INSERT INTO player_balances (uuid, balance) VALUES (?, ?)";
-                        try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
-                            insertStatement.setString(1, playerUUID.toString());
-                            insertStatement.setBigDecimal(2, amount);
-                            return insertStatement.executeUpdate() > 0;
-                        }
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to add to balance for player UUID: " + playerUUID, e);
-        }
-        return false;
-    }
-
-    // Subtract from player balance (withdraw)
-    public boolean subtractFromPlayerBalance(UUID playerUUID, BigDecimal amount) {
-        try {
-            openConnection();
-
-            // First, check if player exists and has enough balance
-            String checkSql = "SELECT balance FROM player_balances WHERE uuid = ?";
-            try (PreparedStatement checkStatement = connection.prepareStatement(checkSql)) {
-                checkStatement.setString(1, playerUUID.toString());
-                try (ResultSet resultSet = checkStatement.executeQuery()) {
-                    if (resultSet.next()) {
-                        BigDecimal currentBalance = resultSet.getBigDecimal("balance");
-
-                        // Check if player has enough balance
-                        if (currentBalance.compareTo(amount) < 0) {
-                            return false; // Not enough funds
-                        }
-
-                        BigDecimal newBalance = currentBalance.subtract(amount);
-
-                        String updateSql = "UPDATE player_balances SET balance = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?";
-                        try (PreparedStatement updateStatement = connection.prepareStatement(updateSql)) {
-                            updateStatement.setBigDecimal(1, newBalance);
-                            updateStatement.setString(2, playerUUID.toString());
-                            return updateStatement.executeUpdate() > 0;
-                        }
-                    } else {
-                        return false; // Player doesn't exist
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to subtract from balance for player UUID: " + playerUUID, e);
-        }
-        return false;
-    }
-
-    // Check if player has enough balance
-    public boolean hasEnoughBalance(UUID playerUUID, BigDecimal amount) {
-        try {
-            openConnection();
-
-            String sql = "SELECT balance FROM player_balances WHERE uuid = ?";
-            try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, playerUUID.toString());
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        BigDecimal balance = resultSet.getBigDecimal("balance");
-                        return balance.compareTo(amount) >= 0;
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to check balance for player UUID: " + playerUUID, e);
-        }
-        return false;
-    }
-
-
 
     /**
      * Executes an SQL query and returns the first column of the first row as a String

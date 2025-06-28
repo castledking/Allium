@@ -1,5 +1,7 @@
 package net.survivalfun.core.commands.utils;
 
+// No special imports needed for distance checking
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -26,6 +28,8 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.EventPriority;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -51,12 +55,16 @@ public class TP implements CommandExecutor, TabCompleter {
     private final List<String> teleportToggleAliases;
     private final List<String> teleportTopBottomAliases;
     private final List<String> teleportPetAliases;
+    private final List<String> teleportEntityAliases;
+    private final List<String> teleportOfflineAliases;
 
     // Maps for teleport requests
     private final Map<UUID, UUID> teleportRequests = new ConcurrentHashMap<>();
     private final Map<UUID, Long> teleportRequestTimestamps = new ConcurrentHashMap<>();
     private final Map<UUID, List<org.bukkit.entity.Entity>> selectedPets = new ConcurrentHashMap<>();
     private final Map<UUID, PetTeleportListener> activePetTeleportListeners = new ConcurrentHashMap<>();
+    private final Map<UUID, EntityTeleportListener> activeEntityTeleportListeners = new ConcurrentHashMap<>();
+    private final Map<UUID, Map<UUID, org.bukkit.entity.Entity>> selectedEntities = new ConcurrentHashMap<>();
     private final Set<UUID> teleportToggled = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<UUID, Location> lastLocation = new ConcurrentHashMap<>();
     private final Map<UUID, Long> teleportCooldowns = new ConcurrentHashMap<>();
@@ -67,8 +75,20 @@ public class TP implements CommandExecutor, TabCompleter {
      * @return true if the player has selected pets, false otherwise
      */
     public boolean hasPets(Player player) {
+        if (player == null) return false;
         List<org.bukkit.entity.Entity> pets = selectedPets.get(player.getUniqueId());
         return pets != null && !pets.isEmpty();
+    }
+    
+    /**
+     * Checks if a player has any selected entities
+     * @param player The player to check
+     * @return true if the player has selected entities, false otherwise
+     */
+    public boolean hasSelectedEntities(Player player) {
+        if (player == null) return false;
+        Map<UUID, org.bukkit.entity.Entity> entities = selectedEntities.get(player.getUniqueId());
+        return entities != null && !entities.isEmpty();
     }
 
     // Teleport request expiration time in milliseconds (default: 2 minutes)
@@ -101,7 +121,10 @@ public class TP implements CommandExecutor, TabCompleter {
         this.teleportPositionAliases = Collections.singletonList("tppos");
         this.teleportToggleAliases = Arrays.asList("tptoggle");
         this.teleportTopBottomAliases = Arrays.asList("top", "bottom");
-        this.teleportPetAliases = Arrays.asList("tppet");
+        this.teleportPetAliases = Collections.singletonList("tppet");
+        this.teleportEntityAliases = Arrays.asList("tpent", "tpentity", "tpmob", "teleportmob", "tpm", "tpe");
+        this.teleportOfflineAliases = Arrays.asList("otp", "offlinetp", "tpoffline");
+
         
         // Register player quit listener to handle tppet cleanup when players log out
         plugin.getServer().getPluginManager().registerEvents(new PlayerQuitListener(), plugin);
@@ -159,6 +182,14 @@ public class TP implements CommandExecutor, TabCompleter {
 
         if (teleportPetAliases.contains(usedCommand)) {
             return handleTeleportPet(sender, args);
+        }
+
+        if (teleportEntityAliases.contains(usedCommand)) {
+            return handleTeleportEntity(sender, args, usedCommand);
+        }
+
+        if (teleportOfflineAliases.contains(usedCommand)) {
+            return handleTeleportOffline(sender, args);
         }
 
         // Handle top/bottom commands
@@ -289,6 +320,251 @@ public class TP implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    /**
+     * Handles the admin entity teleport command for selecting and teleporting any entity
+     *
+     * @param sender The sender of the command
+     * @param args Command arguments
+     * @param usedCommand The command alias that was used
+     * @return true if the command was processed successfully
+     */
+    private boolean handleTeleportEntity(CommandSender sender, String[] args, String usedCommand) {
+        // Get the target player
+        Player targetPlayer;
+        UUID targetUUID;
+
+        if (args.length > 0) {
+            // Check permission to affect other players
+            if (!sender.hasPermission("core.tpmob.others")) {
+                Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "/" + usedCommand + " on others.");
+                return true;
+            }
+
+            targetPlayer = plugin.getServer().getPlayer(args[0]);
+            if (targetPlayer == null) {
+                Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
+                return true;
+            }
+            targetUUID = targetPlayer.getUniqueId();
+        } else {
+            // Ensure sender is a player
+            if (!(sender instanceof Player player)) {
+                Text.sendErrorMessage(sender, "not-a-player", lang);
+                return true;
+            }
+            targetPlayer = player;
+            targetUUID = player.getUniqueId();
+        }
+
+        // Check admin permission
+        if (!targetPlayer.hasPermission("core.admin")) {
+            Text.sendErrorMessage(targetPlayer, "no-permission", lang, "{cmd}", usedCommand);
+            return true;
+        }
+
+        // Get the first color code using the Lang method
+        String firstColorOfToggle = lang.getFirstColorCode("tp.tpe-toggle");
+
+        // Check if entity teleport mode is already active
+        EntityTeleportListener existingListener = activeEntityTeleportListeners.get(targetUUID);
+        Map<UUID, org.bukkit.entity.Entity> entityMap = selectedEntities.get(targetUUID);
+        if (existingListener != null) {
+            // Disable existing entity teleport mode
+            existingListener.unregisterListener();
+            activeEntityTeleportListeners.remove(targetUUID);
+
+            // Clear selected entities and remove glows
+            if (entityMap != null) {
+                for (org.bukkit.entity.Entity entity : entityMap.values()) {
+                    removePetGlow(entity);
+                }
+                entityMap.clear();
+                selectedEntities.remove(targetUUID);
+            }
+
+            // Get the disabled style from lang.yml
+            String disabledStyle = lang.get("styles.state.false");
+            
+            // Send toggle message with disabled state
+            String stateMessage = lang.get("tp.tpe-toggle")
+                    .replace("{state}", disabledStyle + "disabled" + firstColorOfToggle)
+                    .replace("{info}", "");
+            
+            // Send to both sender and target if different players
+            if (sender != targetPlayer) {
+                // For others, include "for PlayerName"
+                sender.sendMessage(stateMessage.replace("{name}", "for " + targetPlayer.getName()));
+                // For target, don't include name
+                targetPlayer.sendMessage(stateMessage.replace("{name}", ""));
+            } else {
+                // For self message, don't include name
+                targetPlayer.sendMessage(stateMessage.replace("{name}", ""));
+            }
+            return true;
+        }
+
+        // Determine max number of entities based on permission
+        int maxEntities = 1; // default
+        for (int i = 1; i <= 20; i++) { // Check up to 20 entities
+            if (targetPlayer.hasPermission("core.tpmob." + i)) {
+                maxEntities = i;
+            }
+        }
+
+        // Create and register new entity teleport listener
+        EntityTeleportListener listener = new EntityTeleportListener(targetPlayer, maxEntities);
+        plugin.getServer().getPluginManager().registerEvents(listener, plugin);
+        activeEntityTeleportListeners.put(targetUUID, listener);
+
+        // Get the enabled style from lang.yml
+        String enabledStyle = lang.get("styles.state.true");
+        
+        // Send toggle message with enabled state
+        String stateMessage = lang.get("tp.tpe-toggle")
+                .replace("{state}", enabledStyle + "enabled" + firstColorOfToggle)
+                .replace("{info}", "§aRight-click any entity to select it. (Admin mode)");
+        
+        // Send to both sender and target if different players
+        if (sender != targetPlayer) {
+            // For others, include "for PlayerName"
+            sender.sendMessage(stateMessage.replace("{name}", "for " + targetPlayer.getName()));
+            // For target, don't include name
+            targetPlayer.sendMessage(stateMessage.replace("{name}", ""));
+        } else {
+            // For self message, don't include name
+            targetPlayer.sendMessage(stateMessage.replace("{name}", ""));
+        }
+        return true;
+    }
+            
+    /**
+     * Teleport selected entities to the player's location
+     * @param playerUUID The UUID of the player
+     * @param player The player
+     * @param entities The entities to teleport
+     */
+    /**
+     * Temporarily disables distance checking for entity teleportation
+     * This prevents the "You have moved too far" message when teleporting entities
+     * while flying or moving quickly as an admin
+     */
+    private void disableDistanceChecking() {
+        // For admins using /tpe, we're just going to teleport entities instantly
+        // This effectively bypasses any distance checking that might occur
+        plugin.getLogger().info("Distance checking disabled for entity teleportation");
+        
+        // We don't need a listener since we're teleporting entities instantly
+        // This avoids the "moved too far" message that can happen with delayed teleports
+    }
+    
+    private void teleportEntities(UUID playerUUID, Player player, List<Entity> entities) {
+        if (player == null || !player.isOnline() || entities == null || entities.isEmpty()) {
+            plugin.getLogger().warning("Cannot teleport entities: invalid parameters");
+            return;
+        }
+        
+        // Disable distance checking to prevent "moved too far" messages
+        disableDistanceChecking();
+        
+        // Calculate offset positions in a circle around the player
+        double radius = 2.0;
+        int numEntities = entities.size();
+        
+        plugin.getLogger().info("Teleporting " + numEntities + " entities INSTANTLY for player " + player.getName() + " (distance checking disabled)");
+        
+        // Create a copy of the entities list to avoid concurrent modification
+        final List<Entity> entityList = new ArrayList<>(entities);
+            
+            // Get current player location for teleporting
+            Location targetLocation = player.getLocation();
+            int successCount = 0;
+            
+            // Teleport each entity to a position around the player
+            for (int i = 0; i < entityList.size(); i++) {
+                Entity entity = entityList.get(i);
+                
+                // Enhanced debug logging
+                if (entity == null) {
+                    plugin.getLogger().warning("Skipping null entity during teleport");
+                    continue;
+                } 
+                
+                if (!entity.isValid()) {
+                    plugin.getLogger().warning("Skipping invalid entity during teleport: " + 
+                                             entity.getType().name() + " (UUID: " + entity.getUniqueId() + ")");
+                    continue;
+                }
+                
+                // Log entity state before teleport
+                plugin.getLogger().info("Entity pre-teleport state: Type=" + entity.getType().name() + 
+                                      ", UUID=" + entity.getUniqueId() + 
+                                      ", World=" + entity.getWorld().getName() + 
+                                      ", Location=" + entity.getLocation() + 
+                                      ", isDead=" + entity.isDead() + 
+                                      ", isGlowing=" + entity.isGlowing());
+                
+                // Check if entity is in the same world as the player
+                if (!entity.getWorld().equals(targetLocation.getWorld())) {
+                    plugin.getLogger().warning("Entity is in a different world, cannot teleport: " + 
+                                              entity.getType().name() + " (" + entity.getWorld().getName() + 
+                                              " vs " + targetLocation.getWorld().getName() + ")");
+                    continue;
+                }
+                
+                // Calculate position in a circle around the player
+                double angle = 2 * Math.PI * i / numEntities;
+                double x = targetLocation.getX() + radius * Math.cos(angle);
+                double z = targetLocation.getZ() + radius * Math.sin(angle);
+                
+                // Create the teleport location
+                Location entityLocation = new Location(
+                    targetLocation.getWorld(),
+                    x,
+                    targetLocation.getY(),
+                    z,
+                    targetLocation.getYaw(),
+                    targetLocation.getPitch()
+                );
+                
+                // Teleport the entity
+                boolean success = entity.teleport(entityLocation);
+                
+                if (success) {
+                    // Remove glowing effect after successful teleport
+                    entity.setGlowing(false);
+                    successCount++;
+                    plugin.getLogger().info("Successfully teleported entity " + entity.getType().name() + 
+                                           " to player " + player.getName());
+                } else {
+                    plugin.getLogger().warning("Failed to teleport entity " + entity.getType().name() + 
+                                               " to player " + player.getName());
+                }
+            }
+            
+            // Notify the player
+            if (successCount > 0) {
+                // Get the base message
+                String message = lang.get("tp.tppet-teleported")
+                        .replace("{count}", String.valueOf(successCount));
+                
+                // Fix the pluralization manually
+                if (message.contains("{s|y|ies}")) {
+                    if (successCount == 1) {
+                        message = message.replace("{s|y|ies}", "y"); // singular: "entity"
+                    } else {
+                        message = message.replace("{s|y|ies}", "ies"); // plural: "entities"
+                    }
+                } else if (message.contains("{s}")) {
+                    // Handle old format for backward compatibility
+                    message = message.replace("{s}", successCount == 1 ? "" : "s");
+                }
+                
+                player.sendMessage(message);
+            } else {
+                player.sendMessage(lang.get("tp.tppet-none-teleported"));
+            }
+    }
+
     private void teleportPets(UUID targetUUID, Player finalTargetPlayer, List<Entity> playerPets) {
         if (playerPets != null && !playerPets.isEmpty()) {
             // Get teleport delay from config (default to 3 seconds if not set)
@@ -356,7 +632,17 @@ public class TP implements CommandExecutor, TabCompleter {
         }
     }
 
-    private class PetTeleportListener implements Listener {
+    /**
+     * Interface for teleport listeners with common functionality
+     */
+    private interface TeleportListener extends Listener {
+        /**
+         * Unregister this listener from the event system
+         */
+        void unregisterListener();
+    }
+
+    private class PetTeleportListener implements TeleportListener {
         private final UUID playerUUID;
         private final int maxPets;
         private boolean isRegistered = true;
@@ -496,7 +782,7 @@ public class TP implements CommandExecutor, TabCompleter {
 
                 // Select the pet
                 playerSelectedPets.add(clickedEntity);                
-                addPetGlow(clickedEntity);
+                clickedEntity.setGlowing(true);
                 
                 // Get the message and first color code
                 String tpPetActionMessage = lang.get("tp.tppet-action");
@@ -528,21 +814,6 @@ public class TP implements CommandExecutor, TabCompleter {
             return entity instanceof Tameable && ((Tameable) entity).getOwner() != null
                     && ((Tameable) entity).getOwner().getUniqueId().equals(playerUUID);
         }
-
-        /**
-         * Add a glowing effect to a selected pet
-         *
-         * @param entity The pet to add glow to
-         */
-        private void addPetGlow(org.bukkit.entity.Entity entity) {
-            entity.setGlowing(true);
-        }
-
-        /**
-         * Remove the glowing effect from a deselected pet
-         *
-         * @param entity The pet to remove glow from
-         */
         private void removePetGlowEffect(org.bukkit.entity.Entity entity) {
             if (entity != null && entity.isValid()) {
                 entity.setGlowing(false);
@@ -560,6 +831,331 @@ public class TP implements CommandExecutor, TabCompleter {
                 return entity.getType().name().toLowerCase();
             }
             return "pet";
+        }
+    }
+
+    /**
+     * EntityTeleportListener class for admin entity teleportation
+     * Allows admins to select any entity (except players) for teleportation
+     */
+    private class EntityTeleportListener implements TeleportListener {
+        private final UUID playerUUID;
+        private final int maxEntities;
+        private boolean isRegistered = true;
+        private final Player player;
+        private final Location startLocation;
+        private int checkTaskId = -1;
+        private static final int CHECK_INTERVAL = 20; // Check every second (20 ticks)
+        private static final double MAX_DISTANCE = 30.0; // Maximum distance in blocks
+        private final Set<String> processedEvents = new HashSet<>();
+
+        public EntityTeleportListener(Player player, int maxEntities) {
+            this.player = player;
+            this.playerUUID = player.getUniqueId();
+            this.maxEntities = maxEntities;
+            this.startLocation = player.getLocation().clone();
+            
+            // Disable distance checking for admins by default
+            if (player.hasPermission("core.tpmob")) {
+                this.distanceCheckingEnabled = false;
+                plugin.getLogger().info("Distance checking disabled for admin: " + player.getName());
+            }
+            
+            // Register events
+            plugin.getServer().getPluginManager().registerEvents(this, plugin);
+            
+            // Start the distance check task (will be skipped for admins due to distanceCheckingEnabled = false)
+            this.checkTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+                @Override
+                public void run() {
+                    checkDistance();
+                }
+            }, CHECK_INTERVAL, CHECK_INTERVAL);
+        }
+        
+        /**
+         * Checks if the player has moved too far from the starting location
+         * and cleans up if necessary
+         */
+        private boolean distanceCheckingEnabled = false; // Disabled by default for admins
+        
+        /**
+         * Disables the distance checking feature
+         * This prevents the "moved too far" message when teleporting
+         */
+        public void disableDistanceChecking() {
+            this.distanceCheckingEnabled = false;
+            plugin.getLogger().info("Distance checking disabled for player " + player.getName());
+        }
+        
+        private void checkDistance() {
+            // Skip distance checking if disabled (which is the default for admins)
+            if (!distanceCheckingEnabled) {
+                return;
+            }
+            
+            if (player == null || !player.isOnline()) {
+                cleanup(false);
+                return;
+            }
+            
+            // Admin override - never disable for admins
+            if (player.hasPermission("core.tpmob")) {
+                return;
+            }
+            
+            // Check distance from start location - only applies to non-admins now
+            if (player.getLocation().distance(startLocation) > MAX_DISTANCE) {
+                // Player moved too far, cleanup
+                cleanup(true);
+            }
+        }
+        
+        /**
+         * Cleans up resources and unregisters this listener
+         * @param showDistanceMessage Whether to show the distance warning message
+         */
+        private void cleanup(boolean showDistanceMessage) {
+            // Skip cleanup for admins if triggered by distance checking
+            if (showDistanceMessage && player != null && player.isOnline() && player.hasPermission("core.tpmob")) {
+                plugin.getLogger().info("Skipping distance-based cleanup for admin: " + player.getName());
+                return;
+            }
+            
+            // Only cleanup if not already done
+            if (isRegistered) {
+                // Cancel the check task
+                if (checkTaskId != -1) {
+                    Bukkit.getScheduler().cancelTask(checkTaskId);
+                    checkTaskId = -1;
+                }
+                
+                // Unregister events
+                HandlerList.unregisterAll(this);
+                isRegistered = false;
+                
+                // Clear any active entity glows
+                Map<UUID, org.bukkit.entity.Entity> entityMap = selectedEntities.get(playerUUID);
+                if (entityMap != null) {
+                    for (org.bukkit.entity.Entity entity : entityMap.values()) {
+                        if (entity != null && entity.isValid()) {
+                            entity.setGlowing(false);
+                        }
+                    }
+                    entityMap.clear();
+                    selectedEntities.remove(playerUUID);
+                }
+                
+                // Remove from active listeners
+                activeEntityTeleportListeners.remove(playerUUID);
+                
+                // Show distance message if needed
+                if (showDistanceMessage && player != null && player.isOnline()) {
+                    // Get the first color code and disabled style
+                    String firstColorOfToggle = lang.getFirstColorCode("tp.tpe-toggle");
+                    String disabledStyle = lang.get("styles.state.false");
+                    
+                    // Notify the player
+                    player.sendMessage(lang.get("tp.tpe-toggle")
+                    .replace("{state}", disabledStyle + "disabled" + firstColorOfToggle)
+                    .replace("{name}", "")
+                    .replace("{info}", "§cYou have moved too far from your starting location.")
+                    );
+                }
+            }
+        }
+        
+        /**
+         * Unregister this listener from the event system
+         */
+        @Override
+        public void unregisterListener() {
+            cleanup(false);
+        }
+
+        // Store last processed entity and timestamp to handle double events
+        private UUID lastProcessedEntityUUID = null;
+        private long lastProcessedTime = 0;
+        
+        @EventHandler(priority = EventPriority.LOWEST)
+        public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+            // Only handle events for the specific player
+            if (!event.getPlayer().getUniqueId().equals(playerUUID)) return;
+            
+            // Ignore events if listener is no longer registered
+            if (!isRegistered) return;
+            
+            // Get the clicked entity
+            org.bukkit.entity.Entity clickedEntity = event.getRightClicked();
+            if (clickedEntity == null) return;
+            
+            // Check if the entity is valid for teleportation (any entity except players)
+            if (!isTeleportableEntity(clickedEntity)) return;
+            
+            // Get the entity's UUID for tracking
+            UUID entityUUID = clickedEntity.getUniqueId();
+            long currentTime = System.currentTimeMillis();
+            
+            // CRITICAL FIX: Check if this is a duplicate event for the same entity
+            // Minecraft sometimes fires the same event twice for a single click
+            if (entityUUID.equals(lastProcessedEntityUUID) && (currentTime - lastProcessedTime < 1000)) {
+                plugin.getLogger().info("Ignoring duplicate event for entity: " + entityUUID);
+                event.setCancelled(true);
+                return;
+            }
+            
+            // Update last processed entity and time
+            lastProcessedEntityUUID = entityUUID;
+            lastProcessedTime = currentTime;
+            
+            // Add to processed events for additional safety
+            String eventId = currentTime + "_" + entityUUID;
+            processedEvents.add(eventId);
+            
+            // Clean up old processed events
+            Iterator<String> iterator = processedEvents.iterator();
+            while (iterator.hasNext()) {
+                String id = iterator.next();
+                try {
+                    long timestamp = Long.parseLong(id.substring(0, id.indexOf("_")));
+                    if (currentTime - timestamp > 2000) { // Older than 2 seconds
+                        iterator.remove();
+                    }
+                } catch (Exception e) {
+                    iterator.remove();
+                }
+            }
+            
+            // Cancel the event to prevent other plugins from processing it
+            event.setCancelled(true);
+            
+            // Process the entity selection/deselection in the next tick to avoid conflicts
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                processEntitySelection(event.getPlayer(), clickedEntity, entityUUID);
+            });
+        }
+        
+        /**
+         * Process entity selection/deselection
+         * This is run in the next tick to avoid conflicts
+         */
+        private void processEntitySelection(Player player, org.bukkit.entity.Entity clickedEntity, UUID entityUUID) {
+            // Add detailed debug logging
+            plugin.getLogger().info("Processing entity selection for player: " + player.getName() + ", entity: " + 
+                                   clickedEntity.getType().name() + ", UUID: " + entityUUID);
+            
+            // Get or create the map of selected entities for this player
+            Map<UUID, org.bukkit.entity.Entity> entityMap = selectedEntities.computeIfAbsent(
+                playerUUID, k -> new HashMap<>()
+            );
+            
+            // Debug log the current selection state
+            plugin.getLogger().info("Current selection state - Player has " + entityMap.size() + " entities selected");
+            for (Map.Entry<UUID, org.bukkit.entity.Entity> entry : entityMap.entrySet()) {
+                plugin.getLogger().info("  - Selected entity: " + entry.getValue().getType().name() + ", UUID: " + entry.getKey());
+            }
+            
+            // Check if the entity is already selected by UUID
+            boolean isAlreadySelected = entityMap.containsKey(entityUUID);
+            plugin.getLogger().info("Entity is already selected: " + isAlreadySelected);
+            
+            if (isAlreadySelected) {
+                // Deselect the entity
+                entityMap.remove(entityUUID);
+                
+                // Remove glow effect and restore default persistence
+                if (clickedEntity != null && clickedEntity.isValid()) {
+                    clickedEntity.setGlowing(false);
+                    
+                    // Restore default persistence behavior for mobs
+                    if (clickedEntity instanceof org.bukkit.entity.Mob) {
+                        org.bukkit.entity.Mob mob = (org.bukkit.entity.Mob) clickedEntity;
+                        mob.setRemoveWhenFarAway(true); // Reset to default behavior
+                        plugin.getLogger().info("Restored default despawn behavior for mob: " + clickedEntity.getType().name());
+                    }
+                }
+                
+                // Get the message and first color code
+                String actionMessage = lang.get("tp.tppet-action");
+                String firstColorOfAction = lang.getFirstColorCode("tp.tppet-action");
+                String disabledStyle = lang.get("styles.state.false");
+                
+                // Safely get entity type name
+                String entityTypeName = clickedEntity != null ? 
+                    clickedEntity.getType().name().substring(0, 1).toUpperCase() + 
+                    clickedEntity.getType().name().substring(1).toLowerCase() : "Unknown";
+                
+                player.sendMessage(actionMessage
+                .replace("{entity}", entityTypeName)
+                .replace("{pet}", getEntityName(clickedEntity))
+                .replace("{state}", disabledStyle + "deselected" + firstColorOfAction));
+            } else {
+                // Check max entities limit
+                if (entityMap.size() >= maxEntities) {
+                    Text.sendErrorMessage(player, "tp.tppet-maxpets", lang, "{max}", String.valueOf(maxEntities));
+                    return;
+                }
+                
+                // Select the entity by UUID
+                entityMap.put(entityUUID, clickedEntity);
+                
+                // Add glow effect to the entity and make it persistent
+                if (clickedEntity != null && clickedEntity.isValid()) {
+                    clickedEntity.setGlowing(true);
+                    
+                    // Make mobs persistent so they don't despawn when chunks unload
+                    if (clickedEntity instanceof org.bukkit.entity.Mob) {
+                        org.bukkit.entity.Mob mob = (org.bukkit.entity.Mob) clickedEntity;
+                        mob.setRemoveWhenFarAway(false); // Prevent despawning
+                        plugin.getLogger().info("Made mob persistent to prevent despawning: " + clickedEntity.getType().name());
+                    }
+                }
+                
+                // Get the message and first color code
+                String actionMessage = lang.get("tp.tppet-action");
+                String firstColorOfAction = lang.getFirstColorCode("tp.tppet-action");
+                String enabledStyle = lang.get("styles.state.true");
+                
+                // Safely get entity type name
+                String entityTypeName = clickedEntity != null ? 
+                    clickedEntity.getType().name().substring(0, 1).toUpperCase() + 
+                    clickedEntity.getType().name().substring(1).toLowerCase() : "Unknown";
+                
+                player.sendMessage(actionMessage
+                .replace("{entity}", entityTypeName)
+                .replace("{pet}", getEntityName(clickedEntity))
+                .replace("{state}", enabledStyle + "selected" + firstColorOfAction));
+            }
+        }
+        
+        /**
+         * Check if an entity is valid for teleportation (any entity except players)
+         *
+         * @param entity The entity to check
+         * @return true if the entity can be teleported
+         */
+        private boolean isTeleportableEntity(org.bukkit.entity.Entity entity) {
+            // Allow any entity except players
+            return entity != null && !(entity instanceof Player);
+        }
+
+        /**
+         * Get a human-readable name for an entity
+         *
+         * @param entity The entity to get the name for
+         * @return The entity's name or a default name based on entity type
+         */
+        private String getEntityName(org.bukkit.entity.Entity entity) {
+            if (entity == null) return "Unknown";
+            
+            // Use Component API instead of deprecated getCustomName()
+            if (entity.customName() != null) {
+                return entity.customName().toString();
+            }
+            
+            // Return formatted entity type name
+            return entity.getType().name().substring(0, 1).toUpperCase() + 
+                   entity.getType().name().substring(1).toLowerCase().replace("_", " ");
         }
     }
 
@@ -602,6 +1198,83 @@ public class TP implements CommandExecutor, TabCompleter {
                 .replace("{state}", disabledStyle + "disabled" + firstColorOfPetToggle)
                 .replace("{name}", "")
                 .replace("{info}", ""));
+        return true;
+    }
+
+    /**
+     * Teleports selected entities to a target location
+     *
+     * @param player The player whose entities to teleport
+     * @param targetLocation The location to teleport entities to
+     * @return true if entities were teleported successfully
+     */
+    public boolean teleportSelectedEntities(Player player, Location targetLocation) {
+        if (player == null || !player.isOnline() || targetLocation == null) {
+            return false;
+        }
+        
+        UUID playerUUID = player.getUniqueId();
+        Map<UUID, org.bukkit.entity.Entity> playerEntities = selectedEntities.get(playerUUID);
+        
+        if (playerEntities == null || playerEntities.isEmpty()) {
+            return false;
+        }
+        
+        // Convert to list for teleportEntities method
+        List<Entity> entitiesToTeleport = new ArrayList<>(playerEntities.values());
+        
+        // Log the entities being teleported
+        plugin.getLogger().info("Attempting to teleport " + entitiesToTeleport.size() + " entities for player " + player.getName());
+        for (Entity entity : entitiesToTeleport) {
+            if (entity != null) {
+                plugin.getLogger().info("Entity to teleport: " + entity.getType().name() + 
+                                      " (UUID: " + entity.getUniqueId() + ", Valid: " + entity.isValid() + ")");
+            }
+        }
+        
+        // Immediately disable the entity teleport listener to prevent "moved too far" messages
+        // when teleporting
+        EntityTeleportListener listener = activeEntityTeleportListeners.get(playerUUID);
+        if (listener != null) {
+            // Just disable the distance checking but keep the listener registered
+            // so we can still access the entities
+            listener.disableDistanceChecking();
+        }
+        
+        // Use the teleportEntities method to handle the actual teleportation
+        // The teleportEntities method will handle removing glowing effects
+        teleportEntities(playerUUID, player, entitiesToTeleport);
+        
+        // We're using instant auto-disable now, so no delay is needed
+        
+        // Execute cleanup immediately in the next server tick for instant feedback
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            // Clear selected entities
+            if (playerEntities != null) {
+                playerEntities.clear();
+                selectedEntities.remove(playerUUID);
+            }
+            
+            // Now fully unregister the listener
+            if (listener != null) {
+                listener.unregisterListener();
+                activeEntityTeleportListeners.remove(playerUUID);
+            }
+            
+            // Get the first color code and disabled style
+            String firstColorOfToggle = lang.getFirstColorCode("tp.tpe-toggle");
+            String disabledStyle = lang.get("styles.state.false");
+            
+            if (player.isOnline()) {
+                player.sendMessage(lang.get("tp.tpe-toggle")
+                        .replace("{state}", disabledStyle + "disabled" + firstColorOfToggle)
+                        .replace("{name}", "")
+                        .replace("{info}", "Auto-disabled after teleport"));
+            }
+            
+            plugin.getLogger().info("Entity teleport mode auto-disabled instantly for player: " + player.getName());
+        }); // Run in the next tick for instant feedback
+        
         return true;
     }
 
@@ -868,6 +1541,11 @@ public class TP implements CommandExecutor, TabCompleter {
             // Teleport selected pets if any
             if (hasPets(player)) {
                 teleportSelectedPets(player, targetLocation);
+            }
+            
+            // Teleport selected entities if any (admin mode)
+            if (hasSelectedEntities(player)) {
+                teleportSelectedEntities(player, targetLocation);
             }
 
             return true;
@@ -2017,6 +2695,103 @@ public class TP implements CommandExecutor, TabCompleter {
     }
 
     /**
+     * Handles offline teleport commands (/otp, /offlinetp, /tpoffline)
+     * Allows players with core.tp.offline permission to teleport to offline players' last known locations
+     *
+     * @param sender The sender of the command
+     * @param args Command arguments: [player]
+     * @return true if the command was processed successfully
+     */
+    private boolean handleTeleportOffline(CommandSender sender, String[] args) {
+        // Check if sender is a player
+        if (!(sender instanceof Player player)) {
+            handleTeleport(sender, args, "tp");
+            return true;
+        }
+
+        // Check permission
+        if (!player.hasPermission("core.tp.offline")) {
+            if (!player.hasPermission("core.tp")) {
+                Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "tp");
+                return true;
+            }
+            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "tp offline");
+            return true;
+        }
+
+        // Check arguments
+        if (args.length < 1) {
+            player.sendMessage(lang.get("command-usage")
+                .replace("{cmd}", "otp")
+                .replace("{args}", "<player>"));
+            return true;
+        }
+
+        String targetPlayerName = args[0];
+
+        // Get the target player's UUID
+        UUID targetUUID = null;
+        try {
+            // Try to get UUID from online player first
+            Player onlinePlayer = plugin.getServer().getPlayer(targetPlayerName);
+            if (onlinePlayer != null) {
+                handleTeleport(player, args, "tp");
+                return true;
+            }
+
+            // Get UUID from offline player
+            OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(targetPlayerName);
+            if (offlinePlayer != null && offlinePlayer.hasPlayedBefore()) {
+                targetUUID = offlinePlayer.getUniqueId();
+            }
+        } catch (Exception e) {
+            Text.sendErrorMessage(player, "player-not-found", lang, "{name}", targetPlayerName);
+            return true;
+        }
+
+        if (targetUUID == null) {
+            Text.sendErrorMessage(player, "player-not-found", lang, "{name}", targetPlayerName);
+            return true;
+        }
+
+        // Get the player's last logout location from database
+        Location targetLocation = database.getPlayerLocation(targetUUID, Database.LocationType.LOGOUT);
+        
+        if (targetLocation == null) {
+            Text.sendErrorMessage(player, "player-not-found", lang, "{name}", targetPlayerName);
+            return true;
+        }
+
+        // Save current location before teleporting
+        saveLastLocation(player.getUniqueId(), player.getLocation());
+
+        // Teleport the player
+        try {
+            player.teleport(targetLocation);
+            player.sendMessage(lang.get("tp.success")
+                .replace("{name}", "to")
+                .replace("{target}", lang.get("tp.position")
+                .replace("{x}", String.valueOf((int) targetLocation.getX()))
+                .replace("{y}", String.valueOf((int) targetLocation.getY()))
+                .replace("{z}", String.valueOf((int) targetLocation.getZ()))));
+            
+            // Log the teleport for debugging if enabled
+            if (config.getBoolean("debug-mode")) {
+                plugin.getLogger().info("Player " + player.getName() + " teleported to offline location of " + targetPlayerName + 
+                    " at " + targetLocation.getWorld().getName() + " " + (int) targetLocation.getX() + ", " + 
+                    (int) targetLocation.getY() + ", " + (int) targetLocation.getZ());
+            }
+        } catch (Exception e) {
+            Text.sendErrorMessage(player, "player-not-found", lang, "{name}", targetPlayerName);
+            if (config.getBoolean("debug-mode")) {
+                plugin.getLogger().warning("Failed to teleport " + player.getName() + " to offline location of " + targetPlayerName + ": " + e.getMessage());
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Clear expired teleport requests
      */
     private void clearExpiredRequests() {
@@ -2137,19 +2912,60 @@ public class TP implements CommandExecutor, TabCompleter {
     }
     
     /**
+     * Handle player teleport events to teleport selected pets and entities
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerTeleport(PlayerTeleportEvent event) {
+        Player player = event.getPlayer();
+        UUID playerUUID = player.getUniqueId();
+        
+        // Track last location for /back command
+        lastLocation.put(playerUUID, event.getFrom());
+        
+        // Handle pet teleportation
+        List<Entity> playerPets = selectedPets.get(playerUUID);
+        if (playerPets != null && !playerPets.isEmpty()) {
+            // Schedule teleport after player has arrived
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                teleportPets(playerUUID, player, playerPets);
+            }, 5L); // 5 tick delay (1/4 second)
+        }
+        
+        // Handle entity teleportation (admin mode)
+        Map<UUID, Entity> playerEntities = selectedEntities.get(playerUUID);
+        if (playerEntities != null && !playerEntities.isEmpty() && player.hasPermission("core.tpmob")) {
+            // Schedule teleport after player has arrived
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                // Convert map values to list for teleportation
+                List<Entity> entitiesToTeleport = new ArrayList<>(playerEntities.values());
+                plugin.getLogger().info("Teleporting " + entitiesToTeleport.size() + " entities for player " + player.getName());
+                teleportEntities(playerUUID, player, entitiesToTeleport);
+            }, 5L); // 5 tick delay (1/4 second)
+        }
+    }
+    
+    /**
      * Inner class to handle player quit events for pet teleport cleanup
      */
     private class PlayerQuitListener implements Listener {
+        
         @EventHandler
         public void onPlayerQuit(PlayerQuitEvent event) {
             Player player = event.getPlayer();
             UUID playerUUID = player.getUniqueId();
             
             // Check if player has an active pet teleport listener
-            PetTeleportListener listener = activePetTeleportListeners.get(playerUUID);
-            if (listener != null) {
+            PetTeleportListener petListener = activePetTeleportListeners.get(playerUUID);
+            if (petListener != null) {
                 // Cleanup the listener without showing distance message
-                listener.cleanup(false);
+                petListener.cleanup(false);
+            }
+            
+            // Check if player has an active entity teleport listener
+            EntityTeleportListener entityListener = activeEntityTeleportListeners.get(playerUUID);
+            if (entityListener != null) {
+                // Cleanup the listener without showing distance message
+                entityListener.unregisterListener();
             }
             
             // Clear any selected pets for this player
@@ -2166,6 +2982,22 @@ public class TP implements CommandExecutor, TabCompleter {
                 }
                 // Remove player from selected pets map
                 selectedPets.remove(playerUUID);
+            }
+            
+            // Clear any selected entities for this player
+            if (selectedEntities.containsKey(playerUUID)) {
+                Map<UUID, Entity> entityMap = selectedEntities.get(playerUUID);
+                if (entityMap != null) {
+                    // Remove glow effect from all entities
+                    for (Entity entity : entityMap.values()) {
+                        if (entity != null && entity.isValid()) {
+                            entity.setGlowing(false);
+                        }
+                    }
+                    entityMap.clear();
+                }
+                // Remove player from selected entities map
+                selectedEntities.remove(playerUUID);
             }
         }
     }

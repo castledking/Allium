@@ -101,6 +101,28 @@ commands:
     permission: core.skull
     aliases: [head, playerhead]
   
+  # Economy commands
+  balance:
+    description: "Check your balance or another player's balance"
+    usage: "/balance [player]"
+    aliases: [bal]
+    permission: core.balance
+  
+  pay:
+    description: "Pay another player"
+    usage: "/pay <player> <amount>"
+    permission: core.pay
+    
+  baltop:
+    description: "View the richest players"
+    usage: "/baltop [page]"
+    permission: core.baltop
+    
+  money:
+    description: "Admin command to manage player balances"
+    usage: "/money <give|take|set|clear> <player> [amount]"
+    permission: core.admin
+  
   # Teleport Commands
   tp:
     description: "Teleport to a player or location"
@@ -126,9 +148,15 @@ commands:
     permission: core.tpa
   
   tppet:
-    description: "Teleport to your pets"
+    description: "Teleport your pets"
     usage: "/tppet"
-    permission: core.tp
+    permission: core.tppet
+  
+  tpmob:
+    description: "Teleport your mobs"
+    usage: "/tpmob"
+    aliases: [tpentity, tpent, teleportmob, tpm, tpe]
+    permission: core.tpmob
   
   tppos:
     description: "Teleport to specific coordinates"
@@ -150,6 +178,12 @@ commands:
     description: "Toggle teleport requests"
     usage: "/tptoggle [player]"
     permission: core.tptoggle
+  
+  otp:
+    description: "Teleport to a player's last known location"
+    usage: "/otp <player>"
+    aliases: [offlinetp, tpoffline]
+    permission: core.otp
   
   top:
     description: "Teleport to the highest block"
@@ -279,6 +313,12 @@ permissions:
     default: op
   core.god:
     default: op
+  core.pay:
+    default: true
+  core.balance:
+    default: true
+  core.baltop:
+    default: true
 
   core.more:
     default: op

@@ -92,6 +92,7 @@ invalid: "Invalid {arg}! Please check your syntax."
 no-permission: "You do not have permission to use /{cmd}"
 hold-item: "&cYou must be holding an item to {modify} it."
 inventory-full: "Inventory full, make some space before giving more items."
+insufficient-funds: "You don't have enough money. Your balance: &7{balance}"
 cooldown: "You must wait {time} before using {cmd} again."
 cannot-self: "You cannot {action} yourself."
 contact-admin: An unexpected error has occurred. Please contact an administrator.
@@ -248,6 +249,12 @@ tp:
     {info}
   tppet-action: "&a{entity} &e{pet} &ahas been {state}."
   tppet-maxpets: "You have reached the maximum number of pets ({max})."
+  tppet-teleported: "&aTeleported &6{count} &aentit{s|y|ies} to your location."
+  tppet-none-teleported: "&cNo entities were teleported. They may be invalid or in a different world."
+  tpe-toggle: |
+    &aEntity teleport mode is now {state} {name}
+    {info}
+  tpe-action: "&a{entity} &e{mob} &ahas been {state}."
 
 whois:
   header: "&6&l--- Whois: {player_name} ---"
@@ -267,6 +274,37 @@ whois:
   action-ban-history: "&7- &fBan History &7(LiteBans)"
   action-chat-sentry: "&7- &fChat Violations &7(ChatSentry)"
   footer: "&6&l---------------------------"
+
+#==========================================#
+#                ECONOMY                   #
+#==========================================#
+
+economy:
+  # Balance command messages
+  balance-self: "&aYour balance: &6{balance}"
+  balance-other: "&a{player}'s balance: &6{balance}"
+  
+  # Pay command messages
+  pay-invalid-amount: "&cInvalid amount: {amount}"
+  pay-negative-amount: "&cYou cannot pay a negative or zero amount."
+  pay-success-sender: "&aYou paid &6{amount} &ato &e{player}&a."
+  pay-success-receiver: "&aYou received &6{amount} &afrom &e{player}&a."
+  
+  # BalTop command messages
+  baltop-header: "&6===== &eTop Balances &6- &ePage {page}/{total} &6====="
+  baltop-entry: "&6#{rank} &a{player}: &e{balance}"
+  baltop-no-entries: "&7No players found."
+  baltop-invalid-page: "&cInvalid page number: {page}"
+  baltop-max-pages: "&cThere are only {pages} pages of results."
+  baltop-footer: "&7Use &e/{command} <page> &7to view other pages."
+  
+  # Money admin command messages
+  money-usage: "&cUsage: /{cmd} <give|take|set|clear> <player> [amount]"
+  money-give-success: "&aGave &6{amount} &ato &e{player}&a. New balance: &6{balance}"
+  money-take-success: "&aTook &6{amount} &afrom &e{player}&a. New balance: &6{balance}"
+  money-set-success: "&aSet &e{player}'s &abalance to &6{amount}&a."
+  money-reset-success: "&aReset &e{player}'s &abalance to default: &6{balance}"
+  money-action-failed: "&cFailed to {action} money for player {player}."
 
 #==========================================#
 #                 ITEMDB                   #

@@ -1,5 +1,6 @@
 package net.survivalfun.core.managers.core;
 
+import net.survivalfun.core.PluginStart;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import java.util.ArrayList;
@@ -8,8 +9,10 @@ import java.util.List;
 public class Item {
 
     private static final List<Material> giveableItems = new ArrayList<>();
+    private static PluginStart plugin;
 
-    public static void initialize() {
+    public static void initialize(PluginStart pluginInstance) {
+        plugin = pluginInstance;
         // Clear the list in case this is a reload
         giveableItems.clear();
         
@@ -32,11 +35,19 @@ public class Item {
                 giveableItems.add(material);
             } catch (IllegalArgumentException e) {
                 // Skip materials that can't be converted to ItemStacks
-                System.out.println("[SFCore] Skipping non-giveable material: " + material.name());
+                if (plugin != null) {
+                    if (plugin.getConfigManager().getBoolean("debug-mode")) {
+                        plugin.getLogger().info("Skipping non-giveable material: " + material.name());
+                    }
+                }
             }
         }
         
-        System.out.println("[SFCore] Initialized " + giveableItems.size() + " giveable items");
+        if (plugin != null) {
+            if (plugin.getConfigManager().getBoolean("debug-mode")) {
+                plugin.getLogger().info("Initialized " + giveableItems.size() + " giveable items");
+            }
+        }
     }
 
     public static List<Material> getGiveableItems() {

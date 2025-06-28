@@ -23,6 +23,14 @@ import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.managers.core.Item;
 import net.survivalfun.core.managers.core.Alias;
 import net.survivalfun.core.managers.core.LegacyID;
+import net.survivalfun.core.managers.economy.Economy;
+import net.survivalfun.core.managers.economy.VaultEconomyProvider;
+import org.bukkit.plugin.ServicePriority;
+
+import net.survivalfun.core.commands.economy.Balance;
+import net.survivalfun.core.commands.economy.Pay;
+import net.survivalfun.core.commands.economy.BalTop;
+import net.survivalfun.core.commands.economy.Money;
 import org.bukkit.Bukkit;
 import org.bukkit.GameRule;
 import org.bukkit.World;
@@ -55,6 +63,7 @@ public class PluginStart extends JavaPlugin {
     private Spy spyCommand;
     private TP tpCommand;
     private CommandManager commandManager;
+    private Economy economy;
     private final Map<UUID, Long> playerLoginTimes = new ConcurrentHashMap<>();
     public CommandManager getCommandManager() {
         return commandManager;
@@ -197,6 +206,9 @@ public class PluginStart extends JavaPlugin {
         // Initialize database
         this.database = new Database(this);
         
+        // Initialize Economy system
+        this.economy = new Economy(this, this.database);
+        
         // Initialize PlayerDeathListener for handling player deaths and the /back command
         new net.survivalfun.core.listeners.jobs.PlayerDeathListener(this, this.database);
         getLogger().info("PlayerDeathListener registered.");
@@ -245,7 +257,7 @@ public class PluginStart extends JavaPlugin {
         getCommand("core").setExecutor(coreCommand);
         getCommand("core").setTabCompleter(coreCommand);
 
-        Item.initialize();
+        Item.initialize(this);
 
         // Register commands
         try {
@@ -286,7 +298,7 @@ public class PluginStart extends JavaPlugin {
             this.tpCommand = new TP(this);
 
             // Register Teleport commands defined in plugin.yml
-            String[] tpCommands = {"tp", "tpa", "tpaccept", "tpdeny", "tppet", "tppos", "tphere", "tpahere", "tptoggle", "top", "bottom"};
+            String[] tpCommands = {"tp", "tpa", "tpaccept", "tpdeny", "tppet", "tppos", "tphere", "tpahere", "tptoggle", "top", "bottom", "otp", "tpmob", "tpentity", "tpent", "teleportmob", "tpe", "tpm"};
             for (String cmdName : tpCommands) {
                 PluginCommand command = getCommand(cmdName);
                 if (command != null) {
@@ -297,6 +309,62 @@ public class PluginStart extends JavaPlugin {
                 }
             }
 
+            // Register Economy commands
+            // Balance command
+            PluginCommand balanceCmd = getCommand("balance");
+            if (balanceCmd != null) {
+                Balance balanceExecutor = new Balance(this, economy);
+                balanceCmd.setExecutor(balanceExecutor);
+                balanceCmd.setTabCompleter(balanceExecutor);
+                getLogger().info("Registered 'balance' command");
+            } else {
+                getLogger().warning("Could not register 'balance' command - not found in plugin.yml?");
+            }
+            
+            // Bal alias
+            PluginCommand balCmd = getCommand("bal");
+            if (balCmd != null) {
+                Balance balanceExecutor = new Balance(this, economy);
+                balCmd.setExecutor(balanceExecutor);
+                balCmd.setTabCompleter(balanceExecutor);
+                getLogger().info("Registered 'bal' command");
+            } else {
+                getLogger().warning("Could not register 'bal' command - not found in plugin.yml?");
+            }
+            
+            // Pay command
+            PluginCommand payCmd = getCommand("pay");
+            if (payCmd != null) {
+                Pay payExecutor = new Pay(this, economy);
+                payCmd.setExecutor(payExecutor);
+                payCmd.setTabCompleter(payExecutor);
+                getLogger().info("Registered 'pay' command");
+            } else {
+                getLogger().warning("Could not register 'pay' command - not found in plugin.yml?");
+            }
+            
+            // BalTop command
+            PluginCommand balTopCmd = getCommand("baltop");
+            if (balTopCmd != null) {
+                BalTop balTopExecutor = new BalTop(this, economy);
+                balTopCmd.setExecutor(balTopExecutor);
+                balTopCmd.setTabCompleter(balTopExecutor);
+                getLogger().info("Registered 'baltop' command");
+            } else {
+                getLogger().warning("Could not register 'baltop' command - not found in plugin.yml?");
+            }
+            
+            // Money admin command
+            PluginCommand moneyCmd = getCommand("money");
+            if (moneyCmd != null) {
+                Money moneyExecutor = new Money(this, economy);
+                moneyCmd.setExecutor(moneyExecutor);
+                moneyCmd.setTabCompleter(moneyExecutor);
+                getLogger().info("Registered 'money' command");
+            } else {
+                getLogger().warning("Could not register 'money' command - not found in plugin.yml?");
+            }
+            
             // Register Lore command
             getCommand("lore").setExecutor(new Lore(this));
             getCommand("lore").setTabCompleter(new Tab(this));
@@ -351,6 +419,12 @@ public class PluginStart extends JavaPlugin {
             // Register creeper explosion listener for block regeneration
             getServer().getPluginManager().registerEvents(new CreeperExplosionListener(this), this);
 
+            // Hook into Vault
+            if (getServer().getPluginManager().getPlugin("Vault") != null) {
+                getServer().getServicesManager().register(net.milkbowl.vault2.economy.Economy.class, new VaultEconomyProvider(this), this, ServicePriority.Normal);
+                                getLogger().info("Successfully hooked into Vault for economy services.");
+            }
+
             // Register Whois command
             PluginCommand whoisCmd = getCommand("whois");
             if (whoisCmd != null) {
@@ -369,6 +443,14 @@ public class PluginStart extends JavaPlugin {
 
     public Config getConfigManager() {
         return configManager;
+    }
+    
+    /**
+     * Get the economy manager
+     * @return The economy manager
+     */
+    public Economy getEconomy() {
+        return economy;
     }
 
     @Override

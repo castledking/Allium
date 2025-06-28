@@ -235,6 +235,40 @@ teleport:
   # Time in seconds a request expires.
   tppet-radius: 30
   # Maximum radius in blocks the player can be from the pet.
+  auto-disable:
+    # Whether to auto-disable entity teleport mode after teleporting entities
+    # If set to false, entity selection will remain active after teleporting
+    # This applies to non-admin players only (admins always keep selection active)
+    enabled: true
+    # Whether to auto-disable pet teleport mode after teleporting pets
+    # If set to false, pet selection will remain active after teleporting
+    pets-enabled: true
+
+############################################################
+# +------------------------------------------------------+ #
+# |                 Economy Settings                     | #
+# +------------------------------------------------------+ #
+############################################################
+
+economy:
+  # Currency symbol to use when displaying money amounts
+  # Examples: $, €, £, ¥, ₽, etc.
+  currency-symbol: "$"
+  
+  # Default starting balance for new players
+  starting-balance: 100.00
+  
+  # Maximum number of decimal places to display
+  decimal-places: 2
+  
+  # Whether to show the currency symbol before or after the amount
+  # true = $100, false = 100$
+  symbol-before-amount: true
+  
+  # Whether to add a space between the amount and symbol
+  # true = 100 $, false = 100$
+  # Only applies when symbol-before-amount is false
+  space-between: false
 
 ############################################################
 # +------------------------------------------------------+ #

@@ -192,6 +192,22 @@ public class Text {
             return;
         }
 
+        // Special handling for specific keys that should use a single color
+        boolean useSimpleColorHandling = isSimpleColorKey(key);
+        
+        // If the message doesn't contain any color codes and is a simple key, we'll use a simpler approach
+        if (useSimpleColorHandling && !containsColorCodes(rawMessage)) {
+            String finalMessage = parsedErrorPrefix + parseColors(rawMessage);
+            
+            // Replace placeholders without adding special coloring
+            for (Map.Entry<String, String> entry : replacements.entrySet()) {
+                finalMessage = finalMessage.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
+            
+            sender.sendMessage(finalMessage);
+            return;
+        }
+        
         // Styles are expected to be raw strings with '&' codes from lang.getStyle
         String messageColorStyle = lang.getStyle("styles.error.message-color", "&c");
         String placeholderColorStyle = lang.getStyle("styles.error.placeholder-color", "&7");
@@ -276,6 +292,59 @@ public class Text {
             }
         }
         sendErrorMessage(sender, key, lang, replacementsMap);
+    }
+    
+    /**
+     * Checks if a language key should use simple color handling (no placeholder coloring).
+     * 
+     * @param key The language key to check
+     * @return true if the key should use simple color handling
+     */
+    private static boolean isSimpleColorKey(String key) {
+        // List of keys that should use simple color handling
+        return key.equals("hold-item") || 
+               key.equals("cannot-self") || 
+               key.equals("unknown-command") || 
+               key.equals("unknown-command-suggestion") || 
+               key.equals("no-permission") || 
+               key.equals("cooldown");
+    }
+    
+    /**
+     * Checks if a string contains any color codes.
+     * 
+     * @param text The text to check
+     * @return true if the text contains color codes
+     */
+    private static boolean containsColorCodes(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        
+        // Check for legacy color codes (&a, &b, etc.)
+        if (text.contains("&") && text.matches(".*[&§][0-9a-fk-orA-FK-OR].*")) {
+            return true;
+        }
+        
+        // Check for hex color codes (&#RRGGBB)
+        if (text.contains("&#") && HEX_PATTERN.matcher(text).find()) {
+            return true;
+        }
+        
+        // Check for legacy hex format (&x&R&R&G&G&B&B)
+        if ((text.contains("&x") || text.contains("§x")) && LEGACY_HEX_PATTERN.matcher(text).find()) {
+            return true;
+        }
+        
+        // Check for MiniMessage format
+        if ((text.contains("<gradient:") || text.contains("</gradient>") || 
+             SIMPLE_HEX_PATTERN.matcher(text).find() ||
+             (text.contains("<") && text.contains(">"))) && 
+            detectColorFormat(text) == ColorFormat.MINI_MESSAGE) {
+            return true;
+        }
+        
+        return false;
     }
 
     public static String stripColor(String message, Player player) {

@@ -67,6 +67,16 @@ aliases:
   andstonestep: ANDESITE_SLAB
   andstonewall: ANDESITE_WALL
   andwall: ANDESITE_WALL
+  astone: ANDESITE
+  astoneb: ANDESITE
+  astonebl: ANDESITE
+  astoneblock: ANDESITE
+  astonehalfblock: ANDESITE_SLAB
+  astonestair: ANDESITE_STAIRS
+  astonestairs: ANDESITE_STAIRS
+  astonestep: ANDESITE_SLAB
+  astonewall: ANDESITE_WALL
+
 
   # Wood Materials
   abarelog: STRIPPED_ACACIA_LOG
@@ -237,6 +247,115 @@ aliases:
   alogleaves: ACACIA_LEAVES
   alogplank: ACACIA_PLANKS
   alogsapling: ACACIA_SAPLING
+  aplank: ACACIA_PLANKS
+  aplankw: ACACIA_PLANKS
+  aplankwooden: ACACIA_PLANKS
+  asapling: ACACIA_SAPLING
+  asign: ACACIA_SIGN
+  astair: ACACIA_STAIRS
+  astep: ACACIA_SLAB
+  astrippedlong: ACACIA_STRIPPED_LOG
+  astrippedwood: ACACIA_STRIPPED_WOOD
+  atdoor: ACACIA_TRAPDOOR
+  atrapd: ACACIA_TRAPDOOR
+  atrapdoor: ACACIA_TRAPDOOR
+  atree: ACACIA_LOG
+  atreeall: ACACIA_WOOD
+  atreeleaf: ACACIA_LEAVES
+  atreeleave: ACACIA_LEAVES
+  atreeleaves: ACACIA_LEAVES
+  atreesapling: ACACIA_SAPLING
+  atrunksapling: ACACIA_SAPLING
+  atrunksappling: ACACIA_SAPLING
+  atrunk: ACACIA_LOG
+  atrunkall: ACACIA_WOOD
+  atrunkleaf: ACACIA_LEAVES
+  atrunkleave: ACACIA_LEAVES
+  atrunkleaves: ACACIA_LEAVES
+  awhalfblock: ACACIA_SLAB
+  awood: ACACIA_WOOD
+  awoodenhalfblock: ACACIA_SLAB
+  awoodenplank: ACACIA_PLANKS
+  awoodenslab: ACACIA_SLAB
+  awoodenstair: ACACIA_STAIRS
+  awoodenstairs: ACACIA_STAIRS
+  awoodenstep: ACACIA_SLAB
+  awoodhalfblock: ACACIA_SLAB
+  awoodleaf: ACACIA_LEAVES
+  awoodleave: ACACIA_LEAVES
+  awoodleaves: ACACIA_LEAVES
+  awoodplank: ACACIA_PLANKS
+  awoodsapling: ACACIA_SAPLING
+  awoodslab: ACACIA_SLAB
+  awoodstair: ACACIA_STAIRS
+  awoodstairs: ACACIA_STAIRS
+  awoodstep: ACACIA_SLAB
+  awplank: ACACIA_PLANKS
+  awslab: ACACIA_SLAB
+  awstair: ACACIA_STAIRS
+  awstairs: ACACIA_STAIRS
+  awstep: ACACIA_SLAB
+  azaleaf: AZALEA_LEAVES
+  azalealeaf: AZALEA_LEAVES
+  azalealeaves: AZALEA_LEAVES
+  azalealogleaf: AZALEA_LEAVES
+  azalealogleave: AZALEA_LEAVES
+  azalealogleaves: AZALEA_LEAVES
+  azaleatreeleaf: AZALEA_LEAVES
+  azaleatreeleave: AZALEA_LEAVES
+  azaleatreeleaves: AZALEA_LEAVES
+  azaleatrunkleaf: AZALEA_LEAVES
+  azaleatrunkleave: AZALEA_LEAVES
+  azaleatrunkleaves: AZALEA_LEAVES
+  azaleave: AZALEA_LEAVES
+  azaleaves: AZALEA_LEAVES
+  azaleawoodleaf: AZALEA_LEAVES
+  azaleawoodleave: AZALEA_LEAVES
+  azaleawoodleaves: AZALEA_LEAVES
+  azalealogleaf: AZALEA_LEAVES
+  azalealogleave: AZALEA_LEAVES
+  azalealogleaves: AZALEA_LEAVES
+  azasmall: AZALEA
+  azatreeleaf: AZALEA_LEAVES
+  azatreeleave: AZALEA_LEAVES
+  azatreeleaves: AZALEA_LEAVES
+  azatrunkleaf: AZALEA_LEAVES
+  azatrunkleave: AZALEA_LEAVES
+  azatrunkleaves: AZALEA_LEAVES
+  azawoodleaf: AZALEA_LEAVES
+  azawoodleave: AZALEA_LEAVES
+  azawoodleaves: AZALEA_LEAVES
+  azleaf: AZALEA_LEAVES
+  azleave: AZALEA_LEAVES
+  azleaves: AZALEA_LEAVES
+  azlogleaf: AZALEA_LEAVES
+  azlogleave: AZALEA_LEAVES
+  azlogleaves: AZALEA_LEAVES
+  azsmall: AZALEA
+  aztreeleaf: AZALEA_LEAVES
+  aztreeleave: AZALEA_LEAVES
+  aztreeleaves: AZALEA_LEAVES
+  aztrunkleaf: AZALEA_LEAVES
+  aztrunkleave: AZALEA_LEAVES
+  aztrunkleaves: AZALEA_LEAVES
+  azwoodleaf: AZALEA_LEAVES
+  azwoodleave: AZALEA_LEAVES
+  azwoodleaves: AZALEA_LEAVES
+  bambfence: BAMBOO_FENCE
+  bambfencegate: BAMBOO_FENCE_GATE
+  bambdtrapdoor: BAMBOO_TRAPDOOR
+  bambgate: BAMBOO_FENCE_GATE
+  bambhalfblock: BAMBOO_SLAB
+  bambhangsign: BAMBOO_HANGING_SIGN
+  bambhsign: BAMBOO_HANGING_SIGN
+  bambblock: BAMBOO_BLOCK
+
+  
+
+
+  
+  
+
   
 
 
@@ -623,6 +742,13 @@ aliases:
   reeds: SUGAR_CANE
   berry: SWEET_BERRIES
   abluet: AZURE_BLUET
+  azureb: AZURE_BLUET
+  azurebluet: AZURE_BLUET
+  babyaz: AZALEA
+  babyaza: AZALEA
+  babyazalea: AZALEA
+
+
 
   # Saplings and Wood
   saplings: OAK_SAPLING
@@ -663,6 +789,13 @@ aliases:
   # === DECORATION ===
 
   anglerpotterysherd: ANGLER_POTTERY_SHERD
+  archerpotterysherd: ARCHER_POTTERY_SHERD
+  archersherd: ARCHER_POTTERY_SHERD
+  armorstand: ARMOR_STAND
+  armssherd: ARMS_UP_POTTERY_SHERD
+  armsuppotterysherd: ARMS_UP_POTTERY_SHERD
+  armsupsherd: ARMS_UP_POTTERY_SHERD
+
   
 
   # === FOOD ===
@@ -697,6 +830,8 @@ aliases:
   melonslice: MELON_SLICE
   pumpkinpie: PUMPKIN_PIE
   ppie: PUMPKIN_PIE
+  baleofhay: HAY_BLOCK
+
 
   # === REDSTONE ===
   rs: REDSTONE
@@ -727,6 +862,10 @@ aliases:
   acpplate: ACACIA_PRESSURE_PLATE
   acpressureplate: ACACIA_PRESSURE_PLATE
   acpressurepplate: ACACIA_PRESSURE_PLATE
+  aplate: ACACIA_PRESSURE_PLATE
+  applate: ACACIA_PRESSURE_PLATE
+  apressplate: ACACIA_PRESSURE_PLATE
+  apressurepplate: ACACIA_PRESSURE_PLATE
   torch: TORCH
   rtorch: REDSTONE_TORCH
   redtorch: REDSTONE_TORCH
@@ -741,6 +880,17 @@ aliases:
   note: NOTE_BLOCK
   noteblock: NOTE_BLOCK
   jukebox: JUKEBOX
+  arail: ACTIVATOR_RAIL
+  arails: ACTIVATOR_RAIL
+  atrack: ACTIVATOR_RAIL
+  bambbutton: BAMBOO_BUTTON
+  bambdoor: BAMBOO_DOOR
+  bambdoort: BAMBOO_TRAPDOOR
+  bambdoortrap: BAMBOO_TRAPDOOR
+  bambdtrap: BAMBOO_TRAPDOOR
+  bamboobutton: BAMBOO_BUTTON
+  
+
 
   # === TRANSPORTATION ===
   cart: MINECART
@@ -755,7 +905,12 @@ aliases:
   achboat: ACACIA_CHEST_BOAT
   acboat: ACACIA_BOAT
   acraft: ACACIA_BOAT
+  araft: ACACIA_BOAT
   oakboat: OAK_BOAT
+  bambboat: BAMBOO_RAFT
+  bambchboat: BAMBOO_CHEST_RAFT
+  bambboat: BAMBOO_RAFT
+  bambooboat: BAMBOO_RAFT
   rail: RAIL
   rails: RAIL
 
@@ -860,6 +1015,12 @@ aliases:
   eyeofender: EYE_OF_ENDER
   eeye: EYE_OF_ENDER
   endereye: EYE_OF_ENDER
+  armadillowscute: ARMADILLO_SCUTE
+  axolotlbucket: AXOLOTL_BUCKET
+  axolotlbukkit: AXOLOTL_BUCKET
+  axolotlpail: AXOLOTL_BUCKET
+  axolotl
+  
 
   # === BUCKETS ===
   bucket: BUCKET
@@ -1044,6 +1205,19 @@ aliases:
   angrypigspawn: HOGLIN_SPAWN_EGG
   angrypigspawnegg: HOGLIN_SPAWN_EGG
   angrypigspawner: HOGLIN_SPAWNER
+  armadillospawnegg: ARMADILLO_SPAWN_EGG
+  axolotlcage: SPAWNER;AXOLOTL
+  axolotlegg: AXOLOTL_SPAWN_EGG
+  axolotlmcage: SPAWNER;AXOLOTL
+  axolotlmobcage: SPAWNER;AXOLOTL
+  axolotlmobspawner: SPAWNER;AXOLOTL
+  axolotlmonstercage: SPAWNER;AXOLOTL
+  axolotlmspawner: SPAWNER;AXOLOTL
+  axolotlsegg: AXOLOTL_SPAWN_EG
+  axolotlespawnegg: AXOLOTL_SPAWN_EGG
+  axolotlspawner: SPAWNER;AXOLOTL
+  
+  
 
   
 
@@ -1087,16 +1261,16 @@ aliases:
   acidareapotionstrong: LINGERING_POTION;POISON;5;1
   acidareapotlevel2: LINGERING_POTION;POISON;22
   acidareapotlevelii: LINGERING_POTION;POISON;5;1
-  aciddareapotlong: LINGERING_POTION;POISON;22
-  aciddareapotstrong: LINGERING_POTION;POISON;5;1
+  acidareapotlong: LINGERING_POTION;POISON;22
+  acidareapotstrong: LINGERING_POTION;POISON;5;1
   acidarrow: TIPPED_ARROW;POISON
-  acidarrow2: TIPPED_ARROW;POISON;22
-  acidarrowex: TIPPED_ARROW;POISON;22
-  acidarrowextended: TIPPED_ARROW;POISON;22
+  acidarrow2: TIPPED_ARROW;POISON;11
+  acidarrowex: TIPPED_ARROW;POISON;11
+  acidarrowextended: TIPPED_ARROW;POISON;11
   acidarrowii: TIPPED_ARROW;POISON;2;1
-  acidarrowlevel2: TIPPED_ARROW;POISON;22
+  acidarrowlevel2: TIPPED_ARROW;POISON;11
   acidarrowlevelii: TIPPED_ARROW;POISON;2;1
-  acidarrowlong: TIPPED_ARROW;POISON;22
+  acidarrowlong: TIPPED_ARROW;POISON;11
   acidarrowstrong: TIPPED_ARROW;POISON;2;1
   acidcloudpot: LINGERING_POTION;POISON
   acidcloudpot2: LINGERING_POTION;POISON;22
@@ -1108,11 +1282,11 @@ aliases:
   acidcloudpotionex: LINGERING_POTION;POISON;22
   acidcloudpotionextended: LINGERING_POTION;POISON;22
   acidcloudpotionii: LINGERING_POTION;POISON;5;1
-  acidcloudpotionlevel2: LINGERING_POTION;POISON;5;1
+  acidcloudpotionlevel2: LINGERING_POTION;POISON;22
   acidcloudpotionlevelii: LINGERING_POTION;POISON;5;1
   acidcloudpotionlong: LINGERING_POTION;POISON;22
   acidcloudpotionstrong: LINGERING_POTION;POISON;5;1
-  acidcloudpotlevel2: LINGERING_POTION;POISON;5;1
+  acidcloudpotlevel2: LINGERING_POTION;POISON;22
   acidcloudpotlevelii: LINGERING_POTION;POISON;5;1
   acidcloudpotlong: LINGERING_POTION;POISON;22
   acidcloudpotstrong: LINGERING_POTION;POISON;5;1
@@ -1158,10 +1332,10 @@ aliases:
   acidlingerpotii: LINGERING_POTION;POISON;5;1
   acidlingerpotlong: LINGERING_POTION;POISON;22
   acidlingerpotstrong: LINGERING_POTION;POISON;5;1
-  acidlongpot: POTION;POISON;180
-  acidlongpotion: POTION;POISON;180
-  acidlongsplashpot: SPLASH_POTION;POISON;180
-  acidlongsplashpotion: SPLASH_POTION;POISON;180
+  acidlongpot: POTION;POISON;90
+  acidlongpotion: POTION;POISON;90
+  acidlongsplashpot: SPLASH_POTION;POISON;90
+  acidlongsplashpotion: SPLASH_POTION;POISON;90
   acidlongtarr: TIPPED_ARROW;POISON;11
   acidlongarrow: TIPPED_ARROW;POISON;11
   acidlongtippedarrow: TIPPED_ARROW;POISON;11
@@ -1191,6 +1365,1695 @@ aliases:
   aoepotawkward: LINGERING_POTION;AWKWARD
   aoepotbreath: LINGERING_POTION;WATER_BREATHING
   aoepotbreath2: LINGERING_POTION;WATER_BREATHING;120
+  aoepotbreathex: LINGERING_POTION;WATER_BREATHING;120
+  aoepotbreathextended: LINGERING_POTION;WATER_BREATHING;120
+  aoepotbreathing: LINGERING_POTION;WATER_BREATHING
+  aoepotbreathing2: LINGERING_POTION;WATER_BREATHING;120
+  aoepotbreathingex: LINGERING_POTION;WATER_BREATHING;120
+  aoepotbreathingextended: LINGERING_POTION;WATER_BREATHING;120
+  aoepotbreathinglevel2: LINGERING_POTION;WATER_BREATHING;5;1
+  aoepotbreathinglong: LINGERING_POTION;WATER_BREATHING;120
+  aoepotbreathlevel2: LINGERING_POTION;WATER_BREATHING;120
+  aoepotbreathlong: LINGERING_POTION;WATER_BREATHING;120
+  aoepotclover: LINGERING_POTION;LUCK
+  aoepotd: LINGERING_POTION;INSTANT_DAMAGE
+  aoepotdamage: LINGERING_POTION;INSTANT_DAMAGE
+  aoepotdamageii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotdamagelevelii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotdamagestrong: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotdarkv: LINGERING_POTION;NIGHT_VISION
+  aoepotdarkv2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdarkvex: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdarkvextended: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdarkvis: LINGERING_POTION;NIGHT_VISION
+  aoepotdarkvis2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdarkvisex: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdarkvixextended: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdarkvislevel2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdarkvislong: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdarkvlevel2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdarkvlong: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotdlevelii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotdmg: LINGERING_POTION;INSTANT_DAMAGE
+  aoepotdmgii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotdamagelevelii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotdmgstrong: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotdstrong: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotdvision: LINGERING_POTION;NIGHT_VISION
+  aoepotdvisionex: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdvisionextended: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdvisionlevel2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotdvisionlong: LINGERING_POTION;NIGHT_VISION;120
+  aoepotfireres: LINGERING_POTION;FIRE_RESISTANCE
+  aoepotfireres2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresex: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresextended: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresist: LINGERING_POTION;FIRE_RESISTANCE
+  aoepotfireresist2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresistance: LINGERING_POTION;FIRE_RESISTANCE
+  aoepotfireresistance2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresistanceex: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresistanceextended: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresistancelevel2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresistancelong: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresistex: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresistextended: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfireresistlevel2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfirereslevel2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotfirereslong: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepoth: LINGERING_POTION;INSTANT_HEALTH
+  aoepotharming: LINGERING_POTION;INSTANT_DAMAGE
+  aoepotharmingii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotharminglevelii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotharmingstrong: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotheal: LINGERING_POTION;INSTANT_HEALTH
+  aoepothealii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepothealingii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepothealinglevelii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepothealingstrong: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotheallevelii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepothstrong: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotinfest: LINGERING_POTION;INFESTED
+  aoepotinstantdamage: LINGERING_POTION;INSTANT_DAMAGE
+  aoepotinstantdamageii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotinstantdamagelevelii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotinstantdamagestrong: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotinstantheal: LINGERING_POTION;INSTANT_HEALTH
+  aoepotinstanthealii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotinstantheallevelii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotinstanthealstrong: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotinv: LINGERING_POTION;INVISIBILITY
+  aoepotinv2: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvex: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvextended: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvis: LINGERING_POTION;INVISIBILITY
+  aoepotinvis2: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvisex: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvisextended: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvisibility: LINGERING_POTION;INVISIBILITY
+  aoepotinvisibility2: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvisibilityex: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvisibilityextended: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvisibilitylevel2: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvisibilitylong: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvisible: LINGERING_POTION;INVISIBILITY
+  aoepotinvisible2: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvisibleex: LINGERING_POTION;INVISIBILITY;120
+  aoeinvisibleextended: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvisiblelevel2: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvislong: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvlevel2: LINGERING_POTION;INVISIBILITY;120
+  aoepotinvlong: LINGERING_POTION;INVISIBILITY;120
+  aoepotionacid: LINGERING_POTION;POISON
+  aoepotionacid2: LINGERING_POTION;POISON;22
+  aoepotionacidex: LINGERING_POTION;POISON;22
+  aoepotionacidextended: LINGERING_POTION;POISON;22
+  aoepotionacidii: LINGERING_POTION;POISON;5;1
+  aoepotionacidlevel2: LINGERING_POTION;POISON;22
+  aoepotionacidlong: LINGERING_POTION;POISON;22
+  aoepotionacidstrong: LINGERING_POTION;POISON;5;1
+  aoepotionawkward: LINGERING_POTION;AWKWARD
+  aoepotionbreath: LINGERING_POTION;WATER_BREATHING
+  aoepotionbreath2: LINGERING_POTION;WATER_BREATHING;120
+  aoepotionbreathex: LINGERING_POTION;WATER_BREATHING;120
+  aoepotionbreatheextended: LINGERING_POTION;WATER_BREATHING;120
+  aoepotionbreathing: LINGERING_POTION;WATER_BREATHING
+  aoepotionbreathingex: LINGERING_POTION;WATER_BREATHING;120
+  aoepotionbreathingextended: LINGERING_POTION;WATER_BREATHING;120
+  aoepotionbreathinglevel2: LINGERING_POTION;WATER_BREATHING;120
+  aoepotionbreathinglong: LINGERING_POTION;WATER_BREATHING;120
+  aoepotionbreathlevel2: LINGERING_POTION;WATER_BREATHING;120
+  aoepotionbreathlong: LINGERING_POTION;WATER_BREATHING;120
+  aoepotionclover: LINGERING_POTION;LUCK
+  aoepotiond: LINGERING_POTION;INSTANT_DAMAGE
+  aoepotiondamage: LINGERING_POTION;INSTANT_DAMAGE
+  aoepotiondamageii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotiondamagelevelii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotiondamagestrong: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotiondarkv: LINGERING_POTION;NIGHT_VISION
+  aoepotiondarkv2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotiondarkvex: LINGERING_POTION;NIGHT_VISION;120
+  aoepotiondarkvextended: LINGERING_POTION;NIGHT_VISION;120
+  aoepotiondarkvis: LINGERING_POTION;NIGHT_VISION
+  aoepotiondarkvis2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotiondarkvisex: LINGERING_POTION;NIGHT_VISION;120
+  aoepotiondarkvisextended: LINGERING_POTION;NIGHT_VISION;120
+  aoepotiondarkvislevel2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotiondarkvislong: LINGERING_POTION;NIGHT_VISION;120
+  aoepotiondarkvislevel2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotiondarkvlong: LINGERING_POTION;NIGHT_VISION;120
+  aoepotiondii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotiondlevelii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotiondmg: LINGERING_POTION;INSTANT_DAMAGE
+  aoepotiondmgii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotiondmglevelii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotiondmgstrong: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotionfireres: LINGERING_POTION;FIRE_RESISTANCE
+  aoepotionfireres2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresex: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresextended: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresist: LINGERING_POTION;FIRE_RESISTANCE
+  aoepotionfireresist2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresistance: LINGERING_POTION;FIRE_RESISTANCE
+  aoepotionfireresistance2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresistanceex: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresistanceextended: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresistancelevel2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresistancelong: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresistex: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresistextended: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresistlevel2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfireresistlong: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfirereslevel2: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionfirereslong: LINGERING_POTION;FIRE_RESISTANCE;120
+  aoepotionh: LINGERING_POTION;INSTANT_HEALTH
+  aoepotionharming: LINGERING_POTION;INSTANT_DAMAGE
+  aoepotionharmingii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotionharminglevelii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotionharmingstrong: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotionheal: LINGERING_POTION;INSTANT_HEALTH
+  aoepotionhealii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionhealing: LINGERING_POTION;INSTANT_HEALTH
+  aoepotionhealingii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionhealinglevelii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionhealingstrong: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionheallevelii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionhealstrong: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionhii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionhlevelii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionhstrong: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotioninfest: LINGERING_POTION;INFESTED
+  aoepotioninfested: LINGERING_POTION;INFESTED
+  aoepotioninstantdamage: LINGERING_POTION;INSTANT_DAMAGE
+  aoepotioninstantdamagelevelii: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotioninstantdamagestrong: LINGERING_POTION;INSTANT_DAMAGE;0;1
+  aoepotioninstantheal: LINGERING_POTION;INSTANT_HEALTH
+  aoepotioninstanthealii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotioninstantheallevelii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotioninstanthealstrong: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotioninv: LINGERING_POTION;INVISIBILITY
+  aoepotioninv2: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvex: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvextended: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvis: LINGERING_POTION;INVISIBILITY
+  aoepotioninvis2: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisex: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisextended: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisibility: LINGERING_POTION;INVISIBILITY
+  aoepotioninvisibility2: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisibilityex: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisibilityextended: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisibilitylevel2: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisibilitylong: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisible: LINGERING_POTION;INVISIBILITY
+  aoepotioninvisible2: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisibleex: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisibleextended: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisiblelevel2: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvisiblelong: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvislevel2: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvislong: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvlevel2: LINGERING_POTION;INVISIBILITY;120
+  aoepotioninvlong: LINGERING_POTION;INVISIBILITY;120
+  aoepotionjump: LINGERING_POTION;JUMP_BOOST
+  aoepotionjump2: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionjumpex: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionjumpextended: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionjumpii: LINGERING_POTION;JUMP_BOOST;22;1
+  aoepotionjumplevel2: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionjumplong: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionjumpstrong: LINGERING_POTION;JUMP_BOOST;22;1
+  aoepotionleap: LINGERING_POTION;JUMP_BOOST
+  aoepotionleap2: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionleapex: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionleapextended: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionleapii: LINGERING_POTION;JUMP_BOOST;22;1
+  aoepotionleaping: LINGERING_POTION;JUMP_BOOST
+  aoepotionleaping2: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionleapingex: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionleapingextended: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionleapingii: LINGERING_POTION;JUMP_BOOST;22;1
+  aoepotionleapinglevel2: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionleapinglevelii: LINGERING_POTION;JUMP_BOOST;22;1
+  aoepotionleapinglong: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionleapingstrong: LINGERING_POTION;JUMP_BOOST;22;1
+  aoepotionleaplevel2: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionleaplevelii: LINGERING_POTION;JUMP_BOOST;22;1
+  aoepotionleaplong: LINGERING_POTION;JUMP_BOOST;120
+  aoepotionleapstrong: LINGERING_POTION;JUMP_BOOST;22;1
+  aoepotionlife: LINGERING_POTION;INSTANT_HEALTH
+  aoepotionlifeii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionlifelevelii: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionlifestrong: LINGERING_POTION;INSTANT_HEALTH;0;1
+  aoepotionluck: LINGERING_POTION;LUCK
+  aoepotionlucky: LINGERING_POTION;LUCK
+  aoepotionmundane: LINGERING_POTION;MUNDANE
+  aoepotionnightv: LINGERING_POTION;NIGHT_VISION
+  aoepotionnightv2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnightvex: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnightvextended: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnightvision: LINGERING_POTION;NIGHT_VISION
+  aoepotionnightvision2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnightvisionex: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnightvisionextended: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnightvisionlevel2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnightvisionlong: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnightvlevel2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnightvlong: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnv: LINGERING_POTION;NIGHT_VISION
+  aoepotionnv2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnvex: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnvextended: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnvision2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnvisionex: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnvisionextended: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnvisionlevel2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnvisionlong: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionnvlevel2: LINGERING_POTION;NIGHT_VISION;120
+  aoepotionooze: LINGERING_POTION;OOZING
+  aoepotionoozing: LINGERING_POTION;OOZING
+  aoepotionp: LINGERING_POTION;POISON
+  aoepotionp2: LINGERING_POTION;POISON;22
+  aoepotionpex: LINGERING_POTION;POISON;22
+  aoepotionpextended: LINGERING_POTION;POISON;22
+  aoepotionpii: LINGERING_POTION;POISON;2;1
+  aoepotionplevel2: LINGERING_POTION;POISON;22
+  aoepotionplevelii: LINGERING_POTION;POISON;2;1
+  aoepotionplong: LINGERING_POTION;POISON;22
+  aoepotionpoison: LINGERING_POTION;POISON
+  aoepotionpoison2: LINGERING_POTION;POISON;22
+  aoepotionpoisonex: LINGERING_POTION;POISON;22
+  aoepotionpoisonextended: LINGERING_POTION;POISON;22
+  aoepotionpoisonii: LINGERING_POTION;POISON;2;1
+  aoepotionpoisonlevel2: LINGERING_POTION;POISON;22
+  aoepotionpoisonlevelii: LINGERING_POTION;POISON;2;1
+  aoepotionpoisonlong: LINGERING_POTION;POISON;22
+  aoepotionpoisonstrong: LINGERING_POTION;POISON;2;1
+  aoepotionpstrong: LINGERING_POTION;POISON;2;1
+  aoepotionregen: LINGERING_POTION;REGENERATION
+  aoepotionregen2: LINGERING_POTION;REGENERATION;22
+  aoepotionregenerate: LINGERING_POTION;REGENERATION
+  aoepotionregenerate2: LINGERING_POTION;REGENERATION;22
+  aoepotionregenerateex: LINGERING_POTION;REGENERATION;22
+  aoepotionregenerateextended: LINGERING_POTION;REGENERATION;22
+  aoepotionregenerateii: LINGERING_POTION;REGENERATION;5;1
+  aoepotionregeneratelevel2: LINGERING_POTION;REGENERATION;22
+  aoepotionregeneratelevelii: LINGERING_POTION;REGENERATION;5;1
+  aoepotionregeneratelong: LINGERING_POTION;REGENERATION;22
+  aoepotionregeneratestrong: LINGERING_POTION;REGENERATION;5;1
+  aoepotionregeneration: LINGERING_POTION;REGENERATION
+  aoepotionregeneration2: LINGERING_POTION;REGENERATION;22
+  aoepotionregenerationex: LINGERING_POTION;REGENERATION;22
+  aoepotionregenerationextended: LINGERING_POTION;REGENERATION;22
+  aoepotionregenerationii: LINGERING_POTION;REGENERATION;5;1
+  aoepotionregenerationlevel2: LINGERING_POTION;REGENERATION;22
+  aoepotionregenerationlevelii: LINGERING_POTION;REGENERATION;5;1
+  aoepotionregenerationlong: LINGERING_POTION;REGENERATION;22
+  aoepotionregenerationstrong: LINGERING_POTION;REGENERATION;5;1
+  aoepotionregenex: LINGERING_POTION;REGENERATION;22
+  aoepotionregenextended: LINGERING_POTION;REGENERATION;22
+  aoepotionregenii: LINGERING_POTION;REGENERATION;5;1
+  aoepotionregenlevel2: LINGERING_POTION;REGENERATION;22
+  aoepotionregenlevelii: LINGERING_POTION;REGENERATION;5;1
+  aoepotionregenlong: LINGERING_POTION;REGENERATION;22
+  aoepotionregenstrong: LINGERING_POTION;REGENERATION;5;1
+  aoepotionsf: LINGERING_POTION;SLOW_FALLING
+  aoepotionsf2: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionsfex: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionsfextended: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionsflevel2: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionsflong: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionslow: LINGERING_POTION;SLOWNESS
+  aoepotionslow2: LINGERING_POTION;SLOWNESS;60
+  aoepotionslowex: LINGERING_POTION;SLOWNESS;60
+  aoepotionslowextended: LINGERING_POTION;SLOWNESS;60
+  aoepotionslowfall: LINGERING_POTION;SLOW_FALLING
+  aoepotionslowfall2: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionslowfallex: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionslowfallextended: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionslowfalling: LINGERING_POTION;SLOW_FALLING
+  aoepotionslowfalling2: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionslowfallingex: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionslowfallingextended: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionslowfallinglevel2: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionslowfalllevel2: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionslowfalllong: LINGERING_POTION;SLOW_FALLING;60
+  aoepotionslowii: LINGERING_POTION;SLOWNESS;5;3
+  aoepotionslowlevel2: LINGERING_POTION;SLOWNESS;60
+  aoepotionslowlevelii: LINGERING_POTION;SLOWNESS;5;3
+  aoepotionslowlong: LINGERING_POTION;SLOWNESS;60
+  aoepotionslowness: LINGERING_POTION;SLOWNESS
+  aoepotionslowness2: LINGERING_POTION;SLOWNESS;60
+  aoepotionslownessex: LINGERING_POTION;SLOWNESS;60
+  aoepotionslownessextended: LINGERING_POTION;SLOWNESS;60
+  aoepotionslownessii: LINGERING_POTION;SLOWNESS;5;3
+  aoepotionslownesslevelii: LINGERING_POTION;SLOWNESS;5;3
+  aoepotionslownesslong: LINGERING_POTION;SLOWNESS;60
+  aoepotionslownessstrong: LINGERING_POTION;SLOWNESS;5;3
+  aoepotionslowstrong: LINGERING_POTION;SLOWNESS;5;3
+  aoepotionspeed: LINGERING_POTION;SPEED
+  aoepotionspeed2: LINGERING_POTION;SPEED;120
+  aoepotionspeedex: LINGERING_POTION;SPEED;120
+  aoepotionspeedextended: LINGERING_POTION;SPEED;120
+  aoepotionspeedii: LINGERING_POTION;SPEED;22;1
+  aoepotionspeedlevel2: LINGERING_POTION;SPEED;120
+  aoepotionspeedlevelii: LINGERING_POTION;SPEED;22;1
+  aoepotionspeedlong: LINGERING_POTION;SPEED;120
+  aoepotionspeedstrong: LINGERING_POTION;SPEED;22;1
+  aoepotionstr: LINGERING_POTION;STRENGTH
+  aoepotionstr2: LINGERING_POTION;STRENGTH;120
+  aoepotionstrength: LINGERING_POTION;STRENGTH
+  aoepotionstrength2: LINGERING_POTION;STRENGTH;120
+  aoepotionstrengthex: LINGERING_POTION;STRENGTH;120
+  aoepotionstrengthextended: LINGERING_POTION;STRENGTH;120
+  aoepotionstrengthii: LINGERING_POTION;STRENGTH;22;1
+  aoepotionstrengthlevel2: LINGERING_POTION;STRENGTH;120
+  aoepotionstrengthlevelii: LINGERING_POTION;STRENGTH;22;1
+  aoepotionstrengthlong: LINGERING_POTION;STRENGTH;120
+  aoepotionstrengthstrong: LINGERING_POTION;STRENGTH;22;1
+  aoepotionstrex: LINGERING_POTION;STRENGTH;120
+  aoepotionstrii: LINGERING_POTION;STRENGTH;22;1
+  aoepotionstrlevel2: LINGERING_POTION;STRENGTH;120
+  aoepotionstrlevelii: LINGERING_POTION;STRENGTH;22;1
+  aoepotrionstrlong: LINGERING_POTION;STRENGTH;120
+  aoepotionstrong: LINGERING_POTION;STRENGTH
+  aoepotionstrong2: LINGERING_POTION;STRENGTH;120
+  aoepotionstrongex: LINGERING_POTION;STRENGTH;120
+  aoepotionstrongextended: LINGERING_POTION;STRENGTH;120
+  aoepotionstrongii: LINGERING_POTION;STRENGTH;22;1
+  aoepotionstronglevel2: LINGERING_POTION;STRENGTH;120
+  aoepotionstronglevelii: LINGERING_POTION;STRENGTH;22;1
+  aoepotionstronglong: LINGERING_POTION;STRENGTH;120
+  aoepotionstrongstrong: LINGERING_POTION;STRENGTH;22;1
+  aoepotionstrstrong: LINGERING_POTION;STRENGTH;22;1
+  aoepotionswift: LINGERING_POTION;SWIFTNESS
+  aoepotionswift2: LINGERING_POTION;SWIFTNESS;120
+  aoepotionswiftex: LINGERING_POTION;SWIFTNESS;120
+  aoepotionswiftextended: LINGERING_POTION;SWIFTNESS;120
+  aoepotionswiftii: LINGERING_POTION;SWIFTNESS;22;1
+  aoepotionswiftlevel2: LINGERING_POTION;SWIFTNESS;120
+  aoepotionswiftlevelii: LINGERING_POTION;SWIFTNESS;22;1
+  aoepotionswiftlong: LINGERING_POTION;SWIFTNESS;120
+  aoepotionswiftness: LINGERING_POTION;SWIFTNESS
+  aoepotionswiftness2: LINGERING_POTION;SWIFTNESS;120
+  aoepotionswiftnessex: LINGERING_POTION;SWIFTNESS;120
+  aoepotionswiftnessextended: LINGERING_POTION;SWIFTNESS;120
+  aoepotionswiftnessii: LINGERING_POTION;SWIFTNESS;22;1
+  aoepotionswiftnesslevel2: LINGERING_POTION;SWIFTNESS;120
+  aoepotionswiftnesslevelii: LINGERING_POTION;SWIFTNESS;22;1
+  aoepotionswiftnesslong: LINGERING_POTION;SWIFTNESS;120
+  aoepotionswiftnessstrong: LINGERING_POTION;SWIFTNESS;22;1
+  aoepotionswiftstrong: LINGERING_POTION;SWIFTNESS;22;1
+  aoepotionthick: LINGERING_POTION;THICKNESS
+  aoepotiontm: LINGERING_POTION;TURTLE_MASTER
+  aoepotiontm2: LINGERING_POTION;TURTLE_MASTER;10
+  aoepotiontmex: LINGERING_POTION;TURTLE_MASTER;10
+  aoepotiontmextended: LINGERING_POTION;TURTLE_MASTER;10
+  aoepotiontmii: LINGERING_POTION;TURTLE_MASTER;22;1
+  aoepotiontmlevel2: LINGERING_POTION;TURTLE_MASTER;120
+  aoepotiontmlevelii
+  aoepotiontmlong
+  aoepotiontmstrong
+  aoepotionturtle
+  aoepotionturtle2
+  aoepotionturtleex
+  aoepotionturtleextended
+  aoepotionturtleii
+  aoepotionturtlelevel2
+  aoepotionturtlelevelii
+  aoepotionturtlelong
+  aoepotionturtlemaster
+  aoepotionturtlemaster2
+  aoepotionturtlemasterex
+  aoepotionturtlemasterextended
+  aoepotionturtlemasterii
+  aoepotionturtlemasterlevel2
+  aoepotionturtlemasterlevelii
+  aoepotionturtlemasterlong
+  aoepotionturtlemasterstrong
+  aoepotionturtlestrong
+  aoepotionwater
+  aoepotionwaterbreath
+  aoepotionwaterbreath2
+  aoepotionwaterbreathex
+  aoepotionwaterbreathextended
+  aoepotionwaterbreathing
+  aoepotionwaterbreathing2
+  aoepotionwaterbreathingex
+  aoepotionwaterbreathingextended
+  aoepotionwaterbreathinglevel2
+  aoepotionwaterbreathlong
+  aoepotionwb
+  aoepotionwb2
+  aoepotionwbex
+  aoepotionwbextended
+  aoepotionwblevel2
+  aoepotionwblong?
+  aoepotionwc
+  aoepotionwe
+  aoepotionwe2
+  aoepotionweak
+  aoepotionweak2
+  aoepotionweakex
+  aoepotionweakextended
+  aoepotionweaklevel2
+  aoepotionweaklong
+  aoepotionweakness
+  aoepotionweakness2
+  aoepotionweaknessex
+  aoepotionweaknessextended
+  aoepotionweaknesslevel2
+  aoepotionweaknesslong
+  aoepotionweave
+  aoepotionweaving
+  aoepotionweex
+  aoepotionweextended
+  aoepotionwelevel2
+  aoepotionwelong
+  aoepotionwind
+  aoepotionwindcharged
+  areapotacid
+  areapotacid2
+  areapotacidex
+  areapotacidextended
+  areapotacidii
+  areapotacidlevel2
+  areapotacidlevelii
+  areapotacidlong
+  areapotacidstrong
+  areapotawkward
+  areapotbreath
+  areapotbreath2
+  areapotbreathex
+  areapotbreathing
+  areapotbreathing2
+  areapotbreathingex
+  areapotbreathingextended
+  areapotbreathinglevel2
+  areapotbreathinglong
+  areapotbreathlevel2
+  areapotbreathlong
+  areapotclover
+  areapotd
+  areapotdamage
+  areapotdamageii
+  areapotdamagelevelii
+  areapotdamagestrong
+  areapotdarkv
+  areapotdarkv2
+  areapotdarkvex
+  areapotdarkvextended
+  areapotdarkvis
+  areapotdarkvis2
+  areapotdarkvisex
+  areapotdarkvisextended
+  areapotdarkvislevel2
+  areapotdarkvislong
+  areapotdarkvlevel2
+  areapotdarkvlong
+  areapotdii
+  areapotdlevelii
+  areapotdmgii
+  areapotdmglevelii
+  areapotdmgstrong
+  areapotdstrong
+  areapotdvision
+  areapotdvision2
+  areapotdvisionex
+  areapotdvisionextended
+  areapotdvisionlevel2
+  areapotdvisionlong
+  areapotfireres
+  areapotfireres2
+  areapotfireresex
+  areapotfireresextended
+  areapotfireresist
+  areapotfireresist2
+  areapotfireresistance
+  areapotfireresistance2
+  areapotfireresistanceex
+  areapotfireresistanceextended
+  areapotfireresistancelevel2
+  areapotfireresistancelong
+  areapotfireresistex
+  areapotfireresistextended
+  areapotfireresistlevel2
+  areapotfireresistlong
+  areapotfirereslevel2
+  areapotfirereslong
+  areapoth
+  areapotharming
+  areapotharmingii
+  areapotharminglevelii
+  areapotharmingstrong
+  areapotheal
+  areapothealii
+  areapothealing
+  areapothealingii
+  areapothealinglevelii
+  areapothealingstrong
+  areapotheallevelii
+  areapothealstrong
+  areapothii
+  areapothlevelii
+  areapothstrong
+  areapotinfest
+  areapotinfested
+  areapotinstantdamage
+  areapotinstantdamageii
+  areapotinstantdamagelevelii
+  areapotinstantdamagestrong
+  arepotinstantheal
+  areapotinstanthealii
+  areapotinstantheallevelii
+  areapotinstanthealstrong
+  areapotinv
+  areapotinv2
+  areapotinvex
+  areapotinvextended
+  areapotinvis
+  areapotinvis2
+  areapotinvisex
+  areapotinvisextended
+  areapotinvisibility
+  areapotinvisibility2
+  areapotinvisibilityex
+  areapotinvisibilityextended
+  areapotinvisibilitylevel2
+  areapotinvisibilitylong
+  areapotinvisible
+  areapotinvisible2
+  areapotinvisibleex
+  areapotinvisibleextended
+  areapotinvisiblelevel2
+  areapotinvisiblelong
+  areapotinvislevel2
+  areapotinvislong
+  areapotinvlevel2
+  areapotinvlong
+  areapotionacid
+  areapotionacid2
+  areapotionacidex
+  areapotionacidextended
+  areapotionacidii
+  areapotionacidlevel2
+  areapotionacidlevelii
+  areapotionacidlong
+  areapotionawkward
+  areapotionbreath
+  areapotionbreath2
+  areapotionbreathex
+  areapotionbreathextended
+  areapotionbreathing
+  areapotionbreathing2
+  areapotionbreathingex
+  areapotionbreathingextended
+  areapotionbreathinglevel2
+  areapotionbreathinglong
+  areapotionbreathlevel2
+  areapotionbreathlong
+  areapotionbreathstrong
+  areapotionbreathstrong
+  areapotionclover
+  areapotiond
+  areapotiondamage
+  areapotiondamageii
+  areapotiondamagelevelii
+  areapotiondamagestrong
+  areapotiondarkv
+  areapotiondarkv2
+  areapotiondarkvex
+  areapotiondarkvextended
+  areapotiondarkvis
+  areapotiondarkvis2
+  areapotiondarkvisex
+  areapotiondarkvisextended
+  areapotiondarkvislevel2
+  areapotiondarkvislong
+  areapotiondarkvlevel2
+  areapotiondarkvlong
+  areapotiondii
+  areapotiondlevelii
+  areapotiondmg
+  areapotiondmgii
+  areapotiondmglevelii
+  areapotiondmgstrong
+  areapotiondmgstrong
+  areapotiondvision
+  areapotiondvision2
+  areapotiondvisionex
+  areapotiondvisionextended
+  areapotiondvisionlevel2
+  areapotiondvisionlong
+  areapotiondvisionstrong
+  areapotiondvisionstrong
+  areapotionfireres
+  areapotionfireres2
+  areapotionfireresex
+  areapotionfireresextended
+  areapotionfireresist
+  areapotionfireresist2
+  areapotionfireresistance
+  areapotionfireresistance2
+  areapotionfireresistanceex
+  areapotionfireresistanceextended
+  areapotionfireresistancelevel2
+  areapotionfireresistancelong
+  areapotionfireresistex
+  areapotionfireresistextended
+  areapotionfireresistlevel2
+  areapotionfireresistlong
+  areapotionfirereslevel2
+  areapotionfirereslong
+  areapotionfres
+  areapotionfres2
+  areapotionfresex
+  areapotionfresextended
+  areapotionfresistance
+  areapotionfresistance2
+  areapotionfresistanceex
+  areapotionfresistanceextended
+  areapotionfresistancelevel2
+  areapotionfresistancelong
+  areapotionfresistex
+  areapotionfresistextended
+  areapotionfresistlevel2
+  areapotionfresistlong
+  areapotionfreslevel2
+  areapotionfreslong
+  areapotionh
+  areapotionharming
+  areapotionharmingii?
+  areapotionharminglevelii
+  areapotionharmingstrong
+  areapotionheal
+  areapotionhealii
+  areapotionhealing
+  areapotionhealingii
+  areapotionhealinglevelii
+  areapotionhealingstrong
+  areapotionhii
+  areapotionhlevelii
+  areapotionhstrong
+  areapotioninfest
+  areapotioninfested
+  areapotioninstantdamage
+  areapotioninstantdamageii
+  areapotioninstantdamagestrong
+  areapotioninstantheal
+  areapotioninstanthealii
+  areapotioninstantheallevelii?
+  areapotioninstanthealstrong
+  areapotioninv
+  areapotioninv2
+  areapotioninvex
+  areapotioninvextended
+  areapotioninvis
+  areapotioninvis2
+  areapotioninvisex
+  areapotioninvisextended
+  areapotioninvisibility
+  areapotioninvisibility2
+  areapotioninvisibilityex
+  areapotioninvisibilityextended
+  areapotioninvisibilitylevel2
+  areapotioninvisibilitylong
+  areapotioninvisible
+  areapotioninvisible2
+  areapotioninvisibleex
+  areapotioninvisibleextended
+  areapotioninvisiblelevel2
+  areapotioninvisiblelong
+  areapotioninvislevel2
+  areapotioninvislong
+  areapotioninvlevel2
+  areapotioninvlong
+  areapotionjump
+  areapotionjump2
+  areapotionjumpex
+  areapotionjumpextended
+  areapotionjumpii
+  areapotionjumplevel2
+  areapotionjumplevelii
+  areapotionjumplong
+  areapotionjumpstrong
+  areapotionleap
+  areapotionleap2
+  areapotionleapex
+  areapotionleapextended
+  areapotionleapii
+  areapotionleaping
+  areapotionleaping2
+  areapotionleapingex
+  areapotionleapingextended
+  areapotionleapingii
+  areapotionleapinglevel2
+  areapotionleapinglevelii
+  areapotionleapinglong
+  areapotionleapingstrong
+  areapotionleaplevel2
+  areapotionleaplevelii
+  areapotionleaplong
+  areapotionleapstrong
+  areapotionlife
+  areapotionlifeii
+  areapotionlifelevelii
+  areapotionlifestrong
+  areapotionluck
+  areapotionlucky
+  areapotionmundane
+  areapotionnightv
+  areapotionnightv2
+  areapotionnightvex
+  areapotionnightvextended
+  areapotionnightvision
+  areapotionnightvision2
+  areapotionnightvisionex
+  areapotionnightvisionextended
+  areapotionnightvisionlevel2
+  areapotionnightvisionlong
+  areapotionnightvlevel2
+  areapotionnightvlong
+  areapotionnv
+  areapotionnv2
+  areapotionnvex
+  areapotionnvextended
+  areapotionnvision
+  areapotionnvision2
+  areapotionnvisionex
+  areapotionnvisionextended
+  areapotionnvisionlevel2
+  areapotionnvisionlong
+  areapotionnvlevel2
+  areapotionnvlong
+  areapotionooze
+  areapotionoozing
+  areapotionp
+  areapotionp2
+  areapotionpex
+  areapotionpextended
+  areapotionpii
+  areapotionplevel2
+  areapotionplevelii
+  areapotionplong
+  areapotionpoison
+  areapotionpoison2
+  areapotionpoisonex
+  areapotionpoisonextended
+  areapotionposionii
+  areapotionposionlevel2
+  areapotionpoisonlevelii
+  areapotionpoisonlong
+  areapotionpoisonstrong
+  aoepotionpstrong
+  areapotionregen
+  areapotionregen2
+  areapotionregenerate
+  areapotionregenerate2
+  areapotionregenerateex
+  areapotionregenerateextended
+  areapotionregeneratelevel2
+  aoepotionregeneratelevelii
+  aoepotionregeneratelong
+  areapotionregeneratestrong
+  areapotionregeneration
+  areapotionregeneration2
+  areapotionregenerationex
+  areapotionregenerationextended
+  areapotionregenerationii
+  areapotionregenerationlevel2
+  areapotionregenerationlevelii
+  areapotionregenerationlong
+  areapotionregenerationstrong
+  areapotionregenex
+  areapotionregenextended
+  areapotionregenii
+  areapotionregenlevel2
+  areapotionregenlevelii
+  areapotionregenlong
+  areapotionregenstrong
+  areapotionsf
+  areapotionsf2
+  areapotionsfex
+  areapotionsfextended
+  areapotionsflevel2
+  areapotionsflong
+  arepotionslow
+  arepotionslow2
+  arepotionslowex
+  arepotionslowextended
+  arepotionslowfall
+  arepotionslowfall2
+  arepotionslowfallex
+  arepotionslowfallextended
+  areapotionslowfalling
+  areapotionslowfalling2
+  areapotionslowfallingex
+  areapotionslowfallingextended
+  areapotionslowfallinglevel2
+  areapotionslowfallinglong
+  areapotionslowfalllevel2
+  areapotionslowfalllong
+  areapotionslowii
+  areapotionslowlevel2
+  areapotionslowlevelii
+  areapotionslowlong
+  areapotionslowness
+  areapotionslowness2
+  areapotionslownessex
+  areapotionslownessextended
+  areapotionslownessii
+  areapotionslownesslevel2
+  areapotionslownesslevelii
+  areapotionslownesslong
+  areapotionslownessstrong
+  areapotionslowstrong
+  areapotionspeed
+  areapotionspeed2
+  areapotionspeedex
+  areapotionspeedextended
+  areapotionspeedii
+  areapotionspeedlevel2
+  areapotionspeedlevelii
+  areapotionspeedlong
+  areapotionspeedstrong
+  areapotionstr
+  areapotionstr2
+  areapotionstrength
+  areapotionstrength2
+  areapotionstrengthex
+  areapotionstrengthextended
+  areapotionstrengthii
+  areapotionstrengthlevel2
+  areapotionstrengthlevelii
+  areapotionstrengthlong
+  areapotionstrengthlong
+  areapotionstrengthstrong
+  areapotionstrex
+  areapotionstrextended
+  areapotionstrii
+  areapotionstrlevel2
+  areapotionstrlevelii
+  areapotionstrlong
+  areapotionsstrong
+  areapotionstrong2
+  areapotionstrongex
+  areapotionstrongextended
+  areapotionsstrongii
+  areapotionsstronglevel2
+  areapotionstronglevelii
+  areapotionsstronglong
+  areapotionsstrongstrong
+  areapotionsstrstrong
+  areapotionswift
+  areapotionswift2
+  areapotionswiftex
+  areapotionswiftextended
+  areapotionswiftii
+  areapotionswiftlevel2
+  areapotionswiftlevelii
+  areapotionswiftlong
+  areapotionswiftness
+  areapotionswiftness2
+  areapotionswiftnessex
+  areapotionswiftnessextended
+  areapotionswiftnessii
+  areapotionswiftnesslevel2
+  areapotionswiftnesslevelii
+  areapotionswiftnesslong
+  areapotionswiftnessstrong
+  areapotionswiftstrong
+  areapotionthick
+  areapotiontm
+  areapotiontm2
+  areapotionmex
+  areapotionmextended
+  areapotionmii
+  areapotionmlevel2
+  areapotionmlevelii
+  areapotionmlong
+  areapotionmstrong
+  areapotionturtle
+  areapotionturtle2
+  areapotionturtleex
+  areapotionturtleextended
+  areapotionturtleii
+  areapotionturtlelevel2
+  areapotionturtlelevelii
+  areapotionturtlelong
+  areapotionturtlemater
+  areapotionturtlemater2
+  areapotionturtlematerex
+  areapotionturtlemasterextended
+  areapotionturtlemasterii
+  areapotionturtlemasterlevel2
+  areapotionturtlemasterlevelii
+  areapotionturtlemasterlong
+  areapotionturtlemasterstrong
+  areapotionturtlestrong
+  areapotionwater
+  areapotionwaterbreath
+  areapotionwaterbreath2
+  areapotionwaterbreathex
+  areapotionwaterbreathextended
+  areapotionwaterbreathing
+  areapotionwaterbreathing2
+  areapotionwaterbreathingex
+  areapotionwaterbreathingextended
+  areapotionwaterbreathinglevel2
+  areapotionwaterbreathinglong
+  areapotionwaterbreathlevel2
+  areapotionwaterbreathlong
+  areapotionwb
+  areapotionwb2
+  areapotionwbex
+  areapotionwbextended
+  areapotionwblevel2
+  areapotionwblong
+  areapotionwc
+  areapotionwe
+  areapotionwe2
+  areapotionweak
+  areapotionweak2
+  areapotionweakex
+  areapotionweakextended
+  areapoitionweaklevel2
+  areapotionweaklong
+  areapotionweakness
+  areapotionweakness2
+  areapotionweaknessex
+  areapotionweaknessextended
+  areapotionweaknesslevel2
+  areapotionweaknesslong
+  areapotionweave
+  areapotionweaving
+  areapotionweex
+  areapotionweextended
+  areapotionwelevel2
+  areapotionwelong
+  areapotionwind
+  areapotionwindcharged
+  areapotjump
+  areapotjump2
+  areapotjumpex
+  areapotjumtextended
+  areapotjumpii
+  areapotjumplevel2
+  areapotjumplevelii
+  areapotjumplong
+  areapotjumstrong
+  areapotleap
+  areapotleap2
+  areapotleapex
+  areapotleapextended
+  areapotleapii
+  areapotleaping
+  areapotleaping2
+  areapotleapingex
+  areapotleapingextended
+  areapotleapingii
+  areapotleapinglevel2
+  areapotleapinglevelii
+  areapotleapinglong
+  areapotleapingstrong
+  areapotleapstrong
+  areapotleaplevel2
+  areapotleaplevelii
+  areapotleaplong
+  areapotleapstrong
+  areapotlife
+  areapotlifeii
+  areapotlifelevelii
+  areapotluck
+  areapotlucky
+  areapotmundane
+  areapotnightv
+  areapotnightv2
+  areapotnightvex
+  areapotnightvextended
+  areapotnightvision
+  areapotnightvision2
+  areapotnightvisionex
+  areapotnightvisionextended
+  areapotnightvisionlevel2
+  areapotnightvisionlong
+  areapotnightvlevel2
+  areapotnightvlong
+  areapotnv
+  areapotnv2
+  areapotnvex
+  areapotnvextended
+  areapotnvision
+  areapotnvision2
+  areapotnvisionex
+  areapotnvisionextended
+  areapotnvisionlevel2
+  areapotnvisionlong
+  areapotnvlevel2
+  areapotnvlong
+  areapotooze
+  areapotoozing
+  areapotp
+  areapotp2
+  areapotpex
+  areapotpextended
+  areapotpii
+  areapotplevel2
+  areapotplevelii
+  areapotplong
+  areapotpoison
+  areapotpoison2
+  areapotpoisonex
+  areapotpoisonextended
+  areapotpoisonii
+  areapotpoisonlevel2
+  areapotpoisonlevelii
+  areapotpoisonlong
+  areapotpoisonstrong
+  areapotpstrong
+  areapotregen
+  areapotregen2
+  areapotregenerate
+  areapotregenerate2
+  areapotregenerateex
+  areapotregenerateextended
+  areapotregenerateii
+  areapotregeneratelevel2
+  areapotregeneratelevelii
+  areapotregeneratelong
+  areapotregeneratestrong
+  areapotregeneration
+  areapotregeneration2
+  areapotregenerationex
+  areapotregenerationextended
+  areapotregenerationii
+  areapotregenerationlevel2
+  areapotregenerationlevelii
+  areapotregenerationlong
+  areapotregenerationstrong
+  areapotregenex
+  areapotregenextended
+  areapotregenii
+  areapotregenlevel2
+  areapotregenlevelii
+  areapotregenlong
+  areapotregenstrong
+  areapotsf
+  areapotsf2
+  areapotsfex
+  areapotsfextended
+  areapotsflevel2
+  areapotsflong
+  areapotslow
+  areapotslow2
+  areapotslowex
+  areapotslowextended
+  areapotslowfall
+  areapotslowfall2
+  areapotslowfallex
+  areapotslowfallextended
+  areapotslowfalling
+  areapotslowfalling2
+  areapotslowfallingex
+  areapotslowfallingextended
+  areapotslowfallinglevel2
+  areapotslowfallinglong
+  areapotslowfalllevel2
+  areapotslowfalllong
+  areapotslowii
+  areapotslowlevel2
+  areapotslowlevelii
+  areapotslowlong
+  areapotslowness
+  areapotslowness2
+  areapotslownessex
+  areapotslownessextended
+  areapotslownessii
+  areapotslownesslevel2
+  areapotslownesslevelii
+  areapotslownesslong
+  areapotslownessstrong
+  areapotslowstrong
+  areapotspeed
+  areapotspeed2
+  areapotspeedex
+  areapotspeedextended
+  areapotspeedii
+  areapotspeedlevel2
+  areapotspeedlevelii
+  areapotspeedlong
+  areapotspeedstrong
+  areapotstr
+  areapotstr2
+  areapotstrength
+  areapotstrength2
+  areapotstrengthex
+  areapotstrengthextended
+  areapotstrengthii
+  areapotstrengthlevel2
+  areapotstrengthlevelii
+  areapotstrengthlong
+  areapotstrengthstrong
+  areapotstrex
+  areapotstrextended
+  areapotstrii
+  areapotstrlevel2
+  areapotstrlevelii
+  areapotstrlong
+  areapotstrong
+  areapotstrong2
+  areapotstrongex
+  areapotstrongextended
+  areapotstrongii
+  areapotstronglevel2
+  areapotstronglevelii
+  areapotstronglong
+  areapotstrongstrong
+  areapotstrstrong
+  areapotswift
+  areapotswift2
+  areapotswiftex
+  areapotswiftextended
+  areapotswiftii
+  areapotswiftlevel2
+  areapotswiftlevelii
+  areapotswiftlong
+  areapotswiftness
+  areapotswiftness2
+  areapotionswiftnessex
+  areapotionswiftnessextended
+  areapotionswiftnessii
+  areapotionswiftnesslevel2
+  areapotionswiftnesslevelii
+  areapotionswiftnesslong
+  areapotionswiftnessstrong
+  areapotionswiftstrong
+  areapotthick
+  areapottm
+  areapottm2
+  areapottmex
+  areapottmextended
+  areapottmii
+  areapottmlevel2
+  areapottmlevelii
+  areapottmlong
+  areapottmstrong
+  areapotturtle
+  areapotturtle2
+  areapotturtleex
+  areapotturtleextended
+  areapotturtleii
+  areapotturtlelevel2
+  areapotturtlelevelii
+  areapotturtlelong
+  areapotturtlestrong
+  areapotturtlelong
+  areapotturtlemaster
+  areapotturtlemaster2
+  areapotturtlemasterex
+  areapotturtlemasterextended
+  areapotturtlemasterii
+  areapotturtlemasterlevel2
+  areapotturtlemasterlevelii
+  areapotturtlemasterlong
+  areapotturtlemasterstrong
+  areapotturtlestrong
+  areapotwater
+  areapotwaterbreath
+  areapotwaterbreath2
+  areapotwaterbreathex
+  areapotwaterbreathextended
+  areapotwaterbreathing
+  areapotwaterbreathing2
+  areapotwaterbreathingex
+  areapotwaterbreathingextended
+  areapotwaterbreathinglevel2
+  areapotwaterbreatinhlong
+  areapotwaterbreathlevel2
+  areapotwaterbreathlong
+  areapotwb
+  areapotwb2
+  areapotwbex
+  areapotwbextended
+  areapotwblevel2
+  areapotwblong
+  areapotwc
+  areapottwe
+  areapotwe2
+  areapotweak
+  areapotweak2
+  areapotweakex
+  areapotweakextended
+  areapotweaklevel2
+  areapotweaklong
+  areapotweakness
+  areapotweakness2
+  areapotweaknessex
+  areapotweaknessextended
+  areapotweaknesslevel2
+  areapotweaknesslong
+  areapotweave
+  areapotweaving
+  areapotweex
+  areapotweextended
+  areapotwelevel2
+  areapotwelong
+  areapotwind
+  areapotwindcharged
+  arrowacid
+  arrowacid2
+  arrowacidex
+  arrowacidextended
+  arrowacidii
+  arrowacidlevel2
+  arrowacidlevelii
+  arrowacidlong
+  arrowacidstrong
+  arrowawkward
+  arrowbreath
+  arrowbreath2
+  arrowbreathex
+  arrowbreathextended
+  arrowbreathing
+  arrowbreathing2
+  arrowbreathingex
+  arrowbreathingextended
+  arrowbreathinglevel2
+  arrowbreathinglong
+  arrowbreahlevel2
+  arrowbreathlong
+  arrowclover
+  arrowd
+  arrowdamage
+  arrowdamageii
+  arrowdamagelevelii
+  arrowdamagestrong
+  arrowdarkv
+  arrowdarkv2
+  arrowdarkvex
+  arrowdarkvextended
+  arrowdarkvis
+  arrowdarkvis2
+  arrowdarkvisex
+  arrowdarkvisextended
+  arrowdarkvislevel2
+  arrowdarkvislong
+  arrowdarkvlevel2
+  arrowdarkvlong
+  arrowdii
+  arrowdlevelii
+  arrowdmg
+  arrowdmgii
+  arrowdmglevelii
+  arrowdmgstrong
+  arrowdstrong
+  arrowdvision
+  arrowdvision2
+  arrowdvisionex
+  arrowdvisionextended
+  arrowdvisionlevel2
+  arrowdvisionlong
+  arrowfireres
+  arrowfireres2
+  arrowfireresex
+  arrowfireresextended
+  arrowfireresist
+  arrowfireresist2
+  arrowfireresistance
+  arrowfireresistance2
+  arrowfireresistanceex
+  arrowfireresistanceextended
+  arrowfireresistancelevel2
+  arrowfirerestistancelong
+  arrowfireresistex
+  arrowfireresistextended
+  arrowfireresistlevel2
+  arrowfireresistlong
+  arrowfirereslevel2
+  arrowfirereslong
+  arrowh
+  arrowharming
+  arrowharmingii
+  arrowharminglevelii
+  arrowharmingstrong
+  arrowheal
+  arrowhealii
+  arrowhealing
+  arrowhealingii
+  arrowhealinglevelii
+  arrowhealingstrong
+  arrowheallevelii
+  arrowhealstrong
+  arrowhii
+  arrowhlevelii
+  arrowhstrong
+  arrowinfest
+  arrowinfested
+  arrowinstantdamage
+  arrowinstantdamageii
+  arrowinstantdamagelevelii
+  arrowinstantdamagestrong
+  arrowinstantheal
+  arrowinstanthealii
+  arrowinstantheallevelii
+  arrowinstanthealstrong
+  arrowinv
+  arrowinv2
+  arrowinvex
+  arrowinvextended
+  arrowinvlevel2
+  arrowinvex
+  arrowinvextended
+  arrowinvis
+  arrowinvis2
+  arrowinvisex
+  arrowinvisextended
+  arrowinvisibility
+  arrowinvisibility2
+  arrowinvisibilityex
+  arrowinvisibilityextended
+  arrowinvisibilitylevel2
+  arrowinvisibilitylong
+  arrowinvisible
+  arrowinvisible2
+  arrowinvisibleex
+  arrowinvisibleextended
+  arrowinvisiblelevel2
+  arrowinvisiblelong
+  arrowinvislevel2
+  arrowinvislong
+  arrowinvlevel2
+  arrowinvlong
+  arrowjump
+  arrowjump2
+  arrowjumpex
+  arrowjumtextended
+  arrowjumpii
+  arrowjumplevel2
+  arrowjumplevelii
+  arrowjumplong
+  arrowjumpstrong
+  arrowleap
+  arrowleap2
+  arrowleapex
+  arrowleapextended
+  arrowleapii
+  arrowleaping
+  arrowleaping
+  arrowleaping2
+  arrowleapingex
+  arrowleapingextended
+  arrowleapingii
+  arrowleapinglevel2
+  arrowleapinglevelii
+  arrowleapinglong
+  arrowleaplevel2
+  arrowleaplevelii
+  arrowleaplong
+  arrowleapstrong
+  arrowlife
+  arrowlifeii
+  arrowlifelevelii
+  arrowlifestrong
+  arrowluck
+  arrowlucky
+  arrowmundane
+  arrownightv
+  arrownightv2
+  arrownightvex
+  arrownightvextended
+  arrownightvision
+  arrownightvisino2
+  arrownightvisionex
+  arrownightvisionextended
+  arrownightvisionlevel2
+  arrownightvisionlevel2
+  arrownightvisinolong
+  arrownightvlevel2
+  arrownightvlong
+  arrownv
+  arrownv2
+  arrownvex
+  arrownvextended
+  arrownvision
+  arrownvision2
+  arrownvisionex
+  arrownvisionextended
+  arrownvisionlevel2
+  arrownvisionlong
+  arrownvlevel2
+  arrownvlong
+  arrowooze
+  arrowoozing
+  arrowp
+  arrowp2
+  arrowpex
+  arrowpextended
+  arrowpii
+  arrowplevel2
+  arrowplevelii
+  arrowplong
+  arrowpoison
+  arrowpoisonex
+  arrowpoisonextended
+  arrowpoisonii
+  arrowpoisonlevel2
+  arrowpoisonlevelii
+  arrowpoisonlong
+  arrowpoisonstrong
+  arrowpstrong
+  arrowregen
+  arrowregen2
+  arrowregenerate
+  arrowregenerate2
+  arrowregenerateex
+  arrowregenerateextended
+  arrowregenerateii
+  arrowregeneratelvel2
+  arrowregeneratelevelii
+  arrowregeneratelong
+  arrowregeneratestrong
+  arrowregeneration
+  arrowregeneartion2
+  arrowregenerationex
+  arrowregenerationextended
+  arrowregenerationii
+  arrowregenerationlevel2
+  arrowregeneartionlevelii
+  arrowregenerationlong
+  arrowregenerationstrong
+  arrowregenex
+  arrowregenextended
+  arrowregenii
+  arrowregenlevel2
+  arrowregenlevelii
+  arrowregenlong
+  arrowregenstrong
+  arrowsf
+  arrowsf2
+  arrowsfex
+  arrowsfextended
+  arrowsflevel2
+  arrowsflong
+  arrowslow
+  arrowslow2
+  arrowslowex
+  arrowslowextended
+  arrowslowfall
+  arrowslowfall2
+  arrowslowfallex
+  arrowslowfallextended
+  arrowslowfalling
+  arrowslowfalling2
+  arrowslowfallingex
+  arrowslowfallingextended
+  arrowslowfallinglevel2
+  arrowslowfallinglong
+  arrowslowfalllevel2
+  arrowslowfalllong
+  arrowslowii
+  arrowslowlevel2
+  arrowslowlevelii
+  arrowslowlong
+  arrowslowness
+  arrowslowness2
+  arrowslownessex
+  arrowslownessextended
+  arrowslownessii
+  arrowslownesslevel2
+  arrowslownesslevelii
+  arrowslownesslong
+  arrowslownessstrong
+  arrowslowstrong
+  arrowspeed
+  arrowspeed2
+  arrowspeedex
+  arrowspeedextended
+  arrowspeedii
+  arrowspeedlevel2
+  arrowspeedlevelii
+  arrowspeedlong
+  arrowspeedstrong
+  arrowstr
+  arrowstr2
+  arrowstrength
+  arrowstrength2
+  arrowstrengthex
+  arrowstrengthextended
+  arrowstrengthii
+  arrowstrengthlevel2
+  arrowstrengthlevelii
+  arrowstrengthlong
+  arrowstrengthstrong
+  arrowstrex
+  arrowstrextended
+  arrowstrii
+  arrowstrlevel2
+  arrowstrlevelii
+  arrowstrlong
+  arrowstrong
+  arrowstrong2
+  arrowstrongex
+  arrowstrongextended
+  arrowstrongii
+  arrowstronglevel2
+  arrowstronglevelii
+  arrowstronglong
+  arrowstrongstrong
+  arrowstrstrong
+  arrowswift
+  arrowswift2
+  arrowswiftex
+  arrowswiftextended
+  arrowswiftii
+  arrowswiftlevel2
+  arrowswiftleveli
+  arrowswiftlong
+  arrowswiftness
+  arrowswiftness2
+  arrowswiftnessex
+  arrowswiftnessextended
+  arrowswiftnessii
+  arrowswiftnesslevel2
+  arrowswiftnesslevelii
+  arrowswiftnesslong
+  arrowswiftnessstrong
+  arrowswiftstrong
+  arrowthick
+  arrowtm
+  arrowtm2
+  arrowtmex
+  arrowtmextended
+  arrowtmii
+  arrowtmlevel2
+  arrowtmlevelii
+  arrowtmlong
+  arrowtmstrong
+  arrowturtle
+  arrowturtle2
+  arrowturtleex
+  arrowturtleextended
+  arrowturtleii
+  arrowturtlelevel2
+  arrowturtlelevelii
+  arrowturtlelong
+  arrowturtlemaster
+  arrowturtlemaster2
+  arrowturtlemasterex
+  arrowturtlemasterextended
+  arrowturtlemasterii
+  arrowturtlemasterlevel2
+  arrowturtlemasterlevelii
+  arrowturtlemasterlong
+  arrowturtlemasterstrong
+  arrowturtlestrong
+  arrowwater
+  arrowwaterbreath
+  arrowwaterbreath2
+  arrowwaterbreathex
+  arrowwaterbreathextended
+  arrowwaterbreathing
+  arrowwaterbreathing2
+  arrowwaterbreathingex
+  arrowwaterbreathingextended
+  arrowwaterbreathinglevel2
+  arrowwaterbreathinglong
+  arrowwaterbreathlevel2
+  arrowwaterbreathlong
+  arrowwb
+  arrowwb2
+  arrowwbex
+  arrowwbextended
+  arrowwblevel2
+  arrowwblong
+  arrowwc
+  arrowwe
+  arrowwe2
+  arrowweak
+  arrowweak2
+  arrowweakex
+  arrowweakextended
+  arrowweaklevel2
+  arrowweaklong
+  arrowweakness
+  arrowweakness2
+  arrowweaknessex
+  arrowweaknessextended
+  arrowweaknesslevel2
+  arrowweaknesslong
+  arrowweave
+  arrowweaving
+  arrowweex
+  arroweextended
+  arrowwelevel2
+  arrowwelong
+  arrowwind
+  arrowwindcharged
+  awkwardaoepoiont
+  awkwardaoepot
+  awkwardareapot
+  awkwardareapotion
+  awkwardarrow
+  awkwardcloudpot
+  awkwardcloudpotion
+  awkwardlingerpot
+  awkwardpot
+  awkwardpotion
+  awkwardsplashpot
+  awkwardsplashpotion
+  awkwardtarr
+  awkwardtarrow
+  awkwardtippedarrow
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+  
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
   
 
 # === LEGACY IDs ===

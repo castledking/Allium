@@ -61,6 +61,7 @@ public class Potion {
         DEFAULT_POTION_DURATIONS.put(PotionEffectType.BAD_OMEN, 60);
         DEFAULT_POTION_DURATIONS.put(PotionEffectType.HERO_OF_THE_VILLAGE, 60);
         DEFAULT_POTION_DURATIONS.put(PotionEffectType.DARKNESS, 10);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.INFESTED, 180);
     }
 
     public static void initialize(PluginStart pluginInstance) {
@@ -78,8 +79,25 @@ public class Potion {
         potionMeta.setBasePotionType(PotionType.WATER);
 
         Map<String, String> params = parsePotionArgs(parts);
-        String effectName = params.get("effect");
         String displayName = params.get("name");
+        
+        // Check for multi-effect format (effect1, effect2, etc.)
+        boolean isMultiEffect = false;
+        for (int i = 1; i <= 10; i++) { // Support up to 10 effects
+            if (params.containsKey("effect" + i)) {
+                isMultiEffect = true;
+                break;
+            }
+        }
+        
+        // If using multi-effect format, process accordingly
+        if (isMultiEffect) {
+            handleMultiEffectPotion(sender, item, potionMeta, params, displayName);
+            return;
+        }
+        
+        // Otherwise, use traditional single-effect processing
+        String effectName = params.get("effect");
         int duration = params.containsKey("duration") ? parseIntOrDefault(params.get("duration"), 0) : 0;
         int amplifier = params.containsKey("amplifier") ? parseIntOrDefault(params.get("amplifier"), 0) : 0;
         boolean particles = !params.containsKey("particles") || parseBoolean(params.get("particles"));
@@ -91,12 +109,10 @@ public class Potion {
                 // Show usage guide instead of invalid message
                 String usageMessage = lang.get("command-usage")
                     .replace("{cmd}", "i")
-                    .replace("{args}", "potion;<effect>;[duration];[amplifier];[particles];[icon]");
+                    .replace("{args}", "potion:<effect>[;<duration>][;<amplifier>][;<particles>][;<icon>]");
                 sender.sendMessage(usageMessage);
-                sender.sendMessage("§eExample: §f/i potion;speed;60;1;true");
-                sender.sendMessage("§eAlternative: §f/i potion;effect=speed;amplifier=1;duration=60");
-                sender.sendMessage("§eBase Potions: §f/i potion;awkward §7| §f/i potion;mundane §7| §f/i potion;thick");
-                sender.sendMessage("§eWater Bottles: §f/i splash_potion;water §7| §f/i lingering_potion;water");
+                sender.sendMessage("§eSingle EffectExample: §f/i potion;speed;60;1;true");
+                sender.sendMessage("§eMulti Effect Example: §f/i potion;speed;60;1;true;slowness;60;1;true");
             }
 
             potionMeta.setBasePotionType(PotionType.WATER);
@@ -229,7 +245,10 @@ public class Potion {
         
         // Process parameters - handle mixed ordered and named parameters
         String[] orderedParams = {"effect", "duration", "amplifier", "particles", "icon"};
-        int orderedIndex = 0;
+        int effectCounter = 0;
+        
+        // For condensed format support
+        int currentParamIndex = 0;
         
         for (int i = 1; i < parts.length; i++) {
             String part = parts[i];
@@ -242,18 +261,242 @@ public class Potion {
                     params.put(keyValue[0].toLowerCase(), keyValue[1]);
                 }
             } else {
-                // This is an ordered parameter - assign it to the next available ordered slot
-                if (orderedIndex < orderedParams.length) {
-                    params.put(orderedParams[orderedIndex], part);
-                    orderedIndex++;
+                // Check if this is a valid potion effect
+                PotionEffectType effectType = getPotionEffectType(part);
+                boolean isEffect = effectType != null || isSpecialPotionType(part);
+                
+                // If this is an effect OR we've reached the end of a parameter group (5 params per effect)
+                if (isEffect) {
+                    // This is an effect name, increment counter and store as effectN
+                    effectCounter++;
+                    params.put("effect" + effectCounter, part);
+                    
+                    // Also store as the traditional "effect" param if it's the first effect
+                    if (effectCounter == 1) {
+                        params.put("effect", part);
+                    }
+                    
+                    // Reset parameter index for the new effect
+                    currentParamIndex = 1; // Skip effect as we've already processed it
+                } else if (effectCounter > 0) { // Only if we've seen at least one effect
+                    // Map to the appropriate parameter based on position
+                    if (currentParamIndex < orderedParams.length) {
+                        String paramName = orderedParams[currentParamIndex];
+                        
+                        // Store both as effectN:param and as regular param for the first effect
+                        params.put(paramName + effectCounter, part);
+                        if (effectCounter == 1) {
+                            params.put(paramName, part);
+                        }
+                        
+                        currentParamIndex++;
+                    }
+                } else {
+                    // No effect seen yet, treat as traditional ordered parameter
+                    if (currentParamIndex < orderedParams.length) {
+                        params.put(orderedParams[currentParamIndex], part);
+                        currentParamIndex++;
+                    }
                 }
             }
         }
         
         return params;
     }
+    
+    private static boolean isSpecialPotionType(String name) {
+        return name.equalsIgnoreCase("awkward") || 
+               name.equalsIgnoreCase("mundane") || 
+               name.equalsIgnoreCase("thick") || 
+               name.equalsIgnoreCase("water") || 
+               name.equalsIgnoreCase("turtle_master");
+    }
 
-    private static void applyTurtleMaster(PotionMeta potionMeta, String displayName, ItemStack item, int specifiedDuration, boolean particles, boolean icon) {
+    /**
+     * Handles the creation of potions with multiple effects
+     * Supports formats like:
+     * - ./i potion;strength;absorption;duration1:120;amplifier1:1;duration2:60;amplifier2:0
+     * - ./i potion;effect1:strength;effect2:absorption;duration1:120;amplifier1:1;duration2:60;amplifier2:0
+     */
+    private static void handleMultiEffectPotion(CommandSender sender, ItemStack item, PotionMeta potionMeta, Map<String, String> params, String displayName) {
+        // Track if we've successfully applied any effects
+        boolean effectsApplied = false;
+        boolean hasSpecialEffect = false;
+        
+        // Process up to 10 effects
+        for (int i = 1; i <= 10; i++) {
+            String effectName = params.get("effect" + i);
+            if (effectName == null || effectName.isEmpty()) {
+                continue;
+            }
+            
+            // Handle special potion types (awkward, mundane, thick, water)
+            if (effectName.equalsIgnoreCase("awkward") || 
+                effectName.equalsIgnoreCase("mundane") || 
+                effectName.equalsIgnoreCase("thick") || 
+                effectName.equalsIgnoreCase("water")) {
+                
+                // Special potions can't be mixed with other effects
+                if (i == 1 && !params.containsKey("effect2")) {
+                    // Apply the base potion type
+                    if (effectName.equalsIgnoreCase("awkward")) {
+                        potionMeta.setBasePotionType(PotionType.AWKWARD);
+                    } else if (effectName.equalsIgnoreCase("mundane")) {
+                        potionMeta.setBasePotionType(PotionType.MUNDANE);
+                    } else if (effectName.equalsIgnoreCase("thick")) {
+                        potionMeta.setBasePotionType(PotionType.THICK);
+                    } else { // water
+                        potionMeta.setBasePotionType(PotionType.WATER);
+                    }
+                    
+                    // Set the display name
+                    if (displayName != null) {
+                        Meta.applyDisplayName(potionMeta, displayName);
+                    } else {
+                        String prefix;
+                        if (effectName.equalsIgnoreCase("water")) {
+                            if (item.getType() == Material.SPLASH_POTION) {
+                                prefix = "Splash Water Bottle";
+                            } else if (item.getType() == Material.LINGERING_POTION) {
+                                prefix = "Lingering Water Bottle";
+                            } else {
+                                prefix = "Water Bottle";
+                            }
+                        } else {
+                            String baseName = effectName.substring(0, 1).toUpperCase() + effectName.substring(1).toLowerCase();
+                            if (item.getType() == Material.SPLASH_POTION) {
+                                prefix = baseName + " Splash Potion";
+                            } else if (item.getType() == Material.LINGERING_POTION) {
+                                prefix = baseName + " Lingering Potion";
+                            } else {
+                                prefix = baseName + " Potion";
+                            }
+                        }
+                        potionMeta.displayName(Component.text(prefix).decoration(TextDecoration.ITALIC, false));
+                    }
+                    
+                    item.setItemMeta(potionMeta);
+                    return;
+                } else {
+                    Text.sendErrorMessage(sender, "give.invalid-mix", lang);
+                    return;
+                }
+            }
+            
+            // Handle turtle master specially
+            if (effectName.equalsIgnoreCase("turtle_master")) {
+                int duration = parseIntOrDefault(params.getOrDefault("duration" + i, params.get("duration")), 0);
+                boolean particlesValue = parseBoolean(params.getOrDefault("particles" + i, params.getOrDefault("particles", "true")));
+                boolean iconValue = parseBoolean(params.getOrDefault("icon" + i, params.getOrDefault("icon", "true")));
+                
+                if (duration > 0) {
+                    // Apply turtle master effects with custom duration
+                    int durationTicks = duration * 20;
+                    
+                    // Apply multiplication factors to counteract Minecraft's internal divisions
+                    if (item.getType() == Material.TIPPED_ARROW) {
+                        // Tipped arrows have effects reduced to 1/8 of their original duration
+                        durationTicks *= 8;
+                    } else if (item.getType() == Material.SPLASH_POTION) {
+                        // Splash potions have effects reduced to 3/4 of their original duration
+                        durationTicks = (int)(durationTicks * (4.0/3.0));
+                    } else if (item.getType() == Material.LINGERING_POTION) {
+                        // Lingering potions have effects reduced to 1/4 of their original duration
+                        durationTicks *= 4;
+                    }
+                    
+                    PotionEffect slowness = new PotionEffect(PotionEffectType.SLOWNESS, durationTicks, 3, false, particlesValue, iconValue);
+                    PotionEffect resistance = new PotionEffect(PotionEffectType.RESISTANCE, durationTicks, 2, false, particlesValue, iconValue);
+                    potionMeta.addCustomEffect(slowness, true);
+                    potionMeta.addCustomEffect(resistance, true);
+                } else {
+                    potionMeta.setBasePotionType(PotionType.TURTLE_MASTER);
+                    hasSpecialEffect = true;
+                }
+                
+                effectsApplied = true;
+                continue;
+            }
+            
+            // Process regular potion effect
+            PotionEffectType effectType = getPotionEffectType(effectName);
+            if (effectType == null) {
+                Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "potion effect '" + effectName + "'");
+                continue;
+            }
+            
+            // Get parameters for this effect with fallbacks
+            int duration = parseIntOrDefault(params.getOrDefault("duration" + i, params.get("duration")), 0);
+            int amplifier = parseIntOrDefault(params.getOrDefault("amplifier" + i, params.get("amplifier")), 0);
+            boolean particlesValue = parseBoolean(params.getOrDefault("particles" + i, params.getOrDefault("particles", "true")));
+            boolean iconValue = parseBoolean(params.getOrDefault("icon" + i, params.getOrDefault("icon", "true")));
+            
+            int durationTicks = calculateDurationTicks(effectType, duration, item.getType());
+            PotionEffect effect = new PotionEffect(effectType, durationTicks, amplifier, false, particlesValue, iconValue);
+            potionMeta.addCustomEffect(effect, true);
+            effectsApplied = true;
+        }
+        
+        // If no effects were applied, return early
+        if (!effectsApplied) {
+            if (displayName != null) {
+                Meta.applyDisplayName(potionMeta, displayName);
+            }
+            item.setItemMeta(potionMeta);
+            return;
+        }
+        
+        // Set base potion type to WATER if no special effect was applied
+        if (!hasSpecialEffect) {
+            potionMeta.setBasePotionType(PotionType.WATER);
+        }
+        
+        // Set display name
+        if (displayName != null) {
+            Meta.applyDisplayName(potionMeta, displayName);
+        } else {
+            // Generate a default name
+            String prefix = "";
+            if (item.getType() == Material.SPLASH_POTION) {
+                prefix = "Splash ";
+            } else if (item.getType() == Material.LINGERING_POTION) {
+                prefix = "Lingering ";
+            }
+            
+            // Count how many effects we have
+            int effectCount = 0;
+            for (int j = 1; j <= 10; j++) {
+                if (params.containsKey("effect" + j)) {
+                    effectCount++;
+                }
+            }
+            
+            String name;
+            if (effectCount > 1) {
+                name = prefix + "Mixed Potion";
+            } else {
+                // Get the first effect name
+                String firstEffectName = params.get("effect1");
+                if (firstEffectName.equalsIgnoreCase("turtle_master")) {
+                    name = prefix + "Potion of the Turtle Master";
+                } else {
+                    PotionEffectType firstEffectType = getPotionEffectType(firstEffectName);
+                    String effectDisplayName = getEffectDisplayName(firstEffectType);
+                    
+                    if (item.getType() == Material.TIPPED_ARROW) {
+                        name = "Arrow of " + effectDisplayName;
+                    } else {
+                        name = prefix + "Potion of " + effectDisplayName;
+                    }
+                }
+            }
+            
+            potionMeta.displayName(Component.text(name).decoration(TextDecoration.ITALIC, false));
+        }
+        
+        item.setItemMeta(potionMeta);
+    }
+        private static void applyTurtleMaster(PotionMeta potionMeta, String displayName, ItemStack item, int specifiedDuration, boolean particles, boolean icon) {
         // Clear any existing effects and lore
         potionMeta.clearCustomEffects();
         potionMeta.lore(new ArrayList<>());

@@ -181,7 +181,7 @@ public class Give implements CommandExecutor {
 
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Error processing give command for " + sender.getName() + ": " + e.getMessage(), e);
-            Text.sendErrorMessage(sender, "give.error", lang);
+            Text.sendErrorMessage(sender, "contact-admin", lang);
         }
     }
 

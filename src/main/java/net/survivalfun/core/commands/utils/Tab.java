@@ -682,12 +682,7 @@ public class Tab implements TabCompleter {
 
     private List<String> getEffectSuggestions() {
         return Arrays.asList(
-            "speed", "slowness", "haste", "mining_fatigue", "strength",
-            "instant_health", "instant_damage", "jump_boost", "nausea", "regeneration",
-            "resistance", "fire_resistance", "water_breathing", "invisibility", "blindness",
-            "night_vision", "hunger", "weakness", "poison", "wither", "health_boost",
-            "absorption", "saturation", "glowing", "levitation", "luck", "unluck",
-            "slow_falling", "conduit_power", "dolphins_grace", "bad_omen", "hero_of_the_village"
+            "water","mundane", "awkward", "thick", "night_vision", "invisibility", "jump_boost", "fire_resistance", "speed", "slowness", "turtle_master", "water_breathing", "instant_health", "instant_damage", "poison", "regeneration", "strength", "weakness", "luck", "slow_falling", "wind_charged", "weaving", "oozing", "infested", "hero_of_the_village", "glowing", "bad_omen", "blindness", "conduit_power", "dolphins_grace", "haste", "health_boost", "hunger", "levitation", "mining_fatigue", "nausea", "resistance", "saturation", "unluck", "wither"
         );
     }
 

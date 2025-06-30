@@ -143,7 +143,7 @@ give:
   equipped: "&aYou equipped {amount} {item}."
   receive: "&aYou have received {amount} {item}."
   invalid-item: "Item {item} not found."
-  error: "&cAn error occurred while giving the item."
+  invalid-mix: "Base potions cannot be mixed with other effects."
   unsafe-level: "Enchantment {enchant} exceeds maximum level. Limiting to {maxLevel}."
   unsafe-enchant: "Enchantment {enchant} can't be applied to {item}!"
   conflicting-enchants: "Enchantment {enchant} cannot be combined with {enchant2} on {item}!"

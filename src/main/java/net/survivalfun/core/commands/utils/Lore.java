@@ -72,8 +72,7 @@ public class Lore implements CommandExecutor {
         }
 
         if (item.getType().isAir()) {
-            player.sendMessage(lang.get("error-prefix") + lang.get("hold-item")
-                    .replace("{modify}", " §cadd lore to"));
+            Text.sendErrorMessage(player, "hold-item", lang, "{modify}", "add lore to");
             return true;
         }
 

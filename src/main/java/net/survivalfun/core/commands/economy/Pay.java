@@ -117,7 +117,7 @@ public class Pay implements CommandExecutor, TabCompleter {
 
         // Transfer money
         if (economy.transfer(player, target, amount)) {
-            String message = lang.get("economy.pay-success");
+            String message = lang.get("economy.pay-success-sender");
             if (message.isEmpty()) {
                 message = "&aYou paid &6{amount} &ato &f{player}&a.";
             }
@@ -128,7 +128,7 @@ public class Pay implements CommandExecutor, TabCompleter {
             // Notify target if they're online
             Player targetPlayer = target.getPlayer();
             if (targetPlayer != null && targetPlayer.isOnline()) {
-                String receiveMsg = lang.get("economy.pay-received");
+                String receiveMsg = lang.get("economy.pay-success-receiver");
                 if (receiveMsg.isEmpty()) {
                     receiveMsg = "&aYou received &6{amount} &afrom &f{player}&a.";
                 }
@@ -137,7 +137,7 @@ public class Pay implements CommandExecutor, TabCompleter {
                         .replace("{player}", player.getName())));
             }
         } else {
-            String message = lang.get("economy.pay-failed");
+            String message = lang.get("contact-admin");
             if (message.isEmpty()) {
                 message = "&cFailed to transfer money. Please try again later.";
             }

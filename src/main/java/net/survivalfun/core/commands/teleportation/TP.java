@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.teleportation;
 
 // No special imports needed for distance checking
 
@@ -1076,18 +1076,12 @@ public class TP implements CommandExecutor, TabCompleter {
                 }
                 
                 // Get the message and first color code
-                String actionMessage = lang.get("tp.tppet-action");
-                String firstColorOfAction = lang.getFirstColorCode("tp.tppet-action");
+                String actionMessage = lang.get("tp.tpe-action");
+                String firstColorOfAction = lang.getFirstColorCode("tp.tpe-action");
                 String disabledStyle = lang.get("styles.state.false");
                 
-                // Safely get entity type name
-                String entityTypeName = clickedEntity != null ? 
-                    clickedEntity.getType().name().substring(0, 1).toUpperCase() + 
-                    clickedEntity.getType().name().substring(1).toLowerCase() : "Unknown";
-                
                 player.sendMessage(actionMessage
-                .replace("{entity}", entityTypeName)
-                .replace("{pet}", getEntityName(clickedEntity))
+                .replace("{mob}", getEntityName(clickedEntity))
                 .replace("{state}", disabledStyle + "deselected" + firstColorOfAction));
             } else {
                 // Check max entities limit
@@ -1112,18 +1106,12 @@ public class TP implements CommandExecutor, TabCompleter {
                 }
                 
                 // Get the message and first color code
-                String actionMessage = lang.get("tp.tppet-action");
-                String firstColorOfAction = lang.getFirstColorCode("tp.tppet-action");
+                String actionMessage = lang.get("tp.tpe-action");
+                String firstColorOfAction = lang.getFirstColorCode("tp.tpe-action");
                 String enabledStyle = lang.get("styles.state.true");
                 
-                // Safely get entity type name
-                String entityTypeName = clickedEntity != null ? 
-                    clickedEntity.getType().name().substring(0, 1).toUpperCase() + 
-                    clickedEntity.getType().name().substring(1).toLowerCase() : "Unknown";
-                
                 player.sendMessage(actionMessage
-                .replace("{entity}", entityTypeName)
-                .replace("{pet}", getEntityName(clickedEntity))
+                .replace("{mob}", getEntityName(clickedEntity))
                 .replace("{state}", enabledStyle + "selected" + firstColorOfAction));
             }
         }
@@ -1451,7 +1439,7 @@ public class TP implements CommandExecutor, TabCompleter {
                     }
                 } else {
                     targetPlayer.sendMessage(lang.get("tp.success")
-                    .replace(" {name}", "")
+                    .replace("{name}", "")
                     .replace("{target}", "to ") + lang.get("tp.position")
                     .replace("{x}", String.valueOf(x))
                     .replace("{y}", String.valueOf(y))
@@ -1872,7 +1860,13 @@ public class TP implements CommandExecutor, TabCompleter {
 
         // Send appropriate messages
         if (isHereRequest) {
-            player.sendMessage(lang.get("tp.sent").replace("{name}", target.getName()));
+            String sentMsg = lang.get("tp.sent")
+                .replace("{name}", target.getName())
+                .replace("{cancelCmd}", "/tpcancel");
+            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(sentMsg)
+                .clickEvent(ClickEvent.runCommand("/tpcancel"))
+                .hoverEvent(HoverEvent.showText(Component.text("Click to cancel the teleport request"))));
+                
             String formatMsg = lang.get("tp.format").replace("{action}", "that you teleport to them.").replace("{time}", String.valueOf(expireSeconds));
             TextComponent acceptCmd = Component.text("/tpaccept")
                     .color(NamedTextColor.GREEN)
@@ -1888,7 +1882,13 @@ public class TP implements CommandExecutor, TabCompleter {
                     "{denyCmd}", denyCmd, "", Component.empty());
             target.sendMessage(finalMsg);
         } else {
-            player.sendMessage(lang.get("tp.sent").replace("{name}", target.getName()));
+            String sentMsg = lang.get("tp.sent")
+                .replace("{name}", target.getName())
+                .replace("{cancelCmd}", "/tpcancel");
+            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(sentMsg)
+                .clickEvent(ClickEvent.runCommand("/tpcancel"))
+                .hoverEvent(HoverEvent.showText(Component.text("Click to cancel the teleport request"))));
+                
             String formatMsg = lang.get("tp.format").replace("{action}", "to teleport to you.").replace("{time}", String.valueOf(expireSeconds));
             TextComponent acceptCmd = Component.text("/tpaccept")
                     .color(NamedTextColor.GREEN)
@@ -2340,7 +2340,7 @@ public class TP implements CommandExecutor, TabCompleter {
         // Teleport target to player
         target.teleport(player.getLocation());
         target.sendMessage(lang.get("tp.success")
-        .replace(" {name}", "...")
+        .replace(" {name}", "")
         .replace("{target}", "")
         );
         player.sendMessage(lang.get("tp.success")
@@ -2852,6 +2852,19 @@ public class TP implements CommandExecutor, TabCompleter {
         return teleportToggled.contains(playerUUID);
     }
 
+    /**
+     * Sets the teleport toggle state for a player
+     * @param playerId Player's UUID
+     * @param state True to enable teleport toggling, false to disable
+     */
+    public void setTeleportToggled(UUID playerId, boolean state) {
+        if (state) {
+            teleportToggled.add(playerId);
+        } else {
+            teleportToggled.remove(playerId);
+        }
+    }
+
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
         if (!(sender instanceof Player player)) {
@@ -3000,5 +3013,9 @@ public class TP implements CommandExecutor, TabCompleter {
                 selectedEntities.remove(playerUUID);
             }
         }
+    }
+
+    public PluginStart getPlugin() {
+        return plugin;
     }
 }

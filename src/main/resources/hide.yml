@@ -56,5 +56,8 @@ groups:
       - tpoffline
       - tpauto
       - tppet
+      - spawn
+      - back
+      - rtp
     tabcompletes:
       - ^

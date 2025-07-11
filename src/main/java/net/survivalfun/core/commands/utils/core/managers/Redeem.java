@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands;
+package net.survivalfun.core.commands.utils.core.managers;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
@@ -12,11 +12,11 @@ import org.bukkit.entity.Player;
 
 import java.util.*;
 
-public class RedeemCommand implements CommandExecutor {
+public class Redeem implements CommandExecutor {
 
     private final PluginStart plugin;
 
-    public RedeemCommand(PluginStart plugin) {
+    public Redeem(PluginStart plugin) {
         this.plugin = plugin;
     }
 

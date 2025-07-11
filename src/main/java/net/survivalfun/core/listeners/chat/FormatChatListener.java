@@ -1,35 +1,35 @@
 package net.survivalfun.core.listeners.chat;
 
-
-import net.survivalfun.core.PluginStart;
-
-
 import io.papermc.paper.event.player.AsyncChatEvent;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.model.user.User;
 import net.luckperms.api.cacheddata.CachedMetaData;
 import net.luckperms.api.query.QueryOptions;
 import net.milkbowl.vault2.chat.Chat;
+import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.config.Config;
 import net.survivalfun.core.managers.core.Text;
+
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-
-import org.bukkit.configuration.file.FileConfiguration;
 import org.jetbrains.annotations.NotNull;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Objects;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Objects;
 
 public class FormatChatListener implements Listener {
 
@@ -44,6 +44,8 @@ public class FormatChatListener implements Listener {
     private final String defaultFormat;
     private final boolean placeholderAPIEnabled;
     private final Pattern placeholderPattern = Pattern.compile("%\\{([^}]+)\\}%");
+    private final Pattern rawMessagePattern = Pattern.compile("\\[(.*?)\\]");
+    private final MiniMessage miniMessage;
     private final boolean blockUnicode;
 
     public FormatChatListener(PluginStart plugin, Chat vaultChat, LuckPerms luckPerms, Config config) {
@@ -54,7 +56,8 @@ public class FormatChatListener implements Listener {
         this.luckPerms = luckPerms;
         this.blockUnicode = config.getBoolean("block-unicode"); // Default to true
 
-        legacyComponentSerializer = LegacyComponentSerializer.builder().hexColors().build();
+        legacyComponentSerializer = LegacyComponentSerializer.builder().hexColors().character('&').build();
+        miniMessage = MiniMessage.miniMessage();
 
         // Get the default format from config
         this.defaultFormat = config.getString("chat-format.default", "<prefix> &a<player>&f: &f<message>");
@@ -104,16 +107,49 @@ public class FormatChatListener implements Listener {
 
     /**
      * Checks if a string contains unicode characters
-     * @param input The input string
+     * @param message The input string
      * @return true if the string contains unicode characters, false otherwise
      */
-    private boolean containsUnicode(String input) {
-        if (input == null) {
-            return false;
-        }
-
-        // Check if the string contains any non-ASCII characters
-        return !input.matches("^[\\u0000-\\u007F]*$");
+    private boolean containsUnicode(String message) {
+        return message.codePoints().anyMatch(cp -> cp > 127);
+    }
+    
+    /**
+     * Converts legacy color codes like &c to MiniMessage format like <red>
+     * This allows players to use both formats in the same message
+     * 
+     * @param message The input message with possible legacy color codes
+     * @return The same message with legacy codes converted to MiniMessage format
+     */
+    private String convertLegacyToMiniMessage(String message) {
+        if (message == null || message.isEmpty()) return message;
+        
+        // Replace all color codes with their MiniMessage equivalents
+        message = message.replace("&0", "<black>");
+        message = message.replace("&1", "<dark_blue>");
+        message = message.replace("&2", "<dark_green>");
+        message = message.replace("&3", "<dark_aqua>");
+        message = message.replace("&4", "<dark_red>");
+        message = message.replace("&5", "<dark_purple>");
+        message = message.replace("&6", "<gold>");
+        message = message.replace("&7", "<gray>");
+        message = message.replace("&8", "<dark_gray>");
+        message = message.replace("&9", "<blue>");
+        message = message.replace("&a", "<green>");
+        message = message.replace("&b", "<aqua>");
+        message = message.replace("&c", "<red>");
+        message = message.replace("&d", "<light_purple>");
+        message = message.replace("&e", "<yellow>");
+        message = message.replace("&f", "<white>");
+        
+        // Format codes
+        message = message.replace("&l", "<bold>");
+        message = message.replace("&m", "<strikethrough>");
+        message = message.replace("&n", "<underlined>");
+        message = message.replace("&o", "<italic>");
+        message = message.replace("&r", "<reset>");
+        
+        return message;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -122,49 +158,134 @@ public class FormatChatListener implements Listener {
             return;
         }
 
-        boolean debugMode = config.getBoolean("debug-mode");
         Player player = event.getPlayer();
-
-        if (player == null) {
-            plugin.getLogger().warning("Received chat event with null player, skipping formatting");
-            return;
-        }
-
         Component messageComponent = event.message();
         String rawMessage = legacyComponentSerializer.serialize(messageComponent);
+        String originalMessage = PlainTextComponentSerializer.plainText().serialize(event.message());
 
+        boolean debugMode = config.getBoolean("debug-mode");
         if (debugMode) {
             plugin.getLogger().info("Raw message from " + player.getName() + ": " + rawMessage);
         }
 
         if (blockUnicode && !player.hasPermission("chat.unicode")) {
-            if (containsUnicode(rawMessage)) {
+            if (containsUnicode(originalMessage)) {
                 event.setCancelled(true);
                 player.sendMessage(Text.parseColors("&cYour message contains unicode characters which are not allowed."));
                 if (debugMode) {
-                    plugin.getLogger().info("Blocked message with unicode from " + player.getName() + ": " + rawMessage);
+                    plugin.getLogger().info("Blocked message with unicode from " + player.getName() + ": " + originalMessage);
                 }
                 return;
             }
         }
 
-        String processedMessage;
+        // Word filtering would go here if we had it
+
+        String messageContent = rawMessage;
         if (player.hasPermission("chat.color")) {
-            processedMessage = Text.stripColor(rawMessage, player);
-            processedMessage = Text.parseColors(processedMessage);
+            messageContent = stripUnauthorizedFormatting(messageContent, player);
         } else {
-            processedMessage = Text.stripColor(rawMessage, null);
+            messageContent = Text.stripColor(messageContent, null);
+        }
+        
+        // Parse the message based on player permissions
+        if (player.hasPermission("chat.minimessage")) {
+            // For players with MiniMessage permission, support both formats by
+            // converting legacy codes to MiniMessage format first
+            String convertedMessage = convertLegacyToMiniMessage(messageContent);
+            messageComponent = miniMessage.deserialize(convertedMessage);
+        } else {
+            // Regular players just get legacy color codes
+            messageComponent = legacyComponentSerializer.deserialize(messageContent);
         }
 
         String chatFormat = getChatFormat(player);
-        String formattedMessage = replacePlaceholders(chatFormat, player, processedMessage);
-        formattedMessage = Text.parseColors(formattedMessage);
 
-        Component finalFormattedComponent = legacyComponentSerializer.deserialize(formattedMessage);
+        // Assemble the final message string with raw color codes. The deserializer will handle them.
+        String finalMessageFormat = chatFormat.replace("<prefix>", getPrefix(player))
+                .replace("<player>", player.getName());
 
+        // Process placeholders only if player has permission
+        if (player.hasPermission("chat.placeholderapi")) {
+            finalMessageFormat = processPlaceholderAPIPlaceholders(finalMessageFormat, player);
+        }
+
+        // Build the final component, separating raw text from formatted text
+        TextComponent.Builder builder = Component.text();
+        String[] parts = finalMessageFormat.split("<message>", -1);
+
+        for (int i = 0; i < parts.length; i++) {
+            if (!parts[i].isEmpty()) {
+                builder.append(legacyComponentSerializer.deserialize(parts[i]));
+            }
+            if (i < parts.length - 1) {
+                // This is where the <message> was. Always handle raw tags first.
+                Matcher rawMatcher = rawMessagePattern.matcher(messageContent);
+                int lastEnd = 0;
+                while (rawMatcher.find()) {
+                    String before = messageContent.substring(lastEnd, rawMatcher.start());
+
+                    // Check if the raw tag is escaped by a preceding color code (for non-MiniMessage users)
+                    boolean isEscaped = false;
+                    if (!player.hasPermission("chat.minimessage")) {
+                        if (rawMatcher.start() > 0) {
+                            char charBefore = messageContent.charAt(rawMatcher.start() - 1);
+                            if (Text.isColorChar(charBefore)) { // e.g., &c[...] or c[...] if using section signs
+                                if (rawMatcher.start() > 1) {
+                                    char charTwoBefore = messageContent.charAt(rawMatcher.start() - 2);
+                                    if (charTwoBefore == '&' || charTwoBefore == '§') {
+                                        isEscaped = true;
+                                    }
+                                }
+                            } else if (Character.isWhitespace(charBefore) && rawMatcher.start() > 2) { // e.g.,  &c[...]
+                                char charTwoBefore = messageContent.charAt(rawMatcher.start() - 2);
+                                char charThreeBefore = messageContent.charAt(rawMatcher.start() - 3);
+                                if (Text.isColorChar(charTwoBefore) && (charThreeBefore == '&' || charThreeBefore == '§')) {
+                                    isEscaped = true;
+                                }
+                            }
+                        }
+                    }
+
+                    if (isEscaped) {
+                        // It's escaped. Combine the part before the match with the content inside the brackets.
+                        String textToParse = before + rawMatcher.group(1);
+                        builder.append(legacyComponentSerializer.deserialize(textToParse));
+                    } else {
+                        // It's a true raw tag or a MiniMessage user. Process the part before it, then the raw content.
+                        if (!before.isEmpty()) {
+                            if (player.hasPermission("chat.minimessage")) {
+                                builder.append(miniMessage.deserialize(before));
+                            } else {
+                                builder.append(legacyComponentSerializer.deserialize(before));
+                            }
+                        }
+                        // The raw part itself (excluding brackets)
+                        builder.append(Component.text(rawMatcher.group(1)));
+                    }
+                    lastEnd = rawMatcher.end();
+                }
+                // Part after the last raw tag
+                String after = messageContent.substring(lastEnd);
+                if (!after.isEmpty()) {
+                    if (player.hasPermission("chat.minimessage")) {
+                        builder.append(miniMessage.deserialize(after));
+                    } else {
+                        builder.append(legacyComponentSerializer.deserialize(after));
+                    }
+                }
+            }
+        }
+
+        final Component finalFormattedComponent = builder.build();
         event.renderer((source, sourceDisplayName, message, viewer) -> finalFormattedComponent);
     }
 
+    /**
+     * Gets the chat format for a player
+     * @param player The player to get the format for
+     * @return The chat format for the player
+     */
     private String getChatFormat(Player player) {
         String groupName = "default"; // Default group
 
@@ -197,39 +318,6 @@ public class FormatChatListener implements Listener {
             }
             return defaultFormat;
         }
-    }
-
-    private String replacePlaceholders(String format, Player player, String message) {
-        String prefix = getPrefix(player);
-        String displayName = player.getDisplayName();
-        String playerName = player.getName();
-
-        // Debug mode logging
-        boolean debugMode = config.getBoolean("debug-mode");
-        if (debugMode) {
-            plugin.getLogger().info("Format before replacement: " + format);
-            plugin.getLogger().info("Prefix: " + prefix);
-            plugin.getLogger().info("Player name: " + playerName);
-            plugin.getLogger().info("Display name: " + displayName);
-            plugin.getLogger().info("Message: " + message);
-        }
-
-        String result = format.replace("<prefix>", prefix)
-                .replace("<player>", playerName)
-                .replace("<display_name>", displayName)
-                .replace("<name>", playerName) // In case they use <name>
-                .replace("<message>", message);
-
-        // Process PlaceholderAPI placeholders if available
-        if (placeholderAPIEnabled) {
-            result = processPlaceholderAPIPlaceholders(result, player);
-        }
-
-        if (debugMode) {
-            plugin.getLogger().info("Format after replacement: " + result);
-        }
-
-        return result;
     }
 
     /**
@@ -287,7 +375,35 @@ public class FormatChatListener implements Listener {
         if (debugMode) {
             plugin.getLogger().info("Final Prefix: " + prefix);
         }
-        return Text.parseColors(prefix);
+        return prefix;
+    }
+
+    private String stripUnauthorizedFormatting(String message, Player player) {
+        // If the player doesn't have chat.color, remove all color and formatting codes
+        if (!player.hasPermission("chat.color")) {
+            message = message.replaceAll("&[0-9a-fk-or]", "");
+        } else {
+            // Remove specific formats if the player doesn't have the permission for that format
+            if (!player.hasPermission("chat.format.bold")) {
+                message = message.replaceAll("&l", "");
+            }
+            if (!player.hasPermission("chat.format.italic")) {
+                message = message.replaceAll("&o", "");
+            }
+            if (!player.hasPermission("chat.format.underline")) {
+                message = message.replaceAll("&n", "");
+            }
+            if (!player.hasPermission("chat.format.strikethrough")) {
+                message = message.replaceAll("&m", "");
+            }
+            if (!player.hasPermission("chat.format.magic")) {
+                message = message.replaceAll("&k", "");
+            }
+            if (!player.hasPermission("chat.format.reset")) {
+                message = message.replaceAll("&r", "");
+            }
+        }
+        return message;
     }
 
     /**
@@ -297,4 +413,5 @@ public class FormatChatListener implements Listener {
         groupFormats.clear();
         loadGroupFormats();
     }
+
 }

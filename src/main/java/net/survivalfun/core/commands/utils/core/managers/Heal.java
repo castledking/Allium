@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.utils.core.managers;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
@@ -62,7 +62,7 @@ public class Heal implements CommandExecutor {
             // Send message about remaining cooldown time
             String cooldownMessage = lang.get("cooldown")
                     .replace("{time}", formattedTime)
-                    .replace("{cmd}", "/heal");
+                    .replace("{cmd}", "heal");
             player.sendMessage(cooldownMessage);
 
             return false;
@@ -131,7 +131,7 @@ public class Heal implements CommandExecutor {
                 target.sendMessage(Text.parseColors(lang.get("heal.self")));
                 return true;
             default:
-                sender.sendMessage(lang.get("command-usage").replace("{cmd}", "/heal")
+                sender.sendMessage(lang.get("command-usage").replace("{cmd}", "heal")
                         .replace("{args}", "[player]"));
                 return false;
         }
@@ -147,7 +147,7 @@ public class Heal implements CommandExecutor {
 
         // Check permission for healing others
         if (!player.hasPermission("core.heal.others")) {
-            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "/heal on others");
+            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "heal on others");
             return true;
         }
 

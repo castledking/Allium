@@ -1,10 +1,10 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.teleportation;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
-import net.survivalfun.core.commands.utils.TP;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
 
 public class Spawn implements CommandExecutor {
     private final PluginStart plugin;
@@ -156,43 +157,141 @@ public class Spawn implements CommandExecutor {
         teleportTasks.put(playerId, task);
     }
 
+    /**
+     * Safely parses a coordinate value from the database.
+     * @param value The value to parse (can be Number, String, or null)
+     * @param coordName The name of the coordinate (for error messages)
+     * @param defaultValue The default value to return if parsing fails
+     * @return The parsed coordinate value, or defaultValue if parsing fails
+     */
+    private double parseCoordinate(Object value, String coordName, double defaultValue) {
+        if (value == null) {
+            plugin.getLogger().warning("Spawn " + coordName + " is null, using default: " + defaultValue);
+            return defaultValue;
+        }
+        
+        try {
+            if (value instanceof Number) {
+                return ((Number) value).doubleValue();
+            } else if (value instanceof String) {
+                return Double.parseDouble((String) value);
+            } else {
+                plugin.getLogger().warning("Cannot parse " + coordName + " value " + value + " of type " + value.getClass().getSimpleName() + ", using default: " + defaultValue);
+                return defaultValue;
+            }
+        } catch (NumberFormatException e) {
+            plugin.getLogger().warning("Invalid number format for " + coordName + " value: " + value + ", using default: " + defaultValue);
+            return defaultValue;
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Error parsing " + coordName + " value: " + value, e);
+            return defaultValue;
+        }
+    }
+    
     private void teleportPlayer(Player player) {
-        Map<String, Object> spawnData = database.getSpawnLocation();
-        if (spawnData == null) {
-            player.sendMessage(Text.colorize("&cSpawn location is not set."));
-            return;
+        try {
+            plugin.getLogger().info("Attempting to teleport player " + player.getName() + " to spawn...");
+            
+            // Get spawn data from database
+            Map<String, Object> spawnData = database.getSpawnLocation();
+            
+            // Log the spawn data we received
+            plugin.getLogger().info("Spawn data from database: " + (spawnData != null ? spawnData.toString() : "null"));
+            
+            if (spawnData == null || spawnData.isEmpty()) {
+                String errorMsg = "Spawn location is not set in the database.";
+                plugin.getLogger().warning(errorMsg);
+                player.sendMessage(Text.colorize("&c" + errorMsg + " Please ask an administrator to set it with /setspawn."));
+                return;
+            }
+            
+            // Verify all required spawn data exists
+            String worldName = (String) spawnData.get("world");
+            if (worldName == null || worldName.isEmpty()) {
+                String errorMsg = "Spawn world name is null or empty in database.";
+                plugin.getLogger().warning(errorMsg);
+                player.sendMessage(Text.colorize("&c" + errorMsg + " Please contact an administrator."));
+                return;
+            }
+            
+            // Set cooldown if player doesn't have bypass
+            if (!player.hasPermission("core.tpa.nocooldown")) {
+                setCooldown(player.getUniqueId());
+            }
+
+            // Get the world
+            World world = Bukkit.getWorld(worldName);
+            if (world == null) {
+                String errorMsg = "Spawn world '" + worldName + "' is not loaded or doesn't exist.";
+                plugin.getLogger().warning(errorMsg + " Available worlds: " + Bukkit.getWorlds().stream().map(World::getName).collect(java.util.stream.Collectors.joining(", ")));
+                player.sendMessage(Text.colorize("&c" + errorMsg + " Please contact an administrator."));
+                return;
+            }
+
+            // Verify all required coordinates exist and are valid
+            try {
+                // Log the raw values before conversion
+                plugin.getLogger().info("Raw spawn data - x: " + spawnData.get("x") + 
+                                      ", y: " + spawnData.get("y") + 
+                                      ", z: " + spawnData.get("z") + 
+                                      ", yaw: " + spawnData.get("yaw") + 
+                                      ", pitch: " + spawnData.get("pitch"));
+                
+                // Convert coordinates with better error handling
+                double x = parseCoordinate(spawnData.get("x"), "x", 0.0);
+                double y = parseCoordinate(spawnData.get("y"), "y", 64.0);
+                double z = parseCoordinate(spawnData.get("z"), "z", 0.0);
+                float yaw = (float) parseCoordinate(spawnData.get("yaw"), "yaw", 0.0);
+                float pitch = (float) parseCoordinate(spawnData.get("pitch"), "pitch", 0.0);
+                
+                // Log the parsed coordinates
+                plugin.getLogger().info(String.format("Parsed spawn location - world: %s, x: %.2f, y: %.2f, z: %.2f, yaw: %.2f, pitch: %.2f", 
+                    worldName, x, y, z, yaw, pitch));
+
+                // Create the spawn location
+                Location spawnLocation = new Location(world, x, y, z, yaw, pitch);
+                
+                // Ensure the location is safe before teleporting
+                if (!spawnLocation.getChunk().isLoaded()) {
+                    plugin.getLogger().info("Chunk at " + x + ", " + z + " is not loaded. Loading now...");
+                    boolean chunkLoaded = spawnLocation.getChunk().load();
+                    plugin.getLogger().info("Chunk load " + (chunkLoaded ? "succeeded" : "failed"));
+                }
+                
+                // Save player's current location to the back history
+                savePlayerLocationToBackHistory(player);
+                
+                // Teleport the player
+                plugin.getLogger().info("Teleporting " + player.getName() + " to spawn at " + spawnLocation);
+                player.teleport(spawnLocation);
+                player.sendMessage(Text.colorize("&aTeleported to spawn!"));
+                
+                // Only try to teleport pets/entities if player teleport was successful
+                try {
+                    // Check if player has selected pets via /tppet and teleport them
+                    teleportPlayerPets(player, spawnLocation);
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to teleport pets for " + player.getName() + ": " + e.getMessage());
+                }
+                
+                try {
+                    // Check if player has selected entities via /tpe and teleport them
+                    teleportPlayerEntities(player, spawnLocation);
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to teleport entities for " + player.getName() + ": " + e.getMessage());
+                }
+                
+                return; // Successfully teleported player and pets/entities
+                
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.SEVERE, "Error processing spawn location data for " + player.getName(), e);
+                player.sendMessage(Text.colorize("&cAn error occurred while processing spawn location. Please contact an administrator."));
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Unexpected error while teleporting " + player.getName() + " to spawn", e);
+            player.sendMessage(Text.colorize("&cAn unexpected error occurred while teleporting to spawn. Please try again later."));
         }
-        
-        // Set cooldown if player doesn't have bypass
-        if (!player.hasPermission("core.tpa.nocooldown")) {
-            setCooldown(player.getUniqueId());
-        }
-
-        World world = Bukkit.getWorld((String) spawnData.get("world"));
-        if (world == null) {
-            player.sendMessage(Text.colorize("&cInvalid spawn world. Please contact an administrator."));
-            return;
-        }
-
-        // Save player's current location to the back history
-        savePlayerLocationToBackHistory(player);
-
-        Location spawnLocation = new Location(
-                world,
-                (double) spawnData.get("x"),
-                (double) spawnData.get("y"),
-                (double) spawnData.get("z"),
-                ((Number) spawnData.get("yaw")).floatValue(),
-                ((Number) spawnData.get("pitch")).floatValue()
-        );
-
-        player.teleport(spawnLocation);
-        
-        // Check if player has selected pets via /tppet and teleport them
-        teleportPlayerPets(player, spawnLocation);
-        
-        // Check if player has selected entities via /tpe and teleport them
-        teleportPlayerEntities(player, spawnLocation);
         
         player.sendMessage(Text.colorize("&aTeleported to spawn!"));
     }
@@ -200,9 +299,8 @@ public class Spawn implements CommandExecutor {
     private boolean hasMoved(Player player, Location lastLocation) {
         if (lastLocation == null) return false;
         Location currentLoc = player.getLocation();
-        return currentLoc.getX() != lastLocation.getX() ||
-                currentLoc.getY() != lastLocation.getY() ||
-                currentLoc.getZ() != lastLocation.getZ();
+        // Use a 0.5 block distance threshold instead of exact coordinate matching
+        return currentLoc.distance(lastLocation) > 0.5;
     }
 
     private void cancelTeleportTask(UUID playerId) {

@@ -8,6 +8,27 @@
 
 # Language for lang.yml
 lang: en
+server-name: "Unknown Server"
+
+############################################################
+# +------------------------------------------------------+ #
+# |                 Discord Settings                     | #
+# +------------------------------------------------------+ #
+############################################################
+
+# Discord integration settings
+discord:
+  # Webhook for escalation command
+  escalate_webhook: ""
+  
+  # List of role IDs to mention in escalation messages
+  escalate_mentions: []
+  
+  # Bot display name (optional)
+  bot_name: "Server Escalation"
+  
+  # Bot avatar URL (optional)
+  bot_avatar: ""
 
 ############################################################
 # +------------------------------------------------------+ #
@@ -93,98 +114,6 @@ redeem-settings:
       - "lp user {player} parent set netherite"
       - "minecraft:xp add {player} 1000 points"
       - "eco give {player} 5000"
-
-redeem-items:
-  enabled: true # Set to false to disable giving items on join and item-based redemption.
-
-  item-definitions:
-    # Define the appearance and NBT data for each rank's redeem item.
-    # The rank key (e.g., 'iron') MUST match the rank suffix in the 'players-to-redeem' list.
-    #
-    # To use a player skull:
-    # 1. Set 'material' to "PLAYER_HEAD".
-    # 2. Add the 'skull-owner' field. It can accept:
-    #    - A player's name (e.g., "Notch")
-    #    - A player's UUID (e.g., "069a79f4-44e9-4726-a5be-fca90e38aaf5")
-    #    - A HeadDatabase ID (e.g., "hdb:12345")
-    #    - A Base64 texture value (a very long string).
-    # When 'skull-owner' is present, 'banner-patterns' will be ignored if material is PLAYER_HEAD.
-    iron:
-      material: "PLAYER_HEAD"
-      skull-owner: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTYzYjg3ZWU2YTU1ZjJiZjAxMzViMjZiZDk2ZWMyNzllZGVkMTc1Zjk0OGMwMzZkODhhNjA3MjVlMTI3MzcxYyJ9fX0="  # Iron Block texture
-      display-name: "&f&l✦ Iron Rank Voucher ✦"
-      lore:
-        - "&7Right-click to redeem your Iron rank!"
-        - "&7Thank you for your support!"
-        - ""
-        - "&8&o* A solid foundation for your journey *"
-      glow: true
-    gold:
-      material: "PLAYER_HEAD"
-      skull-owner: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZTQ3OTZjMWRkOTM3NDk2NGIzNWIzNGIzMzI5ZTJkNTNhZGY4ZDQ3NDc1NTZkN2FkNDJlMzU5ZWRjN2UzZWQ2MiJ9fX0="  # Gold Block texture
-      display-name: "&6&l★ Gold Rank Voucher ★"
-      lore:
-        - "&7Right-click to redeem your Gold rank!"
-        - "&7Thank you for your continued support!"
-        - ""
-        - "&8&o* Shining bright like a treasure *"
-      glow: true
-    emerald:
-      material: "PLAYER_HEAD"
-      skull-owner: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjcyYzA1ZGQ3NjI4OGY0MzI4YTI0MzkxYmY0NzI1ZmQyMjYwNTkyZGIzY2Y5YjJiYzIwMzJkZDA1OTZjZjQ0MCJ9fX0="  # Emerald Block texture
-      display-name: "&a&l✪ Emerald Rank Voucher ✪"
-      lore:
-        - "&7Right-click to redeem your Emerald rank!"
-        - "&7A symbol of true dedication!"
-        - ""
-        - "&8&o* Rare and valuable, just like you *"
-      glow: true
-    netherite:
-      material: "PLAYER_HEAD"
-      skull-owner: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNzQ4YjQ5ZThiYWZiMWZlZmI0OTUzOWJlNGU4MmNjN2UyYTI0NGJmMDQyODEzNGI5YTgwNTkxYTE3YzFhZTNjYiJ9fX0="  # Netherite Block texture
-      display-name: "&8&l✵ Netherite Rank Voucher ✵"
-      lore:
-        - "&7Right-click to redeem your Netherite rank!"
-        - "&7Your ultimate support is legendary!"
-        - ""
-        - "&8&o* Forged in fire, stronger than diamond *"
-      glow: true
-    # You can add more rank vouchers following the same pattern
-    # Example using HeadDatabase:
-    # example_hdb:
-    #   material: "PLAYER_HEAD"
-    #   skull-owner: "hdb:1328"  # HeadDatabase ID
-    #   display-name: "&d&l✧ Example Rank Voucher ✧"
-    #   lore:
-    #     - "&7Right-click to redeem your Example rank!"
-    #   glow: true  
-      # skull-owner: "MHF_Question" # Example: Minecraft-Heads default question mark head
-      # skull-owner: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmFkYzA0OGE3Y2U3OGY3ZGFkNzJhMDdkYTI3ZDg1YzA5MTY4NzDkZmY2M2YxNzMyZGQ2MWEwN2NmMmU0Mzc0MyJ9fX0=" # Example: Base64 for a specific skin
-      # display-name: "&e&lSkull Rank Voucher"
-      # lore:
-      #   - "&7Right-click to redeem your Skull Rank!"
-      #   - "&7This item uses a custom skull."
-      # glow: true
-
-    # Banner pattern example (for reference):
-    # banner_example:
-    #   material: "RED_BANNER"
-    #   display-name: "&c&l⚑ Banner Example Voucher ⚑"
-    #   lore:
-    #     - "&7This is an example of a banner-based voucher"
-    #     - "&7with custom patterns applied."
-    #     - ""
-    #     - "&8&o* Shows how to use banner patterns *"
-    #   # Banner patterns are applied in order from top to bottom
-    #   # Format: "DYE_COLOR:PATTERN_TYPE"
-    #   # See Bukkit DyeColor and PatternType enums for all options
-    #   banner-patterns:
-    #     - "BLACK:GRADIENT_UP"       # Base gradient from bottom
-    #     - "ORANGE:STRIPE_CENTER"    # Center horizontal stripe
-    #     - "YELLOW:CIRCLE_MIDDLE"    # Center circle
-    #     - "WHITE:BORDER"            # Border around the edge
-    #     - "RED:SKULL"               # Skull pattern in the middle
-    #   glow: true
 
 ############################################################
 # +------------------------------------------------------+ #

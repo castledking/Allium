@@ -42,7 +42,7 @@ public class Money implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         // Check permission
-        if (!sender.hasPermission("core.admin")) {
+        if (!sender.hasPermission("core.admin") || !sender.hasPermission("core.money")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label);
             return true;
         }
@@ -205,11 +205,9 @@ public class Money implements CommandExecutor, TabCompleter {
      * Show command usage to sender
      */
     private void showUsage(CommandSender sender, String label) {
-        String usageMsg = lang.get("economy.money-usage");
-        if (usageMsg.isEmpty()) {
-            usageMsg = "&cUsage: /" + label + " <give|take|set|clear> <player> [amount]";
-        }
-        sender.sendMessage(Text.parseColors(usageMsg.replace("{cmd}", label)));
+        sender.sendMessage(lang.get("command-usage")
+        .replace("{cmd}", label)
+        .replace("{args}", "<give|take|set|clear> <player> [amount]"));
     }
 
     @Override

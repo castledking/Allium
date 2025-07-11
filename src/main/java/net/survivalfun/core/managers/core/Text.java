@@ -16,7 +16,6 @@ import java.util.HashMap;
 
 public class Text {
 
-
     public enum ColorFormat {
         MINI_MESSAGE, // <gradient:>, <#Hex>
         HEX, //&#FFFFFF
@@ -99,8 +98,6 @@ public class Text {
         }
     }
 
-
-
     public static String parseColors(String input) {
         if (input == null || input.isEmpty()) return "";
 
@@ -124,8 +121,103 @@ public class Text {
         return ChatColor.translateAlternateColorCodes('&', input);
     }
 
+    /**
+     * Parses color codes and MiniMessage formatting
+     * @param text The text to parse
+     * @param isChatMessage Whether this is a chat message (affects raw [] handling)
+     * @return The parsed text
+     */
+    public static String parseColors(String text, boolean isChatMessage) {
+        if (text == null || text.isEmpty()) return text;
+
+        // Handle raw messages in [] for chat - completely bypass all parsing
+        if (isChatMessage) {
+            // Check if the entire message is enclosed in brackets
+            if (text.startsWith("[") && text.endsWith("]")) {
+                String rawContent = text.substring(1, text.length() - 1);
+                // If content starts with '&', treat it as a raw color code display request.
+                // We escape the ampersand by prepending another one, so it's displayed literally.
+                if (rawContent.startsWith("&") || rawContent.startsWith("%")) {
+                    return "&" + rawContent;
+                }
+                // For other bracketed content (like items), return as-is.
+                return rawContent;
+            }
+
+            // Process text that contains bracketed sections
+            // If we find §r[...content...]§r pattern, preserve the content as-is
+            if (text.contains("§r[") && text.contains("]§r")) {
+                StringBuilder result = new StringBuilder();
+                int startIndex = 0;
+                int openMarkerIndex;
+                int closeMarkerIndex;
+
+                while (startIndex < text.length()) {
+                    openMarkerIndex = text.indexOf("§r[", startIndex);
+
+                    if (openMarkerIndex == -1) {
+                        // No more markers, add the rest and process normally
+                        result.append(parseRegularText(text.substring(startIndex)));
+                        break;
+                    }
+
+                    // Process text before the marker
+                    if (openMarkerIndex > startIndex) {
+                        result.append(parseRegularText(text.substring(startIndex, openMarkerIndex)));
+                    }
+
+                    // Find the closing marker
+                    closeMarkerIndex = text.indexOf("]§r", openMarkerIndex);
+
+                    if (closeMarkerIndex == -1) {
+                        // No matching closing marker, treat as regular text
+                        result.append(parseRegularText(text.substring(openMarkerIndex)));
+                        break;
+                    }
+
+                    // Extract the raw content (without the §r[ and ]§r markers)
+                    String rawContent = text.substring(openMarkerIndex + 3, closeMarkerIndex);
+
+                    // Add the raw content without parsing
+                    result.append("[").append(rawContent).append("]");
+
+                    // Move past this marker pair
+                    startIndex = closeMarkerIndex + 3;
+                }
+
+                return result.toString();
+            }
+        }
+
+        // Original parsing logic for non-raw messages
+        return parseRegularText(text);
+    }
+
+    /**
+     * Helper method to parse regular text without special raw content handling
+     * @param text The text to parse
+     * @return The parsed text
+     */
+    private static String parseRegularText(String text) {
+        if (text == null || text.isEmpty()) return text;
+
+        text = miniMessage.stripTags(text);
+        return LegacyComponentSerializer.legacySection().serialize(
+            LegacyComponentSerializer.legacySection().deserialize(text)
+        );
+    }
+
+    /**
+     * Checks if a character is a valid Minecraft color or formatting code.
+     * @param c The character to check.
+     * @return true if the character is a color or formatting code, false otherwise.
+     */
+    public static boolean isColorChar(char c) {
+        return "0123456789abcdefklmnor".indexOf(Character.toLowerCase(c)) > -1;
+    }
+
     public static ColorFormat detectColorFormat(String input) {
-        if (input.contains("<gradient:") || input.contains("</gradient>") || 
+        if (input.contains("<gradient:") || input.contains("</gradient>") ||
             SIMPLE_HEX_PATTERN.matcher(input).find() ||
             (input.contains("<") && input.contains(">"))) {
             return ColorFormat.MINI_MESSAGE;
@@ -168,14 +260,6 @@ public class Text {
     }
 
     /**
-     * Strips color codes from a message based on player permissions.
-     * Players without specific color permissions will have those colors removed.
-     *
-     * @param message The message to strip colors from
-     * @param player The player to check permissions for (can be null for complete stripping)
-     * @return The message with unauthorized color codes stripped
-     */
-    /**
      * Sends a styled error message to the CommandSender.
      *
      * @param sender The recipient of the message.
@@ -184,95 +268,30 @@ public class Text {
      * @param replacements A map of placeholder keys (without braces) to their values.
      */
     public static void sendErrorMessage(CommandSender sender, String key, Lang lang, Map<String, String> replacements) {
-        String parsedErrorPrefix = parseColors(lang.getRaw("error-prefix") + " "); // Get raw prefix and parse once
-        String rawMessage = lang.getRaw(key); // Get raw message with '&' codes
+        String parsedErrorPrefix = parseColors(lang.getRaw("error-prefix") + " ");
+        String rawMessage = lang.getRaw(key);
+
+        // Use key as raw message if not found in lang
+        boolean isDirectMessage = rawMessage == null || rawMessage.equals(key);
+        if (isDirectMessage) {
+            rawMessage = key;
+        }
 
         if (rawMessage == null || rawMessage.isEmpty()) {
-            sender.sendMessage(parsedErrorPrefix + parseColors("&cError: Missing language key: " + key));
+            sender.sendMessage(parsedErrorPrefix + parseColors("&cError: Empty message"));
             return;
         }
 
-        // Special handling for specific keys that should use a single color
-        boolean useSimpleColorHandling = isSimpleColorKey(key);
-        
-        // If the message doesn't contain any color codes and is a simple key, we'll use a simpler approach
-        if (useSimpleColorHandling && !containsColorCodes(rawMessage)) {
-            String finalMessage = parsedErrorPrefix + parseColors(rawMessage);
-            
-            // Replace placeholders without adding special coloring
+        // Process placeholders if any replacements are provided
+        if (replacements != null && !replacements.isEmpty()) {
             for (Map.Entry<String, String> entry : replacements.entrySet()) {
-                finalMessage = finalMessage.replace("{" + entry.getKey() + "}", entry.getValue());
-            }
-            
-            sender.sendMessage(finalMessage);
-            return;
-        }
-        
-        // Styles are expected to be raw strings with '&' codes from lang.getStyle
-        String messageColorStyle = lang.getStyle("styles.error.message-color", "&c");
-        String placeholderColorStyle = lang.getStyle("styles.error.placeholder-color", "&7");
-        String parenthesesColorStyle = lang.getStyle("styles.error.parentheses-color", "&8");
-
-        StringBuilder finalMessage = new StringBuilder(parsedErrorPrefix);
-        String currentGeneralTextColor = messageColorStyle; // Color for plain text, updated by explicit &codes from rawMessage
-        String explicitColorForNextToken = null;         // Stores an &code if it immediately precedes the next token
-
-        // Regex to tokenize the message: captures &color codes, {placeholders}, (parentheses), and text segments
-        // Regex to tokenize the message: captures &color codes, {placeholders} (optionally preceded by /), (parentheses), and text segments
-        Pattern TOKENIZER = Pattern.compile("(&[0-9a-fk-orA-FK-OR])|((?:/)?\\{[\\w\\.-]+?\\})|([()])|([^{}&()]+)");
-        Matcher matcher = TOKENIZER.matcher(rawMessage);
-
-        while (matcher.find()) {
-            String colorCodeToken = matcher.group(1);     // e.g., &e
-            String placeholderToken = matcher.group(2); // e.g., {name}
-            String parenthesisToken = matcher.group(3); // e.g., (
-            String textToken = matcher.group(4);        // e.g., Player 
-
-            if (colorCodeToken != null) {
-                explicitColorForNextToken = colorCodeToken;
-                currentGeneralTextColor = colorCodeToken; // Explicit &code also sets the new base color for subsequent general text
-            } else if (placeholderToken != null) { // placeholderToken is matcher.group(2), which can be /{key} or {key}
-                boolean hasLeadingSlash = placeholderToken.startsWith("/");
-                String actualPlaceholderPart = hasLeadingSlash ? placeholderToken.substring(1) : placeholderToken; // e.g., "{key}"
-                String pKey = actualPlaceholderPart.substring(1, actualPlaceholderPart.length() - 1);
-                // Use actualPlaceholderPart (e.g. "{key}") as default if replacement not found, not the version with the slash
-                String value = replacements.getOrDefault(pKey, actualPlaceholderPart);
-
-                String colorForToken;
-                String textToColor;
-
-                if (explicitColorForNextToken != null) {
-                    // An explicit color (e.g., &c) was set just before this token (e.g. "&c/{placeholder}" or "&c{placeholder}")
-                    colorForToken = explicitColorForNextToken;
-                    if (hasLeadingSlash) {
-                        textToColor = "/" + value;
-                    } else {
-                        textToColor = value;
-                    }
-                } else {
-                    // No explicit color immediately preceding, use default placeholder style for the whole unit (slash + value)
-                    colorForToken = placeholderColorStyle;
-                    if (hasLeadingSlash) {
-                        textToColor = "/" + value;
-                    } else {
-                        textToColor = value;
-                    }
-                }
-                finalMessage.append(parseColors(colorForToken + textToColor));
-                explicitColorForNextToken = null; // Explicit color is consumed by this token
-            } else if (parenthesisToken != null) {
-                String colorToApply = (explicitColorForNextToken != null) ? explicitColorForNextToken : parenthesesColorStyle;
-                finalMessage.append(parseColors(colorToApply + parenthesisToken));
-                
-                explicitColorForNextToken = null; // Explicit color is consumed
-            } else if (textToken != null) {
-                String colorToApply = (explicitColorForNextToken != null) ? explicitColorForNextToken : currentGeneralTextColor;
-                finalMessage.append(parseColors(colorToApply + textToken));
-                
-                explicitColorForNextToken = null; // Explicit color is consumed (if it was for this text token)
+                String placeholder = "{" + entry.getKey() + "}";
+                rawMessage = rawMessage.replace(placeholder, entry.getValue() != null ? entry.getValue() : "");
             }
         }
-        sender.sendMessage(finalMessage.toString());
+
+        // Process color codes and send the message
+        sender.sendMessage(parsedErrorPrefix + parseColors(rawMessage));
     }
 
     /**
@@ -284,8 +303,8 @@ public class Text {
             for (int i = 0; i < replacements.length - 1; i += 2) {
                 if (replacements[i] != null && replacements[i+1] != null) {
                      // Remove curly braces if present in the key part of replacements
-                    String placeholderKey = replacements[i].startsWith("{") && replacements[i].endsWith("}") 
-                                          ? replacements[i].substring(1, replacements[i].length() - 1) 
+                    String placeholderKey = replacements[i].startsWith("{") && replacements[i].endsWith("}")
+                                          ? replacements[i].substring(1, replacements[i].length() - 1)
                                           : replacements[i];
                     replacementsMap.put(placeholderKey, replacements[i+1]);
                 }
@@ -293,63 +312,173 @@ public class Text {
         }
         sendErrorMessage(sender, key, lang, replacementsMap);
     }
-    
+
     /**
-     * Checks if a language key should use simple color handling (no placeholder coloring).
-     * 
-     * @param key The language key to check
-     * @return true if the key should use simple color handling
+     * Formats and sends an error message to a command sender with consistent color formatting.
+     *
+     * @param sender      The command sender to receive the message (Player or CommandSender)
+     * @param message     The language key for the error message, or the message itself as a Component
+     * @param lang        The language manager to get messages from
+     * @param replacements An array of key-value pairs for replacements (key1, value1, key2, value2, ...) where value can be String or Component
      */
-    private static boolean isSimpleColorKey(String key) {
-        // List of keys that should use simple color handling
-        return key.equals("hold-item") || 
-               key.equals("cannot-self") || 
-               key.equals("unknown-command") || 
-               key.equals("unknown-command-suggestion") || 
-               key.equals("no-permission") || 
-               key.equals("cooldown");
+    public static void sendErrorMessage(CommandSender sender, Object message,
+                                        net.survivalfun.core.managers.lang.Lang lang,
+                                        Object... replacements) {
+        if (sender == null) {
+            return;
+        }
+
+        if (lang == null) {
+            sender.sendMessage("§c§lError: §rMissing language manager");
+            return;
+        }
+
+        Component componentMessage = null;
+        String stringMessage = null;
+
+        if (message instanceof String) {
+            // Get the message from the key
+            String key = (String) message;
+            stringMessage = lang.getRaw(key);
+            if (stringMessage == null || stringMessage.isEmpty() || stringMessage.equals(key)) {
+                // Use the key as the message if not found in lang
+                stringMessage = key;
+                sender.sendMessage("§c§lError: §rMissing error message for key: " + message);
+                return;
+            }
+        } else if (message instanceof Component) {
+            componentMessage = (Component) message;
+        } else if (message instanceof Map) {
+            // Handle the case where the message parameter is a map
+            Map<String, Object> replacementMap = (Map<String, Object>) message;
+            // Get the error prefix and handle empty prefix case
+            String errorPrefix = lang.get("error-prefix");
+            boolean hasPrefix = !errorPrefix.isEmpty();
+
+            // Get the last color from the error prefix to maintain consistent coloring
+            String errorColor = hasPrefix ? getLastColorInErrorPrefix(lang) : "§c";
+
+            // Get the message from the language key
+            stringMessage = lang.get("unknown-command-suggestion"); // Specific message key
+            if (stringMessage == null || stringMessage.isEmpty()) {
+                sender.sendMessage("§c§lError: §rMissing error message for key: unknown-command-suggestion");
+                return;
+            }
+
+            String formattedMessage = stringMessage; // Start with the language string
+
+            for (Map.Entry<String, Object> entry : replacementMap.entrySet()) {
+                String placeholder = entry.getKey();
+                Object replacementValue = entry.getValue();
+
+                if (replacementValue instanceof Component) {
+                    // Handle Component replacement
+                    Component replacementComponent = (Component) replacementValue;
+                    String serializedComponent = LegacyComponentSerializer.legacySection().serialize(replacementComponent);
+                    formattedMessage = formattedMessage.replace(placeholder, serializedComponent);
+                } else {
+                    // Handle String replacement
+                    String value = String.valueOf(replacementValue);
+                    if (hasPrefix) {
+                        formattedMessage = formattedMessage.replace(placeholder, value + errorColor);
+                    } else {
+                        formattedMessage = formattedMessage.replace(placeholder, value);
+                    }
+                }
+            }
+
+            // Send the formatted message with the error prefix
+            if (!hasPrefix) {
+                // When there's no prefix, parse the colors in the message itself
+                sender.sendMessage(parseColors(formattedMessage));
+            } else {
+                // When there's a prefix, use the traditional approach
+                sender.sendMessage(errorPrefix + errorColor + " " + formattedMessage);
+            }
+            return; // Important to return, so it doesn't run other logic
+        } else {
+            sender.sendMessage("§c§lError: §rInvalid message type. Must be a language key (String) or a Component.");
+            return;
+        }
+
+        // Get the error prefix and handle empty prefix case
+        String errorPrefix = lang.get("error-prefix");
+        boolean hasPrefix = !errorPrefix.isEmpty();
+
+        // Get the last color from the error prefix to maintain consistent coloring
+        String errorColor = hasPrefix ? getLastColorInErrorPrefix(lang) : "§c";
+
+        if (componentMessage != null) {
+            // Serialize the component to a string for prefixing
+            String serializedComponent = LegacyComponentSerializer.legacySection().serialize(componentMessage);
+
+            // Send the formatted message with the error prefix
+            if (!hasPrefix) {
+                // When there's no prefix, parse the colors in the message itself
+                sender.sendMessage(parseColors(serializedComponent));
+            } else {
+                // When there's a prefix, use the traditional approach
+                sender.sendMessage(errorPrefix + errorColor + " " + serializedComponent);
+            }
+        } else {
+            // Convert the replacements to strings and apply them in pairs
+            String formattedMessage = stringMessage;
+            for (int i = 0; i < replacements.length - 1; i += 2) {
+                String placeholder = String.valueOf(replacements[i]);
+                Object replacementValue = replacements[i + 1];
+
+                if (replacementValue instanceof Component) {
+                    // Handle Component replacement
+                    Component replacementComponent = (Component) replacementValue;
+                    String serializedComponent = LegacyComponentSerializer.legacySection().serialize(replacementComponent);
+                    formattedMessage = formattedMessage.replace(placeholder, serializedComponent);
+
+                } else {
+                    // Handle String replacement
+                    String value = String.valueOf(replacementValue);
+                    if (hasPrefix) {
+                        formattedMessage = formattedMessage.replace(placeholder, value + errorColor);
+                    } else {
+                        formattedMessage = formattedMessage.replace(placeholder, value);
+                    }
+                }
+            }
+
+            // Send the formatted message with the error prefix
+            if (!hasPrefix) {
+                // When there's no prefix, parse the colors in the message itself
+                sender.sendMessage(parseColors(formattedMessage));
+            } else {
+                // When there's a prefix, use the traditional approach
+                sender.sendMessage(errorPrefix + errorColor + " " + formattedMessage);
+            }
+        }
     }
-    
+
     /**
-     * Checks if a string contains any color codes.
-     * 
-     * @param text The text to check
-     * @return true if the text contains color codes
+     * Gets the last color code from the error prefix message.
+     * This is useful for maintaining consistent color formatting in error messages.
+     *
+     * @param langManager The language manager to get the error prefix from
+     * @return The last color code from the error prefix
      */
-    private static boolean containsColorCodes(String text) {
-        if (text == null || text.isEmpty()) {
-            return false;
+    public static String getLastColorInErrorPrefix(net.survivalfun.core.managers.lang.Lang langManager) {
+        if (langManager == null) {
+            return ChatColor.RED.toString(); // Default to red if lang manager is null
         }
-        
-        // Check for legacy color codes (&a, &b, etc.)
-        if (text.contains("&") && text.matches(".*[&§][0-9a-fk-orA-FK-OR].*")) {
-            return true;
-        }
-        
-        // Check for hex color codes (&#RRGGBB)
-        if (text.contains("&#") && HEX_PATTERN.matcher(text).find()) {
-            return true;
-        }
-        
-        // Check for legacy hex format (&x&R&R&G&G&B&B)
-        if ((text.contains("&x") || text.contains("§x")) && LEGACY_HEX_PATTERN.matcher(text).find()) {
-            return true;
-        }
-        
-        // Check for MiniMessage format
-        if ((text.contains("<gradient:") || text.contains("</gradient>") || 
-             SIMPLE_HEX_PATTERN.matcher(text).find() ||
-             (text.contains("<") && text.contains(">"))) && 
-            detectColorFormat(text) == ColorFormat.MINI_MESSAGE) {
-            return true;
-        }
-        
-        return false;
+
+        String errorPrefix = langManager.get("error-prefix");
+        return getLastColor(errorPrefix, true);
     }
 
     public static String stripColor(String message, Player player) {
         if (message == null || message.isEmpty()) {
             return "";
+        }
+
+        // Handle raw display requests like [&c...], pass them through without stripping.
+        if (message.startsWith("[&") && message.endsWith("]")) {
+            return message;
         }
 
         // If player is null or doesn't have any color permissions, strip all colors
@@ -475,163 +604,6 @@ public class Text {
         }
 
         return matcher.appendTail(buffer).toString();
-    }
-
-    /**
-     * Gets the last color code from the error prefix message.
-     * This is useful for maintaining consistent color formatting in error messages.
-     *
-     * @param langManager The language manager to get the error prefix from
-     * @return The last color code from the error prefix
-     */
-    public static String getLastColorInErrorPrefix(net.survivalfun.core.managers.lang.Lang langManager) {
-        if (langManager == null) {
-            return ChatColor.RED.toString(); // Default to red if lang manager is null
-        }
-
-        String errorPrefix = langManager.get("error-prefix");
-        return getLastColor(errorPrefix, true);
-    }
-
-    /**
-     * Formats and sends an error message to a command sender with consistent color formatting.
-     *
-     * @param sender      The command sender to receive the message (Player or CommandSender)
-     * @param message     The language key for the error message, or the message itself as a Component
-     * @param lang        The language manager to get messages from
-     * @param replacements An array of key-value pairs for replacements (key1, value1, key2, value2, ...) where value can be String or Component
-     */
-    public static void sendErrorMessage(CommandSender sender, Object message,
-                                        net.survivalfun.core.managers.lang.Lang lang,
-                                        Object... replacements) {
-        if (sender == null) {
-            return;
-        }
-
-        if (lang == null) {
-            sender.sendMessage("§c§lError: §rMissing language manager");
-            return;
-        }
-
-        Component componentMessage = null;
-        String stringMessage = null;
-
-        if (message instanceof String) {
-            // Get the message from the key
-            stringMessage = lang.get((String) message);
-            if (stringMessage == null || stringMessage.isEmpty()) {
-                sender.sendMessage("§c§lError: §rMissing error message for key: " + message);
-                return;
-            }
-        } else if (message instanceof Component) {
-            componentMessage = (Component) message;
-        } else if (message instanceof Map) {
-            // Handle the case where the message parameter is a map
-            Map<String, Object> replacementMap = (Map<String, Object>) message;
-            // Get the error prefix and handle empty prefix case
-            String errorPrefix = lang.get("error-prefix");
-            boolean hasPrefix = !errorPrefix.isEmpty();
-
-            // Get the last color from the error prefix to maintain consistent coloring
-            String errorColor = hasPrefix ? getLastColorInErrorPrefix(lang) : "§c";
-
-            // Get the message from the language key
-            stringMessage = lang.get("unknown-command-suggestion"); // Specific message key
-            if (stringMessage == null || stringMessage.isEmpty()) {
-                sender.sendMessage("§c§lError: §rMissing error message for key: unknown-command-suggestion");
-                return;
-            }
-
-
-            String formattedMessage = stringMessage; // Start with the language string
-
-            for (Map.Entry<String, Object> entry : replacementMap.entrySet()) {
-                String placeholder = entry.getKey();
-                Object replacementValue = entry.getValue();
-
-                if (replacementValue instanceof Component) {
-                    // Handle Component replacement
-                    Component replacementComponent = (Component) replacementValue;
-                    String serializedComponent = LegacyComponentSerializer.legacySection().serialize(replacementComponent);
-                    formattedMessage = formattedMessage.replace(placeholder, serializedComponent);
-                } else {
-                    // Handle String replacement
-                    String value = String.valueOf(replacementValue);
-                    if (hasPrefix) {
-                        formattedMessage = formattedMessage.replace(placeholder, value + errorColor);
-                    } else {
-                        formattedMessage = formattedMessage.replace(placeholder, value);
-                    }
-                }
-            }
-
-
-            // Send the formatted message with the error prefix
-            if (!hasPrefix) {
-                // When there's no prefix, parse the colors in the message itself
-                sender.sendMessage(parseColors(formattedMessage));
-            } else {
-                // When there's a prefix, use the traditional approach
-                sender.sendMessage(errorPrefix + errorColor + " " + formattedMessage);
-            }
-            return; // Important to return, so it doesn't run other logic
-        } else {
-            sender.sendMessage("§c§lError: §rInvalid message type. Must be a language key (String) or a Component.");
-            return;
-        }
-
-        // Get the error prefix and handle empty prefix case
-        String errorPrefix = lang.get("error-prefix");
-        boolean hasPrefix = !errorPrefix.isEmpty();
-
-        // Get the last color from the error prefix to maintain consistent coloring
-        String errorColor = hasPrefix ? getLastColorInErrorPrefix(lang) : "§c";
-
-        if (componentMessage != null) {
-            // Serialize the component to a string for prefixing
-            String serializedComponent = LegacyComponentSerializer.legacySection().serialize(componentMessage);
-
-            // Send the formatted message with the error prefix
-            if (!hasPrefix) {
-                // When there's no prefix, parse the colors in the message itself
-                sender.sendMessage(parseColors(serializedComponent));
-            } else {
-                // When there's a prefix, use the traditional approach
-                sender.sendMessage(errorPrefix + errorColor + " " + serializedComponent);
-            }
-        } else {
-            // Convert the replacements to strings and apply them in pairs
-            String formattedMessage = stringMessage;
-            for (int i = 0; i < replacements.length - 1; i += 2) {
-                String placeholder = String.valueOf(replacements[i]);
-                Object replacementValue = replacements[i + 1];
-
-                if (replacementValue instanceof Component) {
-                    // Handle Component replacement
-                    Component replacementComponent = (Component) replacementValue;
-                    String serializedComponent = LegacyComponentSerializer.legacySection().serialize(replacementComponent);
-                    formattedMessage = formattedMessage.replace(placeholder, serializedComponent);
-
-                } else {
-                    // Handle String replacement
-                    String value = String.valueOf(replacementValue);
-                    if (hasPrefix) {
-                        formattedMessage = formattedMessage.replace(placeholder, value + errorColor);
-                    } else {
-                        formattedMessage = formattedMessage.replace(placeholder, value);
-                    }
-                }
-            }
-
-            // Send the formatted message with the error prefix
-            if (!hasPrefix) {
-                // When there's no prefix, parse the colors in the message itself
-                sender.sendMessage(parseColors(formattedMessage));
-            } else {
-                // When there's a prefix, use the traditional approach
-                sender.sendMessage(errorPrefix + errorColor + " " + formattedMessage);
-            }
-        }
     }
 
     public static Component createDisplayNameComponent(String name) {

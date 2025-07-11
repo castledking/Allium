@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.utils.core.player;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;

@@ -1,28 +1,36 @@
 package net.survivalfun.core.commands.core;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.commands.fun.Explode;
-
 import net.survivalfun.core.listeners.security.CommandManager;
 import net.survivalfun.core.listeners.security.CreativeManager;
 import net.survivalfun.core.managers.config.WorldDefaults;
-import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.core.Alias;
-import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.core.LegacyID;
+import net.survivalfun.core.managers.core.Text;
+import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.Bukkit;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter; // Added import
+import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.logging.Level;
+import org.json.JSONObject;
+import org.json.JSONArray;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.io.OutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 public class Core implements CommandExecutor, TabCompleter {
 
@@ -75,7 +83,9 @@ public class Core implements CommandExecutor, TabCompleter {
             case "hide":
                 handleHideSubcommand(sender, args);
                 break;
-
+            case "escalate":
+                handleEscalateCommand(sender, args);
+                break;
 
             // Voucher command removed - only using redeem command
 
@@ -93,29 +103,82 @@ public class Core implements CommandExecutor, TabCompleter {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
             return;
         }
-        if(args.length >= 1) {
-            if(args[1].equalsIgnoreCase("all")) {
-                // Code for updating all players
-                int count = 0;
-                for (Player player : Bukkit.getOnlinePlayers()) {
-                    commandManager.updatePlayerTabCompletion(player);
-                    count++;
-                }
-                sender.sendMessage(Component.text("Updated tab completion for " + count + " players.", NamedTextColor.GREEN));
-            } else {
-                // Handle other subcommands or show usage
-                sender.sendMessage(Component.text("Unknown subcommand: " + args[1], NamedTextColor.RED));
+        
+        // Case 1: No additional arguments or "all" argument - update all players
+        if(args.length == 1 || (args.length == 2 && args[1].equalsIgnoreCase("all"))) {
+            int count = 0;
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                // Force tab completion update by temporarily changing gamemode
+                updatePlayerTabCompletionWithGamemode(player);
+                count++;
             }
+            sender.sendMessage(Component.text("Updated tab completion for " + count + " players.", NamedTextColor.GREEN));
             return;
         }
-// Code for single player update
-        Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) {
-            Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[1]);
+        
+        // Case 2: Specific player argument
+        if(args.length == 2) {
+            
+            // Handle specific player
+            Player target = Bukkit.getPlayer(args[1]);
+            if (target == null) {
+                Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[1]);
+                return;
+            }
+            updatePlayerTabCompletionWithGamemode(target);
+            sender.sendMessage(Component.text("Updated tab completion for " + target.getName() + ".", NamedTextColor.GREEN));
             return;
         }
-        commandManager.updatePlayerTabCompletion(target);
-        sender.sendMessage("§aUpdated tab completion for " + target.getName());
+        
+        // Case 3: Too many arguments
+        sender.sendMessage(Component.text("Usage: /core hideupdate [player|all]", NamedTextColor.RED));
+    }
+    
+    /**
+     * Updates a player's tab completion by temporarily changing their gamemode
+     * This forces the client to refresh tab completions
+     * 
+     * @param player The player to update
+     */
+    private void updatePlayerTabCompletionWithGamemode(Player player) {
+        // Store original gamemode
+        org.bukkit.GameMode originalMode = player.getGameMode();
+        
+        try {
+            // Enable bypass for this player
+            creativeManager.setBypassInventoryManagement(player, true);
+            
+            // Only switch if not already in creative
+            if (originalMode != org.bukkit.GameMode.CREATIVE) {
+                // Switch to creative and back to force tab completion update
+                player.setGameMode(org.bukkit.GameMode.CREATIVE);
+                
+                // Schedule task to switch back after a short delay (1 tick)
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.setGameMode(originalMode);
+                    // Update tab completion through command manager
+                    commandManager.updatePlayerTabCompletion(player);
+                    // Disable bypass after we're done
+                    creativeManager.setBypassInventoryManagement(player, false);
+                }, 1L);
+            } else {
+                // If already in creative, switch to survival and back
+                player.setGameMode(org.bukkit.GameMode.SURVIVAL);
+                
+                // Schedule task to switch back after a short delay (1 tick)
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.setGameMode(originalMode);
+                    // Update tab completion through command manager
+                    commandManager.updatePlayerTabCompletion(player);
+                    // Disable bypass after we're done
+                    creativeManager.setBypassInventoryManagement(player, false);
+                }, 1L);
+            }
+        } catch (Exception e) {
+            // Ensure bypass is disabled even if an error occurs
+            creativeManager.setBypassInventoryManagement(player, false);
+            plugin.getLogger().warning("Error updating tab completion for " + player.getName() + ": " + e.getMessage());
+        }
     }
 
     private void sendHelpMessage(CommandSender sender) {
@@ -129,6 +192,7 @@ public class Core implements CommandExecutor, TabCompleter {
         sender.sendMessage("§ehideupdate §7- Refresh tab completion for player.");
         // modalerts command removed
         sender.sendMessage("§echatmod §7- Manage chat moderation actions.");
+        sender.sendMessage("§eescalate §7- Escalate an issue to staff.");
 
 
     }
@@ -272,86 +336,77 @@ public class Core implements CommandExecutor, TabCompleter {
             sender.sendMessage("§cError reloading configuration! Check console for details.");
         }
     }
-    @Override
-    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String @NotNull [] args) {
-        if (!command.getName().equalsIgnoreCase("core")) {
-            return null;
+
+    private void handleEscalateCommand(CommandSender sender, String[] args) {
+        // This command is console-only
+        if (!(sender instanceof org.bukkit.command.ConsoleCommandSender)) {
+            Text.sendErrorMessage(sender, "command.console-only", lang, Collections.emptyMap());
+            return;
         }
-        return getCoreSuggestions(sender, args);
-    }
-
-    private List<String> getCoreSuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
-        List<String> suggestions = new ArrayList<>();
-        String currentArg = args[args.length - 1].toLowerCase();
-
-        if (args.length == 1) {
-            // Suggest subcommands for /core
-            if (sender.hasPermission("core.admin")) {
-                suggestions.add("reload");
-                suggestions.add("debug");
-                suggestions.add("hideupdate");
-                suggestions.add("hide");
-                // modalerts command removed
-            }
-        } else if (args.length > 1 && args[0].equalsIgnoreCase("hide")) {
-            if (args.length == 2) {
-                suggestions.addAll(List.of("creategroup", "deletegroup", "group"));
-            } else if (args.length == 3 && (args[1].equalsIgnoreCase("deletegroup") || args[1].equalsIgnoreCase("group"))) {
-                // Suggest group names for deletegroup/group
-                org.bukkit.configuration.file.YamlConfiguration hideConfig =
-                    org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
-                        new java.io.File(plugin.getDataFolder(), "hide.yml"));
-                if (hideConfig.isConfigurationSection("groups")) {
-                    suggestions.addAll(hideConfig.getConfigurationSection("groups").getKeys(false));
+        
+        if (args.length < 4) {
+            sender.sendMessage(lang.get("command-usage").replace("{cmd}", "escalate").replace("{args}", "<staffmember> <target> <reason>"));
+            return;
+        }
+        
+        String staffMember = args[1];
+        String targetPlayer = args[2];
+        String reason = String.join(" ", Arrays.copyOfRange(args, 3, args.length)).replace("\\n", "\n");
+        String webhookUrl = plugin.getConfig().getString("discord.escalate_webhook");
+        
+        if (webhookUrl == null || webhookUrl.isEmpty()) {
+            Text.sendErrorMessage(sender, "command.core.escalate.not-configured", lang, Collections.emptyMap());
+            return;
+        }
+        
+        String serverName = plugin.getConfig().getString("server-name", "Unknown Server");
+        
+        List<String> roleMentions = plugin.getConfig().getStringList("discord.escalate_mentions");
+        String mentionString = roleMentions.stream().map(id -> "<@&" + id + ">").collect(Collectors.joining(" "));
+        
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                JSONObject embed = new JSONObject();
+                embed.put("title", "Escalation Request");
+                embed.put("description", mentionString + "\n**Escalation Target:** " + targetPlayer + "\n**Reason:** " + reason);
+                
+                JSONObject footer = new JSONObject();
+                footer.put("text", "From " + staffMember + " on " + serverName);
+                embed.put("footer", footer);
+                
+                JSONObject payload = new JSONObject();
+                payload.put("username", plugin.getConfig().getString("discord.bot_name", "Server Escalation"));
+                payload.put("avatar_url", plugin.getConfig().getString("discord.bot_avatar"));
+                payload.put("embeds", new JSONArray().put(embed));
+                
+                HttpURLConnection conn = (HttpURLConnection) new URL(webhookUrl).openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                
+                try (OutputStream os = conn.getOutputStream()) {
+                    byte[] input = payload.toString().getBytes(StandardCharsets.UTF_8);
+                    os.write(input, 0, input.length);
                 }
-            } else if (args.length == 4 && args[1].equalsIgnoreCase("group")) {
-                suggestions.addAll(List.of("add", "remove"));
-            } else if (args.length == 5 && args[1].equalsIgnoreCase("group") && args[3].equalsIgnoreCase("add")) {
-                suggestions.add("-s");
+                
+                int responseCode = conn.getResponseCode();
+                if (responseCode < 200 || responseCode >= 300) {
+                    throw new IOException("HTTP response code: " + responseCode);
+                }
+                
+                // Send confirmation to the staff member
+                Player staffPlayer = Bukkit.getPlayer(staffMember);
+                if (staffPlayer != null) {
+                    staffPlayer.sendMessage(Text.colorize("&aEscalation sent to staff!"));
+                }
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to send escalation to Discord", e);
+                Text.sendErrorMessage(sender, "command.core.escalate.failed", lang, Collections.emptyMap());
             }
-        } else if (args.length > 1 && args[0].equalsIgnoreCase("worlddefaults")) {
-            suggestions.addAll(getWorldDefaultsSuggestions(sender, args));
-        } else if (args.length > 1 && args[0].equalsIgnoreCase("updatehide")) {
-            suggestions.addAll(getUpdateHideSuggestions(args));
-        }
-        // Filter final list of completions by currentArg. This handles cases where completions were added without pre-filtering.
-        // For subcommands like 'voucher' that already filter, this is a bit redundant but harmless.
-        // For subcommands that add to 'suggestions' without filtering by currentArg, this is necessary.
-        List<String> finalSuggestions = new ArrayList<>();
-        for (String suggestion : suggestions) {
-            if (suggestion.toLowerCase().startsWith(currentArg)) {
-                finalSuggestions.add(suggestion);
-            }
-        }
-        return finalSuggestions.isEmpty() && args.length > 0 ? Collections.emptyList() : finalSuggestions;
-    }
-
-    private List<String> getWorldDefaultsSuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
-        List<String> suggestions = new ArrayList<>();
-
-        if (args.length == 2) {
-            // Suggest gamerules from the config.yml under "world-defaults"
-            if (config.isConfigurationSection("world-defaults")) {
-                suggestions.addAll(config.getConfigurationSection("world-defaults").getKeys(false));
-            }
-        } else if (args.length == 3) {
-            // Suggest possible values for gamerules
-            suggestions.addAll(List.of("true", "false", "1", "0"));
-        }
-
-        return suggestions;
-    }
-
-    private List<String> getUpdateHideSuggestions(String[] args) {
-        List<String> suggestions = new ArrayList<>();
-        if(args.length == 1) {
-            suggestions.add("all");
-
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                suggestions.add(player.getName());
-            }
-        }
-        return suggestions;
+        });
+        
+        // Also send confirmation to console
+        sender.sendMessage(Text.colorize("&aEscalation sent to staff!"));
     }
 
     private void handleHideSubcommand(@NotNull CommandSender sender, String @NotNull [] args) {
@@ -360,7 +415,7 @@ public class Core implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            sender.sendMessage("§eUsage: /core hide <creategroup|deletegroup|group>");
+            sender.sendMessage("§eUsage: /core hide <creategroup|deletegroup|renamegroup|group>");
             return;
         }
         // Save/load hide.yml from plugins/SFCore/hide.yml
@@ -401,6 +456,44 @@ public class Core implements CommandExecutor, TabCompleter {
                 saveHideConfig(hideConfig, hideFile);
                 handleReloadCommand(sender, null);
                 sender.sendMessage("§aGroup '" + group + "' deleted.");
+                break;
+            }
+            case "renamegroup": {
+                if (args.length < 4) {
+                    sender.sendMessage("§cUsage: /core hide renamegroup <oldname> <newname>");
+                    return;
+                }
+                String oldGroup = args[2];
+                String newGroup = args[3];
+                
+                // Check if old group exists
+                if (!hideConfig.contains(groupPath + oldGroup)) {
+                    sender.sendMessage("§cGroup '" + oldGroup + "' does not exist.");
+                    return;
+                }
+                
+                // Check if new group name already exists
+                if (hideConfig.contains(groupPath + newGroup)) {
+                    sender.sendMessage("§cGroup '" + newGroup + "' already exists.");
+                    return;
+                }
+                
+                // Copy all settings from old group to new group
+                boolean whitelist = hideConfig.getBoolean(groupPath + oldGroup + ".whitelist");
+                java.util.List<String> commands = hideConfig.getStringList(groupPath + oldGroup + ".commands");
+                java.util.List<String> tabcompletes = hideConfig.getStringList(groupPath + oldGroup + ".tabcompletes");
+                
+                // Create new group with same settings
+                hideConfig.set(groupPath + newGroup + ".whitelist", whitelist);
+                hideConfig.set(groupPath + newGroup + ".commands", commands);
+                hideConfig.set(groupPath + newGroup + ".tabcompletes", tabcompletes);
+                
+                // Remove old group
+                hideConfig.set(groupPath + oldGroup, null);
+                
+                saveHideConfig(hideConfig, hideFile);
+                handleReloadCommand(sender, null);
+                sender.sendMessage("§aGroup '" + oldGroup + "' renamed to '" + newGroup + "'.");
                 break;
             }
             case "group": {
@@ -458,7 +551,7 @@ public class Core implements CommandExecutor, TabCompleter {
                 break;
             }
             default:
-                sender.sendMessage("§cUnknown hide subcommand. Use /core hide for help.");
+                sender.sendMessage("§cUnknown hide subcommand. Use /core hide <creategroup|deletegroup|renamegroup|group>.");
         }
     }
 
@@ -468,5 +561,94 @@ public class Core implements CommandExecutor, TabCompleter {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String @NotNull [] args) {
+        if (!command.getName().equalsIgnoreCase("core")) {
+            return null;
+        }
+        return getCoreSuggestions(sender, args);
+    }
+
+    private List<String> getCoreSuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
+        List<String> suggestions = new ArrayList<>();
+        String currentArg = args[args.length - 1].toLowerCase();
+
+        if (args.length == 1) {
+            // Suggest subcommands for /core
+            if (sender.hasPermission("core.admin")) {
+                suggestions.add("reload");
+                suggestions.add("debug");
+                suggestions.add("hideupdate");
+                suggestions.add("hide");
+                suggestions.add("escalate");
+                // modalerts command removed
+            }
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("hide")) {
+            if (args.length == 2) {
+                suggestions.addAll(List.of("creategroup", "deletegroup", "group"));
+            } else if (args.length == 3 && (args[1].equalsIgnoreCase("deletegroup") || args[1].equalsIgnoreCase("group"))) {
+                // Suggest group names for deletegroup/group
+                org.bukkit.configuration.file.YamlConfiguration hideConfig =
+                        org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                                new java.io.File(plugin.getDataFolder(), "hide.yml"));
+                if (hideConfig.isConfigurationSection("groups")) {
+                    suggestions.addAll(hideConfig.getConfigurationSection("groups").getKeys(false));
+                }
+            } else if (args.length == 4 && args[1].equalsIgnoreCase("group")) {
+                suggestions.addAll(List.of("add", "remove"));
+            } else if (args.length == 5 && args[1].equalsIgnoreCase("group") && args[3].equalsIgnoreCase("add")) {
+                suggestions.add("-s");
+            }
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("worlddefaults")) {
+            suggestions.addAll(getWorldDefaultsSuggestions(sender, args));
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("updatehide")) {
+            suggestions.addAll(getUpdateHideSuggestions(args));
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("escalate")) {
+            if (args.length == 2) {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    suggestions.add(player.getName());
+                }
+            }
+        }
+        // Filter final list of completions by currentArg. This handles cases where completions were added without pre-filtering.
+        // For subcommands like 'voucher' that already filter, this is a bit redundant but harmless.
+        // For subcommands that add to 'suggestions' without filtering by currentArg, this is necessary.
+        List<String> finalSuggestions = new ArrayList<>();
+        for (String suggestion : suggestions) {
+            if (suggestion.toLowerCase().startsWith(currentArg)) {
+                finalSuggestions.add(suggestion);
+            }
+        }
+        return finalSuggestions.isEmpty() && args.length > 0 ? Collections.emptyList() : finalSuggestions;
+    }
+
+    private List<String> getWorldDefaultsSuggestions(@NotNull CommandSender sender, String @NotNull [] args) {
+        List<String> suggestions = new ArrayList<>();
+
+        if (args.length == 2) {
+            // Suggest gamerules from the config.yml under "world-defaults"
+            if (config.isConfigurationSection("world-defaults")) {
+                suggestions.addAll(config.getConfigurationSection("world-defaults").getKeys(false));
+            }
+        } else if (args.length == 3) {
+            // Suggest possible values for gamerules
+            suggestions.addAll(List.of("true", "false", "1", "0"));
+        }
+
+        return suggestions;
+    }
+
+    private List<String> getUpdateHideSuggestions(String[] args) {
+        List<String> suggestions = new ArrayList<>();
+        if(args.length == 1) {
+            suggestions.add("all");
+
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                suggestions.add(player.getName());
+            }
+        }
+        return suggestions;
     }
 }

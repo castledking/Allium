@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands;
+package net.survivalfun.core.commands.utils.core.managers;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -18,20 +18,23 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.Statistic;
+import org.bukkit.GameMode;
 import org.jetbrains.annotations.NotNull;
 
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Level;
 
 @SuppressWarnings("deprecation") // Suppress deprecation for OfflinePlayer.getLastPlayed() and getFirstPlayed()
-public class WhoisCommand implements CommandExecutor {
+public class Whois implements CommandExecutor {
 
     private final PluginStart plugin;
     private final Lang lang;
 
-    public WhoisCommand(PluginStart plugin) {
+    public Whois(PluginStart plugin) {
         this.plugin = plugin;
         this.lang = plugin.getLangManager();
     }
@@ -49,13 +52,38 @@ public class WhoisCommand implements CommandExecutor {
         }
 
         String targetName = args[0];
-        OfflinePlayer targetOfflinePlayer = Bukkit.getOfflinePlayer(targetName);
-        Player targetOnlinePlayer = Bukkit.getPlayerExact(targetName);
-
-        if (!targetOfflinePlayer.hasPlayedBefore() && targetOnlinePlayer == null) {
+        
+        // Validate the username format first
+        if (!isValidMinecraftUsername(targetName)) {
             Text.sendErrorMessage(sender, "player-not-found", lang, "name", targetName);
             return true;
         }
+        
+        Player targetOnlinePlayer = Bukkit.getPlayerExact(targetName);
+        
+        // First check if player is online, which is the most reliable method
+        if (targetOnlinePlayer != null) {
+            // Player is online, proceed with the command
+        } else {
+            try {
+                // Try to get offline player data
+                OfflinePlayer targetOfflinePlayer = Bukkit.getOfflinePlayer(targetName);
+                
+                // Check if this player has ever played on the server
+                if (!targetOfflinePlayer.hasPlayedBefore()) {
+                    Text.sendErrorMessage(sender, "player-not-found", lang, "name", targetName);
+                    return true;
+                }
+            } catch (Exception e) {
+                // Handle the case when Mojang API can't find the player
+                plugin.getLogger().warning("Failed to get player data for '" + targetName + "': " + e.getMessage());
+                Text.sendErrorMessage(sender, "player-not-found", lang, "name", targetName);
+                return true;
+            }
+        }
+        
+        // At this point, we know the player exists either online or has played before
+        OfflinePlayer targetOfflinePlayer = targetOnlinePlayer != null ? targetOnlinePlayer : Bukkit.getOfflinePlayer(targetName);
 
         OfflinePlayer effectiveTarget = (targetOnlinePlayer != null) ? targetOnlinePlayer : targetOfflinePlayer;
         UUID targetUUID = effectiveTarget.getUniqueId();
@@ -183,6 +211,22 @@ public class WhoisCommand implements CommandExecutor {
         String godModeRaw = godModeTemplate.replace("{god_status}", godStatusText);
         sender.sendMessage(Text.colorize(godModeRaw));
 
+        GameMode gameMode = null;
+        if (targetOnlinePlayer != null) {
+            gameMode = targetOnlinePlayer.getGameMode();
+        } else {
+            try {
+                gameMode = plugin.getDatabase().getPlayerGameMode(targetOfflinePlayer.getUniqueId());
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to get gamemode for " + targetName, e);
+            }
+        }
+        if (gameMode != null) {
+            String gamemode = gameMode.name().toLowerCase();
+            gamemode = gamemode.substring(0, 1).toUpperCase() + gamemode.substring(1);
+            sender.sendMessage(Text.parseColors(lang.get("whois.gamemode").replace("{gamemode}", gamemode)));
+        }
+
         if (targetOnlinePlayer != null) {
             Location loc = targetOnlinePlayer.getLocation();
             String worldPosMsgTemplate = lang.getRaw("whois.world-position");
@@ -270,5 +314,23 @@ public class WhoisCommand implements CommandExecutor {
         sender.sendMessage(Text.colorize(footerRaw));
 
         return true;
+    }
+    
+    /**
+     * Validates if a string is a valid Minecraft username
+     * 
+     * @param username The username to validate
+     * @return true if the username is valid
+     */
+    private boolean isValidMinecraftUsername(String username) {
+        // Check if username is null or empty
+        if (username == null || username.isEmpty()) {
+            return false;
+        }
+        
+        // Check if username contains invalid characters
+        // Minecraft usernames can only contain letters, numbers, and underscores
+        // and must be between 3 and 16 characters long
+        return username.matches("^[a-zA-Z0-9_]{3,16}$");
     }
 }

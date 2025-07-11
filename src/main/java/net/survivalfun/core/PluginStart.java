@@ -4,21 +4,48 @@ import net.milkbowl.vault2.chat.Chat;
 import net.survivalfun.core.listeners.jobs.MailRemindListener;
 import net.survivalfun.core.listeners.jobs.SummonMessageListener;
 import net.survivalfun.core.listeners.jobs.CreeperExplosionListener;
+import net.survivalfun.core.listeners.jobs.FireballExplosionListener;
 import net.survivalfun.core.listeners.security.CommandManager;
 import net.survivalfun.core.listeners.security.CreativeManager;
 import net.survivalfun.core.listeners.security.FlyOnRejoinListener;
 import net.survivalfun.core.listeners.chat.FormatChatListener;
+import net.survivalfun.core.commands.admin.Maintenance;
 import net.survivalfun.core.commands.core.Core;
-import net.survivalfun.core.commands.utils.*;
-import net.survivalfun.core.commands.RedeemCommand;
+import net.survivalfun.core.commands.utils.core.managers.Feed;
+import net.survivalfun.core.commands.utils.core.managers.Fly;
+import net.survivalfun.core.commands.utils.core.managers.Gamemode;
+import net.survivalfun.core.commands.utils.core.managers.God;
+import net.survivalfun.core.commands.utils.core.managers.Heal;
+import net.survivalfun.core.commands.utils.core.managers.NV;
+import net.survivalfun.core.commands.utils.core.managers.Redeem;
+import net.survivalfun.core.commands.utils.core.managers.Spy;
+import net.survivalfun.core.commands.utils.core.managers.Whois;
+import net.survivalfun.core.commands.utils.core.player.GC;
+import net.survivalfun.core.commands.utils.core.player.Help;
+import net.survivalfun.core.commands.utils.core.player.Msg;
+import net.survivalfun.core.commands.utils.core.staff.NoteCommand;
+import net.survivalfun.core.commands.utils.core.staff.NotesCommand;
+import net.survivalfun.core.commands.utils.core.staff.UnnoteCommand;
+import net.survivalfun.core.commands.utils.items.Enchant;
+import net.survivalfun.core.commands.utils.items.Give;
+import net.survivalfun.core.commands.utils.items.Invsee;
+import net.survivalfun.core.commands.utils.items.ItemDB;
+import net.survivalfun.core.commands.utils.items.Lore;
+import net.survivalfun.core.commands.utils.items.More;
+import net.survivalfun.core.commands.utils.items.Rename;
 import net.survivalfun.core.commands.fun.Explode;
+import net.survivalfun.core.commands.tabcompletes.Tab;
+import net.survivalfun.core.commands.teleportation.Spawn;
+import net.survivalfun.core.commands.teleportation.TP;
 import net.survivalfun.core.listeners.security.SpectatorTeleport;
+import net.survivalfun.core.listeners.security.MaintenanceListener;
+import net.survivalfun.core.listeners.security.PlayerConnectionListener;
 import net.survivalfun.core.managers.DB.Database;
+import net.survivalfun.core.managers.DB.PlayerInventories;
 import net.survivalfun.core.managers.config.Config;
 import net.survivalfun.core.managers.core.Skull;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.listeners.jobs.SlimeCushionListener;
-import net.survivalfun.core.listeners.FireballExplosionListener;
 import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.managers.core.Item;
 import net.survivalfun.core.managers.core.Alias;
@@ -32,6 +59,7 @@ import net.survivalfun.core.commands.economy.Pay;
 import net.survivalfun.core.commands.economy.BalTop;
 import net.survivalfun.core.commands.economy.Money;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.GameRule;
 import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
@@ -39,15 +67,16 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
-
 import net.luckperms.api.LuckPerms;
-import net.survivalfun.core.commands.WhoisCommand;
 
 import java.io.File;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Main class of the plugin
+ */
 public class PluginStart extends JavaPlugin {
     private static PluginStart instance;
     private Lang langManager;
@@ -65,6 +94,9 @@ public class PluginStart extends JavaPlugin {
     private CommandManager commandManager;
     private Economy economy;
     private final Map<UUID, Long> playerLoginTimes = new ConcurrentHashMap<>();
+    private TP tp;
+    private FlyOnRejoinListener flyOnRejoinListener;
+
     public CommandManager getCommandManager() {
         return commandManager;
     }
@@ -198,11 +230,9 @@ public class PluginStart extends JavaPlugin {
         }
 
         // Register PlayerConnectionListener to manage playerLoginTimes
-        getServer().getPluginManager().registerEvents(new net.survivalfun.core.listeners.PlayerConnectionListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this), this);
         getLogger().info("PlayerConnectionListener registered.");
-
-
-
+        
         // Initialize database
         this.database = new Database(this);
         
@@ -216,7 +246,7 @@ public class PluginStart extends JavaPlugin {
         // Register commands
         PluginCommand redeemCmd = getCommand("redeem");
         if (redeemCmd != null) {
-            redeemCmd.setExecutor(new RedeemCommand(this));
+            redeemCmd.setExecutor(new Redeem(this));
         } else {
             getLogger().warning("Could not register 'redeem' command - not found in plugin.yml?");
         }
@@ -237,8 +267,9 @@ public class PluginStart extends JavaPlugin {
         }
 
         // Security Listeners
-        new FlyOnRejoinListener(this);
+        this.flyOnRejoinListener = new FlyOnRejoinListener(this);
         this.creativeManager = new CreativeManager(this);
+        getServer().getPluginManager().registerEvents(this.creativeManager, this); // Ensure CreativeManager is registered
         this.spectatorTeleport = new SpectatorTeleport(this, new NV(this));
         commandManager = new CommandManager(this);
         
@@ -298,7 +329,9 @@ public class PluginStart extends JavaPlugin {
             this.tpCommand = new TP(this);
 
             // Register Teleport commands defined in plugin.yml
-            String[] tpCommands = {"tp", "tpa", "tpaccept", "tpdeny", "tppet", "tppos", "tphere", "tpahere", "tptoggle", "top", "bottom", "otp", "tpmob", "tpentity", "tpent", "teleportmob", "tpe", "tpm"};
+            String[] tpCommands = {"tp", "tphere", "tpahere", "tpa", "tpcancel", "tpacancel", "tpaccept", "tpdeny", "tppet", "tppos", "tptoggle", "top", "bottom", "otp", "tpmob", "tpentity", "tpent", "teleportmob", "tpe", "tpm"};
+
+            // Register the commands that are still handled by TP
             for (String cmdName : tpCommands) {
                 PluginCommand command = getCommand(cmdName);
                 if (command != null) {
@@ -397,8 +430,7 @@ public class PluginStart extends JavaPlugin {
             getCommand("mail").setTabCompleter(msgCommand);
 
 
-            getServer().getPluginManager().registerEvents(msgCommand, this);
-            getServer().getPluginManager().registerEvents(new MailRemindListener(msgCommand), this);
+            getServer().getPluginManager().registerEvents(msgCommand, this);            getServer().getPluginManager().registerEvents(new MailRemindListener(msgCommand), this);
 
             // Register Help command
 
@@ -428,11 +460,28 @@ public class PluginStart extends JavaPlugin {
             // Register Whois command
             PluginCommand whoisCmd = getCommand("whois");
             if (whoisCmd != null) {
-                whoisCmd.setExecutor(new WhoisCommand(this));
+                whoisCmd.setExecutor(new Whois(this));
                 // whoisCmd.setTabCompleter(new WhoisTabCompleter(this)); // Placeholder for future tab completer
             } else {
                 getLogger().warning("Could not register 'whois' command - not found in plugin.yml?");
             }
+
+            // Register Maintenance command
+            getCommand("maintenance").setExecutor(new Maintenance(this));
+            
+            // Register Maintenance listener
+            getServer().getPluginManager().registerEvents(new MaintenanceListener(this), this);
+
+            // Register Invsee command
+            getCommand("invsee").setExecutor(new Invsee(this));
+
+            // Register EnchantCommand
+            getCommand("enchant").setExecutor(new Enchant(this));
+
+            // Register note commands
+            getCommand("note").setExecutor(new NoteCommand(this));
+            getCommand("notes").setExecutor(new NotesCommand(this));
+            getCommand("unnote").setExecutor(new UnnoteCommand(this));
 
         } catch (Exception e) {
             getLogger().severe("Failed to register commands: " + e.getMessage());
@@ -453,27 +502,61 @@ public class PluginStart extends JavaPlugin {
         return economy;
     }
 
+    public FlyOnRejoinListener getFlyOnRejoinListener() {
+        return flyOnRejoinListener;
+    }
+
     @Override
     public void onDisable() {
-
         if(msgCommand != null){
             msgCommand.savePendingMessages();
         }
         if (spectatorTeleport != null) {
             spectatorTeleport.saveAllLocations();
         }
+        // Save all online player inventories for players in creative mode or with core.gamemode permission
+        for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
+            // Skip if player has bypass permission
+            if (player.hasPermission("core.gamemode.creative.inventory")) {
+                continue;
+            }
+            
+            // Only save if player is in creative mode or has core.gamemode permission
+            if (player.getGameMode() == GameMode.CREATIVE || player.hasPermission("core.gamemode")) {
+                UUID uuid = player.getUniqueId();
+                PlayerInventories inventories = new PlayerInventories(
+                    player.getInventory().getContents(),
+                    player.getInventory().getArmorContents(),
+                    player.getInventory().getItemInOffHand(),
+                    null, // Creative inventory not implemented
+                    null,
+                    null
+                );
+                database.savePlayerInventories(uuid, inventories);
+            }
+        }
+        
+        // Save all player states (flight and spectator gamemode) before shutdown
+        flyOnRejoinListener.saveAllPlayersState();
+        
         // Close database connection
         if (database != null) {
             database.closeConnection();
         }
         if (creativeManager != null) {
+            creativeManager.saveAllInventories();
             creativeManager.cleanup();
         }
 
-
-
-
         super.onDisable();
 
+    }
+
+    public TP getTpInstance() {
+        return tp;
+    }
+
+    public boolean isDebugMode() {
+        return getConfig().getBoolean("debug-mode", false);
     }
 }

@@ -1,6 +1,8 @@
-package net.survivalfun.core.listeners;
+package net.survivalfun.core.listeners.security;
 
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.managers.DB.PlayerInventories;
+
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -27,6 +29,14 @@ public class PlayerConnectionListener implements Listener {
         Player player = event.getPlayer();
         UUID playerUUID = player.getUniqueId();
         String playerName = player.getName();
+        
+        // Load player inventory
+        PlayerInventories inventories = plugin.getDatabase().loadPlayerInventories(playerUUID);
+        if (inventories != null) {
+            player.getInventory().setContents(inventories.getSurvivalInventory());
+            player.getInventory().setArmorContents(inventories.getSurvivalArmor());
+            player.getInventory().setItemInOffHand(inventories.getSurvivalOffhand());
+        }
         
         // Store login time for online duration tracking
         playerLoginTimes.put(playerUUID, System.currentTimeMillis());

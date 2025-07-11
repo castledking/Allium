@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.utils.core.managers;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
@@ -119,7 +119,7 @@ public class Gamemode implements CommandExecutor {
         // Check if sender has permission for this gamemode
         if (!hasGameModePermission(sender, mode)) {
             String commandName = mode.toString().toLowerCase() + " mode";
-            Text.sendErrorMessage(sender, "no-permission", lang, "/{cmd}", commandName);
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", commandName);
             return true;
         }
 
@@ -138,7 +138,7 @@ public class Gamemode implements CommandExecutor {
             // Check if sender has permission to change other players' gamemod
             if (!sender.hasPermission("core.gamemode.others")) {
                 String commandName = "set " + mode.toString().toLowerCase() + " mode for others.";
-                Text.sendErrorMessage(sender, "no-permission", lang, "use /{cmd}", commandName);
+                Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", commandName);
                 return true;
             }
 
@@ -158,7 +158,7 @@ public class Gamemode implements CommandExecutor {
         // Check if sender has permission for this gamemode
         if (!hasGameModePermission(sender, mode)) {
             String commandName = mode.toString().toLowerCase() + " mode";
-            Text.sendErrorMessage(sender, "no-permission", lang, "/{cmd}", commandName);
+            Text.sendErrorMessage(sender, "no-permission", lang, "/{cmd}", commandName, true);
             return true;
         }
 
@@ -178,8 +178,8 @@ public class Gamemode implements CommandExecutor {
         else if (args.length == 1) {
             // Check if sender has permission to change other players' gamemode
             if (!sender.hasPermission("core.gamemode.others")) {
-                String commandName = "set " + mode.toString().toLowerCase() + " mode for others.";
-                Text.sendErrorMessage(sender, "no-permission", lang, "use /{cmd}", commandName);
+                String gamemodeOthers = "set " + mode.toString().toLowerCase() + " mode for others.";
+                Text.sendErrorMessage(sender, "no-permission", lang, "/{cmd}", gamemodeOthers, true);
                 return true;
             }
 

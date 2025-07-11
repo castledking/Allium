@@ -1,10 +1,11 @@
 package net.survivalfun.core.listeners.jobs;
 
-import net.survivalfun.core.commands.utils.Msg;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+
+import net.survivalfun.core.commands.utils.core.player.Msg;
 
 public class MailRemindListener implements Listener {
 

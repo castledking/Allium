@@ -16,16 +16,15 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
-
 import java.util.HashSet;
 import java.util.Map;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import net.survivalfun.core.managers.core.Text;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
+import net.survivalfun.core.commands.teleportation.TP;
 
 public class FlyOnRejoinListener implements Listener {
     private final PluginStart plugin;
@@ -76,7 +75,6 @@ public class FlyOnRejoinListener implements Listener {
                 // Start the landing check task
                 startSlowFallLandingCheck(player);
 
-
                 if (debugMode) {
                     plugin.getLogger().info("Applied slow falling to " + player.getName() +
                             " after switching from Creative to Survival while in air");
@@ -84,6 +82,20 @@ public class FlyOnRejoinListener implements Listener {
             } else if (player.hasPermission("core.gamemode.creative")) {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE
                         , 20 * 3, 0, false, true, true));
+            }
+            
+            // Enable flight if player has permission
+            if (player.hasPermission("core.fly")) {
+                player.setAllowFlight(true);
+                if (debugMode) {
+                    plugin.getLogger().info("Enabled flight for " + player.getName() + 
+                            " after switching to Survival (core.fly permission)");
+                }
+            }
+
+            // If the player has the permission for flight, enable flight
+            if (player.hasPermission("core.fly")) {
+                player.setAllowFlight(true);
             }
         }
     }
@@ -93,6 +105,7 @@ public class FlyOnRejoinListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
+        savePlayerState(player);
         if(!player.hasPermission("core.fly")) {
             return;
         }
@@ -105,20 +118,6 @@ public class FlyOnRejoinListener implements Listener {
             }
         }
 
-        // Save flight status
-        database.savePlayerFlightStatus(player);
-        if(plugin.getConfig().getBoolean("debug-mode")) {
-            plugin.getLogger().fine("Saved flight status to database for " + player.getName());
-        }
-
-        // Save slow falling status
-        boolean hasSlowFalling = player.hasPotionEffect(PotionEffectType.SLOW_FALLING);
-        database.savePlayerSlowFallingStatus(player.getUniqueId(), hasSlowFalling);
-        if(plugin.getConfig().getBoolean("debug-mode")) {
-            plugin.getLogger().fine("Saved slow falling status to database for " + player.getName() + ": "
-                    + hasSlowFalling);
-        }
-        
         // Save logout location for offline whois command
         Location logoutLocation = player.getLocation();
         database.savePlayerLocation(player.getUniqueId(), LocationType.LOGOUT, logoutLocation, System.currentTimeMillis());
@@ -132,8 +131,32 @@ public class FlyOnRejoinListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        UUID playerUUID = player.getUniqueId();
+        UUID uuid = player.getUniqueId();
         boolean debugMode = plugin.getConfig().getBoolean("debug-mode");
+
+        Boolean teleportToggleState = database.getTeleportToggleState(uuid);
+        if (teleportToggleState != null) {
+            // Get the TP instance from the plugin
+            TP tpInstance = ((PluginStart) plugin).getTpInstance();
+            if (tpInstance != null) {
+                // Set the teleport toggle state based on database value
+                tpInstance.setTeleportToggled(uuid, teleportToggleState);
+                
+                if (debugMode) {
+                    plugin.getLogger().fine("Loaded teleport toggle state for " + player.getName() + 
+                                        ": " + teleportToggleState);
+                }
+            }
+        }
+
+        // Check if player was in spectator mode when they quit
+        if (player.getGameMode() == GameMode.SPECTATOR) {
+            // Restore flight state for spectators
+            player.setAllowFlight(true);
+            player.setFlying(true);
+            if (debugMode) plugin.getLogger().log(Level.INFO, "Restored flight for spectator: " + player.getName());
+            return;
+        }
 
         // Handle creative mode players
         if (player.getGameMode() == GameMode.CREATIVE) {
@@ -163,7 +186,7 @@ public class FlyOnRejoinListener implements Listener {
         }
 
         // Handle slow falling from previous session
-        if (playersWithslowFallingOnQuit.remove(playerUUID) && !player.isOnGround() && player.hasPermission("core.fly")) {
+        if (playersWithslowFallingOnQuit.remove(uuid) && !player.isOnGround() && player.hasPermission("core.fly")) {
             if (debugMode) {
                 plugin.getLogger().info("Player " + player.getName() + " has logged in with Slow Falling effect");
             }
@@ -175,7 +198,7 @@ public class FlyOnRejoinListener implements Listener {
             (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE)) {
             
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                Database.PlayerFlightData flightData = database.getPlayerFlightStatus(playerUUID);
+                Database.PlayerFlightData flightData = database.getPlayerFlightStatus(uuid);
                 if (flightData == null) return;
 
                 player.setAllowFlight(flightData.allowFlight());
@@ -191,6 +214,13 @@ public class FlyOnRejoinListener implements Listener {
                     plugin.getLogger().fine("Restored flight status for " + player.getName() + " from database");
                 }
             }, 5L);
+        }
+
+        // Restore spectator gamemode
+        String savedGamemode = database.getPlayerGamemode(uuid);
+        if ("SPECTATOR".equals(savedGamemode) && 
+            player.hasPermission("core.gamemode.spectator")) {
+            player.setGameMode(GameMode.SPECTATOR);
         }
 
         // --- Start of new logic for 'players-to-redeem' (Revised based on new config structure) ---
@@ -231,22 +261,66 @@ public class FlyOnRejoinListener implements Listener {
     }
 
     /**
+     * Saves flight status and spectator gamemode for all online players
+     */
+    public void saveAllPlayersState() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            savePlayerState(player);
+        }
+    }
+
+    /**
+     * Saves a player's flight status and gamemode if they're in spectator mode
+     *
+     * @param player The player to save state for
+     */
+    private void savePlayerState(Player player) {
+        UUID uuid = player.getUniqueId();
+        boolean canFly = player.hasPermission("core.fly");
+        
+        // Save flight status if player has flight permission
+        if (canFly) {
+            database.savePlayerFlightStatus(uuid, player.getAllowFlight());
+        }
+        
+        // Save spectator gamemode if player has permission and is in spectator mode
+        if (player.hasPermission("core.gamemode.spectator") && 
+            player.getGameMode() == GameMode.SPECTATOR) {
+            database.savePlayerGamemode(uuid, "SPECTATOR");
+        }
+    }
+
+    /**
      * Applies slow falling to a player until they reach the ground
      * @param player The player to apply slow falling to
      */
     public void applySlowFallingUntilLanded(Player player) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (player.getGameMode() != GameMode.SURVIVAL) {
-                player.setAllowFlight(true);
-                player.setFlying(true);
-                return;
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (player == null || !player.isOnline()) {
+                    this.cancel();
+                    return;
+                }
+
+                // Check if the player is on the ground
+                if (player.isOnGround()) {
+                    player.removePotionEffect(PotionEffectType.SLOW_FALLING);
+                    this.cancel();
+                    return;
+                }
+
+                // Apply slow falling
+                player.addPotionEffect(new PotionEffect(
+                        PotionEffectType.SLOW_FALLING,
+                        100, // 5 seconds at 20 ticks per second
+                        0,
+                        false,
+                        false,
+                        true
+                ));
             }
-            // Apply slow falling effect
-            player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 7, 0
-                    , false, true, true));
-            // Start the landing check
-            startSlowFallLandingCheck(player);
-        }, 20L);
+        }.runTaskTimer(plugin, 0L, 5L); // Check every 5 ticks (0.25 seconds)
     }
 
     /**
@@ -274,11 +348,6 @@ public class FlyOnRejoinListener implements Listener {
             }
         }.runTaskTimer(plugin, 5L, 5L); // Check every 5 ticks (0.25 seconds)
     }
-
-
-
-
-
 
     /**
      * Teleports a player to their saved location from spectator mode

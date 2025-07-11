@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.utils.core.managers;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
@@ -66,7 +66,7 @@ public class NV implements CommandExecutor {
 
         // Check if player has permission
         if (!player.hasPermission("core.nv")) {
-            Text.sendErrorMessage(player, "no-permission", lang);
+            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label);
             return true;
         }
 
@@ -77,8 +77,8 @@ public class NV implements CommandExecutor {
             String nvGameModePermission = "core.nv." + player.getGameMode().name().toLowerCase();
 
             if (!player.hasPermission(gameModePermission) && !player.hasPermission(nvGameModePermission)) {
-                Text.sendErrorMessage(player, "no-permission", lang, "{cmd}",
-                        label + " in " + player.getGameMode().name().toLowerCase() + ".");
+                Text.sendErrorMessage(player, "no-permission", lang, "use /{cmd}",
+                        "toggle night vision in " + player.getGameMode().name().toLowerCase() + ".", true);
                 return true; // Block command execution
             }
         }
@@ -89,11 +89,11 @@ public class NV implements CommandExecutor {
         if (enabled) {
             player.sendMessage(lang.get("nv.toggle")
                     .replace("{state}", lang.get("styles.state.true") + "enabled" + lastColor)
-                    .replace("{player}", player.getName()));
+                    .replace("{name}", player.getName()));
         } else {
             player.sendMessage(lang.get("nv.toggle")
                     .replace("{state}", lang.get("styles.state.false") + "disabled" + lastColor)
-                    .replace("{player}", player.getName()));
+                    .replace("{name}", player.getName()));
         }
         return true;
     }

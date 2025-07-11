@@ -1,8 +1,8 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.utils.items;
 
 import net.survivalfun.core.PluginStart;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.survivalfun.core.managers.lang.Lang;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -53,8 +53,7 @@ public class Rename implements CommandExecutor {
 
 
         if (item.getType().isAir()) {
-            player.sendMessage(lang.get("error-prefix") + lang.get("hold-item")
-                    .replace("{modify}", "rename"));
+            Text.sendErrorMessage(player, "hold-item", lang, "{modify}", "rename");
             return true;
         }
 
@@ -66,7 +65,7 @@ public class Rename implements CommandExecutor {
             name = Text.parseColors(name);
         } else {
             // Strip all colors if player doesn't have color permission
-            name = ChatColor.stripColor(name);
+            name = MiniMessage.miniMessage().stripTags(name);
         }
 
         ItemMeta meta = item.getItemMeta();

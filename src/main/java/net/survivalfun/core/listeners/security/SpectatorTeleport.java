@@ -1,20 +1,16 @@
 package net.survivalfun.core.listeners.security;
 
 import net.survivalfun.core.PluginStart;
-import net.survivalfun.core.commands.utils.NV;
+import net.survivalfun.core.commands.utils.core.managers.NV;
 import net.survivalfun.core.managers.DB.Database;
-import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
+import org.bukkit.GameMode;
 import org.jetbrains.annotations.NotNull;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -28,14 +24,10 @@ public class SpectatorTeleport implements Listener {
     private Database database;
     private final NV nv;
     private final Logger logger;
-
-    // Cache for player locations to reduce database calls
     private final Map<UUID, Location> survivalLocations = new HashMap<>();
-    // For debugging - track operations
     private final AtomicInteger savedLocationsCount = new AtomicInteger(0);
     private final AtomicInteger loadedLocationsCount = new AtomicInteger(0);
     private final AtomicInteger teleportedPlayersCount = new AtomicInteger(0);
-
 
     public SpectatorTeleport(@NotNull PluginStart plugin, NV nv) {
         this.plugin = plugin;
@@ -53,6 +45,7 @@ public class SpectatorTeleport implements Listener {
         // Register this listener
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
+
     private Database getDatabase() {
         return plugin.getDatabase();
     }
@@ -100,7 +93,7 @@ public class SpectatorTeleport implements Listener {
     /**
      * Loads all saved locations from the database into the in-memory cache
      */
-    public void loadAllSavedLocations() {
+    public final void loadAllSavedLocations() {
         if (database == null) {
             if(plugin.getConfig().getBoolean("debug-mode")) {
                 plugin.getLogger().severe("Cannot load spectator locations: database is null");
@@ -109,25 +102,54 @@ public class SpectatorTeleport implements Listener {
         }
 
         try {
-            String query = "SELECT player_uuid, world, x, y, z, yaw, pitch FROM player_spectator_locations";
-            database.executeQuery(query, rs -> {
-                while (rs.next()) {
-                    UUID playerUUID = UUID.fromString(rs.getString("player_uuid"));
-                    String world = rs.getString("world");
-                    double x = rs.getDouble("x");
-                    double y = rs.getDouble("y");
-                    double z = rs.getDouble("z");
-                    float yaw = rs.getFloat("yaw");
-                    float pitch = rs.getFloat("pitch");
+            // Get all unique player UUIDs first
+            String uuidQuery = "SELECT DISTINCT player_uuid FROM player_spectator_locations";
+            
+            // Process in batches to avoid memory issues
+            boolean hasMore = true;
+            int offset = 0;
+            final int batchSize = 50;
+            
+            while (hasMore) {
+                String paginatedQuery = uuidQuery + " LIMIT " + batchSize + " OFFSET " + offset;
+                
+                // Process each UUID in this batch
+                for (int i = 0; i < batchSize; i++) {
+                    String singleQuery = uuidQuery + " LIMIT 1 OFFSET " + (offset + i);
+                    Map<String, Object> uuidRow = database.queryRow(singleQuery);
+                    
+                    if (uuidRow == null) {
+                        hasMore = false;
+                        break;
+                    }
+                    
+                    UUID playerUUID = UUID.fromString((String)uuidRow.get("player_uuid"));
+                    
+                    // Get the latest location for this player
+                    String locationQuery = "SELECT world, x, y, z, yaw, pitch FROM player_spectator_locations " +
+                                          "WHERE player_uuid = ? ORDER BY timestamp DESC LIMIT 1";
+                    Map<String, Object> locationRow = database.queryRow(locationQuery, playerUUID.toString());
+                    
+                    if (locationRow != null) {
+                        String world = (String)locationRow.get("world");
+                        double x = (Double)locationRow.get("x");
+                        double y = (Double)locationRow.get("y");
+                        double z = (Double)locationRow.get("z");
+                        float yaw = (Float)locationRow.get("yaw");
+                        float pitch = (Float)locationRow.get("pitch");
 
-                    Location location = new Location(
-                            plugin.getServer().getWorld(world),
-                            x, y, z, yaw, pitch
-                    );
+                        Location location = new Location(
+                                plugin.getServer().getWorld(world),
+                                x, y, z, yaw, pitch
+                        );
 
-                    survivalLocations.put(playerUUID, location);
+                        survivalLocations.put(playerUUID, location);
+                        loadedLocationsCount.incrementAndGet();
+                    }
                 }
-            });
+                
+                offset += batchSize;
+            }
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load saved spectator locations", e);
         }
@@ -163,7 +185,7 @@ public class SpectatorTeleport implements Listener {
     /**
      * Handle gamemode changes to save location when entering spectator and restore when leaving
      */
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(PlayerGameModeChangeEvent event) {
         Player player = event.getPlayer();
         GameMode oldGameMode = player.getGameMode();
@@ -179,7 +201,7 @@ public class SpectatorTeleport implements Listener {
                 // Schedule for next tick to ensure gamemode change completes first
                 plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
                     // Add night vision effect (infinite duration = 999999)
-                    player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 999999, 0, false, false, true));
+                    player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.NIGHT_VISION, 999999, 0, false, false, true));
                 }, 1L);
             }
 
@@ -187,8 +209,8 @@ public class SpectatorTeleport implements Listener {
         // Player is leaving spectator mode
         else if (oldGameMode == GameMode.SPECTATOR && newGameMode != GameMode.SPECTATOR) {
             // Remove night vision if they have it
-            if (player.hasPotionEffect(PotionEffectType.NIGHT_VISION)) {
-                player.removePotionEffect(PotionEffectType.NIGHT_VISION);
+            if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.NIGHT_VISION)) {
+                player.removePotionEffect(org.bukkit.potion.PotionEffectType.NIGHT_VISION);
             }
             if (newGameMode == GameMode.CREATIVE) {
                 return;
@@ -204,7 +226,7 @@ public class SpectatorTeleport implements Listener {
     /**
      * Handle player join to check if they were in spectator mode when they left
      */
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
@@ -221,7 +243,7 @@ public class SpectatorTeleport implements Listener {
             // Apply night vision if they have permission
             if (player.hasPermission("core.nv")) {
                 plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                    player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 999999999
+                    player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.NIGHT_VISION, 999999999
                             , 0, false, false));
                 }, 5L);
             }
@@ -296,6 +318,11 @@ public class SpectatorTeleport implements Listener {
                 if(plugin.getConfig().getBoolean("debug-mode")) {
                     plugin.getLogger().fine("Teleported " + player.getName() + " to their saved location");
                 }
+
+                // Apply slow falling if the survival location is in the air
+                if (isInAir(savedLocation)) {
+                    plugin.getFlyOnRejoinListener().applySlowFallingUntilLanded(player);
+                }
             } else {
                 plugin.getLogger().warning("Could not teleport " + player.getName() +
                         " - world " + savedLocation.getWorld().getName() + " is not loaded");
@@ -356,5 +383,15 @@ public class SpectatorTeleport implements Listener {
      */
     public void clearCache() {
         survivalLocations.clear();
+    }
+
+    /**
+     * Checks if a location is in the air (no solid block below)
+     * @param location The location to check
+     * @return true if the location is in the air, false otherwise
+     */
+    private boolean isInAir(Location location) {
+        Location below = location.clone().subtract(0, 1, 0);
+        return location.getBlock().getType().isAir() && !below.getBlock().getType().isSolid();
     }
 }

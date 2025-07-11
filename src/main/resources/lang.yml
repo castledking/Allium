@@ -2,6 +2,11 @@
 #              SFCORE LANG(en)             #
 #==========================================#
 
+version: 0.1.2a
+# This is the version of the language file.
+# Currently only used to remove deprecated
+# keys from this file on load.
+
 # All error messages are translating the
 # last color in your error-prefix and
 # adding it after each placeholder use.
@@ -89,17 +94,21 @@ not-a-player: "You must be a player to use this command."
 player-not-found: "Player {name} was not found."
 player-not-online: "Player {name} is not online."
 invalid: "Invalid {arg}! Please check your syntax."
-no-permission: "You do not have permission to use /{cmd}"
-hold-item: "&cYou must be holding an item to {modify} it."
+no-permission: "You don't have permission to use /{cmd}"
+hold-item: "You must be holding an item to {modify} it."
 inventory-full: "Inventory full, make some space before giving more items."
-insufficient-funds: "You don't have enough money. Your balance: &7{balance}"
-cooldown: "You must wait {time} before using {cmd} again."
+amount-positive: "Amount must be positive."
+insufficient-funds: "You don't have enough money. Your balance: {balance}"
+cooldown: "You must wait {time} before using /{cmd} again."
 cannot-self: "You cannot {action} yourself."
 contact-admin: An unexpected error has occurred. Please contact an administrator.
 
 #==========================================#
 #                COMMANDS                  #
 #==========================================#
+
+enchant:
+  success: "&aSuccessfully enchanted &f{item}&a with &e{enchant}&a."
 
 explode:
   invalid: "Please enter an integer between &7{min} and &7{max}."
@@ -120,7 +129,8 @@ gamemode:
   reset: "&aYour gamemode has been reset to &e{mode}&a."
 
 gc:
-  usage-header: "&a===== SERVER AND MACHINE USAGE ====="
+  usage-header: "&6===== &fGarbage Collection &6====="
+  uptime: "&eUptime: &f{uptime}"
   disk-space-error: Could not retrieve disk space information.
   system-info-error: Failed to process system information.
   world-info-error: Failed to gather world information.
@@ -157,6 +167,9 @@ god:
 heal:
   self: "&aYou have been healed."
   other: "&aYou have healed &e{name}&a."
+
+invsee:
+  inventory: "Editing &e{player}'s inventory."
 
 itemdb:
   format: |
@@ -224,7 +237,7 @@ tp:
   position: "&6{x}, {y}, {z}"
   sent: |
     &8[ &e&lTPA &8] &eRequest sent to &6{name}&e.
-    &8[ &e&lTPA &8] &eTo cancel this request, type &6/{cancelCmd}&e.
+    &8[ &e&lTPA &8] &eTo cancel this request, type {cancelCmd}&e.
   already-sent: "&6You have already sent a teleport request to &e{name}&6."
   no-request: "&6You have no pending teleport requests."
   expired: "&6Your teleport request has expired."
@@ -238,8 +251,8 @@ tp:
   blocked: "Player &7{name} has teleportation disabled."
   format: |
     &8[ &e&lTPA &8] &e{name} &6has requested {action}
-    &8[ &e&lTPA &8] &6To teleport type &e/{acceptCmd}&6.
-    &8[ &e&lTPA &8] &6To deny this request, type &e/{denyCmd}&6.
+    &8[ &e&lTPA &8] &6To teleport type {acceptCmd}&6.
+    &8[ &e&lTPA &8] &6To deny this request, type {denyCmd}&6.
     &8[ &e&lTPA &8] &6This request will timeout after &e{time} &6seconds.
   back: "&6Returning to previous location."
   back-death-location: "&6Returning to death location."
@@ -254,7 +267,7 @@ tp:
   tpe-toggle: |
     &aEntity teleport mode is now {state} {name}
     {info}
-  tpe-action: "&a{entity} &e{mob} &ahas been {state}."
+  tpe-action: "&aEntity &e{mob} &ahas been {state}."
 
 whois:
   header: "&6&l--- Whois: {player_name} ---"
@@ -275,6 +288,30 @@ whois:
   action-chat-sentry: "&7- &fChat Violations &7(ChatSentry)"
   footer: "&6&l---------------------------"
 
+note:
+  usage: "Usage: /note <player> <note>"
+  success: "&aNote added to {player}: &f{note}"
+
+notes:
+  header: "&6===== &fPlayer Notes &6====="
+  none-found: "&7No notes found"
+  none-for-player: "&7No notes found for {player}"
+
+unnote:
+  usage: "Usage: /unnote <player> <id>"
+  success: "&aRemoved note #{id} from {player}"
+  not-found: "&cNote not found or you don't have permission to remove it"
+  invalid-id: "&cInvalid note ID"
+
+command:
+  core:
+    escalate:
+      usage: "&cUsage: /core escalate <staffmember> <target> <reason>"
+      not-configured: "&cDiscord escalation is not configured"
+      failed: "&cFailed to send escalation"
+      success: "&aEscalation sent to staff!"
+    console-only: "&cThis command can only be run from the console."
+
 #==========================================#
 #                ECONOMY                   #
 #==========================================#
@@ -285,8 +322,6 @@ economy:
   balance-other: "&a{player}'s balance: &6{balance}"
   
   # Pay command messages
-  pay-invalid-amount: "&cInvalid amount: {amount}"
-  pay-negative-amount: "&cYou cannot pay a negative or zero amount."
   pay-success-sender: "&aYou paid &6{amount} &ato &e{player}&a."
   pay-success-receiver: "&aYou received &6{amount} &afrom &e{player}&a."
   

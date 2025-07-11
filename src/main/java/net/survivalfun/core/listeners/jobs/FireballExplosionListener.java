@@ -1,4 +1,4 @@
-package net.survivalfun.core.listeners; // Adjusted package for now
+package net.survivalfun.core.listeners.jobs; // Adjusted package for now
 
 import net.survivalfun.core.PluginStart;
 import org.bukkit.*;

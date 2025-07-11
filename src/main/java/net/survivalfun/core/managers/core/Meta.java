@@ -20,6 +20,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -29,11 +30,44 @@ public class Meta {
     private static PluginStart plugin;
     private static Lang lang;
     private static Config configManager;
+    private static final Map<String, Enchantment> ENCHANTMENT_CACHE = new HashMap<>();
 
     public static void initialize(PluginStart pluginInstance) {
         plugin = pluginInstance;
         lang = plugin.getLangManager();
         configManager = plugin.getConfigManager();
+        
+        // Initialize enchantment cache
+        cacheEnchantments();
+    }
+    
+    private static void cacheEnchantments() {
+        // Use reflection to get all registered enchantments
+        try {
+            Method valuesMethod = Enchantment.class.getMethod("values");
+            Enchantment[] enchants = (Enchantment[]) valuesMethod.invoke(null);
+            
+            for (Enchantment enchant : enchants) {
+                String key = enchant.getKey().getKey(); // Get just the name part (e.g. "sharpness")
+                ENCHANTMENT_CACHE.put(key.toLowerCase(), enchant);
+                ENCHANTMENT_CACHE.put(enchant.getKey().toString().toLowerCase(), enchant);
+            }
+        } catch (Exception e) {
+            Bukkit.getLogger().log(Level.WARNING, "Failed to cache enchantments", e);
+        }
+    }
+    
+    public static Enchantment getEnchantment(String name) {
+        // Try direct lookup first (case insensitive)
+        Enchantment enchant = ENCHANTMENT_CACHE.get(name.toLowerCase());
+        if (enchant != null) return enchant;
+        
+        // Try with minecraft namespace if not found
+        if (!name.contains(":")) {
+            return ENCHANTMENT_CACHE.get("minecraft:" + name.toLowerCase());
+        }
+        
+        return null;
     }
 
     public static void applyEnchantments(CommandSender sender, ItemStack item, Map<Enchantment, Integer> enchantments) {
@@ -69,11 +103,11 @@ public class Meta {
                 continue;
             }
 
-            if (level > enchantment.getMaxLevel() && !unsafe) {
+            if (level > getMaxLevel(enchantment) && !unsafe) {
                 Text.sendErrorMessage(sender, "give.unsafe-level", lang,
                         "{enchant}", formatName(enchantment.getKey().getKey()),
-                        "{maxLevel}", String.valueOf(enchantment.getMaxLevel()));
-                level = enchantment.getMaxLevel();
+                        "{maxLevel}", String.valueOf(getMaxLevel(enchantment)));
+                level = getMaxLevel(enchantment);
             }
 
             boolean conflicts = false;
@@ -198,6 +232,26 @@ public class Meta {
         return false;
     }
 
+    public static boolean canEnchant(ItemStack item, Enchantment enchant, int level) {
+        // Check if item is enchantable
+        if (item == null || item.getType() == Material.AIR) return false;
+        
+        // Check max level
+        if (level > enchant.getMaxLevel()) return false;
+        
+        // Check if enchant can be applied to this item
+        if (!enchant.canEnchantItem(item)) return false;
+        
+        // Check for conflicts with existing enchants
+        for (Map.Entry<Enchantment, Integer> entry : item.getEnchantments().entrySet()) {
+            if (enchant.conflictsWith(entry.getKey())) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
     public static ItemStack createPlayerHead(CommandSender sender, String[] parts, int amount, Map<Enchantment, Integer> enchantments) {
         String owner = null;
         String base64 = null;
@@ -303,36 +357,7 @@ public class Meta {
 
             String[] enchantParts = part.split(":");
             String enchantName = enchantParts[0].toLowerCase();
-            Enchantment enchantment = null;
-
-            // Support namespaced keys like 'minecraft:sharpness' or 'nova_structures:custom_enchant'
-            if (enchantName.contains(":")) {
-                // Directly support the nova_structures namespace
-                String[] namespaceParts = enchantName.split(":", 2);
-                if (namespaceParts.length == 2 && namespaceParts[0].equals("nova_structures")) {
-                    enchantment = Enchantment.getByKey(new NamespacedKey("nova_structures", namespaceParts[1]));
-                } else {
-                    enchantment = Enchantment.getByKey(NamespacedKey.fromString(enchantName));
-                }
-            } else {
-                // Try minecraft namespace first
-                enchantment = Enchantment.getByKey(NamespacedKey.minecraft(enchantName));
-                
-                // If not found, try nova_structures namespace as a fallback
-                if (enchantment == null) {
-                    enchantment = Enchantment.getByKey(new NamespacedKey("nova_structures", enchantName));
-                }
-                
-                // Try EcoEnchants if available
-                if (enchantment == null) {
-                    enchantment = getEcoEnchant(enchantName);
-                }
-                
-                // Try AdvancedEnchantments if available
-                if (enchantment == null) {
-                    enchantment = getAdvancedEnchant(enchantName);
-                }
-            }
+            Enchantment enchantment = getEnchantment(enchantName);
 
             if (enchantment != null) {
                 int level;
@@ -343,7 +368,7 @@ public class Meta {
                         continue; // Skip if level is not a valid number
                     }
                 } else {
-                    level = enchantment.getMaxLevel(); // Default to max level
+                    level = getMaxLevel(enchantment); // Default to max level
                 }
                 enchantments.put(enchantment, level);
             }
@@ -427,5 +452,19 @@ public class Meta {
         }
         
         return null;
+    }
+
+    public static int getMaxLevel(Enchantment enchantment) {
+        if (enchantment == null) {
+            return 0;
+        }
+        
+        String namespace = enchantment.getKey().getNamespace();
+        // Check if it's a custom enchant
+        if (namespace.equals("survivalfun") || namespace.equals("eco") || namespace.equals("advanced")) {
+            // Handle custom enchants
+            return 10; // Example max level for custom enchants
+        }
+        return enchantment.getMaxLevel();
     }
 }

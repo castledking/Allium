@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.tabcompletes;
 
 import net.survivalfun.core.managers.core.Alias;
 import net.survivalfun.core.managers.core.Item;

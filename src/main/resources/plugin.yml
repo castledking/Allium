@@ -135,6 +135,12 @@ commands:
     usage: "/tpa <player>"
     permission: core.tpa
   
+  tpcancel:
+    description: "Cancel a teleport request"
+    usage: "/tpcancel"
+    aliases: [tpacancel]
+    permission: core.tpa
+  
   tpaccept:
     description: "Accept a teleport request"
     usage: "/tpaccept [player]"
@@ -200,19 +206,93 @@ commands:
     usage: "/whois <player>"
     permission: core.whois
 
+  maintenance:
+    description: "Toggle maintenance mode"
+    usage: "/maintenance [on|off] [reason]"
+    permission: core.admin
+
+  invsee:
+    description: View and edit another player's inventory
+    usage: /invsee <player>
+    permission: core.invsee
+
+  enchant:
+    description: Enchant an item in hand
+    usage: /enchant <enchantment> [level]
+    permission: core.enchant
+
+  note:
+    description: Add a note about a player
+    usage: /note <player> <note>
+    permission: core.staff
+  notes:
+    description: View player notes
+    usage: /notes [player]
+    permission: core.staff
+  unnote:
+    description: Remove a player note
+    usage: /unnote <player> <id>
+    permission: core.staff
+
 permissions:
-  core.*:
+  core.staff:
+    description: "Gives access to staff commands"
     default: op
+    children:
+      core.escalate: true
+      core.spy: true
+      core.spy.others: true
+      core.gamemode: true
+      core.gamemode.spectator: true
+      core.note: true
+      core.notes: true
+      core.unnote: true
+      core.invsee: true
+      core.tp: true
+      core.tp.others: true
+      core.tp.offline: true
+      core.tphere: true
+      core.tppos: true
+      core.tpa.nocooldown: true
+      core.tpa.nodelay: true
+      core.lockdown.bypass: true
   core.admin:
+    description: "Gives access to all core admin commands"
     default: op
+    children:
+      core.debug: true
+      core.reload: true
+      core.hideupdate: true
+      core.hide: true
+      core.chatmod: true
+      core.enchant: true
+      core.staff: true
+
+  core.enchant:
+    description: "Allows using the enchant command"
+    default: op
+
   core.spy:
+    default: op
+  
+  core.money:
+    default: op
+  core.note:
+    default: op
+  core.notes:
+    default: op
+  core.unnote:
     default: op
 
   core.gamemode.others:
     default: op
   core.gamemode.survival:
     default: op
+  core.gamemode.survival.nv:
+    default: op
   core.gamemode.creative:
+    default: op
+  core.gamemode.creative.nv:
     default: op
   core.gamemode.creative.bypass.*:
     default: op
@@ -220,11 +300,25 @@ permissions:
     default: op
   core.gamemode.adventure:
     default: op
+  core.gamemode.adventure.nv:
+    default: op
   core.gamemode.spectator:
+    default: op
+  core.gamemode.adventure.nv:
     default: op
   core.gamemode:
     default: op
   core.nv:
+    default: op
+  core.nv.others:
+    default: op
+  core.nv.adventure:
+    default: op
+  core.nv.creative:
+    default: op
+  core.nv.spectator:
+    default: op
+  core.nv.survival:
     default: op
 
   core.tp:
@@ -239,8 +333,10 @@ permissions:
     default: op
   core.voucher.give:
     description: "Allows giving rank vouchers via /core voucher give"
-    default: op # Or 'false' if you want only core.admin to grant it implicitly
+    default: op
   core.tppos:
+    default: op
+  core.lockdown.bypass:
     default: op
   core.tphere:
     default: op
@@ -385,6 +481,9 @@ permissions:
     default: op
   chat.format.reset:
     description: Allows using reset formatting in chat
+    default: op
+  chat.placeholderapi:
+    description: Allows using PlaceholderAPI placeholders in chat
     default: op
   chat.format.strikethrough:
     description: Allows using strikethrough formatting in chat

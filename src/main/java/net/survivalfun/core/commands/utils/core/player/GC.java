@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.utils.core.player;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
@@ -133,6 +133,27 @@ public class GC implements CommandExecutor {
                         placeholders.put("totalEntities", String.valueOf(totalEntities.get()));
                         placeholders.put("totalTileEntities", String.valueOf(totalTileEntities.get()));
                         placeholders.put("worldInfo", worldInfo.toString());
+
+                        // Calculate server uptime
+                        long uptimeMillis = ManagementFactory.getRuntimeMXBean().getUptime();
+                        long uptimeSeconds = uptimeMillis / 1000;
+                        long uptimeMinutes = uptimeSeconds / 60;
+                        long uptimeHours = uptimeMinutes / 60;
+                        long uptimeDays = uptimeHours / 24;
+                        
+                        // Build uptime string only showing non-zero units
+                        StringBuilder uptimeBuilder = new StringBuilder();
+                        if (uptimeDays > 0) uptimeBuilder.append(String.format("%d days, ", uptimeDays));
+                        if (uptimeHours % 24 > 0 || uptimeBuilder.length() > 0) uptimeBuilder.append(String.format("%d hours, ", uptimeHours % 24));
+                        if (uptimeMinutes % 60 > 0 || uptimeBuilder.length() > 0) uptimeBuilder.append(String.format("%d minutes, ", uptimeMinutes % 60));
+                        if (uptimeSeconds % 60 > 0 || uptimeBuilder.length() == 0) uptimeBuilder.append(String.format("%d seconds", uptimeSeconds % 60));
+                        
+                        // Remove trailing comma if seconds were omitted
+                        if (uptimeSeconds % 60 == 0 && uptimeBuilder.length() > 0) {
+                            uptimeBuilder.setLength(uptimeBuilder.length() - 2);
+                        }
+                        
+                        sender.sendMessage(lang.get("gc.uptime").replace("{uptime}", uptimeBuilder.toString()));
 
                         // Send messages from lang.yml with placeholders replaced
                         List<String> messages = lang.getList("gc.message");

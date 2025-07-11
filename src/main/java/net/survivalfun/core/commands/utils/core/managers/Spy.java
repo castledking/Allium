@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.utils.core.managers;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.Text;
@@ -42,7 +42,7 @@ public class Spy implements CommandExecutor, TabCompleter {
             , String @NotNull [] args) {
         // Check permission
         if (!sender.hasPermission("core.spy")) {
-            sender.sendMessage(lang.get("no-permission"));
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label);
             return true;
         }
 
@@ -50,9 +50,12 @@ public class Spy implements CommandExecutor, TabCompleter {
         // Use the new Lang method to get the first color code (e.g., "&a")
         String firstColorOfSpyToggle = lang.getFirstColorCode("spy.toggle");
 
+        String trueStyle = lang.get("styles.state.true");
+        String falseStyle = lang.get("styles.state.false");
+
         // Check if sender is a player
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(lang.get("not-a-player"));
+            Text.sendErrorMessage(sender, "not-a-player", lang);
             return true;
         }
 
@@ -66,25 +69,22 @@ public class Spy implements CommandExecutor, TabCompleter {
             if (isGloballySpying) {
                 // Turn off global spying
                 spyingPlayers.remove(playerUUID);
-                String disabledStyle = lang.get("styles.state.false");
                 sender.sendMessage(spyToggleMessage
-                        .replace("{state}", disabledStyle + "disabled" + firstColorOfSpyToggle)
+                        .replace("{state}", falseStyle + "disabled" + firstColorOfSpyToggle)
                         .replace(" {name}", ""));
                 return true;
             } else if (hasTargetedSpy) {
                 // Turn off all targeted spying
                 targetedSpying.remove(playerUUID);
-                String disabledStyle = lang.get("styles.state.false");
                 sender.sendMessage(spyToggleMessage
-                        .replace("{state}", disabledStyle + "disabled" + firstColorOfSpyToggle)
+                        .replace("{state}", falseStyle + "disabled" + firstColorOfSpyToggle)
                         .replace(" {name}", ""));
                 return true;
             } else {
                 // Turn on global spying
                 spyingPlayers.add(playerUUID);
-                String enabledStyle = lang.get("styles.state.true");
                 sender.sendMessage(spyToggleMessage
-                        .replace("{state}", enabledStyle + "enabled" + firstColorOfSpyToggle)
+                        .replace("{state}", trueStyle + "enabled" + firstColorOfSpyToggle)
                         .replace(" {name}", ""));
                 return true;
             }
@@ -95,7 +95,7 @@ public class Spy implements CommandExecutor, TabCompleter {
         Player targetPlayer = plugin.getServer().getPlayer(targetPlayerName);
 
         if (targetPlayer == null) {
-            Text.sendErrorMessage(player, lang.get("player-not-found").replace("{name}", targetPlayerName), lang);
+            Text.sendErrorMessage(player, "player-not-found", lang, "{name}", targetPlayerName);
             return true;
         }
 
@@ -103,13 +103,13 @@ public class Spy implements CommandExecutor, TabCompleter {
 
         // Don't allow spying on yourself
         if (targetUUID.equals(playerUUID)) {
-            Text.sendErrorMessage(player, lang.get("spy.self"), lang);
+            Text.sendErrorMessage(player, "cannot-self", lang, "{action}", "spy on");
             return true;
         }
 
         // Check if target player has the exempt permission
         if (targetPlayer.hasPermission("core.spy.exempt")) {
-            Text.sendErrorMessage(player, lang.get("spy.exempt").replace("{name}", targetPlayer.getName()), lang);
+            Text.sendErrorMessage(player, "spy.exempt", lang, "{name}", targetPlayer.getName());
             return true;
         }
 
@@ -129,18 +129,18 @@ public class Spy implements CommandExecutor, TabCompleter {
         String message;
         if (wasGloballySpying) {
             message = lang.get("spy.toggle")
-                    .replace("{state}", Text.parseColors("&aswitched to " + targetPlayerName))
-                    .replace(" {name}", "");
+                    .replace("{state}", trueStyle + "switched to" + firstColorOfSpyToggle)
+                    .replace(" {name}", targetPlayerName);
         } else if (wasTargetingPlayer) {
             // If already targeting this player, toggle off
             targetedSpying.remove(playerUUID);
             message = lang.get("spy.toggle")
-                    .replace("{state}", lang.get("styles.state.false") + "disabled" + "§r")
-                    .replace("{name}", "for " + targetPlayerName);
+                    .replace("{state}", falseStyle + "disabled" + firstColorOfSpyToggle)
+                    .replace("{name}", firstColorOfSpyToggle + "for " + targetPlayerName);
         } else {
             message = lang.get("spy.toggle")
-                    .replace("{state}", Text.parseColors("&anow spying on " + targetPlayerName))
-                    .replace(" {name}", "");
+                    .replace("{state}", trueStyle + "enabled" + firstColorOfSpyToggle)
+                    .replace("{name}", firstColorOfSpyToggle + "for " + targetPlayerName);
         }
 
         sender.sendMessage(message);

@@ -137,6 +137,8 @@ public class Potion {
                     prefix = "Awkward Splash Potion";
                 } else if (item.getType() == Material.LINGERING_POTION) {
                     prefix = "Awkward Lingering Potion";
+                } else if (item.getType() == Material.TIPPED_ARROW) {
+                    prefix = "Tipped Arrow";
                 } else {
                     prefix = "Awkward Potion";
                 }
@@ -156,6 +158,8 @@ public class Potion {
                     prefix = "Mundane Splash Potion";
                 } else if (item.getType() == Material.LINGERING_POTION) {
                     prefix = "Mundane Lingering Potion";
+                } else if (item.getType() == Material.TIPPED_ARROW) {
+                    prefix = "Tipped Arrow";
                 } else {
                     prefix = "Mundane Potion";
                 }
@@ -175,6 +179,8 @@ public class Potion {
                     prefix = "Thick Splash Potion";
                 } else if (item.getType() == Material.LINGERING_POTION) {
                     prefix = "Thick Lingering Potion";
+                } else if (item.getType() == Material.TIPPED_ARROW) {
+                    prefix = "Tipped Arrow";
                 } else {
                     prefix = "Thick Potion";
                 }

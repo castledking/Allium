@@ -7,6 +7,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +17,13 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public class Lang {
+    private static final String CURRENT_LANG_VERSION = "0.1.2a";
+    private static final List<String> DEPRECATED_KEYS = Arrays.asList(
+        "pay-invalid-amount",
+        "pay-negative-amount",
+        "give.error"
+    );
+
     private File langFile;
     private final Map<String, Object> messages = new HashMap<>();
     private final Map<String, Object> defaultMessages = new HashMap<>();
@@ -23,6 +31,7 @@ public class Lang {
     private FileConfiguration config;
     private Locale currentLocale;
     private String configLangCode;
+    private YamlConfiguration langConfig;
     // Map of short language codes to full language codes
 
     /**
@@ -344,7 +353,7 @@ public class Lang {
 
         // Load the language file
         try {
-            YamlConfiguration langConfig = YamlConfiguration.loadConfiguration(
+            langConfig = YamlConfiguration.loadConfiguration(
                     new InputStreamReader(Files.newInputStream(langFile.toPath()), StandardCharsets.UTF_8)
             );
 
@@ -368,6 +377,8 @@ public class Lang {
                 }
             }
 
+            // Perform version check and cleanup
+            performVersionMigration();
 
             // Load all messages
             loadMessagesRecursive(langConfig, "");
@@ -404,7 +415,7 @@ public class Lang {
                 if (updated) {
                     langConfig.save(langFile);
                 }
-            } catch (Exception e) {
+            } catch (IOException e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to update language file with missing messages", e);
             }
         }
@@ -434,6 +445,7 @@ public class Lang {
                 // Add metadata
                 config.set("lang", configLangCode);
                 config.set("lang", getLanguageName(configLangCode));
+                config.set("version", CURRENT_LANG_VERSION);
 
                 // Add all default messages
                 for (Map.Entry<String, Object> entry : defaultMessages.entrySet()) {
@@ -444,7 +456,7 @@ public class Lang {
                 config.save(langFile);
                 plugin.getLogger().info("Created new language file with " + configLangCode + " defaults");
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to create language file", e);
         }
     }
@@ -484,7 +496,59 @@ public class Lang {
         }
     }
 
+    private void performVersionMigration() {
+        String fileVersion = langConfig.getString("version", "0.0.0");
 
+        // Only migrate if version is older than current
+        if (compareVersions(fileVersion, CURRENT_LANG_VERSION) < 0) {
+            // Remove deprecated keys
+            for (String key : DEPRECATED_KEYS) {
+                if (langConfig.isSet(key)) {
+                    langConfig.set(key, null);
+                }
+            }
+
+            // Update version
+            langConfig.set("version", CURRENT_LANG_VERSION);
+
+            // Save changes
+            try {
+                langConfig.save(langFile);
+                plugin.getLogger().info("Updated lang.yml to version " + CURRENT_LANG_VERSION);
+            } catch (IOException e) {
+                plugin.getLogger().warning("Failed to update lang.yml: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Compare two version strings (e.g., "1.2.3")
+     * @return negative if v1 < v2, positive if v1 > v2, zero if equal
+     */
+    private int compareVersions(String v1, String v2) {
+        String[] parts1 = v1.split("\\.");
+        String[] parts2 = v2.split("\\.");
+
+        int length = Math.max(parts1.length, parts2.length);
+        for (int i = 0; i < length; i++) {
+            int num1 = (i < parts1.length) ? parseVersionPart(parts1[i]) : 0;
+            int num2 = (i < parts2.length) ? parseVersionPart(parts2[i]) : 0;
+
+            if (num1 != num2) {
+                return num1 - num2;
+            }
+        }
+        return 0;
+    }
+
+    private int parseVersionPart(String part) {
+        try {
+            // Remove any non-numeric suffix (like 'a' in '0.1.2a')
+            return Integer.parseInt(part.replaceAll("[^0-9]", ""));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
 
     /**
      * Get a message string from the language file
@@ -642,4 +706,3 @@ public class Lang {
         return new HashMap<>(SUPPORTED_LANGUAGES);
     }
 }
-

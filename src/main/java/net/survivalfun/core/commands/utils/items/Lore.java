@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.utils.items;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.lang.Lang;
@@ -39,7 +39,11 @@ public class Lore implements CommandExecutor {
 
         ItemMeta meta = item.getItemMeta();
         if (meta == null) {
-            player.sendMessage(lang.get("error-prefix") + lang.get("lore.failure"));
+            Text.sendErrorMessage(player, "lore.failure", lang);
+            return true;
+
+        } else if (item.getType().isAir()) {
+            Text.sendErrorMessage(player, "hold-item", lang, "{modify}", "add lore to");
             return true;
         }
 

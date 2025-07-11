@@ -1,4 +1,4 @@
-package net.survivalfun.core.commands.utils;
+package net.survivalfun.core.commands.utils.items;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.*;

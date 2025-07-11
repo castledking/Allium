@@ -1,11 +1,15 @@
 package net.survivalfun.core.managers.core;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import net.survivalfun.core.PluginStart;
-import net.survivalfun.core.managers.lang.Lang;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
@@ -16,35 +20,26 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import javax.annotation.Nullable;
 import java.lang.reflect.Field;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.logging.Level;
 
+/**
+ * Skull manager class
+ */
 public class Skull implements CommandExecutor {
+    private static OkHttpClient httpClient = new OkHttpClient();
 
     private final PluginStart plugin;
-    private final Lang lang;
 
     public Skull(PluginStart plugin) {
         this.plugin = plugin;
-        this.lang = plugin.getLangManager();
     }
     
-    /**
-     * Creates a skull with the specified texture URL or base64 texture
-     * @param texture The base64 texture string to apply to the skull
-     * @return ItemStack with the custom texture, or null if failed
-     */
-    @Nullable
-    public static ItemStack createSkullWithTexture(String texture) {
+    @SuppressWarnings("deprecation")
+    public static ItemStack createSkullWithTexture(String texture, String playerName) {
         try {
             if (texture == null || texture.isEmpty()) {
                 return null;
@@ -56,50 +51,137 @@ public class Skull implements CommandExecutor {
                 return null;
             }
             
-            // If it's a base64 texture (starts with eyJ)
-            if (texture.startsWith("eyJ")) {
-                // Use a dummy name to avoid NullPointerException
-                GameProfile profile = new GameProfile(UUID.randomUUID(), "Player");
-                profile.getProperties().put("textures", new Property("textures", texture));
-                
+            // Set the display name if playerName is provided
+            if (playerName != null && !playerName.isEmpty()) {
+                meta.displayName(net.kyori.adventure.text.Component.text(
+                    playerName + "'s Head",
+                    net.kyori.adventure.text.format.NamedTextColor.WHITE
+                ));
+            }
+            
+            // Create a GameProfile with random UUID and the texture
+            UUID profileId = UUID.randomUUID();
+            String profileName = (playerName != null && !playerName.isEmpty()) ? playerName : "Custom";
+            
+            try {
+                // Method 1: Try the modern PlayerProfile API (1.16.5+)
                 try {
-                    Field profileField = meta.getClass().getDeclaredField("profile");
-                    profileField.setAccessible(true);
-                    profileField.set(meta, profile);
-                } catch (NoSuchFieldException | IllegalAccessException e) {
-                    Bukkit.getLogger().log(Level.SEVERE, "Failed to set skull profile", e);
-                    return null;
+                    org.bukkit.profile.PlayerProfile playerProfile = Bukkit.createProfile(profileId, profileName);
+                    
+                    // Set the texture using the modern API
+                    try {
+                        // Convert texture to URL if it's just the hash
+                        String textureUrl = texture;
+                        if (!texture.startsWith("http")) {
+                            textureUrl = "https://textures.minecraft.net/texture/" + texture;
+                        }
+                        
+                        playerProfile.getTextures().setSkin(new java.net.URL(textureUrl));
+                        meta.setOwnerProfile(playerProfile);
+                        head.setItemMeta(meta);
+                        return head;
+                    } catch (Exception e) {
+                        Bukkit.getLogger().log(Level.WARNING, "Failed to set texture via PlayerProfile: " + e.getMessage());
+                        // Fall through to next method
+                    }
+                } catch (Exception e) {
+                    // PlayerProfile API not available, try reflection
                 }
                 
-                head.setItemMeta(meta);
-                return head;
-            }
-            
-            // Create a GameProfile with the texture
-            // Use a dummy name to avoid NullPointerException
-            GameProfile profile = new GameProfile(UUID.randomUUID(), "Player");
-            profile.getProperties().put("textures", new Property("textures", texture));
-            
-            // Use reflection to set the profile
-            try {
-                Field profileField = meta.getClass().getDeclaredField("profile");
-                profileField.setAccessible(true);
-                profileField.set(meta, profile);
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                Bukkit.getLogger().log(Level.SEVERE, "Failed to set skull profile", e);
+                // Method 2: Use GameProfile with reflection (legacy support)
+                try {
+                    GameProfile profile = new GameProfile(profileId, profileName);
+                    String texturesValue = texture;
+                    
+                    // If texture isn't a full base64 string, encode it
+                    if (!texture.startsWith("eyJ")) {  // Base64 JSON starts with eyJ
+                        String json = String.format("{\"textures\":{\"SKIN\":{\"url\":\"%s\"}}}", 
+                            "https://textures.minecraft.net/texture/" + texture);
+                        texturesValue = java.util.Base64.getEncoder().encodeToString(json.getBytes());
+                    }
+                    
+                    profile.getProperties().put("textures", new Property("textures", texturesValue));
+                    
+                    // Set the profile using reflection
+                    java.lang.reflect.Field profileField = meta.getClass().getDeclaredField("profile");
+                    profileField.setAccessible(true);
+                    profileField.set(meta, profile);
+                    
+                    head.setItemMeta(meta);
+                    return head;
+                } catch (Exception e) {
+                    Bukkit.getLogger().log(Level.WARNING, "Failed to set texture via reflection: " + e.getMessage());
+                }
+                
+                return null;
+                
+            } catch (Exception e) {
+                Bukkit.getLogger().log(Level.SEVERE, "Error creating custom skull", e);
                 return null;
             }
-            
-            head.setItemMeta(meta);
-            return head;
         } catch (Exception e) {
-            Bukkit.getLogger().log(Level.SEVERE, "Error creating skull with texture", e);
+            Bukkit.getLogger().log(Level.SEVERE, "Unexpected error in createSkullWithTexture", e);
             return null;
         }
     }
+    
+    /**
+     * Alternative method to set texture via CraftBukkit reflection
+     */
+    @SuppressWarnings("unused")
+    private static ItemStack setTextureViaCraftBukkit(ItemStack head, GameProfile profile, String texture) {
+        try {
+            // Try to use CraftBukkit's internal methods to set the texture
+            SkullMeta meta = (SkullMeta) head.getItemMeta();
+            if (meta == null) return head;
+            
+            // Try to find CraftMetaSkull class and set the profile
+            try {
+                Class<?> craftMetaSkullClass = Class.forName("org.bukkit.craftbukkit.inventory.CraftMetaSkull");
+                if (craftMetaSkullClass.isInstance(meta)) {
+                    Field profileField = craftMetaSkullClass.getDeclaredField("profile");
+                    profileField.setAccessible(true);
+                    profileField.set(meta, profile);
+                    head.setItemMeta(meta);
+                    return head;
+                }
+            } catch (Exception e) {
+                // CraftBukkit approach failed
+            }
+            
+            // Try alternative field names
+            try {
+                Field[] fields = meta.getClass().getDeclaredFields();
+                for (Field field : fields) {
+                    if (field.getType().getName().contains("GameProfile") || 
+                        field.getName().toLowerCase().contains("profile")) {
+                        field.setAccessible(true);
+                        field.set(meta, profile);
+                        head.setItemMeta(meta);
+                        return head;
+                    }
+                }
+            } catch (Exception e) {
+                // Field search failed
+            }
+            
+            return head;
+        } catch (Exception e) {
+            Bukkit.getLogger().log(Level.WARNING, "CraftBukkit texture setting failed", e);
+            return head;
+        }
+    }
+    
+    /**
+     * Creates a skull with the specified texture (overloaded method for backward compatibility)
+     */
+    @Nullable
+    public static ItemStack createSkullWithTexture(String texture) {
+        return createSkullWithTexture(texture, null);
+    }
 
     /**
-     * Creates a skull for the specified player name
+     * Creates a skull for the specified player name using only Minecraft-Heads API
      * @param playerName The name of the player to get the skull for
      * @return ItemStack with the player's head, or null if failed
      */
@@ -107,21 +189,14 @@ public class Skull implements CommandExecutor {
     public static ItemStack createPlayerHead(String playerName) {
         try {
             OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerName);
-            if (!offlinePlayer.hasPlayedBefore() && !offlinePlayer.isOnline()) {
-                // Try to fetch from minecraft-heads.com
-                return fetchPlayerHeadFromName(playerName);
-            }
-            
             ItemStack head = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta meta = (SkullMeta) head.getItemMeta();
             if (meta == null) {
                 return null;
             }
-            
             meta.setOwningPlayer(offlinePlayer);
             head.setItemMeta(meta);
             return head;
-            
         } catch (Exception e) {
             Bukkit.getLogger().log(Level.SEVERE, "Error creating player head", e);
             return null;
@@ -129,9 +204,17 @@ public class Skull implements CommandExecutor {
     }
     
     /**
-     * Fetches a player head from minecraft-heads.com based on the player name
+     * Fetches a player head using only Minecraft-Heads API 2.0 based on the player name
      * @param playerName The name of the player to fetch the head for
      * @return ItemStack with the player's head texture, or null if failed
+     */
+    /**
+     * Fetches a player's head texture using Mojang's API and creates a skull item.
+     * This method first gets the player's UUID from their username, then fetches their profile
+     * to get the texture data, and finally creates a skull with that texture.
+     * 
+     * @param playerName The name of the player to get the head of
+     * @return ItemStack containing the player's head, or null if it couldn't be fetched
      */
     @Nullable
     public static ItemStack fetchPlayerHeadFromName(String playerName) {
@@ -139,160 +222,190 @@ public class Skull implements CommandExecutor {
             Bukkit.getLogger().log(Level.WARNING, "Cannot fetch player head for null or empty player name");
             return null;
         }
-        
+
         try {
-            // First try to get UUID from Mojang API
+            // Step 1: Get the player's UUID from their username
             String uuidUrl = "https://api.mojang.com/users/profiles/minecraft/" + playerName;
-            String uuidResponse = getUrlContent(uuidUrl);
-            
-            if (uuidResponse != null && !uuidResponse.isEmpty()) {
-                try {
-                    // Parse UUID from response
-                    JsonObject jsonObject = JsonParser.parseString(uuidResponse).getAsJsonObject();
-                    String uuidStr = jsonObject.get("id").getAsString();
-                    
-                    // Format UUID with dashes
-                    UUID uuid = UUID.fromString(
-                        uuidStr.replaceFirst(
-                            "(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w+)", 
-                            "$1-$2-$3-$4-$5"
-                        )
-                    );
-                    
-                    // Get texture from Mojang API
-                    String profileUrl = "https://sessionserver.mojang.com/session/minecraft/profile/" + 
-                                     uuid.toString().replace("-", "") + "?unsigned=false";
-                    String profileResponse = getUrlContent(profileUrl);
-                    
-                    if (profileResponse != null && !profileResponse.isEmpty()) {
-                        // Parse texture value
-                        JsonObject profileJson = JsonParser.parseString(profileResponse).getAsJsonObject();
-                        String texture = profileJson.getAsJsonArray("properties")
-                            .get(0).getAsJsonObject()
-                            .get("value").getAsString();
-                        
-                        // Create skull with texture
-                        return createSkullWithTexture(texture);
-                    }
-                } catch (Exception e) {
-                    Bukkit.getLogger().log(Level.WARNING, "Failed to fetch head from Mojang API: " + e.getMessage());
+            Request uuidRequest = new Request.Builder()
+                    .url(uuidUrl)
+                    .build();
+
+            String uuid;
+            try (Response uuidResponse = httpClient.newCall(uuidRequest).execute()) {
+                if (!uuidResponse.isSuccessful() || uuidResponse.body() == null) {
+                    Bukkit.getLogger().log(Level.WARNING, "Failed to fetch UUID for " + playerName + ": " + 
+                            (uuidResponse.body() != null ? uuidResponse.body().string() : "Empty response"));
+                    return null;
+                }
+                
+                String uuidBody = uuidResponse.body().string();
+                JsonObject uuidJson = JsonParser.parseString(uuidBody).getAsJsonObject();
+                uuid = uuidJson.get("id").getAsString();
+                
+                // Format UUID with hyphens (8-4-4-4-12 format)
+                if (uuid.length() == 32) {
+                    uuid = String.format("%s-%s-%s-%s-%s",
+                        uuid.substring(0, 8),
+                        uuid.substring(8, 12),
+                        uuid.substring(12, 16),
+                        uuid.substring(16, 20),
+                        uuid.substring(20));
                 }
             }
+
+            // Step 2: Get the player's profile with texture data
+            String profileUrl = "https://sessionserver.mojang.com/session/minecraft/profile/" + uuid + "?unsigned=false";
+            Request profileRequest = new Request.Builder()
+                    .url(profileUrl)
+                    .build();
+
+            try (Response profileResponse = httpClient.newCall(profileRequest).execute()) {
+                if (!profileResponse.isSuccessful() || profileResponse.body() == null) {
+                    Bukkit.getLogger().log(Level.WARNING, "Failed to fetch profile for " + playerName);
+                    return null;
+                }
+                
+                String profileBody = profileResponse.body().string();
+                JsonObject profileJson = JsonParser.parseString(profileBody).getAsJsonObject();
+                
+                // Get the texture value from the profile
+                JsonArray properties = profileJson.getAsJsonArray("properties");
+                for (JsonElement element : properties) {
+                    JsonObject property = element.getAsJsonObject();
+                    if (property.get("name").getAsString().equals("textures")) {
+                        String textureValue = property.get("value").getAsString();
+                        // Create and return the skull with the texture
+                        return createSkullWithTexture(textureValue, playerName);
+                    }
+                }
+                
+                Bukkit.getLogger().log(Level.WARNING, "No texture data found for " + playerName);
+                return null;
+            }
             
-            return null;
         } catch (Exception e) {
-            Bukkit.getLogger().log(Level.WARNING, "Error fetching player head: " + e.getMessage());
+            Bukkit.getLogger().log(Level.SEVERE, "Error fetching player head for " + playerName, e);
             return null;
         }
     }
+    
+
+    
+
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         // Check if sender is a player
-        if (!(sender instanceof Player player)) {
-            Text.sendErrorMessage(sender, "not-a-player", lang);
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("§cThis command can only be used by players.");
             return true;
         }
+        
+        final Player player = (Player) sender;
 
         // Check permission
         if (!player.hasPermission("core.skull")) {
-            label = "§c" + label;
-            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label);
+            player.sendMessage("§cYou don't have permission to use this command.");
             return true;
         }
 
         // Check arguments
         if (args.length != 1) {
-            label = "§c" + label;
-            player.sendMessage(lang.get("command-usage").replace("{cmd}", label).replace("{args}", "<player>"));
+            player.sendMessage("§cUsage: /" + label + " <player|base64:texture>");
             return true;
         }
 
         final String targetName = String.join(" ", args).trim();
         
-        // Check if it's a base64 texture
+        // Handle base64 texture
         if (targetName.startsWith("base64:")) {
             String texture = targetName.substring(7);
-            ItemStack skull = createSkullWithTexture(texture);
+            ItemStack skull = createSkullWithTexture(texture, "Custom");
             if (skull != null) {
                 player.getInventory().addItem(skull);
                 player.sendMessage("§aCustom head created successfully!");
             } else {
-                Text.sendErrorMessage(sender, "skull.error", lang);
+                player.sendMessage("§cFailed to create custom head.");
             }
             return true;
         }
         
-        // Check if it's a player name
-        // Notify player that we're fetching the head
-        player.sendMessage("§aFetching head for " + targetName + "...");
+        // Handle player head
+        player.sendMessage("§aFetching head for §e" + targetName + "§a...");
         
-        // Run the head getting asynchronously to prevent lag
+        // Run the API call asynchronously
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
-                // First try to get the offline player
-                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(targetName);
-                
-                // If the player is online, we can get their head directly
-                if (offlinePlayer.isOnline() && offlinePlayer.getPlayer() != null) {
-                    giveSkull(player, offlinePlayer.getPlayer().getUniqueId(), offlinePlayer.getName(), "online");
-                    return;
-                }
-                
-                // If not online, try to get their head using Mojang's API
-                try {
-                    // Get UUID from Mojang's API
-                    String uuidUrl = "https://api.mojang.com/users/profiles/minecraft/" + targetName;
-                    String uuidResponse = getUrlContent(uuidUrl);
-                    
-                    if (uuidResponse != null && !uuidResponse.isEmpty()) {
-                        try {
-                            // Parse UUID from response using Gson
-                            JsonObject jsonObject = JsonParser.parseString(uuidResponse).getAsJsonObject();
-                            String uuidStr = jsonObject.get("id").getAsString();
-                            
-                            // Format UUID with dashes
-                            UUID uuid = UUID.fromString(
-                                uuidStr.replaceFirst(
-                                    "(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w+)", 
-                                    "$1-$2-$3-$4-$5"
-                                )
-                            );
-                            
-                            // Now get the texture
-                            String profileUrl = "https://sessionserver.mojang.com/session/minecraft/profile/" + 
-                                             uuid.toString().replace("-", "") + "?unsigned=false";
-                            String profileResponse = getUrlContent(profileUrl);
-                            
-                            if (profileResponse != null && !profileResponse.isEmpty()) {
-                                // Parse texture value using Gson
-                                JsonObject profileJson = JsonParser.parseString(profileResponse).getAsJsonObject();
-                                String texture = profileJson.getAsJsonArray("properties")
-                                    .get(0).getAsJsonObject()
-                                    .get("value").getAsString();
-                                
-                                // Create and give the skull with the texture
-                                ItemStack skull = createSkullWithTexture(texture);
-                                if (skull != null) {
-                                    giveSkullItem(player, skull, targetName, "Mojang API");
-                                    return;
-                                }
-                            }
-                        } catch (Exception e) {
-                            plugin.getLogger().warning("Failed to fetch head from Mojang API: " + e.getMessage());
-                        }
+                // Try to get the player's UUID first
+                String uuidUrl = "https://api.mojang.com/users/profiles/minecraft/" + targetName;
+                Request uuidRequest = new Request.Builder()
+                        .url(uuidUrl)
+                        .build();
+
+                try (Response uuidResponse = httpClient.newCall(uuidRequest).execute()) {
+                    if (!uuidResponse.isSuccessful() || uuidResponse.body() == null) {
+                        // Fallback to offline player if Mojang API fails
+                        Bukkit.getScheduler().runTask(plugin, () -> 
+                            handleOfflinePlayer(player, targetName)
+                        );
+                        return;
                     }
-                } catch (Exception e) {
-                    plugin.getLogger().warning("Failed to fetch head from Mojang API: " + e.getMessage());
+                    
+                    String uuidBody = uuidResponse.body().string();
+                    JsonObject uuidJson = JsonParser.parseString(uuidBody).getAsJsonObject();
+                    String uuid = uuidJson.get("id").getAsString();
+                    
+                    // Get the player's profile with texture data
+                    String profileUrl = "https://sessionserver.mojang.com/session/minecraft/profile/" + 
+                                     uuid + "?unsigned=false";
+                    Request profileRequest = new Request.Builder()
+                            .url(profileUrl)
+                            .build();
+
+                    try (Response profileResponse = httpClient.newCall(profileRequest).execute()) {
+                        if (!profileResponse.isSuccessful() || profileResponse.body() == null) {
+                            // Fallback to offline player if profile fetch fails
+                            Bukkit.getScheduler().runTask(plugin, () -> 
+                                handleOfflinePlayer(player, targetName)
+                            );
+                            return;
+                        }
+                        
+                        String profileBody = profileResponse.body().string();
+                        JsonObject profileJson = JsonParser.parseString(profileBody).getAsJsonObject();
+                        
+                        // Get the texture value
+                        JsonArray properties = profileJson.getAsJsonArray("properties");
+                        for (JsonElement element : properties) {
+                            JsonObject property = element.getAsJsonObject();
+                            if (property.get("name").getAsString().equals("textures")) {
+                                String textureValue = property.get("value").getAsString();
+                                
+                                // Create and give the skull on the main thread
+                                Bukkit.getScheduler().runTask(plugin, () -> {
+                                    ItemStack skullItem = createSkullWithTexture(textureValue, targetName);
+                                    if (skullItem != null) {
+                                        giveSkullItem(player, skullItem, targetName, "Mojang API");
+                                    } else {
+                                        // Fallback to offline player if texture creation fails
+                                        handleOfflinePlayer(player, targetName);
+                                    }
+                                });
+                                return;
+                            }
+                        }
+                        
+                        // No texture property found, fallback to offline player
+                        Bukkit.getScheduler().runTask(plugin, () -> 
+                            handleOfflinePlayer(player, targetName)
+                        );
+                    }
                 }
-                
-                // If we got here, fall back to the offline method
-                giveOfflineSkull(player, offlinePlayer, targetName);
-                
             } catch (Exception e) {
-                plugin.getLogger().warning("Error getting player head: " + e.getMessage());
+                plugin.getLogger().log(Level.WARNING, "Error fetching player head", e);
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    Text.sendErrorMessage(sender, "skull.error", lang);
+                    player.sendMessage("§cAn error occurred while fetching the head. Using offline fallback...");
+                    handleOfflinePlayer(player, targetName);
                 });
             }
         });
@@ -301,87 +414,29 @@ public class Skull implements CommandExecutor {
     }
     
     /**
-     * Gets the content of a URL as a string
+     * Handles the fallback to offline player when API calls fail
      */
-    private static String getUrlContent(String urlString) {
-        HttpURLConnection connection = null;
-        try {
-            URL url = new URI(urlString).toURL();
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
-            
-            if (connection.getResponseCode() == 200) {
-                try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                    
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                    return response.toString();
-                }
-            }
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("Error fetching URL " + urlString + ": " + e.getMessage());
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-        return null;
-    }
-    
-    /**
-     * Gives a player a skull with the specified texture
-     */
-    private void giveSkull(Player player, UUID ownerUuid, String ownerName, String source) {
-        ItemStack skull = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta meta = (SkullMeta) skull.getItemMeta();
-        
-        if (meta != null) {
+    private void handleOfflinePlayer(Player player, String targetName) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
             try {
-                // Try to set the owner using the UUID
-                meta.setOwningPlayer(Bukkit.getOfflinePlayer(ownerUuid));
-                skull.setItemMeta(meta);
-                
-                giveSkullItem(player, skull, ownerName, source);
-                return;
+                // Try to get an offline player
+                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(targetName);
+                if (offlinePlayer.hasPlayedBefore() || offlinePlayer.isOnline()) {
+                    ItemStack skull = new ItemStack(Material.PLAYER_HEAD);
+                    SkullMeta meta = (SkullMeta) skull.getItemMeta();
+                    if (meta != null) {
+                        meta.setOwningPlayer(offlinePlayer);
+                        skull.setItemMeta(meta);
+                        giveSkullItem(player, skull, targetName, "offline player");
+                        return;
+                    }
+                }
+                // If we get here, we couldn't create the offline player head either
+                player.sendMessage("§cCould not find a player with that name.");
             } catch (Exception e) {
-                plugin.getLogger().warning("Failed to set skull owner: " + e.getMessage());
+                player.sendMessage("§cFailed to create offline player head: " + e.getMessage());
+                plugin.getLogger().log(Level.WARNING, "Error creating offline player head", e);
             }
-        }
-        
-        // If we got here, something went wrong
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            Text.sendErrorMessage(player, "skull.error", lang);
-        });
-    }
-    
-    /**
-     * Gives a skull to a player using the offline method
-     */
-    private void giveOfflineSkull(Player player, OfflinePlayer offlinePlayer, String targetName) {
-        try {
-            ItemStack skull = new ItemStack(Material.PLAYER_HEAD);
-            SkullMeta meta = (SkullMeta) skull.getItemMeta();
-            
-            if (meta != null) {
-                meta.setOwningPlayer(offlinePlayer);
-                skull.setItemMeta(meta);
-                
-                giveSkullItem(player, skull, targetName, "offline");
-                return;
-            }
-        } catch (Exception e) {
-            plugin.getLogger().warning("Failed to create offline skull: " + e.getMessage());
-        }
-        
-        // If we got here, something went wrong
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            Text.sendErrorMessage(player, "skull.error", lang);
         });
     }
     
@@ -394,15 +449,15 @@ public class Skull implements CommandExecutor {
                 if (player.getInventory().firstEmpty() == -1) {
                     // Inventory is full, drop the item
                     player.getWorld().dropItem(player.getLocation(), skull);
-                    player.sendMessage(lang.get("inventory-full"));
+                    player.sendMessage("§eYour inventory is full. The head was dropped at your location.");
                 } else {
                     player.getInventory().addItem(skull);
                 }
                 
-                player.sendMessage("§aSuccessfully retrieved head for " + ownerName + " (via " + source + ")");
+                player.sendMessage("§aSuccessfully retrieved head for §e" + ownerName + " §a(via " + source + ")");
             } catch (Exception e) {
                 plugin.getLogger().warning("Error giving skull to player: " + e.getMessage());
-                Text.sendErrorMessage(player, "skull.error", lang);
+                player.sendMessage("§cAn error occurred while giving you the head.");
             }
         });
     }

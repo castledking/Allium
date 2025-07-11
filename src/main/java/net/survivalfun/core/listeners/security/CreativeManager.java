@@ -1,45 +1,29 @@
 package net.survivalfun.core.listeners.security;
 
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+
+import org.bukkit.*;
+import org.bukkit.entity.*;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.*;
+import org.bukkit.event.entity.*;
+import org.bukkit.event.hanging.*;
+import org.bukkit.event.inventory.*;
+import org.bukkit.event.player.*;
+import org.bukkit.inventory.*;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
+import org.jetbrains.annotations.NotNull;
+
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.DB.PlayerInventories;
-
-import org.bukkit.event.entity.PlayerDeathEvent; // Added for handling player death inventory
-import org.bukkit.event.player.PlayerInteractAtEntityEvent; // For entity interactions like armor stands and item frames
 import net.survivalfun.core.managers.core.Text;
-
-// Added for onPlayerDeath
-import org.bukkit.*;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.ItemFrame;
-import org.bukkit.entity.Painting;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.inventory.InventoryType;
-import org.bukkit.event.entity.EntityShootBowEvent;
-import org.bukkit.event.entity.PotionSplashEvent;
-import org.bukkit.event.entity.ProjectileLaunchEvent;
-import org.bukkit.event.hanging.HangingBreakByEntityEvent;
-import org.bukkit.event.hanging.HangingPlaceEvent;
-import org.bukkit.event.player.*;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitTask;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.*;
-import java.util.logging.Level;
 
 public class CreativeManager implements Listener {
 
@@ -188,13 +172,38 @@ public class CreativeManager implements Listener {
 
     // --- START OF NEW INTERACTION LISTENERS ---
 
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerInteractBed(PlayerInteractEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) return;
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+        if (canInteract(player)) return;
+        if (event.getClickedBlock().getType().name().endsWith("_BED") && event.getAction().isRightClick()) return;
+
+        event.setCancelled(true);
+        sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "sleep in a bed");
+        createFizzleEffect(player.getLocation());
+    }
+
+    // prevent adding items to decorated pots
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerInteractDecoratedPot(PlayerInteractEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) return;
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+        if (canInteract(player)) return;
+        if (event.getClickedBlock().getType() == Material.DECORATED_POT && event.getAction().isRightClick()) return;
+
+        event.setCancelled(true);
+        sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "interact with decorated pots");
+        createFizzleEffect(player.getLocation());
+    }
+
     // Potion drinking
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerDrinkPotion(PlayerInteractEvent event) {
         if (!(event.getPlayer() instanceof Player player)) return;
         if (player.getGameMode() != GameMode.CREATIVE) return;
         if (canInteract(player)) return;
-        if (event.getItem().getType() != Material.POTION && event.getAction().isRightClick()) return;
+        if (event.getItem().getType() == Material.POTION && event.getAction().isRightClick()) return;
 
         event.setCancelled(true);
         sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "drink that");
@@ -348,6 +357,7 @@ public class CreativeManager implements Listener {
         }
     }
 
+
     // Splash potions and lingering potions
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPotionSplash(PotionSplashEvent event) {
@@ -398,6 +408,12 @@ public class CreativeManager implements Listener {
         // Case 1: Clicking the "destroy item" slot (slot -999) in the creative inventory GUI with an item on cursor.
         // The destroy slot is part of the CREATIVE inventory type.
         if (event.getSlot() == -999 && clickedInventory != null && clickedInventory.getType() == InventoryType.CREATIVE) {
+            if (plugin.isDebugMode()) {
+                plugin.getLogger().info(
+                    "Allowed item destruction via X slot for " + player.getName() + 
+                    ", item: " + itemOnCursor.getType()
+                );
+            }
             if (itemOnCursor != null && itemOnCursor.getType() != Material.AIR) {
                 // Bukkit.getLogger().info("[CreativeManager] Allowing item destruction via X slot (slot -999).");
                 return; // Allow this action, do not proceed to permission checks
@@ -470,7 +486,7 @@ public class CreativeManager implements Listener {
             createFizzleEffect(event.getRightClicked().getLocation());
         }
     }
-    // --- END OF NEW INTERACTION LISTENERS ---
+    
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerDamageEntity(EntityDamageByEntityEvent event) {
@@ -535,124 +551,91 @@ public class CreativeManager implements Listener {
         }
     }
 
+    // --- END OF NEW INTERACTION LISTENERS ---
+
     /**
      * Handle inventory restoration and gamemode resets when a player joins
      */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
+        boolean debug = plugin.getConfig().getBoolean("debug-mode");
 
         cachePlayerPermissions(player);
-
-        lastKnownGamemodes.put(player.getUniqueId(), player.getGameMode());
+        lastKnownGamemodes.put(playerId, player.getGameMode());
 
         // First check for any pending gamemode resets
         checkAndApplyGameModeReset(player);
 
-        // Then verify the player has permission for their current gamemode
-        // This handles cases where server restarts and players retain gamemodes they shouldn't have
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            verifyGameModePermission(player);
-        }, 10L);
-
-        // Skip inventory management if player has bypass permission
-        if (player.hasPermission("core.gamemode.creative.inventory")) {
+        boolean hasPermission = player.hasPermission("core.gamemode.creative.inventory");
+        GameMode gameMode = player.getGameMode();
+        
+        if (debug) {
+            plugin.getLogger().info("[InventoryDebug] PlayerJoin: " + player.getName() +
+                    " | Permission: " + hasPermission +
+                    " | GameMode: " + gameMode);
+        }
+        
+        // For players with permission in survival, use vanilla behavior
+        if (hasPermission && gameMode != GameMode.CREATIVE) {
+            if (debug) {
+                plugin.getLogger().info("[InventoryDebug] Skipping inventory management for " + player.getName());
+            }
             return;
         }
-
-        // Load the appropriate inventory based on their current game mode
+        
+        // Load appropriate inventory for others
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            GameMode gameMode = player.getGameMode();
-            loadInventory(player, gameMode == GameMode.CREATIVE ? GameMode.CREATIVE : GameMode.SURVIVAL);
+            if (!player.isOnline()) return;
+            
+            if (gameMode == GameMode.CREATIVE) {
+                if (debug) {
+                    plugin.getLogger().info("[InventoryDebug] Loading creative inventory for " + player.getName());
+                }
+                loadInventory(player, GameMode.CREATIVE);
+            } else if (gameMode == GameMode.SURVIVAL) {
+                if (debug) {
+                    plugin.getLogger().info("[InventoryDebug] Loading survival inventory for " + player.getName());
+                }
+                loadInventory(player, GameMode.SURVIVAL);
+            }
         }, 20L);
     }
 
-    // Then modify your onPlayerQuit method to use the cached permissions
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
-        final Player player = event.getPlayer();
-        final GameMode currentGameMode = player.getGameMode();
-        final UUID playerUUID = player.getUniqueId();
-        final String playerName = player.getName();
+        Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
+        boolean debug = plugin.getConfig().getBoolean("debug-mode");
+        
+        // Clear any cached permissions
+        cachedCreativePermissions.remove(playerId);
+        cachedSpectatorPermissions.remove(playerId);
+        lastKnownGamemodes.remove(playerId);
 
-        // Capture inventory contents immediately to avoid issues with player object becoming invalid
-        final ItemStack[] inventoryContents = player.getInventory().getContents().clone();
-        final ItemStack[] armorContents = player.getInventory().getArmorContents().clone();
-        final ItemStack offhandItem = player.getInventory().getItemInOffHand().clone();
-
-        // Schedule the inventory saving for the next tick to ensure all inventory changes are processed
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            // Use cached permissions instead of checking directly
-            boolean hasGeneralPermission = player.hasPermission("core.gamemode");
-            boolean hasCreativePermission = currentGameMode == GameMode.CREATIVE &&
-                    cachedCreativePermissions.getOrDefault(playerUUID, false);
-            boolean hasSpectatorPermission = currentGameMode == GameMode.SPECTATOR &&
-                    cachedSpectatorPermissions.getOrDefault(playerUUID, false);
-            boolean shouldKeepGamemode = hasGeneralPermission || hasCreativePermission || hasSpectatorPermission;
-
-            plugin.getLogger().info("Should keep gamemode: " + shouldKeepGamemode +
-                    " (General: " + hasGeneralPermission +
-                    ", Creative: " + hasCreativePermission +
-                    ", Spectator: " + hasSpectatorPermission + ")");
-
-            if (currentGameMode == GameMode.SURVIVAL) {
-                // Always save survival inventory on quit
-                plugin.getLogger().info(String.format("[CreativeManager] Async Quit Save (%s): Starting for %s (UUID: %s), GameMode: %s. Inv items: %d, Armor items: %d, Offhand: %s",
-                    playerName, playerName, playerUUID, currentGameMode,
-                    inventoryContents != null ? inventoryContents.length : -1,
-                    armorContents != null ? armorContents.length : -1,
-                    offhandItem != null && offhandItem.getType() != Material.AIR ? "present" : "empty"));
-
-                saveInventoryDirectly(playerUUID, playerName, currentGameMode, inventoryContents, armorContents, offhandItem);
-
-                plugin.getLogger().info(String.format("[CreativeManager] Async Quit Save (%s): Finished saveInventoryDirectly call.", playerName));
-            } else if (currentGameMode == GameMode.CREATIVE || currentGameMode == GameMode.SPECTATOR) {
-                // Always save the inventory they had in Creative or Spectator mode, so it's not lost.
-                saveInventoryDirectly(playerUUID, playerName, currentGameMode,
-                        inventoryContents, armorContents, offhandItem);
-
-                if (shouldKeepGamemode) {
-                    // Player has permission to keep their Creative/Spectator mode
-                    if (plugin.getConfig().getBoolean("debug-mode", false)) {
-                        plugin.getLogger().info("[CreativeManager] Player " + playerName + " quit in " + currentGameMode + " with permission. Inventory saved.");
-                    }
-                } else {
-                    // Player does NOT have permission to keep Creative/Spectator mode.
-                    // Their C/S inventory is saved (above). Flag them for reset to SURVIVAL on next login.
-                    // When they rejoin, checkAndApplyGameModeReset will set them to SURVIVAL,
-                    // and then onPlayerJoin will load their SURVIVAL inventory.
-                    storeGameModeReset(playerUUID);
-                    if (plugin.getConfig().getBoolean("debug-mode", false)) {
-                        plugin.getLogger().info("[CreativeManager] Player " + playerName + " quit in " + currentGameMode + " without permission. Inventory saved. Flagged for reset to SURVIVAL.");
-                    }
-                }
-            }
-
-            // Clean up cached permissions
-            cachedCreativePermissions.remove(playerUUID);
-            cachedSpectatorPermissions.remove(playerUUID);
-            lastKnownGamemodes.remove(playerUUID);
-            recentRestorations.remove(playerUUID);
-        }, 1L);
-    }
-
-    @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
-    public void onPlayerDeath(PlayerDeathEvent event) {
-        Player player = event.getEntity();
-
-        // Only handle if the player was in survival mode
-        if (player.getGameMode() == GameMode.SURVIVAL) {
-            // Schedule a task to save the (now empty) survival inventory after 1 tick
-            // This delay helps ensure Minecraft's death processing (inventory clearing) has completed
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                if (player.isOnline()) { // Ensure player is still online
-                    if (plugin.getConfig().getBoolean("debug-mode")) {
-                        plugin.getLogger().info("Player " + player.getName() + " died in survival. Saving their (now empty) inventory.");
-                    }
-                    saveCurrentInventory(player, GameMode.SURVIVAL);
-                }
-            }, 1L);
+        boolean hasPermission = player.hasPermission("core.gamemode.creative.inventory");
+        GameMode gameMode = player.getGameMode();
+        
+        if (debug) {
+            plugin.getLogger().info("[InventoryDebug] PlayerQuit: " + player.getName() +
+                    " | Permission: " + hasPermission +
+                    " | GameMode: " + gameMode);
         }
+        
+        // For players with permission in survival, use vanilla behavior
+        if (hasPermission && gameMode != GameMode.CREATIVE) {
+            if (debug) {
+                plugin.getLogger().info("[InventoryDebug] Skipping inventory save for " + player.getName());
+            }
+            return;
+        }
+        
+        // Save inventory for players without permission
+        if (debug) {
+            plugin.getLogger().info("[InventoryDebug] Saving inventory for " + player.getName());
+        }
+        saveCurrentInventory(player, gameMode);
     }
 
     // Add this to your onGameModeChange event handler
@@ -763,111 +746,6 @@ public class CreativeManager implements Listener {
         }
 
         return null;
-    }
-
-    // New method to save inventory directly without using Player object
-    private void saveInventoryDirectly(UUID playerUUID, String playerName, GameMode gameMode,
-                                       ItemStack[] inventory, ItemStack[] armor, ItemStack offhand) {
-        plugin.getLogger().info(String.format("[CreativeManager] saveInventoryDirectly (%s): Entered. Player: %s (UUID: %s), Target GameMode: %s. Input Inv items: %d, Armor items: %d, Offhand: %s",
-                playerName, playerName, playerUUID, gameMode,
-                inventory != null ? inventory.length : -1,
-                armor != null ? armor.length : -1,
-                offhand != null && offhand.getType() != Material.AIR ? "present" : "empty"));
-
-        // Get existing inventories from database
-        PlayerInventories inventories = database.getPlayerInventories(playerUUID);
-
-        // Initialize inventory arrays
-        ItemStack[] survivalInventory = null;
-        ItemStack[] survivalArmor = null;
-        ItemStack survivalOffhand = null;
-        ItemStack[] creativeInventory = null;
-        ItemStack[] creativeArmor = null;
-        ItemStack creativeOffhand = null;
-
-        // If we have existing inventories, load them
-        if (inventories != null) {
-            survivalInventory = inventories.survivalInventory();
-            survivalArmor = inventories.survivalArmor();
-            survivalOffhand = inventories.survivalOffhand();
-            creativeInventory = inventories.creativeInventory();
-            creativeArmor = inventories.creativeArmor();
-            creativeOffhand = inventories.creativeOffhand();
-        }
-
-        // Update the appropriate inventory based on game mode
-        if (gameMode == GameMode.CREATIVE) {
-            creativeInventory = inventory;
-            creativeArmor = armor;
-            creativeOffhand = offhand;
-        } else {
-            survivalInventory = inventory;
-            survivalArmor = armor;
-            survivalOffhand = offhand;
-        }
-
-        // Log contents just before saving to database
-        plugin.getLogger().info(String.format("[CreativeManager] saveInventoryDirectly (%s): Pre-DB Save State. Target Mode: %s", playerName, gameMode));
-        plugin.getLogger().info(String.format("  Survival Inv: %d items (isNull: %b), Armor: %d items (isNull: %b), Offhand: %s (isNull: %b)",
-                survivalInventory != null ? survivalInventory.length : -1, survivalInventory == null,
-                survivalArmor != null ? survivalArmor.length : -1, survivalArmor == null,
-                survivalOffhand != null && survivalOffhand.getType() != Material.AIR ? survivalOffhand.getType().name() : "empty", survivalOffhand == null));
-        plugin.getLogger().info(String.format("  Creative Inv: %d items (isNull: %b), Armor: %d items (isNull: %b), Offhand: %s (isNull: %b)",
-                creativeInventory != null ? creativeInventory.length : -1, creativeInventory == null,
-                creativeArmor != null ? creativeArmor.length : -1, creativeArmor == null,
-                creativeOffhand != null && creativeOffhand.getType() != Material.AIR ? creativeOffhand.getType().name() : "empty", creativeOffhand == null));
-
-        // Save to database
-        database.savePlayerInventories(
-                playerUUID, playerName,
-                survivalInventory, survivalArmor, survivalOffhand,
-                creativeInventory, creativeArmor, creativeOffhand
-        );
-    }
-
-    /**
-     * Stores a gamemode reset request in the database for a player
-     */
-    private void storeGameModeReset(UUID playerUUID) {
-        // Using H2's MERGE INTO syntax which is the equivalent of "INSERT OR REPLACE" in SQLite
-        database.executeUpdate(
-                "MERGE INTO gamemode_resets KEY(player_uuid) VALUES (?, ?, CURRENT_TIMESTAMP)",
-                playerUUID.toString(), GameMode.SURVIVAL.name());
-    }
-
-    /**
-     * Checks and applies any pending gamemode resets when a player joins
-     * This method should be called from your onPlayerJoin event handler
-     */
-    private void checkAndApplyGameModeReset(Player player) {
-        UUID playerUUID = player.getUniqueId();
-
-        // Query the database for any pending resets
-        // This is a simplified example - adapt to your actual database implementation
-        String resetGameMode = database.queryString(
-                "SELECT reset_gamemode FROM gamemode_resets WHERE player_uuid = ?",
-                playerUUID.toString());
-
-        if (resetGameMode != null) {
-            // Apply the reset
-            try {
-                GameMode resetTo = GameMode.valueOf(resetGameMode);
-
-                // Schedule the gamemode change for after the player fully joins
-                plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                    player.setGameMode(resetTo);
-                    player.sendMessage(plugin.getLangManager().get("gamemode.reset")
-                            .replace("{mode}", resetTo.toString()));
-
-                    // Clear the reset request from the database
-                    database.executeUpdate("DELETE FROM gamemode_resets WHERE player_uuid = ?",
-                            playerUUID.toString());
-                }, 5L);
-            } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Invalid gamemode reset value for player " +
-                        player.getName() + ": " + resetGameMode);
-            }
-        }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -1215,80 +1093,16 @@ public class CreativeManager implements Listener {
                 name.equals("CAKE");
     }
 
-
-
-
-
     /**
-     * Handle inventory separation when a player changes game mode
+     * Saves inventories of creative players without core.gamemode.creative.inventory permission
      */
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onGameModeChange(PlayerGameModeChangeEvent event) {
-        Player player = event.getPlayer();
-        GameMode newGameMode = event.getNewGameMode();
-        GameMode oldGameMode = player.getGameMode();
-
-        cachePlayerPermissions(player);
-
-        // Skip if player has bypass permission
-        if (player.hasPermission("core.gamemode.creative.inventory")) {
-            return;
-        }
-
-        // Handle switching to creative mode
-        if (newGameMode == GameMode.CREATIVE && oldGameMode != GameMode.CREATIVE) {
-            // Save survival inventory
-            saveCurrentInventory(player, oldGameMode);
-
-            // Clear inventory and load creative inventory
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                clearInventory(player);
-                loadInventory(player, GameMode.CREATIVE);
-            }, 1L);
-        }
-
-        // Handle switching from creative to any other mode
-        else if (oldGameMode == GameMode.CREATIVE && newGameMode != GameMode.CREATIVE) {
-            // Save creative inventory
-            saveCurrentInventory(player, oldGameMode);
-
-            // Restore survival inventory
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                clearInventory(player);
-                loadInventory(player, GameMode.SURVIVAL);
-            }, 1L);
-        }
-    }
-
-
-
-    /**
-     * Verifies that a player has permission for their current gamemode
-     * If not, resets them to survival mode
-     */
-    private void verifyGameModePermission(Player player) {
-        GameMode currentMode = player.getGameMode();
-
-        // Skip check for survival mode (default) and for players with bypass permission
-        if (currentMode == GameMode.SURVIVAL ||
-                player.hasPermission("core.gamemode.creative.bypass.*")) {
-            return;
-        }
-
-        // Check if player has permission for their current gamemode
-        String permissionSuffix = currentMode.name().toLowerCase();
-        if (!player.hasPermission("core.gamemode." + permissionSuffix)) {
-            // Player doesn't have permission for this gamemode, reset to survival
-            player.setGameMode(GameMode.SURVIVAL);
-
-            // Notify the player
-            player.sendMessage(plugin.getLangManager().get("gamemode.reset")
-                    .replace("{gamemode}", GameMode.SURVIVAL.toString()));
-
-            // Log the reset
-            if(plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info("Reset " + player.getName() + "'s gamemode from " +
-                        currentMode.name() + " to SURVIVAL (no permission)");
+    public void saveAllInventories() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getGameMode() == GameMode.CREATIVE && 
+                !player.hasPermission("core.gamemode.creative.inventory")) {
+                
+                // Save inventory to database for creative mode
+                saveCurrentInventory(player, GameMode.CREATIVE);
             }
         }
     }
@@ -1302,7 +1116,7 @@ public class CreativeManager implements Listener {
         
         try {
             // Get existing inventories from database
-            PlayerInventories inventories = database.getPlayerInventories(playerUUID);
+            PlayerInventories inventories = database.loadPlayerInventories(playerUUID);
             
             // Initialize with empty arrays instead of null
             ItemStack[] survivalInventory = new ItemStack[0];
@@ -1340,16 +1154,8 @@ public class CreativeManager implements Listener {
             }
 
             // Save to database
-            database.savePlayerInventories(
-                    playerUUID, 
-                    playerName,
-                    survivalInventory, 
-                    survivalArmor, 
-                    survivalOffhand,
-                    creativeInventory, 
-                    creativeArmor, 
-                    creativeOffhand
-            );
+            PlayerInventories newInventories = new PlayerInventories(survivalInventory, survivalArmor, survivalOffhand, creativeInventory, creativeArmor, creativeOffhand);
+            database.savePlayerInventories(playerUUID, newInventories);
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save inventory for player: " + playerName, e);
         }
@@ -1363,7 +1169,7 @@ public class CreativeManager implements Listener {
 
         try {
             // Get inventories from database
-            PlayerInventories inventories = database.getPlayerInventories(playerUUID);
+            PlayerInventories inventories = database.loadPlayerInventories(playerUUID);
 
             // Clear current inventory first
             clearInventory(player);
@@ -1420,10 +1226,111 @@ public class CreativeManager implements Listener {
     public GameMode getLastKnownGamemode(UUID playerUUID) {
         return lastKnownGamemodes.getOrDefault(playerUUID, GameMode.SURVIVAL);
     }
+    /**
+     * Handle inventory separation when a player changes game mode
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onGameModeChange(PlayerGameModeChangeEvent event) {
+        Player player = event.getPlayer();
+        GameMode newGameMode = event.getNewGameMode();
+        GameMode oldGameMode = player.getGameMode();
+
+        cachePlayerPermissions(player);
+
+        // Only skip inventory management for survival players with permission
+        if (player.hasPermission("core.gamemode.creative.inventory") && player.getGameMode() != GameMode.CREATIVE) {
+            return;
+        }
+
+        // Handle switching to creative mode from survival/adventure/spectator
+        if (newGameMode == GameMode.CREATIVE && oldGameMode != GameMode.CREATIVE) {
+            // Save current inventory (survival/adventure/spectator)
+            saveCurrentInventory(player, oldGameMode);
+
+            // Clear inventory and load creative inventory on the next tick
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (!player.isOnline() || player.getGameMode() != GameMode.CREATIVE) return;
+                
+                clearInventory(player);
+                loadInventory(player, GameMode.CREATIVE);
+            }, 1L);
+        }
+        // Handle switching from creative to non-creative
+        else if (oldGameMode == GameMode.CREATIVE && newGameMode != GameMode.CREATIVE) {
+            if (!player.hasPermission("core.gamemode.creative.inventory")) {
+                clearInventory(player);
+                loadInventory(player, newGameMode);
+            }
+        }
+        // Handle switching between non-creative modes (e.g., survival to adventure)
+        else if (oldGameMode != GameMode.CREATIVE && newGameMode != GameMode.CREATIVE) {
+            // Save current inventory with old game mode
+            saveCurrentInventory(player, oldGameMode);
+            
+            // No need to clear inventory, just load the appropriate inventory
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (!player.isOnline()) return;
+                if (!player.hasPermission("core.gamemode.creative.inventory")) {
+                    loadInventory(player, newGameMode);
+                }
+            }, 1L);
+        }
+    }
+
+    // Map to track players with temporarily disabled inventory management
+    private final Set<UUID> bypassInventoryManagement = ConcurrentHashMap.newKeySet();
+    
+    /**
+     * Temporarily bypass inventory management for a player
+     * @param player The player to bypass inventory management for
+     * @param bypass Whether to bypass inventory management
+     */
+    public void setBypassInventoryManagement(Player player, boolean bypass) {
+        if (bypass) {
+            bypassInventoryManagement.add(player.getUniqueId());
+        } else {
+            bypassInventoryManagement.remove(player.getUniqueId());
+        }
+    }
+    
     public void cleanup() {
         if (gamemodeCheckTask != null) {
             gamemodeCheckTask.cancel();
             gamemodeCheckTask = null;
+        }
+    }
+
+    private void checkAndApplyGameModeReset(Player player) {
+        UUID playerId = player.getUniqueId();
+        GameMode lastKnownGamemode = getLastKnownGamemode(playerId);
+        GameMode currentGamemode = player.getGameMode();
+
+        if (lastKnownGamemode != currentGamemode) {
+            // Check if player has permission to keep their gamemode
+            if ((lastKnownGamemode == GameMode.CREATIVE && player.hasPermission("core.gamemode.creative")) ||
+                    (lastKnownGamemode == GameMode.SPECTATOR && player.hasPermission("core.gamemode.spectator")) ||
+                    player.hasPermission("core.gamemode")) {
+
+                // Log that we're going to revert this change
+                if(plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().info("Detected gamemode change for " + player.getName() +
+                            " from " + currentGamemode + " to " + lastKnownGamemode +
+                            ". Will revert this change.");
+
+                }
+
+                // Schedule a task to revert the gamemode change
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.setGameMode(lastKnownGamemode);
+
+                    if(plugin.getConfig().getBoolean("debug-mode")) {
+
+                        plugin.getLogger().info("Reverted " + player.getName() +
+                                "'s gamemode back to " + lastKnownGamemode +
+                                " after it was changed to " + currentGamemode);
+                    }
+                }, 2L);
+            }
         }
     }
 }

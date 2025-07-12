@@ -553,9 +553,6 @@ public class CreativeManager implements Listener {
 
     // --- END OF NEW INTERACTION LISTENERS ---
 
-    /**
-     * Handle inventory restoration and gamemode resets when a player joins
-     */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
@@ -568,39 +565,45 @@ public class CreativeManager implements Listener {
         // First check for any pending gamemode resets
         checkAndApplyGameModeReset(player);
 
-        boolean hasPermission = player.hasPermission("core.gamemode.creative.inventory");
         GameMode gameMode = player.getGameMode();
-        
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] PlayerJoin: " + player.getName() +
-                    " | Permission: " + hasPermission +
-                    " | GameMode: " + gameMode);
-        }
-        
-        // For players with permission in survival, use vanilla behavior
-        if (hasPermission && gameMode != GameMode.CREATIVE) {
+
+        // Skip inventory management for players with permission in survival/adventure
+        if (player.hasPermission("core.gamemode.creative.inventory") && gameMode != GameMode.CREATIVE) {
             if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Skipping inventory management for " + player.getName());
+                plugin.getLogger().info("[InventoryDebug] Skipping inventory management for " + player.getName() + " in " + gameMode);
             }
             return;
         }
-        
-        // Load appropriate inventory for others
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            if (!player.isOnline()) return;
-            
-            if (gameMode == GameMode.CREATIVE) {
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] Loading creative inventory for " + player.getName());
-                }
-                loadInventory(player, GameMode.CREATIVE);
-            } else if (gameMode == GameMode.SURVIVAL) {
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] Loading survival inventory for " + player.getName());
-                }
-                loadInventory(player, GameMode.SURVIVAL);
+
+        // Load inventory only for creative mode or if explicitly needed
+        if (gameMode == GameMode.CREATIVE) {
+            if (debug) {
+                plugin.getLogger().info("[InventoryDebug] Loading creative inventory for " + player.getName());
             }
-        }, 20L);
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (!player.isOnline()) return;
+                loadInventory(player, GameMode.CREATIVE);
+            }, 20L);
+        } else {
+            // For survival mode, only load inventory if it exists in the database
+            if (debug) {
+                plugin.getLogger().info("[InventoryDebug] Checking survival inventory for " + player.getName());
+            }
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (!player.isOnline()) return;
+                PlayerInventories inventories = database.loadPlayerInventories(playerId);
+                if (inventories != null && inventories.getSurvivalInventory() != null && inventories.getSurvivalInventory().length > 0) {
+                    if (debug) {
+                        plugin.getLogger().info("[InventoryDebug] Loading survival inventory for " + player.getName());
+                    }
+                    loadInventory(player, GameMode.SURVIVAL);
+                } else {
+                    if (debug) {
+                        plugin.getLogger().info("[InventoryDebug] No survival inventory found for " + player.getName() + ", keeping current inventory");
+                    }
+                }
+            }, 20L);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -608,34 +611,25 @@ public class CreativeManager implements Listener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
         boolean debug = plugin.getConfig().getBoolean("debug-mode");
-        
+
         // Clear any cached permissions
         cachedCreativePermissions.remove(playerId);
         cachedSpectatorPermissions.remove(playerId);
         lastKnownGamemodes.remove(playerId);
 
-        boolean hasPermission = player.hasPermission("core.gamemode.creative.inventory");
-        GameMode gameMode = player.getGameMode();
-        
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] PlayerQuit: " + player.getName() +
-                    " | Permission: " + hasPermission +
-                    " | GameMode: " + gameMode);
-        }
-        
-        // For players with permission in survival, use vanilla behavior
-        if (hasPermission && gameMode != GameMode.CREATIVE) {
+        // Skip inventory management for survival players with permission
+        if (player.hasPermission("core.gamemode.creative.inventory") && player.getGameMode() != GameMode.CREATIVE) {
             if (debug) {
                 plugin.getLogger().info("[InventoryDebug] Skipping inventory save for " + player.getName());
             }
             return;
         }
-        
-        // Save inventory for players without permission
+
+        // Save inventory for players
         if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Saving inventory for " + player.getName());
+            plugin.getLogger().info("[InventoryDebug] Saving inventory for " + player.getName() + " in " + player.getGameMode());
         }
-        saveCurrentInventory(player, gameMode);
+        saveCurrentInventory(player, player.getGameMode());
     }
 
     // Add this to your onGameModeChange event handler
@@ -767,7 +761,7 @@ public class CreativeManager implements Listener {
                         "{action}", "drop that"
                 );
 
-                // Create visual feedback effect
+                // Create visual feedback
                 createFizzleEffect(player.getLocation());
             }
         }
@@ -1128,7 +1122,6 @@ public class CreativeManager implements Listener {
 
             // If we have existing inventories, load them
             if (inventories != null) {
-                // Use the getter methods that handle null checks
                 survivalInventory = inventories.getSurvivalInventory();
                 survivalArmor = inventories.getSurvivalArmor();
                 survivalOffhand = inventories.getSurvivalOffhand();
@@ -1137,65 +1130,78 @@ public class CreativeManager implements Listener {
                 creativeOffhand = inventories.getCreativeOffhand();
             }
 
-            // Get current inventory and make defensive copies
-            ItemStack[] currentContents = player.getInventory().getContents();
-            ItemStack[] currentArmor = player.getInventory().getArmorContents();
-            ItemStack currentOffhand = player.getInventory().getItemInOffHand();
-
-            // Update the appropriate inventory based on game mode
-            if (gameMode == GameMode.CREATIVE) {
-                creativeInventory = Arrays.copyOf(currentContents, currentContents.length);
-                creativeArmor = Arrays.copyOf(currentArmor, currentArmor.length);
-                creativeOffhand = currentOffhand != null ? currentOffhand.clone() : null;
-            } else {
-                survivalInventory = Arrays.copyOf(currentContents, currentContents.length);
-                survivalArmor = Arrays.copyOf(currentArmor, currentArmor.length);
-                survivalOffhand = currentOffhand != null ? currentOffhand.clone() : null;
+            // Update the inventory for the current game mode
+            PlayerInventory inv = player.getInventory();
+            switch (gameMode) {
+                case SURVIVAL:
+                case ADVENTURE:
+                    survivalInventory = inv.getStorageContents();
+                    survivalArmor = inv.getArmorContents();
+                    survivalOffhand = inv.getItemInOffHand();
+                    break;
+                case CREATIVE:
+                    creativeInventory = inv.getStorageContents();
+                    creativeArmor = inv.getArmorContents();
+                    creativeOffhand = inv.getItemInOffHand();
+                    break;
+                case SPECTATOR:
+                    // Don't save spectator inventories
+                    break;
             }
 
-            // Save to database
-            PlayerInventories newInventories = new PlayerInventories(survivalInventory, survivalArmor, survivalOffhand, creativeInventory, creativeArmor, creativeOffhand);
-            database.savePlayerInventories(playerUUID, newInventories);
+            // Save updated inventories
+            PlayerInventories updated = new PlayerInventories(
+                survivalInventory,
+                survivalArmor,
+                survivalOffhand,
+                creativeInventory,
+                creativeArmor,
+                creativeOffhand
+            );
+            
+            database.savePlayerInventories(playerUUID, updated);
+            plugin.getLogger().info("Saved " + gameMode.name() + " inventory for " + playerName);
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save inventory for player: " + playerName, e);
+            plugin.getLogger().log(Level.SEVERE, "Failed to save inventory for " + playerName, e);
         }
     }
 
-    /**
-     * Load a player's inventory based on the specified game mode
-     */
     private void loadInventory(@NotNull Player player, @NotNull GameMode gameMode) {
         UUID playerUUID = player.getUniqueId();
-
+    
         try {
             // Get inventories from database
             PlayerInventories inventories = database.loadPlayerInventories(playerUUID);
-
-            // Clear current inventory first
-            clearInventory(player);
-
+    
             if (inventories == null) {
-                // No saved inventories, just clear their inventory
+                // No saved inventories, keep current inventory
+                if (plugin.getConfig().getBoolean("debug-mode")) {
+                    plugin.getLogger().info("[InventoryDebug] No saved inventory found for " + player.getName() + " in " + gameMode);
+                }
                 return;
             }
-
+    
             // Load the appropriate inventory based on game mode
             ItemStack[] inventory;
             ItemStack[] armor;
             ItemStack offhand;
-
+    
             if (gameMode == GameMode.CREATIVE) {
                 inventory = inventories.getCreativeInventory();
                 armor = inventories.getCreativeArmor();
                 offhand = inventories.getCreativeOffhand();
-            } else {
+            } else if (gameMode == GameMode.SURVIVAL) {
                 inventory = inventories.getSurvivalInventory();
                 armor = inventories.getSurvivalArmor();
                 offhand = inventories.getSurvivalOffhand();
+            } else {
+                // Don't load spectator inventories
+                return;
             }
-
-            // Apply the inventory
+    
+            // Only clear and load if we have valid inventory data
             if (inventory != null && inventory.length > 0) {
+                clearInventory(player); // Clear inventory only if we have data to load
                 player.getInventory().setContents(inventory);
             }
             if (armor != null && armor.length > 0) {
@@ -1204,12 +1210,15 @@ public class CreativeManager implements Listener {
             if (offhand != null) {
                 player.getInventory().setItemInOffHand(offhand);
             }
-
+    
             // Update the player's inventory view
             player.updateInventory();
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                plugin.getLogger().info("[InventoryDebug] Loaded " + gameMode + " inventory for " + player.getName());
+            }
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load inventory for player: " + player.getName(), e);
-            clearInventory(player); // Clear inventory if loading failed
+            // Don't clear inventory if loading failed
         }
     }
 

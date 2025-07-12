@@ -39,7 +39,6 @@
                                         <exclude>META-INF/**</exclude>
                                         <exclude>**/*.properties</exclude>
                                         <exclude>**/*.xml</exclude>
-                                        <exclude>**/*.yml</exclude>
                                         <exclude>**/*.html</exclude>
                                         <exclude>**/*.txt</exclude>
                                     </excludes>
@@ -61,6 +60,7 @@
                 <excludes>
                     <exclude>*.md</exclude>
                     <exclude>*.txt</exclude>
+                    <exclude>*.bbcode</exclude>
                     <exclude>dev/**</exclude>
                     <exclude>test/**</exclude>
                 </excludes>

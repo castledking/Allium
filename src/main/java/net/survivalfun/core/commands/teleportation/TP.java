@@ -1550,7 +1550,7 @@ public class TP implements CommandExecutor, TabCompleter {
         // Determine if this is a teleport override command
         boolean bypassToggle = label.equalsIgnoreCase("tpo");
         String cmdName = bypassToggle ? "tpo" : "tp";
-        String permissionBase = bypassToggle ? "core.tpo" : "core.tp";
+        String permissionBase = bypassToggle ? "core.tp.override" : "core.tp";
 
         // Check permission
         if (!sender.hasPermission(permissionBase)) {

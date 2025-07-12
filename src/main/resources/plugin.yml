@@ -189,7 +189,7 @@ commands:
     description: "Teleport to a player's last known location"
     usage: "/otp <player>"
     aliases: [offlinetp, tpoffline]
-    permission: core.otp
+    permission: core.tp.offline
   
   top:
     description: "Teleport to the highest block"
@@ -251,9 +251,13 @@ permissions:
       core.tp: true
       core.tp.others: true
       core.tp.offline: true
+      core.tp.override: true
+      core.tptoggle.others
       core.tphere: true
       core.tppos: true
       core.tpa.nocooldown: true
+      core.feed.nocooldown: true
+      core.heal.nocooldown: true
       core.tpa.nodelay: true
       core.lockdown.bypass: true
   core.admin:
@@ -325,6 +329,10 @@ permissions:
     default: op
   core.tp.others:
     default: op
+  core.tp.override:
+    default: op
+  core.tp.offline:
+    default: op
   core.tpa:
     default: true
   core.tpa.nodelay:
@@ -346,9 +354,7 @@ permissions:
     default: op
   core.tptoggle:
     default: true
-  core.tptoggle.bypass:
-    default: op
-  core.tp.offline:
+  core.tptoggle.others:
     default: op
   core.top:
     default: op

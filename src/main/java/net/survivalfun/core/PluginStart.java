@@ -508,32 +508,25 @@ public class PluginStart extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if(msgCommand != null){
+        if (msgCommand != null) {
             msgCommand.savePendingMessages();
         }
         if (spectatorTeleport != null) {
             spectatorTeleport.saveAllLocations();
         }
-        // Save all online player inventories for players in creative mode or with core.gamemode permission
+        
+        // Save all online player inventories
         for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
-            // Skip if player has bypass permission
-            if (player.hasPermission("core.gamemode.creative.inventory")) {
-                continue;
-            }
-            
-            // Only save if player is in creative mode or has core.gamemode permission
-            if (player.getGameMode() == GameMode.CREATIVE || player.hasPermission("core.gamemode")) {
-                UUID uuid = player.getUniqueId();
-                PlayerInventories inventories = new PlayerInventories(
-                    player.getInventory().getContents(),
-                    player.getInventory().getArmorContents(),
-                    player.getInventory().getItemInOffHand(),
-                    null, // Creative inventory not implemented
-                    null,
-                    null
-                );
-                database.savePlayerInventories(uuid, inventories);
-            }
+            UUID uuid = player.getUniqueId();
+            PlayerInventories inventories = new PlayerInventories(
+                player.getInventory().getContents(),
+                player.getInventory().getArmorContents(),
+                player.getInventory().getItemInOffHand(),
+                null, // Creative inventory not implemented
+                null,
+                null
+            );
+            database.savePlayerInventories(uuid, inventories);
         }
         
         // Save all player states (flight and spectator gamemode) before shutdown
@@ -549,7 +542,6 @@ public class PluginStart extends JavaPlugin {
         }
 
         super.onDisable();
-
     }
 
     public TP getTpInstance() {

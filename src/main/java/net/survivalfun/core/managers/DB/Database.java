@@ -1572,6 +1572,38 @@ public class Database {
         return null;
     }
 
+    public void debugPlayerInventory(UUID playerUUID) {
+        try {
+            openConnection();
+            String sql = "SELECT survival_inv, survival_armor, survival_offhand FROM player_inventories WHERE uuid = ?";
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setString(1, playerUUID.toString());
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    byte[] survivalInv = rs.getBytes("survival_inv");
+                    byte[] survivalArmor = rs.getBytes("survival_armor");
+                    byte[] survivalOffhand = rs.getBytes("survival_offhand");
+                    plugin.getLogger().info("[InventoryDebug] Survival inventory data for " + playerUUID + ":");
+                    plugin.getLogger().info("[InventoryDebug] survival_inv: " + (survivalInv != null ? survivalInv.length + " bytes" : "null"));
+                    plugin.getLogger().info("[InventoryDebug] survival_armor: " + (survivalArmor != null ? survivalArmor.length + " bytes" : "null"));
+                    plugin.getLogger().info("[InventoryDebug] survival_offhand: " + (survivalOffhand != null ? survivalOffhand.length + " bytes" : "null"));
+                    
+                    // Attempt to deserialize and log item details
+                    ItemStack[] inv = deserializeItemStacks(rs, "survival_inv");
+                    ItemStack[] armor = deserializeItemStacks(rs, "survival_armor");
+                    ItemStack offhand = deserializeSingleItemStack(rs.getBytes("survival_offhand"));
+                    plugin.getLogger().info("[InventoryDebug] Survival inventory items: " + Arrays.toString(inv));
+                    plugin.getLogger().info("[InventoryDebug] Survival armor items: " + Arrays.toString(armor));
+                    plugin.getLogger().info("[InventoryDebug] Survival offhand item: " + (offhand != null ? offhand.toString() : "null"));
+                } else {
+                    plugin.getLogger().info("[InventoryDebug] No inventory data found for " + playerUUID);
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to debug inventory for " + playerUUID, e);
+        }
+    }
+
     /**
      * Verifies the player_inventories table exists with all required columns
      */

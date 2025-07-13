@@ -43,7 +43,6 @@ import net.survivalfun.core.listeners.security.PlayerConnectionListener;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.DB.PlayerInventories;
 import net.survivalfun.core.managers.config.Config;
-import net.survivalfun.core.managers.core.Skull;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.listeners.jobs.SlimeCushionListener;
 import net.survivalfun.core.managers.config.WorldDefaults;
@@ -52,6 +51,9 @@ import net.survivalfun.core.managers.core.Alias;
 import net.survivalfun.core.managers.core.LegacyID;
 import net.survivalfun.core.managers.economy.Economy;
 import net.survivalfun.core.managers.economy.VaultEconomyProvider;
+import net.survivalfun.core.managers.core.Placeholder;
+import net.survivalfun.core.managers.core.Skull;
+
 import org.bukkit.plugin.ServicePriority;
 
 import net.survivalfun.core.commands.economy.Balance;
@@ -96,6 +98,7 @@ public class PluginStart extends JavaPlugin {
     private final Map<UUID, Long> playerLoginTimes = new ConcurrentHashMap<>();
     private TP tp;
     private FlyOnRejoinListener flyOnRejoinListener;
+    private Placeholder placeholder;
 
     public CommandManager getCommandManager() {
         return commandManager;
@@ -104,8 +107,6 @@ public class PluginStart extends JavaPlugin {
     public static PluginStart getInstance() {
         return instance;
     }
-
-
 
     public Lang getLangManager() {
         return langManager;
@@ -120,7 +121,6 @@ public class PluginStart extends JavaPlugin {
     }
 
     public void reloadChatFormatter() {
-
         // Only proceed if chat formatting is enabled in config
         if (getConfig().getBoolean("enable-chat-formatting", true)) {
             // If we already have a chat formatter, unregister it
@@ -148,18 +148,13 @@ public class PluginStart extends JavaPlugin {
         return database;
     }
 
-
     public Explode getExplodeCommand() {
         return explodeCommand;
     }
 
-
-
-
-
-    
-
-
+    public Placeholder getPlaceholder() {
+        return placeholder;
+    }
 
     @Override
     public void onEnable() {
@@ -170,7 +165,6 @@ public class PluginStart extends JavaPlugin {
         if (chatProvider != null) {
             vaultChat = chatProvider.getProvider();
         }
-
 
         // Try to get LuckPerms
         RegisteredServiceProvider<LuckPerms> luckPermsProvider = getServer().getServicesManager().getRegistration(LuckPerms.class);
@@ -191,7 +185,14 @@ public class PluginStart extends JavaPlugin {
             getLogger().info("Chat formatting is disabled in config.yml.");
         }
 
-        // Voucher feature removed - only using redeem command
+        // Initialize PlaceholderAPI expansion
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            this.placeholder = new Placeholder();
+            this.placeholder.register();
+            getLogger().info("PlaceholderAPI expansion registered successfully.");
+        } else {
+            getLogger().warning("PlaceholderAPI not found! Custom placeholders will not be available.");
+        }
 
         File langFile = new File(getDataFolder(), "lang.yml");
         if (!langFile.exists()) {
@@ -204,7 +205,7 @@ public class PluginStart extends JavaPlugin {
             getLogger().info("LangManager initialized.");
         } catch (Exception e) {
             getLogger().severe("Failed to initialize LangManager: " + e.getMessage());
-            e.printStackTrace(); // Added for more detailed error logging
+            e.printStackTrace();
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
@@ -216,7 +217,6 @@ public class PluginStart extends JavaPlugin {
         } catch (Exception e) {
             getLogger().severe("Failed to initialize Alias system: " + e.getMessage());
             e.printStackTrace();
-            // Don't disable plugin for alias failure, just log the error
         }
 
         // Initialize LegacyID system
@@ -226,7 +226,6 @@ public class PluginStart extends JavaPlugin {
         } catch (Exception e) {
             getLogger().severe("Failed to initialize LegacyID system: " + e.getMessage());
             e.printStackTrace();
-            // Don't disable plugin for legacy ID failure, just log the error
         }
 
         // Register PlayerConnectionListener to manage playerLoginTimes
@@ -251,15 +250,11 @@ public class PluginStart extends JavaPlugin {
             getLogger().warning("Could not register 'redeem' command - not found in plugin.yml?");
         }
 
-        super.onEnable();
-
         SlimeCushionListener slimeCushionListener = new SlimeCushionListener(this, 2.0, 0.5, 0.2, 2.0, true, "&aThe slime cushioned your fall!", true);
         getServer().getPluginManager().registerEvents(slimeCushionListener, this);
         new SpectatorTeleport(this, new NV(this));
 
-
         getServer().getPluginManager().registerEvents(new SummonMessageListener(), this);
-
 
         // Disable command block output (which includes unknown command messages)
         for (World world : Bukkit.getWorlds()) {
@@ -269,11 +264,9 @@ public class PluginStart extends JavaPlugin {
         // Security Listeners
         this.flyOnRejoinListener = new FlyOnRejoinListener(this);
         this.creativeManager = new CreativeManager(this);
-        getServer().getPluginManager().registerEvents(this.creativeManager, this); // Ensure CreativeManager is registered
+        getServer().getPluginManager().registerEvents(this.creativeManager, this);
         this.spectatorTeleport = new SpectatorTeleport(this, new NV(this));
         commandManager = new CommandManager(this);
-        
-
 
         // Register creeper explosion listener
         getServer().getPluginManager().registerEvents(new CreeperExplosionListener(this), this);
@@ -281,10 +274,8 @@ public class PluginStart extends JavaPlugin {
         // Register fireball explosion listener
         getServer().getPluginManager().registerEvents(new FireballExplosionListener(this), this);
 
-
         WorldDefaults worldDefaults = new WorldDefaults(this);
         Core coreCommand = new Core(worldDefaults, this, getConfig(), commandManager, creativeManager);
-        // Register the Core command:
         getCommand("core").setExecutor(coreCommand);
         getCommand("core").setTabCompleter(coreCommand);
 
@@ -292,46 +283,31 @@ public class PluginStart extends JavaPlugin {
 
         // Register commands
         try {
-            // Register explode command
-            // In your onEnable method, when registering commands
-
             this.explodeCommand = new Explode(this);
             getCommand("explode").setExecutor(explodeCommand);
             getCommand("explode").setTabCompleter(new Tab(this));
 
-            // Register gc command
             getCommand("gc").setExecutor(new GC(this));
             getCommand("gc").setTabCompleter(new Tab(this));
 
-            // Register give command
             getCommand("give").setExecutor(new Give(this));
             getCommand("give").setTabCompleter(new Tab(this));
             
-            // Register skull command
             getCommand("skull").setExecutor(new Skull(this));
 
-            // Register ItemDB command
             getCommand("itemdb").setExecutor(new ItemDB(this));
 
-            // Register Heal command
             getCommand("heal").setExecutor(new Heal(langManager, getConfig(), this));
             getCommand("heal").setTabCompleter(new Tab(this));
 
-            // Register Feed command
             getCommand("feed").setExecutor(new Feed(langManager, getConfig(), this));
             getCommand("feed").setTabCompleter(new Tab(this));
 
-            // Register Rename command
             getCommand("rename").setExecutor(new Rename(this));
             getCommand("rename").setTabCompleter(new Tab(this));
 
-            // Initialize TP command handler
             this.tpCommand = new TP(this);
-
-            // Register Teleport commands defined in plugin.yml
             String[] tpCommands = {"tp", "tphere", "tpahere", "tpa", "tpcancel", "tpacancel", "tpaccept", "tpdeny", "tppet", "tppos", "tptoggle", "top", "bottom", "otp", "tpmob", "tpentity", "tpent", "teleportmob", "tpe", "tpm"};
-
-            // Register the commands that are still handled by TP
             for (String cmdName : tpCommands) {
                 PluginCommand command = getCommand(cmdName);
                 if (command != null) {
@@ -342,8 +318,6 @@ public class PluginStart extends JavaPlugin {
                 }
             }
 
-            // Register Economy commands
-            // Balance command
             PluginCommand balanceCmd = getCommand("balance");
             if (balanceCmd != null) {
                 Balance balanceExecutor = new Balance(this, economy);
@@ -351,10 +325,9 @@ public class PluginStart extends JavaPlugin {
                 balanceCmd.setTabCompleter(balanceExecutor);
                 getLogger().info("Registered 'balance' command");
             } else {
-                getLogger().warning("Could not register 'balance' command - not found in plugin.yml?");
+                getLogger().warning("Could not register 'balance' command not found in plugin.yml?");
             }
             
-            // Bal alias
             PluginCommand balCmd = getCommand("bal");
             if (balCmd != null) {
                 Balance balanceExecutor = new Balance(this, economy);
@@ -365,7 +338,6 @@ public class PluginStart extends JavaPlugin {
                 getLogger().warning("Could not register 'bal' command - not found in plugin.yml?");
             }
             
-            // Pay command
             PluginCommand payCmd = getCommand("pay");
             if (payCmd != null) {
                 Pay payExecutor = new Pay(this, economy);
@@ -376,7 +348,6 @@ public class PluginStart extends JavaPlugin {
                 getLogger().warning("Could not register 'pay' command - not found in plugin.yml?");
             }
             
-            // BalTop command
             PluginCommand balTopCmd = getCommand("baltop");
             if (balTopCmd != null) {
                 BalTop balTopExecutor = new BalTop(this, economy);
@@ -387,7 +358,6 @@ public class PluginStart extends JavaPlugin {
                 getLogger().warning("Could not register 'baltop' command - not found in plugin.yml?");
             }
             
-            // Money admin command
             PluginCommand moneyCmd = getCommand("money");
             if (moneyCmd != null) {
                 Money moneyExecutor = new Money(this, economy);
@@ -398,25 +368,19 @@ public class PluginStart extends JavaPlugin {
                 getLogger().warning("Could not register 'money' command - not found in plugin.yml?");
             }
             
-            // Register Lore command
             getCommand("lore").setExecutor(new Lore(this));
             getCommand("lore").setTabCompleter(new Tab(this));
 
-            // Register God command
             getCommand("god").setExecutor(new God(this));
             getCommand("god").setTabCompleter(new Tab(this));
 
-            // Register More command
             getCommand("more").setExecutor(new More(this));
 
-            // Register Fly command
             getCommand("fly").setExecutor(new Fly(this));
             getCommand("fly").setTabCompleter(new Tab(this));
 
-            // Register NV command
             getCommand("nv").setExecutor(new NV(this));
 
-            // Register Msg & Spy commands
             this.spyCommand = new Spy(this);
             getCommand("spy").setExecutor(spyCommand);
             getCommand("spy").setTabCompleter(spyCommand);
@@ -429,56 +393,41 @@ public class PluginStart extends JavaPlugin {
             getCommand("mail").setExecutor(msgCommand);
             getCommand("mail").setTabCompleter(msgCommand);
 
-
-            getServer().getPluginManager().registerEvents(msgCommand, this);            getServer().getPluginManager().registerEvents(new MailRemindListener(msgCommand), this);
-
-            // Register Help command
+            getServer().getPluginManager().registerEvents(msgCommand, this);
+            getServer().getPluginManager().registerEvents(new MailRemindListener(msgCommand), this);
 
             Help helpCommand = new Help(this);
             helpCommand.register();
 
-            // Register Gamemode command
             Gamemode gamemodeCommand = new Gamemode(this);
             gamemodeCommand.register();
             
-            // Register Spawn command
             Spawn spawnCommand = new Spawn(this, database);
             getCommand("spawn").setExecutor(spawnCommand);
             getCommand("setspawn").setExecutor(spawnCommand);
             
-
-            
-            // Register creeper explosion listener for block regeneration
             getServer().getPluginManager().registerEvents(new CreeperExplosionListener(this), this);
 
-            // Hook into Vault
             if (getServer().getPluginManager().getPlugin("Vault") != null) {
                 getServer().getServicesManager().register(net.milkbowl.vault2.economy.Economy.class, new VaultEconomyProvider(this), this, ServicePriority.Normal);
-                                getLogger().info("Successfully hooked into Vault for economy services.");
+                getLogger().info("Successfully hooked into Vault for economy services.");
             }
 
-            // Register Whois command
             PluginCommand whoisCmd = getCommand("whois");
             if (whoisCmd != null) {
                 whoisCmd.setExecutor(new Whois(this));
-                // whoisCmd.setTabCompleter(new WhoisTabCompleter(this)); // Placeholder for future tab completer
             } else {
                 getLogger().warning("Could not register 'whois' command - not found in plugin.yml?");
             }
 
-            // Register Maintenance command
             getCommand("maintenance").setExecutor(new Maintenance(this));
             
-            // Register Maintenance listener
             getServer().getPluginManager().registerEvents(new MaintenanceListener(this), this);
 
-            // Register Invsee command
             getCommand("invsee").setExecutor(new Invsee(this));
 
-            // Register EnchantCommand
             getCommand("enchant").setExecutor(new Enchant(this));
 
-            // Register note commands
             getCommand("note").setExecutor(new NoteCommand(this));
             getCommand("notes").setExecutor(new NotesCommand(this));
             getCommand("unnote").setExecutor(new UnnoteCommand(this));
@@ -487,17 +436,12 @@ public class PluginStart extends JavaPlugin {
             getLogger().severe("Failed to register commands: " + e.getMessage());
             getServer().getPluginManager().disablePlugin(this);
         }
-
     }
 
     public Config getConfigManager() {
         return configManager;
     }
     
-    /**
-     * Get the economy manager
-     * @return The economy manager
-     */
     public Economy getEconomy() {
         return economy;
     }
@@ -515,30 +459,33 @@ public class PluginStart extends JavaPlugin {
             spectatorTeleport.saveAllLocations();
         }
         
-        // Save all online player inventories
         for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
             UUID uuid = player.getUniqueId();
             PlayerInventories inventories = new PlayerInventories(
                 player.getInventory().getContents(),
                 player.getInventory().getArmorContents(),
                 player.getInventory().getItemInOffHand(),
-                null, // Creative inventory not implemented
+                null,
                 null,
                 null
             );
             database.savePlayerInventories(uuid, inventories);
         }
         
-        // Save all player states (flight and spectator gamemode) before shutdown
         flyOnRejoinListener.saveAllPlayersState();
         
-        // Close database connection
         if (database != null) {
             database.closeConnection();
         }
         if (creativeManager != null) {
             creativeManager.saveAllInventories();
             creativeManager.cleanup();
+        }
+
+        // Unregister PlaceholderAPI expansion
+        if (placeholder != null && placeholder.isRegistered()) {
+            placeholder.unregister();
+            getLogger().info("PlaceholderAPI expansion unregistered.");
         }
 
         super.onDisable();

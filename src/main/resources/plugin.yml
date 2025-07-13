@@ -252,7 +252,7 @@ permissions:
       core.tp.others: true
       core.tp.offline: true
       core.tp.override: true
-      core.tptoggle.others
+      core.tptoggle.others: true
       core.tphere: true
       core.tppos: true
       core.tpa.nocooldown: true

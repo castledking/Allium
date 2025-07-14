@@ -1,5 +1,5 @@
 name: Allium
-version: 1.0
+version: 0.1.2a
 main: net.survivalfun.core.PluginStart
 api-version: 1.21
 author: towkio
@@ -297,11 +297,29 @@ permissions:
     default: op
   core.gamemode.creative:
     default: op
+  core.gamemode.creative.inventory:
+    default: op
+  core.gamemode.creative.container:
+    default: op
+  core.gamemode.creative.pickup:
+    default: op
+  core.gamemode.creative.use:
+    default: op
+  core.gamemode.creative.drop:
+    default: op
+  core.gamemode.creative.break:
+    default: op
+  core.gamemode.creative.place:
+    default: op
+  core.gamemode.creative.interact:
+    default: op
+  core.gamemode.creative.use:
+    default: op
+  core.gamemode.creative.spawn:
+    default: op
+  core.gamemode.creative.blacklist:
+    default: op
   core.gamemode.creative.nv:
-    default: op
-  core.gamemode.creative.bypass.*:
-    default: op
-  core.gamemode.creative.bypass.inventory:
     default: op
   core.gamemode.adventure:
     default: op

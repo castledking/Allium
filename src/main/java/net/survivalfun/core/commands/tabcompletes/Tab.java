@@ -28,11 +28,6 @@ public class Tab implements TabCompleter {
     private final JavaPlugin plugin;
     private List<String> cachedMaterialNames;
     private final Set<String> cachedAliases = new HashSet<>();
-    private final List<String> potionEffects = Arrays.asList(
-        "turtle_master", "speed", "slowness", "strength", "jump_boost",
-        "regeneration", "fire_resistance", "water_breathing", "invisibility",
-        "night_vision", "poison", "weakness", "luck"
-    );
 
     public Tab(JavaPlugin plugin) {
         this.plugin = plugin;

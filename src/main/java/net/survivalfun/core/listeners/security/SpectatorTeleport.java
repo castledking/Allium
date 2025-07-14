@@ -5,7 +5,6 @@ import net.survivalfun.core.commands.utils.core.managers.NV;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.event.Listener;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class SpectatorTeleport implements Listener {

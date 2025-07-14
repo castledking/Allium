@@ -22,8 +22,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import net.survivalfun.core.managers.core.Text;
-import org.bukkit.Material;
-import org.bukkit.inventory.ItemStack;
 import net.survivalfun.core.commands.teleportation.TP;
 
 public class FlyOnRejoinListener implements Listener {

@@ -54,7 +54,7 @@ public class Spawn implements CommandExecutor {
 
         if (label.equalsIgnoreCase("setspawn")) {
             if (!player.hasPermission("core.setspawn")) {
-                player.sendMessage(Text.colorize("&cYou don't have permission to set the spawn point."));
+                Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label.toLowerCase());
                 return true;
             }
 
@@ -64,7 +64,7 @@ public class Spawn implements CommandExecutor {
 
         // Handle /spawn command
         if (!player.hasPermission("core.spawn")) {
-            player.sendMessage(Text.colorize("&cYou don't have permission to use this command."));
+            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label.toLowerCase());
             return true;
         }
 
@@ -121,9 +121,6 @@ public class Spawn implements CommandExecutor {
         UUID playerId = player.getUniqueId();
         lastLocations.put(playerId, player.getLocation());
 
-        // Send initial message
-        player.sendMessage(Text.colorize("&eTeleporting to spawn in &6" + teleportDelay + " &eseconds. Don't move!"));
-
         // Schedule the teleport task
         BukkitTask task = new BukkitRunnable() {
             int timeLeft = teleportDelay;
@@ -137,7 +134,7 @@ public class Spawn implements CommandExecutor {
 
                 // Check if player has moved
                 if (hasMoved(player, lastLocations.get(playerId))) {
-                    player.sendMessage(Text.colorize("&cTeleportation cancelled because you moved!"));
+                    player.sendMessage(lang.get("tp.moved"));
                     cancelTeleportTask(playerId);
                     return;
                 }
@@ -264,7 +261,9 @@ public class Spawn implements CommandExecutor {
                 // Teleport the player
                 plugin.getLogger().info("Teleporting " + player.getName() + " to spawn at " + spawnLocation);
                 player.teleport(spawnLocation);
-                player.sendMessage(Text.colorize("&aTeleported to spawn!"));
+                player.sendMessage(lang.get("tp.success")
+                .replace("{name}", "to")
+                .replace("{target}", "spawn"));
                 
                 // Only try to teleport pets/entities if player teleport was successful
                 try {
@@ -293,7 +292,9 @@ public class Spawn implements CommandExecutor {
             player.sendMessage(Text.colorize("&cAn unexpected error occurred while teleporting to spawn. Please try again later."));
         }
         
-        player.sendMessage(Text.colorize("&aTeleported to spawn!"));
+        player.sendMessage(lang.get("tp.success")
+        .replace("{name}", "to")
+        .replace("{target}", "spawn"));
     }
 
     private boolean hasMoved(Player player, Location lastLocation) {

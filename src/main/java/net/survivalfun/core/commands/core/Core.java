@@ -418,7 +418,7 @@ public class Core implements CommandExecutor, TabCompleter {
             sender.sendMessage("§eUsage: /core hide <creategroup|deletegroup|renamegroup|group>");
             return;
         }
-        // Save/load hide.yml from plugins/SFCore/hide.yml
+        // Save/load hide.yml from plugins/Allium/hide.yml
         java.io.File hideFile = new java.io.File(plugin.getDataFolder(), "hide.yml");
         org.bukkit.configuration.file.YamlConfiguration hideConfig =
                 org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(hideFile);

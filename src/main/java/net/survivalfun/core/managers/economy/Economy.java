@@ -2,13 +2,10 @@ package net.survivalfun.core.managers.economy;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.Database;
-import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.Player;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -223,6 +220,14 @@ public class Economy {
      */
     public List<BalanceEntry> getTopBalances(int limit) {
         return database.getTopBalances(limit);
+    }
+
+    /**
+     * Get the name of this economy system
+     * @return The name
+     */
+    public String getName() {
+        return "Allium";
     }
 
     /**

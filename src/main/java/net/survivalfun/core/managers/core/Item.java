@@ -34,12 +34,6 @@ public class Item {
                 // If successful, add to the cache
                 giveableItems.add(material);
             } catch (IllegalArgumentException e) {
-                // Skip materials that can't be converted to ItemStacks
-                if (plugin != null) {
-                    if (plugin.getConfigManager().getBoolean("debug-mode")) {
-                        plugin.getLogger().info("Skipping non-giveable material: " + material.name());
-                    }
-                }
             }
         }
         

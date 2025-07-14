@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 import java.util.*;
 
 public class VaultEconomyProvider implements Economy {
-
     private final PluginStart plugin;
     private final net.survivalfun.core.managers.economy.Economy economyManager;
 
@@ -23,18 +22,22 @@ public class VaultEconomyProvider implements Economy {
     }
 
     private BigDecimal getPlayerBalance(UUID uuid) {
-        return economyManager.getBalance(Bukkit.getOfflinePlayer(uuid));
+        BigDecimal balance = economyManager.getBalance(Bukkit.getOfflinePlayer(uuid));
+        plugin.getLogger().info("Retrieved balance for UUID " + uuid + ": " + balance);
+        return balance;
     }
 
     @Override
     public boolean isEnabled() {
-        return plugin != null && plugin.isEnabled();
+        boolean enabled = plugin != null && plugin.isEnabled();
+        plugin.getLogger().info("VaultEconomyProvider isEnabled: " + enabled);
+        return enabled;
     }
 
     @Override
     @NotNull
     public String getName() {
-        return "SFCore";
+        return "Allium";
     }
 
     @Override
@@ -110,12 +113,14 @@ public class VaultEconomyProvider implements Economy {
     @Override
     @Deprecated
     public boolean createAccount(@NotNull UUID accountID, @NotNull String name) {
+        plugin.getLogger().info("Creating account for UUID: " + accountID + ", Name: " + name);
         return createAccount(accountID, name, true);
     }
 
     @Override
     public boolean createAccount(@NotNull UUID accountID, @NotNull String name, boolean player) {
-        return true;
+        plugin.getLogger().info("Creating account for UUID: " + accountID + ", Name: " + name + ", Player: " + player);
+        return true; // Accounts are auto-created in getBalance
     }
 
     @Override
@@ -126,7 +131,8 @@ public class VaultEconomyProvider implements Economy {
 
     @Override
     public boolean createAccount(@NotNull UUID accountID, @NotNull String name, @NotNull String worldName, boolean player) {
-        return true;
+        plugin.getLogger().info("Creating account for UUID: " + accountID + ", Name: " + name + ", World: " + worldName);
+        return true; // Accounts are auto-created in getBalance
     }
 
     @Override
@@ -137,12 +143,14 @@ public class VaultEconomyProvider implements Economy {
 
     @Override
     public Optional<String> getAccountName(@NotNull UUID accountID) {
-        return Optional.ofNullable(Bukkit.getOfflinePlayer(accountID).getName());
+        String name = Bukkit.getOfflinePlayer(accountID).getName();
+        plugin.getLogger().info("Account name for UUID " + accountID + ": " + name);
+        return Optional.ofNullable(name);
     }
 
     @Override
     public boolean hasAccount(@NotNull UUID accountID) {
-        return true;
+        return true; // Accounts are auto-created
     }
 
     @Override
@@ -152,12 +160,13 @@ public class VaultEconomyProvider implements Economy {
 
     @Override
     public boolean renameAccount(@NotNull UUID accountID, @NotNull String name) {
+        plugin.getLogger().info("Rename account not supported for UUID: " + accountID);
         return false;
     }
 
     @Override
     public boolean renameAccount(@NotNull String plugin, @NotNull UUID accountID, @NotNull String name) {
-        return false;
+        return renameAccount(accountID, name);
     }
 
     @Override
@@ -199,7 +208,9 @@ public class VaultEconomyProvider implements Economy {
 
     @Override
     public boolean has(@NotNull String pluginName, @NotNull UUID accountID, @NotNull BigDecimal amount) {
-        return economyManager.hasEnough(Bukkit.getOfflinePlayer(accountID), amount);
+        boolean hasEnough = economyManager.hasEnough(Bukkit.getOfflinePlayer(accountID), amount);
+        plugin.getLogger().info("Checking if UUID " + accountID + " has " + amount + ": " + hasEnough);
+        return hasEnough;
     }
 
     @Override
@@ -216,15 +227,15 @@ public class VaultEconomyProvider implements Economy {
     @NotNull
     public EconomyResponse withdraw(@NotNull String pluginName, @NotNull UUID accountID, @NotNull BigDecimal amount) {
         OfflinePlayer player = Bukkit.getOfflinePlayer(accountID);
+        plugin.getLogger().info("Withdrawing " + amount + " from UUID: " + accountID);
         if (amount.signum() < 0) {
             return new EconomyResponse(BigDecimal.ZERO, getPlayerBalance(accountID), ResponseType.FAILURE, "Cannot withdraw negative funds.");
         }
         if (economyManager.hasEnough(player, amount)) {
             economyManager.withdraw(player, amount);
             return new EconomyResponse(amount, getPlayerBalance(accountID), ResponseType.SUCCESS, "");
-        } else {
-            return new EconomyResponse(BigDecimal.ZERO, getPlayerBalance(accountID), ResponseType.FAILURE, "Insufficient funds.");
         }
+        return new EconomyResponse(BigDecimal.ZERO, getPlayerBalance(accountID), ResponseType.FAILURE, "Insufficient funds.");
     }
 
     @Override
@@ -243,6 +254,7 @@ public class VaultEconomyProvider implements Economy {
     @NotNull
     public EconomyResponse deposit(@NotNull String pluginName, @NotNull UUID accountID, @NotNull BigDecimal amount) {
         OfflinePlayer player = Bukkit.getOfflinePlayer(accountID);
+        plugin.getLogger().info("Depositing " + amount + " to UUID: " + accountID);
         if (amount.signum() < 0) {
             return new EconomyResponse(BigDecimal.ZERO, getPlayerBalance(accountID), ResponseType.FAILURE, "Cannot deposit negative funds.");
         }
@@ -264,6 +276,7 @@ public class VaultEconomyProvider implements Economy {
 
     @Override
     public boolean createSharedAccount(@NotNull String pluginName, @NotNull UUID accountID, @NotNull String name, @NotNull UUID owner) {
+        plugin.getLogger().info("Create shared account not supported for UUID: " + accountID);
         return false;
     }
 
@@ -274,6 +287,7 @@ public class VaultEconomyProvider implements Economy {
 
     @Override
     public boolean setOwner(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid) {
+        plugin.getLogger().info("Set owner not supported for UUID: " + accountID);
         return false;
     }
 
@@ -284,6 +298,7 @@ public class VaultEconomyProvider implements Economy {
 
     @Override
     public boolean addAccountMember(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid) {
+        plugin.getLogger().info("Add account member not supported for UUID: " + accountID);
         return false;
     }
 
@@ -294,6 +309,7 @@ public class VaultEconomyProvider implements Economy {
 
     @Override
     public boolean removeAccountMember(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid) {
+        plugin.getLogger().info("Remove account member not supported for UUID: " + accountID);
         return false;
     }
 
@@ -304,6 +320,7 @@ public class VaultEconomyProvider implements Economy {
 
     @Override
     public boolean updateAccountPermission(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid, @NotNull AccountPermission permission, boolean value) {
+        plugin.getLogger().info("Update account permission not supported for UUID: " + accountID);
         return false;
     }
 }

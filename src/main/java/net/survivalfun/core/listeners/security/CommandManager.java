@@ -616,9 +616,9 @@ public class CommandManager implements Listener {
             baseCommand = commandName.substring(commandName.indexOf(':') + 1);
         }
 
-        // Check if the pluginName is SFCore and modify it for permission testing
+        // Check if the pluginName is Allium and modify it for permission testing
         String permissionPluginName = pluginName;
-        if ("SFCore".equals(pluginName)) {
+        if ("Allium".equals(pluginName)) {
             permissionPluginName = "core";
         }
 
@@ -695,8 +695,8 @@ public class CommandManager implements Listener {
             pluginName = commandName.substring(0, commandName.indexOf(':'));
         }
 
-        // Convert sfcore to core
-        if ("sfcore".equals(pluginName)) {
+        // Convert allium to core
+        if ("allium".equals(pluginName)) {
             pluginName = "core";
         }
 

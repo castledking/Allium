@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.survivalfun</groupId>
-    <artifactId>SFCore</artifactId>
+    <artifactId>Allium</artifactId>
     <version>1.0</version>
 
     <properties>
@@ -14,11 +14,12 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <server.plugins.dir>D:/mcdata/plugins</server.plugins.dir>
-        <project.build.finalName>SFCore</project.build.finalName>
+        <project.build.finalName>Allium</project.build.finalName>
         <paper.version>1.21.5-R0.1-SNAPSHOT</paper.version>
     </properties>
 
     <build>
+        <finalName>${project.build.finalName}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -151,12 +152,6 @@
             <groupId>net.milkbowl.vault</groupId>
             <artifactId>VaultUnlockedAPI</artifactId>
             <version>2.10</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>net.luckperms</groupId>
-            <artifactId>api</artifactId>
-            <version>5.4</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

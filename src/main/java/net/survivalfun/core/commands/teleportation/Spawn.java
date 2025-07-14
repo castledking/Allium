@@ -96,10 +96,10 @@ public class Spawn implements CommandExecutor {
 
         if (success) {
             player.sendMessage(Text.colorize("&aSpawn location has been set!"));
-            plugin.getLogger().info("[SFCore] Set spawn location: " + location.getWorld().getName() + " " + location.getX() + ", " + location.getY() + ", " + location.getZ() + " yaw=" + yaw + " pitch=" + pitch);
+            plugin.getLogger().info("[Allium] Set spawn location: " + location.getWorld().getName() + " " + location.getX() + ", " + location.getY() + ", " + location.getZ() + " yaw=" + yaw + " pitch=" + pitch);
         } else {
             player.sendMessage(Text.colorize("&cFailed to set spawn location. Please check the console for errors."));
-            plugin.getLogger().warning("[SFCore] Failed to set spawn location for " + player.getName());
+            plugin.getLogger().warning("[Allium] Failed to set spawn location for " + player.getName());
         }
     }
 
@@ -349,7 +349,7 @@ public class Spawn implements CommandExecutor {
                 if (tpCommand.hasPets(player)) {
                     // First teleport the pets using the existing method
                     tpCommand.teleportSelectedPets(player, location);
-                    plugin.getLogger().info("[SFCore] Teleported pets for player " + player.getName() + " to spawn");
+                    plugin.getLogger().info("[Allium] Teleported pets for player " + player.getName() + " to spawn");
                     
                     // Then run cleanup immediately to deselect pets and show auto-disable message
                     Bukkit.getScheduler().runTask(plugin, () -> {
@@ -393,7 +393,7 @@ public class Spawn implements CommandExecutor {
                                 }
                             }
                         } catch (Exception e) {
-                            plugin.getLogger().warning("[SFCore] Error cleaning up pet teleport: " + e.getMessage());
+                            plugin.getLogger().warning("[Allium] Error cleaning up pet teleport: " + e.getMessage());
                             // Fallback message if we can't access the TP lang
                             if (player.isOnline()) {
                                 player.sendMessage(Text.colorize("&cPet teleport mode auto-disabled after teleport to spawn"));
@@ -403,7 +403,7 @@ public class Spawn implements CommandExecutor {
                 }
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("[SFCore] Error teleporting pets: " + e.getMessage());
+            plugin.getLogger().warning("[Allium] Error teleporting pets: " + e.getMessage());
         }
     }
     
@@ -470,11 +470,11 @@ public class Spawn implements CommandExecutor {
                                             
                                             // Call the method to disable distance checking
                                             disableDistanceCheckingMethod.invoke(listener);
-                                            plugin.getLogger().info("[SFCore] Disabled distance checking for entity teleportation");
+                                            plugin.getLogger().info("[Allium] Disabled distance checking for entity teleportation");
                                         }
                                     }
                                 } catch (Exception e) {
-                                    plugin.getLogger().warning("[SFCore] Could not disable distance checking: " + e.getMessage());
+                                    plugin.getLogger().warning("[Allium] Could not disable distance checking: " + e.getMessage());
                                 }
                                 
                                 // Now teleport entities directly without delay
@@ -482,7 +482,7 @@ public class Spawn implements CommandExecutor {
                                 double radius = 2.0;
                                 int numEntities = entitiesToTeleport.size();
                                 
-                                plugin.getLogger().info("[SFCore] Teleporting " + numEntities + " entities INSTANTLY for player " + player.getName());
+                                plugin.getLogger().info("[Allium] Teleporting " + numEntities + " entities INSTANTLY for player " + player.getName());
                                 
                                 // Teleport each entity to a position around the player
                                 for (int i = 0; i < entitiesToTeleport.size(); i++) {
@@ -490,13 +490,13 @@ public class Spawn implements CommandExecutor {
                                     
                                     // Skip invalid entities
                                     if (entity == null || !entity.isValid()) {
-                                        plugin.getLogger().warning("[SFCore] Skipping invalid entity during teleport");
+                                        plugin.getLogger().warning("[Allium] Skipping invalid entity during teleport");
                                         continue;
                                     }
                                     
                                     // Check if entity is in the same world as the target location
                                     if (!entity.getWorld().equals(location.getWorld())) {
-                                        plugin.getLogger().warning("[SFCore] Entity is in a different world, cannot teleport");
+                                        plugin.getLogger().warning("[Allium] Entity is in a different world, cannot teleport");
                                         continue;
                                     }
                                     
@@ -520,14 +520,14 @@ public class Spawn implements CommandExecutor {
                                     
                                     if (success) {
                                         successCount++;
-                                        plugin.getLogger().info("[SFCore] Successfully teleported entity " + entity.getType().name() + 
+                                        plugin.getLogger().info("[Allium] Successfully teleported entity " + entity.getType().name() + 
                                                            " to spawn for player " + player.getName());
                                         // Remove glowing effect immediately
                                         entity.setGlowing(false);
                                     }
                                 }
                                 
-                                plugin.getLogger().info("[SFCore] Successfully teleported " + successCount + 
+                                plugin.getLogger().info("[Allium] Successfully teleported " + successCount + 
                                     " entities for player " + player.getName() + " to spawn");
                                     
                                 // Clear selected entities and show auto-disable message immediately
@@ -554,7 +554,7 @@ public class Spawn implements CommandExecutor {
                                                     .replace("{info}", "Auto-disabled after teleport to spawn"));
                                         }
                                     } catch (Exception e) {
-                                        plugin.getLogger().warning("[SFCore] Error showing auto-disable message: " + e.getMessage());
+                                        plugin.getLogger().warning("[Allium] Error showing auto-disable message: " + e.getMessage());
                                         // Fallback message if we can't access the TP lang
                                         player.sendMessage(Text.colorize("&cEntity teleport mode auto-disabled after teleport to spawn"));
                                     }
@@ -573,22 +573,22 @@ public class Spawn implements CommandExecutor {
                                             java.lang.reflect.Method unregisterMethod = listenerClass.getDeclaredMethod("unregisterListener");
                                             unregisterMethod.setAccessible(true);
                                             unregisterMethod.invoke(listener);
-                                            plugin.getLogger().info("[SFCore] Unregistered entity teleport listener for player " + player.getName());
+                                            plugin.getLogger().info("[Allium] Unregistered entity teleport listener for player " + player.getName());
                                         }
                                     } catch (Exception e) {
-                                        plugin.getLogger().warning("[SFCore] Error unregistering entity teleport listener: " + e.getMessage());
+                                        plugin.getLogger().warning("[Allium] Error unregistering entity teleport listener: " + e.getMessage());
                                     }
                                 });
                             }
                         }
                     } catch (Exception e) {
-                        plugin.getLogger().warning("[SFCore] Error teleporting entities: " + e.getMessage());
+                        plugin.getLogger().warning("[Allium] Error teleporting entities: " + e.getMessage());
                         e.printStackTrace();
                     }
                 }
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("[SFCore] Error teleporting entities: " + e.getMessage());
+            plugin.getLogger().warning("[Allium] Error teleporting entities: " + e.getMessage());
         }
     }
     
@@ -618,10 +618,10 @@ public class Spawn implements CommandExecutor {
                 // Save the player's current location before teleporting
                 lastLocation.put(player.getUniqueId(), player.getLocation());
                 
-                plugin.getLogger().info("[SFCore] Saved back location for player " + player.getName() + " when using /spawn");
+                plugin.getLogger().info("[Allium] Saved back location for player " + player.getName() + " when using /spawn");
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("[SFCore] Error saving back location: " + e.getMessage());
+            plugin.getLogger().warning("[Allium] Error saving back location: " + e.getMessage());
         }
     }
 

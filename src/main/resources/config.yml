@@ -3,8 +3,8 @@
 # |                     Configuration                    | #
 # +------------------------------------------------------+ #
 ############################################################
-# This is the main configuration file for SFCore.
-# For more information, visit: https://github.com/castledking/SFCore
+# This is the main configuration file for Allium.
+# For more information, visit: https://github.com/castledking/Allium
 
 # Language for lang.yml
 lang: en
@@ -29,6 +29,15 @@ discord:
   
   # Bot avatar URL (optional)
   bot_avatar: ""
+
+############################################################
+# +------------------------------------------------------+ #
+# |                 Maintenance Settings                 | #
+# +------------------------------------------------------+ #
+############################################################
+
+maintenance: # A list of player UUIDs that bypass maintenance mode.
+  bypass: []
 
 ############################################################
 # +------------------------------------------------------+ #

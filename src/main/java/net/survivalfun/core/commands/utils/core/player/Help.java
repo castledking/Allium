@@ -405,25 +405,25 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         String description = "No description available";
         String usage = "/" + cleanCmdName; // Default usage
 
-        // 1. Try to get command from SFCore's plugin.yml first
-        // 'plugin' is the instance of PluginStart for SFCore
-        PluginCommand sfCoreCommand = plugin.getCommand(cleanCmdName);
+        // 1. Try to get command from Allium's plugin.yml first
+        // 'plugin' is the instance of PluginStart for Allium
+        PluginCommand coreCommand = plugin.getCommand(cleanCmdName);
 
-        if (sfCoreCommand != null) {
-            // Command found in SFCore's plugin.yml
-            if (sfCoreCommand.getDescription() != null && !sfCoreCommand.getDescription().isEmpty()) {
-                description = sfCoreCommand.getDescription();
+        if (coreCommand != null) {
+            // Command found in Allium's plugin.yml
+            if (coreCommand.getDescription() != null && !coreCommand.getDescription().isEmpty()) {
+                description = coreCommand.getDescription();
             }
-            if (sfCoreCommand.getUsage() != null && !sfCoreCommand.getUsage().isEmpty()) {
+            if (coreCommand.getUsage() != null && !coreCommand.getUsage().isEmpty()) {
                 // plugin.yml usage might be like "/<command> [player]"
                 // We need to replace /<command> with the actual command alias
-                usage = sfCoreCommand.getUsage().replace("<command>", cleanCmdName);
+                usage = coreCommand.getUsage().replace("<command>", cleanCmdName);
                 if (!usage.startsWith("/")) {
                     usage = "/" + usage;
                 }
             }
         } else {
-            // 2. Fallback: Try Bukkit.getPluginCommand for other plugins or if not in SFCore's yml
+            // 2. Fallback: Try Bukkit.getPluginCommand for other plugins or if not in Allium's yml
             PluginCommand bukkitCmd = Bukkit.getPluginCommand(cleanCmdName);
             if (bukkitCmd != null) {
                 if (bukkitCmd.getDescription() != null && !bukkitCmd.getDescription().isEmpty()) {
@@ -915,7 +915,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
                         .getDeclaredMethod("getCommandMap").invoke(Bukkit.getServer());
                 
                 // Register our help command with higher priority
-                commandMap.register("sfcore", helpCommand);
+                commandMap.register("allium", helpCommand);
                 
                 // Log success
                 plugin.getLogger().info("Successfully registered custom help command");

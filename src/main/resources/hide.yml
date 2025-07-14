@@ -11,7 +11,7 @@
 # - * (all commands)
 # Relies on the LuckPerms group permission (group.<group-name>)
 # Not required to have LuckPerms installed.
-# For more information, visit: https://github.com/castledking/SFCore
+# For more information, visit: https://github.com/castledking/Allium
 
 settings:
   enabled: true

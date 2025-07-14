@@ -76,6 +76,15 @@ public class Database {
 
     private void createTables() throws SQLException {
         try (Statement statement = connection.createStatement()) {
+            // Player permissions table
+            statement.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS player_permissions (" +
+                            "player_uuid VARCHAR(36) NOT NULL, " +
+                            "permission VARCHAR(255) NOT NULL, " +
+                            "PRIMARY KEY (player_uuid, permission)" +
+                            ")"
+            );
+            
             // Spawn location table
             statement.executeUpdate(
                     "CREATE TABLE IF NOT EXISTS spawn_locations (" +
@@ -230,6 +239,31 @@ public class Database {
                             "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                             ")"
             );
+        }
+    }
+
+    public void addPlayerPermission(UUID playerId, String permission) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                 "INSERT INTO player_permissions (player_uuid, permission) VALUES (?, ?)")) {
+            stmt.setString(1, playerId.toString());
+            stmt.setString(2, permission);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to add permission", e);
+        }
+    }
+    
+    public boolean playerHasPermission(UUID playerId, String permission) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                 "SELECT 1 FROM player_permissions WHERE player_uuid = ? AND permission = ?")) {
+            stmt.setString(1, playerId.toString());
+            stmt.setString(2, permission);
+            return stmt.executeQuery().next();
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to check permission", e);
+            return false;
         }
     }
 
@@ -1330,12 +1364,6 @@ public class Database {
             plugin.getLogger().log(Level.SEVERE, "Failed to get maintenance reason", e);
         }
         return "Server Maintenance";
-    }
-
-    public boolean playerHasPermission(UUID playerId, String permission) {
-        // TODO: Implement database query for player permission
-        Bukkit.getLogger().warning("playerHasPermission not implemented yet");
-        return false;
     }
 
     public boolean isPlayerOp(UUID playerId) {

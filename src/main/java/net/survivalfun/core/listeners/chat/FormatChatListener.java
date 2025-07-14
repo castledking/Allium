@@ -7,11 +7,8 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import net.luckperms.api.LuckPerms;
-import net.luckperms.api.model.user.User;
-import net.luckperms.api.cacheddata.CachedMetaData;
-import net.luckperms.api.query.QueryOptions;
 import net.milkbowl.vault2.chat.Chat;
+import net.milkbowl.vault2.permission.Permission;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.config.Config;
 import net.survivalfun.core.managers.core.Text;
@@ -34,12 +31,10 @@ import java.util.Objects;
 public class FormatChatListener implements Listener {
 
     private final PluginStart plugin;
-
     private final LegacyComponentSerializer legacyComponentSerializer;
-    private final LuckPerms luckPerms;
     private final Chat vaultChat;
+    private final Permission vaultPermission;
     private final Map<String, String> groupFormats;
-    private final boolean useVaultGroups;
     private final Config config;
     private final String defaultFormat;
     private final boolean placeholderAPIEnabled;
@@ -48,13 +43,12 @@ public class FormatChatListener implements Listener {
     private final MiniMessage miniMessage;
     private final boolean blockUnicode;
 
-    public FormatChatListener(PluginStart plugin, Chat vaultChat, LuckPerms luckPerms, Config config) {
+    public FormatChatListener(PluginStart plugin, Chat vaultChat, Config config) {
         this.plugin = plugin;
-
         this.config = config;
         this.vaultChat = vaultChat;
-        this.luckPerms = luckPerms;
-        this.blockUnicode = config.getBoolean("block-unicode"); // Default to true
+        this.vaultPermission = plugin.getVaultPermission();
+        this.blockUnicode = config.getBoolean("block-unicode");
 
         legacyComponentSerializer = LegacyComponentSerializer.builder().hexColors().character('&').build();
         miniMessage = MiniMessage.miniMessage();
@@ -66,15 +60,6 @@ public class FormatChatListener implements Listener {
         this.placeholderAPIEnabled = Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
         if (!placeholderAPIEnabled) {
             plugin.getLogger().info("PlaceholderAPI not found. Placeholders in chat format will not work.");
-        }
-
-        // Determine Group Mode and Load Formats
-        if (vaultChat != null && luckPerms == null) {
-            useVaultGroups = true;
-        } else if (luckPerms != null) {
-            useVaultGroups = false;
-        } else {
-            useVaultGroups = false;
         }
 
         // Load group formats safely
@@ -94,15 +79,15 @@ public class FormatChatListener implements Listener {
             for (Map.Entry<String, Object> entry : tempMap.entrySet()) {
                 groupFormats.put(entry.getKey(), entry.getValue().toString());
             }
-            if( config.getBoolean("debug-mode")) {
+            if (config.getBoolean("debug-mode")) {
                 plugin.getLogger().info("Loaded " + groupFormats.size() + " group chat formats.");
             }
-
         }
     }
 
     public boolean canEnable() {
-        return luckPerms != null || vaultChat != null;
+        // Allow basic formatting if vaultPermission is available, even if vaultChat is null
+        return vaultPermission != null;
     }
 
     /**
@@ -113,17 +98,17 @@ public class FormatChatListener implements Listener {
     private boolean containsUnicode(String message) {
         return message.codePoints().anyMatch(cp -> cp > 127);
     }
-    
+
     /**
      * Converts legacy color codes like &c to MiniMessage format like <red>
      * This allows players to use both formats in the same message
-     * 
+     *
      * @param message The input message with possible legacy color codes
      * @return The same message with legacy codes converted to MiniMessage format
      */
     private String convertLegacyToMiniMessage(String message) {
         if (message == null || message.isEmpty()) return message;
-        
+
         // Replace all color codes with their MiniMessage equivalents
         message = message.replace("&0", "<black>");
         message = message.replace("&1", "<dark_blue>");
@@ -141,14 +126,14 @@ public class FormatChatListener implements Listener {
         message = message.replace("&d", "<light_purple>");
         message = message.replace("&e", "<yellow>");
         message = message.replace("&f", "<white>");
-        
+
         // Format codes
         message = message.replace("&l", "<bold>");
         message = message.replace("&m", "<strikethrough>");
         message = message.replace("&n", "<underlined>");
         message = message.replace("&o", "<italic>");
         message = message.replace("&r", "<reset>");
-        
+
         return message;
     }
 
@@ -168,7 +153,7 @@ public class FormatChatListener implements Listener {
             plugin.getLogger().info("Raw message from " + player.getName() + ": " + rawMessage);
         }
 
-        if (blockUnicode && !player.hasPermission("chat.unicode")) {
+        if (blockUnicode && !vaultPermission.playerHas(player, "chat.unicode")) {
             if (containsUnicode(originalMessage)) {
                 event.setCancelled(true);
                 player.sendMessage(Text.parseColors("&cYour message contains unicode characters which are not allowed."));
@@ -179,17 +164,15 @@ public class FormatChatListener implements Listener {
             }
         }
 
-        // Word filtering would go here if we had it
-
         String messageContent = rawMessage;
-        if (player.hasPermission("chat.color")) {
+        if (vaultPermission.playerHas(player, "chat.color")) {
             messageContent = stripUnauthorizedFormatting(messageContent, player);
         } else {
             messageContent = Text.stripColor(messageContent, null);
         }
-        
+
         // Parse the message based on player permissions
-        if (player.hasPermission("chat.minimessage")) {
+        if (vaultPermission.playerHas(player, "chat.minimessage")) {
             // For players with MiniMessage permission, support both formats by
             // converting legacy codes to MiniMessage format first
             String convertedMessage = convertLegacyToMiniMessage(messageContent);
@@ -206,7 +189,7 @@ public class FormatChatListener implements Listener {
                 .replace("<player>", player.getName());
 
         // Process placeholders only if player has permission
-        if (player.hasPermission("chat.placeholderapi")) {
+        if (vaultPermission.playerHas(player, "chat.placeholderapi")) {
             finalMessageFormat = processPlaceholderAPIPlaceholders(finalMessageFormat, player);
         }
 
@@ -227,7 +210,7 @@ public class FormatChatListener implements Listener {
 
                     // Check if the raw tag is escaped by a preceding color code (for non-MiniMessage users)
                     boolean isEscaped = false;
-                    if (!player.hasPermission("chat.minimessage")) {
+                    if (!vaultPermission.playerHas(player, "chat.minimessage")) {
                         if (rawMatcher.start() > 0) {
                             char charBefore = messageContent.charAt(rawMatcher.start() - 1);
                             if (Text.isColorChar(charBefore)) { // e.g., &c[...] or c[...] if using section signs
@@ -254,7 +237,7 @@ public class FormatChatListener implements Listener {
                     } else {
                         // It's a true raw tag or a MiniMessage user. Process the part before it, then the raw content.
                         if (!before.isEmpty()) {
-                            if (player.hasPermission("chat.minimessage")) {
+                            if (vaultPermission.playerHas(player, "chat.minimessage")) {
                                 builder.append(miniMessage.deserialize(before));
                             } else {
                                 builder.append(legacyComponentSerializer.deserialize(before));
@@ -268,7 +251,7 @@ public class FormatChatListener implements Listener {
                 // Part after the last raw tag
                 String after = messageContent.substring(lastEnd);
                 if (!after.isEmpty()) {
-                    if (player.hasPermission("chat.minimessage")) {
+                    if (vaultPermission.playerHas(player, "chat.minimessage")) {
                         builder.append(miniMessage.deserialize(after));
                     } else {
                         builder.append(legacyComponentSerializer.deserialize(after));
@@ -288,24 +271,19 @@ public class FormatChatListener implements Listener {
      */
     private String getChatFormat(Player player) {
         String groupName = "default"; // Default group
-
-        // Debug mode logging
         boolean debugMode = config.getBoolean("debug-mode");
 
-        if (useVaultGroups && vaultChat != null) {
-            groupName = vaultChat.getPrimaryGroup(player);
-            if (debugMode) {
-                plugin.getLogger().info("Vault group for " + player.getName() + ": " + groupName);
-            }
-        } else if (luckPerms != null) {
-            User user = luckPerms.getPlayerAdapter(Player.class).getUser(player);
-            CachedMetaData metaData = user.getCachedData().getMetaData(QueryOptions.nonContextual());
-            groupName = metaData.getPrimaryGroup();
+        if (vaultChat != null) {
+            groupName = vaultChat.getPrimaryGroup(null, player);
             if (groupName == null) {
                 groupName = "default";
             }
             if (debugMode) {
-                plugin.getLogger().info("LuckPerms group for " + player.getName() + ": " + groupName);
+                plugin.getLogger().info("Vault group for " + player.getName() + ": " + groupName);
+            }
+        } else {
+            if (debugMode) {
+                plugin.getLogger().info("Vault Chat unavailable, using default group for " + player.getName());
             }
         }
 
@@ -349,23 +327,18 @@ public class FormatChatListener implements Listener {
     }
 
     private String getPrefix(Player player) {
-        String prefix = ""; // Initialize prefix
+        String prefix = "";
         boolean debugMode = config.getBoolean("debug-mode");
 
         try {
-            if (luckPerms != null) {
-                User user = luckPerms.getPlayerAdapter(Player.class).getUser(player);
-                // LuckPerms API guarantees that user will not be null here.
-                CachedMetaData metaData = user.getCachedData().getMetaData(QueryOptions.nonContextual());
-                // metaData should not be null
-                prefix = Objects.requireNonNullElse(metaData.getPrefix(), "");
-                if (debugMode) {
-                    plugin.getLogger().info("LuckPerms Prefix: " + prefix);
-                }
-            } else if (vaultChat != null) {
-                prefix = Objects.requireNonNullElse(vaultChat.getPlayerPrefix(player), "");
+            if (vaultChat != null) {
+                prefix = Objects.requireNonNullElse(vaultChat.getPlayerPrefix(null, player), "");
                 if (debugMode) {
                     plugin.getLogger().info("Vault Prefix: " + prefix);
+                }
+            } else {
+                if (debugMode) {
+                    plugin.getLogger().info("Vault Chat unavailable, using empty prefix for " + player.getName());
                 }
             }
         } catch (Exception e) {
@@ -380,26 +353,26 @@ public class FormatChatListener implements Listener {
 
     private String stripUnauthorizedFormatting(String message, Player player) {
         // If the player doesn't have chat.color, remove all color and formatting codes
-        if (!player.hasPermission("chat.color")) {
+        if (!vaultPermission.playerHas(player, "chat.color")) {
             message = message.replaceAll("&[0-9a-fk-or]", "");
         } else {
             // Remove specific formats if the player doesn't have the permission for that format
-            if (!player.hasPermission("chat.format.bold")) {
+            if (!vaultPermission.playerHas(player, "chat.format.bold")) {
                 message = message.replaceAll("&l", "");
             }
-            if (!player.hasPermission("chat.format.italic")) {
+            if (!vaultPermission.playerHas(player, "chat.format.italic")) {
                 message = message.replaceAll("&o", "");
             }
-            if (!player.hasPermission("chat.format.underline")) {
+            if (!vaultPermission.playerHas(player, "chat.format.underline")) {
                 message = message.replaceAll("&n", "");
             }
-            if (!player.hasPermission("chat.format.strikethrough")) {
+            if (!vaultPermission.playerHas(player, "chat.format.strikethrough")) {
                 message = message.replaceAll("&m", "");
             }
-            if (!player.hasPermission("chat.format.magic")) {
+            if (!vaultPermission.playerHas(player, "chat.format.magic")) {
                 message = message.replaceAll("&k", "");
             }
-            if (!player.hasPermission("chat.format.reset")) {
+            if (!vaultPermission.playerHas(player, "chat.format.reset")) {
                 message = message.replaceAll("&r", "");
             }
         }
@@ -413,5 +386,4 @@ public class FormatChatListener implements Listener {
         groupFormats.clear();
         loadGroupFormats();
     }
-
 }

@@ -1,10 +1,11 @@
-name: SFCore
+name: Allium
 version: 1.0
 main: net.survivalfun.core.PluginStart
 api-version: 1.21
 author: towkio
-description: "Survival Fun Core"
-soft-depend: [LuckPerms, PlaceholderAPI, Vault]
+description: "A secure, modern Essentials solution."
+depend: [Vault]
+soft-depend: [PlaceholderAPI]
 
 commands:
   redeem:

@@ -102,11 +102,11 @@ public class Config {
                 config.options().header(
                         "############################################################\n" +
                                 "# +------------------------------------------------------+ #\n" +
-                                "# |                SFCore Configuration                   | #\n" +
+                                "# |                Allium Configuration                   | #\n" +
                                 "# +------------------------------------------------------+ #\n" +
                                 "############################################################\n\n" +
-                                "# This is the main configuration file for SFCore.\n" +
-                                "# For more information, visit: https://github.com/castledking/SFCore\n"
+                                "# This is the main configuration file for Allium.\n" +
+                                "# For more information, visit: https://github.com/castledking/Allium\n"
                 );
 
                 // Save the basic config

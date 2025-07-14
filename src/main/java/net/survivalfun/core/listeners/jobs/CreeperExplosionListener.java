@@ -69,7 +69,7 @@ public class CreeperExplosionListener implements Listener {
         if (instance != null) {
             HandlerList.unregisterAll(instance);
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info("[SFCore] Unregistered previous CreeperExplosionListener instance");
+                plugin.getLogger().info("[Allium] Unregistered previous CreeperExplosionListener instance");
             }
         }
         
@@ -113,7 +113,7 @@ public class CreeperExplosionListener implements Listener {
         // Debug: Check if we're already processing layers
         if (isProcessingLayers) {
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().warning(String.format("[SFCore] WARNING: New explosion while already processing layers! Queue size: %d", layerQueue.size()));
+                plugin.getLogger().warning(String.format("[Allium] WARNING: New explosion while already processing layers! Queue size: %d", layerQueue.size()));
             }
             // Don't cancel - just log the warning and continue processing
         }
@@ -182,7 +182,7 @@ public class CreeperExplosionListener implements Listener {
             // Log summary of skipped blocks for this layer
             if (skippedCount > 0) {
                 if (plugin.getConfig().getBoolean("debug-mode")) {
-                    plugin.getLogger().info(String.format("[SFCore] Layer Y=%d: Skipped %d blocks already being regenerated", yLevel, skippedCount));
+                    plugin.getLogger().info(String.format("[Allium] Layer Y=%d: Skipped %d blocks already being regenerated", yLevel, skippedCount));
                 }
             }
         }
@@ -193,14 +193,14 @@ public class CreeperExplosionListener implements Listener {
             List<Integer> sortedYLevels = new ArrayList<>(blocksByLayer.keySet());
             sortedYLevels.sort(Integer::compareTo); // Sort ascending - lowest Y first
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info(String.format("[SFCore] Adding layers to queue: %s", sortedYLevels.toString()));
+                plugin.getLogger().info(String.format("[Allium] Adding layers to queue: %s", sortedYLevels.toString()));
             }
             
             // Add each Y-level to the queue in the correct order
             for (int yLevel : sortedYLevels) {
                 layerQueue.add(yLevel);
                 if (plugin.getConfig().getBoolean("debug-mode")) {
-                    plugin.getLogger().info(String.format("[SFCore] Added layer Y=%d to queue (queue size: %d)", yLevel, layerQueue.size()));
+                    plugin.getLogger().info(String.format("[Allium] Added layer Y=%d to queue (queue size: %d)", yLevel, layerQueue.size()));
                 }
             }
         }
@@ -262,7 +262,7 @@ public class CreeperExplosionListener implements Listener {
         if (safeLoc != null) {
             // Add debug logging
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info(String.format("[SFCore] Teleporting player %s from %s to %s for regeneration safety", 
+                plugin.getLogger().info(String.format("[Allium] Teleporting player %s from %s to %s for regeneration safety", 
                     player.getName(), 
                     String.format("%.1f,%.1f,%.1f", playerLoc.getX(), playerLoc.getY(), playerLoc.getZ()),
                     String.format("%.1f,%.1f,%.1f", safeLoc.getX(), safeLoc.getY(), safeLoc.getZ())));
@@ -302,7 +302,7 @@ public class CreeperExplosionListener implements Listener {
             // If no regeneration queue found, just push player up slightly
             Location pushLoc = playerLoc.clone().add(0, 5, 0); // Increased from 2 to 5 blocks
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info(String.format("[SFCore] No regen queue found, pushing player %s up 5 blocks to %s", 
+                plugin.getLogger().info(String.format("[Allium] No regen queue found, pushing player %s up 5 blocks to %s", 
                     player.getName(), 
                     String.format("%.1f,%.1f,%.1f", pushLoc.getX(), pushLoc.getY(), pushLoc.getZ())));
             }
@@ -496,7 +496,7 @@ public class CreeperExplosionListener implements Listener {
         synchronized (layerQueue) {
             if (layerQueue.isEmpty()) {
                 if (plugin.getConfig().getBoolean("debug-mode")) {
-                    plugin.getLogger().info("[SFCore] Layer queue is empty, stopping regeneration processing");
+                    plugin.getLogger().info("[Allium] Layer queue is empty, stopping regeneration processing");
                 }
                 isProcessingLayers = false;
                 return;
@@ -505,7 +505,7 @@ public class CreeperExplosionListener implements Listener {
             // Get the next layer to process (lowest Y-level first)
             int currentLayer = layerQueue.poll();
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info(String.format("[SFCore] Processing layer Y=%d (queue remaining: %d)", currentLayer, layerQueue.size()));
+                plugin.getLogger().info(String.format("[Allium] Processing layer Y=%d (queue remaining: %d)", currentLayer, layerQueue.size()));
             }
             
             // Get and remove tasks for this layer
@@ -513,14 +513,14 @@ public class CreeperExplosionListener implements Listener {
 
             if (currentLayerTasks == null || currentLayerTasks.isEmpty()) {
                 if (plugin.getConfig().getBoolean("debug-mode")) {
-                    plugin.getLogger().warning(String.format("[SFCore] No tasks found for layer Y=%d, skipping to next layer", currentLayer));
+                    plugin.getLogger().warning(String.format("[Allium] No tasks found for layer Y=%d, skipping to next layer", currentLayer));
                 }
                 // No tasks in this layer, move to next
                 processNextLayer();
                 return;
             }
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info(String.format("[SFCore] Found %d tasks for layer Y=%d", currentLayerTasks.size(), currentLayer));
+                plugin.getLogger().info(String.format("[Allium] Found %d tasks for layer Y=%d", currentLayerTasks.size(), currentLayer));
             }
             isProcessingLayers = true;
 
@@ -568,7 +568,7 @@ public class CreeperExplosionListener implements Listener {
                                     
                                     // Debug logging for container regeneration
                                     if (plugin.getConfig().getBoolean("debug-mode")) {
-                                        plugin.getLogger().info(String.format("[SFCore] Cleared inventory of regenerated container: %s at %s to prevent duping", 
+                                        plugin.getLogger().info(String.format("[Allium] Cleared inventory of regenerated container: %s at %s to prevent duping", 
                                             state.getType().name(), 
                                             String.format("%.0f,%.0f,%.0f", task.location.getX(), task.location.getY(), task.location.getZ())));
                                     }
@@ -583,7 +583,7 @@ public class CreeperExplosionListener implements Listener {
                         int remaining = remainingTasks.decrementAndGet();
                         if (remaining == 0) {
                             if (plugin.getConfig().getBoolean("debug-mode")) {
-                                plugin.getLogger().info(String.format("[SFCore] Layer Y=%d completed (%d/%d tasks), moving to next layer", 
+                                plugin.getLogger().info(String.format("[Allium] Layer Y=%d completed (%d/%d tasks), moving to next layer", 
                                     currentLayer, totalTasks, totalTasks));
                             }
                             // All tasks in this layer completed, move to next layer

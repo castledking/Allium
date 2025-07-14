@@ -153,8 +153,19 @@ public class FormatChatListener implements Listener {
             plugin.getLogger().info("Raw message from " + player.getName() + ": " + rawMessage);
         }
 
-        if (blockUnicode && !vaultPermission.playerHas(player, "chat.unicode")) {
-            if (containsUnicode(originalMessage)) {
+        if (blockUnicode) {
+            // Skip unicode check if vaultPermission is null or player has the permission
+            if (vaultPermission != null && !vaultPermission.playerHas(player, "chat.unicode")) {
+                if (containsUnicode(originalMessage)) {
+                    event.setCancelled(true);
+                    player.sendMessage(Text.parseColors("&cYour message contains unicode characters which are not allowed."));
+                    if (debugMode) {
+                        plugin.getLogger().info("Blocked message with unicode from " + player.getName() + ": " + originalMessage);
+                    }
+                    return;
+                }
+            } else if (vaultPermission == null && containsUnicode(originalMessage)) {
+                // Fallback: block unicode if vaultPermission is null and block-unicode is enabled
                 event.setCancelled(true);
                 player.sendMessage(Text.parseColors("&cYour message contains unicode characters which are not allowed."));
                 if (debugMode) {
@@ -165,31 +176,31 @@ public class FormatChatListener implements Listener {
         }
 
         String messageContent = rawMessage;
-        if (vaultPermission.playerHas(player, "chat.color")) {
+        if (vaultPermission != null && vaultPermission.playerHas(player, "chat.color")) {
             messageContent = stripUnauthorizedFormatting(messageContent, player);
         } else {
             messageContent = Text.stripColor(messageContent, null);
         }
 
         // Parse the message based on player permissions
-        if (vaultPermission.playerHas(player, "chat.minimessage")) {
-            // For players with MiniMessage permission, support both formats by
-            // converting legacy codes to MiniMessage format first
+        if (vaultPermission != null && vaultPermission.playerHas(player, "chat.minimessage")) {
             String convertedMessage = convertLegacyToMiniMessage(messageContent);
             messageComponent = miniMessage.deserialize(convertedMessage);
         } else {
-            // Regular players just get legacy color codes
             messageComponent = legacyComponentSerializer.deserialize(messageContent);
         }
 
         String chatFormat = getChatFormat(player);
 
-        // Assemble the final message string with raw color codes. The deserializer will handle them.
+        // Assemble the final message string with raw color codes
         String finalMessageFormat = chatFormat.replace("<prefix>", getPrefix(player))
                 .replace("<player>", player.getName());
 
         // Process placeholders only if player has permission
-        if (vaultPermission.playerHas(player, "chat.placeholderapi")) {
+        if (vaultPermission != null && vaultPermission.playerHas(player, "chat.placeholderapi")) {
+            finalMessageFormat = processPlaceholderAPIPlaceholders(finalMessageFormat, player);
+        } else if (vaultPermission == null && placeholderAPIEnabled) {
+            // Fallback: process placeholders if PlaceholderAPI is enabled
             finalMessageFormat = processPlaceholderAPIPlaceholders(finalMessageFormat, player);
         }
 

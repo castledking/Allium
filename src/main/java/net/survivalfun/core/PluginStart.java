@@ -66,13 +66,14 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Main plugin class for SurvivalFun, responsible for initializing managers, commands, listeners, and services.
+ * Main plugin class for Allium, responsible for initializing managers, commands, listeners, and services.
  */
 public class PluginStart extends JavaPlugin {
     private static PluginStart instance;
@@ -234,7 +235,7 @@ public class PluginStart extends JavaPlugin {
     }
 
     /**
-     * Called when the plugin is enabled. Initializes managers, services, commands, and listeners.
+     * Called when the plugin is enabled. Initializes managers, commands, listeners, and services.
      */
     @Override
     public void onEnable() {
@@ -243,20 +244,25 @@ public class PluginStart extends JavaPlugin {
         
         // Perform migration if needed
         if (migrationManager.isMigrationNeeded()) {
-            getLogger().info("SFCore folder detected, performing migration...");
+            getLogger().info("Allium folder detected, performing migration...");
             migrationManager.performMigration();
         }
         
         // Initialize core managers
         initializeManagers();
         
-        
-        
-        // Initialize other managers
-        initializeVault();
+        // Register commands and non-Vault-dependent listeners
         registerCommands();
-        registerListeners();
-        initializePlaceholderAPI();
+        registerNonVaultListeners();
+        
+        // Delay Vault initialization and Vault-dependent listeners
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                initializeVault();
+                registerVaultDependentListeners();
+            }
+        }.runTaskLater(this, 20L); // Delay by 1 second (20 ticks)
     }
 
     /**
@@ -332,7 +338,7 @@ public class PluginStart extends JavaPlugin {
             getServer().getPluginManager().registerEvents(formatChatListener, this);
             getLogger().info("Chat formatter has been reloaded with new configuration.");
         } else {
-            getLogger().warning("FormatChatListener is disabled because Vault Chat or Permission service is not available. Using fallback formatting.");
+            getLogger().warning("FormatChatListener is disabled because Vault Permission service is not available. Using fallback formatting.");
             // Register with null vaultChat to enable basic formatting
             formatChatListener = new FormatChatListener(this, null, configManager);
             getServer().getPluginManager().registerEvents(formatChatListener, this);
@@ -432,7 +438,6 @@ public class PluginStart extends JavaPlugin {
             getLogger().warning("PlaceholderAPI not found. Custom placeholders will not be available.");
         }
     }
-
 
     /**
      * Registers all commands and their tab completers.
@@ -539,9 +544,9 @@ public class PluginStart extends JavaPlugin {
     }
 
     /**
-     * Registers all event listeners.
+     * Registers listeners that do not depend on Vault services.
      */
-    private void registerListeners() {
+    private void registerNonVaultListeners() {
         // Security listeners
         commandManager = new CommandManager(this);
         creativeManager = new CreativeManager(this);
@@ -563,7 +568,12 @@ public class PluginStart extends JavaPlugin {
         // Message listeners
         getServer().getPluginManager().registerEvents(msgCommand, this);
         getServer().getPluginManager().registerEvents(new MailRemindListener(msgCommand), this);
+    }
 
+    /**
+     * Registers listeners that depend on Vault services.
+     */
+    private void registerVaultDependentListeners() {
         // Chat formatter
         reloadChatFormatter();
     }

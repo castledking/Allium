@@ -7,8 +7,8 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import net.milkbowl.vault2.chat.Chat;
-import net.milkbowl.vault2.permission.Permission;
+import net.milkbowl.vault.chat.Chat;
+import net.milkbowl.vault.permission.Permission;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.config.Config;
 import net.survivalfun.core.managers.core.Text;
@@ -86,8 +86,8 @@ public class FormatChatListener implements Listener {
     }
 
     public boolean canEnable() {
-        // Allow basic formatting if vaultPermission is available, even if vaultChat is null
-        return vaultPermission != null;
+        // Allow basic formatting even if vaultPermission is null
+        return true;
     }
 
     /**
@@ -196,11 +196,10 @@ public class FormatChatListener implements Listener {
         String finalMessageFormat = chatFormat.replace("<prefix>", getPrefix(player))
                 .replace("<player>", player.getName());
 
-        // Process placeholders only if player has permission
+        // Process placeholders only if player has permission or PlaceholderAPI is enabled
         if (vaultPermission != null && vaultPermission.playerHas(player, "chat.placeholderapi")) {
             finalMessageFormat = processPlaceholderAPIPlaceholders(finalMessageFormat, player);
         } else if (vaultPermission == null && placeholderAPIEnabled) {
-            // Fallback: process placeholders if PlaceholderAPI is enabled
             finalMessageFormat = processPlaceholderAPIPlaceholders(finalMessageFormat, player);
         }
 
@@ -221,7 +220,7 @@ public class FormatChatListener implements Listener {
 
                     // Check if the raw tag is escaped by a preceding color code (for non-MiniMessage users)
                     boolean isEscaped = false;
-                    if (!vaultPermission.playerHas(player, "chat.minimessage")) {
+                    if (!(vaultPermission != null && vaultPermission.playerHas(player, "chat.minimessage"))) {
                         if (rawMatcher.start() > 0) {
                             char charBefore = messageContent.charAt(rawMatcher.start() - 1);
                             if (Text.isColorChar(charBefore)) { // e.g., &c[...] or c[...] if using section signs
@@ -248,7 +247,7 @@ public class FormatChatListener implements Listener {
                     } else {
                         // It's a true raw tag or a MiniMessage user. Process the part before it, then the raw content.
                         if (!before.isEmpty()) {
-                            if (vaultPermission.playerHas(player, "chat.minimessage")) {
+                            if (vaultPermission != null && vaultPermission.playerHas(player, "chat.minimessage")) {
                                 builder.append(miniMessage.deserialize(before));
                             } else {
                                 builder.append(legacyComponentSerializer.deserialize(before));
@@ -262,7 +261,7 @@ public class FormatChatListener implements Listener {
                 // Part after the last raw tag
                 String after = messageContent.substring(lastEnd);
                 if (!after.isEmpty()) {
-                    if (vaultPermission.playerHas(player, "chat.minimessage")) {
+                    if (vaultPermission != null && vaultPermission.playerHas(player, "chat.minimessage")) {
                         builder.append(miniMessage.deserialize(after));
                     } else {
                         builder.append(legacyComponentSerializer.deserialize(after));
@@ -363,8 +362,8 @@ public class FormatChatListener implements Listener {
     }
 
     private String stripUnauthorizedFormatting(String message, Player player) {
-        // If the player doesn't have chat.color, remove all color and formatting codes
-        if (!vaultPermission.playerHas(player, "chat.color")) {
+        // If the player doesn't have chat.color or vaultPermission is null, remove all color and formatting codes
+        if (vaultPermission == null || !vaultPermission.playerHas(player, "chat.color")) {
             message = message.replaceAll("&[0-9a-fk-or]", "");
         } else {
             // Remove specific formats if the player doesn't have the permission for that format

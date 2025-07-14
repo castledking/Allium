@@ -2,7 +2,7 @@ package net.survivalfun.core.commands.economy;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.Text;
-import net.survivalfun.core.managers.economy.Economy;
+import net.survivalfun.core.managers.economy.EconomyManager;
 import net.survivalfun.core.managers.lang.Lang;
 
 import org.bukkit.Bukkit;
@@ -24,11 +24,11 @@ import java.util.List;
  * Usage: /pay <player> <amount>
  */
 public class Pay implements CommandExecutor, TabCompleter {
-    private final Economy economy;
+    private final EconomyManager economy;
     private final PluginStart plugin;
     private final Lang lang;
 
-    public Pay(PluginStart plugin, Economy economy) {
+    public Pay(PluginStart plugin, EconomyManager economy) {
         this.economy = economy;
         this.plugin = plugin;
         this.lang = plugin.getLangManager();

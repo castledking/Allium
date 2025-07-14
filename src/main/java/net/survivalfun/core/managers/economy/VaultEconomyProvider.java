@@ -1,326 +1,259 @@
 package net.survivalfun.core.managers.economy;
 
-import net.milkbowl.vault2.economy.AccountPermission;
-import net.milkbowl.vault2.economy.Economy;
-import net.milkbowl.vault2.economy.EconomyResponse;
-import net.milkbowl.vault2.economy.EconomyResponse.ResponseType;
+import net.milkbowl.vault.economy.Economy;
+import net.milkbowl.vault.economy.EconomyResponse;
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.managers.economy.EconomyManager;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
-import org.jetbrains.annotations.NotNull;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 public class VaultEconomyProvider implements Economy {
+
     private final PluginStart plugin;
-    private final net.survivalfun.core.managers.economy.Economy economyManager;
+    private final EconomyManager economyManager;
 
     public VaultEconomyProvider(PluginStart plugin) {
         this.plugin = plugin;
-        this.economyManager = plugin.getEconomy();
-    }
-
-    private BigDecimal getPlayerBalance(UUID uuid) {
-        BigDecimal balance = economyManager.getBalance(Bukkit.getOfflinePlayer(uuid));
-        plugin.getLogger().info("Retrieved balance for UUID " + uuid + ": " + balance);
-        return balance;
+        this.economyManager = plugin.getEconomyManager();
     }
 
     @Override
     public boolean isEnabled() {
-        boolean enabled = plugin != null && plugin.isEnabled();
-        plugin.getLogger().info("VaultEconomyProvider isEnabled: " + enabled);
-        return enabled;
+        return plugin.isEnabled();
     }
 
     @Override
-    @NotNull
     public String getName() {
         return "Allium";
     }
 
     @Override
-    public boolean hasSharedAccountSupport() {
+    public boolean hasBankSupport() {
         return false;
     }
 
     @Override
-    public boolean hasMultiCurrencySupport() {
-        return false;
-    }
-
-    @Override
-    public int fractionalDigits(@NotNull String pluginName) {
+    public int fractionalDigits() {
         return 2;
     }
 
     @Override
-    @NotNull
-    @Deprecated
-    public String format(@NotNull BigDecimal amount) {
-        return economyManager.formatBalance(amount);
+    public String format(double amount) {
+        return String.format("%.2f", amount);
     }
 
     @Override
-    @NotNull
-    public String format(@NotNull String pluginName, @NotNull BigDecimal amount) {
-        return economyManager.formatBalance(amount);
+    public String currencyNamePlural() {
+        return "dollars";
     }
 
     @Override
-    @NotNull
-    @Deprecated
-    public String format(@NotNull BigDecimal amount, @NotNull String currency) {
-        return format(plugin.getDescription().getName(), amount, currency);
+    public String currencyNameSingular() {
+        return "dollar";
     }
 
     @Override
-    @NotNull
-    public String format(@NotNull String pluginName, @NotNull BigDecimal amount, @NotNull String currency) {
-        return economyManager.formatBalance(amount);
+    public boolean hasAccount(OfflinePlayer player) {
+        return economyManager.hasAccount(player.getUniqueId());
     }
 
     @Override
-    public boolean hasCurrency(@NotNull String currency) {
-        return "Dollar".equalsIgnoreCase(currency) || "Dollars".equalsIgnoreCase(currency);
+    public boolean hasAccount(String playerName) {
+        OfflinePlayer player = Bukkit.getOfflinePlayer(playerName);
+        return economyManager.hasAccount(player.getUniqueId());
     }
 
     @Override
-    @NotNull
-    public String getDefaultCurrency(@NotNull String pluginName) {
-        return "Dollar";
+    public boolean hasAccount(OfflinePlayer player, String worldName) {
+        return economyManager.hasAccount(player.getUniqueId());
     }
 
     @Override
-    @NotNull
-    public String defaultCurrencyNamePlural(@NotNull String pluginName) {
-        return "Dollars";
+    public boolean hasAccount(String playerName, String worldName) {
+        OfflinePlayer player = Bukkit.getOfflinePlayer(playerName);
+        return economyManager.hasAccount(player.getUniqueId());
     }
 
     @Override
-    @NotNull
-    public String defaultCurrencyNameSingular(@NotNull String pluginName) {
-        return "Dollar";
+    public double getBalance(OfflinePlayer player) {
+        return economyManager.getBalance(player.getUniqueId()).doubleValue();
     }
 
     @Override
-    @NotNull
-    public Collection<String> currencies() {
-        return Collections.singletonList("Dollar");
+    public double getBalance(String playerName) {
+        OfflinePlayer player = Bukkit.getOfflinePlayer(playerName);
+        return getBalance(player);
     }
 
     @Override
-    @Deprecated
-    public boolean createAccount(@NotNull UUID accountID, @NotNull String name) {
-        plugin.getLogger().info("Creating account for UUID: " + accountID + ", Name: " + name);
-        return createAccount(accountID, name, true);
+    public double getBalance(OfflinePlayer player, String world) {
+        return getBalance(player);
     }
 
     @Override
-    public boolean createAccount(@NotNull UUID accountID, @NotNull String name, boolean player) {
-        plugin.getLogger().info("Creating account for UUID: " + accountID + ", Name: " + name + ", Player: " + player);
-        return true; // Accounts are auto-created in getBalance
+    public double getBalance(String playerName, String world) {
+        return getBalance(playerName);
     }
 
     @Override
-    @Deprecated
-    public boolean createAccount(@NotNull UUID accountID, @NotNull String name, @NotNull String worldName) {
-        return createAccount(accountID, name, worldName, true);
+    public boolean has(OfflinePlayer player, double amount) {
+        return getBalance(player) >= amount;
     }
 
     @Override
-    public boolean createAccount(@NotNull UUID accountID, @NotNull String name, @NotNull String worldName, boolean player) {
-        plugin.getLogger().info("Creating account for UUID: " + accountID + ", Name: " + name + ", World: " + worldName);
-        return true; // Accounts are auto-created in getBalance
+    public boolean has(String playerName, double amount) {
+        return getBalance(playerName) >= amount;
     }
 
     @Override
-    @NotNull
-    public Map<UUID, String> getUUIDNameMap() {
-        return Collections.emptyMap();
+    public boolean has(OfflinePlayer player, String worldName, double amount) {
+        return has(player, amount);
     }
 
     @Override
-    public Optional<String> getAccountName(@NotNull UUID accountID) {
-        String name = Bukkit.getOfflinePlayer(accountID).getName();
-        plugin.getLogger().info("Account name for UUID " + accountID + ": " + name);
-        return Optional.ofNullable(name);
+    public boolean has(String playerName, String worldName, double amount) {
+        return has(playerName, amount);
     }
 
     @Override
-    public boolean hasAccount(@NotNull UUID accountID) {
-        return true; // Accounts are auto-created
-    }
-
-    @Override
-    public boolean hasAccount(@NotNull UUID accountID, @NotNull String worldName) {
-        return hasAccount(accountID);
-    }
-
-    @Override
-    public boolean renameAccount(@NotNull UUID accountID, @NotNull String name) {
-        plugin.getLogger().info("Rename account not supported for UUID: " + accountID);
-        return false;
-    }
-
-    @Override
-    public boolean renameAccount(@NotNull String plugin, @NotNull UUID accountID, @NotNull String name) {
-        return renameAccount(accountID, name);
-    }
-
-    @Override
-    public boolean deleteAccount(@NotNull String plugin, @NotNull UUID accountID) {
-        economyManager.setBalance(Bukkit.getOfflinePlayer(accountID), BigDecimal.ZERO);
-        return true;
-    }
-
-    @Override
-    public boolean accountSupportsCurrency(@NotNull String plugin, @NotNull UUID accountID, @NotNull String currency) {
-        return hasCurrency(currency);
-    }
-
-    @Override
-    public boolean accountSupportsCurrency(@NotNull String plugin, @NotNull UUID accountID, @NotNull String currency, @NotNull String world) {
-        return hasCurrency(currency);
-    }
-
-    @Override
-    @NotNull
-    @Deprecated
-    public BigDecimal getBalance(@NotNull String pluginName, @NotNull UUID accountID) {
-        return getPlayerBalance(accountID);
-    }
-
-    @Override
-    @NotNull
-    @Deprecated
-    public BigDecimal getBalance(@NotNull String pluginName, @NotNull UUID accountID, @NotNull String world) {
-        return getPlayerBalance(accountID);
-    }
-
-    @Override
-    @NotNull
-    @Deprecated
-    public BigDecimal getBalance(@NotNull String pluginName, @NotNull UUID accountID, @NotNull String world, @NotNull String currency) {
-        return getPlayerBalance(accountID);
-    }
-
-    @Override
-    public boolean has(@NotNull String pluginName, @NotNull UUID accountID, @NotNull BigDecimal amount) {
-        boolean hasEnough = economyManager.hasEnough(Bukkit.getOfflinePlayer(accountID), amount);
-        plugin.getLogger().info("Checking if UUID " + accountID + " has " + amount + ": " + hasEnough);
-        return hasEnough;
-    }
-
-    @Override
-    public boolean has(@NotNull String pluginName, @NotNull UUID accountID, @NotNull String worldName, @NotNull BigDecimal amount) {
-        return has(pluginName, accountID, amount);
-    }
-
-    @Override
-    public boolean has(@NotNull String pluginName, @NotNull UUID accountID, @NotNull String worldName, @NotNull String currency, @NotNull BigDecimal amount) {
-        return has(pluginName, accountID, amount);
-    }
-
-    @Override
-    @NotNull
-    public EconomyResponse withdraw(@NotNull String pluginName, @NotNull UUID accountID, @NotNull BigDecimal amount) {
-        OfflinePlayer player = Bukkit.getOfflinePlayer(accountID);
-        plugin.getLogger().info("Withdrawing " + amount + " from UUID: " + accountID);
-        if (amount.signum() < 0) {
-            return new EconomyResponse(BigDecimal.ZERO, getPlayerBalance(accountID), ResponseType.FAILURE, "Cannot withdraw negative funds.");
+    public EconomyResponse withdrawPlayer(OfflinePlayer player, double amount) {
+        if (amount < 0) {
+            return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Cannot withdraw negative amounts");
         }
-        if (economyManager.hasEnough(player, amount)) {
-            economyManager.withdraw(player, amount);
-            return new EconomyResponse(amount, getPlayerBalance(accountID), ResponseType.SUCCESS, "");
+        double balance = getBalance(player);
+        if (balance < amount) {
+            return new EconomyResponse(0, balance, EconomyResponse.ResponseType.FAILURE, "Insufficient funds");
         }
-        return new EconomyResponse(BigDecimal.ZERO, getPlayerBalance(accountID), ResponseType.FAILURE, "Insufficient funds.");
+        economyManager.withdraw(player.getUniqueId(), BigDecimal.valueOf(amount));
+        return new EconomyResponse(amount, balance - amount, EconomyResponse.ResponseType.SUCCESS, null);
     }
 
     @Override
-    @NotNull
-    public EconomyResponse withdraw(@NotNull String pluginName, @NotNull UUID accountID, @NotNull String worldName, @NotNull BigDecimal amount) {
-        return withdraw(pluginName, accountID, amount);
+    public EconomyResponse withdrawPlayer(String playerName, double amount) {
+        OfflinePlayer player = Bukkit.getOfflinePlayer(playerName);
+        return withdrawPlayer(player, amount);
     }
 
     @Override
-    @NotNull
-    public EconomyResponse withdraw(@NotNull String pluginName, @NotNull UUID accountID, @NotNull String worldName, @NotNull String currency, @NotNull BigDecimal amount) {
-        return withdraw(pluginName, accountID, amount);
+    public EconomyResponse withdrawPlayer(OfflinePlayer player, String worldName, double amount) {
+        return withdrawPlayer(player, amount);
     }
 
     @Override
-    @NotNull
-    public EconomyResponse deposit(@NotNull String pluginName, @NotNull UUID accountID, @NotNull BigDecimal amount) {
-        OfflinePlayer player = Bukkit.getOfflinePlayer(accountID);
-        plugin.getLogger().info("Depositing " + amount + " to UUID: " + accountID);
-        if (amount.signum() < 0) {
-            return new EconomyResponse(BigDecimal.ZERO, getPlayerBalance(accountID), ResponseType.FAILURE, "Cannot deposit negative funds.");
+    public EconomyResponse withdrawPlayer(String playerName, String worldName, double amount) {
+        return withdrawPlayer(playerName, amount);
+    }
+
+    @Override
+    public EconomyResponse depositPlayer(OfflinePlayer player, double amount) {
+        if (amount < 0) {
+            return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Cannot deposit negative amounts");
         }
-        economyManager.deposit(player, amount);
-        return new EconomyResponse(amount, getPlayerBalance(accountID), ResponseType.SUCCESS, "");
+        double balance = getBalance(player);
+        economyManager.deposit(player.getUniqueId(), BigDecimal.valueOf(amount));
+        return new EconomyResponse(amount, balance + amount, EconomyResponse.ResponseType.SUCCESS, null);
     }
 
     @Override
-    @NotNull
-    public EconomyResponse deposit(@NotNull String pluginName, @NotNull UUID accountID, @NotNull String worldName, @NotNull BigDecimal amount) {
-        return deposit(pluginName, accountID, amount);
+    public EconomyResponse depositPlayer(String playerName, double amount) {
+        OfflinePlayer player = Bukkit.getOfflinePlayer(playerName);
+        return depositPlayer(player, amount);
     }
 
     @Override
-    @NotNull
-    public EconomyResponse deposit(@NotNull String pluginName, @NotNull UUID accountID, @NotNull String worldName, @NotNull String currency, @NotNull BigDecimal amount) {
-        return deposit(pluginName, accountID, amount);
+    public EconomyResponse depositPlayer(OfflinePlayer player, String worldName, double amount) {
+        return depositPlayer(player, amount);
     }
 
     @Override
-    public boolean createSharedAccount(@NotNull String pluginName, @NotNull UUID accountID, @NotNull String name, @NotNull UUID owner) {
-        plugin.getLogger().info("Create shared account not supported for UUID: " + accountID);
-        return false;
+    public EconomyResponse depositPlayer(String playerName, String worldName, double amount) {
+        return depositPlayer(playerName, amount);
+    }
+
+    // The following methods are for bank support which we don't implement
+    @Override
+    public EconomyResponse createBank(String name, String player) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
     }
 
     @Override
-    public boolean isAccountOwner(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid) {
-        return accountID.equals(uuid);
+    public EconomyResponse createBank(String name, OfflinePlayer player) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
     }
 
     @Override
-    public boolean setOwner(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid) {
-        plugin.getLogger().info("Set owner not supported for UUID: " + accountID);
-        return false;
+    public EconomyResponse deleteBank(String name) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
     }
 
     @Override
-    public boolean isAccountMember(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid) {
-        return accountID.equals(uuid);
+    public EconomyResponse bankBalance(String name) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
     }
 
     @Override
-    public boolean addAccountMember(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid) {
-        plugin.getLogger().info("Add account member not supported for UUID: " + accountID);
-        return false;
+    public EconomyResponse bankHas(String name, double amount) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
     }
 
     @Override
-    public boolean addAccountMember(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid, @NotNull AccountPermission... initialPermissions) {
-        return false;
+    public EconomyResponse bankWithdraw(String name, double amount) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
     }
 
     @Override
-    public boolean removeAccountMember(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid) {
-        plugin.getLogger().info("Remove account member not supported for UUID: " + accountID);
-        return false;
+    public EconomyResponse bankDeposit(String name, double amount) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
     }
 
     @Override
-    public boolean hasAccountPermission(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid, @NotNull AccountPermission permission) {
-        return isAccountOwner(pluginName, accountID, uuid);
+    public EconomyResponse isBankOwner(String name, String playerName) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
     }
 
     @Override
-    public boolean updateAccountPermission(@NotNull String pluginName, @NotNull UUID accountID, @NotNull UUID uuid, @NotNull AccountPermission permission, boolean value) {
-        plugin.getLogger().info("Update account permission not supported for UUID: " + accountID);
-        return false;
+    public EconomyResponse isBankOwner(String name, OfflinePlayer player) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
+    }
+
+    @Override
+    public EconomyResponse isBankMember(String name, String playerName) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
+    }
+
+    @Override
+    public EconomyResponse isBankMember(String name, OfflinePlayer player) {
+        return new EconomyResponse(0, 0, EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Bank not supported");
+    }
+
+    @Override
+    public List<String> getBanks() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public boolean createPlayerAccount(OfflinePlayer player) {
+        return economyManager.createAccount(player.getUniqueId());
+    }
+
+    @Override
+    public boolean createPlayerAccount(String playerName) {
+        OfflinePlayer player = Bukkit.getOfflinePlayer(playerName);
+        return createPlayerAccount(player);
+    }
+
+    @Override
+    public boolean createPlayerAccount(OfflinePlayer player, String worldName) {
+        return createPlayerAccount(player);
+    }
+
+    @Override
+    public boolean createPlayerAccount(String playerName, String worldName) {
+        return createPlayerAccount(playerName);
     }
 }

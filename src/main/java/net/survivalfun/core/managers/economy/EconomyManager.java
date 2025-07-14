@@ -13,7 +13,7 @@ import java.util.UUID;
  * Economy manager for SFCore
  * Handles all economy-related operations
  */
-public class Economy {
+public class EconomyManager {
     private final Database database;
     private final PluginStart plugin;
     private BigDecimal defaultBalance;
@@ -22,7 +22,7 @@ public class Economy {
     private boolean symbolBeforeAmount;
     private boolean spaceBetween;
 
-    public Economy(PluginStart plugin, Database database) {
+    public EconomyManager(PluginStart plugin, Database database) {
         this.plugin = plugin;
         this.database = database;
         loadConfig();
@@ -168,6 +168,25 @@ public class Economy {
      */
     public boolean hasEnough(UUID playerUUID, BigDecimal amount) {
         return database.hasEnoughBalance(playerUUID, amount);
+    }
+
+    /**
+     * Check if a player has an account
+     * @param playerUUID The player's UUID
+     * @return true if the account exists, false otherwise
+     */
+    public boolean hasAccount(UUID playerUUID) {
+        return database.playerAccountExists(playerUUID);
+    }
+
+    /**
+     * Create a new account for a player
+     * @param playerUUID The player's UUID
+     * @return true if account was created, false otherwise
+     */
+    public boolean createAccount(UUID playerUUID) {
+        // Create account with default balance
+        return database.setPlayerBalance(playerUUID, defaultBalance);
     }
 
     /**

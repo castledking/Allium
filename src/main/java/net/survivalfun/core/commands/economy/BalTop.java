@@ -2,7 +2,7 @@ package net.survivalfun.core.commands.economy;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.economy.BalanceEntry;
-import net.survivalfun.core.managers.economy.Economy;
+import net.survivalfun.core.managers.economy.EconomyManager;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.command.Command;
@@ -19,12 +19,12 @@ import java.util.List;
  * Usage: /baltop [page]
  */
 public class BalTop implements CommandExecutor, TabCompleter {
-    private final Economy economy;
+    private final EconomyManager economyManager;
     private final Lang lang;
     private final int ENTRIES_PER_PAGE = 10;
 
-    public BalTop(PluginStart plugin, Economy economy) {
-        this.economy = economy;
+    public BalTop(PluginStart plugin, EconomyManager economyManager) {
+        this.economyManager = economyManager;
         this.lang = plugin.getLangManager();
     }
 
@@ -48,7 +48,7 @@ public class BalTop implements CommandExecutor, TabCompleter {
         int limit = page * ENTRIES_PER_PAGE;
         
         // Get top balances
-        List<BalanceEntry> topBalances = economy.getTopBalances(limit);
+        List<BalanceEntry> topBalances = economyManager.getTopBalances(limit);
         
         // Calculate total pages
         int totalEntries = topBalances.size();
@@ -94,7 +94,7 @@ public class BalTop implements CommandExecutor, TabCompleter {
                 sender.sendMessage((entryFormat
                         .replace("{rank}", String.valueOf(rank))
                         .replace("{player}", entry.getPlayerName())
-                        .replace("{balance}", economy.formatBalance(entry.getBalance()))));
+                        .replace("{balance}", economyManager.formatBalance(entry.getBalance()))));
             }
         }
         

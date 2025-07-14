@@ -1,6 +1,6 @@
 package net.survivalfun.core.managers.economy;
 
-import net.milkbowl.vault2.economy.Economy;
+import net.milkbowl.vault.economy.Economy;
 import net.survivalfun.core.PluginStart;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;

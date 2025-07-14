@@ -1897,4 +1897,22 @@ public class Database {
             plugin.getLogger().log(Level.SEVERE, "Error saving last message sender", e);
         }
     }
+
+    /**
+     * Check if a player has an economy account
+     * @param playerUUID The player's UUID
+     * @return true if the account exists, false otherwise
+     */
+    public boolean playerAccountExists(UUID playerUUID) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT 1 FROM player_balances WHERE uuid = ?")) {
+            stmt.setString(1, playerUUID.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to check player account existence", e);
+            return false;
+        }
+    }
 }

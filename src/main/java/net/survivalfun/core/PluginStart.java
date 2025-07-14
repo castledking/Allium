@@ -1,7 +1,8 @@
 package net.survivalfun.core;
 
-import net.milkbowl.vault2.chat.Chat;
-import net.milkbowl.vault2.permission.Permission;
+import net.milkbowl.vault.chat.Chat;
+import net.milkbowl.vault.economy.Economy;
+import net.milkbowl.vault.permission.Permission;
 import net.survivalfun.core.commands.admin.Maintenance;
 import net.survivalfun.core.commands.core.Core;
 import net.survivalfun.core.commands.economy.Balance;
@@ -57,20 +58,24 @@ import net.survivalfun.core.managers.core.Item;
 import net.survivalfun.core.managers.core.LegacyID;
 import net.survivalfun.core.managers.core.Placeholder;
 import net.survivalfun.core.managers.core.Skull;
-import net.survivalfun.core.managers.economy.Economy;
+import net.survivalfun.core.managers.economy.EconomyManager;
+import net.survivalfun.core.managers.economy.VaultEconomyProvider;
 import net.survivalfun.core.managers.economy.VaultHook;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.migration.MigrationManager;
 
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.HandlerList;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Arrays;
 
 /**
  * Main plugin class for Allium, responsible for initializing managers, commands, listeners, and services.
@@ -90,14 +95,13 @@ public class PluginStart extends JavaPlugin {
     private Spy spyCommand;
     private TP tpCommand;
     private CommandManager commandManager;
-    private Economy economy;
+    private net.milkbowl.vault.economy.Economy vaultEcon;
     private FlyOnRejoinListener flyOnRejoinListener;
     private Placeholder placeholder;
     private PermissionCache permissionCache;
     private final Map<UUID, Long> playerLoginTimes = new ConcurrentHashMap<>();
-    private VaultHook vaultHook;
-    private Economy vaultEcon;
     private MigrationManager migrationManager;
+    private EconomyManager economyManager;
 
     /**
      * Gets the singleton instance of the plugin.
@@ -194,8 +198,17 @@ public class PluginStart extends JavaPlugin {
      *
      * @return The Economy instance.
      */
-    public Economy getEconomy() {
-        return economy;
+    public net.milkbowl.vault.economy.Economy getEconomy() {
+        return vaultEcon;
+    }
+
+    /**
+     * Gets the economy manager.
+     *
+     * @return The EconomyManager instance.
+     */
+    public EconomyManager getEconomyManager() {
+        return economyManager;
     }
 
     /**
@@ -248,6 +261,9 @@ public class PluginStart extends JavaPlugin {
             migrationManager.performMigration();
         }
         
+        // Log loaded plugins for debugging
+        getLogger().info("Loaded plugins: " + Arrays.toString(getServer().getPluginManager().getPlugins()));
+        
         // Initialize core managers
         initializeManagers();
         
@@ -255,14 +271,33 @@ public class PluginStart extends JavaPlugin {
         registerCommands();
         registerNonVaultListeners();
         
-        // Delay Vault initialization and Vault-dependent listeners
+        // Delay Vault initialization and Vault-dependent listeners with retry mechanism
         new BukkitRunnable() {
+            private int attempts = 0;
+            private final int maxAttempts = 10;
+            private final long retryDelay = 40L; // 2 seconds per retry
+
             @Override
             public void run() {
-                initializeVault();
-                registerVaultDependentListeners();
+                attempts++;
+                getLogger().info("Attempting Vault initialization (attempt " + attempts + " of " + maxAttempts + ")");
+                if (initializeVault()) {
+                    getLogger().info("Vault services initialized successfully after " + attempts + " attempt(s).");
+                    registerVaultDependentListeners();
+                    cancel(); // Stop retrying
+                } else if (attempts < maxAttempts) {
+                    getLogger().warning("Vault services not yet available. Retrying in " + retryDelay + " ticks (attempt " + (attempts + 1) + " of " + maxAttempts + ").");
+                    // Log the number of providers for each service
+                    getLogger().info("Number of permission providers: " + getServer().getServicesManager().getRegistrations(Permission.class).size());
+                    getLogger().info("Number of chat providers: " + getServer().getServicesManager().getRegistrations(Chat.class).size());
+                    getLogger().info("Number of economy providers: " + getServer().getServicesManager().getRegistrations(net.milkbowl.vault.economy.Economy.class).size());
+                } else {
+                    getLogger().warning("Failed to initialize Vault services after " + maxAttempts + " attempts. Using fallback formatting for chat.");
+                    registerVaultDependentListeners(); // Register with null services
+                    cancel();
+                }
             }
-        }.runTaskLater(this, 20L); // Delay by 1 second (20 ticks)
+        }.runTaskTimer(this, 100L, 40L); // Initial delay 5 seconds, retry every 2 seconds
     }
 
     /**
@@ -334,15 +369,8 @@ public class PluginStart extends JavaPlugin {
 
         // Create and register new formatter
         formatChatListener = new FormatChatListener(this, vaultChat, configManager);
-        if (formatChatListener.canEnable()) {
-            getServer().getPluginManager().registerEvents(formatChatListener, this);
-            getLogger().info("Chat formatter has been reloaded with new configuration.");
-        } else {
-            getLogger().warning("FormatChatListener is disabled because Vault Permission service is not available. Using fallback formatting.");
-            // Register with null vaultChat to enable basic formatting
-            formatChatListener = new FormatChatListener(this, null, configManager);
-            getServer().getPluginManager().registerEvents(formatChatListener, this);
-        }
+        getServer().getPluginManager().registerEvents(formatChatListener, this);
+        getLogger().info("Chat formatter has been reloaded with new configuration.");
     }
 
     /**
@@ -367,8 +395,9 @@ public class PluginStart extends JavaPlugin {
         database = new Database(this);
         permissionCache = new PermissionCache(database);
 
-        // Economy manager
-        economy = new Economy(this, database);
+        // Initialize economy manager
+        vaultEcon = new VaultEconomyProvider(this);
+        economyManager = new EconomyManager(this, database);
 
         // Other core managers
         try {
@@ -392,40 +421,65 @@ public class PluginStart extends JavaPlugin {
         new WorldDefaults(this);
     }
 
-    private void initializeVault() {
-        if (getServer().getPluginManager().getPlugin("Vault") != null) {
+    private boolean initializeVault() {
+        Plugin vaultPlugin = getServer().getPluginManager().getPlugin("Vault");
+        if (vaultPlugin != null) {
             getLogger().info("Vault plugin found. Attempting to initialize Vault services.");
 
+            // Load the Vault service classes using Vault's class loader
+            ClassLoader vaultClassLoader = vaultPlugin.getClass().getClassLoader();
+            Class<?> permissionClass = null;
+            Class<?> chatClass = null;
+            Class<?> economyClass = null;
+            try {
+                permissionClass = Class.forName("net.milkbowl.vault.permission.Permission", true, vaultClassLoader);
+                chatClass = Class.forName("net.milkbowl.vault.chat.Chat", true, vaultClassLoader);
+                economyClass = Class.forName("net.milkbowl.vault.economy.Economy", true, vaultClassLoader);
+            } catch (ClassNotFoundException e) {
+                getLogger().severe("Failed to load Vault service class: " + e.getMessage());
+                return false;
+            }
+
             // Initialize services
-            RegisteredServiceProvider<Permission> permissionProvider = getServer().getServicesManager().getRegistration(Permission.class);
-            RegisteredServiceProvider<Chat> chatProvider = getServer().getServicesManager().getRegistration(Chat.class);
-            RegisteredServiceProvider<Economy> economyProvider = getServer().getServicesManager().getRegistration(Economy.class);
+            RegisteredServiceProvider<?> permissionProvider = getServer().getServicesManager().getRegistration(permissionClass);
+            RegisteredServiceProvider<?> chatProvider = getServer().getServicesManager().getRegistration(chatClass);
+            RegisteredServiceProvider<net.milkbowl.vault.economy.Economy> economyProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
+
+            boolean servicesInitialized = false;
 
             // Set service instances if available
             if (permissionProvider != null) {
-                vaultPerms = permissionProvider.getProvider();
+                vaultPerms = (Permission) permissionProvider.getProvider();
                 getLogger().info("Vault Permission service initialized: " + vaultPerms.getName());
+                servicesInitialized = true;
             } else {
                 getLogger().warning("Vault Permission service not found. Permission checks will not work correctly.");
             }
 
             if (chatProvider != null) {
-                vaultChat = chatProvider.getProvider();
+                vaultChat = (Chat) chatProvider.getProvider();
                 getLogger().info("Vault Chat service initialized: " + vaultChat.getName());
+                servicesInitialized = true;
             } else {
                 getLogger().warning("Vault Chat service not found. Chat formatting and group-specific features may not work.");
             }
 
             if (economyProvider != null) {
                 vaultEcon = economyProvider.getProvider();
-                vaultHook = new VaultHook(this);
-                vaultHook.hook();
                 getLogger().info("Vault Economy service initialized: " + vaultEcon.getName());
+                servicesInitialized = true;
             } else {
-                getLogger().warning("Vault Economy service not found. Economy features may not work.");
+                // Register our own economy provider
+                getServer().getServicesManager().register(net.milkbowl.vault.economy.Economy.class, new VaultEconomyProvider(this), this, ServicePriority.Normal);
+                vaultEcon = getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class).getProvider();
+                getLogger().info("Registered Allium's Vault Economy provider");
+                servicesInitialized = true;
             }
+
+            return servicesInitialized;
         } else {
             getLogger().warning("Vault plugin not found. Some features may not work correctly.");
+            return false;
         }
     }
 
@@ -498,14 +552,14 @@ public class PluginStart extends JavaPlugin {
             registerCommand("setspawn", spawnCommand);
 
             // Economy commands
-            Balance balanceExecutor = new Balance(this, economy);
+            Balance balanceExecutor = new Balance(this, economyManager);
             registerCommand("balance", balanceExecutor, balanceExecutor);
             registerCommand("bal", balanceExecutor, balanceExecutor);
-            Pay payExecutor = new Pay(this, economy);
+            Pay payExecutor = new Pay(this, economyManager);
             registerCommand("pay", payExecutor, payExecutor);
-            BalTop balTopExecutor = new BalTop(this, economy);
+            BalTop balTopExecutor = new BalTop(this, economyManager);
             registerCommand("baltop", balTopExecutor, balTopExecutor);
-            Money moneyExecutor = new Money(this, economy);
+            Money moneyExecutor = new Money(this, economyManager);
             registerCommand("money", moneyExecutor, moneyExecutor);
 
         } catch (Exception e) {
@@ -556,7 +610,7 @@ public class PluginStart extends JavaPlugin {
         getServer().getPluginManager().registerEvents(creativeManager, this);
         getServer().getPluginManager().registerEvents(spectatorTeleport, this);
         getServer().getPluginManager().registerEvents(flyOnRejoinListener, this);
-        getServer().getPluginManager().registerEvents(new MaintenanceListener(this), this);
+        getServer().getPluginManager().registerEvents(new MaintenanceListener(this, getVaultPermission()), this);
 
         // Job listeners
         getServer().getPluginManager().registerEvents(new SummonMessageListener(), this);

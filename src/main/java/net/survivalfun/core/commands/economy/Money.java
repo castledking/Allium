@@ -1,7 +1,7 @@
 package net.survivalfun.core.commands.economy;
 
 import net.survivalfun.core.PluginStart;
-import net.survivalfun.core.managers.economy.Economy;
+import net.survivalfun.core.managers.economy.EconomyManager;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.Bukkit;
@@ -28,13 +28,13 @@ import java.util.UUID;
  * Permission: core.admin
  */
 public class Money implements CommandExecutor, TabCompleter {
-    private final Economy economy;
+    private final EconomyManager economy;
     private final Lang lang;
     
     // Valid subcommands
     private final List<String> validSubcommands = Arrays.asList("give", "add", "take", "set", "clear", "reset");
     
-    public Money(PluginStart plugin, Economy economy) {
+    public Money(PluginStart plugin, EconomyManager economy) {
         this.economy = economy;
         this.lang = plugin.getLangManager();
     }

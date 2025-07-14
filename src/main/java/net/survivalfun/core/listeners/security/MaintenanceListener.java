@@ -1,6 +1,6 @@
 package net.survivalfun.core.listeners.security;
 
-import net.milkbowl.vault2.permission.Permission;
+import net.milkbowl.vault.permission.Permission;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.PermissionCache;
 import net.survivalfun.core.managers.core.Text;
@@ -21,36 +21,13 @@ import java.util.UUID;
 public class MaintenanceListener implements Listener {
 
     private final PluginStart plugin;
-    private Permission perms; // Vault permission service
+    private final Permission perms; // Vault permission service
     private final PermissionCache permissionCache;
 
-    public MaintenanceListener(PluginStart plugin) {
+    public MaintenanceListener(PluginStart plugin, Permission perms) {
         this.plugin = plugin;
+        this.perms = perms;
         this.permissionCache = new PermissionCache(plugin.getDatabase());
-        
-        // Initialize Vault permission service with delay
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                initializeVaultPermissions();
-            }
-        }.runTaskLater(plugin, 40L); // Wait 2 seconds for all plugins to load
-    }
-
-    private void initializeVaultPermissions() {
-        // Try to get Vault permission service from plugin instance first
-        this.perms = plugin.getVaultPermission();
-        
-        if (this.perms == null) {
-            // Fallback to direct service manager lookup
-            this.perms = plugin.getServer().getServicesManager().load(Permission.class);
-        }
-        
-        if (this.perms != null) {
-            plugin.getLogger().info("Vault Permission service initialized in MaintenanceListener: " + this.perms.getName());
-        } else {
-            plugin.getLogger().warning("Vault Permission service still not available in MaintenanceListener");
-        }
     }
 
     /**
@@ -90,17 +67,14 @@ public class MaintenanceListener implements Listener {
         // Method 1: Check using Vault Permission service
         if (perms != null) {
             try {
-                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
-                boolean hasLockdownBypass = perms.playerHas(null, offlinePlayer, "core.lockdown.bypass");
-                boolean hasAdmin = perms.playerHas(null, offlinePlayer, "core.admin");
-                boolean hasMaintenanceBypass = perms.playerHas(null, offlinePlayer, "core.maintenance.bypass");
+                boolean bypass = perms.playerHas((String) null, playerName, "core.lockdown.bypass") || perms.playerHas((String) null, playerName, "core.admin");
+                boolean hasMaintenanceBypass = perms.playerHas((String) null, playerName, "core.maintenance.bypass");
                 
                 plugin.getLogger().info("Vault permission check for " + playerName + 
-                    " - lockdown.bypass: " + hasLockdownBypass + 
-                    ", admin: " + hasAdmin + 
+                    " - lockdown.bypass: " + bypass + 
                     ", maintenance.bypass: " + hasMaintenanceBypass);
                 
-                return hasLockdownBypass || hasAdmin || hasMaintenanceBypass;
+                return bypass || hasMaintenanceBypass;
             } catch (Exception e) {
                 plugin.getLogger().warning("Error checking Vault permissions for " + playerName + ": " + e.getMessage());
             }

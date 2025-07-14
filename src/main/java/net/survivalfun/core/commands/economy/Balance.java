@@ -1,7 +1,7 @@
 package net.survivalfun.core.commands.economy;
 
 import net.survivalfun.core.PluginStart;
-import net.survivalfun.core.managers.economy.Economy;
+import net.survivalfun.core.managers.economy.EconomyManager;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.Bukkit;
@@ -23,11 +23,11 @@ import java.util.List;
  * Aliases: /bal
  */
 public class Balance implements CommandExecutor, TabCompleter {
-    private final Economy economy;
+    private final EconomyManager economy;
     private final PluginStart plugin;
     private final Lang lang;
 
-    public Balance(PluginStart plugin, Economy economy) {
+    public Balance(PluginStart plugin, EconomyManager economy) {
         this.plugin = plugin;
         this.economy = economy;
         this.lang = plugin.getLangManager();

@@ -1,6 +1,6 @@
 package net.survivalfun.core.managers.DB;
 
-import net.milkbowl.vault2.permission.Permission;
+import net.milkbowl.vault.permission.Permission;
 import net.survivalfun.core.PluginStart;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;

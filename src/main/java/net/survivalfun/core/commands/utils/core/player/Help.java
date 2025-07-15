@@ -41,7 +41,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             completions.add("3"); // Suggest third page
 
             // Add plugin names if sender has admin permission
-            if (sender.hasPermission("core.admin")) {
+            if (sender.hasPermission("allium.admin")) {
                 for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
                     if (plugin.isEnabled()) {
                         completions.add(plugin.getName());
@@ -166,7 +166,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         List<HelpEntry> helpEntries = new ArrayList<>();
 
         // If player has admin permission, add plugins to the list
-        if (sender.hasPermission("core.admin")) {
+        if (sender.hasPermission("allium.admin")) {
             // Get all plugins and sort alphabetically
             List<String> pluginNames = new ArrayList<>();
             for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
@@ -652,7 +652,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         if (totalPages == 0) totalPages = 1; // Prevent division by zero
 
         // Display plugin header
-        if (sender.hasPermission("core.admin")) {
+        if (sender.hasPermission("allium.admin")) {
             sender.sendMessage(Text.colorize("&6&lPlugin Help &7- &e" + pluginName +
                     (version.isEmpty() ? "" : " v" + version) + " &7- &ePage " + page + "/" + totalPages));
         } else {
@@ -744,7 +744,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             Plugin targetPlugin = Bukkit.getPluginManager().getPlugin(query);
 
             if (targetPlugin != null && targetPlugin.isEnabled()) {
-                if (sender.hasPermission("core.admin")) {
+                if (sender.hasPermission("allium.admin")) {
                     // It's a valid plugin, show plugin-specific help for admins
                     displayPluginHelp(sender, targetPlugin, page);
                 } else {
@@ -763,7 +763,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             PluginCommand cmd = Bukkit.getPluginCommand(query);
             
             // Only show command info to admins
-            if (cmd != null && sender.hasPermission("core.admin")) {
+            if (cmd != null && sender.hasPermission("allium.admin")) {
                 // It's a valid command and user is admin, show command-specific help
                 displayCommandHelp(sender, cmd);
                 return;
@@ -788,7 +788,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             }
             
             // 2. Check for similar plugins (if sender is admin)
-            if (sender.hasPermission("core.admin")) {
+            if (sender.hasPermission("allium.admin")) {
                 for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
                     if (plugin.isEnabled() && !plugin.getName().equalsIgnoreCase(query) && 
                         calculateLevenshteinDistance(query.toLowerCase(), plugin.getName().toLowerCase()) <= 3) {
@@ -878,7 +878,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         sender.sendMessage("");
 
         // Command information
-        if (sender.hasPermission("core.admin")) {
+        if (sender.hasPermission("allium.admin")) {
             sender.sendMessage(Text.colorize("&6Plugin: &f" + cmd.getPlugin().getName()));
         }
         sender.sendMessage(Text.colorize("&6Description: &f" + (cmd.getDescription() != null ? cmd.getDescription() : "No description available")));
@@ -886,7 +886,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
 
         // Aliases
         List<String> aliases = cmd.getAliases();
-        if (aliases != null && !aliases.isEmpty() && sender.hasPermission("core.admin")) {
+        if (aliases != null && !aliases.isEmpty() && sender.hasPermission("allium.admin")) {
             sender.sendMessage(Text.colorize("&6Aliases: &f/" + String.join(", /", aliases)));
         }
 

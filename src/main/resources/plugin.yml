@@ -15,61 +15,61 @@ commands:
   explode:
     description: "Explodes target player"
     usage: "/explode <player> [modifier]"
-    permission: core.explode
+    permission: allium.explode
   gc:
     description: "Displays server details"
     usage: "/gc"
-    permission: core.gc
+    permission: allium.gc
   give:
     description: "Give items to players"
     usage: "/give <player> <item> <amount>"
-    permission: core.give
+    permission: allium.give
     aliases: [i]
   itemdb:
     description: "Shows item/block info"
     usage: "/itemdb"
-    permission: core.itemdb
+    permission: allium.itemdb
   heal:
     description: "Heal players"
     usage: "/heal [player]"
-    permission: core.heal
+    permission: allium.heal
   feed:
     description: "Feed players"
     usage: "/feed [player]"
-    permission: core.feed
+    permission: allium.feed
   core:
     description: "Core plugin command. Subcommands: reload, debug, voucher, etc."
     usage: "/core"
-    permission: core.admin
+    permission: allium.admin
   rename:
     description: "Rename item in main hand"
     usage: "/rename <name>"
-    permission: core.rename
+    permission: allium.rename
   lore:
     description: "Mange lore in main hand"
     usage: "/lore <add|remove|clear> <text>"
-    permission: core.lore
+    permission: allium.lore
   god:
     description: "Toggle god mode"
     usage: "/god || /god <player>"
-    permission: core.god
+    permission: allium.god
   more:
     description: "Adds more items to your inventory"
     usage: "/more"
-    permission: core.more
+    permission: allium.more
   fly:
     description: "Toggle flight"
     usage: "/fly || /fly <player>"
-    permission: core.fly
+    permission: allium.fly
   gamemode:
     description: "Change gamemode"
     usage: "/gamemode <gamemode> <player>"
-    permission: core.gamemode
+    permission: allium.gamemode
     aliases: [gm, gmc, gms, gma, gmsp, survival, creative, adventure, spectator]
   nv:
     description: "Toggle night vision"
     usage: "/nv"
-    permission: core.nv
+    permission: allium.nv
   msg:
     description: "Send a private message to player"
     usage: "/msg <player> <message>"
@@ -99,28 +99,28 @@ commands:
   skull:
     description: "Get a player's head"
     usage: "/skull <player>"
-    permission: core.skull
+    permission: allium.skull
     aliases: [head, playerhead]
   
   home:
     description: "Teleports you to your home"
     usage: "/home [home]"
-    permission: core.home
+    permission: allium.home
 
   homes:
     description: "Lists your homes"
     usage: "/homes"
-    permission: core.homes
+    permission: allium.homes
   
   sethome:
     description: "Sets a home"
     usage: "/sethome [home]"
-    permission: core.sethome
+    permission: allium.sethome
   
   delhome:
     description: "Deletes a home"
     usage: "/delhome [home]"
-    permission: core.delhome
+    permission: allium.delhome
     aliases: [removehome]
   
   # Economy commands
@@ -128,370 +128,366 @@ commands:
     description: "Check your balance or another player's balance"
     usage: "/balance [player]"
     aliases: [bal]
-    permission: core.balance
+    permission: allium.balance
   
   pay:
     description: "Pay another player"
     usage: "/pay <player> <amount>"
-    permission: core.pay
+    permission: allium.pay
     
   baltop:
     description: "View the richest players"
     usage: "/baltop [page]"
-    permission: core.baltop
+    permission: allium.baltop
     
   money:
     description: "Admin command to manage player balances"
     usage: "/money <give|take|set|clear> <player> [amount]"
-    permission: core.admin
+    permission: allium.admin
   
   # Teleport Commands
   tp:
     description: "Teleport to a player or location"
     usage: "/tp [player] or /tp [x] [y] [z]"
     aliases: [tpo, teleport, back]
-    permission: core.tp
+    permission: allium.tp
   
   tpa:
     description: "Request to teleport to a player"
     usage: "/tpa <player>"
-    permission: core.tpa
+    permission: allium.tpa
   
   tpcancel:
     description: "Cancel a teleport request"
     usage: "/tpcancel"
     aliases: [tpacancel]
-    permission: core.tpa
+    permission: allium.tpa
   
   tpaccept:
     description: "Accept a teleport request"
     usage: "/tpaccept [player]"
     aliases: [tpyes]
-    permission: core.tpa
+    permission: allium.tpa
   
   tpdeny:
     description: "Deny a teleport request"
     usage: "/tpdeny [player]"
     aliases: [tpno]
-    permission: core.tpa
+    permission: allium.tpa
   
   tppet:
     description: "Teleport your pets"
     usage: "/tppet"
-    permission: core.tppet
+    permission: allium.tppet
   
   tpmob:
     description: "Teleport your mobs"
     usage: "/tpmob"
     aliases: [tpentity, tpent, teleportmob, tpm, tpe]
-    permission: core.tpmob
+    permission: allium.tpmob
   
   tppos:
     description: "Teleport to specific coordinates"
     usage: "/tppos <x> <y> <z> [yaw] [pitch]"
-    permission: core.tppos
+    permission: allium.tppos
   
   tphere:
     description: "Bring a player to your location"
     usage: "/tphere <player>"
     aliases: [s]
-    permission: core.tphere
+    permission: allium.tphere
   
   tpahere:
     description: "Request a player to teleport to you"
     usage: "/tpahere <player>"
-    permission: core.tpahere
+    permission: allium.tpahere
   
   tptoggle:
     description: "Toggle teleport requests"
     usage: "/tptoggle [player]"
-    permission: core.tptoggle
+    permission: allium.tptoggle
   
   otp:
     description: "Teleport to a player's last known location"
     usage: "/otp <player>"
     aliases: [offlinetp, tpoffline]
-    permission: core.tp.offline
+    permission: allium.tp.offline
   
   top:
     description: "Teleport to the highest block"
     usage: "/top"
-    permission: core.top
+    permission: allium.top
   
   bottom:
     description: "Teleport to the lowest block"
     usage: "/bottom"
-    permission: core.bottom
+    permission: allium.bottom
 
   whois:
     description: "Displays detailed information about a player."
     usage: "/whois <player>"
-    permission: core.whois
+    permission: allium.whois
 
   maintenance:
     description: "Toggle maintenance mode"
     usage: "/maintenance [on|off] [reason]"
-    permission: core.admin
+    permission: allium.admin
 
   invsee:
     description: View and edit another player's inventory
     usage: /invsee <player>
-    permission: core.invsee
+    permission: allium.invsee
 
   enchant:
     description: Enchant an item in hand
     usage: /enchant <enchantment> [level]
-    permission: core.enchant
+    permission: allium.enchant
 
   note:
     description: Add a note about a player
     usage: /note <player> <note>
-    permission: core.staff
+    permission: allium.staff
   notes:
     description: View player notes
     usage: /notes [player]
-    permission: core.staff
+    permission: allium.staff
   unnote:
     description: Remove a player note
     usage: /unnote <player> <id>
-    permission: core.staff
+    permission: allium.staff
 
   # Time commands
   time:
     description: "Manipulate or view the time"
     usage: "/time [set|add] [time] [world]"
-    permission: core.time
+    permission: allium.time
   day:
     description: "Set the time to day"
     usage: "/day [set|add] [time] [world]"
-    permission: core.time
+    permission: allium.time
   night:
     description: "Set the time to night"
     usage: "/night [set|add] [time] [world]"
-    permission: core.time
+    permission: allium.time
 
 permissions:
-  core.staff:
+  allium.staff:
     description: "Gives access to staff commands"
     default: op
     children:
-      core.escalate: true
-      core.spy: true
-      core.spy.others: true
-      core.gamemode: true
-      core.gamemode.spectator: true
-      core.note: true
-      core.notes: true
-      core.unnote: true
-      core.invsee: true
-      core.tp: true
-      core.tp.others: true
-      core.tp.offline: true
-      core.tp.override: true
-      core.tptoggle.others: true
-      core.tphere: true
-      core.tppos: true
-      core.tpa.nocooldown: true
-      core.feed.nocooldown: true
-      core.heal.nocooldown: true
-      core.tpa.nodelay: true
-      core.lockdown.bypass: true
-  core.admin:
+      allium.escalate: true
+      allium.spy: true
+      allium.spy.others: true
+      allium.gamemode: true
+      allium.gamemode.spectator: true
+      allium.note: true
+      allium.notes: true
+      allium.unnote: true
+      allium.invsee: true
+      allium.tp: true
+      allium.tp.others: true
+      allium.tp.offline: true
+      allium.tp.override: true
+      allium.tptoggle.others: true
+      allium.tphere: true
+      allium.tppos: true
+      allium.tpa.nocooldown: true
+      allium.feed.nocooldown: true
+      allium.heal.nocooldown: true
+      allium.tpa.nodelay: true
+      allium.lockdown.bypass: true
+  allium.admin:
     description: "Gives access to all core admin commands"
     default: op
     children:
-      core.debug: true
-      core.reload: true
-      core.hideupdate: true
-      core.hide: true
-      core.chatmod: true
-      core.enchant: true
-      core.staff: true
+      allium.debug: true
+      allium.reload: true
+      allium.hideupdate: true
+      allium.hide: true
+      allium.chatmod: true
+      allium.enchant: true
+      allium.staff: true
 
-  core.enchant:
+  allium.enchant:
     description: "Allows using the enchant command"
     default: op
 
-  core.spy:
+  allium.spy:
     default: op
   
-  core.money:
+  allium.money:
     default: op
-  core.note:
+  allium.note:
     default: op
-  core.notes:
+  allium.notes:
     default: op
-  core.unnote:
-    default: op
-
-  core.gamemode.others:
-    default: op
-  core.gamemode.survival:
-    default: op
-  core.gamemode.survival.nv:
-    default: op
-  core.gamemode.creative:
-    default: op
-  core.gamemode.creative.inventory:
-    default: op
-  core.gamemode.creative.container:
-    default: op
-  core.gamemode.creative.pickup:
-    default: op
-  core.gamemode.creative.use:
-    default: op
-  core.gamemode.creative.drop:
-    default: op
-  core.gamemode.creative.break:
-    default: op
-  core.gamemode.creative.place:
-    default: op
-  core.gamemode.creative.interact:
-    default: op
-  core.gamemode.creative.use:
-    default: op
-  core.gamemode.creative.spawn:
-    default: op
-  core.gamemode.creative.blacklist:
-    default: op
-  core.gamemode.creative.nv:
-    default: op
-  core.gamemode.adventure:
-    default: op
-  core.gamemode.adventure.nv:
-    default: op
-  core.gamemode.spectator:
-    default: op
-  core.gamemode.adventure.nv:
-    default: op
-  core.gamemode:
-    default: op
-  core.nv:
-    default: op
-  core.nv.others:
-    default: op
-  core.nv.adventure:
-    default: op
-  core.nv.creative:
-    default: op
-  core.nv.spectator:
-    default: op
-  core.nv.survival:
+  allium.unnote:
     default: op
 
-  core.tp:
+  allium.gamemode.others:
     default: op
-  core.tp.others:
+  allium.gamemode.survival:
     default: op
-  core.tp.override:
+  allium.gamemode.survival.nv:
     default: op
-  core.tp.offline:
+  allium.gamemode.creative:
     default: op
-  core.tpa:
+  allium.gamemode.creative.inventory:
+    default: op
+  allium.gamemode.creative.container:
+    default: op
+  allium.gamemode.creative.pickup:
+    default: op
+  allium.gamemode.creative.drop:
+    default: op
+  allium.gamemode.creative.break:
+    default: op
+  allium.gamemode.creative.place:
+    default: op
+  allium.gamemode.creative.interact:
+    default: op
+  allium.gamemode.creative.use:
+    default: op
+  allium.gamemode.creative.spawn:
+    default: op
+  allium.gamemode.creative.blacklist:
+    default: op
+  allium.gamemode.creative.nv:
+    default: op
+  allium.gamemode.adventure:
+    default: op
+  allium.gamemode.adventure.nv:
+    default: op
+  allium.gamemode.spectator:
+    default: op
+  allium.gamemode:
+    default: op
+  allium.nv:
+    default: op
+  allium.nv.others:
+    default: op
+  allium.nv.adventure:
+    default: op
+  allium.nv.creative:
+    default: op
+  allium.nv.spectator:
+    default: op
+  allium.nv.survival:
+    default: op
+
+  allium.tp:
+    default: op
+  allium.tp.others:
+    default: op
+  allium.tp.override:
+    default: op
+  allium.tp.offline:
+    default: op
+  allium.tpa:
     default: true
-  core.tpa.nodelay:
+  allium.tpa.nodelay:
     default: op
-  core.tpa.nocooldown:
+  allium.tpa.nocooldown:
     default: op
-  core.voucher.give:
+  allium.voucher.give:
     description: "Allows giving rank vouchers via /core voucher give"
     default: op
-  core.tppos:
+  allium.tppos:
     default: op
-  core.lockdown.bypass:
+  allium.lockdown.bypass:
     default: op
-  core.tphere:
+  allium.tphere:
     default: op
-  core.tpahere:
+  allium.tpahere:
     default: true
-  core.tpall:
+  allium.tpall:
     default: op
-  core.tptoggle:
+  allium.tptoggle:
     default: true
-  core.tptoggle.others:
+  allium.tptoggle.others:
     default: op
-  core.top:
+  allium.top:
     default: op
-  core.bottom:
+  allium.bottom:
     default: op
-  core.whois:
+  allium.whois:
     description: "Allows using the /whois command."
     default: true
-  core.tpauto:
+  allium.tpauto:
     default: true
-  core.spawn:
+  allium.spawn:
     default: true
-  core.setspawn:
+  allium.setspawn:
     default: op
-  core.help:
+  allium.help:
     default: true
 
-  core.home:
+  allium.home:
     default: true
-  core.sethome:
+  allium.sethome:
     default: true
-  core.homes:
+  allium.homes:
     default: true
-  core.delhome:
+  allium.delhome:
     default: true
-  core.sethome.unlimited:
+  allium.sethome.unlimited:
     default: op
-  core.home.others:
+  allium.home.others:
     default: op
-  core.home.nocooldown:
+  allium.home.nocooldown:
     default: op
 
-  core.hide.group:
+  allium.hide.group:
     default: false
-  core.hide.bypass:
+  allium.hide.bypass:
     default: op
-  core.hide.default:
+  allium.hide.default:
     default: true
 
-  core.fly:
+  allium.fly:
     default: op
-  core.fly.others:
+  allium.fly.others:
     default: op
-  core.explode:
+  allium.explode:
     default: op
-  core.explode.others:
+  allium.explode.others:
     default: op
-  core.explode.exempt:
+  allium.explode.exempt:
     default: op
-  core.gc:
+  allium.gc:
     default: true
-  core.give:
+  allium.give:
     default: op
-  core.itemdb:
+  allium.itemdb:
     default: op
-  core.msg:
+  allium.msg:
     default: true
-  core.heal:
+  allium.heal:
     default: op
-  core.heal.others:
+  allium.heal.others:
     default: op
-  core.heal.nocooldown:
+  allium.heal.nocooldown:
     default: op
-  core.feed:
+  allium.feed:
     default: op
-  core.feed.others:
+  allium.feed.others:
     default: op
-  core.feed.nocooldown:
+  allium.feed.nocooldown:
     default: op
-  core.rename:
+  allium.rename:
     default: op
-  core.lore:
+  allium.lore:
     default: op
-  core.god:
+  allium.god:
     default: op
-  core.pay:
+  allium.pay:
     default: true
-  core.balance:
+  allium.balance:
     default: true
-  core.baltop:
+  allium.baltop:
     default: true
 
-  core.more:
+  allium.more:
     default: op
 
   chat.color:
@@ -570,12 +566,12 @@ permissions:
     description: Allows using magic formatting in chat
     default: op
 
-  core.time:
+  allium.time:
     description: "Allows the player to view the time"
     default: true
-  core.time.set:
+  allium.time.set:
     description: "Allows the player to set the time"
     default: op
-  core.time.add:
+  allium.time.add:
     description: "Allows the player to add to the time"
     default: op

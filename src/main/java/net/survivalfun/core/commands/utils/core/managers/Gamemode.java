@@ -92,7 +92,7 @@ public class Gamemode implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
-        if(!sender.hasPermission("core.gamemode")) {
+        if(!sender.hasPermission("allium.gamemode")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label);
             return true;
         }
@@ -136,7 +136,7 @@ public class Gamemode implements CommandExecutor {
             target = (Player) sender;
         } else {
             // Check if sender has permission to change other players' gamemod
-            if (!sender.hasPermission("core.gamemode.others")) {
+            if (!sender.hasPermission("allium.gamemode.others")) {
                 String commandName = "set " + mode.toString().toLowerCase() + " mode for others.";
                 Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", commandName);
                 return true;
@@ -177,7 +177,7 @@ public class Gamemode implements CommandExecutor {
         // One argument - set gamemode for specified player
         else if (args.length == 1) {
             // Check if sender has permission to change other players' gamemode
-            if (!sender.hasPermission("core.gamemode.others")) {
+            if (!sender.hasPermission("allium.gamemode.others")) {
                 String gamemodeOthers = "set " + mode.toString().toLowerCase() + " mode for others.";
                 Text.sendErrorMessage(sender, "no-permission", lang, "/{cmd}", gamemodeOthers, true);
                 return true;
@@ -213,7 +213,7 @@ public class Gamemode implements CommandExecutor {
         String permissionSuffix = mode.name().toLowerCase();
 
         // Player must have the specific gamemode permission
-        return sender.hasPermission("core.gamemode." + permissionSuffix);
+        return sender.hasPermission("allium.gamemode." + permissionSuffix);
     }
 
     private void setGamemode(Player player, GameMode mode, CommandSender sender) {

@@ -355,14 +355,14 @@ public class Explode implements CommandExecutor {
             // Check permissions based on target
             if (targetPlayer == null) {
                 // Self-explosion
-                if (!playerSender.hasPermission("core.explode")) {
+                if (!playerSender.hasPermission("allium.explode")) {
                     Text.sendErrorMessage(playerSender, "explode.no-permission", lang);
                     return true;
                 }
                 targetPlayer = playerSender;
             } else if (!targetPlayer.equals(playerSender)) {
                 // Exploding another player
-                if (!playerSender.hasPermission("core.explode.other")) {
+                if (!playerSender.hasPermission("allium.explode.other")) {
                     Text.sendErrorMessage(playerSender, "explode.no-permission", lang);
                     return true;
                 }

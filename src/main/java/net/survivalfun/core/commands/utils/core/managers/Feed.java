@@ -49,7 +49,7 @@ public class Feed implements CommandExecutor {
         Player player = (Player) sender;
 
         // Check permission
-        if (!player.hasPermission("core.feed")) {
+        if (!player.hasPermission("allium.feed")) {
             Text.sendErrorMessage(player, "no-permission", lang);
             return true;
         }
@@ -67,7 +67,7 @@ public class Feed implements CommandExecutor {
                 player.sendMessage(lang.get("feed.self"));
 
                 // Record last feed time for cooldown
-                if (!player.hasPermission("core.feed.nocooldown")) {
+                if (!player.hasPermission("allium.feed.nocooldown")) {
                     lastFeedTime.put(player.getUniqueId(), System.currentTimeMillis());
                 }
                 return true;
@@ -120,14 +120,14 @@ public class Feed implements CommandExecutor {
             player.sendMessage(Text.parseColors(lang.get("feed.self")));
 
             // Record last feed time for cooldown
-            if (!player.hasPermission("core.feed.nocooldown")) {
+            if (!player.hasPermission("allium.feed.nocooldown")) {
                 lastFeedTime.put(player.getUniqueId(), System.currentTimeMillis());
             }
             return true;
         }
 
         // Check permission for feeding others
-        if (!player.hasPermission("core.feed.others")) {
+        if (!player.hasPermission("allium.feed.others")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "/feed on others");
             return true;
         }
@@ -159,7 +159,7 @@ public class Feed implements CommandExecutor {
      */
     private boolean canFeed(Player player) {
         // Admins with permission bypass cooldown
-        if (player.hasPermission("core.feed.nocooldown")) {
+        if (player.hasPermission("allium.feed.nocooldown")) {
             return true;
         }
 

@@ -56,7 +56,7 @@ public class Balance implements CommandExecutor, TabCompleter {
             return true;
         } else if (args.length == 1) {
             // Check another player's balance
-            if (!sender.hasPermission("core.balance.others") && sender instanceof Player) {
+            if (!sender.hasPermission("allium.balance.others") && sender instanceof Player) {
                 Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label);
                 return true;
             }
@@ -105,7 +105,7 @@ public class Balance implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
         List<String> completions = new ArrayList<>();
         
-        if (args.length == 1 && (sender.hasPermission("core.balance.others") || !(sender instanceof Player))) {
+        if (args.length == 1 && (sender.hasPermission("allium.balance.others") || !(sender instanceof Player))) {
             String partialName = args[0].toLowerCase();
             for (Player player : Bukkit.getOnlinePlayers()) {
                 if (player.getName().toLowerCase().startsWith(partialName)) {

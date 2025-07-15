@@ -145,7 +145,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
      */
     private boolean handleMessageCommand(CommandSender sender, String[] args, String label) {
         // Check permission
-        if (!sender.hasPermission("core.msg")) {
+        if (!sender.hasPermission("allium.msg")) {
             Text.sendErrorMessage(sender, lang.get("no-permission").replace("{cmd}", label), lang);
             return true;
         }
@@ -178,7 +178,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
 
     private boolean handleReplyCommand(CommandSender sender, String[] args) {
         // Check permission
-        if (!sender.hasPermission("core.msg")) {
+        if (!sender.hasPermission("allium.msg")) {
             sender.sendMessage(lang.get("no-permission"));
             return true;
         }
@@ -252,7 +252,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
      */
     private boolean handleMailCommand(CommandSender sender, String[] args) {
         // Check permission
-        if (!sender.hasPermission("core.msg")) {
+        if (!sender.hasPermission("allium.msg")) {
             sender.sendMessage(lang.get("no-permission"));
             return true;
         }

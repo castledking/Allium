@@ -28,7 +28,7 @@ public class More implements CommandExecutor {
         }
         Player target;
         if (sender instanceof Player player) {
-            if (!player.hasPermission("core.more")) {
+            if (!player.hasPermission("allium.more")) {
                 label = "§cmore";
                 player.sendMessage(lang.get("no-permission").replace("{cmd}", label));
                 return true;

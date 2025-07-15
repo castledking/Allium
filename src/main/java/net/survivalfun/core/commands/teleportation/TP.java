@@ -218,7 +218,7 @@ public class TP implements CommandExecutor, TabCompleter {
 
         if (args.length > 0) {
             // Check permission to affect other players
-            if (!sender.hasPermission("core.tppet.others")) {
+            if (!sender.hasPermission("allium.tppet.others")) {
                 Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "/tppet on others." );
                 return true;
             }
@@ -240,7 +240,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check base permission for tppet
-        if (!targetPlayer.hasPermission("core.tppet")) {
+        if (!targetPlayer.hasPermission("allium.tppet")) {
             Text.sendErrorMessage(targetPlayer, "no-permission", lang, "{cmd}", "/tppet");
             return true;
         }
@@ -289,7 +289,7 @@ public class TP implements CommandExecutor, TabCompleter {
         // Determine max number of pets based on permission
         int maxPets = 1; // default
         for (int i = 1; i <= 10; i++) { // Check up to 10 pets
-            if (targetPlayer.hasPermission("core.tppet." + i)) {
+            if (targetPlayer.hasPermission("allium.tppet." + i)) {
                 maxPets = i;
             }
         }
@@ -335,7 +335,7 @@ public class TP implements CommandExecutor, TabCompleter {
 
         if (args.length > 0) {
             // Check permission to affect other players
-            if (!sender.hasPermission("core.tpmob.others")) {
+            if (!sender.hasPermission("allium.tpmob.others")) {
                 Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "/" + usedCommand + " on others.");
                 return true;
             }
@@ -357,7 +357,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check admin permission
-        if (!targetPlayer.hasPermission("core.admin")) {
+        if (!targetPlayer.hasPermission("allium.admin")) {
             Text.sendErrorMessage(targetPlayer, "no-permission", lang, "{cmd}", usedCommand);
             return true;
         }
@@ -406,7 +406,7 @@ public class TP implements CommandExecutor, TabCompleter {
         // Determine max number of entities based on permission
         int maxEntities = 1; // default
         for (int i = 1; i <= 20; i++) { // Check up to 20 entities
-            if (targetPlayer.hasPermission("core.tpmob." + i)) {
+            if (targetPlayer.hasPermission("allium.tpmob." + i)) {
                 maxEntities = i;
             }
         }
@@ -571,7 +571,7 @@ public class TP implements CommandExecutor, TabCompleter {
             int delay = config.getInt("teleport.delay") > 0 ? config.getInt("teleport.delay") : 3;
             Location originalLocation = finalTargetPlayer.getLocation();
 
-            if (finalTargetPlayer.hasPermission("core.tpa.nodelay")) {
+            if (finalTargetPlayer.hasPermission("allium.tpa.nodelay")) {
                 // Teleport immediately if player has nodelay permission
                 for (Entity pet : playerPets) {
                     pet.teleport(finalTargetPlayer.getLocation());
@@ -856,7 +856,7 @@ public class TP implements CommandExecutor, TabCompleter {
             this.startLocation = player.getLocation().clone();
             
             // Disable distance checking for admins by default
-            if (player.hasPermission("core.tpmob")) {
+            if (player.hasPermission("allium.tpmob")) {
                 this.distanceCheckingEnabled = false;
                 plugin.getLogger().info("Distance checking disabled for admin: " + player.getName());
             }
@@ -900,7 +900,7 @@ public class TP implements CommandExecutor, TabCompleter {
             }
             
             // Admin override - never disable for admins
-            if (player.hasPermission("core.tpmob")) {
+            if (player.hasPermission("allium.tpmob")) {
                 return;
             }
             
@@ -917,7 +917,7 @@ public class TP implements CommandExecutor, TabCompleter {
          */
         private void cleanup(boolean showDistanceMessage) {
             // Skip cleanup for admins if triggered by distance checking
-            if (showDistanceMessage && player != null && player.isOnline() && player.hasPermission("core.tpmob")) {
+            if (showDistanceMessage && player != null && player.isOnline() && player.hasPermission("allium.tpmob")) {
                 plugin.getLogger().info("Skipping distance-based cleanup for admin: " + player.getName());
                 return;
             }
@@ -1346,7 +1346,7 @@ public class TP implements CommandExecutor, TabCompleter {
                 // Determine if we have a player target or if it's the sender
                 if (args.length == 4) {
                     // Format: /tp player x y z
-                    if (!sender.hasPermission("core.tp.others")) {
+                    if (!sender.hasPermission("allium.tp.others")) {
                         Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "tp others");
                         return true;
                     }
@@ -1474,7 +1474,7 @@ public class TP implements CommandExecutor, TabCompleter {
             }
 
             // Check permission
-            if (!player.hasPermission("core.back")) {
+            if (!player.hasPermission("allium.back")) {
                 Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "back");
                 return true;
             }
@@ -1484,7 +1484,7 @@ public class TP implements CommandExecutor, TabCompleter {
             boolean isDeathLocation = false;
 
             // Check for death location first if player has the permission
-            if (player.hasPermission("core.back.ondeath")) {
+            if (player.hasPermission("allium.back.ondeath")) {
                 // Get death location from database via PlayerDeathListener
                 Location deathLocation = PlayerDeathListener.getDeathLocation(player);
                 if (deathLocation != null) {
@@ -1786,7 +1786,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check permission
-        if (!player.hasPermission("core.tpa")) {
+        if (!player.hasPermission("allium.tpa")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", isHereRequest ? "tpahere" : "tpa");
             return true;
         }
@@ -1811,7 +1811,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check if target has teleport requests toggled off
-        if (teleportToggled.contains(target.getUniqueId()) && !player.hasPermission("core.tpo")) {
+        if (teleportToggled.contains(target.getUniqueId()) && !player.hasPermission("allium.tpo")) {
             player.sendMessage(lang.get("tp.blocked").replace("{name}", target.getName()));
             return true;
         }
@@ -2019,7 +2019,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check permission
-        if (!player.hasPermission("core.tpa")) {
+        if (!player.hasPermission("allium.tpa")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "tpaccept");
             return true;
         }
@@ -2093,7 +2093,7 @@ public class TP implements CommandExecutor, TabCompleter {
 
 
         // Check if player is on cooldown and doesn't have bypass permission
-        if (!teleportingPlayer.hasPermission("core.tpa.nocooldown") && hasCooldown(teleportingPlayer.getUniqueId())) {
+        if (!teleportingPlayer.hasPermission("allium.tpa.nocooldown") && hasCooldown(teleportingPlayer.getUniqueId())) {
             long remaining = getRemainingCooldown(teleportingPlayer.getUniqueId());
             // Use lang.yml cooldown key
             Text.sendErrorMessage(teleportingPlayer, "cooldown", lang, 
@@ -2103,7 +2103,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
         
         // Teleport the player with delay and cooldown handling
-        if (teleportingPlayer.hasPermission("core.tpa.nodelay")) {
+        if (teleportingPlayer.hasPermission("allium.tpa.nodelay")) {
             // Store last location before teleporting
             saveLastLocation(teleportingPlayer.getUniqueId(), teleportingPlayer.getLocation());
 
@@ -2115,7 +2115,7 @@ public class TP implements CommandExecutor, TabCompleter {
             destinationPlayer.sendMessage(lang.get("tp.accept").replace("{name}", teleportingPlayer.getName()));
             
             // Set cooldown if player doesn't have cooldown bypass
-            if (!teleportingPlayer.hasPermission("core.tpa.nocooldown")) {
+            if (!teleportingPlayer.hasPermission("allium.tpa.nocooldown")) {
                 setCooldown(teleportingPlayer.getUniqueId());
             }
         } else {
@@ -2143,7 +2143,7 @@ public class TP implements CommandExecutor, TabCompleter {
                     destinationPlayer.sendMessage(lang.get("tp.accept").replace("{name}", teleportingPlayer.getName()));
                     
                     // Set cooldown if player doesn't have cooldown bypass
-                    if (!teleportingPlayer.hasPermission("core.tpa.nocooldown")) {
+                    if (!teleportingPlayer.hasPermission("allium.tpa.nocooldown")) {
                         setCooldown(teleportingPlayer.getUniqueId());
                     }
                 } else {
@@ -2236,7 +2236,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check permission
-        if (!player.hasPermission("core.tpa")) {
+        if (!player.hasPermission("allium.tpa")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "tpdeny");
             return true;
         }
@@ -2311,7 +2311,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check permission
-        if (!player.hasPermission("core.tphere")) {
+        if (!player.hasPermission("allium.tphere")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "tphere");
             return true;
         }
@@ -2366,7 +2366,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check permission
-        if (!player.hasPermission("core.tppos")) {
+        if (!player.hasPermission("allium.tppos")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "tppos");
             return true;
         }
@@ -2473,7 +2473,7 @@ public class TP implements CommandExecutor, TabCompleter {
         // Check if args are provided to toggle someone else's teleport
         if (args.length > 0) {
             // Check permission for toggling others' teleport settings
-            if (!sender.hasPermission("core.tptoggle.others")) {
+            if (!sender.hasPermission("allium.tptoggle.others")) {
                 Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "tptoggle others");
                 return true;
             }
@@ -2524,7 +2524,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check permission
-        if (!player.hasPermission("core.tptoggle")) {
+        if (!player.hasPermission("allium.tptoggle")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "tptoggle");
             return true;
         }
@@ -2563,14 +2563,14 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check permission
-        if (!player.hasPermission("core.top")) {
+        if (!player.hasPermission("allium.top")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "top");
             return true;
         }
 
         // Check if player is in the Nether
         if (player.getWorld().getEnvironment() == org.bukkit.World.Environment.NETHER) {
-            if(!player.hasPermission("core.admin")) {
+            if(!player.hasPermission("allium.admin")) {
                 Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "top in the nether.");
                 return true;
             }
@@ -2632,7 +2632,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check permission
-        if (!player.hasPermission("core.bottom")) {
+        if (!player.hasPermission("allium.bottom")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "bottom");
             return true;
         }
@@ -2710,8 +2710,8 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check permission
-        if (!player.hasPermission("core.tp.offline")) {
-            if (!player.hasPermission("core.tp")) {
+        if (!player.hasPermission("allium.tp.offline")) {
+            if (!player.hasPermission("allium.tp")) {
                 Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "tp");
                 return true;
             }
@@ -2889,7 +2889,7 @@ public class TP implements CommandExecutor, TabCompleter {
                 return Collections.singletonList(String.valueOf(Math.round(player.getLocation().getX())));
             }
             if (teleportToggleAliases.contains(commandName)) {
-                if (sender.hasPermission("core.tptoggle.others")) {
+                if (sender.hasPermission("allium.tptoggle.others")) {
                     return getOnlinePlayerNames(args[0]);
                 }
             }
@@ -2946,7 +2946,7 @@ public class TP implements CommandExecutor, TabCompleter {
         
         // Handle entity teleportation (admin mode)
         Map<UUID, Entity> playerEntities = selectedEntities.get(playerUUID);
-        if (playerEntities != null && !playerEntities.isEmpty() && player.hasPermission("core.tpmob")) {
+        if (playerEntities != null && !playerEntities.isEmpty() && player.hasPermission("allium.tpmob")) {
             // Schedule teleport after player has arrived
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 // Convert map values to list for teleportation

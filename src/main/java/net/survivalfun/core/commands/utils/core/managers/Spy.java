@@ -41,7 +41,7 @@ public class Spy implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, @NotNull Command command, @NotNull String label
             , String @NotNull [] args) {
         // Check permission
-        if (!sender.hasPermission("core.spy")) {
+        if (!sender.hasPermission("allium.spy")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label);
             return true;
         }
@@ -108,7 +108,7 @@ public class Spy implements CommandExecutor, TabCompleter {
         }
 
         // Check if target player has the exempt permission
-        if (targetPlayer.hasPermission("core.spy.exempt")) {
+        if (targetPlayer.hasPermission("allium.spy.exempt")) {
             Text.sendErrorMessage(player, "spy.exempt", lang, "{name}", targetPlayer.getName());
             return true;
         }
@@ -152,7 +152,7 @@ public class Spy implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, @NotNull Command command, @NotNull String alias
             , String @NotNull [] args) {
-        if (!sender.hasPermission("core.spy")) {
+        if (!sender.hasPermission("allium.spy")) {
             return Collections.emptyList();
         }
 

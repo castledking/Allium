@@ -31,7 +31,7 @@ public class Give implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
-        if (!sender.hasPermission("core.give")) {
+        if (!sender.hasPermission("allium.give")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{command}", label.toLowerCase());
             return true;
         }

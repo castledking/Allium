@@ -41,7 +41,7 @@ public class Whois implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!sender.hasPermission("core.whois")) {
+        if (!sender.hasPermission("allium.whois")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "cmd", command.getName());
             return true;
         }
@@ -254,7 +254,7 @@ public class Whois implements CommandExecutor {
                         .replace("{y}", String.format("%.2f", lastLogoutLocation.getY()))
                         .replace("{z}", String.format("%.2f", lastLogoutLocation.getZ()));
                 
-                if (sender instanceof Player && sender.hasPermission("core.teleport")) {
+                if (sender instanceof Player && sender.hasPermission("allium.teleport")) {
                     Component worldPosMsg = Text.colorize(worldPosMsgRaw)
                             .clickEvent(ClickEvent.runCommand("/tppos " + lastLogoutLocation.getX() + " " + lastLogoutLocation.getY() + " " + lastLogoutLocation.getZ() + " " + lastLogoutLocation.getWorld().getName()))
                             .hoverEvent(HoverEvent.showText(Component.text("Click to teleport to this location")));

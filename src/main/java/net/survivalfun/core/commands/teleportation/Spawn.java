@@ -53,7 +53,7 @@ public class Spawn implements CommandExecutor {
         Player player = (Player) sender;
 
         if (label.equalsIgnoreCase("setspawn")) {
-            if (!player.hasPermission("core.setspawn")) {
+            if (!player.hasPermission("allium.setspawn")) {
                 Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label.toLowerCase());
                 return true;
             }
@@ -63,13 +63,13 @@ public class Spawn implements CommandExecutor {
         }
 
         // Handle /spawn command
-        if (!player.hasPermission("core.spawn")) {
+        if (!player.hasPermission("allium.spawn")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label.toLowerCase());
             return true;
         }
 
         // Check cooldown
-        if (!player.hasPermission("core.tpa.nocooldown") && hasCooldown(player.getUniqueId())) {
+        if (!player.hasPermission("allium.tpa.nocooldown") && hasCooldown(player.getUniqueId())) {
             long remaining = getRemainingCooldown(player.getUniqueId());
             // use lang.yml cooldown key
             Text.sendErrorMessage(player, "cooldown", lang, "{time}", Text.formatTime((int) remaining), "{cmd}", label.toLowerCase());
@@ -108,7 +108,7 @@ public class Spawn implements CommandExecutor {
         cancelTeleportTask(player.getUniqueId());
 
         // Check if player has permission to bypass the delay
-        if (player.hasPermission("core.tpa.nodelay")) {
+        if (player.hasPermission("allium.tpa.nodelay")) {
             teleportPlayer(player);
             return;
         }
@@ -212,7 +212,7 @@ public class Spawn implements CommandExecutor {
             }
             
             // Set cooldown if player doesn't have bypass
-            if (!player.hasPermission("core.tpa.nocooldown")) {
+            if (!player.hasPermission("allium.tpa.nocooldown")) {
                 setCooldown(player.getUniqueId());
             }
 
@@ -427,7 +427,7 @@ public class Spawn implements CommandExecutor {
                 TP tpCommand = (TP) cmdExecutor;
                 
                 // Check if player has permission to teleport entities
-                if (player.hasPermission("core.tpmob")) {
+                if (player.hasPermission("allium.tpmob")) {
                     try {
                         // Get the hasSelectedEntities method from TP class
                         java.lang.reflect.Method hasSelectedEntitiesMethod = TP.class.getDeclaredMethod("hasSelectedEntities", Player.class);

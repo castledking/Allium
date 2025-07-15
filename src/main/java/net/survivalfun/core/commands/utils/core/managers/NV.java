@@ -35,7 +35,7 @@ public class NV implements CommandExecutor {
 
         // /nv <player> (toggle for others)
         if (args.length == 1) {
-            if (!player.hasPermission("core.nv.others")) {
+            if (!player.hasPermission("allium.nv.others")) {
                 Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label + " others");
                 return true;
             }
@@ -65,7 +65,7 @@ public class NV implements CommandExecutor {
         }
 
         // Check if player has permission
-        if (!player.hasPermission("core.nv")) {
+        if (!player.hasPermission("allium.nv")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label);
             return true;
         }
@@ -73,8 +73,8 @@ public class NV implements CommandExecutor {
         // Check if player is in spectator mode
         if (player.getGameMode() != GameMode.SPECTATOR) {
             // For other gamemodes, check for gamemode-specific permission
-            String gameModePermission = "core.gamemode." + player.getGameMode().name().toLowerCase() + ".nv";
-            String nvGameModePermission = "core.nv." + player.getGameMode().name().toLowerCase();
+            String gameModePermission = "allium.gamemode." + player.getGameMode().name().toLowerCase() + ".nv";
+            String nvGameModePermission = "allium.nv." + player.getGameMode().name().toLowerCase();
 
             if (!player.hasPermission(gameModePermission) && !player.hasPermission(nvGameModePermission)) {
                 Text.sendErrorMessage(player, "no-permission", lang, "use /{cmd}",

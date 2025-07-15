@@ -36,7 +36,7 @@ public class GC implements CommandExecutor {
             return true;
         }
 
-        if (!sender.hasPermission("core.gc")) {
+        if (!sender.hasPermission("allium.gc")) {
             sender.sendMessage(lang.get("error-prefix")
                     + lang.get("no-permission"));
             return true;

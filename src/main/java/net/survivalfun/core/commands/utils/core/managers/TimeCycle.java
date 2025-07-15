@@ -25,9 +25,9 @@ import java.util.stream.Collectors;
 public class TimeCycle implements CommandExecutor, TabCompleter {
     private final PluginStart plugin;
 
-    protected String viewPermission = "core.time";
-    protected String setPermission = "core.time.set";
-    protected String addPermission = "core.time.add";
+    protected String viewPermission = "allium.time";
+    protected String setPermission = "allium.time.set";
+    protected String addPermission = "allium.time.add";
     protected int day = 0;
     protected int noon = 6000;
     protected int afternoon = 9000;

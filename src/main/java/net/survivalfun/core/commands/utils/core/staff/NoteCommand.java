@@ -25,7 +25,7 @@ public class NoteCommand implements CommandExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         Lang lang = plugin.getLangManager();
-        if (!sender.hasPermission("core.staff") || !sender.hasPermission("core.note")) {
+        if (!sender.hasPermission("allium.staff") || !sender.hasPermission("allium.note")) {
             sender.sendMessage(lang.get("error-prefix") + lang.get("no-permission"));
             return true;
         }

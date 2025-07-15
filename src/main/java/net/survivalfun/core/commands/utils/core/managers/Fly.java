@@ -40,7 +40,7 @@ public class Fly implements CommandExecutor {
 
             } else if (args.length == 1) {
                 // /fly <player>
-                if (!(sender instanceof Player) && !sender.hasPermission("core.fly.others")) {
+                if (!(sender instanceof Player) && !sender.hasPermission("allium.fly.others")) {
                     Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label + " on others.");
                     return true;
                 }

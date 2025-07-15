@@ -26,7 +26,7 @@ public class ItemDB implements CommandExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
         if (sender instanceof Player player) {
-            if (!player.hasPermission("core.itemdb")) {
+            if (!player.hasPermission("allium.itemdb")) {
                 Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label);
                 return true;
             }

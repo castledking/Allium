@@ -34,7 +34,7 @@ public class NotesCommand implements CommandExecutor {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         Lang lang = plugin.getLangManager();
         
-        if (!sender.hasPermission("core.staff") || !sender.hasPermission("core.notes")) {
+        if (!sender.hasPermission("allium.staff") || !sender.hasPermission("allium.notes")) {
             sender.sendMessage(lang.get("error-prefix") + lang.get("no-permission"));
             return true;
         }

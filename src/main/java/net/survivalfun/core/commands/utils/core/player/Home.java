@@ -79,7 +79,7 @@ public class Home implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleSetHome(Player player, String[] args) {
-        if (!player.hasPermission("core.sethome")) {
+        if (!player.hasPermission("allium.sethome")) {
             Text.sendErrorMessage(player, "no-permission", lang, "use /{cmd}", "set homes.", true);
             return true;
         }
@@ -108,13 +108,13 @@ public class Home implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleHome(Player player, String[] args) {
-        if (!player.hasPermission("core.home")) {
+        if (!player.hasPermission("allium.home")) {
             Text.sendErrorMessage(player, "no-permission", lang, "use /{cmd}", "teleport to homes.", true);
             return true;
         }
 
         // Check cooldown
-        if (!player.hasPermission("core.home.nocooldown") && hasCooldown(player.getUniqueId())) {
+        if (!player.hasPermission("allium.home.nocooldown") && hasCooldown(player.getUniqueId())) {
             long remaining = getRemainingCooldown(player.getUniqueId());
             Text.sendErrorMessage(player, "cooldown", lang, "{time}", Text.formatTime((int) remaining), "{cmd}", "home");
             return true;
@@ -141,7 +141,7 @@ public class Home implements CommandExecutor, TabCompleter {
 
         String arg = args[0];
         if (arg.equalsIgnoreCase("bed")) {
-            if (!player.hasPermission("core.home.bed")) {
+            if (!player.hasPermission("allium.home.bed")) {
                 Text.sendErrorMessage(player, "no-permission", lang, "use /home bed", "teleport to your bed.", true);
                 return true;
             }
@@ -183,7 +183,7 @@ public class Home implements CommandExecutor, TabCompleter {
         }
 
         if (arg.contains(":")) {
-            if (!player.hasPermission("core.home.others")) {
+            if (!player.hasPermission("allium.home.others")) {
                 Text.sendErrorMessage(player, "no-permission", lang, "use /{cmd}", "teleport to other player's homes.", true);
                 return true;
             }
@@ -239,14 +239,14 @@ public class Home implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleHomes(Player player) {
-        if (!player.hasPermission("core.home")) {
+        if (!player.hasPermission("allium.home")) {
             Text.sendErrorMessage(player, "no-permission", lang, "use /{cmd}", "list homes.", true);
             return true;
         }
 
         List<String> homes = database.getPlayerHomes(player.getUniqueId());
         String homeList = getFormattedHomeList(player, homes);
-        if (homes.isEmpty() && !player.hasPermission("core.home.bed")) {
+        if (homes.isEmpty() && !player.hasPermission("allium.home.bed")) {
             boolean spawnIfNoHome = plugin.getConfig().getBoolean("home.spawn-if-no-home", false);
             if (spawnIfNoHome) {
                 Spawn spawn = new Spawn(plugin, database);
@@ -263,7 +263,7 @@ public class Home implements CommandExecutor, TabCompleter {
     private boolean handleOtherPlayerHomes(Player player, UUID targetUUID, String targetName) {
         List<String> homes = database.getPlayerHomes(targetUUID);
         String homeList = getFormattedHomeList(player, homes);
-        if (homes.isEmpty() && !player.hasPermission("core.home.bed")) {
+        if (homes.isEmpty() && !player.hasPermission("allium.home.bed")) {
             boolean spawnIfNoHome = plugin.getConfig().getBoolean("home.spawn-if-no-home", false);
             if (spawnIfNoHome) {
                 Spawn spawn = new Spawn(plugin, database);
@@ -282,7 +282,7 @@ public class Home implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleDelHome(Player player, String[] args) {
-        if (!player.hasPermission("core.delhome")) {
+        if (!player.hasPermission("allium.delhome")) {
             Text.sendErrorMessage(player, "no-permission", lang, "use /{cmd}", "delete homes.", true);
             return true;
         }
@@ -310,7 +310,7 @@ public class Home implements CommandExecutor, TabCompleter {
 
         String arg = args[0];
         if (arg.contains(":")) {
-            if (!player.hasPermission("core.delhome.others")) {
+            if (!player.hasPermission("allium.delhome.others")) {
                 Text.sendErrorMessage(player, "no-permission", lang, "use /{cmd}", "delete other players' homes.", true);
                 return true;
             }
@@ -431,11 +431,11 @@ public class Home implements CommandExecutor, TabCompleter {
 
     private int getMaxHomes(Player player) {
         for (int i = 100; i >= 0; i--) {
-            if (player.hasPermission("core.sethome." + i)) {
+            if (player.hasPermission("allium.sethome." + i)) {
                 return i;
             }
         }
-        return player.hasPermission("core.sethome") ? 1 : 0;
+        return player.hasPermission("allium.sethome") ? 1 : 0;
     }
 
     private UUID getPlayerUUID(String playerName) {
@@ -510,12 +510,12 @@ public class Home implements CommandExecutor, TabCompleter {
                 .collect(Collectors.toList()));
             
             // Suggest bed if player has permission
-            if (player.hasPermission("core.home.bed") && "bed".startsWith(arg.toLowerCase())) {
+            if (player.hasPermission("allium.home.bed") && "bed".startsWith(arg.toLowerCase())) {
                 completions.add("bed");
             }
             
             // Suggest other players with colon syntax if permission
-            if (player.hasPermission("core.home.others")) {
+            if (player.hasPermission("allium.home.others")) {
                 if (arg.contains(":")) {
                     String[] parts = arg.split(":", 2);
                     String playerName = parts[0];

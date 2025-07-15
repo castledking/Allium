@@ -42,7 +42,7 @@ public class God implements CommandExecutor {
                             .replace("{args}", "<player>"));
                     return true;
                 }
-                if (!player.hasPermission("core.god")) {
+                if (!player.hasPermission("allium.god")) {
                     Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", label);
                     return true;
                 }
@@ -62,7 +62,7 @@ public class God implements CommandExecutor {
 
             } else if (args.length == 1) {
                 // /god <player>
-                if (!(sender instanceof Player) && !sender.hasPermission("core.god.others")) {
+                if (!(sender instanceof Player) && !sender.hasPermission("allium.god.others")) {
                     Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label + " on others.");
                     return true;
                 }

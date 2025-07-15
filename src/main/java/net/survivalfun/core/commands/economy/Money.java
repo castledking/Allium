@@ -42,7 +42,7 @@ public class Money implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         // Check permission
-        if (!sender.hasPermission("core.admin") || !sender.hasPermission("core.money")) {
+        if (!sender.hasPermission("allium.admin") || !sender.hasPermission("allium.money")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label);
             return true;
         }
@@ -215,7 +215,7 @@ public class Money implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
         
         // Only provide tab completions if sender has permission
-        if (!sender.hasPermission("core.admin")) {
+        if (!sender.hasPermission("allium.admin")) {
             return completions;
         }
         

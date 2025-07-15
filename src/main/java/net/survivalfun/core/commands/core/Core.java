@@ -99,7 +99,7 @@ public class Core implements CommandExecutor, TabCompleter {
 
 
     private void handleHideUpdateCommand(@NotNull CommandSender sender, String @NotNull [] args) {
-        if(!sender.hasPermission("core.admin")) {
+        if(!sender.hasPermission("allium.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
             return;
         }
@@ -182,7 +182,7 @@ public class Core implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelpMessage(CommandSender sender) {
-        if(!sender.hasPermission("core.admin")) {
+        if(!sender.hasPermission("allium.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
             return;
         }
@@ -198,7 +198,7 @@ public class Core implements CommandExecutor, TabCompleter {
     }
 
     private void handleSetGameruleCommand(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("core.worlddefaults")) {
+        if (!sender.hasPermission("allium.worlddefaults")) {
             sender.sendMessage(lang.get("no-permission"));
             return;
         }
@@ -236,7 +236,7 @@ public class Core implements CommandExecutor, TabCompleter {
     }
 
     private void handleDebugCommand(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("core.admin")) {
+        if (!sender.hasPermission("allium.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang);
             return;
         }
@@ -258,7 +258,7 @@ public class Core implements CommandExecutor, TabCompleter {
     // modalerts command handler removed
 
     private void handleReloadCommand(CommandSender sender, Boolean isDebug) {
-        if (!sender.hasPermission("core.admin")) {
+        if (!sender.hasPermission("allium.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
             return;
         }
@@ -410,7 +410,7 @@ public class Core implements CommandExecutor, TabCompleter {
     }
 
     private void handleHideSubcommand(@NotNull CommandSender sender, String @NotNull [] args) {
-        if (!sender.hasPermission("core.admin")) {
+        if (!sender.hasPermission("allium.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core hide");
             return;
         }
@@ -577,7 +577,7 @@ public class Core implements CommandExecutor, TabCompleter {
 
         if (args.length == 1) {
             // Suggest subcommands for /core
-            if (sender.hasPermission("core.admin")) {
+            if (sender.hasPermission("allium.admin")) {
                 suggestions.add("reload");
                 suggestions.add("debug");
                 suggestions.add("hideupdate");

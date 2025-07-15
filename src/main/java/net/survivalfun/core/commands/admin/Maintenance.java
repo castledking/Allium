@@ -28,7 +28,7 @@ public class Maintenance implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         // Check permission
-        if (!sender.hasPermission("core.admin")) {
+        if (!sender.hasPermission("allium.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", 
             "maintenance");
             return true;

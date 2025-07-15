@@ -112,7 +112,7 @@ public class Tab implements TabCompleter {
             currentArgToFilter = args[0].toLowerCase();
     
             // Subcommands requiring core.admin
-            if (sender.hasPermission("core.admin")) {
+            if (sender.hasPermission("allium.admin")) {
                 if ("reload".startsWith(currentArgToFilter)) {
                     suggestions.add("reload");
                 }
@@ -125,7 +125,7 @@ public class Tab implements TabCompleter {
             }
     
             // Modalerts subcommand available to core.staff or core.admin
-            if (sender.hasPermission("core.staff") || sender.hasPermission("core.admin")) {
+            if (sender.hasPermission("allium.staff") || sender.hasPermission("allium.admin")) {
                 if ("modalerts".startsWith(currentArgToFilter)) {
                     suggestions.add("modalerts");
                 }
@@ -141,14 +141,14 @@ public class Tab implements TabCompleter {
     
             switch (subCommand) {
                 case "reload":
-                    if (sender.hasPermission("core.admin")) {
+                    if (sender.hasPermission("allium.admin")) {
                         if ("hide".startsWith(currentArgToFilter)) {
                             suggestions.add("hide");
                         }
                     }
                     break;
                 case "hideupdate":
-                    if (sender.hasPermission("core.admin")) {
+                    if (sender.hasPermission("allium.admin")) {
                         if ("all".startsWith(currentArgToFilter)) {
                             suggestions.add("all");
                         }
@@ -163,7 +163,7 @@ public class Tab implements TabCompleter {
                 case "modalerts":
                     // For /core modalerts <arg1>
                     // arg1 can be on/off (for self if staff/admin) or a player name (if admin)
-                    if (sender.hasPermission("core.staff") || sender.hasPermission("core.admin")) {
+                    if (sender.hasPermission("allium.staff") || sender.hasPermission("allium.admin")) {
                         if ("on".startsWith(currentArgToFilter)) {
                             suggestions.add("on");
                         }
@@ -171,7 +171,7 @@ public class Tab implements TabCompleter {
                             suggestions.add("off");
                         }
                     }
-                    if (sender.hasPermission("core.admin")) {
+                    if (sender.hasPermission("allium.admin")) {
                         // Suggest player names for admins to target others
                         // Assuming getOnlinePlayerNames(sender) is available
                         for (String playerName : getOnlinePlayerNames(sender)) {
@@ -192,7 +192,7 @@ public class Tab implements TabCompleter {
             if (subCommand.equals("modalerts")) {
                 // For /core modalerts <player> <on|off>
                 // This case is primarily for admins who have specified a player in args[1]
-                if (sender.hasPermission("core.admin")) {
+                if (sender.hasPermission("allium.admin")) {
                     // A simple heuristic: if args[1] is not "on" or "off", it might be a player name.
                     // For robust behavior, the actual command execution would validate if args[1] is a real player.
                     boolean firstArgIsLikelyPlayer = !args[1].equalsIgnoreCase("on") && !args[1].equalsIgnoreCase("off");
@@ -217,7 +217,7 @@ public class Tab implements TabCompleter {
         if (args.length == 1) {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 // Only suggest players if the sender has permission to modify *other* players' fly status.
-                if (sender.hasPermission("core.fly.others")) {
+                if (sender.hasPermission("allium.fly.others")) {
                     suggestions.add(player.getName());
                 } else if (sender instanceof Player && sender.getName().equalsIgnoreCase(player.getName())) {
                     // If the sender doesn't have the "others" permission, only suggest their own name.
@@ -232,7 +232,7 @@ public class Tab implements TabCompleter {
 
     private List<String> getGamemodeSuggestions(CommandSender sender, String command, String[] args) {
         // Return empty list if sender doesn't have basic gamemode permission
-        if (!sender.hasPermission("core.gamemode")) {
+        if (!sender.hasPermission("allium.gamemode")) {
             return Collections.emptyList();
         }
 
@@ -263,19 +263,19 @@ public class Tab implements TabCompleter {
         if (command.equalsIgnoreCase("gamemode") || command.equalsIgnoreCase("gm")) {
             if (args.length == 1) {
                 // Only suggest gamemodes the sender has permission for
-                if (sender.hasPermission("core.gamemode.creative") || sender.hasPermission("core.gamemode.*")) {
+                if (sender.hasPermission("allium.gamemode.creative") || sender.hasPermission("allium.gamemode.*")) {
                     suggestions.add("creative");
                     suggestions.add("1");
                 }
-                if (sender.hasPermission("core.gamemode.survival") || sender.hasPermission("core.gamemode.*")) {
+                if (sender.hasPermission("allium.gamemode.survival") || sender.hasPermission("allium.gamemode.*")) {
                     suggestions.add("survival");
                     suggestions.add("0");
                 }
-                if (sender.hasPermission("core.gamemode.adventure") || sender.hasPermission("core.gamemode.*")) {
+                if (sender.hasPermission("allium.gamemode.adventure") || sender.hasPermission("allium.gamemode.*")) {
                     suggestions.add("adventure");
                     suggestions.add("2");
                 }
-                if (sender.hasPermission("core.gamemode.spectator") || sender.hasPermission("core.gamemode.*")) {
+                if (sender.hasPermission("allium.gamemode.spectator") || sender.hasPermission("allium.gamemode.*")) {
                     suggestions.add("spectator");
                     suggestions.add("3");
                 }
@@ -292,7 +292,7 @@ public class Tab implements TabCompleter {
 
                 // Check permission for the specified gamemode
                 String modePermission = "core.gamemode." + targetMode.name().toLowerCase();
-                if (sender.hasPermission(modePermission) || sender.hasPermission("core.gamemode.*")) {
+                if (sender.hasPermission(modePermission) || sender.hasPermission("allium.gamemode.*")) {
                     return getOnlinePlayerNames(sender);
                 }
             }
@@ -302,19 +302,19 @@ public class Tab implements TabCompleter {
 
         // Handle specific gamemode shortcut commands (gmc, gms, etc.)
         if (command.equalsIgnoreCase("gmc")) {
-            if (args.length == 1 && sender.hasPermission("core.gamemode.creative")) {
+            if (args.length == 1 && sender.hasPermission("allium.gamemode.creative")) {
                 return getOnlinePlayerNames(sender);
             }
         } else if (command.equalsIgnoreCase("gms")) {
-            if (args.length == 1 && sender.hasPermission("core.gamemode.survival")) {
+            if (args.length == 1 && sender.hasPermission("allium.gamemode.survival")) {
                 return getOnlinePlayerNames(sender);
             }
         } else if (command.equalsIgnoreCase("gma")) {
-            if (args.length == 1 && sender.hasPermission("core.gamemode.adventure")) {
+            if (args.length == 1 && sender.hasPermission("allium.gamemode.adventure")) {
                 return getOnlinePlayerNames(sender);
             }
         } else if (command.equalsIgnoreCase("gmsp")) {
-            if (args.length == 1 && sender.hasPermission("core.gamemode.spectator")) {
+            if (args.length == 1 && sender.hasPermission("allium.gamemode.spectator")) {
                 return getOnlinePlayerNames(sender);
             }
         }
@@ -380,7 +380,7 @@ public class Tab implements TabCompleter {
         
         if (args.length == 1) {
             // Player name suggestions
-            if (sender.hasPermission("core.give.other")) {
+            if (sender.hasPermission("allium.give.other")) {
                 return Bukkit.getOnlinePlayers().stream()
                     .map(Player::getName)
                     .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))
@@ -522,7 +522,7 @@ public class Tab implements TabCompleter {
         if (args.length != 1) return suggestions;
 
         String partialName = args[0].toLowerCase(Locale.ENGLISH);
-        boolean hasPermission = !(sender instanceof Player) || sender.hasPermission("core.heal.others");
+        boolean hasPermission = !(sender instanceof Player) || sender.hasPermission("allium.heal.others");
 
         if (hasPermission) {
             suggestions.addAll(Bukkit.getOnlinePlayers().stream()
@@ -544,11 +544,11 @@ public class Tab implements TabCompleter {
         switch (args.length) {
             case 1:
                 // Both console and players with permission can tab complete player names
-                if (sender.hasPermission("core.explode.other") || !(sender instanceof Player)) {
+                if (sender.hasPermission("allium.explode.other") || !(sender instanceof Player)) {
                     Bukkit.getOnlinePlayers().forEach(p -> suggestions.add(p.getName()));
                 }
                 // Both console and players with permission can tab complete power values
-                if (sender.hasPermission("core.explode.self") || !(sender instanceof Player)) {
+                if (sender.hasPermission("allium.explode.self") || !(sender instanceof Player)) {
                     suggestions.add(String.valueOf(min));
                     suggestions.add(String.valueOf(defaultValue));
                     suggestions.add(String.valueOf(max));
@@ -557,7 +557,7 @@ public class Tab implements TabCompleter {
 
             case 2:
                 // Both console and players with permission can tab complete power values for the second argument
-                if (sender.hasPermission("core.explode.other") || !(sender instanceof Player)) {
+                if (sender.hasPermission("allium.explode.other") || !(sender instanceof Player)) {
                     suggestions.add(String.valueOf(min));
                     suggestions.add(String.valueOf(defaultValue));
                     suggestions.add(String.valueOf(max));

@@ -38,7 +38,7 @@ public class Heal implements CommandExecutor {
 
     private boolean canHeal(Player player) {
         // Admins with permission bypass cooldown
-        if (player.hasPermission("core.heal.nocooldown")) {
+        if (player.hasPermission("allium.heal.nocooldown")) {
             return true;
         }
 
@@ -79,7 +79,7 @@ public class Heal implements CommandExecutor {
             return handleConsoleCommand(sender, args);
         }
         // Check permission
-        if (!player.hasPermission("core.heal")) {
+        if (!player.hasPermission("allium.heal")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "/heal" );
             return true;
         }
@@ -93,7 +93,7 @@ public class Heal implements CommandExecutor {
                 }
                 healPlayer(player);
                 player.sendMessage(Text.parseColors(lang.get("heal.self")));
-                if(!player.hasPermission("core.heal.nocooldown")){
+                if(!player.hasPermission("allium.heal.nocooldown")){
                     lastHealTime.put(player.getUniqueId(), System.currentTimeMillis());
                 }
                 return true;
@@ -146,7 +146,7 @@ public class Heal implements CommandExecutor {
         }
 
         // Check permission for healing others
-        if (!player.hasPermission("core.heal.others")) {
+        if (!player.hasPermission("allium.heal.others")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "heal on others");
             return true;
         }

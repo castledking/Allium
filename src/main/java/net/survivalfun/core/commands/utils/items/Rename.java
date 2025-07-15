@@ -37,7 +37,7 @@ public class Rename implements CommandExecutor {
             return true;
         }
 
-        if (!player.hasPermission("core.rename")) {
+        if (!player.hasPermission("allium.rename")) {
             player.sendMessage(lang.get("error-prefix") + lang.get("no-permission"));
             return true;
         }
@@ -60,7 +60,7 @@ public class Rename implements CommandExecutor {
         String name = String.join(" ", args);
 
         // Process the name based on permissions
-        if (player.hasPermission("core.rename.color")) {
+        if (player.hasPermission("allium.rename.color")) {
             // Use ColorUtils.parseColors for comprehensive color handling
             name = Text.parseColors(name);
         } else {

@@ -23,75 +23,59 @@ public class MigrationManager {
         this.pluginsDirectory = dataFolder.getParentFile();
     }
     
-    /**
-     * Performs the migration from SFCore to Allium
-     * Should be called during plugin startup, before other initialization
-     */
     public void performMigration() {
         File sfcoreFolder = new File(pluginsDirectory, "SFCore");
-        
-        // Check if SFCore folder exists
         if (!sfcoreFolder.exists() || !sfcoreFolder.isDirectory()) {
             logger.info("No SFCore folder found, skipping migration.");
             return;
         }
-        
         logger.info("SFCore folder detected! Starting migration to Allium...");
-        
         try {
-            // Ensure Allium folder exists
             if (!currentPluginFolder.exists()) {
                 if (!currentPluginFolder.mkdirs()) {
                     logger.severe("Failed to create Allium plugin folder!");
                     return;
                 }
             }
-            
-            // Migrate all contents from SFCore to Allium
-            migrateFolderContents(sfcoreFolder, currentPluginFolder);
-            
-            // Create backup of SFCore folder before deletion
+            // Preserve existing config.yml
+            File alliumConfig = new File(currentPluginFolder, "config.yml");
+            if (alliumConfig.exists()) {
+                logger.info("Allium config.yml exists, skipping migration of config.yml");
+                migrateFolderContents(sfcoreFolder, currentPluginFolder, true);
+            } else {
+                migrateFolderContents(sfcoreFolder, currentPluginFolder, false);
+            }
             createBackup(sfcoreFolder);
-            
-            // Delete the old SFCore folder
             deleteDirectory(sfcoreFolder);
-            
             logger.info("Migration completed successfully! SFCore data has been moved to Allium.");
             logger.info("A backup of the original SFCore folder has been created as 'SFCore_backup'.");
-            
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error during migration from SFCore to Allium!", e);
         }
     }
     
-    /**
-     * Migrates all files and folders from source to destination
-     */
-    private void migrateFolderContents(File source, File destination) throws IOException {
+    private void migrateFolderContents(File source, File destination, boolean skipConfig) throws IOException {
         File[] files = source.listFiles();
         if (files == null) return;
-        
         for (File file : files) {
+            if (skipConfig && file.getName().equals("config.yml")) {
+                logger.info("Skipping migration of config.yml from SFCore");
+                continue;
+            }
             File targetFile = new File(destination, file.getName());
-            
             if (file.isDirectory()) {
-                // Create directory in destination if it doesn't exist
                 if (!targetFile.exists()) {
                     if (!targetFile.mkdirs()) {
                         logger.warning("Failed to create directory: " + targetFile.getAbsolutePath());
                         continue;
                     }
                 }
-                // Recursively migrate folder contents
-                migrateFolderContents(file, targetFile);
+                migrateFolderContents(file, targetFile, skipConfig);
             } else {
-                // Handle file conflicts
                 if (targetFile.exists()) {
                     logger.info("File already exists in Allium folder, skipping: " + file.getName());
                     continue;
                 }
-                
-                // Copy file to destination
                 try {
                     Files.copy(file.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                     logger.info("Migrated file: " + file.getName());

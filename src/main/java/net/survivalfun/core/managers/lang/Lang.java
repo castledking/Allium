@@ -17,7 +17,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public class Lang {
-    private static final String CURRENT_LANG_VERSION = "0.1.2a";
+    private static final String CURRENT_LANG_VERSION = "0.1.3a";
     private static final List<String> DEPRECATED_KEYS = Arrays.asList(
         "pay-invalid-amount",
         "pay-negative-amount",

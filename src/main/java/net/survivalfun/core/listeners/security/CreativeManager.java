@@ -456,69 +456,39 @@ public class CreativeManager implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
         if (!processedJoinEvents.add(playerId)) {
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Duplicate join event ignored for " + player.getName());
-            }
             return;
         }
 
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Pre-join inventory for " + player.getName() +
-                    ": " + Arrays.toString(player.getInventory().getContents()));
-        }
 
         cachePlayerPermissions(player);
         lastKnownGamemodes.put(playerId, player.getGameMode());
         checkAndApplyGameModeReset(player);
 
         if (player.hasPermission("core.gamemode.creative.inventory")) {
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Skipping inventory management for " + player.getName() +
-                        " in " + player.getGameMode() + " due to core.gamemode.creative.inventory permission");
-            }
             processedJoinEvents.remove(playerId);
             return;
         }
 
         GameMode gameMode = player.getGameMode();
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Loading " + gameMode + " inventory for " + player.getName());
-        }
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             if (!player.isOnline()) return;
             loadInventory(player, gameMode);
             processedJoinEvents.remove(playerId);
         }, 20L);
-
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Post-join inventory for " + player.getName() +
-                    ": " + Arrays.toString(player.getInventory().getContents()));
-        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
 
         cachedCreativePermissions.remove(playerId);
         cachedSpectatorPermissions.remove(playerId);
         lastKnownGamemodes.remove(playerId);
 
         if (player.hasPermission("core.gamemode.creative.inventory")) {
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Skipping inventory save for " + player.getName() +
-                        " due to core.gamemode.creative.inventory permission");
-            }
             return;
-        }
-
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Saving inventory for " + player.getName() +
-                    " in " + player.getGameMode());
         }
         saveCurrentInventory(player, player.getGameMode());
     }
@@ -538,12 +508,6 @@ public class CreativeManager implements Listener {
         World toWorld = player.getWorld();
         GameMode currentGamemode = player.getGameMode();
         UUID playerUUID = player.getUniqueId();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
-
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] " + player.getName() + " changed from world '" + fromWorld.getName() +
-                    "' to '" + toWorld.getName() + "' with gamemode " + currentGamemode);
-        }
 
         if (player.hasPermission("mv.bypass.gamemode." + toWorld.getName()) ||
                 player.hasPermission("mv.bypass.gamemode.*") ||
@@ -552,38 +516,18 @@ public class CreativeManager implements Listener {
                 player.hasPermission("core.gamemode")) {
 
             if (player.hasPermission("core.gamemode.creative.inventory") && currentGamemode != GameMode.CREATIVE) {
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] Skipping inventory management for " + player.getName() +
-                            " in " + currentGamemode + " due to core.gamemode.creative.inventory permission");
-                }
                 return;
-            }
-
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Saving inventory for " + player.getName() +
-                        " in " + currentGamemode + " before world change to " + toWorld.getName());
             }
             saveCurrentInventory(player, currentGamemode);
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (!player.isOnline() || !player.getWorld().equals(toWorld)) return;
                 if (player.getGameMode() != currentGamemode) {
-                    if (debug) {
-                        plugin.getLogger().info("[InventoryDebug] Reverting gamemode for " + player.getName() +
-                                " from " + player.getGameMode() + " to " + currentGamemode + " in world " + toWorld.getName());
-                    }
+
                     player.setGameMode(currentGamemode);
                 }
                 if (player.hasPermission("core.gamemode.creative.inventory") && currentGamemode != GameMode.CREATIVE) {
-                    if (debug) {
-                        plugin.getLogger().info("[InventoryDebug] Skipping inventory restoration for " + player.getName() +
-                                " in " + currentGamemode + " due to core.gamemode.creative.inventory permission");
-                    }
                     return;
-                }
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] Restoring inventory for " + player.getName() +
-                            " in " + currentGamemode + " after world change to " + toWorld.getName());
                 }
                 loadInventory(player, currentGamemode);
             }, 2L);
@@ -596,15 +540,11 @@ public class CreativeManager implements Listener {
         GameMode newGamemode = event.getNewGameMode();
         GameMode oldGamemode = player.getGameMode();
         UUID playerUUID = player.getUniqueId();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
 
         long currentTime = System.currentTimeMillis();
         if (recentRestorations.containsKey(playerUUID)) {
             long lastRestoration = recentRestorations.get(playerUUID);
             if (currentTime - lastRestoration < RESTORATION_COOLDOWN) {
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] Skipping game mode reversion for " + player.getName() + " due to recent restoration");
-                }
                 return;
             }
         }
@@ -619,18 +559,10 @@ public class CreativeManager implements Listener {
                 player.hasPermission("mv.bypass.gamemode." + player.getWorld().getName()) ||
                 player.hasPermission("mv.bypass.gamemode.*"))) {
 
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Detected Multiverse attempting to change " + player.getName() +
-                        "'s gamemode from " + oldGamemode + " to " + newGamemode + ". Cancelling and preserving inventory.");
-            }
 
             event.setCancelled(true);
 
             if (player.hasPermission("core.gamemode.creative.inventory") && oldGamemode != GameMode.CREATIVE) {
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] Skipping inventory management for " + player.getName() +
-                            " in " + oldGamemode + " due to core.gamemode.creative.inventory permission");
-                }
                 return;
             }
 
@@ -638,21 +570,9 @@ public class CreativeManager implements Listener {
                 if (!player.isOnline()) return;
                 if (player.getGameMode() != oldGamemode) {
                     player.setGameMode(oldGamemode);
-                    if (debug) {
-                        plugin.getLogger().info("[InventoryDebug] Reverted " + player.getName() +
-                                "'s gamemode to " + oldGamemode + " after Multiverse change attempt.");
-                    }
                 }
                 if (player.hasPermission("core.gamemode.creative.inventory") && oldGamemode != GameMode.CREATIVE) {
-                    if (debug) {
-                        plugin.getLogger().info("[InventoryDebug] Skipping inventory restoration for " + player.getName() +
-                                " in " + oldGamemode + " due to core.gamemode.creative.inventory permission");
-                    }
                     return;
-                }
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] Restoring inventory for " + player.getName() +
-                            " in " + oldGamemode);
                 }
                 loadInventory(player, oldGamemode);
                 recentRestorations.put(playerUUID, System.currentTimeMillis());
@@ -771,11 +691,6 @@ public class CreativeManager implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Inventory click detected for " + player.getName() + 
-                    " in " + player.getGameMode() + ", slot: " + event.getSlot());
-        }
         if (player.getGameMode() != GameMode.CREATIVE) return;
         if (canUseContainers(player)) return;
         Inventory inventory = event.getClickedInventory();
@@ -800,11 +715,6 @@ public class CreativeManager implements Listener {
     public void onItemPickup(EntityPickupItemEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
         Player player = (Player) event.getEntity();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Item pickup detected for " + player.getName() + 
-                    " in " + player.getGameMode() + ", item: " + event.getItem().getItemStack().getType());
-        }
         if (player.getGameMode() != GameMode.CREATIVE) return;
         if (canPickupItems(player)) return;
         event.setCancelled(true);
@@ -941,11 +851,6 @@ public class CreativeManager implements Listener {
     private void saveCurrentInventory(@NotNull Player player, @NotNull GameMode gameMode) {
         UUID playerUUID = player.getUniqueId();
         String playerName = player.getName();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Saving inventory for " + player.getName() +
-                    " in " + gameMode + ", contents: " + Arrays.toString(player.getInventory().getContents()));
-        }
         try {
             PlayerInventories inventories = database.loadPlayerInventories(playerUUID);
             ItemStack[] survivalInventory = new ItemStack[0];
@@ -987,9 +892,6 @@ public class CreativeManager implements Listener {
                 creativeOffhand
             );
             database.savePlayerInventories(playerUUID, updated);
-            if (debug) {
-                plugin.getLogger().info("Saved " + gameMode.name() + " inventory for " + playerName);
-            }
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save inventory for " + playerName, e);
         }
@@ -997,20 +899,12 @@ public class CreativeManager implements Listener {
 
     private void loadInventory(@NotNull Player player, @NotNull GameMode gameMode) {
         UUID playerUUID = player.getUniqueId();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
         if (player.hasPermission("core.gamemode.creative.inventory")) {
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Skipping inventory load for " + player.getName() +
-                        " in " + gameMode + " due to core.gamemode.creative.inventory permission");
-            }
             return;
         }
         try {
             PlayerInventories inventories = database.loadPlayerInventories(playerUUID);
             if (inventories == null) {
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] No saved inventory found for " + player.getName() + " in " + gameMode);
-                }
                 return;
             }
             ItemStack[] inventory;
@@ -1037,32 +931,14 @@ public class CreativeManager implements Listener {
                 player.getInventory().setItemInOffHand(offhand);
             }
             player.updateInventory();
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Loaded " + gameMode + " inventory for " + player.getName() +
-                        ": " + Arrays.toString(player.getInventory().getContents()));
-            }
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load inventory for player: " + player.getName(), e);
         }
     }
 
     private void clearInventory(@NotNull Player player) {
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
         if (player.hasPermission("core.gamemode.creative.inventory")) {
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Skipping inventory clear for " + player.getName() +
-                        " in " + player.getGameMode() + " due to core.gamemode.creative.inventory permission");
-            }
             return;
-        }
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Clearing inventory for " + player.getName() +
-                    " in " + player.getGameMode() + " (World: " + player.getWorld().getName() + ")");
-            plugin.getLogger().info("[InventoryDebug] Current inventory contents: " + Arrays.toString(player.getInventory().getContents()));
-            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-            for (int i = 1; i < Math.min(stackTrace.length, 5); i++) {
-                plugin.getLogger().info("[InventoryDebug] Stack trace [" + i + "]: " + stackTrace[i].toString());
-            }
         }
         player.getInventory().clear();
         player.getInventory().setArmorContents(new ItemStack[4]);
@@ -1079,37 +955,20 @@ public class CreativeManager implements Listener {
         Player player = event.getPlayer();
         GameMode newGameMode = event.getNewGameMode();
         GameMode oldGameMode = player.getGameMode();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
 
         cachePlayerPermissions(player);
 
         if (player.hasPermission("core.gamemode.creative.inventory")) {
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Skipping inventory management for " +
-                        player.getName() + " (old: " + oldGameMode + ", new: " + newGameMode +
-                        ") due to core.gamemode.creative.inventory permission");
-            }
             return;
         }
 
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Saving " + oldGameMode + " inventory and loading " +
-                    newGameMode + " inventory for " + player.getName());
-        }
         saveCurrentInventory(player, oldGameMode);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!player.isOnline()) return;
             // Ensure gamemode has updated
             if (player.getGameMode() == newGameMode) {
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] Applying " + newGameMode + " inventory for " + player.getName());
-                }
                 clearInventory(player); // Clear before loading to avoid overlap
                 loadInventory(player, newGameMode);
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] Post-load inventory for " + player.getName() +
-                            ": " + Arrays.toString(player.getInventory().getContents()));
-                }
             }
         }, 2L); // Reduced delay to 2 ticks
     }
@@ -1117,18 +976,8 @@ public class CreativeManager implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerRespawn(PlayerRespawnEvent event) {
         Player player = event.getPlayer();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
         if (player.hasPermission("core.gamemode.creative.inventory") && player.getGameMode() != GameMode.CREATIVE) {
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Skipping inventory management on respawn for " + 
-                        player.getName() + " in " + player.getGameMode() + 
-                        " due to core.gamemode.creative.inventory permission");
-            }
             return;
-        }
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Loading inventory on respawn for " + 
-                    player.getName() + " in " + player.getGameMode());
         }
         loadInventory(player, player.getGameMode());
     }
@@ -1136,16 +985,6 @@ public class CreativeManager implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onInventoryChange(InventoryEvent event) {
         if (event.getInventory().getHolder() instanceof Player player) {
-            boolean debug = plugin.getConfig().getBoolean("debug-mode");
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Inventory changed for " + player.getName() + 
-                        " in " + player.getGameMode() + " at " + System.currentTimeMillis() + 
-                        ", contents: " + Arrays.toString(player.getInventory().getContents()));
-                StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-                for (int i = 1; i < Math.min(stackTrace.length, 5); i++) {
-                    plugin.getLogger().info("[InventoryDebug] Stack trace [" + i + "]: " + stackTrace[i].toString());
-                }
-            }
             // Force save inventory on change
             saveCurrentInventory(player, player.getGameMode());
         }
@@ -1171,11 +1010,6 @@ public class CreativeManager implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void saveOnInventoryClick(InventoryClickEvent event) {
         if (event.getWhoClicked() instanceof Player player) {
-            boolean debug = plugin.getConfig().getBoolean("debug-mode");
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Inventory click detected for " + player.getName() + 
-                        " in " + player.getGameMode() + ", slot: " + event.getSlot());
-            }
             saveCurrentInventory(player, player.getGameMode());
         }
     }
@@ -1183,11 +1017,6 @@ public class CreativeManager implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void saveOnItemPickup(EntityPickupItemEvent event) {
         if (event.getEntity() instanceof Player player) {
-            boolean debug = plugin.getConfig().getBoolean("debug-mode");
-            if (debug) {
-                plugin.getLogger().info("[InventoryDebug] Item pickup detected for " + player.getName() + 
-                        " in " + player.getGameMode() + ", item: " + event.getItem().getItemStack().getType());
-            }
             saveCurrentInventory(player, player.getGameMode());
         }
     }
@@ -1196,30 +1025,14 @@ public class CreativeManager implements Listener {
         UUID playerId = player.getUniqueId();
         GameMode lastKnownGamemode = getLastKnownGamemode(playerId);
         GameMode currentGamemode = player.getGameMode();
-        boolean debug = plugin.getConfig().getBoolean("debug-mode");
-
-        if (debug) {
-            plugin.getLogger().info("[InventoryDebug] Checking game mode reset for " + player.getName() +
-                    ": lastKnown=" + lastKnownGamemode + ", current=" + currentGamemode);
-        }
 
         if (lastKnownGamemode != currentGamemode) {
             if ((lastKnownGamemode == GameMode.CREATIVE && player.hasPermission("core.gamemode.creative")) ||
                     (lastKnownGamemode == GameMode.SPECTATOR && player.hasPermission("core.gamemode.spectator")) ||
                     player.hasPermission("core.gamemode")) {
-                if (debug) {
-                    plugin.getLogger().info("[InventoryDebug] Detected gamemode change for " + player.getName() +
-                            " from " + currentGamemode + " to " + lastKnownGamemode +
-                            ". Will revert this change.");
-                }
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (!player.isOnline()) return;
                     player.setGameMode(lastKnownGamemode);
-                    if (debug) {
-                        plugin.getLogger().info("[InventoryDebug] Reverted " + player.getName() +
-                                "'s gamemode back to " + lastKnownGamemode +
-                                " after it was changed to " + currentGamemode);
-                    }
                     if (!player.hasPermission("core.gamemode.creative.inventory")) {
                         loadInventory(player, lastKnownGamemode);
                     }

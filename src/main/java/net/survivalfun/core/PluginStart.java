@@ -21,9 +21,11 @@ import net.survivalfun.core.commands.utils.core.managers.Heal;
 import net.survivalfun.core.commands.utils.core.managers.NV;
 import net.survivalfun.core.commands.utils.core.managers.Redeem;
 import net.survivalfun.core.commands.utils.core.managers.Spy;
+import net.survivalfun.core.commands.utils.core.managers.TimeCycle;
 import net.survivalfun.core.commands.utils.core.managers.Whois;
 import net.survivalfun.core.commands.utils.core.player.GC;
 import net.survivalfun.core.commands.utils.core.player.Help;
+import net.survivalfun.core.commands.utils.core.player.Home;
 import net.survivalfun.core.commands.utils.core.player.Msg;
 import net.survivalfun.core.commands.utils.core.staff.NoteCommand;
 import net.survivalfun.core.commands.utils.core.staff.NotesCommand;
@@ -76,6 +78,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Main plugin class for Allium, responsible for initializing managers, commands, listeners, and services.
@@ -102,6 +105,7 @@ public class PluginStart extends JavaPlugin {
     private final Map<UUID, Long> playerLoginTimes = new ConcurrentHashMap<>();
     private MigrationManager migrationManager;
     private EconomyManager economyManager;
+    private TimeCycle timeCycle;
 
     /**
      * Gets the singleton instance of the plugin.
@@ -419,6 +423,7 @@ public class PluginStart extends JavaPlugin {
         Item.initialize(this);
         new Skull(this);
         new WorldDefaults(this);
+        timeCycle = new TimeCycle(this);
     }
 
     private boolean initializeVault() {
@@ -499,7 +504,11 @@ public class PluginStart extends JavaPlugin {
     private void registerCommands() {
         try {
             // Core commands
-            registerCommand("core", new Core(new WorldDefaults(this), this, getConfig(), commandManager, creativeManager), new Tab(this));
+            CommandManager commandManager = new CommandManager(this);
+            CreativeManager creativeManager = new CreativeManager(this);
+            Core coreCommand = new Core(new WorldDefaults(this), this, getConfig(), commandManager, creativeManager);
+            Objects.requireNonNull(getCommand("core")).setExecutor(coreCommand);
+            Objects.requireNonNull(getCommand("core")).setTabCompleter(coreCommand);
             registerCommand("maintenance", new Maintenance(this));
             registerCommand("gamemode", new Gamemode(this), new Tab(this));
             registerCommand("fly", new Fly(this), new Tab(this));
@@ -547,10 +556,6 @@ public class PluginStart extends JavaPlugin {
                 registerCommand(cmd, tpCommand, tpCommand);
             }
 
-            Spawn spawnCommand = new Spawn(this, database);
-            registerCommand("spawn", spawnCommand);
-            registerCommand("setspawn", spawnCommand);
-
             // Economy commands
             Balance balanceExecutor = new Balance(this, economyManager);
             registerCommand("balance", balanceExecutor, balanceExecutor);
@@ -561,6 +566,24 @@ public class PluginStart extends JavaPlugin {
             registerCommand("baltop", balTopExecutor, balTopExecutor);
             Money moneyExecutor = new Money(this, economyManager);
             registerCommand("money", moneyExecutor, moneyExecutor);
+
+            // Home commands
+            Home homeCommand = new Home(this, database);
+            registerCommand("home", homeCommand);
+            registerCommand("sethome", homeCommand);
+            registerCommand("delhome", homeCommand);
+            registerCommand("homes", homeCommand);
+            registerCommand("removehome", homeCommand);
+
+            // Spawn commands
+            Spawn spawnCommand = new Spawn(this, database);
+            registerCommand("spawn", spawnCommand);
+            registerCommand("setspawn", spawnCommand);
+
+            // Time commands
+            registerCommand("time", timeCycle, timeCycle);
+            registerCommand("day", timeCycle, timeCycle);
+            registerCommand("night", timeCycle, timeCycle);
 
         } catch (Exception e) {
             getLogger().severe("Failed to register commands: " + e.getMessage());

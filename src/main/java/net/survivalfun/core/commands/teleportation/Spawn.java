@@ -103,7 +103,7 @@ public class Spawn implements CommandExecutor {
         }
     }
 
-    private void teleportToSpawn(Player player) {
+    public void teleportToSpawn(Player player) {
         // Cancel any existing teleport task for this player
         cancelTeleportTask(player.getUniqueId());
 

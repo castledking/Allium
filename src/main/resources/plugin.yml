@@ -1,5 +1,5 @@
 name: Allium
-version: 0.1.2a
+version: 0.1.3a
 main: net.survivalfun.core.PluginStart
 api-version: 1.21
 author: towkio
@@ -101,6 +101,27 @@ commands:
     usage: "/skull <player>"
     permission: core.skull
     aliases: [head, playerhead]
+  
+  home:
+    description: "Teleports you to your home"
+    usage: "/home [home]"
+    permission: core.home
+
+  homes:
+    description: "Lists your homes"
+    usage: "/homes"
+    permission: core.homes
+  
+  sethome:
+    description: "Sets a home"
+    usage: "/sethome [home]"
+    permission: core.sethome
+  
+  delhome:
+    description: "Deletes a home"
+    usage: "/delhome [home]"
+    permission: core.delhome
+    aliases: [removehome]
   
   # Economy commands
   balance:
@@ -234,6 +255,20 @@ commands:
     description: Remove a player note
     usage: /unnote <player> <id>
     permission: core.staff
+
+  # Time commands
+  time:
+    description: "Manipulate or view the time"
+    usage: "/time [set|add] [time] [world]"
+    permission: core.time
+  day:
+    description: "Set the time to day"
+    usage: "/day [set|add] [time] [world]"
+    permission: core.time
+  night:
+    description: "Set the time to night"
+    usage: "/night [set|add] [time] [world]"
+    permission: core.time
 
 permissions:
   core.staff:
@@ -391,6 +426,21 @@ permissions:
   core.help:
     default: true
 
+  core.home:
+    default: true
+  core.sethome:
+    default: true
+  core.homes:
+    default: true
+  core.delhome:
+    default: true
+  core.sethome.unlimited:
+    default: op
+  core.home.others:
+    default: op
+  core.home.nocooldown:
+    default: op
+
   core.hide.group:
     default: false
   core.hide.bypass:
@@ -518,4 +568,14 @@ permissions:
     default: op
   chat.format.magic:
     description: Allows using magic formatting in chat
+    default: op
+
+  core.time:
+    description: "Allows the player to view the time"
+    default: true
+  core.time.set:
+    description: "Allows the player to set the time"
+    default: op
+  core.time.add:
+    description: "Allows the player to add to the time"
     default: op

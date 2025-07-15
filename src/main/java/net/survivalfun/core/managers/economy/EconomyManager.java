@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Economy manager for SFCore
+ * Economy manager for Allium
  * Handles all economy-related operations
  */
 public class EconomyManager {

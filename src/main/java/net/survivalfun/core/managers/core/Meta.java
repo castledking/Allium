@@ -278,7 +278,7 @@ public class Meta {
             skull = Skull.createSkullWithTexture(hdbCode);
         } else if (base64 != null) {
             skull = Skull.createSkullWithTexture(base64);
-        } else if (owner != null) {
+        } else if (owner != null && !owner.isEmpty()) {
             // First try to get the head for an online player
             OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(owner);
             if (offlinePlayer.isOnline() || offlinePlayer.hasPlayedBefore()) {
@@ -292,6 +292,9 @@ public class Meta {
                 // For non-online players, try to fetch from minecraft-heads.com
                 skull = Skull.fetchPlayerHeadFromName(owner);
             }
+        } else {
+            // Create a default player head
+            skull = new ItemStack(Material.PLAYER_HEAD);
         }
 
         if (skull == null) {

@@ -84,14 +84,12 @@ public class MaintenanceListener implements Listener {
         try {
             boolean hasLockdownBypass = permissionCache.hasPermission(playerUUID, "core.lockdown.bypass");
             boolean hasAdmin = permissionCache.hasPermission(playerUUID, "core.admin");
-            boolean hasMaintenanceBypass = permissionCache.hasPermission(playerUUID, "core.maintenance.bypass");
             
             plugin.getLogger().info("Database permission check for " + playerName + 
                 " - lockdown.bypass: " + hasLockdownBypass + 
-                ", admin: " + hasAdmin + 
-                ", maintenance.bypass: " + hasMaintenanceBypass);
+                ", admin: " + hasAdmin);
             
-            return hasLockdownBypass || hasAdmin || hasMaintenanceBypass;
+            return hasLockdownBypass || hasAdmin;
         } catch (Exception e) {
             plugin.getLogger().warning("Error checking database permissions for " + playerName + ": " + e.getMessage());
         }

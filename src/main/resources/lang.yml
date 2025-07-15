@@ -2,7 +2,7 @@
 #              SFCORE LANG(en)             #
 #==========================================#
 
-version: 0.1.2a
+version: 0.1.3a
 # This is the version of the language file.
 # Currently only used to remove deprecated
 # keys from this file on load.
@@ -93,6 +93,7 @@ command-usage: "&7Usage: /{cmd} {args}"
 not-a-player: "You must be a player to use this command."
 player-not-found: "Player {name} was not found."
 player-not-online: "Player {name} is not online."
+world-not-found: "World {world} not found."
 invalid: "Invalid {arg}! Please check your syntax."
 no-permission: "You don't have permission to use /{cmd}"
 hold-item: "You must be holding an item to {modify} it."
@@ -168,6 +169,14 @@ heal:
   self: "&aYou have been healed."
   other: "&aYou have healed &e{name}&a."
 
+home:
+  set: "&6Home &e{home} &6set to &e{location}."
+  remove: "&6Home &e{home} &6has been removed."
+  max: "You cant set more than {max} homes."
+  no-bed: "Your bed is either unset, missing or blocked."
+  no-home: "&6Player has not set a home."
+  list: "&6Homes: &e{homes}"
+
 invsee:
   inventory: "Editing &e{player}'s inventory."
 
@@ -231,6 +240,11 @@ spy:
   self: "You can't spy on yourself."
   format: "&8[&7SPY&8] &f{name} &7sent message to &f{target}&8: &7{message}"
   exempt: "You cannot spy on this player."
+
+time:
+  set: "&aThe time was set to &e{time} &ain: &e{worlds}&a."
+  add: "&aThe time moved forward by &e{time} &ain: &e{worlds}&a."
+  check: "&e{24h} &6or &e{12h} &6or &e{ticks}"
 
 tp:
   success: "&6Teleporting {name} {target}"

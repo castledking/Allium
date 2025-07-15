@@ -95,14 +95,14 @@ allow-unsafe-enchants: false
 #  Unsafe enchantments are those that exceed the normal level limits.
 #  Default: false
 
-# List of players eligible to redeem a rank.
-# Format: "<UUID>:<rank_name_lowercase>"
-# Example: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:iron"
-players-to-redeem:
-  - "00000000-0000-0000-0000-000000000001:iron"
-  - "00000000-0000-0000-0000-000000000002:gold"
-
 redeem-settings:
+  # List of players eligible to redeem a rank.
+  # Format: "<UUID>:<rank_name_lowercase>"
+  # Example: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:iron"
+  players-to-redeem:
+    - "00000000-0000-0000-0000-000000000001:iron"
+    - "00000000-0000-0000-0000-000000000002:gold"
+
   # Commands to run for each rank when a player redeems.
   # Ranks are determined by the suffix in the 'players-to-redeem' list (e.g., 'uuid:iron' means the rank is 'iron').
   # Placeholders: {player} (player's name)
@@ -110,19 +110,19 @@ redeem-settings:
     iron:
       - "lp user {player} parent set iron"
       - "minecraft:xp add {player} 100 points"
-      - "eco give {player} 500"
+      - "money give {player} 500"
     gold:
       - "lp user {player} parent set gold"
       - "minecraft:xp add {player} 250 points"
-      - "eco give {player} 1500"
+      - "money give {player} 1500"
     emerald:
       - "lp user {player} parent set emerald"
       - "minecraft:xp add {player} 500 points"
-      - "eco give {player} 3000"
+      - "money give {player} 3000"
     netherite:
       - "lp user {player} parent set netherite"
       - "minecraft:xp add {player} 1000 points"
-      - "eco give {player} 5000"
+      - "money give {player} 5000"
 
 ############################################################
 # +------------------------------------------------------+ #
@@ -160,6 +160,14 @@ heal:
   cooldown: 60
   # Time in seconds players without core.heal.nocooldown
 
+home:
+  cooldown: 60
+  # Time in seconds players without core.home.nocooldown
+  show-location: false
+  # Whether to show the location of the home in the tp message.
+  spawn-if-no-home: true
+  # If no home is set, would you like to send the player to spawn?
+
 feed:
   cooldown: 60
   # Time in seconds players without core.feed.nocooldown
@@ -173,14 +181,6 @@ teleport:
   # Time in seconds a request expires.
   tppet-radius: 30
   # Maximum radius in blocks the player can be from the pet.
-  auto-disable:
-    # Whether to auto-disable entity teleport mode after teleporting entities
-    # If set to false, entity selection will remain active after teleporting
-    # This applies to non-admin players only (admins always keep selection active)
-    enabled: true
-    # Whether to auto-disable pet teleport mode after teleporting pets
-    # If set to false, pet selection will remain active after teleporting
-    pets-enabled: true
 
 ############################################################
 # +------------------------------------------------------+ #
@@ -235,3 +235,6 @@ world-defaults:
 ############################################################
 
 debug-mode: true
+
+# Version of the config file (do not modify)
+version: 0.1.3a

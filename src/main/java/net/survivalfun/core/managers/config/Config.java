@@ -7,7 +7,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
@@ -15,6 +17,7 @@ public class Config {
     private final File configFile;
     private final Map<String, Object> defaultConfigValues = new HashMap<>();
     private final JavaPlugin plugin;
+    private static final String CURRENT_VERSION = "0.1.3a";
 
     public Config(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -29,42 +32,257 @@ public class Config {
     }
 
     private void initializeDefaultConfigValues() {
-        // Chat formatting settings
+        // Basic settings
         defaultConfigValues.put("lang", "en");
+        defaultConfigValues.put("server-name", "Unknown Server");
+        
+        // Discord settings
+        defaultConfigValues.put("discord.escalate_webhook", "");
+        defaultConfigValues.put("discord.escalate_mentions", new ArrayList<>());
+        defaultConfigValues.put("discord.bot_name", "Server Escalation");
+        defaultConfigValues.put("discord.bot_avatar", "");
+        
+        // Maintenance settings
+        defaultConfigValues.put("maintenance.bypass", new ArrayList<>());
+        
+        // Chat formatting settings
         defaultConfigValues.put("enable-chat-formatting", true);
         defaultConfigValues.put("block-unicode", true);
         defaultConfigValues.put("chat-format.default", "<prefix> &a<player>&f: &f<message>");
-
-
+        
+        // Creative manager settings
+        defaultConfigValues.put("creative-manager.blacklist.blocks", new ArrayList<>());
+        defaultConfigValues.put("creative-manager.blacklist.entities", new ArrayList<>());
+        
         // General settings
+        defaultConfigValues.put("creeper-explosion-regen-speed", 5);
         defaultConfigValues.put("allow-unsafe-enchants", false);
+        
+        // Players to redeem settings
+        List<String> defaultPlayersToRedeem = new ArrayList<>();
+        defaultPlayersToRedeem.add("00000000-0000-0000-0000-000000000001:iron");
+        defaultPlayersToRedeem.add("00000000-0000-0000-0000-000000000002:gold");
+        defaultConfigValues.put("redeem-settings.players-to-redeem", defaultPlayersToRedeem);
+        
+        // Redeem settings - commands to run for each rank
+        List<String> ironCommands = new ArrayList<>();
+        ironCommands.add("lp user {player} parent set iron");
+        ironCommands.add("minecraft:xp add {player} 100 points");
+        ironCommands.add("money give {player} 500");
+        defaultConfigValues.put("redeem-settings.commands-to-run.iron", ironCommands);
 
+        List<String> goldCommands = new ArrayList<>();
+        goldCommands.add("lp user {player} parent set gold");
+        goldCommands.add("minecraft:xp add {player} 250 points");
+        goldCommands.add("money give {player} 1500");
+        defaultConfigValues.put("redeem-settings.commands-to-run.gold", goldCommands);
+
+        List<String> emeraldCommands = new ArrayList<>();
+        emeraldCommands.add("lp user {player} parent set emerald");
+        emeraldCommands.add("minecraft:xp add {player} 500 points");
+        emeraldCommands.add("money give {player} 3000");
+        defaultConfigValues.put("redeem-settings.commands-to-run.emerald", emeraldCommands);
+
+        List<String> netheriteCommands = new ArrayList<>();
+        netheriteCommands.add("lp user {player} parent set netherite");
+        netheriteCommands.add("minecraft:xp add {player} 1000 points");
+        netheriteCommands.add("money give {player} 5000");
+        defaultConfigValues.put("redeem-settings.commands-to-run.netherite", netheriteCommands);
+        
+        // Give settings
+        defaultConfigValues.put("give.drop-overflow-items", true);
+        defaultConfigValues.put("give.max-items-dropped", 64);
+        
         // Explode command settings
         defaultConfigValues.put("explode-command.default", 2);
         defaultConfigValues.put("explode-command.max", 10);
         defaultConfigValues.put("explode-command.min", 1);
-
+        
+        // Command cooldown and settings
+        defaultConfigValues.put("heal.cooldown", 60);
+        defaultConfigValues.put("home.cooldown", 60);
+        defaultConfigValues.put("home.show-location", false);
+        defaultConfigValues.put("home.spawn-if-no-home", true);
+        defaultConfigValues.put("feed.cooldown", 60);
+        defaultConfigValues.put("teleport.delay", 3);
+        defaultConfigValues.put("teleport.cooldown", 30);
+        defaultConfigValues.put("teleport.expire", 120);
+        defaultConfigValues.put("teleport.tppet-radius", 30);
+        
+        // Economy settings
+        defaultConfigValues.put("economy.currency-symbol", "$");
+        defaultConfigValues.put("economy.starting-balance", 100.00);
+        defaultConfigValues.put("economy.decimal-places", 2);
+        defaultConfigValues.put("economy.symbol-before-amount", true);
+        defaultConfigValues.put("economy.space-between", false);
+        
         // World-specific defaults
         defaultConfigValues.put("world-defaults.world.send-command-feedback", false);
-        // Debug
-        defaultConfigValues.put("debug-mode", false);
+        
+        // Debug settings
+        defaultConfigValues.put("debug-mode", true);
+        
+        // Version
+        defaultConfigValues.put("version", CURRENT_VERSION);
     }
 
     public void load() {
-        // Check if config file exists
+        plugin.getLogger().info("Loading configuration...");
         if (!configFile.exists()) {
-            // Create config from template
             createDefaultConfig();
+            plugin.getLogger().info("Created new config.yml");
         } else {
-            // Config exists, reload it
-            plugin.reloadConfig(); 
-
-            // Check for missing values and add them
+            plugin.reloadConfig();
             updateConfig();
+            handleVersionChanges();
         }
-        if(plugin.getConfig().getBoolean("debug-mode")) {
+        if (plugin.getConfig().getBoolean("debug-mode")) {
             plugin.getLogger().info("Configuration loaded from disk");
         }
+    }
+
+    private void handleVersionChanges() {
+        FileConfiguration config = plugin.getConfig();
+        String configVersion = config.getString("version", "0.1.3a");
+        
+        plugin.getLogger().info("Config version: " + configVersion + ", Current: " + CURRENT_VERSION);
+        performChangesForVersion(configVersion); // Always run for testing
+        
+        config.set("version", CURRENT_VERSION);
+        try {
+            config.save(configFile);
+            plugin.reloadConfig();
+            plugin.getLogger().info("Config updated to version " + CURRENT_VERSION);
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to save version-updated config", e);
+        }
+    }
+
+    /**
+     * Performs version-specific changes to the configuration.
+     * This method should be updated whenever a new version requires config changes.
+     * 
+     * @param fromVersion The version the config is being upgraded from
+     */
+    private void performChangesForVersion(String fromVersion) {
+        FileConfiguration config = plugin.getConfig();
+        boolean configChanged = false;
+        
+        // Handle changes for version 0.1.3a (first version)
+        if ("0.1.3a".equals(CURRENT_VERSION)) {
+            configChanged |= changeEcoToMoney(config);
+            configChanged |= removeTeleportAutoDisable(config);
+        }
+        
+        // Add future version handling here
+        // Example:
+        // if (isVersionOlderThan(fromVersion, "0.1.4")) {
+        //     configChanged |= performChangesFor014(config);
+        // }
+        
+        if (configChanged) {
+            plugin.getLogger().info("Applied version-specific changes for " + CURRENT_VERSION);
+        }
+    }
+
+    private boolean changeEcoToMoney(FileConfiguration config) {
+        plugin.getLogger().info("Starting eco to money command conversion...");
+        boolean changed = false;
+        String[] ranks = {"iron", "gold", "emerald", "netherite"};
+        String pathPrefix = "redeem-settings.commands-to-run."; // Only check this path
+    
+        for (String rank : ranks) {
+            String path = pathPrefix + rank;
+            List<String> commands = config.getStringList(path);
+            
+            plugin.getLogger().info("Checking path: " + path + ", Commands: " + commands);
+            if (commands == null || commands.isEmpty()) {
+                plugin.getLogger().warning("No commands found for path: " + path);
+                continue;
+            }
+            
+            List<String> updatedCommands = new ArrayList<>();
+            
+            for (String command : commands) {
+                if (command.toLowerCase().contains("eco give")) {
+                    String updatedCommand = command.replaceAll("(?i)eco give", "money give");
+                    updatedCommands.add(updatedCommand);
+                    changed = true;
+                    plugin.getLogger().info("Updated command for " + rank + ": " + command + " -> " + updatedCommand);
+                } else {
+                    updatedCommands.add(command);
+                }
+            }
+            
+            if (changed) {
+                config.set(path, updatedCommands);
+                plugin.getLogger().info("Updated commands for " + path + ": " + updatedCommands);
+            }
+        }
+        
+        // Remove commands-to-run section if it exists
+        if (config.contains("commands-to-run")) {
+            config.set("commands-to-run", null);
+            changed = true;
+            plugin.getLogger().info("Removed deprecated commands-to-run section");
+        }
+        
+        if (changed) {
+            plugin.getLogger().info("Eco to money conversion completed with changes.");
+        } else {
+            plugin.getLogger().info("No eco to money changes were needed.");
+        }
+        
+        return changed;
+    }
+
+    /**
+     * Removes the teleport auto-disable section from the configuration.
+     * This is specific to version 0.1.3a.
+     * 
+     * @param config The configuration to modify
+     * @return true if any changes were made
+     */
+    private boolean removeTeleportAutoDisable(FileConfiguration config) {
+        boolean changed = false;
+        String autoDisablePath = "teleport.auto-disable";
+        
+        if (config.contains(autoDisablePath)) {
+            config.set(autoDisablePath, null);
+            changed = true;
+            plugin.getLogger().info("Removed deprecated teleport.auto-disable section");
+        }
+        
+        // Also check for individual settings in case they exist separately
+        String[] autoDisableSettings = {
+            "teleport.auto-disable.enabled",
+            "teleport.auto-disable.pets-enabled"
+        };
+        
+        for (String setting : autoDisableSettings) {
+            if (config.contains(setting)) {
+                config.set(setting, null);
+                changed = true;
+                plugin.getLogger().info("Removed deprecated setting: " + setting);
+            }
+        }
+        
+        return changed;
+    }
+
+    /**
+     * Utility method to compare version strings.
+     * This is a simple comparison - you might want to implement a more sophisticated
+     * version comparison if you use semantic versioning.
+     * 
+     * @param version1 First version to compare
+     * @param version2 Second version to compare
+     * @return true if version1 is older than version2
+     */
+    private boolean isVersionOlderThan(String version1, String version2) {
+        // Simple string comparison for now
+        // You could implement proper semantic version comparison here
+        return version1.compareTo(version2) < 0;
     }
 
     private void createDefaultConfig() {
@@ -156,26 +374,53 @@ public class Config {
     public void updateConfig() {
         FileConfiguration config = plugin.getConfig();
         boolean updated = false;
-
-        // Check for missing values
+    
+        // Move players-to-redeem to redeem-settings.players-to-redeem
+        if (config.contains("players-to-redeem")) {
+            List<String> playersToRedeem = config.getStringList("players-to-redeem");
+            if (!playersToRedeem.isEmpty()) {
+                config.set("redeem-settings.players-to-redeem", playersToRedeem);
+                plugin.getLogger().info("Moved players-to-redeem to redeem-settings.players-to-redeem");
+                updated = true;
+            }
+            config.set("players-to-redeem", null);
+            plugin.getLogger().info("Removed deprecated players-to-redeem section");
+            updated = true;
+        }
+    
+        // Force-add home settings
+        config.set("home.show-location", false);
+        updated = true;
+        plugin.getLogger().info("Force-added config value: home.show-location");
+        config.set("home.spawn-if-no-home", true);
+        updated = true;
+        plugin.getLogger().info("Force-added config value: home.spawn-if-no-home");
+    
+        // Check other missing values
         for (Map.Entry<String, Object> entry : defaultConfigValues.entrySet()) {
             if (!config.contains(entry.getKey())) {
                 config.set(entry.getKey(), entry.getValue());
                 updated = true;
                 plugin.getLogger().info("Added missing config value: " + entry.getKey());
             }
-
         }
-
-        // Save if updates were made
+    
         if (updated) {
             try {
-                // We need to use the config's safe method to preserve comments
                 config.save(configFile);
-                plugin.reloadConfig(); // Reload after saving
+                FileConfiguration reloadedConfig = YamlConfiguration.loadConfiguration(configFile);
+                plugin.getConfig().setDefaults(reloadedConfig);
+                if (!reloadedConfig.contains("home.show-location") || !reloadedConfig.contains("home.spawn-if-no-home")) {
+                    plugin.getLogger().warning("Home settings not found after save, possible file write issue");
+                }
+                if (!reloadedConfig.contains("redeem-settings.players-to-redeem")) {
+                    plugin.getLogger().warning("redeem-settings.players-to-redeem not found after save, possible file write issue");
+                }
             } catch (IOException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to save updated config.yml", e);
             }
+        } else {
+            plugin.getLogger().info("No config updates needed.");
         }
     }
 
@@ -196,5 +441,13 @@ public class Config {
     public String getString(String key, String s) {
         return plugin.getConfig().getString(key,
                 defaultConfigValues.containsKey(key) ? (String) defaultConfigValues.get(key) : "");
+    }
+
+    /**
+     * Gets the current config version
+     * @return The current version string
+     */
+    public String getVersion() {
+        return plugin.getConfig().getString("version", CURRENT_VERSION);
     }
 }

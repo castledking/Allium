@@ -32,7 +32,7 @@ public class Redeem implements CommandExecutor {
         FileConfiguration config = plugin.getConfig();
         Lang lang = plugin.getLangManager();
 
-        List<String> playersToRedeem = config.getStringList("players-to-redeem");
+        List<String> playersToRedeem = config.getStringList("redeem-settings.players-to-redeem");
         String playerEntryString = null;
         String rankToRedeem = null;
 
@@ -59,7 +59,7 @@ public class Redeem implements CommandExecutor {
 
             if (commandsToRun.isEmpty()) {
                 Text.sendErrorMessage(player, lang.getRaw("contact-admin"), lang);
-                plugin.getLogger().warning("Redeem rank '" + rankToRedeem + "' is misconfigured (no commands found in 'commands-to-run').");
+                plugin.getLogger().warning("Redeem rank '" + rankToRedeem + "' is misconfigured (no commands found in 'redeem-settings.commands-to-run').");
                 return true;
             }
 
@@ -72,7 +72,7 @@ public class Redeem implements CommandExecutor {
 
             // Remove player from list
             playersToRedeem.remove(playerEntryString);
-            config.set("players-to-redeem", playersToRedeem);
+            config.set("redeem-settings.players-to-redeem", playersToRedeem);
             plugin.saveConfig();
 
             // Send success message

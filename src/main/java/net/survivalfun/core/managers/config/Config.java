@@ -35,6 +35,8 @@ public class Config {
         // Basic settings
         defaultConfigValues.put("lang", "en");
         defaultConfigValues.put("server-name", "Unknown Server");
+        defaultConfigValues.put("group_migration_completed", false);
+        defaultConfigValues.put("player_migration_completed", false);
         
         // Discord settings
         defaultConfigValues.put("discord.escalate_webhook", "");

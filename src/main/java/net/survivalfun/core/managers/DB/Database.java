@@ -220,7 +220,11 @@ public class Database {
         }
     }
 
+    /**
+     * Runs database migrations, including adding migrated_perms column to player_data.
+     */
     private void runMigrations() throws SQLException {
+        // Check and add home_name column (unchanged)
         if (!columnExists("player_locations", "home_name")) {
             try (Statement statement = connection.createStatement()) {
                 plugin.getLogger().info("Adding home_name column to player_locations table...");
@@ -229,6 +233,18 @@ public class Database {
                 plugin.getLogger().info("Successfully added home_name column and index to player_locations table");
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to add home_name column to player_locations table", e);
+                throw e;
+            }
+        }
+
+        // Check and add migrated_perms column to player_data
+        if (!columnExists("player_data", "migrated_perms")) {
+            try (Statement statement = connection.createStatement()) {
+                plugin.getLogger().info("Adding migrated_perms column to player_data table...");
+                statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS migrated_perms BOOLEAN DEFAULT FALSE");
+                plugin.getLogger().info("Successfully added migrated_perms column to player_data table");
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to add migrated_perms column to player_data table", e);
                 throw e;
             }
         }
@@ -1379,7 +1395,7 @@ public class Database {
         }
     }
 
-    private Connection getConnection() throws SQLException {
+    public Connection getConnection() throws SQLException {
         if (connection == null || connection.isClosed()) {
             connection = DriverManager.getConnection(dbUrl);
         }

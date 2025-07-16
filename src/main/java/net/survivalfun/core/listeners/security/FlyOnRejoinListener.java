@@ -16,6 +16,11 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -132,19 +137,27 @@ public class FlyOnRejoinListener implements Listener {
         UUID uuid = player.getUniqueId();
         boolean debugMode = plugin.getConfig().getBoolean("debug-mode");
 
-        Boolean teleportToggleState = database.getTeleportToggleState(uuid);
-        if (teleportToggleState != null) {
-            // Get the TP instance from the plugin
-            TP tpInstance = ((PluginStart) plugin).getTpInstance();
-            if (tpInstance != null) {
-                // Set the teleport toggle state based on database value
-                tpInstance.setTeleportToggled(uuid, teleportToggleState);
-                
-                if (debugMode) {
-                    plugin.getLogger().fine("Loaded teleport toggle state for " + player.getName() + 
-                                        ": " + teleportToggleState);
+        // Load teleport toggle state with fresh connection
+        try (Connection conn = database.getConnection()) {
+            String sql = "SELECT state FROM player_teleport_toggle WHERE player_uuid = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, uuid.toString());
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    boolean teleportToggleState = rs.getBoolean("state");
+                    TP tpInstance = ((PluginStart) plugin).getTpInstance();
+                    if (tpInstance != null) {
+                        tpInstance.setTeleportToggled(uuid, teleportToggleState);
+                        if (debugMode) {
+                            plugin.getLogger().fine("Loaded teleport toggle state for " + player.getName() + ": " + teleportToggleState);
+                        }
+                    }
+                } else if (debugMode) {
+                    plugin.getLogger().fine("No teleport toggle state found for " + player.getName() + " (UUID: " + uuid + ")");
                 }
             }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error loading teleport toggle state for " + player.getName() + " (UUID: " + uuid + ")", e);
         }
 
         // Check if player was in spectator mode when they quit

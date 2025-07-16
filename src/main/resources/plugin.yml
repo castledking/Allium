@@ -143,7 +143,7 @@ commands:
   money:
     description: "Admin command to manage player balances"
     usage: "/money <give|take|set|clear> <player> [amount]"
-    permission: allium.admin
+    permission: allium.money
   
   # Teleport Commands
   tp:

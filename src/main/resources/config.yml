@@ -10,6 +10,10 @@
 lang: en
 server-name: "Unknown Server"
 
+# "core.*" to "allium.*" Permissions migration
+group_migration_completed: false
+player_migration_completed: false
+
 ############################################################
 # +------------------------------------------------------+ #
 # |                 Discord Settings                     | #

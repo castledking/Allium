@@ -2849,7 +2849,16 @@ public class TP implements CommandExecutor, TabCompleter {
      * @return true if teleport requests are toggled off
      */
     public boolean isTeleportToggled(UUID playerUUID) {
-        return teleportToggled.contains(playerUUID);
+        if (teleportToggled.contains(playerUUID)) {
+            return true;
+        }
+        // Check database if not in memory
+        Boolean state = database.getTeleportToggleState(playerUUID);
+        if (state != null && state) {
+            teleportToggled.add(playerUUID);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -2862,6 +2871,11 @@ public class TP implements CommandExecutor, TabCompleter {
             teleportToggled.add(playerId);
         } else {
             teleportToggled.remove(playerId);
+        }
+        // Save to database
+        database.saveTeleportToggleState(playerId, state);
+        if (plugin.getConfig().getBoolean("debug-mode")) {
+            plugin.getLogger().fine("Saved teleport toggle state for UUID " + playerId + ": " + state);
         }
     }
 

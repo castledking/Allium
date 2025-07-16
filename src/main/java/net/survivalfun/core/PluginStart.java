@@ -67,7 +67,10 @@ import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.migration.MigrationManager;
 
 import org.bukkit.command.PluginCommand;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.ServicePriority;
@@ -77,6 +80,11 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -274,6 +282,9 @@ public class PluginStart extends JavaPlugin {
         // Register commands and non-Vault-dependent listeners
         registerCommands();
         registerNonVaultListeners();
+
+        // Register player join listener for permission migration
+        getServer().getPluginManager().registerEvents(new PlayerPermissionMigrationListener(), this);
         
         // Delay Vault initialization and Vault-dependent listeners with retry mechanism
         new BukkitRunnable() {
@@ -288,10 +299,10 @@ public class PluginStart extends JavaPlugin {
                 if (initializeVault()) {
                     getLogger().info("Vault services initialized successfully after " + attempts + " attempt(s).");
                     registerVaultDependentListeners();
+                    performPermissionMigration(); // Run permission migration after Vault initialization
                     cancel(); // Stop retrying
                 } else if (attempts < maxAttempts) {
                     getLogger().warning("Vault services not yet available. Retrying in " + retryDelay + " ticks (attempt " + (attempts + 1) + " of " + maxAttempts + ").");
-                    // Log the number of providers for each service
                     getLogger().info("Number of permission providers: " + getServer().getServicesManager().getRegistrations(Permission.class).size());
                     getLogger().info("Number of chat providers: " + getServer().getServicesManager().getRegistrations(Chat.class).size());
                     getLogger().info("Number of economy providers: " + getServer().getServicesManager().getRegistrations(net.milkbowl.vault.economy.Economy.class).size());
@@ -302,6 +313,63 @@ public class PluginStart extends JavaPlugin {
                 }
             }
         }.runTaskTimer(this, 100L, 40L); // Initial delay 5 seconds, retry every 2 seconds
+    }
+
+    /**
+     * Performs migration of group permissions from core.* to allium.* on startup.
+     */
+    private void performPermissionMigration() {
+        if (vaultPerms == null) {
+            getLogger().severe("Cannot perform permission migration: Vault permission provider not found!");
+            return;
+        }
+
+        // Check if group migration has already been completed
+        if (getConfig().getBoolean("group_migration_completed", false)) {
+            getLogger().info("Group permission migration already completed, skipping.");
+            return;
+        }
+
+        // List of permissions to migrate (based on plugin.yml)
+        String[] permissionsToMigrate = {
+            "explode", "gc", "give", "itemdb", "heal", "feed", "admin", "rename", "lore",
+            "god", "more", "fly", "gamemode", "nv", "skull", "home", "homes", "sethome",
+            "delhome", "balance", "pay", "baltop", "tp", "tpa", "tpcancel", "tpaccept",
+            "tpdeny", "tppet", "tpmob", "tppos", "tphere", "tpahere", "tptoggle", "tp.offline",
+            "top", "bottom", "whois", "invsee", "enchant", "staff", "note", "notes", "unnote",
+            "time", "time.set", "time.add",
+            "escalate", "spy", "spy.others", "gamemode.others", "gamemode.spectator",
+            "gamemode.survival", "gamemode.survival.nv", "gamemode.creative",
+            "gamemode.creative.inventory", "gamemode.creative.container", "gamemode.creative.pickup",
+            "gamemode.creative.drop", "gamemode.creative.break", "gamemode.creative.place",
+            "gamemode.creative.interact", "gamemode.creative.use", "gamemode.creative.spawn",
+            "gamemode.creative.blacklist", "gamemode.creative.nv", "gamemode.adventure",
+            "gamemode.adventure.nv", "gamemode.spectator", "nv.others", "nv.adventure",
+            "nv.creative", "nv.spectator", "nv.survival", "tp.others", "tp.override",
+            "tpa.nodelay", "tpa.nocooldown", "voucher.give", "lockdown.bypass", "tpall",
+            "tptoggle.others", "tpauto", "spawn", "setspawn", "help", "sethome.unlimited",
+            "home.others", "home.nocooldown", "hide.group", "hide.bypass", "hide.default",
+            "fly.others", "explode.others", "explode.exempt", "heal.others", "heal.nocooldown",
+            "feed.others", "feed.nocooldown", "*"
+        };
+
+        // Migrate group permissions using Vault
+        for (String group : vaultPerms.getGroups()) {
+            for (String perm : permissionsToMigrate) {
+                String oldPerm = "core." + perm;
+                String newPerm = "allium." + perm;
+                if (vaultPerms.groupHas((String) null, group, oldPerm)) {
+                    vaultPerms.groupRemove((String) null, group, oldPerm);
+                    vaultPerms.groupAdd((String) null, group, newPerm);
+                    getLogger().info("Migrated group " + group + ": " + oldPerm + " -> " + newPerm);
+                }
+            }
+        }
+
+        // Mark group migration as completed
+        getConfig().set("group_migration_completed", true);
+        saveConfig();
+        getLogger().info("Group permission migration from core.* to allium.* completed!");
     }
 
     /**
@@ -653,5 +721,118 @@ public class PluginStart extends JavaPlugin {
     private void registerVaultDependentListeners() {
         // Chat formatter
         reloadChatFormatter();
+    }
+/**
+     * Inner class to handle player permission migration on join.
+     */
+    private class PlayerPermissionMigrationListener implements Listener {
+        private final String[] permissionsToMigrate = {
+            "explode", "gc", "give", "itemdb", "heal", "feed", "admin", "rename", "lore",
+            "god", "more", "fly", "gamemode", "nv", "skull", "home", "homes", "sethome",
+            "delhome", "balance", "pay", "baltop", "tp", "tpa", "tpcancel", "tpaccept",
+            "tpdeny", "tppet", "tpmob", "tppos", "tphere", "tpahere", "tptoggle", "tp.offline",
+            "top", "bottom", "whois", "invsee", "enchant", "staff", "note", "notes", "unnote",
+            "time", "time.set", "time.add",
+            "escalate", "spy", "spy.others", "gamemode.others", "gamemode.spectator",
+            "gamemode.survival", "gamemode.survival.nv", "gamemode.creative",
+            "gamemode.creative.inventory", "gamemode.creative.container", "gamemode.creative.pickup",
+            "gamemode.creative.drop", "gamemode.creative.break", "gamemode.creative.place",
+            "gamemode.creative.interact", "gamemode.creative.use", "gamemode.creative.spawn",
+            "gamemode.creative.blacklist", "gamemode.creative.nv", "gamemode.adventure",
+            "gamemode.adventure.nv", "gamemode.spectator", "nv.others", "nv.adventure",
+            "nv.creative", "nv.spectator", "nv.survival", "tp.others", "tp.override",
+            "tpa.nodelay", "tpa.nocooldown", "voucher.give", "lockdown.bypass", "tpall",
+            "tptoggle.others", "tpauto", "spawn", "setspawn", "help", "sethome.unlimited",
+            "home.others", "home.nocooldown", "hide.group", "hide.bypass", "hide.default",
+            "fly.others", "explode.others", "explode.exempt", "heal.others", "heal.nocooldown",
+            "feed.others", "feed.nocooldown", "*", "money"
+        };
+
+        @EventHandler
+        public void onPlayerJoin(PlayerJoinEvent event) {
+            // Skip if player migration is already completed globally
+            if (getConfig().getBoolean("player_migration_completed", false)) {
+                return;
+            }
+
+            if (vaultPerms == null) {
+                getLogger().severe("Cannot migrate permissions for player " + event.getPlayer().getName() + ": Vault permission provider not found!");
+                return;
+            }
+
+            org.bukkit.entity.Player player = event.getPlayer();
+            String uuid = player.getUniqueId().toString();
+
+            try (Connection conn = database.getConnection()) { // Use Database.getConnection()
+                // Check if player exists in player_data and get migrated_perms status
+                try (PreparedStatement stmt = conn.prepareStatement("SELECT migrated_perms FROM player_data WHERE uuid = ?")) {
+                    stmt.setString(1, uuid);
+                    ResultSet rs = stmt.executeQuery();
+                    if (rs.next()) {
+                        boolean migratedPerms = rs.getBoolean("migrated_perms");
+                        if (migratedPerms) {
+                            getLogger().info("Skipping permission migration for " + player.getName() + " (UUID: " + uuid + "): Already migrated.");
+                            return;
+                        }
+                    } else {
+                        // Player not in player_data, insert and skip migration
+                        try (PreparedStatement insertStmt = conn.prepareStatement(
+                                "INSERT INTO player_data (uuid, name, is_flying, allow_flight, last_updated) VALUES (?, ?, FALSE, FALSE, CURRENT_TIMESTAMP)")) {
+                            insertStmt.setString(1, uuid);
+                            insertStmt.setString(2, player.getName());
+                            insertStmt.executeUpdate();
+                            getLogger().info("Added player " + player.getName() + " (UUID: " + uuid + ") to player_data. Skipping permission migration.");
+                            return;
+                        }
+                    }
+
+                    // Check and migrate core.* wildcard permission first
+                    boolean migrated = false;
+                    if (vaultPerms.playerHas((String) null, player, "core.*")) {
+                        vaultPerms.playerRemove((String) null, player, "core.*");
+                        vaultPerms.playerAdd((String) null, player, "allium.*");
+                        getLogger().info("Migrated player " + player.getName() + ": core.* -> allium.*");
+                        migrated = true;
+                    }
+
+                    // Migrate individual player permissions
+                    for (String perm : permissionsToMigrate) {
+                        String oldPerm = "core." + perm;
+                        String newPerm = "allium." + perm;
+                        if (vaultPerms.playerHas((String) null, player, oldPerm)) {
+                            vaultPerms.playerRemove((String) null, player, oldPerm);
+                            vaultPerms.playerAdd((String) null, player, newPerm);
+                            getLogger().info("Migrated player " + player.getName() + ": " + oldPerm + " -> " + newPerm);
+                            migrated = true;
+                        }
+                    }
+
+                    // Update migrated_perms if migration occurred
+                    if (migrated) {
+                        try (PreparedStatement updateStmt = conn.prepareStatement("UPDATE player_data SET migrated_perms = TRUE WHERE uuid = ?")) {
+                            updateStmt.setString(1, uuid);
+                            updateStmt.executeUpdate();
+                            getLogger().info("Marked player " + player.getName() + " (UUID: " + uuid + ") as migrated in player_data.");
+                        }
+                    }
+
+                    // Count players with unmigrated permissions
+                    try (PreparedStatement countStmt = conn.prepareStatement("SELECT COUNT(*) AS unmigrated FROM player_data WHERE migrated_perms = FALSE OR migrated_perms IS NULL")) {
+                        ResultSet countRs = countStmt.executeQuery();
+                        if (countRs.next()) {
+                            int unmigratedCount = countRs.getInt("unmigrated");
+                            getLogger().info("Players remaining with unmigrated permissions in player_data: " + unmigratedCount);
+                            if (unmigratedCount == 0) {
+                                getConfig().set("player_migration_completed", true);
+                                saveConfig();
+                                getLogger().info("All player permissions migrated. Set player_migration_completed to true in config.");
+                            }
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                getLogger().log(Level.SEVERE, "Failed to process permission migration for player " + player.getName() + " (UUID: " + uuid + ")", e);
+            }
+        }
     }
 }

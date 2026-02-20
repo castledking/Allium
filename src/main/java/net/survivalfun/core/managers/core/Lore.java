@@ -5,6 +5,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.List;
 import java.util.ArrayList;
 
+import net.survivalfun.core.managers.core.Text;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
+
 
 public class Lore {
 

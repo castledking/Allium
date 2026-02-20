@@ -7,6 +7,9 @@ import net.survivalfun.core.managers.economy.EconomyManager;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 
+import net.survivalfun.core.managers.core.Text;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
+
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
@@ -17,9 +20,9 @@ public class VaultEconomyProvider implements Economy {
     private final PluginStart plugin;
     private final EconomyManager economyManager;
 
-    public VaultEconomyProvider(PluginStart plugin) {
+    public VaultEconomyProvider(PluginStart plugin, EconomyManager economyManager) {
         this.plugin = plugin;
-        this.economyManager = plugin.getEconomyManager();
+        this.economyManager = economyManager;
     }
 
     @Override

@@ -9,15 +9,15 @@
 # - <plugin>:*
 # - ^ (uses commands list)
 # - * (all commands)
-# Relies on the LuckPerms group permission (group.<group-name>)
-# Not required to have LuckPerms installed.
+# Vault is required.
 # For more information, visit: https://github.com/castledking/Allium
 
 settings:
   enabled: true
+  block-namespaced-commands-for-ops: false
   hide-namespaced-commands-for-ops: false
 groups:
-  op: # (core.hide.bypass permission)
+  op: # (allium.hide.bypass permission)
     whitelist: true
     commands:
       - "*"

@@ -1,17 +1,17 @@
 package net.survivalfun.core.managers.core;
 
+import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.managers.config.Config;
+import net.survivalfun.core.managers.core.Text;
+import net.survivalfun.core.managers.lang.Lang;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.survivalfun.core.PluginStart;
-
-import net.survivalfun.core.managers.config.Config;
-import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-
 import org.bukkit.OfflinePlayer;
+import net.survivalfun.core.commands.Skull;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.logging.Level;
-
 public class Meta {
 
     private static PluginStart plugin;
@@ -288,9 +287,14 @@ public class Meta {
                     skullMeta.setOwningPlayer(offlinePlayer);
                     skull.setItemMeta(skullMeta);
                 }
-            } else {
-                // For non-online players, try to fetch from minecraft-heads.com
-                skull = Skull.fetchPlayerHeadFromName(owner);
+            }
+
+            if (skull == null) {
+                // Try external sources when not available locally or fetch failed
+                skull = Skull.fetchPlayerHeadFromMinecraftHeads(owner);
+                if (skull == null) {
+                    skull = Skull.fetchPlayerHeadFromMojang(owner);
+                }
             }
         } else {
             // Create a default player head
@@ -331,6 +335,12 @@ public class Meta {
         if (name == null || name.isEmpty()) {
             return "";
         }
+
+        // Special handling for spawners
+        if ("SPAWNER".equals(name)) {
+            return formatSpawnerName();
+        }
+
         String[] words = name.toLowerCase().replace('_', ' ').split(" ");
         StringBuilder formattedName = new StringBuilder();
         for (String word : words) {
@@ -339,6 +349,13 @@ public class Meta {
             }
         }
         return formattedName.toString().trim();
+    }
+
+    public static String formatSpawnerName() {
+        // This method is called when formatting SPAWNER material names
+        // For proper spawner formatting, the display name should already be set by Spawner.applySpawnerMeta()
+        // This fallback is used when no display name is set
+        return "Spawner";
     }
 
     public static Map<Enchantment, Integer> getEnchantmentsFromParts(String[] parts) {

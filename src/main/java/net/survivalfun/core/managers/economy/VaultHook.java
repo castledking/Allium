@@ -6,6 +6,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.ServicesManager;
 
+import net.survivalfun.core.managers.core.Text;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
+
 import java.util.logging.Logger;
 
 /**
@@ -32,7 +35,7 @@ public class VaultHook {
         }
 
         ServicesManager servicesManager = Bukkit.getServicesManager();
-        provider = new VaultEconomyProvider(plugin);
+        provider = new VaultEconomyProvider(plugin, plugin.getEconomyManager());
         
         servicesManager.register(Economy.class, provider, plugin, ServicePriority.Highest);
         logger.info("Successfully registered economy with Vault");

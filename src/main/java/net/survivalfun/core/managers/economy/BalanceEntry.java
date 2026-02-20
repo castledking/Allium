@@ -3,6 +3,9 @@ package net.survivalfun.core.managers.economy;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import net.survivalfun.core.managers.core.Text;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
+
 /**
  * Represents an entry in the balance top list
  */

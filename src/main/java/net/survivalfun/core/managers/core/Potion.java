@@ -14,6 +14,9 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 
+import net.survivalfun.core.managers.core.Text;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -62,6 +65,10 @@ public class Potion {
         DEFAULT_POTION_DURATIONS.put(PotionEffectType.HERO_OF_THE_VILLAGE, 60);
         DEFAULT_POTION_DURATIONS.put(PotionEffectType.DARKNESS, 10);
         DEFAULT_POTION_DURATIONS.put(PotionEffectType.INFESTED, 180);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.WEAVING, 180);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.OOZING, 180);
+        DEFAULT_POTION_DURATIONS.put(PotionEffectType.WIND_CHARGED, 180);
+
     }
 
     public static void initialize(PluginStart pluginInstance) {
@@ -216,7 +223,15 @@ public class Potion {
         }
 
         int durationTicks = calculateDurationTicks(effectType, duration, item.getType());
-        PotionEffect effect = new PotionEffect(effectType, durationTicks, amplifier, false, particles, icon);
+
+        // Apply user-friendly amplifier logic:
+        // - If no amplifier specified (0), use 0 (level 1)
+        // - If amplifier 1 specified, use 0 (level 1)
+        // - If amplifier 2 specified, use 1 (level 2)
+        // - etc.
+        int minecraftAmplifier = Math.max(0, amplifier - 1);
+
+        PotionEffect effect = new PotionEffect(effectType, durationTicks, minecraftAmplifier, false, particles, icon);
 
         potionMeta.clearCustomEffects();
         potionMeta.lore(new ArrayList<>());
@@ -404,8 +419,8 @@ public class Potion {
                         // Tipped arrows have effects reduced to 1/8 of their original duration
                         durationTicks *= 8;
                     } else if (item.getType() == Material.SPLASH_POTION) {
-                        // Splash potions have effects reduced to 3/4 of their original duration
-                        durationTicks = (int)(durationTicks * (4.0/3.0));
+                        // Splash potions - no duration adjustment needed for display
+                        // durationTicks remains as duration * 20
                     } else if (item.getType() == Material.LINGERING_POTION) {
                         // Lingering potions have effects reduced to 1/4 of their original duration
                         durationTicks *= 4;
@@ -438,7 +453,15 @@ public class Potion {
             boolean iconValue = parseBoolean(params.getOrDefault("icon" + i, params.getOrDefault("icon", "true")));
             
             int durationTicks = calculateDurationTicks(effectType, duration, item.getType());
-            PotionEffect effect = new PotionEffect(effectType, durationTicks, amplifier, false, particlesValue, iconValue);
+
+            // Apply user-friendly amplifier logic:
+            // - If no amplifier specified (0), use 0 (level 1)
+            // - If amplifier 1 specified, use 0 (level 1)
+            // - If amplifier 2 specified, use 1 (level 2)
+            // - etc.
+            int minecraftAmplifier = Math.max(0, amplifier - 1);
+
+            PotionEffect effect = new PotionEffect(effectType, durationTicks, minecraftAmplifier, false, particlesValue, iconValue);
             potionMeta.addCustomEffect(effect, true);
             effectsApplied = true;
         }
@@ -479,7 +502,15 @@ public class Potion {
             
             String name;
             if (effectCount > 1) {
-                name = prefix + "Mixed Potion";
+                if (item.getType() == Material.TIPPED_ARROW) {
+                    name = "Mixed Tipped Arrow";
+                } else if (item.getType() == Material.LINGERING_POTION) {
+                    name = "Mixed Lingering Potion";
+                } else if (item.getType() == Material.SPLASH_POTION) {
+                    name = "Mixed Splash Potion";
+                } else {
+                    name = "Mixed Potion";
+                }
             } else {
                 // Get the first effect name
                 String firstEffectName = params.get("effect1");
@@ -516,8 +547,8 @@ public class Potion {
                 // Tipped arrows have effects reduced to 1/8 of their original duration
                 durationTicks *= 8;
             } else if (item.getType() == Material.SPLASH_POTION) {
-                // Splash potions have effects reduced to 3/4 of their original duration
-                durationTicks = (int)(durationTicks * (4.0/3.0));
+                // Splash potions - no duration adjustment needed for display
+                // durationTicks remains as specifiedDuration * 20
             } else if (item.getType() == Material.LINGERING_POTION) {
                 // Lingering potions have effects reduced to 1/4 of their original duration
                 durationTicks *= 4;
@@ -572,8 +603,8 @@ public class Potion {
             // Tipped arrows have effects reduced to 1/8 of their original duration
             durationTicks *= 8;
         } else if (material == Material.SPLASH_POTION) {
-            // Splash potions have effects reduced to 3/4 of their original duration
-            durationTicks = (int)(durationTicks * (4.0/3.0));
+            // Splash potions - no duration adjustment needed for display
+            // durationTicks remains as specifiedDuration * 20
         } else if (material == Material.LINGERING_POTION) {
             // Lingering potions have effects reduced to 1/4 of their original duration
             durationTicks *= 4;

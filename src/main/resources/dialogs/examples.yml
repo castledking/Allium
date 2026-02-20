@@ -1,0 +1,110 @@
+# Example dialog configurations for Minecraft 1.20+ native dialogs
+# See: https://minecraft.wiki/w/Dialog
+
+# Dialog types: notice, confirmation, multi_action, server_links, dialog_list
+
+# Simple welcome dialog
+welcome:
+  type: notice
+  title: "&lWelcome to the Server!"
+  body:
+    - type: plain_message
+      content: "&aWelcome, {player_name}!&r\n\n&7Thanks for joining our server.\n&7Type /help for commands."
+  action:
+    label: "§a§lOK"
+    action:
+      type: run_command
+      command: "/spawn"
+
+# Confirmation dialog example
+vote_confirm:
+  type: confirmation
+  title: "&lConfirm Vote"
+  body:
+    - type: plain_message
+      content: "Are you sure you want to vote?\nThis will open the voting website."
+  yes:
+    label: "§a§lYes, Vote!"
+    action:
+      type: open_url
+      url: "https://vote.example.com"
+  no:
+    label: "§c§lCancel"
+
+# Multi-action dialog with buttons
+teleport_menu:
+  type: multi_action
+  title: "&lTeleport Menu"
+  columns: 2
+  actions:
+    - label: "§a§lSpawn"
+      action:
+        type: run_command
+        command: "/spawn"
+    - label: "§b§lHub"
+      action:
+        type: run_command
+        command: "/hub"
+    - label: "§6§lWarp Shop"
+      action:
+        type: run_command
+        command: "/warp shop"
+    - label: "§c§lParkour"
+      action:
+        type: run_command
+        command: "/warp parkour"
+  exit_action:
+    label: "§c§lClose"
+    action:
+      type: close
+
+# Dialog list - shows a list of other dialogs (dialogs must exist!)
+help_menu:
+  type: dialog_list
+  title: "&lHelp Categories"
+  columns: 2
+  dialogs:
+    - "welcome"
+    - "teleport_menu"
+  exit_action:
+    label: "§c§lBack"
+    action:
+      type: close
+
+# Dialog with input field
+custom_nick:
+  type: notice
+  title: "&lSet Custom Nickname"
+  body:
+    - type: plain_message
+      content: "Enter your nickname below (max 16 chars)"
+  inputs:
+    - type: text
+      key: nickname
+      label: "Nickname:"
+      max_length: 16
+  action:
+    label: "§a§lSet Nickname"
+    type: run_command
+    template: "/nick {nickname}"
+
+# Dialog with boolean toggle
+settings:
+  type: notice
+  title: "&lSettings"
+  show_on_join: false
+  show_on_first_join: true
+  body:
+    - type: plain_message
+      content: "Configure your preferences"
+  inputs:
+    - type: boolean
+      key: pm_toggle
+      label: "Enable Private Messages"
+      initial: true
+      on_true: "enabled"
+      on_false: "disabled"
+  action:
+    label: "§a§lSave"
+    type: run_command
+    template: "/settings pm {pm_toggle}"

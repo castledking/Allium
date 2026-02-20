@@ -3,13 +3,15 @@ package net.survivalfun.core.managers.core;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.managers.core.Meta;
+import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
+import org.bukkit.block.CreatureSpawner;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
-import org.bukkit.block.CreatureSpawner;
-
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -159,7 +161,22 @@ public class Spawner {
             // Generate display name based on entity type
             String formattedEntityName = formatEntityName(entityType);
             String generatedName = formattedEntityName + " Spawner";
-            blockStateMeta.displayName(Component.text(generatedName).decoration(TextDecoration.ITALIC, false));
+
+            // Use white color for entire spawner name instead of mixed colors
+            String spawnerColor = "§f"; // White for entire name
+
+            // Set display name with white color
+            String coloredName = spawnerColor + formattedEntityName + " Spawner";
+            blockStateMeta.displayName(Component.text(coloredName).decoration(TextDecoration.ITALIC, false));
+
+            // Also set the plain string display name for compatibility with older systems
+            try {
+                // Try to set the plain string display name using reflection if available
+                Method setDisplayNameMethod = blockStateMeta.getClass().getMethod("setDisplayName", String.class);
+                setDisplayNameMethod.invoke(blockStateMeta, coloredName);
+            } catch (Exception e) {
+                // If reflection fails, that's okay - the Adventure component should still work
+            }
         }
 
         item.setItemMeta(blockStateMeta);

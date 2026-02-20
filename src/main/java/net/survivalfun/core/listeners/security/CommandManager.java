@@ -1,7 +1,6 @@
 package net.survivalfun.core.listeners.security;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -9,10 +8,10 @@ import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.command.PluginIdentifiableCommand;
 import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -21,10 +20,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerCommandSendEvent;
 import org.bukkit.event.server.TabCompleteEvent;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginDescriptionFile;
 import net.milkbowl.vault.permission.Permission;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.jetbrains.annotations.NotNull;
@@ -34,19 +35,24 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 public class CommandManager implements Listener {
 
     private final PluginStart plugin;
     private static boolean hideNamespacedCommandsForBypass;
+    private static boolean blockNamespacedCommands;
     private static boolean enabled;
     private File configFile;
     private FileConfiguration config;
     private final Lang lang;
     private final Map<String, CommandGroup> commandGroups = new HashMap<>();
     private final Permission vaultPermission;
+    private CreativeManager creativeManager;
 
     public CommandManager(PluginStart plugin) {
         this.plugin = plugin;
@@ -55,11 +61,15 @@ public class CommandManager implements Listener {
         loadConfig();
         registerEvents();
     }
+    
+    public void setCreativeManager(CreativeManager creativeManager) {
+        this.creativeManager = creativeManager;
+    }
 
     private Permission setupVaultPermission() {
         RegisteredServiceProvider<Permission> rsp = plugin.getServer().getServicesManager().getRegistration(Permission.class);
         if (rsp == null) {
-            plugin.getLogger().warning("Vault permission service not found. Group checks will fall back to permission-based checks.");
+            Text.sendDebugLog(WARN, "Vault permission service not found. Group checks will fall back to permission-based checks.");
             return null;
         }
         return rsp.getProvider();
@@ -82,6 +92,7 @@ public class CommandManager implements Listener {
                     config = YamlConfiguration.loadConfiguration(configFile);
 
                     config.set("settings.hide-namespaced-commands-for-ops", true);
+                    config.set("settings.block-namespaced-commands-for-ops", false);
                     config.set("groups.admin.whitelist", true);
                     config.set("groups.admin.commands", List.of("op", "deop", "ban", "kick"));
                     config.set("groups.admin.tabcompletes", List.of("op", "deop"));
@@ -92,13 +103,14 @@ public class CommandManager implements Listener {
 
                     config.save(configFile);
                 } catch (IOException ex) {
-                    plugin.getLogger().log(Level.SEVERE, "Could not create hide.yml", ex);
+                    Text.sendDebugLog(ERROR, "Could not create hide.yml", ex);
                 }
             }
         }
 
         config = YamlConfiguration.loadConfiguration(configFile);
         hideNamespacedCommandsForBypass = config.getBoolean("settings.hide-namespaced-commands-for-ops", true);
+        blockNamespacedCommands = config.getBoolean("settings.block-namespaced-commands-for-ops", false);
         enabled = config.getBoolean("settings.enabled", true);
         loadGroups();
     }
@@ -106,7 +118,81 @@ public class CommandManager implements Listener {
     public void reload() {
         config = YamlConfiguration.loadConfiguration(configFile);
         commandGroups.clear();
+        hideNamespacedCommandsForBypass = config.getBoolean("settings.hide-namespaced-commands-for-ops", hideNamespacedCommandsForBypass);
+        blockNamespacedCommands = config.getBoolean("settings.block-namespaced-commands-for-ops", blockNamespacedCommands);
+        enabled = config.getBoolean("settings.enabled", enabled);
         loadGroups();
+        
+        // Force refresh command state for all online players (Folia-safe)
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            boolean scheduled = false;
+            try {
+                // Prefer Folia entity scheduler when available
+                Method getScheduler = player.getClass().getMethod("getScheduler");
+                Object entityScheduler = getScheduler.invoke(player);
+
+                try {
+                    // Folia API variant: execute(Plugin, Runnable)
+                    Method execute = entityScheduler.getClass().getMethod("execute", Plugin.class, Runnable.class);
+                    execute.invoke(entityScheduler, plugin, (Runnable) () -> refreshPlayerCommandState(player));
+                    scheduled = true;
+                } catch (NoSuchMethodException ignored) {
+                    // Older Folia signature: run(Plugin, Consumer, Object)
+                    try {
+                        Method run = entityScheduler.getClass().getMethod("run", Plugin.class, Consumer.class, Object.class);
+                        Consumer<Object> task = (ignore) -> refreshPlayerCommandState(player);
+                        run.invoke(entityScheduler, plugin, task, null);
+                        scheduled = true;
+                    } catch (NoSuchMethodException ignored2) {
+                        // continue to other fallbacks
+                    }
+                }
+            } catch (Throwable ignored) {
+                // getScheduler not available; continue to fallbacks
+            }
+
+            if (!scheduled) {
+                try {
+                    // Try GlobalRegionScheduler (Folia/Paper)
+                    Method getGRS = Bukkit.getServer().getClass().getMethod("getGlobalRegionScheduler");
+                    Object grs = getGRS.invoke(Bukkit.getServer());
+                    Method executeGRS = grs.getClass().getMethod("execute", Plugin.class, Runnable.class);
+                    executeGRS.invoke(grs, plugin, (Runnable) () -> refreshPlayerCommandState(player));
+                    scheduled = true;
+                } catch (Throwable ignored) {
+                    // continue to legacy fallback
+                }
+            }
+
+            if (!scheduled) {
+                // Legacy scheduler (non-Folia)
+                try {
+                    Bukkit.getScheduler().runTask(plugin, () -> refreshPlayerCommandState(player));
+                } catch (Throwable t) {
+                    Text.sendDebugLog(WARN, "Failed to schedule command refresh for " + player.getName() + ": " + t.getMessage());
+                }
+            }
+        }
+    }
+
+    private void addConfiguredCommandVariants(Set<String> allowedCommands, Map<String, Command> knownCommands, String configuredCommand) {
+        if (configuredCommand == null || configuredCommand.isEmpty()) {
+            return;
+        }
+
+        String lowerCommand = configuredCommand.toLowerCase(Locale.ROOT);
+        if (lowerCommand.equals("*") || lowerCommand.equals("^")) {
+            return;
+        }
+
+        if (knownCommands.containsKey(lowerCommand)) {
+            allowedCommands.add(lowerCommand);
+        }
+
+        String resolved = resolveFullCommandName(lowerCommand);
+        if (!resolved.equals(lowerCommand) && knownCommands.containsKey(resolved)) {
+            allowedCommands.add(resolved);
+        }
     }
 
     public boolean shouldHideNamespacedCommandsForBypass() {
@@ -116,7 +202,7 @@ public class CommandManager implements Listener {
     private void loadGroups() {
         ConfigurationSection groupsSection = config.getConfigurationSection("groups");
         if (groupsSection == null) {
-            plugin.getLogger().warning("No groups found in hide.yml");
+            Text.sendDebugLog(WARN, "No groups found in hide.yml");
             return;
         }
 
@@ -147,7 +233,7 @@ public class CommandManager implements Listener {
             commandGroups.put(groupName, group);
 
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info("Loaded command group: " + groupName +
+                Text.sendDebugLog(INFO, "Loaded command group: " + groupName +
                         " (whitelist: " + whitelist +
                         ", commands: " + expandedCommands.size() +
                         ", tabcompletes: " + expandedTabCompletes.size() + ")");
@@ -192,20 +278,76 @@ public class CommandManager implements Listener {
         return expandedCommands;
     }
 
-    private String resolveFullCommandName(String commandName) {
-        Command command = Bukkit.getCommandMap().getCommand(commandName.toLowerCase());
-
-        if (command == null) {
-            return commandName.toLowerCase();
+    private String resolveFullCommandName(String command) {
+        if (command == null || command.isEmpty()) {
+            return "";
         }
 
-        String pluginName = getPluginForCommand(command, commandName);
-
-        if (pluginName != null && !pluginName.isEmpty()) {
-            return pluginName.toLowerCase() + ":" + commandName.toLowerCase();
+        String lowerCommand = command.toLowerCase(Locale.ROOT);
+        if (lowerCommand.contains(":")) {
+            return lowerCommand;
         }
 
-        return commandName.toLowerCase();
+        Map<String, Command> knownCommands = getKnownCommands();
+
+        Command directCommand = knownCommands.get(lowerCommand);
+        if (directCommand != null) {
+            String pluginName = getPluginForCommand(directCommand, lowerCommand);
+            String namespaced = pluginName + ":" + lowerCommand;
+            if (knownCommands.containsKey(namespaced)) {
+                return namespaced;
+            }
+        }
+
+        for (String key : knownCommands.keySet()) {
+            if (key == null) {
+                continue;
+            }
+            String lowerKey = key.toLowerCase(Locale.ROOT);
+            int colonIndex = lowerKey.indexOf(':');
+            if (colonIndex == -1) {
+                continue;
+            }
+            String baseCommand = lowerKey.substring(colonIndex + 1);
+            if (baseCommand.equals(lowerCommand)) {
+                return lowerKey;
+            }
+        }
+
+        return lowerCommand;
+    }
+
+    private String getPluginForCommand(Command command, String commandName) {
+        if (command instanceof PluginIdentifiableCommand identifiableCommand) {
+            Plugin owningPlugin = identifiableCommand.getPlugin();
+            if (owningPlugin != null) {
+                return owningPlugin.getName().toLowerCase(Locale.ROOT);
+            }
+        }
+
+        Map<String, Command> knownCommands = getKnownCommands();
+        for (Map.Entry<String, Command> entry : knownCommands.entrySet()) {
+            String key = entry.getKey();
+            if (key == null || entry.getValue() != command || !key.contains(":")) {
+                continue;
+            }
+            return key.substring(0, key.indexOf(':')).toLowerCase(Locale.ROOT);
+        }
+
+        Package commandPackage = command.getClass().getPackage();
+        if (commandPackage != null) {
+            String packageName = commandPackage.getName();
+            if (packageName.startsWith("org.bukkit.command.defaults") || packageName.startsWith("net.minecraft")) {
+                return "minecraft";
+            }
+        }
+
+        int colonIndex = commandName.indexOf(':');
+        if (colonIndex != -1) {
+            return commandName.substring(0, colonIndex).toLowerCase(Locale.ROOT);
+        }
+
+        return commandName.toLowerCase(Locale.ROOT);
     }
 
     private Map<String, Command> getKnownCommands() {
@@ -213,7 +355,6 @@ public class CommandManager implements Listener {
             SimpleCommandMap commandMap = (SimpleCommandMap) Bukkit.getServer().getClass()
                     .getMethod("getCommandMap")
                     .invoke(Bukkit.getServer());
-
             Field knownCommandsField = SimpleCommandMap.class.getDeclaredField("knownCommands");
             knownCommandsField.setAccessible(true);
 
@@ -230,7 +371,7 @@ public class CommandManager implements Listener {
             return filteredCommands;
 
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to access server command map", e);
+            Text.sendDebugLog(ERROR, "Failed to access server command map", e);
             return Collections.emptyMap();
         }
     }
@@ -254,7 +395,6 @@ public class CommandManager implements Listener {
     private boolean playerBelongsToGroup(Player player, String groupName) {
         if (vaultPermission == null) {
             // Fallback to permission-based check if Vault is not available
-            plugin.getLogger().warning("Vault permission service unavailable, falling back to permission check for group: " + groupName);
             return player.hasPermission("group." + groupName);
         }
 
@@ -262,8 +402,6 @@ public class CommandManager implements Listener {
             // Check if the player is in the specified group using Vault
             return vaultPermission.hasGroupSupport() && vaultPermission.playerInGroup(player, groupName);
         } catch (Exception e) {
-            plugin.getLogger().warning("Error checking group membership for " + player.getName() + " in group " + groupName + ": " + e.getMessage());
-            // Fallback to permission-based check
             return player.hasPermission("group." + groupName);
         }
     }
@@ -274,6 +412,16 @@ public class CommandManager implements Listener {
         Bukkit.getServer().getCommandMap().getKnownCommands().keySet().stream()
                 .map(String::toLowerCase)
                 .filter(cmd -> shouldShowCommand(player, cmd))
+                .filter(cmd -> {
+                    // Filter out namespaced commands for regular players and optionally ops based on config
+                    if (cmd.contains(":")) {
+                        if (player.hasPermission("allium.hide.bypass") || player.isOp()) {
+                            return !hideNamespacedCommandsForBypass; // hide from suggestions if configured
+                        }
+                        return false;
+                    }
+                    return true;
+                })
                 .forEach(availableCommands::add);
 
         String bestMatch = null;
@@ -332,7 +480,7 @@ public class CommandManager implements Listener {
     private List<CommandGroup> getPlayerGroups(Player player) {
         List<CommandGroup> groups = new ArrayList<>();
 
-        if (player.hasPermission("core.hide.bypass")) {
+        if (player.hasPermission("allium.hide.bypass")) {
             CommandGroup wildcardGroup = getWildcardGroup();
             groups.add(wildcardGroup);
         }
@@ -350,45 +498,9 @@ public class CommandManager implements Listener {
         return groups;
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void onPlayerCommandSend(PlayerCommandSendEvent event) {
-        if (!enabled) {
-            return;
-        }
 
-        Player player = event.getPlayer();
-        List<CommandGroup> groups = getPlayerGroups(player);
 
-        if (groups.isEmpty()) {
-            return;
-        }
-
-        boolean hasWildcard = groups.stream()
-                .anyMatch(group -> group.whitelist() && group.commands().contains("*"));
-
-        if (hasWildcard) {
-            return;
-        }
-
-        Iterator<String> iterator = event.getCommands().iterator();
-        while (iterator.hasNext()) {
-            String command = iterator.next();
-
-            boolean shouldShow = false;
-            for (CommandGroup group : groups) {
-                if (group.isTabCompletionAllowed(command)) {
-                    shouldShow = true;
-                    break;
-                }
-            }
-
-            if (!shouldShow) {
-                iterator.remove();
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST)
+@EventHandler(priority = EventPriority.HIGH)
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
         if (event.isCancelled() || !enabled) return;
 
@@ -421,186 +533,86 @@ public class CommandManager implements Listener {
             }
 
             boolean commandInList = group.commands().contains(commandToCheck) ||
-                                   group.commands().contains(baseCommand);
+                                group.commands().contains(baseCommand);
 
             if (group.whitelist() ? commandInList : !commandInList) {
                 canUseCommand = true;
                 break;
             }
         }
-
-        if (!canUseCommand || (canUseCommand && lackPermissionForCommand(player, fullCommand))) {
-            event.setCancelled(true);
-
-            if (isNamespacedCommand) {
-                Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", fullCommand);
-            } else {
-                String similar = findSimilarCommand(player, fullCommand);
-
-                if (similar != null) {
-                    Component suggestionComponent = Component.text(similar)
-                            .hoverEvent(HoverEvent.showText(
-                                    Component.text("Click to run: /" + similar).color(NamedTextColor.GRAY)
-                            ))
-                            .clickEvent(ClickEvent.suggestCommand("/" + similar));
-
-                    String errorMessage = lang.get("unknown-command-suggestion");
-
-                    if (errorMessage != null) {
-                        String[] parts = errorMessage.split("\\{suggestion\\}");
-
-                        Component finalMessage = Component.empty();
-
-                        if (parts.length > 0) {
-                            finalMessage = finalMessage.append(Component.text(parts[0].replace("{cmd}", fullCommand)));
-                        }
-
-                        finalMessage = finalMessage.append(suggestionComponent);
-
-                        if (parts.length > 1) {
-                            finalMessage = finalMessage.append(Component.text(parts[1].replace("{cmd}", fullCommand)));
-                        }
-
-                        Text.sendErrorMessage(player, finalMessage, lang);
-                    } else {
-                        Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", fullCommand);
-                    }
-                } else {
-                    Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", fullCommand);
+        
+        // Special handling for namespaced commands
+        // If it's a namespaced command and the player can use the base command, allow it
+        if (isNamespacedCommand && !canUseCommand) {
+            String baseCommand = fullCommand.substring(fullCommand.indexOf(':') + 1);
+            for (CommandGroup group : playerGroups) {
+                if (group.commands().contains("*") && group.whitelist()) {
+                    canUseCommand = true;
+                    break;
+                }
+                
+                boolean baseCommandInList = group.commands().contains(baseCommand);
+                if (group.whitelist() ? baseCommandInList : !baseCommandInList) {
+                    canUseCommand = true;
+                    break;
                 }
             }
         }
-    }
 
-    public boolean lackPermissionForCommand(Player player, String commandName) {
-        if (!enabled) {
-            return false;
+        if (!canUseCommand) {
+            event.setCancelled(true);
+            sendUnknownCommandMessage(player, fullCommand, isNamespacedCommand);
+            return;
         }
 
-        List<CommandGroup> playerGroups = getPlayerGroups(player);
-        boolean isCommandAllowed = false;
+        Map<String, Command> knownCommands = getKnownCommands();
+        Command resolvedCommand = resolveCommandForPermissionCheck(knownCommands, fullCommand);
 
-        for (CommandGroup group : playerGroups) {
-            if (group.whitelist() && group.commands().contains(commandName.toLowerCase())) {
-                isCommandAllowed = true;
-                break;
-            }
-            if (!group.whitelist() && !group.commands().contains(commandName.toLowerCase())) {
-                isCommandAllowed = true;
-                break;
-            }
+        if (resolvedCommand == null && isNamespacedCommand) {
+            String baseCommandName = fullCommand.substring(fullCommand.indexOf(':') + 1);
+            resolvedCommand = resolveCommandForPermissionCheck(knownCommands, baseCommandName);
         }
 
-        if (isCommandAllowed) {
-            return false;
+        if (resolvedCommand == null) {
+            event.setCancelled(true);
+            sendUnknownCommandMessage(player, fullCommand, isNamespacedCommand);
+            return;
         }
 
-        List<String> alwaysAllowedCommands = Arrays.asList("help", "spawn", "rules", "tpa", "tpahere", "tpaccept", "tpdeny");
-        if (alwaysAllowedCommands.contains(commandName.toLowerCase())) {
-            return false;
-        }
-
-        Command command = getCommandFromMap(commandName);
-        if (command == null) {
-            return false;
-        }
-
-        String pluginName = getPluginForCommand(command, commandName);
-
-        List<String> permNodes = getStrings(commandName, pluginName, command);
-
-        for (String permNode : permNodes) {
-            if (player.hasPermission(permNode)) {
-                return false;
-            }
-        }
-
-        return !player.isOp() && !player.hasPermission("*") && !player.hasPermission(pluginName + ".*");
-    }
-
-    private static @NotNull List<String> getStrings(String commandName, String pluginName, Command command) {
-        List<String> permNodes = new ArrayList<>();
-
-        String baseCommand = commandName;
-        if (commandName.contains(":")) {
-            baseCommand = commandName.substring(commandName.indexOf(':') + 1);
-        }
-
-        String permissionPluginName = pluginName;
-        if ("Allium".equals(pluginName)) {
-            permissionPluginName = "core";
-        }
-
-        if ("core".equals(permissionPluginName)) {
-            permNodes.add(permissionPluginName + "." + baseCommand);
-        } else {
-            permNodes.add(permissionPluginName + ".command." + baseCommand);
-            permNodes.add(permissionPluginName + "." + baseCommand);
-        }
-
-        if (!("core".equals(permissionPluginName)) &&
-                command.getPermission() != null &&
-                !command.getPermission().isEmpty()) {
-            permNodes.add(command.getPermission());
-        }
-
-        return permNodes;
-    }
-
-    private Command getCommandFromMap(String commandName) {
-        try {
-            final Field commandMapField = Bukkit.getServer().getClass().getDeclaredField("commandMap");
-            commandMapField.setAccessible(true);
-            Command command = getCommand(commandName, commandMapField);
-            return command;
-        } catch (Exception e) {
-            plugin.getLogger().warning("Failed to access command map: " + e.getMessage());
-            return null;
+        if (!resolvedCommand.testPermissionSilent(player)) {
+            event.setCancelled(true);
+            sendUnknownCommandMessage(player, fullCommand, isNamespacedCommand);
         }
     }
 
-    private static @Nullable Command getCommand(String commandName, Field commandMapField) throws IllegalAccessException {
-        CommandMap commandMap = (CommandMap) commandMapField.get(Bukkit.getServer());
 
-        String baseCommand = commandName;
-        if (commandName.contains(":")) {
-            baseCommand = commandName.substring(commandName.indexOf(':') + 1);
-        }
-
-        Command command = commandMap.getCommand(commandName);
-        if (command == null && !baseCommand.equals(commandName)) {
-            command = commandMap.getCommand(baseCommand);
-        }
-        return command;
-    }
-
-    private String getPluginForCommand(Command command, String commandName) {
-        String pluginName = "minecraft";
-
-        if (command instanceof PluginCommand) {
-            Plugin owningPlugin = ((PluginCommand) command).getPlugin();
-            pluginName = owningPlugin.getName().toLowerCase();
-        } else if (commandName.contains(":")) {
-            pluginName = commandName.substring(0, commandName.indexOf(':'));
-        }
-
-        if ("allium".equals(pluginName)) {
-            pluginName = "core";
-        }
-
-        return pluginName;
-    }
-
+    /**
+     * Updates the tab completion list for a specific player without touching gamemode.
+     * Prefer the native API, then fall back to packet-based refresh. No GM toggles.
+     */
     public void updatePlayerTabCompletion(Player player) {
+        // Skip processing if command manager is disabled
         if (!enabled) {
             return;
         }
 
+        // Build and process PlayerCommandSendEvent so our hide rules apply
         List<String> allCommands = new ArrayList<>(Bukkit.getCommandMap().getKnownCommands().keySet());
         PlayerCommandSendEvent event = new PlayerCommandSendEvent(player, allCommands);
-
         onCommandSend(event);
 
+        // Try Paper/Spigot native API first
+        try {
+            player.updateCommands();
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                Text.sendDebugLog(INFO, "Updated tab completion for " + player.getName() + " (native API)");
+            }
+            return;
+        } catch (Throwable ignored) {
+            // Fall back to packet-based approach below
+        }
+
+        // Packet-based fallback
         try {
             Object entityPlayer = player.getClass().getMethod("getHandle").invoke(player);
             Object playerConnection = entityPlayer.getClass().getField("playerConnection").get(entityPlayer);
@@ -615,25 +627,76 @@ public class CommandManager implements Listener {
             playerConnection.getClass().getMethod("sendPacket", getNMSClass("Packet")).invoke(playerConnection, packet);
 
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info("Updated tab completion for " + player.getName() + " with " + event.getCommands().size() + " commands");
+                Text.sendDebugLog(INFO, "Updated tab completion for " + player.getName() + " with " + event.getCommands().size() + " commands (packet)");
             }
         } catch (Exception e) {
-            if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().warning("Failed to update tab completion for " + player.getName() + " using packets. Using fallback method.");
-                plugin.getLogger().info("4dev: PacketEvents TBD");
-            }
-
-            GameMode originalMode = player.getGameMode();
-            GameMode tempMode = originalMode == GameMode.CREATIVE ? GameMode.SURVIVAL : GameMode.CREATIVE;
-
-            player.setGameMode(tempMode);
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> player.setGameMode(originalMode), 1L);
+            // As a last resort, log the failure; do NOT change gamemode
+            Text.sendDebugLog(WARN, "Failed to update tab completion for " + player.getName() + ": " + e.getMessage());
         }
     }
 
+
+
+    private void sendUnknownCommandMessage(Player player, String command, boolean isNamespacedCommand) {
+        if (isNamespacedCommand) {
+            Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", command);
+            return;
+        }
+
+        String similar = findSimilarCommand(player, command);
+
+        if (similar != null) {
+            Text.sendErrorMessage(player, "unknown-command-suggestion", lang,
+                    "{cmd}", command,
+                    "{suggestion}", similar);
+        } else {
+            Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", command);
+        }
+    }
+
+    private Command resolveCommandForPermissionCheck(Map<String, Command> knownCommands, String commandName) {
+        if (commandName == null || commandName.isEmpty()) {
+            return null;
+        }
+
+        Command command = knownCommands.get(commandName);
+        if (command != null) {
+            return command;
+        }
+
+        if (!commandName.contains(":")) {
+            String lowerCommand = commandName.toLowerCase(Locale.ROOT);
+            for (Map.Entry<String, Command> entry : knownCommands.entrySet()) {
+                String key = entry.getKey();
+                if (key == null) {
+                    continue;
+                }
+
+                int colonIndex = key.indexOf(':');
+                if (colonIndex == -1) {
+                    continue;
+                }
+
+                String baseCommand = key.substring(colonIndex + 1);
+                if (baseCommand.equals(lowerCommand)) {
+                    return entry.getValue();
+                }
+            }
+        }
+
+        return null;
+    }
+
+
+
+    // Helper method to get NMS classes - adjust for your server version
+
     private Class<?> getNMSClass(String className) throws ClassNotFoundException {
+
         String version = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
+
         return Class.forName("net.minecraft.server." + version + "." + className);
+
     }
 
     public boolean shouldShowCommand(Player player, String commandName) {
@@ -687,16 +750,19 @@ public class CommandManager implements Listener {
             }
             return true;
         }
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST)
+    }    
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onCommandSend(PlayerCommandSendEvent event) {
         if (!enabled) {
             return;
         }
         Player player = event.getPlayer();
 
-        if (player.hasPermission("core.hide.bypass")) {
+        if (player.hasPermission("allium.hide.bypass")) {
+            if (plugin.getConfig().getBoolean("debug-mode")) {
+                Text.sendDebugLog(INFO, "Bypassing command filtering for " + player.getName() + " due to allium.hide.bypass");
+            }
+            // Bypass users see all commands - no filtering
             return;
         }
 
@@ -708,54 +774,50 @@ public class CommandManager implements Listener {
 
         boolean hasWhitelistGroup = groups.stream().anyMatch(CommandGroup::whitelist);
 
-        Map<String, String> baseCommandsMap = new HashMap<>();
+        Set<String> filteredCommands = new LinkedHashSet<>();
+        for (String command : event.getCommands()) {
+            if (command == null) {
+                continue;
+            }
 
-        List<String> currentCommands = new ArrayList<>(event.getCommands());
+            String lowerCommand = command.toLowerCase(Locale.ROOT);
 
-        if (hasWhitelistGroup) {
-            Set<String> allowedBaseCommands = new HashSet<>();
-
-            for (String command : currentCommands) {
-                String baseCommand = command.contains(":")
-                        ? command.substring(command.indexOf(':') + 1)
-                        : command;
-
-                for (CommandGroup group : groups) {
-                    if (group.isTabCompletionAllowed(command)) {
-                        allowedBaseCommands.add(baseCommand);
-                        baseCommandsMap.put(baseCommand, command);
-                        break;
+            if (lowerCommand.contains(":")) {
+                if (player.isOp()) {
+                    if (hideNamespacedCommandsForBypass) {
+                        continue;
                     }
+                } else {
+                    continue;
                 }
             }
 
-            event.getCommands().clear();
-            event.getCommands().addAll(allowedBaseCommands);
-        } else {
-            List<String> filteredCommands = new ArrayList<>();
-
-            for (String command : currentCommands) {
-                String baseCommand = command.contains(":")
-                        ? command.substring(command.indexOf(':') + 1)
-                        : command;
-
-                boolean allowed = false;
+            boolean allowed;
+            if (hasWhitelistGroup) {
+                allowed = false;
                 for (CommandGroup group : groups) {
-                    if (group.isTabCompletionAllowed(command)) {
+                    if (group.whitelist() && group.isCommandAllowed(lowerCommand)) {
                         allowed = true;
                         break;
                     }
                 }
-
-                if (allowed) {
-                    filteredCommands.add(baseCommand);
-                    baseCommandsMap.put(baseCommand, command);
+            } else {
+                allowed = true;
+                for (CommandGroup group : groups) {
+                    if (!group.isCommandAllowed(lowerCommand)) {
+                        allowed = false;
+                        break;
+                    }
                 }
             }
 
-            event.getCommands().clear();
-            event.getCommands().addAll(filteredCommands);
+            if (allowed) {
+                filteredCommands.add(command);
+            }
         }
+
+        event.getCommands().clear();
+        event.getCommands().addAll(filteredCommands);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -767,8 +829,11 @@ public class CommandManager implements Listener {
 
         Player player = (Player) event.getSender();
 
-        if (player.hasPermission("core.hide.bypass")) {
-            return;
+        if (player.hasPermission("allium.hide.bypass")) {
+            if (!hideNamespacedCommandsForBypass) {
+                return;
+            }
+            // else fall through to hide namespaced entries for bypass per config
         }
 
         String buffer = event.getBuffer();
@@ -779,13 +844,51 @@ public class CommandManager implements Listener {
 
         String commandString = buffer.substring(1).split(" ")[0];
 
+        // Filter out namespaced commands for non-bypass players
+        if (commandString.contains(":")) {
+            if (player.isOp()) {
+                if (hideNamespacedCommandsForBypass) {
+                    event.setCompletions(new ArrayList<>());
+                    return;
+                }
+            } else if (!player.hasPermission("allium.hide.bypass")) {
+                event.setCompletions(new ArrayList<>());
+                return;
+            }
+        }
+
         if (!shouldAllowTabComplete(player, commandString)) {
             event.setCompletions(new ArrayList<>());
         }
     }
 
+    /**
+     * Refresh a player's command visibility and tab completions, temporarily bypassing
+     * inventory management side-effects. This body is safe to be executed on the
+     * player's entity scheduler (Folia) or the main thread on non-Folia.
+     */
+    private void refreshPlayerCommandState(Player player) {
+        try {
+            if (creativeManager != null) {
+                creativeManager.setBypassInventoryManagement(player, true);
+            }
+
+            // Trigger a command send event to refresh the player's available commands
+            List<String> allCommands = new ArrayList<>(Bukkit.getCommandMap().getKnownCommands().keySet());
+            PlayerCommandSendEvent refreshEvent = new PlayerCommandSendEvent(player, allCommands);
+            onCommandSend(refreshEvent);
+
+            // Also refresh tab completion to ensure immediate updates
+            updatePlayerTabCompletion(player);
+        } finally {
+            if (creativeManager != null) {
+                creativeManager.setBypassInventoryManagement(player, false);
+            }
+        }
+    }
+
     private record CommandGroup(String name, boolean whitelist, List<String> commands,
-                               List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
+                           List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
 
         private CommandGroup(String name, boolean whitelist, List<String> commands, List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
             this.name = name;
@@ -801,41 +904,32 @@ public class CommandManager implements Listener {
 
         public boolean isCommandAllowed(String commandName) {
             commandName = commandName.toLowerCase();
-
             if (commands.contains(commandName)) {
                 return whitelist;
             }
-
             String baseCommand = commandName.contains(":")
                     ? commandName.substring(commandName.indexOf(':') + 1)
                     : commandName;
-
             if (commands.contains(baseCommand)) {
                 return whitelist;
             }
-
             return !whitelist;
         }
 
         public boolean isTabCompletionAllowed(String commandName) {
             commandName = commandName.toLowerCase();
-
-            if (commands.contains(commandName)) {
+            if (tabCompletes.contains(commandName)) {
                 return whitelist;
             }
-
             String baseCommand = commandName.contains(":")
                     ? commandName.substring(commandName.indexOf(':') + 1)
                     : commandName;
-
-            if (commands.contains(baseCommand)) {
+            if (tabCompletes.contains(baseCommand)) {
                 return whitelist;
             }
-
-            if (commands.contains("*")) {
+            if (tabCompletes.contains("*")) {
                 return whitelist;
             }
-
             return !whitelist;
         }
     }

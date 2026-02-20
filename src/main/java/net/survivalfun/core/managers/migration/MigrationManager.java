@@ -7,6 +7,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
+import net.survivalfun.core.managers.core.Text;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
+
 /**
  * Handles migration from SFCore to Allium plugin
  * Detects SFCore folder and moves its contents to Allium folder on startup

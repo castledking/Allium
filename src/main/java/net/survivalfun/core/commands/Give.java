@@ -1,0 +1,1003 @@
+package net.survivalfun.core.commands;
+
+import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.items.CustomItem;
+import net.survivalfun.core.items.CustomItemRegistry;
+import net.survivalfun.core.managers.core.*;
+import net.survivalfun.core.managers.core.Item;
+import net.survivalfun.core.managers.lang.Lang;
+import org.bukkit.*;
+import org.bukkit.command.*;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.*;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.Location;
+import java.util.Random;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import org.jetbrains.annotations.NotNull;
+
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
+
+// Using local isGiveable method
+
+public class Give implements CommandExecutor {
+    private final PluginStart plugin;
+    private final Lang lang;
+    // Field to store parsed alias result for parameter application
+    private ParsedAliasResult parsedAliasResult;
+
+    /**
+     * Result of parsing a complex alias
+     */
+    private static class ParsedAliasResult {
+        final Material material;
+        final String parameters;
+
+        ParsedAliasResult(Material material, String parameters) {
+            this.material = material;
+            this.parameters = parameters;
+        }
+    }
+    public Give(PluginStart plugin) {
+        this.plugin = plugin;
+        this.lang = plugin.getLangManager();
+        Meta.initialize(plugin);
+        Potion.initialize(plugin);
+        Spawner.initialize(plugin);
+    }
+
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
+        if (!sender.hasPermission("allium.give")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label.toLowerCase());
+            return true;
+        }
+
+        String playerName;
+        String itemArg;
+        int amount;
+
+        try {
+            if (label.equalsIgnoreCase("give")) {
+                if (args.length < 2) {
+                    sender.sendMessage(lang.get("command-usage").replace("{cmd}", label).replace("{args}", "<player> <item> [amount]"));
+                    return true;
+                }
+                playerName = args[0];
+                itemArg = args[1];
+                amount = args.length > 2 ? Integer.parseInt(args[2]) : 0;
+            } else { // /i command
+                if (!(sender instanceof Player)) {
+                    Text.sendErrorMessage(sender, "contact-admin", lang);
+                    return true;
+                }
+                if (args.length < 1) {
+                    sender.sendMessage(lang.get("command-usage").replace("{cmd}", label).replace("{args}", "<item> [amount]"));
+                    return true;
+                }
+                playerName = sender.getName();
+                itemArg = args[0];
+                amount = args.length > 1 ? Integer.parseInt(args[1]) : 0;
+            }
+            giveItems(playerName, itemArg, sender, amount);
+        } catch (NumberFormatException e) {
+            String invalidArg = label.equalsIgnoreCase("give") && args.length > 2 ? args[2] : args[1];
+            Text.sendErrorMessage(sender, "invalid", lang, "{arg}", invalidArg);
+        }
+        return true;
+    }
+
+    private void giveItems(String targetSelector, String arg, CommandSender sender, int amount) {
+        // Handle selectors
+        if (targetSelector.startsWith("@")) {
+            // Get the command block or console sender's location for selector targeting
+            Location origin = null;
+            if (sender instanceof BlockCommandSender) {
+                origin = ((BlockCommandSender) sender).getBlock().getLocation();
+            } else if (sender instanceof Entity) {
+                origin = ((Entity) sender).getLocation();
+            }
+
+            // Parse the selector
+            try {
+                List<Entity> entities = new ArrayList<>();
+                
+                if (targetSelector.startsWith("@a")) {
+                    // All players
+                    entities.addAll(Bukkit.getOnlinePlayers());
+                } else if (targetSelector.startsWith("@p")) {
+                    // Nearest player
+                    if (origin != null) {
+                        Player nearest = null;
+                        double nearestDistance = Double.MAX_VALUE;
+                        
+                        for (Player player : Bukkit.getOnlinePlayers()) {
+                            if (origin.getWorld() != player.getWorld()) continue;
+                            
+                            double distance = origin.distanceSquared(player.getLocation());
+                            if (distance < nearestDistance) {
+                                nearest = player;
+                                nearestDistance = distance;
+                            }
+                        }
+                        
+                        if (nearest != null) {
+                            entities.add(nearest);
+                        }
+                    }
+                } else if (targetSelector.startsWith("@r")) {
+                    // Random player
+                    List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
+                    if (!players.isEmpty()) {
+                        entities.add(players.get(new Random().nextInt(players.size())));
+                    }
+                } else if (targetSelector.startsWith("@s")) {
+                    // Self
+                    if (sender instanceof Entity) {
+                        entities.add((Entity) sender);
+                    }
+                } else if (targetSelector.startsWith("@e")) {
+                    // All entities
+                    if (origin != null) {
+                        // Simple radius-based entity selection
+                        int radius = 10; // Default radius
+                        entities.addAll(origin.getWorld().getNearbyEntities(origin, radius, radius, radius));
+                    }
+                }
+
+                // Process each entity
+                for (Entity entity : entities) {
+                    if (entity instanceof Player) {
+                        giveItemToPlayer((Player) entity, createItemStack(arg, sender, amount), sender);
+                    }
+                }
+                
+                if (!entities.isEmpty()) {
+                    return; // Successfully processed selector
+                }
+                
+            } catch (Exception e) {
+                Text.sendErrorMessage(sender, "invalid-selector", lang, "{selector}", targetSelector);
+                return;
+            }
+            
+            // If we get here, the selector didn't match any entities
+            Text.sendErrorMessage(sender, "no-entities-found", lang);
+            return;
+        }
+        
+        // Handle regular player name
+        Player target = Bukkit.getPlayer(targetSelector);
+        if (target == null) {
+            if (Bukkit.getOfflinePlayer(targetSelector).hasPlayedBefore()) {
+                String targetName = Bukkit.getOfflinePlayer(targetSelector).getName();
+                Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", targetName);
+                return;
+            }
+            Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", targetSelector);
+            return;
+        }
+
+        try {
+            ItemStack item = createItemStack(arg, sender, amount);
+            if (item == null) return; // Error handled in createItemStack
+            
+            giveItemToPlayer(target, item, sender);
+        } catch (Exception e) {
+            Text.sendDebugLog(ERROR, "Error processing give command for " + sender.getName() + ": " + e.getMessage(), e);
+            Text.sendErrorMessage(sender, "contact-admin", lang);
+        }
+    }
+    
+    /**
+     * Creates an ItemStack from the given item string
+     * @param itemString The item string to parse (e.g., "diamond_sword", "stone;Sharpness:5")
+     * @param sender The command sender (for error messages)
+     * @param amount The amount of items to create
+     * @return The created ItemStack, or null if there was an error
+     */
+    private ItemStack createItemStack(String itemString, CommandSender sender, int amount) {
+        try {
+            String[] parts = itemString.split(";", -1);
+            String itemName = parts[0];
+            
+            // Handle NBT data if present (1.21.10+ format or legacy)
+            if (itemName.contains("[")) {
+                // New 1.21.10+ format: iron_sword[minecraft:unbreakable={boolean:['true']}]
+                String[] nbtParts = itemName.split("\\[", 2);
+                String materialName = nbtParts[0];
+                
+                Material material = Material.matchMaterial(materialName);
+                if (material == null) {
+                    Text.sendErrorMessage(sender, "invalid-item", lang, "{item}", materialName);
+                    return null;
+                }
+                
+                ItemStack item = new ItemStack(material, amount <= 0 ? material.getMaxStackSize() : Math.min(amount, material.getMaxStackSize()));
+                
+                // Extract NBT string
+                String nbtString = nbtParts[1].substring(0, nbtParts[1].length() - 1);
+                
+                // Parse NBT tags (simplified)
+                if (nbtString.contains("minecraft:unbreakable")) {
+                    ItemMeta meta = item.getItemMeta();
+                    if (meta != null) {
+                        meta.setUnbreakable(true);
+                        item.setItemMeta(meta);
+                    }
+                }
+                // Add more NBT parsing as needed
+                
+                return item;
+            } else if (itemName.startsWith("{")) {
+                // Legacy format handling
+                String materialName = itemString.contains("id:\"") ? 
+                    itemString.split("id:\\\"")[1].split("\\\"")[0] : 
+                    "stone";
+                Material material = Material.matchMaterial(materialName);
+                if (material == null) {
+                    Text.sendErrorMessage(sender, "invalid-item", lang, "{item}", materialName);
+                    return null;
+                }
+                return new ItemStack(material, amount <= 0 ? material.getMaxStackSize() : Math.min(amount, material.getMaxStackSize()));
+            }
+            
+            // Check for custom item prefixes (ci: or custom:)
+            if (itemName.toLowerCase().startsWith("ci:") || itemName.toLowerCase().startsWith("custom:")) {
+                String prefix = itemName.toLowerCase().startsWith("ci:") ? "ci:" : "custom:";
+                String customItemId = itemName.substring(prefix.length());
+                
+                CustomItem customItem = CustomItemRegistry.getInstance().getItem(customItemId);
+                if (customItem == null) {
+                    Text.sendErrorMessage(sender, "invalid-item", lang, "{item}", customItemId);
+                    return null;
+                }
+                
+                ItemStack item = customItem.createItemStack(amount <= 0 ? 1 : Math.min(amount, 64));
+                
+                // Apply any additional parameters (enchantments, etc.)
+                if (parts.length > 1) {
+                    // Preserve custommodeldata before modifications
+                    int customModelData = 0;
+                    if (item.hasItemMeta() && item.getItemMeta().hasCustomModelData()) {
+                        customModelData = item.getItemMeta().getCustomModelData();
+                    }
+                    
+                    Map<Enchantment, Integer> enchantments = Meta.getEnchantmentsFromParts(parts);
+                    Meta.applyEnchantments(sender, item, enchantments);
+                    
+                    ItemMeta meta = item.getItemMeta();
+                    if (meta != null) {
+                        for (int i = 1; i < parts.length; i++) {
+                            String part = parts[i];
+                            if (part.toLowerCase().startsWith("name:")) {
+                                Meta.applyDisplayName(meta, part.substring(5));
+                            }
+                            if (part.toLowerCase().startsWith("lore:")) {
+                                List<String> loreLines = Arrays.asList(part.substring(5).split("\\\\n"));
+                                meta.setLore(loreLines);
+                            }
+                        }
+                        
+                        // Handle flag: parameter (e.g., flag:UNBREAKABLE or flag:HIDE_ENCHANTS)
+                        for (int i = 1; i < parts.length; i++) {
+                            String part = parts[i];
+                            if (part.toLowerCase().startsWith("flag:")) {
+                                String flags = part.substring(5);
+                                applyItemFlags(meta, flags);
+                            }
+                        }
+                        
+                        // Restore custommodeldata after all modifications
+                        if (customModelData > 0) {
+                            meta.setCustomModelData(customModelData);
+                        }
+                        
+                        item.setItemMeta(meta);
+                    }
+                }
+                
+                return item;
+            }
+            
+            // Regular item parsing
+            Material material = getMaterial(itemName, sender);
+            if (material == null) {
+                return null; // Error message already sent in getMaterial
+            }
+            
+            ItemStack item = new ItemStack(material, amount <= 0 ? material.getMaxStackSize() : Math.min(amount, material.getMaxStackSize()));
+            
+            // Apply alias parameters (potion effects, etc.) if this was a complex alias
+            if (parsedAliasResult != null && parsedAliasResult.parameters != null) {
+                // Handle potion items specially
+                if (material == Material.POTION || material == Material.SPLASH_POTION ||
+                    material == Material.LINGERING_POTION || material == Material.TIPPED_ARROW) {
+                    // Create parts array for Potion.applyPotionMeta
+                    String[] potionParts = ("potion;" + parsedAliasResult.parameters).split(";");
+                    Potion.applyPotionMeta(sender, item, potionParts);
+                } else {
+                    // Apply other alias parameters (enchantments, names, etc.)
+                    applyAliasParameters(item, parsedAliasResult.parameters, sender);
+                }
+                // Clear the parsed result after use
+                parsedAliasResult = null;
+            }
+            
+            // Apply any additional parameters (enchantments, etc.)
+            if (parts.length > 1) {
+                Map<Enchantment, Integer> enchantments = Meta.getEnchantmentsFromParts(parts);
+                Meta.applyEnchantments(sender, item, enchantments);
+                
+                // Handle other item meta (name, lore, etc.)
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    for (int i = 1; i < parts.length; i++) {
+                        String part = parts[i];
+                        if (part.toLowerCase().startsWith("name:")) {
+                            Meta.applyDisplayName(meta, part.substring(5));
+                            break; // Only one name can be applied
+                        }
+                    }
+                    item.setItemMeta(meta);
+                }
+            }
+            
+            return item;
+            
+        } catch (Exception e) {
+            Text.sendDebugLog(ERROR, "Error creating item stack: " + e.getMessage(), e);
+            Text.sendErrorMessage(sender, "error-creating-item", lang);
+            return null;
+        }
+    }
+    
+    private void giveItemToPlayer(Player target, ItemStack item, CommandSender sender) {
+        PlayerInventory inventory = target.getInventory();
+        
+        // Get the configuration values that will be needed throughout the method
+        boolean dropOverflowItems = plugin.getConfig().getBoolean("give.drop-overflow-items", true);
+        int maxItemsDropped = plugin.getConfig().getInt("give.max-items-dropped", 64);
+        
+        // Check if the player's inventory is completely full before attempting to give items
+        // Only show inventory full message if we can't equip armor or drop items
+        boolean isInventoryCompletelyFull = isInventoryCompletelyFull(inventory, item);
+        boolean isArmor = isArmor(item.getType());
+        
+        if (isInventoryCompletelyFull && !isArmor && !dropOverflowItems) {
+            // Only show inventory full message if we can't equip armor and drop-overflow-items is false
+            Text.sendErrorMessage(sender, "inventory-full", lang);
+            return; // Cancel giving items and don't show success message
+        }
+        
+        // Store the original amount requested before any modifications
+        int originalRequestedAmount = item.getAmount();
+        
+        // Try to add to main inventory first
+        HashMap<Integer, ItemStack> leftover = inventory.addItem(item);
+        
+        // Initialize counters for tracking items given
+        int addedToInventory = originalRequestedAmount - (leftover.isEmpty() ? 0 : calculateTotalAmount(leftover.values()));
+        int addedToOffhand = 0;
+        int addedAsArmor = 0;
+        
+        int droppedAmount = 0;
+        boolean wasEquipped = false;
+        
+        if (!leftover.isEmpty()) {
+            // Try offhand if there are leftovers and offhand is empty
+            if (inventory.getItemInOffHand().getType() == Material.AIR) {
+                ItemStack firstLeftover = leftover.values().iterator().next();
+                // Limit stack size to 99 for serialization compatibility
+                int maxSerializableStackSize = 99;
+                int materialMaxStackSize = firstLeftover.getType().getMaxStackSize();
+                int maxAllowedStackSize = Math.min(maxSerializableStackSize, materialMaxStackSize);
+                int amountForOffhand = Math.min(firstLeftover.getAmount(), maxAllowedStackSize);
+                
+                // Put the item in the offhand with limited stack size
+                ItemStack offhandItem = firstLeftover.clone();
+                offhandItem.setAmount(amountForOffhand);
+                inventory.setItemInOffHand(offhandItem);
+                
+                // Update the leftover map
+                if (amountForOffhand >= firstLeftover.getAmount()) {
+                    leftover.remove(leftover.keySet().iterator().next());
+                } else {
+                    firstLeftover.setAmount(firstLeftover.getAmount() - amountForOffhand);
+                }
+                
+                // Track items added to offhand
+                addedToOffhand = amountForOffhand;
+            }
+            
+            // If there are still leftovers, try to equip as armor if applicable
+            if (!leftover.isEmpty() && isArmor(item.getType())) {
+                ItemStack firstLeftover = leftover.values().iterator().next();
+                ItemStack armorItem = firstLeftover.clone();
+                armorItem.setAmount(1); // Only equip one piece
+                
+                // Try to equip the armor in the appropriate slot
+                boolean equipped = tryEquipArmor(inventory, armorItem);
+                
+                if (equipped) {
+                    wasEquipped = true;
+                    
+                    // Track items added as armor
+                    addedAsArmor++;
+                    
+                    if (armorItem.getAmount() >= firstLeftover.getAmount()) {
+                        leftover.remove(leftover.keySet().iterator().next());
+                    } else {
+                        firstLeftover.setAmount(firstLeftover.getAmount() - 1);
+                    }
+                }
+            }
+            
+            // We already have the configuration values from the beginning of the method
+            
+            // If there are still leftovers after trying offhand and armor
+            if (!leftover.isEmpty()) {
+                // Calculate total leftover items
+                for (ItemStack drop : leftover.values()) {
+                    droppedAmount += drop.getAmount();
+                }
+                
+                if (dropOverflowItems) {
+                    // We don't show inventory-full message here anymore since we're dropping items
+                    
+                    // Check if we need to limit the number of dropped items
+                    if (maxItemsDropped >= 0) {
+                        // We'll strictly enforce the maxItemsDropped limit
+                        
+                        // Calculate how many items we can actually drop based on the limit
+                        int totalToDrop = Math.min(droppedAmount, maxItemsDropped);
+                        int remainingToDropCount = totalToDrop;
+                        
+                        // Drop items up to the limit
+                        for (Map.Entry<Integer, ItemStack> entry : leftover.entrySet()) {
+                            if (remainingToDropCount <= 0) break;
+                            
+                            ItemStack drop = entry.getValue().clone();
+                            int amountToDrop = Math.min(drop.getAmount(), remainingToDropCount);
+                            
+                            if (amountToDrop > 0) {
+                                ItemStack dropStack = drop.clone();
+                                dropStack.setAmount(amountToDrop);
+                                target.getWorld().dropItemNaturally(target.getLocation(), dropStack);
+                                remainingToDropCount -= amountToDrop;
+                            }
+                        }
+                        
+                        // Update the actual dropped amount to reflect the limit
+                        int actualDroppedAmount = totalToDrop - remainingToDropCount;
+                        droppedAmount = actualDroppedAmount;
+                        
+                        // Log the actual dropped amount for debugging
+                        if (plugin.getConfig().getBoolean("give.debug")) {
+                            Text.sendDebugLog(INFO, "Limited drops: requested=" + originalRequestedAmount + 
+                                                  ", dropped=" + actualDroppedAmount + 
+                                                  ", maxLimit=" + maxItemsDropped);
+                        }
+                    } else {
+                        // Drop all leftover items (no limit)
+                        for (ItemStack drop : leftover.values()) {
+                            target.getWorld().dropItemNaturally(target.getLocation(), drop);
+                        }
+                    }
+                } else {
+                    // Not dropping items, just count them as not given
+                    // We don't need to do anything else here since we already calculated droppedAmount
+                }
+            }
+        }
+        
+        String finalItemName;
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null && meta.hasDisplayName()) {
+            // Use the display name if available (for spawners, potions, etc.)
+            finalItemName = meta.getDisplayName();
+        } else {
+            finalItemName = Meta.formatName(item.getType().name());
+        }
+
+        // Add 'enchanted' if the item has enchantments
+        if (meta != null && meta.hasEnchants()) {
+            finalItemName = lang.getFirstColorCode("give.equipped") + "enchanted " + finalItemName;
+        }
+        
+        // Build message based on what happened
+        String message;
+        
+        // Calculate the actual number of items given to the player
+        // This will be used in the success message
+        int totalGiven;
+        
+        // Calculate total items actually given to the player (inventory + offhand + armor + limited drops)
+        int totalInventoryItems = addedToInventory + addedToOffhand + addedAsArmor;
+        
+        if (dropOverflowItems && maxItemsDropped >= 0) {
+            // Count what was added to inventory plus what was dropped (up to the max)
+            int droppedToCount = Math.min(droppedAmount, maxItemsDropped);
+            totalGiven = totalInventoryItems + droppedToCount;
+            
+            // Debug log
+            if (plugin.getConfig().getBoolean("give.debug")) {
+                Text.sendDebugLog(INFO, "Success message calculation: inventory=" + addedToInventory + 
+                                      ", offhand=" + addedToOffhand + 
+                                      ", armor=" + addedAsArmor + 
+                                      ", droppedToCount=" + droppedToCount + 
+                                      ", totalGiven=" + totalGiven);
+            }
+        } else if (!dropOverflowItems) {
+            // If not dropping overflow, only count what went into inventory
+            totalGiven = totalInventoryItems;
+            
+            // Debug log
+            if (plugin.getConfig().getBoolean("give.debug")) {
+                Text.sendDebugLog(INFO, "Success message calculation: inventory=" + addedToInventory + 
+                                      ", offhand=" + addedToOffhand + 
+                                      ", armor=" + addedAsArmor + 
+                                      ", totalGiven=" + totalGiven);
+            }
+        } else {
+            // If dropping with no limit, count everything
+            totalGiven = totalInventoryItems + droppedAmount;
+            
+            // Debug log
+            if (plugin.getConfig().getBoolean("give.debug")) {
+                Text.sendDebugLog(INFO, "Success message calculation: inventory=" + addedToInventory + 
+                                      ", offhand=" + addedToOffhand + 
+                                      ", armor=" + addedAsArmor + 
+                                      ", droppedAmount=" + droppedAmount + 
+                                      ", totalGiven=" + totalGiven);
+            }
+        }
+        
+        // Add equipped armor piece if applicable
+        if (wasEquipped) {
+            totalGiven++; // Add the equipped armor piece
+        }
+    
+    // Send success message to the command sender
+    if (sender.getName().equals(target.getName())) {
+        // Message for when giving to self
+        String successMessage = lang.get("give.success")
+            .replace("{name}", "yourself")
+            .replace("{amount}", String.valueOf(totalGiven))
+            .replace("{item}", finalItemName);
+        lang.sendMessage(sender, successMessage);
+    } else {
+        // Message for when giving to another player
+        String successMessage = lang.get("give.success")
+            .replace("{name}", target.getName())
+            .replace("{amount}", String.valueOf(totalGiven))
+            .replace("{item}", finalItemName);
+        lang.sendMessage(sender, successMessage);
+
+        // Send receive message to the target player if online
+        if (target.isOnline()) {
+            String receiveMessage = lang.get("give.receive")
+                .replace("{amount}", String.valueOf(totalGiven))
+                .replace("{item}", finalItemName);
+            lang.sendMessage(target, receiveMessage);
+        }
+        }
+    }
+
+    /**
+     * Enhanced method to parse complex aliases and apply item effects
+     * @param aliasName The alias name to parse
+     * @param sender Command sender for error messages
+     * @return ParsedAliasResult containing material and parameters, or null if invalid
+     */
+    private ParsedAliasResult parseComplexAlias(String aliasName, CommandSender sender) {
+        // First check if this is a direct material
+        try {
+            Material directMaterial = Material.matchMaterial(aliasName);
+            if (directMaterial != null && Item.isGiveable(directMaterial)) {
+                return new ParsedAliasResult(directMaterial, null);
+            }
+        } catch (IllegalArgumentException ignored) {}
+
+        // Check for alias in itemdb.yml
+        String fullAlias = Alias.getAlias(aliasName);
+        if (fullAlias != null) {
+            // Check if this is a complex alias with parameters
+            if (fullAlias.contains(";")) {
+                String materialPart = Alias.getMaterialPartFromAlias(aliasName);
+                String parameters = Alias.getParametersFromAlias(aliasName);
+
+                if (materialPart != null) {
+                    try {
+                        Material material = Material.matchMaterial(materialPart);
+                        if (material != null && Item.isGiveable(material)) {
+                            return new ParsedAliasResult(material, parameters);
+                        }
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            } else {
+                // Simple alias without parameters
+                try {
+                    Material material = Material.matchMaterial(fullAlias);
+                    if (material != null && Item.isGiveable(material)) {
+                        return new ParsedAliasResult(material, null);
+                    }
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+
+        // Check legacy ID mappings
+        Material legacyMaterial = LegacyID.getMaterialFromLegacyId(aliasName);
+        if (legacyMaterial != null && Item.isGiveable(legacyMaterial)) {
+            String legacyParams = LegacyID.getExtraDataForLegacyId(aliasName);
+            if (legacyParams != null && legacyParams.isEmpty()) {
+                legacyParams = null;
+            }
+            return new ParsedAliasResult(legacyMaterial, legacyParams);
+        }
+
+        return null;
+    }
+
+    /**
+     * Apply complex alias parameters to an ItemStack
+     * @param item The ItemStack to modify
+     * @param parameters The parameters string from the alias
+     * @param sender Command sender for error messages
+     * @return true if parameters were applied successfully
+     */
+    private boolean applyAliasParameters(ItemStack item, String parameters, CommandSender sender) {
+        if (parameters == null || parameters.isEmpty()) {
+            return true;
+        }
+
+        String[] parts = parameters.split(";");
+
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i].trim();
+
+            if (part.toLowerCase().startsWith("name:")) {
+                // Custom display name
+                String nameValue = part.substring(5);
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    Meta.applyDisplayName(meta, nameValue);
+                    item.setItemMeta(meta);
+                }
+            } else if (part.toLowerCase().startsWith("owner:")) {
+                // Player head owner (explicit syntax) - use Minecraft-Heads API
+                if (item.getType() == Material.PLAYER_HEAD) {
+                    String ownerName = part.substring(6);
+                    ItemStack skull = Skull.fetchPlayerHeadFromMinecraftHeads(ownerName);
+                    if (skull != null) {
+                        // Replace the current item with the fetched skull
+                        item.setType(skull.getType());
+                        item.setItemMeta(skull.getItemMeta());
+                    }
+                }
+            } else if (item.getType() == Material.PLAYER_HEAD && !part.toLowerCase().startsWith("name:")) {
+                // Player head owner (implicit syntax - no owner: prefix needed) - use Minecraft-Heads API
+                ItemStack skull = Skull.fetchPlayerHeadFromMinecraftHeads(part);
+                if (skull != null) {
+                    // Replace the current item with the fetched skull
+                    item.setType(skull.getType());
+                    item.setItemMeta(skull.getItemMeta());
+                }
+            } else if (isEnchantmentParameter(part)) {
+                // Enchantment (format: ENCHANTMENT:LEVEL)
+                String[] enchantmentParts = part.split(":");
+                if (enchantmentParts.length == 2) {
+                    try {
+                        org.bukkit.enchantments.Enchantment enchantment = org.bukkit.enchantments.Enchantment.getByName(enchantmentParts[0].toUpperCase());
+                        if (enchantment != null) {
+                            int level = Integer.parseInt(enchantmentParts[1]);
+                            item.addUnsafeEnchantment(enchantment, level);
+                        }
+                    } catch (NumberFormatException e) {
+                        Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "enchantment level");
+                        return false;
+                    } catch (IllegalArgumentException e) {
+                        Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "enchantment level");
+                        return false;
+                    }
+                }
+            } else if (isPotionEffectParameter(part)) {
+                // Potion effect - use the existing Potion.applyPotionMeta method
+                // Supports: POTION, SPLASH_POTION, LINGERING_POTION, TIPPED_ARROW
+                if (item.getType() == Material.POTION || item.getType() == Material.SPLASH_POTION ||
+                    item.getType() == Material.LINGERING_POTION || item.getType() == Material.TIPPED_ARROW) {
+                    // Create parts array for Potion.applyPotionMeta
+                    // Format: ["potion", "effect1", "duration1", "amplifier1", "effect2", "duration2", "amplifier2", ...]
+                    String[] potionParts = new String[1 + (part.split(";").length)];
+                    potionParts[0] = "potion";
+
+                    String[] effectParts = part.split(";");
+
+                    for (int j = 0; j < effectParts.length; j++) {
+                        String[] effectPartSplit = effectParts[j].split(":");
+                        if (effectPartSplit.length == 3) {
+                            potionParts[j + 1] = effectPartSplit[0] + ":" + effectPartSplit[1] + ":" + effectPartSplit[2];
+                        } else {
+                            Text.sendErrorMessage(sender, "give.invalid-potion-effect", lang, "{arg}", effectParts[j]);
+                            return false;
+                        }
+                    }
+
+                    Potion.applyPotionMeta(sender, item, potionParts);
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if a parameter is an enchantment
+     */
+    private boolean isEnchantmentParameter(String part) {
+        return part.contains(":") && !part.toLowerCase().startsWith("name:") && !part.toLowerCase().startsWith("owner:");
+    }
+
+    /**
+     * Check if a parameter is a potion effect
+     */
+    private boolean isPotionEffectParameter(String part) {
+        return part.contains(";") && !part.toLowerCase().startsWith("name:") && !part.toLowerCase().startsWith("owner:");
+    }
+
+    private Material getMaterial(String itemName, CommandSender sender) {
+        Material material = null;
+        String baseItemName = itemName;
+
+        // Use enhanced alias parsing for complex syntaxes
+        ParsedAliasResult parsedResult = parseComplexAlias(baseItemName, sender);
+        if (parsedResult != null) {
+            // Store the parsed result for later use
+            parsedAliasResult = parsedResult;
+            return parsedResult.material;
+        }
+
+        // First check if the input is already a valid Material enum name
+        try {
+            material = Material.matchMaterial(baseItemName);
+            if (material != null && Item.isGiveable(material)) {
+                return material;
+            }
+        } catch (IllegalArgumentException ignored) {}
+
+        // Try legacy ID resolution for numeric inputs (like "443")
+        try {
+            int numericId = Integer.parseInt(baseItemName);
+            material = LegacyID.getMaterialFromLegacyId(baseItemName);
+            if (material != null && Item.isGiveable(material)) {
+                return material;
+            }
+        } catch (NumberFormatException ignored) {
+            // Not a numeric ID, continue with other resolution methods
+        }
+
+        // If not a direct material, try alias resolution
+        // First check if we're dealing with an alias that might have potion parameters
+        String materialPart = Alias.getMaterialPartFromAlias(baseItemName);
+        if (materialPart != null) {
+            try {
+                material = Material.matchMaterial(materialPart);
+                if (material != null && Item.isGiveable(material)) {
+                    return material;
+                }
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        // Check if the input contains a colon (for legacy data values)
+        if (baseItemName.contains(":")) {
+            // Try to resolve the full string as an alias first (e.g., "bed:1")
+            String fullAlias = Alias.getAlias(baseItemName);
+            if (fullAlias != null) {
+                try {
+                    material = Material.matchMaterial(fullAlias);
+                    if (material != null && Item.isGiveable(material)) {
+                        return material;
+                    }
+                } catch (IllegalArgumentException ignored) {}
+            }
+            // Then try legacy ID
+            material = LegacyID.getMaterialFromLegacyId(baseItemName);
+            if (material != null && Item.isGiveable(material)) {
+                return material;
+            }
+        }
+
+        // Try to resolve the input as an alias (get the full complex alias if it exists)
+        String fullAlias = Alias.getAlias(baseItemName);
+        if (fullAlias != null) {
+            // Check if this is a complex alias with parameters
+            if (fullAlias.contains(";")) {
+                // For complex aliases, use the material part for Material lookup
+                String complexMaterialPart = Alias.getMaterialPartFromAlias(baseItemName);
+                if (complexMaterialPart != null) {
+                    material = Material.matchMaterial(complexMaterialPart);
+                    if (material != null && Item.isGiveable(material)) {
+                        return material;
+                    }
+                }
+            } else {
+                // For simple aliases, use the full alias directly
+                material = Material.matchMaterial(fullAlias);
+                if (material != null && Item.isGiveable(material)) {
+                    return material;
+                }
+            }
+        }
+
+        // Then try direct material lookup (case-insensitive) - fallback
+        try {
+            material = Material.matchMaterial(baseItemName);
+            if (material != null && Item.isGiveable(material)) {
+                return material;
+            }
+        } catch (IllegalArgumentException ignored) {}
+
+        // Last attempt: Try with uppercase (official enum name)
+        if (!baseItemName.equals(baseItemName.toUpperCase())) {
+            try {
+                material = Material.matchMaterial(baseItemName.toUpperCase());
+                if (material != null && Item.isGiveable(material)) {
+                    return material;
+                }
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        // If we get here, the material couldn't be found
+        Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
+        return null;
+    }
+    
+    /**
+     * Checks if the given material is an armor item.
+     * 
+     * @param material The material to check
+     * @return true if the material is armor, false otherwise
+     */
+    private boolean isArmor(Material material) {
+        if (material == null) return false;
+        
+        String name = material.name();
+        return name.endsWith("_HELMET") || 
+               name.endsWith("_CHESTPLATE") || 
+               name.endsWith("_LEGGINGS") || 
+               name.endsWith("_BOOTS") ||
+               material == Material.TURTLE_HELMET ||
+               material == Material.ELYTRA;
+    }
+    
+    /**
+     * Checks if a player's inventory is completely full with no space for the given item.
+     * This means no empty slots, no populatable stacks, and no armor equippables.
+     * 
+     * @param inventory The player's inventory to check
+     * @param item The item we're trying to give
+     * @return true if the inventory is completely full, false otherwise
+     */
+    private boolean isInventoryCompletelyFull(PlayerInventory inventory, ItemStack item) {
+        // Check if there's any empty slot
+        for (ItemStack slot : inventory.getStorageContents()) {
+            if (slot == null || slot.getType() == Material.AIR) {
+                return false; // Found an empty slot
+            }
+        }
+        
+        // Check if offhand is empty
+        if (inventory.getItemInOffHand().getType() == Material.AIR) {
+            return false; // Offhand is empty
+        }
+        
+        // Check if the item is armor and if the corresponding armor slot is empty
+        Material material = item.getType();
+        if (material.name().endsWith("_HELMET") && inventory.getHelmet() == null) {
+            return false; // Helmet slot is empty
+        } else if (material.name().endsWith("_CHESTPLATE") && inventory.getChestplate() == null) {
+            return false; // Chestplate slot is empty
+        } else if (material.name().endsWith("_LEGGINGS") && inventory.getLeggings() == null) {
+            return false; // Leggings slot is empty
+        } else if (material.name().endsWith("_BOOTS") && inventory.getBoots() == null) {
+            return false; // Boots slot is empty
+        }
+        
+        // If we got here, the inventory is completely full
+        return true;
+    }
+    
+    /**
+     * Calculate the total amount of items in a collection of ItemStacks
+     * 
+     * @param items Collection of ItemStacks to calculate total amount for
+     * @return The total amount of items
+     */
+    private int calculateTotalAmount(Collection<ItemStack> items) {
+        int total = 0;
+        for (ItemStack stack : items) {
+            if (stack != null) {
+                total += stack.getAmount();
+            }
+        }
+        return total;
+    }
+    
+    /**
+     * Attempts to equip an armor item in the appropriate slot.
+     * 
+     * @param inventory The player's inventory
+     * @param armorItem The armor item to equip
+     * @return true if the armor was equipped, false otherwise
+     */
+    private boolean tryEquipArmor(PlayerInventory inventory, ItemStack armorItem) {
+        if (armorItem == null) return false;
+        
+        Material material = armorItem.getType();
+        
+        // Determine the appropriate slot based on the armor type
+        if (material.name().endsWith("_HELMET") || material.name().equals("TURTLE_HELMET")) {
+            if (inventory.getHelmet() == null) {
+                inventory.setHelmet(armorItem);
+                return true;
+            }
+        } else if (material.name().endsWith("_CHESTPLATE") || material.name().equals("ELYTRA")) {
+            if (inventory.getChestplate() == null) {
+                inventory.setChestplate(armorItem);
+                return true;
+            }
+        } else if (material.name().endsWith("_LEGGINGS")) {
+            if (inventory.getLeggings() == null) {
+                inventory.setLeggings(armorItem);
+                return true;
+            }
+        } else if (material.name().endsWith("_BOOTS")) {
+            if (inventory.getBoots() == null) {
+                inventory.setBoots(armorItem);
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    private void applyItemFlags(ItemMeta meta, String flags) {
+        String[] flagList = flags.split(",");
+        
+        for (String flag : flagList) {
+            flag = flag.trim().toUpperCase();
+            
+            switch (flag) {
+                case "UNBREAKABLE":
+                    meta.setUnbreakable(true);
+                    break;
+                case "HIDE_ENCHANTS":
+                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+                    break;
+                case "HIDE_ATTRIBUTES":
+                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
+                    break;
+                case "HIDE_UNBREAKABLE":
+                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE);
+                    break;
+                case "HIDE_DESTROYS":
+                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_DESTROYS);
+                    break;
+                case "HIDE_PLACED_ON":
+                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_PLACED_ON);
+                    break;
+                default:
+                    Text.sendDebugLog(INFO, "Unknown item flag: " + flag);
+                    break;
+            }
+        }
+    }
+}

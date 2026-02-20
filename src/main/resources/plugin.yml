@@ -1,13 +1,19 @@
 name: Allium
-version: 0.1.3a
+version: 0.1.4a
 main: net.survivalfun.core.PluginStart
 api-version: 1.21
+folia-supported: true
 author: towkio
 description: "A secure, modern Essentials solution."
-depend: [Vault]
-soft-depend: [PlaceholderAPI]
+soft-depend: [Vault, PlaceholderAPI, packetevents, floodgate]
 
 commands:
+  nickname:
+    description: "Open the nickname customization GUI"
+    usage: "/nickname"
+    permission: allium.nick.gui
+    aliases: [nick]
+    
   redeem:
     description: Allows eligible players to redeem a rank and rewards.
     usage: /redeem
@@ -33,6 +39,14 @@ commands:
     description: "Heal players"
     usage: "/heal [player]"
     permission: allium.heal
+  freeze:
+    description: "Freeze players"
+    usage: "/freeze [player]"
+    permission: allium.freeze
+  unfreeze:
+    description: "Unfreeze players"
+    usage: "/unfreeze [player]"
+    permission: allium.unfreeze
   feed:
     description: "Feed players"
     usage: "/feed [player]"
@@ -40,7 +54,10 @@ commands:
   core:
     description: "Core plugin command. Subcommands: reload, debug, voucher, etc."
     usage: "/core"
-    permission: allium.admin
+  core item:
+    description: "Give custom items to players"
+    usage: "/core item give <item> [amount]"
+    permission: allium.coreitem.give
   rename:
     description: "Rename item in main hand"
     usage: "/rename <name>"
@@ -70,10 +87,25 @@ commands:
     description: "Toggle night vision"
     usage: "/nv"
     permission: allium.nv
+  vanish:
+    description: "Toggle vanish mode with level-based visibility system"
+    usage: "/vanish [level|<player> [level]]"
+    permission: allium.vanish
+    aliases: [v]
+  v:
+    description: "Short alias for vanish command"
+    usage: "/v [level|<player> [level]]"
+    permission: allium.vanish
+    aliases: [vanish]
   msg:
     description: "Send a private message to player"
     usage: "/msg <player> <message>"
     aliases: [ tell, w, whisper, pm, message, m, t ]
+
+  speed:
+    description: "Set walking or flying speed"
+    usage: "/speed <type> <speed> [player]"
+    permission: allium.speed
 
   reply:
     description: "Reply to the last message received"
@@ -116,13 +148,49 @@ commands:
     description: "Sets a home"
     usage: "/sethome [home]"
     permission: allium.sethome
-  
   delhome:
     description: "Deletes a home"
     usage: "/delhome [home]"
     permission: allium.delhome
-    aliases: [removehome]
-  
+    aliases: [removehome] 
+    
+  party:
+    description: "Manage parties - create, join, leave, info, list"
+    usage: "/party <create|join|leave|info|list> [name]"
+    permission: allium.party
+    
+  locatorbar:
+    description: "Control locator bar visibility - toggle, show, hide players"
+    usage: "/locatorbar <toggle|show|hide> [player] [time]"
+    permission: allium.locatorbar
+    
+  deletemsg:
+    description: "Deletes a message"
+    usage: "/deletemsg <id>"
+    permission: allium.deletemsg
+    aliases: [delmsg]
+
+  trash:
+    description: "Opens a disposal inventory that deletes items on close"
+    usage: "/trash"
+    permission: allium.dispose
+    aliases: [dispose, disposal]
+    
+  handcuffs:
+    description: "Manage player restraints - toggle handcuffs for self or give to others"
+    usage: "/handcuffs [player]"
+    permission: allium.handcuffs
+    
+  unrestrain:
+    description: "Release all currently restrained players"
+    usage: "/unrestrain"
+    permission: allium.admin
+    
+  restore:
+    description: "Restore a previous inventory"
+    usage: "/restore [player]"
+    permission: allium.restore
+    
   # Economy commands
   balance:
     description: "Check your balance or another player's balance"
@@ -149,7 +217,7 @@ commands:
   tp:
     description: "Teleport to a player or location"
     usage: "/tp [player] or /tp [x] [y] [z]"
-    aliases: [tpo, teleport, back]
+    aliases: [tpo, teleport]
     permission: allium.tp
   
   tpa:
@@ -185,6 +253,11 @@ commands:
     usage: "/tpmob"
     aliases: [tpentity, tpent, teleportmob, tpm, tpe]
     permission: allium.tpmob
+
+  back:
+    description: "Go back to your previous or death location"
+    usage: "/back"
+    permission: allium.back
   
   tppos:
     description: "Teleport to specific coordinates"
@@ -222,21 +295,37 @@ commands:
     description: "Teleport to the lowest block"
     usage: "/bottom"
     permission: allium.bottom
-
+  
   whois:
     description: "Displays detailed information about a player."
     usage: "/whois <player>"
     permission: allium.whois
+
+  seen:
+    description: "Shows information about a player including their last seen time and location"
+    usage: "/seen <player>"
+    permission: allium.seen
 
   maintenance:
     description: "Toggle maintenance mode"
     usage: "/maintenance [on|off] [reason]"
     permission: allium.admin
 
+  withertoggle:
+    description: "Toggle Wither spawning"
+    usage: "/withertoggle [on|off|status]"
+    permission: allium.withertoggle
+
   invsee:
     description: View and edit another player's inventory
     usage: /invsee <player>
     permission: allium.invsee
+
+  enderchest:
+    description: "Open a player's ender chest"
+    usage: "/enderchest [player]"
+    permission: allium.enderchest
+    aliases: [ec, ender, echest]
 
   enchant:
     description: Enchant an item in hand
@@ -269,6 +358,27 @@ commands:
     description: "Set the time to night"
     usage: "/night [set|add] [time] [world]"
     permission: allium.time
+  
+  warp:
+    description: "Teleport to a warp or list available warps"
+    usage: "/warp [warp] [player] | /warps"
+    permission: allium.warp
+    aliases: [warps]
+  
+  setwarp:
+    description: "Create a new warp at your current location"
+    usage: "/setwarp <name> [public]"
+    permission: allium.setwarp
+  
+  delwarp:
+    description: "Delete an existing warp"
+    usage: "/delwarp <n>"
+    permission: allium.delwarp
+  
+  warpinfo:
+    description: "Display information about a warp"
+    usage: "/warpinfo <n>"
+    permission: allium.warpinfo
 
 permissions:
   allium.staff:
@@ -280,6 +390,7 @@ permissions:
       allium.spy.others: true
       allium.gamemode: true
       allium.gamemode.spectator: true
+      allium.nv: true
       allium.note: true
       allium.notes: true
       allium.unnote: true
@@ -296,20 +407,40 @@ permissions:
       allium.heal.nocooldown: true
       allium.tpa.nodelay: true
       allium.lockdown.bypass: true
+      allium.warp: true
+      allium.warp.list: true
+      allium.warp.others: true
+      allium.setwarp: true
+      allium.delwarp: true
+      allium.warpinfo: true
+      allium.warps.*: true
+      allium.warp.overwrite.*: true
+
   allium.admin:
-    description: "Gives access to all core admin commands"
+    description: "Gives access to admin commands"
     default: op
     children:
-      allium.debug: true
+      allium.staff: true
       allium.reload: true
       allium.hideupdate: true
       allium.hide: true
+      allium.gamemode.spectator.teleport: true
       allium.chatmod: true
       allium.enchant: true
-      allium.staff: true
+      allium.enchant.unsafe: true
+      allium.withertoggle: true
+      allium.withertoggle.notify: true
+
+  allium.handcuffs:
+    description: "Allows using handcuffs commands"
+    default: op
 
   allium.enchant:
     description: "Allows using the enchant command"
+    default: op
+
+  allium.enchant.unsafe:
+    description: "Allows applying unsafe enchants when enabled in config"
     default: op
 
   allium.spy:
@@ -317,7 +448,13 @@ permissions:
   
   allium.money:
     default: op
-  allium.note:
+  allium.invsee:
+    default: op
+  allium.enderchest:
+    description: "Allows opening your ender chest"
+    default: op
+  allium.enderchest.other:
+    description: "Allows opening other players' ender chests"
     default: op
   allium.notes:
     default: op
@@ -340,6 +477,14 @@ permissions:
     default: op
   allium.gamemode.creative.drop:
     default: op
+
+  allium.withertoggle:
+    description: "Allows toggling Wither spawning"
+    default: op
+
+  allium.withertoggle.notify:
+    description: "Receives notifications when Wither spawning is toggled"
+    default: op
   allium.gamemode.creative.break:
     default: op
   allium.gamemode.creative.place:
@@ -359,6 +504,8 @@ permissions:
   allium.gamemode.adventure.nv:
     default: op
   allium.gamemode.spectator:
+    default: op
+  allium.gamemode.spectator.teleport:
     default: op
   allium.gamemode:
     default: op
@@ -384,7 +531,7 @@ permissions:
   allium.tp.offline:
     default: op
   allium.tpa:
-    default: true
+    default: op
   allium.tpa.nodelay:
     default: op
   allium.tpa.nocooldown:
@@ -399,11 +546,11 @@ permissions:
   allium.tphere:
     default: op
   allium.tpahere:
-    default: true
+    default: op
   allium.tpall:
     default: op
   allium.tptoggle:
-    default: true
+    default: op
   allium.tptoggle.others:
     default: op
   allium.top:
@@ -412,9 +559,9 @@ permissions:
     default: op
   allium.whois:
     description: "Allows using the /whois command."
-    default: true
+    default: op
   allium.tpauto:
-    default: true
+    default: op
   allium.spawn:
     default: true
   allium.setspawn:
@@ -423,13 +570,13 @@ permissions:
     default: true
 
   allium.home:
-    default: true
+    default: op
   allium.sethome:
-    default: true
+    default: op
   allium.homes:
-    default: true
+    default: op
   allium.delhome:
-    default: true
+    default: op
   allium.sethome.unlimited:
     default: op
   allium.home.others:
@@ -437,16 +584,51 @@ permissions:
   allium.home.nocooldown:
     default: op
 
-  allium.hide.group:
+  allium.party:
+    description: "Allows using party commands"
+    default: op
+
+  allium.locatorbar:
+    description: "Allows using locator bar control commands"
+    default: op
+
+  allium.mail.group:
     default: false
   allium.hide.bypass:
     default: op
   allium.hide.default:
     default: true
 
+  allium.speed:
+    description: "Allows using the /speed command"
+    default: op
   allium.fly:
     default: op
   allium.fly.others:
+    default: op
+    
+  # Nickname permissions
+  allium.nick.gui:
+    description: "Allows access to the nickname GUI"
+    default: true
+    
+  allium.nick.bypass.cooldown:
+    description: "Bypass nickname change cooldown"
+    default: op
+    
+  allium.nick.color:
+    description: "Allows using colors in nicknames"
+    default: true
+    
+  allium.nick.format:
+    description: "Allows using formatting in nicknames"
+    default: op
+    
+  allium.nick.animation:
+    description: "Allows using animations in nicknames"
+    default: op
+  allium.speed.others:
+    description: "Allows setting speed for other players"
     default: op
   allium.explode:
     default: op
@@ -455,13 +637,343 @@ permissions:
   allium.explode.exempt:
     default: op
   allium.gc:
-    default: true
+    default: op
   allium.give:
     default: op
   allium.itemdb:
     default: op
+
+  allium.mail:
+    default: op
+  allium.mail.send:
+    default: op
+  allium.mail.send.nocooldown:
+    default: op
+  allium.mail.clear:
+    default: op
+  allium.mail.claim:
+    default: op
+  allium.mail.read:
+    default: op
+  allium.mail.gift:
+    default: op
+  allium.mail.read.others:
+    default: op
+  allium.mail.color.*:
+    default: op
+  allium.mail.color.black:
+    default: op
+  allium.mail.color.dark_blue:
+    default: op
+  allium.mail.color.dark_green:
+    default: op
+  allium.mail.color.dark_red:
+    default: op
+  allium.mail.color.dark_purple:
+    default: op
+  allium.mail.color.gold:
+    default: op
+  allium.mail.color.gray:
+    default: op
+  allium.mail.color.dark_gray:
+    default: op
+  allium.mail.color.blue:
+    default: op
+  allium.mail.color.green:
+    default: op
+  allium.mail.color.aqua:
+    default: op
+  allium.mail.color.red:
+    default: op
+  allium.mail.color.light_purple:
+    default: op
+  allium.mail.color.yellow:
+    default: op
+  allium.mail.color.white:
+    default: op
+  allium.mail.color.hex:
+    default: op
+  allium.mail.format.*:
+    default: op
+  allium.mail.format.italic:
+    default: op
+  allium.mail.format.bold:
+    default: op
+  allium.mail.format.strikethrough:
+    default: op
+  allium.mail.format.underline:
+    default: op
+  allium.mail.format.obfuscated:
+    default: op
+  allium.mail.format.reset:
+    default: op
+  allium.mail.minimessage.*:
+    default: op
+  allium.mail.minimessage.color.black:
+    default: op
+  allium.mail.minimessage.color.dark_blue:
+    default: op
+  allium.mail.minimessage.color.dark_green:
+    default: op
+  allium.mail.minimessage.color.dark_red:
+    default: op
+  allium.mail.minimessage.color.dark_purple:
+    default: op
+  allium.mail.minimessage.color.gold:
+    default: op
+  allium.mail.minimessage.color.gray:
+    default: op
+  allium.mail.minimessage.color.dark_gray:
+    default: op
+  allium.mail.minimessage.color.blue:
+    default: op
+  allium.mail.minimessage.color.green:
+    default: op
+  allium.mail.minimessage.color.aqua:
+    default: op
+  allium.mail.minimessage.color.red:
+    default: op
+  allium.mail.minimessage.color.light_purple:
+    default: op
+  allium.mail.minimessage.color.yellow:
+    default: op
+  allium.mail.minimessage.color.white:
+    default: op
+  allium.mail.minimessage.color.hex:
+    default: op
+  allium.mail.minimessage.format.*:
+    default: op
+  allium.mail.minimessage.format.italic:
+    default: op
+  allium.mail.minimessage.format.bold:
+    default: op
+  allium.mail.minimessage.format.strikethrough:
+    default: op
+  allium.mail.minimessage.format.underline:
+    default: op
+  allium.mail.minimessage.format.obfuscated:
+    default: op
+  allium.mail.minimessage.format.reset:
+    default: op
+  allium.mail.minimessage.rainbow:
+    default: op
+  allium.mail.minimessage.gradient:
+    default: op
+  allium.mail.minimessage.click:
+    default: op
+  allium.mail.minimessage.hover:
+    default: op
   allium.msg:
-    default: true
+    default: op
+  allium.msg.color.*:
+    default: op
+  allium.msg.color.black:
+    default: op
+  allium.msg.color.dark_blue:
+    default: op
+  allium.msg.color.dark_green:
+    default: op
+  allium.msg.color.dark_red:
+    default: op
+  allium.msg.color.dark_purple:
+    default: op
+  allium.msg.color.gold:
+    default: op
+  allium.msg.color.gray:
+    default: op
+  allium.msg.color.dark_gray:
+    default: op
+  allium.msg.color.blue:
+    default: op
+  allium.msg.color.green:
+    default: op
+  allium.msg.color.aqua:
+    default: op
+  allium.msg.color.red:
+    default: op
+  allium.msg.color.light_purple:
+    default: op
+  allium.msg.color.yellow:
+    default: op
+  allium.msg.color.white:
+    default: op
+  allium.msg.color.hex:
+    default: op
+  allium.msg.format.*:
+    default: op
+  allium.msg.format.italic:
+    default: op
+  allium.msg.format.bold:
+    default: op
+  allium.msg.format.strikethrough:
+    default: op
+  allium.msg.format.underline:
+    default: op
+  allium.msg.format.obfuscated:
+    default: op
+  allium.msg.format.reset:
+    default: op
+  allium.msg.placeholderapi:
+    default: op
+  allium.msg.minimessage.color.*:
+    default: op
+  allium.msg.minimessage.color.black:
+    default: op
+  allium.msg.minimessage.color.dark_blue:
+    default: op
+  allium.msg.minimessage.color.dark_green:
+    default: op
+  allium.msg.minimessage.color.dark_red:
+    default: op
+  allium.msg.minimessage.color.dark_purple:
+    default: op
+  allium.msg.minimessage.color.gold:
+    default: op
+  allium.msg.minimessage.color.gray:
+    default: op
+  allium.msg.minimessage.color.dark_gray:
+    default: op
+  allium.msg.minimessage.color.blue:
+    default: op
+  allium.msg.minimessage.color.green:
+    default: op
+  allium.msg.minimessage.color.aqua:
+    default: op
+  allium.msg.minimessage.color.red:
+    default: op
+  allium.msg.minimessage.color.light_purple:
+    default: op
+  allium.msg.minimessage.color.yellow:
+    default: op
+  allium.msg.minimessage.color.white:
+    default: op
+  allium.msg.minimessage.color.hex:
+    default: op
+  allium.msg.minimessage.format.*:
+    default: op
+  allium.msg.minimessage.format.italic:
+    default: op
+  allium.msg.minimessage.format.bold:
+    default: op
+  allium.msg.minimessage.format.strikethrough:
+    default: op
+  allium.msg.minimessage.format.underline:
+    default: op
+  allium.msg.minimessage.format.obfuscated:
+    default: op
+  allium.msg.minimessage.format.reset:
+    default: op
+  allium.msg.minimessage.rainbow:
+    default: op
+  allium.msg.minimessage.gradient:
+    default: op
+  allium.msg.minimessage.click:
+    default: op
+  allium.msg.minimessage.hover:
+    default: op
+  allium.sign.color.*:
+    default: op
+  allium.sign.color.black:
+    default: op
+  allium.sign.color.dark_blue:
+    default: op 
+  allium.sign.color.dark_green:
+    default: op
+  allium.sign.color.dark_red:
+    default: op
+  allium.sign.color.dark_purple:
+    default: op
+  allium.sign.color.gold:
+    default: op
+  allium.sign.color.gray:
+    default: op
+  allium.sign.color.dark_gray:
+    default: op
+  allium.sign.color.blue:
+    default: op
+  allium.sign.color.green:
+    default: op
+  allium.sign.color.aqua:
+    default: op
+  allium.sign.color.red:
+    default: op
+  allium.sign.color.light_purple:
+    default: op
+  allium.sign.color.yellow:
+    default: op
+  allium.sign.color.white:
+    default: op
+  allium.sign.format.*:
+    default: op
+  allium.sign.format.italic:
+    default: op
+  allium.sign.format.bold:
+    default: op
+  allium.sign.format.strikethrough:
+    default: op
+  allium.sign.format.underline:
+    default: op
+  allium.sign.format.obfuscated:
+    default: op
+  allium.sign.format.reset:
+    default: op 
+  allium.sign.minimessage.*:
+    default: op
+  allium.sign.minimessage.color.black:
+    default: op
+  allium.sign.minimessage.color.dark_blue:
+    default: op
+  allium.sign.minimessage.color.dark_green:
+    default: op
+  allium.sign.minimessage.color.dark_red:
+    default: op
+  allium.sign.minimessage.color.dark_purple:
+    default: op
+  allium.sign.minimessage.color.gold:
+    default: op
+  allium.sign.minimessage.color.gray:
+    default: op
+  allium.sign.minimessage.color.dark_gray:
+    default: op
+  allium.sign.minimessage.color.blue:
+    default: op
+  allium.sign.minimessage.color.green:
+    default: op
+  allium.sign.minimessage.color.aqua:
+    default: op
+  allium.sign.minimessage.color.red:
+    default: op
+  allium.sign.minimessage.color.light_purple:
+    default: op
+  allium.sign.minimessage.color.yellow:
+    default: op
+  allium.sign.minimessage.color.white:
+    default: op
+  allium.sign.minimessage.color.hex:
+    default: op
+  allium.sign.minimessage.format.*:
+    default: op
+  allium.sign.minimessage.format.italic:
+    default: op
+  allium.sign.minimessage.format.bold:
+    default: op
+  allium.sign.minimessage.format.strikethrough:
+    default: op
+  allium.sign.minimessage.format.underline:
+    default: op
+  allium.sign.minimessage.format.obfuscated:
+    default: op
+  allium.sign.minimessage.format.reset:
+    default: op
+  allium.sign.minimessage.rainbow:
+    default: op
+  allium.sign.minimessage.gradient:
+    default: op
+  allium.sign.minimessage.click:
+    default: op
+  allium.sign.minimessage.hover:
+    default: op
+
   allium.heal:
     default: op
   allium.heal.others:
@@ -481,16 +993,73 @@ permissions:
   allium.god:
     default: op
   allium.pay:
-    default: true
+    default: op
   allium.balance:
-    default: true
+    default: op
   allium.baltop:
-    default: true
+    default: op
+  allium.back:
+    default: op
+  allium.back.ondeath:
+    default: op
+
+  allium.vanish:
+    description: "Allows using the /vanish command"
+    default: op
+
+  allium.vanish.others:
+    description: "Allows vanishing other players"
+    default: op
+
+  # Vanish levels - higher levels can see lower levels
+  allium.vanish.1:
+    description: "Vanish level 1 - can see vanish level 0 (non-vanished)"
+    default: op
+
+  allium.vanish.2:
+    description: "Vanish level 2 - can see vanish levels 0-1"
+    default: op
+
+  allium.vanish.3:
+    description: "Vanish level 3 - can see vanish levels 0-2"
+    default: op
+
+  allium.vanish.4:
+    description: "Vanish level 4 - can see vanish levels 0-3"
+    default: op
+
+  allium.vanish.5:
+    description: "Vanish level 5 - can see vanish levels 0-4"
+    default: op
+
+  allium.vanish.6:
+    description: "Vanish level 6 - can see vanish levels 0-5"
+    default: op
+
+  allium.vanish.7:
+    description: "Vanish level 7 - can see vanish levels 0-6"
+    default: op
+
+  allium.vanish.8:
+    description: "Vanish level 8 - can see vanish levels 0-7"
+    default: op
+
+  allium.vanish.9:
+    description: "Vanish level 9 - can see vanish levels 0-8"
+    default: op
+
+  allium.vanish.10:
+    description: "Vanish level 10 - can see vanish levels 0-9"
+    default: op
+
+  allium.vanish.bypass:
+    description: "Can see all vanished players regardless of level"
+    default: op
 
   allium.more:
     default: op
 
-  chat.color:
+  chat.color.*:
     description: Allows using all colors in chat
     default: op
   chat.color.black:
@@ -538,9 +1107,6 @@ permissions:
   chat.color.white:
     description: Allows using white color in chat
     default: op
-  chat.unicode:
-    description: Allows using unicode characters in chat
-    default: op
   chat.color.hex:
     description: Allows using hex colors in chat
     default: op
@@ -553,9 +1119,6 @@ permissions:
   chat.format.reset:
     description: Allows using reset formatting in chat
     default: op
-  chat.placeholderapi:
-    description: Allows using PlaceholderAPI placeholders in chat
-    default: op
   chat.format.strikethrough:
     description: Allows using strikethrough formatting in chat
     default: op
@@ -565,13 +1128,195 @@ permissions:
   chat.format.magic:
     description: Allows using magic formatting in chat
     default: op
+  chat.unicode:
+    description: Allows using unicode characters in chat
+    default: op
+  chat.minimessage:
+    description: Allows usage of MiniMessage formatting in chat
+    default: op
+    
+  # Granular MiniMessage permissions
+  chat.minimessage.color.*:
+    description: Allows usage of all color tags in MiniMessage
+    default: op
+    
+  chat.minimessage.gradient:
+    description: Allows usage of gradient tags in MiniMessage
+    default: op
+    
+  chat.minimessage.rainbow:
+    description: Allows usage of rainbow effect in MiniMessage
+    default: op
+    
+  chat.minimessage.click:
+    description: Allows usage of click events in MiniMessage
+    default: op
+    
+  chat.minimessage.hover:
+    description: Allows usage of hover events in MiniMessage
+    default: op
+    
+  chat.minimessage.format.*:
+    description: Allows usage of all minimessage format tags
+    default: op
+    
+  chat.minimessage.color.black:
+    description: Allows usage of black color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.dark_blue:
+    description: Allows usage of dark blue color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.dark_green:
+    description: Allows usage of dark green color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.dark_aqua:
+    description: Allows usage of dark aqua color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.dark_red:
+    description: Allows usage of dark red color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.dark_purple:
+    description: Allows usage of dark purple color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.gold:
+    description: Allows usage of gold color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.gray:
+    description: Allows usage of gray color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.dark_gray:
+    description: Allows usage of dark gray color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.blue:
+    description: Allows usage of blue color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.green:
+    description: Allows usage of green color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.aqua:
+    description: Allows usage of aqua color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.red:
+    description: Allows usage of red color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.light_purple:
+    description: Allows usage of light purple color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.yellow:
+    description: Allows usage of yellow color in MiniMessage
+    default: op
+    
+  chat.minimessage.color.white:
+    description: Allows usage of white color in MiniMessage
+    default: op
+  
+  chat.minimessage.format.italic:
+    description: Allows usage of italic formatting in MiniMessage
+    default: op
+  chat.minimessage.format.bold:
+    description: Allows usage of bold formatting in MiniMessage
+    default: op
+  chat.minimessage.format.strikethrough:
+    description: Allows usage of strikethrough formatting in MiniMessage
+    default: op
+  chat.minimessage.format.underline:
+    description: Allows usage of underline formatting in MiniMessage
+    default: op
+  chat.minimessage.format.obfuscated:
+    description: Allows usage of obfuscated formatting in MiniMessage
+    default: op
+  chat.minimessage.format.reset:
+    description: Allows usage of reset formatting in MiniMessage
+    default: op
+
+  chat.placeholderapi:
+    description: Allows using PlaceholderAPI placeholders in chat
+    default: op
 
   allium.time:
     description: "Allows the player to view the time"
-    default: true
+    default: op
   allium.time.set:
     description: "Allows the player to set the time"
+    default: op
+
+  # Warp System Permissions
+  allium.warp:
+    description: "Allows using the /warp command to teleport to warps"
+    default: op
+  
+  allium.warp.list:
+    description: "Allows listing available warps with /warps"
+    default: op
+  
+  allium.warp.others:
+    description: "Allows warping other players to warps"
+    default: op
+  
+  allium.setwarp:
+    description: "Allows creating private warps with /setwarp"
+    default: op
+  
+  allium.setwarp.public:
+    description: "Allows creating public warps with /setwarp <name> public"
+    default: op
+  
+  allium.delwarp:
+    description: "Allows deleting warps with /delwarp"
+    default: op
+  
+  allium.restore:
+    description: "Allows restoring your own inventory"
+    default: op
+    
+  allium.restore.others:
+    description: "Allows restoring other players' inventories"
+    default: op
+
+  allium.dispose:
+    description: "Allows opening the disposal inventory"
+    default: op
+
+  allium.warpinfo:
+    description: "Allows viewing warp information with /warpinfo"
+    default: op
+  
+  allium.warps.*:
+    description: "Allows access to all warps (wildcard permission)"
+    default: op
+  
+  allium.warp.overwrite.*:
+    description: "Allows overwriting any existing warp (wildcard permission)"
     default: op
   allium.time.add:
     description: "Allows the player to add to the time"
     default: op
+
+  # Custom Items permissions
+  allium.coreitem.give:
+    description: "Allows giving custom items via /core item"
+    default: op
+  allium.spawnerchanger.use:
+    description: "Allows using the spawner type changer"
+    default: true
+  allium.spawnerchanger.any:
+    description: "Allows changing spawners to any type including restricted mobs"
+    default: op
+  allium.treeaxe.use:
+    description: "Allows using the tree axe"
+    default: true
+

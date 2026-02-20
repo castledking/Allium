@@ -1,31 +1,57 @@
-### IntelliJ IDEA ###
+# IntelliJ IDEA
+.idea/
+*.iml
 out/
-!**/src/main/**/out/
-!**/src/test/**/out/
 
-### Eclipse ###
+# Eclipse
 .apt_generated
-.classpath
 .factorypath
 .project
 .settings
-.springBeans
-.sts4-cache
 bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
 
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
 
-### VS Code ###
+# VS Code
 .vscode/
 
-### Mac OS ###
+# Mac OS
 .DS_Store
-# Project exclude paths
+
+# Build output
 /target/
+build/
+
+# Dependencies
+dependency-reduced-pom.xml
+lib/
+
+# Gradle
+.gradle/
+build/
+logs/
+
+# IDE
+.classpath
+.project
+.settings/
+local/
+
+# Misc
+*.log
+*.zip
+*.tar
+*.rar
+api-keys.yml
+Attach_pid*
+run/
+
+# Custom
+/todos/
+Allium Plugin Documentation.bbcode
+h2.log.properties

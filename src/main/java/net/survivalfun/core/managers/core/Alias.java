@@ -5,9 +5,13 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
+
+import net.survivalfun.core.managers.core.Text;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 
 public class Alias {
 
@@ -16,6 +20,7 @@ public class Alias {
     private static File aliasFile;
     private static FileConfiguration aliasConfig;
     private static boolean initialized = false;
+    private static final String COMPRESSED_RESOURCE = "itemdb.yml.gz";
 
     /**
      * Initialize the alias system with the plugin instance
@@ -35,18 +40,28 @@ public class Alias {
      */
     private static void setupAliasFile() {
         aliasFile = new File(plugin.getDataFolder(), "itemdb.yml");
-        
+
         if (!aliasFile.exists()) {
             try {
                 aliasFile.getParentFile().mkdirs();
-                plugin.saveResource("itemdb.yml", false);
-                plugin.getLogger().info("Created itemdb.yml configuration file");
+                
+                // Try to load the compressed resource and extract it
+                InputStream compressedStream = plugin.getClass().getResourceAsStream("/" + COMPRESSED_RESOURCE);
+                if (compressedStream != null) {
+                    java.util.zip.GZIPInputStream gzipStream = new java.util.zip.GZIPInputStream(compressedStream);
+                    java.nio.file.Files.copy(gzipStream, aliasFile.toPath());
+                    gzipStream.close();
+                    Text.sendDebugLog(INFO, "Created itemdb.yml from compressed resource in data folder");
+                } else {
+                    plugin.saveResource("itemdb.yml", false);
+                    Text.sendDebugLog(INFO, "Created itemdb.yml configuration file in data folder");
+                }
             } catch (Exception e) {
-                plugin.getLogger().log(Level.SEVERE, "Could not create itemdb.yml", e);
+                Text.sendDebugLog(ERROR, "Could not create itemdb.yml", e);
                 return;
             }
         }
-        
+
         aliasConfig = YamlConfiguration.loadConfiguration(aliasFile);
     }
 
@@ -60,12 +75,33 @@ public class Alias {
             for (String alias : aliasConfig.getConfigurationSection("aliases").getKeys(false)) {
                 String material = aliasConfig.getString("aliases." + alias);
                 if (material != null) {
-                    ALIASES.put(alias.toLowerCase(), material.toUpperCase());
+                    // Don't uppercase the whole value - it breaks custom names like &6&lCool_Sword
+                    // Only uppercase the material part (before first semicolon)
+                    if (material.contains(";")) {
+                        String[] parts = material.split(";", 2);
+                        material = parts[0].toUpperCase() + ";" + parts[1];
+                    } else {
+                        material = material.toUpperCase();
+                    }
+                    ALIASES.put(alias.toLowerCase(), material);
                 }
             }
-            plugin.getLogger().info("Loaded " + ALIASES.size() + " material aliases from itemdb.yml");
+            Text.sendDebugLog(INFO, "Loaded " + ALIASES.size() + " material aliases from itemdb.yml");
         } else {
-            plugin.getLogger().warning("[itemdb.yml] Aliases are disabled!");
+            Text.sendDebugLog(WARN, "[itemdb.yml] Aliases are disabled!");
+        }
+    }
+
+    /**
+     * Reload aliases from the configuration file
+     */
+    public static void reload() {
+        if (aliasFile != null) {
+            aliasConfig = YamlConfiguration.loadConfiguration(aliasFile);
+            loadAliases();
+            Text.sendDebugLog(INFO, "Reloaded item aliases from itemdb.yml");
+        } else {
+            Text.sendDebugLog(WARN, "Cannot reload aliases - alias file not initialized");
         }
     }
 
@@ -139,5 +175,13 @@ public class Alias {
      */
     public static String getMaterialFromAlias(String alias) {
         return ALIASES.get(alias.toLowerCase());
+    }
+
+    /**
+     * Get all alias keys for tab completion
+     * @return A set of all alias keys
+     */
+    public static java.util.Set<String> getAllAliasKeys() {
+        return ALIASES.keySet();
     }
 }

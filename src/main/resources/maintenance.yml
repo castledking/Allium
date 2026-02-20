@@ -1,0 +1,27 @@
+# Maintenance Mode Configuration
+# This file controls the server's maintenance mode settings.
+
+# Whether maintenance mode is enabled
+enabled: false
+
+# Default kick message shown to non-whitelisted players during maintenance
+kick-message: "&cThis server is currently in maintenance mode.\n&7Please try again later.\n\n&8Reason: &f%reason%"
+
+# Default reason shown when no specific reason is set
+default-reason: "Server Maintenance"
+
+# List of players who can bypass maintenance mode
+# Supports both Java Edition UUIDs and Bedrock usernames (via Floodgate)
+whitelist:
+  # Java Edition players (UUIDs)
+  uuids:
+    # - "a1b2c3d4-e5f6-7890-abcd-ef1234567890"  # Example UUID
+    
+  # Bedrock Edition players (usernames, requires Floodgate)
+  usernames:
+    # - "BedrockPlayer123"  # Example Bedrock username
+
+# Custom messages for specific players (overrides default kick message)
+custom-messages:
+  # Example:
+  # "a1b2c3d4-e5f6-7890-abcd-ef1234567890": "&aYour account has been suspended.\n&7Please contact staff for assistance."

@@ -45,10 +45,22 @@ maintenance: # A list of player UUIDs that bypass maintenance mode.
 
 ############################################################
 # +------------------------------------------------------+ #
-# |                 Chat Settings                        | #
+# |                 Dialog Settings                      | #
 # +------------------------------------------------------+ #
 ############################################################
 
+dialog:
+  # If true, dialogs are registered via native datapack (requires enabling AlliumDialogs once).
+  # If false, dialogs are shown inline at runtime without touching datapacks.
+  use-datapack: true
+  # Delay before auto-showing dialogs on player join (in ticks). Helps avoid join-time races.
+  auto-show-join-delay-ticks: 40
+
+############################################################
+# +------------------------------------------------------+ #
+# |                 Chat Settings                        | #
+# +------------------------------------------------------+ #
+############################################################
 # This section configures various aspects of the chat system.
 # Each setting is explained in detail below.  Make sure to
 # save and reload/restart the server after making changes.
@@ -64,18 +76,136 @@ maintenance: # A list of player UUIDs that bypass maintenance mode.
 enable-chat-formatting: true # Vault or forks of Vault are required for this to work.
 block-unicode: true # Set to false to allow Unicode symbols
 
+chat:
+  deletion_resend:
+    header_enabled: true
+    header: "&8&oChat re-synced by staff; a message was deleted"
+    
 chat-format:
-  default: "<prefix> &a<player>&f: &f<message>"
+  default: "<prefix> &a%allium_nickname%&f: &f<message>"
   groups:
     #admin: "&4[Admin] &c<player>&f: <message>"
     #moderator: "&2[Mod] &a<player>&f: <message>"
     #vip: "&6[VIP] &e<player>&f: <message>"
+
+# Here you can create custom hover/click events per group.
+# Available actions:
+# - suggest-command
+# - run-command
+# - open-url
+# - copy-to-clipboard
+
+chat-hover:
+  # Players with allium.deletemsg will see an additional line in the hover text
+  # for all groups that shows the message ID and allows them to delete the message.
+  # Here you can change the mode to prefix, name, suffix, or none to disable.
+  # If a player has no prefix or suffix the deletion hover will default to name.
+  #
+  # Note: Players with allium.deletemsg will overwrite your settings
+  # with a suggest command of /delmsg <messageId> on click.
+  delete-hover-mode: prefix
+  
+  groups:
+    default:
+      prefix:
+        hover:
+          - '&7{prefix}&r {player}'
+        action: 'run-command'
+      click: '/help'
+      name:
+        hover:
+          - '&7Click to message {player}'
+        action: 'suggest-command'
+        click: '/msg {player} '
+#     suffix:
+#       hover:
+#         - '&7Click to message {player}'
+#       action: 'run-command'
+#       click: '/msg {player}'
+# Add more groups here:
+#   owner:
+#     prefix:
+#     name:
+#     suffix:
+#   moderator:
+#     prefix:
+#     name:
+#     suffix:
+#   vip:
+#     prefix:
+#     name:
+#     suffix:
+
 
 ############################################################
 # +------------------------------------------------------+ #
 # |                 General Settings                     | #
 # +------------------------------------------------------+ #
 ############################################################
+
+# Auto Restart Configuration
+auto-restart:
+  # Enable or disable the auto-restart feature
+  enabled: false
+  
+  # List of times when the server should restart (24-hour format, HH:MM)
+  times:
+    - "04:00"  # 4:00 AM
+    - "12:00"  # 12:00 PM
+    - "20:00"  # 8:00 PM
+  
+  # Commands to run before restart (30 seconds before by default, configurable with command-delay)
+  pre-commands:
+    - "save-all"
+    - "say Server restarting in 30 seconds!"
+  
+  # Delay in seconds before restart to execute pre-commands (default: 30 seconds)
+  command-delay: 30
+  
+  # Times in seconds to show countdown messages (relative to restart time)
+  countdown-times: [60, 30, 15, 10, 5, 4, 3, 2, 1]
+  
+  # Whether to automatically restart the server after a crash (requires a server wrapper)
+  restart-on-crash: true
+  
+  # Whether to save the world before restarting
+  save-before-restart: true
+
+# Here you can add the specific commands that allium.player 
+# will have permission to use.
+commands:
+  - help
+  - tpa
+  - spawn
+  - tppet
+  - mail
+  - mail.send
+  - mail.gift
+  - mail.read
+  - msg
+  - reply
+  - home
+  - sethome
+  - delhome
+  - tpaccept
+  - tpdeny
+  - tptoggle
+  - balance
+  - baltop
+  - back
+  - pay
+  - tpcancel
+  - tpahere
+
+party-manager:
+  # Whether to hide non-party members from the locator bar
+  hide-non-party-members: false
+
+  # Whether to hide non-party members from the tab list
+  hide-non-party-members-tab: false # false requires PacketEvents
+  
+  # Amount of blocks to start showing non-party members. (shows up on locator bar)
+  show-non-party-members-radius: 128 # 128 is default
 
 creative-manager:
   # Here you can add blocks and entities that will be
@@ -84,9 +214,9 @@ creative-manager:
   # Note: this blacklist is only used if the player
   # already has the appropriate bypass permission:
   # Currently handling:
-  # - core.gamemode.creative.break
-  # - core.gamemode.creative.place
-  # - core.gamemode.creative.spawn
+  # - allium.gamemode.creative.break
+  # - allium.gamemode.creative.place
+  # - allium.gamemode.creative.spawn
   blacklist:
     blocks: []
     entities: []
@@ -162,11 +292,11 @@ explode-command:
 
 heal:
   cooldown: 60
-  # Time in seconds players without core.heal.nocooldown
+  # Time in seconds players without allium.heal.nocooldown
 
 home:
   cooldown: 60
-  # Time in seconds players without core.home.nocooldown
+  # Time in seconds players without allium.home.nocooldown
   show-location: false
   # Whether to show the location of the home in the tp message.
   spawn-if-no-home: true
@@ -174,17 +304,31 @@ home:
 
 feed:
   cooldown: 60
-  # Time in seconds players without core.feed.nocooldown
+  # Time in seconds players without allium.feed.nocooldown
+
+mail:
+  cooldown: 15
 
 teleport:
+
   delay: 3
-  # Time in seconds players without core.tpa.nodelay
+  # Time in seconds players without allium.tpa.nodelay
   cooldown: 30
-  # Time in seconds players without core.tpa.nocooldown
+  # Time in seconds players without allium.tpa.nocooldown
   expire: 120
   # Time in seconds a request expires.
   tppet-radius: 30
   # Maximum radius in blocks the player can be from the pet.
+
+############################################################
+# +------------------------------------------------------+ #
+# |                 Item Settings                        | #
+# +------------------------------------------------------+ #
+############################################################
+
+handcuffs:
+  commands-on-quit:
+    - ban {player} Logged out while restrained
 
 ############################################################
 # +------------------------------------------------------+ #
@@ -199,6 +343,8 @@ economy:
   
   # Default starting balance for new players
   starting-balance: 100.00
+
+  allow-negative-balance: false
   
   # Maximum number of decimal places to display
   decimal-places: 2
@@ -231,14 +377,6 @@ world-defaults:
 #
 #  world_the_end:
 #    - send-command-feedback: false
-
-############################################################
-# +------------------------------------------------------+ #
-# |                 Debug Settings                       | #
-# +------------------------------------------------------+ #
-############################################################
-
-debug-mode: true
 
 # Version of the config file (do not modify)
 version: 0.1.3a

@@ -1,0 +1,19 @@
+# Resource Pack Configuration
+# 
+# This file configures the automatic resource pack loading for Allium.
+# The resource pack will be automatically sent to players on join.
+
+# URL to the resource pack ZIP file
+url: "https://download.mc-packs.net/pack/73f21a4847b50270b52f84951774ad1e108766bc.zip"
+
+# SHA-1 hash of the resource pack (optional but recommended)
+# You can generate this with: sha1sum resourcepack.zip
+hash: "73f21a4847b50270b52f84951774ad1e108766bc"
+
+# Force players to accept the resource pack
+# If true, players who decline will be kicked
+force: true
+
+# Whether to combine with other plugins' resource packs
+# If true, Allium will attempt to append its resource pack to other plugins' packs
+combine: false

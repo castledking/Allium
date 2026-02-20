@@ -19,11 +19,16 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 
+import net.survivalfun.core.inventory.InventorySnapshot;
+
+import io.papermc.paper.datacomponent.DataComponentType;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.DB.PlayerInventories;
 import net.survivalfun.core.managers.core.Text;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
+import net.survivalfun.core.util.SchedulerAdapter;
 
 public class CreativeManager implements Listener {
 
@@ -36,7 +41,6 @@ public class CreativeManager implements Listener {
     private BukkitTask gamemodeCheckTask;
     private final Map<UUID, Long> recentRestorations = new HashMap<>();
     private static final long RESTORATION_COOLDOWN = 5000;
-    private final Set<UUID> processedJoinEvents = ConcurrentHashMap.newKeySet();
 
     public CreativeManager(@NotNull PluginStart plugin) {
         this.plugin = plugin;
@@ -46,7 +50,7 @@ public class CreativeManager implements Listener {
         this.lastErrorMessageTime = new HashMap<>();
         loadBlacklists();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        plugin.getLogger().info("[InventoryDebug] CreativeManager initialized with inventory change listener");
+        Text.sendDebugLog(INFO, "[InventoryDebug] CreativeManager initialized with inventory change listener");
     }
 
     private boolean isOnErrorCooldown(Player player){
@@ -77,7 +81,7 @@ public class CreativeManager implements Listener {
                 Material material = Material.valueOf(blockName.toUpperCase());
                 badBlocks.add(material);
             } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Invalid block name in creative-mode.blacklist.blocks: " + blockName);
+                Text.sendDebugLog(WARN, "Invalid block name in creative-mode.blacklist.blocks: " + blockName);
             }
         }
 
@@ -87,7 +91,7 @@ public class CreativeManager implements Listener {
                 EntityType entityType = EntityType.valueOf(entityName.toUpperCase());
                 badEntities.add(entityType);
             } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Invalid entity name in creative-mode.blacklist.entities: " + entityName);
+                Text.sendDebugLog(WARN, "Invalid entity name in creative-mode.blacklist.entities: " + entityName);
             }
         }
     }
@@ -103,11 +107,11 @@ public class CreativeManager implements Listener {
 
     private void cachePlayerPermissions(Player player) {
         UUID uuid = player.getUniqueId();
-        if (player.hasPermission("core.gamemode")) {
-            cachedCreativePermissions.put(uuid, player.hasPermission("core.gamemode.creative"));
-            cachedSpectatorPermissions.put(uuid, player.hasPermission("core.gamemode.spectator"));
+        if (player.hasPermission("allium.gamemode")) {
+            cachedCreativePermissions.put(uuid, player.hasPermission("allium.gamemode.creative"));
+            cachedSpectatorPermissions.put(uuid, player.hasPermission("allium.gamemode.spectator"));
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                plugin.getLogger().info("Cached permissions for " + player.getName() +
+                Text.sendDebugLog(INFO, "Cached permissions for " + player.getName() +
                         ": creative=" + cachedCreativePermissions.get(uuid) +
                         ", spectator=" + cachedSpectatorPermissions.get(uuid));
             }
@@ -115,25 +119,31 @@ public class CreativeManager implements Listener {
     }
 
     private boolean canPlace(Player player) {
-        return player.hasPermission("core.gamemode.creative.place");
+        return player.hasPermission("allium.gamemode.creative.place");
     }
     private boolean canBreak(Player player) {
-        return player.hasPermission("core.gamemode.creative.break");
+        return player.hasPermission("allium.gamemode.creative.break");
     }
     private boolean canBypassBlacklist(Player player) {
-        return player.hasPermission("core.gamemode.creative.blacklist");
+        return player.hasPermission("allium.gamemode.creative.blacklist");
     }
     private boolean canSpawn(Player player) {
-        return player.hasPermission("core.gamemode.creative.spawn");
+        return player.hasPermission("allium.gamemode.creative.spawn");
     }
     private boolean canInteract(Player player) {
-        return player.hasPermission("core.gamemode.creative.interact");
+        return player.hasPermission("allium.gamemode.creative.interact");
     }
     private boolean canDrop(Player player) {
-        return player.hasPermission("core.gamemode.creative.drop");
+        return player.hasPermission("allium.gamemode.creative.drop");
     }
     private boolean canUse(Player player) {
-        return player.hasPermission("core.gamemode.creative.use");
+        return player.hasPermission("allium.gamemode.creative.use");
+    }
+    private boolean canUseContainers(Player player) {
+        return player.hasPermission("allium.gamemode.creative.container");
+    }
+    private boolean canPickupItems(Player player) {
+        return player.hasPermission("allium.gamemode.creative.pickup");
     }
 
     private void createFizzleEffect(Location location) {
@@ -158,61 +168,146 @@ public class CreativeManager implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerInteractBed(PlayerInteractEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) return;
-        if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (canInteract(player)) return;
-        if (event.getClickedBlock().getType().name().endsWith("_BED") && event.getAction().isRightClick()) return;
-
-        event.setCancelled(true);
-        sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "sleep in a bed");
-        createFizzleEffect(player.getLocation());
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerInteractDecoratedPot(PlayerInteractEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) return;
-        if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (canInteract(player)) return;
-        if (event.getClickedBlock().getType() == Material.DECORATED_POT && event.getAction().isRightClick()) return;
-
-        event.setCancelled(true);
-        sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "interact with decorated pots");
-        createFizzleEffect(player.getLocation());
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerDrinkPotion(PlayerInteractEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) return;
-        if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (canInteract(player)) return;
-        if (event.getItem().getType() == Material.POTION && event.getAction().isRightClick()) return;
-
-        event.setCancelled(true);
-        sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "drink that");
-        createFizzleEffect(player.getLocation());
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onEntityShootBow(EntityShootBowEvent event) {
-        if (!(event.getEntity() instanceof Player player)) return;
-        if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (canInteract(player)) return;
-
-        event.setCancelled(true);
-        sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "shoot that");
-        createFizzleEffect(player.getEyeLocation());
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerUseFirework(PlayerInteractEvent event) {
+    public void onPlayerConsume(PlayerItemConsumeEvent event) {
         Player player = event.getPlayer();
         if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (event.getAction().isRightClick() && event.hasItem() && event.getItem().getType() == Material.FIREWORK_ROCKET) {
-            if (canInteract(player)) return;
+        if (!canInteract(player)) {
+            if (event.getItem().getType() == Material.POTION) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "drink that");
+                createFizzleEffect(player.getLocation());
+            }
+            if (event.getItem().getType().isEdible()) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "eat that");
+                createFizzleEffect(player.getLocation());
+            }
+        }
 
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+
+        // Handle canInteract permissions
+        if (!canInteract(player)) {
+            // Bed interaction
+            if (event.getClickedBlock() != null && event.getClickedBlock().getType().name().endsWith("_BED") && event.getAction().isRightClick()) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "sleep in a bed");
+                createFizzleEffect(player.getLocation());
+                return;
+            }
+            // Decorated pot interaction
+            if (event.getClickedBlock() != null && event.getClickedBlock().getType().name().endsWith("DECORATED_POT") && event.getAction().isRightClick() && event.getItem() != null && event.getItem().getType() != Material.AIR) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "interact with decorated pots");
+                createFizzleEffect(player.getLocation());
+                return;
+            }
+            // Potion drinking
+            if (event.getItem() != null && event.getItem().getType() == Material.POTION && event.getAction().isRightClick()) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "drink that");
+                createFizzleEffect(player.getLocation());
+                return;
+            }
+            // Firework usage
+            if (event.getAction().isRightClick() && event.hasItem() && event.getItem().getType() == Material.FIREWORK_ROCKET) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "use fireworks");
+                createFizzleEffect(player.getLocation());
+                return;
+            }
+            // Flower pot interaction
+            if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null && event.getClickedBlock().getType() == Material.FLOWER_POT) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "interact with flower pots");
+                createFizzleEffect(player.getLocation());
+                return;
+            }
+            // General block interaction
+            if (event.hasBlock() && isInteractableBlock(event.getClickedBlock().getType())) {
+                event.setCancelled(true);
+                createFizzleEffect(event.getClickedBlock().getLocation());
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "interact with that");
+                return;
+            }
+        }
+
+        // Handle canSpawn permissions
+        if (event.hasItem() && event.getItem() != null && event.getItem().getType().name().endsWith("_SPAWN_EGG")) {
+            if (!canSpawn(player)) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "spawn that");
+                createFizzleEffect(player.getLocation());
+                return;
+            }
+            SchedulerAdapter.runAtEntity(player, () -> {
+                player.getNearbyEntities(3, 3, 3).forEach(entity -> {
+                    if (entity.getTicksLived() < 5) {
+                        entity.setMetadata("spawned-by-player",
+                                new org.bukkit.metadata.FixedMetadataValue(plugin, player));
+                    }
+                });
+            });
+        }
+
+        // Handle blacklist for block interactions
+        if (event.hasBlock() && badBlocks.contains(event.getClickedBlock().getType()) && !canBypassBlacklist(player)) {
             event.setCancelled(true);
-            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "use fireworks");
+            createFizzleEffect(event.getClickedBlock().getLocation());
+            sendErrorMessageWithCooldown(player, "creative-manager.blacklist", plugin.getLangManager(),
+                    "{action}", "interacting with " + event.getClickedBlock().getType().name());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityInteract(PlayerInteractEntityEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+        if (!canInteract(player)) {
+            // Item frame rotation
+            if (event.getRightClicked() instanceof ItemFrame) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "rotate items in frames");
+                createFizzleEffect(player.getLocation());
+                return;
+            }
+            // General living entity interaction
+            if (event.getRightClicked() instanceof org.bukkit.entity.LivingEntity) {
+                String entityName = event.getRightClicked().getType().name().toLowerCase().replace("_", " ");
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "interact with that " + entityName);
+                createFizzleEffect(event.getRightClicked().getLocation());
+                return;
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+        if (!canInteract(player)) {
+            // Armor stand interaction
+            if (event.getRightClicked().getType() == EntityType.ARMOR_STAND) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "interact with armor stands");
+                createFizzleEffect(player.getLocation());
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onHangingInteract(HangingPlaceEvent event) {
+        Player player = event.getPlayer();
+        if (player == null || player.getGameMode() != GameMode.CREATIVE) return;
+        if (!canInteract(player) && event.getEntity() instanceof Painting) {
+            event.setCancelled(true);
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "place paintings");
             createFizzleEffect(player.getLocation());
         }
     }
@@ -229,82 +324,60 @@ public class CreativeManager implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerRotateItemFrame(PlayerInteractEntityEvent event) {
-        Player player = event.getPlayer();
+    public void onEntityShootBow(EntityShootBowEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
         if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (event.getRightClicked() instanceof ItemFrame) {
-            if (!canInteract(player)) {
+        if (!canInteract(player)) {
+            event.setCancelled(true);
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "shoot that");
+            createFizzleEffect(player.getEyeLocation());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onProjectileLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity().getShooter() instanceof Player player)) return;
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+        if (!canInteract(player)) {
+            if (event.getEntityType() == EntityType.TRIDENT) {
                 event.setCancelled(true);
-                sendErrorMessageWithCooldown(
-                        player,
-                        "creative-manager.restrict",
-                        plugin.getLangManager(),
-                        "{action}", "rotate items in frames"
-                );
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw tridents");
+                createFizzleEffect(player.getLocation());
+                return;
+            }
+            if (event.getEntityType() == EntityType.ENDER_PEARL) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw ender pearls");
+                createFizzleEffect(player.getLocation());
+            }
+            if (event.getEntityType() == EntityType.SNOWBALL) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw snowballs");
+                createFizzleEffect(player.getLocation());
+            }
+            if (event.getEntityType() == EntityType.EGG) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw eggs");
+                createFizzleEffect(player.getLocation());
+            }
+            if (event.getEntityType() == EntityType.SPLASH_POTION)  {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw splash potions");
+                createFizzleEffect(player.getLocation());
+            }
+            if (event.getEntityType() == EntityType.LINGERING_POTION) {
+                event.setCancelled(true);
+                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw lingering potions");
                 createFizzleEffect(player.getLocation());
             }
         }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPaintingPlaceCreative(HangingPlaceEvent event) {
-        Player player = event.getPlayer();
-        if (player == null || player.getGameMode() != GameMode.CREATIVE) return;
-        if (event.getEntity() instanceof Painting) {
-            if (!canInteract(player)) {
-                event.setCancelled(true);
-                sendErrorMessageWithCooldown(
-                        player,
-                        "creative-manager.restrict",
-                        plugin.getLangManager(),
-                        "{action}", "place paintings"
-                );
-                createFizzleEffect(player.getLocation());
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onArmorStandInteractCreative(PlayerInteractAtEntityEvent event) {
+    public void onPlayerFish(PlayerFishEvent event) {
         Player player = event.getPlayer();
         if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (event.getRightClicked().getType() == EntityType.ARMOR_STAND) {
-            if (!canInteract(player)) {
-                event.setCancelled(true);
-                sendErrorMessageWithCooldown(
-                        player,
-                        "creative-manager.restrict",
-                        plugin.getLangManager(),
-                        "{action}", "interact with armor stands"
-                );
-                createFizzleEffect(player.getLocation());
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onFlowerPotInteractCreative(PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null && event.getClickedBlock().getType() == Material.FLOWER_POT) {
-            if (!canInteract(player)) {
-                event.setCancelled(true);
-                sendErrorMessageWithCooldown(
-                        player,
-                        "creative-manager.restrict",
-                        plugin.getLangManager(),
-                        "{action}", "interact with flower pots"
-                );
-                createFizzleEffect(player.getLocation());
-            }
-        }
-    }
-
-    public void onPlayerCastFishingRod(PlayerFishEvent event) {
-        Player player = event.getPlayer();
-        if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (event.getState() == PlayerFishEvent.State.FISHING) {
-            if (canInteract(player)) return;
+        if (event.getState() == PlayerFishEvent.State.FISHING && !canInteract(player)) {
             event.setCancelled(true);
             sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "use fishing rods");
             createFizzleEffect(player.getLocation());
@@ -312,30 +385,14 @@ public class CreativeManager implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPotionSplash(PotionSplashEvent event) {
-        if (!(event.getEntity().getShooter() instanceof Player player)) return;
+    public void onPlayerDamageEntity(EntityDamageByEntityEvent event) {
+        if (!(event.getDamager() instanceof Player player)) return;
         if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (canInteract(player)) return;
-        event.setCancelled(true);
-        sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw potions");
-        createFizzleEffect(player.getLocation());
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onProjectileLaunch(ProjectileLaunchEvent event) {
-        if (!(event.getEntity().getShooter() instanceof Player player)) return;
-        if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (event.getEntityType() == EntityType.TRIDENT) {
-            if (canInteract(player)) return;
+        if (!canInteract(player)) {
+            String entityName = event.getEntity().getType().name().toLowerCase().replace("_", " ");
             event.setCancelled(true);
-            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw tridents");
-            createFizzleEffect(player.getLocation());
-        }
-        if (event.getEntityType() == EntityType.ENDER_PEARL) {
-            if (canInteract(player)) return;
-            event.setCancelled(true);
-            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw ender pearls");
-            createFizzleEffect(player.getLocation());
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "hurt that " + entityName);
+            createFizzleEffect(event.getEntity().getLocation());
         }
     }
 
@@ -347,7 +404,7 @@ public class CreativeManager implements Listener {
         ItemStack itemOnCursor = player.getItemOnCursor();
         if (event.getSlot() == -999 && clickedInventory != null && clickedInventory.getType() == InventoryType.CREATIVE) {
             if (plugin.isDebugMode()) {
-                plugin.getLogger().info(
+                Text.sendDebugLog(INFO, 
                     "Allowed item destruction via X slot for " + player.getName() + 
                     ", item: " + itemOnCursor.getType()
                 );
@@ -364,7 +421,7 @@ public class CreativeManager implements Listener {
         }
         if (!canUse(player)) {
             event.setCancelled(true);
-            org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+            SchedulerAdapter.runAtEntity(player, () -> {
                 player.setItemOnCursor(null);
                 player.updateInventory();
             });
@@ -375,7 +432,6 @@ public class CreativeManager implements Listener {
                     "{action}", "manage your inventory"
             );
             createFizzleEffect(player.getLocation());
-            return;
         }
     }
 
@@ -383,9 +439,8 @@ public class CreativeManager implements Listener {
     public void onPlayerEquipArmorCreative(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
         if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (event.getSlotType() == InventoryType.SlotType.ARMOR) {
-            if (event.getClickedInventory() != null && event.getClickedInventory().getType() == InventoryType.PLAYER) {
-                if (canInteract(player)) return;
+        if (event.getSlotType() == InventoryType.SlotType.ARMOR && event.getClickedInventory() != null && event.getClickedInventory().getType() == InventoryType.PLAYER) {
+            if (!canInteract(player)) {
                 event.setCancelled(true);
                 sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "equip armor");
                 createFizzleEffect(player.getLocation());
@@ -394,247 +449,14 @@ public class CreativeManager implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerInteractEntityCreative(PlayerInteractEntityEvent event) {
-        Player player = event.getPlayer();
-        if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (canInteract(player)) return;
-        if (event.getRightClicked() instanceof org.bukkit.entity.LivingEntity) {
-            event.setCancelled(true);
-            String entityName = event.getRightClicked().getType().name().toLowerCase().replace("_", " ");
-            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "interact with that " + entityName);
-            createFizzleEffect(event.getRightClicked().getLocation());
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerDamageEntity(EntityDamageByEntityEvent event) {
-        if(event.getDamager() instanceof Player) {
-            Player player = (Player) event.getDamager();
-            if (player.getGameMode() != GameMode.CREATIVE) return;
-            if (canInteract(player)) return;
-            String entityName = event.getEntity().getType().name().toLowerCase().replace("_", " ");
-            event.setCancelled(true);
-            sendErrorMessageWithCooldown(
-                    player,
-                    "creative-manager.restrict",
-                    plugin.getLangManager(),
-                    "{action}", "hurt that " + entityName
-            );
-            createFizzleEffect(event.getEntity().getLocation());
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerSpawnEntity(PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        if (!event.hasItem()) return;
-        ItemStack item = event.getItem();
-        if (item != null && item.getType().name().endsWith("_SPAWN_EGG")) {
-            if (player.getGameMode() == GameMode.CREATIVE && !canSpawn(player)) {
-                event.setCancelled(true);
-                sendErrorMessageWithCooldown(
-                        player,
-                        "creative-manager.restrict",
-                        plugin.getLangManager(),
-                        "{action}", "spawn that"
-                );
-                createFizzleEffect(player.getLocation());
-                return;
-            }
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                player.getNearbyEntities(3, 3, 3).forEach(entity -> {
-                    if (entity.getTicksLived() < 5) {
-                        entity.setMetadata("spawned-by-player",
-                                new org.bukkit.metadata.FixedMetadataValue(plugin, player));
-                    }
-                });
-            });
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        UUID playerId = player.getUniqueId();
-        if (!processedJoinEvents.add(playerId)) {
-            return;
-        }
-
-
-        cachePlayerPermissions(player);
-        lastKnownGamemodes.put(playerId, player.getGameMode());
-        checkAndApplyGameModeReset(player);
-
-        if (player.hasPermission("core.gamemode.creative.inventory")) {
-            processedJoinEvents.remove(playerId);
-            return;
-        }
-
-        GameMode gameMode = player.getGameMode();
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            if (!player.isOnline()) return;
-            loadInventory(player, gameMode);
-            processedJoinEvents.remove(playerId);
-        }, 20L);
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-        UUID playerId = player.getUniqueId();
-
-        cachedCreativePermissions.remove(playerId);
-        cachedSpectatorPermissions.remove(playerId);
-        lastKnownGamemodes.remove(playerId);
-
-        if (player.hasPermission("core.gamemode.creative.inventory")) {
-            return;
-        }
-        saveCurrentInventory(player, player.getGameMode());
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onGameModeChangeTrack(PlayerGameModeChangeEvent event) {
-        Plugin sourcePlugin = detectSourcePlugin();
-        if (sourcePlugin == null || !sourcePlugin.getName().equals("Multiverse-Core")) {
-            lastKnownGamemodes.put(event.getPlayer().getUniqueId(), event.getNewGameMode());
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
-        Player player = event.getPlayer();
-        World fromWorld = event.getFrom();
-        World toWorld = player.getWorld();
-        GameMode currentGamemode = player.getGameMode();
-        UUID playerUUID = player.getUniqueId();
-
-        if (player.hasPermission("mv.bypass.gamemode." + toWorld.getName()) ||
-                player.hasPermission("mv.bypass.gamemode.*") ||
-                player.hasPermission("core.gamemode.creative") ||
-                player.hasPermission("core.gamemode.spectator") ||
-                player.hasPermission("core.gamemode")) {
-
-            if (player.hasPermission("core.gamemode.creative.inventory") && currentGamemode != GameMode.CREATIVE) {
-                return;
-            }
-            saveCurrentInventory(player, currentGamemode);
-
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (!player.isOnline() || !player.getWorld().equals(toWorld)) return;
-                if (player.getGameMode() != currentGamemode) {
-
-                    player.setGameMode(currentGamemode);
-                }
-                if (player.hasPermission("core.gamemode.creative.inventory") && currentGamemode != GameMode.CREATIVE) {
-                    return;
-                }
-                loadInventory(player, currentGamemode);
-            }, 2L);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onGamemodeSwitchRevert(PlayerGameModeChangeEvent event) {
-        Player player = event.getPlayer();
-        GameMode newGamemode = event.getNewGameMode();
-        GameMode oldGamemode = player.getGameMode();
-        UUID playerUUID = player.getUniqueId();
-
-        long currentTime = System.currentTimeMillis();
-        if (recentRestorations.containsKey(playerUUID)) {
-            long lastRestoration = recentRestorations.get(playerUUID);
-            if (currentTime - lastRestoration < RESTORATION_COOLDOWN) {
-                return;
-            }
-        }
-
-        Plugin sourcePlugin = detectSourcePlugin();
-        boolean isMultiverse = sourcePlugin != null && sourcePlugin.getName().equals("Multiverse-Core");
-
-        if (isMultiverse && (
-                (oldGamemode == GameMode.CREATIVE && player.hasPermission("core.gamemode.creative")) ||
-                (oldGamemode == GameMode.SPECTATOR && player.hasPermission("core.gamemode.spectator")) ||
-                player.hasPermission("core.gamemode") ||
-                player.hasPermission("mv.bypass.gamemode." + player.getWorld().getName()) ||
-                player.hasPermission("mv.bypass.gamemode.*"))) {
-
-
-            event.setCancelled(true);
-
-            if (player.hasPermission("core.gamemode.creative.inventory") && oldGamemode != GameMode.CREATIVE) {
-                return;
-            }
-
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (!player.isOnline()) return;
-                if (player.getGameMode() != oldGamemode) {
-                    player.setGameMode(oldGamemode);
-                }
-                if (player.hasPermission("core.gamemode.creative.inventory") && oldGamemode != GameMode.CREATIVE) {
-                    return;
-                }
-                loadInventory(player, oldGamemode);
-                recentRestorations.put(playerUUID, System.currentTimeMillis());
-            }, 2L);
-        }
-    }
-
-    private Plugin detectSourcePlugin() {
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        List<String> pluginPackagePrefixes = new ArrayList<>();
-        for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
-            if (plugin.equals(this.plugin)) continue;
-            String mainClass = plugin.getPluginMeta().getMainClass();
-            String packagePrefix = mainClass.substring(0, mainClass.lastIndexOf('.'));
-            pluginPackagePrefixes.add(packagePrefix);
-        }
-        for (StackTraceElement element : stackTrace) {
-            String className = element.getClassName();
-            for (String prefix : pluginPackagePrefixes) {
-                if (className.startsWith(prefix)) {
-                    for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
-                        String mainClass = plugin.getPluginMeta().getMainClass();
-                        String packagePrefix = mainClass.substring(0, mainClass.lastIndexOf('.'));
-                        if (className.startsWith(packagePrefix)) {
-                            return plugin;
-                        }
-                    }
-                }
-            }
-            if (className.contains("Multiverse") || className.contains("multiverse")) {
-                Plugin mvPlugin = Bukkit.getPluginManager().getPlugin("Multiverse-Core");
-                if (mvPlugin != null) {
-                    return mvPlugin;
-                }
-            }
-        }
-        return null;
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerDropItem(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
-        if (player.getGameMode() == GameMode.CREATIVE) {
-            if (!canDrop(player)) {
-                event.setCancelled(true);
-                sendErrorMessageWithCooldown(
-                        player,
-                        "creative-manager.restrict",
-                        plugin.getLangManager(),
-                        "{action}", "drop that"
-                );
-                createFizzleEffect(player.getLocation());
-            }
+        if (player.getGameMode() != GameMode.CREATIVE) return;
+        if (!canDrop(player)) {
+            event.setCancelled(true);
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "drop that");
+            createFizzleEffect(player.getLocation());
         }
-    }
-
-    private boolean canUseContainers(Player player) {
-        return player.hasPermission("core.gamemode.creative.container");
-    }
-
-    private boolean canPickupItems(Player player) {
-        return player.hasPermission("core.gamemode.creative.pickup");
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -659,38 +481,21 @@ public class CreativeManager implements Listener {
                 "grindstone", "enchanting table", "loom", "cartography table", "smithing table",
                 "stonecutter", "beacon", "crafting table"
         ));
-        if (restrictedTypes.contains(inventory.getType())) {
+        if (restrictedTypes.contains(inventory.getType()) || restrictedTitles.stream().anyMatch(title::contains)) {
             event.setCancelled(true);
-            sendErrorMessageWithCooldown(player, "creative-manager.restrict",
-                    plugin.getLangManager(), "{action}", "use this container");
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "use this container");
             org.bukkit.block.Block targetBlock = player.getTargetBlock(null, 5);
             if (targetBlock.getType() != Material.AIR) {
                 createFizzleEffect(targetBlock.getLocation());
             } else {
                 createFizzleEffect(player.getLocation());
             }
-            return;
-        }
-        for (String restrictedTitle : restrictedTitles) {
-            if (title.contains(restrictedTitle)) {
-                event.setCancelled(true);
-                sendErrorMessageWithCooldown(player, "creative-manager.restrict",
-                        plugin.getLangManager(), "{action}", "use this container");
-                org.bukkit.block.Block targetBlock = player.getTargetBlock(null, 5);
-                if (targetBlock.getType() != Material.AIR) {
-                    createFizzleEffect(targetBlock.getLocation());
-                } else {
-                    createFizzleEffect(player.getLocation());
-                }
-                break;
-            }
         }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player)) return;
-        Player player = (Player) event.getWhoClicked();
+        if (!(event.getWhoClicked() instanceof Player player)) return;
         if (player.getGameMode() != GameMode.CREATIVE) return;
         if (canUseContainers(player)) return;
         Inventory inventory = event.getClickedInventory();
@@ -706,21 +511,19 @@ public class CreativeManager implements Listener {
         ));
         if (restrictedTypes.contains(inventory.getType())) {
             event.setCancelled(true);
-            sendErrorMessageWithCooldown(player, "creative-manager.restrict",
-                    plugin.getLangManager(), "{action}", "use this container");
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "use this container");
         }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onItemPickup(EntityPickupItemEvent event) {
-        if (!(event.getEntity() instanceof Player)) return;
-        Player player = (Player) event.getEntity();
+        if (!(event.getEntity() instanceof Player player)) return;
         if (player.getGameMode() != GameMode.CREATIVE) return;
-        if (canPickupItems(player)) return;
-        event.setCancelled(true);
-        sendErrorMessageWithCooldown(player, "creative-manager.restrict",
-                plugin.getLangManager(), "{action}", "pick that up");
-        createFizzleEffect(event.getItem().getLocation());
+        if (!canPickupItems(player)) {
+            event.setCancelled(true);
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "pick that up");
+            createFizzleEffect(event.getItem().getLocation());
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -731,15 +534,13 @@ public class CreativeManager implements Listener {
         if (!canPlace(player)) {
             event.setCancelled(true);
             createFizzleEffect(event.getBlock().getLocation());
-            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(),
-                    "{action}", "place that");
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "place that");
             return;
         }
         if (badBlocks.contains(blockType) && !canBypassBlacklist(player)) {
             event.setCancelled(true);
             createFizzleEffect(event.getBlock().getLocation());
-            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(),
-                    "{action}", "place that");
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "place that");
         }
     }
 
@@ -751,38 +552,13 @@ public class CreativeManager implements Listener {
         if (!canBreak(player)) {
             event.setCancelled(true);
             createFizzleEffect(event.getBlock().getLocation());
-            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(),
-                    "{action}", "break that");
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "break that");
             return;
         }
         if (badBlocks.contains(blockType) && !canBypassBlacklist(player)) {
             event.setCancelled(true);
             createFizzleEffect(event.getBlock().getLocation());
-            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(),
-                    "{action}", "break that");
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onBlockInteract(PlayerInteractEvent event) {
-        if (!event.hasBlock()) return;
-        Player player = event.getPlayer();
-        if (player.getGameMode() != GameMode.CREATIVE) return;
-        Material blockType = event.getClickedBlock().getType();
-        if (!canInteract(player)) {
-            if (isInteractableBlock(blockType)) {
-                event.setCancelled(true);
-                createFizzleEffect(event.getClickedBlock().getLocation());
-                sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(),
-                        "{action}", "interact with that");
-                return;
-            }
-        }
-        if (badBlocks.contains(blockType) && !canBypassBlacklist(player)) {
-            event.setCancelled(true);
-            createFizzleEffect(event.getClickedBlock().getLocation());
-            sendErrorMessageWithCooldown(player, "creative-manager.blacklist", plugin.getLangManager(),
-                    "{action}", "interacting with " + blockType.name());
+            sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "break that");
         }
     }
 
@@ -839,16 +615,10 @@ public class CreativeManager implements Listener {
                 name.equals("CAKE");
     }
 
-    public void saveAllInventories() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.getGameMode() == GameMode.CREATIVE && 
-                !player.hasPermission("core.gamemode.creative.inventory")) {
-                saveCurrentInventory(player, GameMode.CREATIVE);
-            }
-        }
-    }
-
     private void saveCurrentInventory(@NotNull Player player, @NotNull GameMode gameMode) {
+        if (player.hasPermission("allium.gamemode.creative.inventory")) {
+            return;
+        }
         UUID playerUUID = player.getUniqueId();
         String playerName = player.getName();
         try {
@@ -883,6 +653,19 @@ public class CreativeManager implements Listener {
                 case SPECTATOR:
                     break;
             }
+            // Save inventory using InventorySnapshot
+            String reason = "gamemode_change_" + gameMode.name().toLowerCase();
+            InventorySnapshot snapshot = new InventorySnapshot(player, reason);
+            boolean success = database.saveInventorySnapshot(snapshot);
+            
+            if (success) {
+                Text.sendDebugLog(INFO, "Successfully saved inventory snapshot for " + player.getName() + 
+                    " (" + player.getUniqueId() + ") with reason: " + reason);
+            } else {
+                Text.sendDebugLog(ERROR, "Failed to save inventory snapshot for " + player.getName());
+            }
+            
+            // Keep the PlayerInventories object for any other necessary operations
             PlayerInventories updated = new PlayerInventories(
                 survivalInventory,
                 survivalArmor,
@@ -891,17 +674,16 @@ public class CreativeManager implements Listener {
                 creativeArmor,
                 creativeOffhand
             );
-            database.savePlayerInventories(playerUUID, updated);
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save inventory for " + playerName, e);
+            Text.sendDebugLog(ERROR, "Failed to save inventory for " + playerName, e);
         }
     }
 
     private void loadInventory(@NotNull Player player, @NotNull GameMode gameMode) {
-        UUID playerUUID = player.getUniqueId();
-        if (player.hasPermission("core.gamemode.creative.inventory")) {
+        if (player.hasPermission("allium.gamemode.creative.inventory")) {
             return;
         }
+        UUID playerUUID = player.getUniqueId();
         try {
             PlayerInventories inventories = database.loadPlayerInventories(playerUUID);
             if (inventories == null) {
@@ -932,12 +714,12 @@ public class CreativeManager implements Listener {
             }
             player.updateInventory();
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to load inventory for player: " + player.getName(), e);
+            Text.sendDebugLog(ERROR, "Failed to load inventory for player: " + player.getName(), e);
         }
     }
 
     private void clearInventory(@NotNull Player player) {
-        if (player.hasPermission("core.gamemode.creative.inventory")) {
+        if (player.hasPermission("allium.gamemode.creative.inventory")) {
             return;
         }
         player.getInventory().clear();
@@ -958,12 +740,18 @@ public class CreativeManager implements Listener {
 
         cachePlayerPermissions(player);
 
-        if (player.hasPermission("core.gamemode.creative.inventory")) {
+        // If a caller explicitly enabled bypass (e.g., temporary GM swap to refresh client state),
+        // skip all inventory save/clear/load logic to avoid any item swapping side-effects.
+        if (bypassInventoryManagement.contains(player.getUniqueId())) {
+            return;
+        }
+
+        if (player.hasPermission("allium.gamemode.creative.inventory")) {
             return;
         }
 
         saveCurrentInventory(player, oldGameMode);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerAdapter.runAtEntityLater(player, () -> {
             if (!player.isOnline()) return;
             // Ensure gamemode has updated
             if (player.getGameMode() == newGameMode) {
@@ -971,23 +759,6 @@ public class CreativeManager implements Listener {
                 loadInventory(player, newGameMode);
             }
         }, 2L); // Reduced delay to 2 ticks
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerRespawn(PlayerRespawnEvent event) {
-        Player player = event.getPlayer();
-        if (player.hasPermission("core.gamemode.creative.inventory") && player.getGameMode() != GameMode.CREATIVE) {
-            return;
-        }
-        loadInventory(player, player.getGameMode());
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onInventoryChange(InventoryEvent event) {
-        if (event.getInventory().getHolder() instanceof Player player) {
-            // Force save inventory on change
-            saveCurrentInventory(player, player.getGameMode());
-        }
     }
 
     private final Set<UUID> bypassInventoryManagement = ConcurrentHashMap.newKeySet();
@@ -1007,37 +778,180 @@ public class CreativeManager implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void saveOnInventoryClick(InventoryClickEvent event) {
-        if (event.getWhoClicked() instanceof Player player) {
-            saveCurrentInventory(player, player.getGameMode());
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void saveOnItemPickup(EntityPickupItemEvent event) {
-        if (event.getEntity() instanceof Player player) {
-            saveCurrentInventory(player, player.getGameMode());
-        }
-    }
-
     private void checkAndApplyGameModeReset(Player player) {
         UUID playerId = player.getUniqueId();
         GameMode lastKnownGamemode = getLastKnownGamemode(playerId);
         GameMode currentGamemode = player.getGameMode();
 
         if (lastKnownGamemode != currentGamemode) {
-            if ((lastKnownGamemode == GameMode.CREATIVE && player.hasPermission("core.gamemode.creative")) ||
-                    (lastKnownGamemode == GameMode.SPECTATOR && player.hasPermission("core.gamemode.spectator")) ||
-                    player.hasPermission("core.gamemode")) {
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Skip spectator restoration if player joins in survival - they should stay in survival (vanilla behavior)
+            if (lastKnownGamemode == GameMode.SPECTATOR && currentGamemode == GameMode.SURVIVAL) {
+                // Update the known gamemode to survival to prevent future conflicts
+                lastKnownGamemodes.put(playerId, GameMode.SURVIVAL);
+                return;
+            }
+            
+            if ((lastKnownGamemode == GameMode.CREATIVE && player.hasPermission("allium.gamemode.creative")) ||
+                    (lastKnownGamemode == GameMode.SPECTATOR && player.hasPermission("allium.gamemode.spectator")) &&
+                    player.hasPermission("allium.gamemode")) {
+                // Player has permission - restore their previous gamemode
+                SchedulerAdapter.runAtEntityLater(player, () -> {
                     if (!player.isOnline()) return;
                     player.setGameMode(lastKnownGamemode);
-                    if (!player.hasPermission("core.gamemode.creative.inventory")) {
+                    // Skip inventory management for players with creative.inventory permission (vanilla behavior)
+                    if (!player.hasPermission("allium.gamemode.creative.inventory")) {
+                        clearInventory(player); // Clear to prevent item duplication
                         loadInventory(player, lastKnownGamemode);
                     }
                 }, 2L);
+            } else if ((lastKnownGamemode == GameMode.CREATIVE && !player.hasPermission("allium.gamemode.creative")) ||
+                       (lastKnownGamemode == GameMode.SPECTATOR && !player.hasPermission("allium.gamemode.spectator"))) {
+                // Player doesn't have permission for their last known gamemode - fix their inventory
+                if (!player.hasPermission("allium.gamemode.creative.inventory")) {
+                    SchedulerAdapter.runAtEntityLater(player, () -> {
+                        if (!player.isOnline()) return;
+                        // Clear their current inventory (which is from the unauthorized gamemode)
+                        clearInventory(player);
+                        // Load the inventory for their current gamemode (survival)
+                        loadInventory(player, currentGamemode);
+                        Text.sendDebugLog(INFO, "Fixed inventory for " + player.getName() + 
+                                " who was in unauthorized gamemode " + lastKnownGamemode + 
+                                ", now in " + currentGamemode);
+                    }, 2L);
+                }
+                // Update the known gamemode to prevent future conflicts
+                lastKnownGamemodes.put(playerId, currentGamemode);
             }
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        cachePlayerPermissions(player);
+        lastKnownGamemodes.put(player.getUniqueId(), player.getGameMode());
+        checkAndApplyGameModeReset(player);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
+
+        cachedCreativePermissions.remove(playerId);
+        cachedSpectatorPermissions.remove(playerId);
+        lastKnownGamemodes.remove(playerId);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onGameModeChangeTrack(PlayerGameModeChangeEvent event) {
+        Plugin sourcePlugin = detectSourcePlugin();
+        if (sourcePlugin == null || !sourcePlugin.getName().equals("Multiverse-Core")) {
+            lastKnownGamemodes.put(event.getPlayer().getUniqueId(), event.getNewGameMode());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
+        Player player = event.getPlayer();
+        World toWorld = player.getWorld();
+        GameMode currentGamemode = player.getGameMode();
+        UUID playerUUID = player.getUniqueId();
+
+        if (player.hasPermission("mv.bypass.gamemode." + toWorld.getName()) ||
+                player.hasPermission("mv.bypass.gamemode.*") ||
+                player.hasPermission("allium.gamemode.creative") ||
+                player.hasPermission("allium.gamemode.spectator") ||
+                player.hasPermission("allium.gamemode")) {
+
+            if (player.hasPermission("allium.gamemode.creative.inventory")) {
+                return;
+            }
+            saveCurrentInventory(player, currentGamemode);
+
+            SchedulerAdapter.runAtEntityLater(player, () -> {
+                if (!player.isOnline() || !player.getWorld().equals(toWorld)) return;
+                if (player.getGameMode() != currentGamemode) {
+                    player.setGameMode(currentGamemode);
+                }
+                clearInventory(player); // Clear to prevent item duplication
+                loadInventory(player, currentGamemode);
+            }, 2L);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onGamemodeSwitchRevert(PlayerGameModeChangeEvent event) {
+        Player player = event.getPlayer();
+        GameMode newGamemode = event.getNewGameMode();
+        GameMode oldGamemode = player.getGameMode();
+        UUID playerUUID = player.getUniqueId();
+
+        long currentTime = System.currentTimeMillis();
+        if (recentRestorations.containsKey(playerUUID)) {
+            long lastRestoration = recentRestorations.get(playerUUID);
+            if (currentTime - lastRestoration < RESTORATION_COOLDOWN) {
+                return;
+            }
+        }
+
+        Plugin sourcePlugin = detectSourcePlugin();
+        boolean isMultiverse = sourcePlugin != null && sourcePlugin.getName().equals("Multiverse-Core");
+
+        if (isMultiverse && (
+                (oldGamemode == GameMode.CREATIVE && player.hasPermission("allium.gamemode.creative")) ||
+                (oldGamemode == GameMode.SPECTATOR && player.hasPermission("allium.gamemode.spectator")) &&
+                player.hasPermission("allium.gamemode") ||
+                player.hasPermission("mv.bypass.gamemode." + player.getWorld().getName()) ||
+                player.hasPermission("mv.bypass.gamemode.*"))) {
+
+            event.setCancelled(true);
+
+            if (player.hasPermission("allium.gamemode.creative.inventory")) {
+                return;
+            }
+
+            SchedulerAdapter.runAtEntityLater(player, () -> {
+                if (!player.isOnline()) return;
+                if (player.getGameMode() != oldGamemode) {
+                    player.setGameMode(oldGamemode);
+                }
+                clearInventory(player); // Clear to prevent item duplication
+                loadInventory(player, oldGamemode);
+                recentRestorations.put(playerUUID, System.currentTimeMillis());
+            }, 2L);
+        }
+    }
+
+    private Plugin detectSourcePlugin() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        List<String> pluginPackagePrefixes = new ArrayList<>();
+        for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
+            if (plugin.equals(this.plugin)) continue;
+            String mainClass = plugin.getPluginMeta().getMainClass();
+            String packagePrefix = mainClass.substring(0, mainClass.lastIndexOf('.'));
+            pluginPackagePrefixes.add(packagePrefix);
+        }
+        for (StackTraceElement element : stackTrace) {
+            String className = element.getClassName();
+            for (String prefix : pluginPackagePrefixes) {
+                if (className.startsWith(prefix)) {
+                    for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
+                        String mainClass = plugin.getPluginMeta().getMainClass();
+                        String packagePrefix = mainClass.substring(0, mainClass.lastIndexOf('.'));
+                        if (className.startsWith(packagePrefix)) {
+                            return plugin;
+                        }
+                    }
+                }
+            }
+            if (className.contains("Multiverse") || className.contains("multiverse")) {
+                Plugin mvPlugin = Bukkit.getPluginManager().getPlugin("Multiverse-Core");
+                if (mvPlugin != null) {
+                    return mvPlugin;
+                }
+            }
+        }
+        return null;
     }
 }

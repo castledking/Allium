@@ -6,6 +6,9 @@ import org.bukkit.inventory.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.survivalfun.core.managers.core.Text;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
+
 public class Item {
 
     private static final List<Material> giveableItems = new ArrayList<>();
@@ -38,8 +41,8 @@ public class Item {
         }
         
         if (plugin != null) {
-            if (plugin.getConfigManager().getBoolean("debug-mode")) {
-                plugin.getLogger().info("Initialized " + giveableItems.size() + " giveable items");
+            if (plugin.isDebugMode()) {
+                Text.sendDebugLog(INFO, "Initialized " + giveableItems.size() + " giveable items");
             }
         }
     }
@@ -49,16 +52,24 @@ public class Item {
     }
 
     public static boolean isGiveable(Material material) {
+        if (material == null) {
+            return false;
+        }
+
         // First check if the material is in our giveable items list
         if (giveableItems.contains(material)) {
             return true;
         }
-        
-        // If not in the list, do a more lenient check
-        // Only block items that are definitely not giveable
-        return material != null && 
-               material != Material.AIR && 
-               !material.isLegacy() &&
-               !material.name().startsWith("LEGACY_");
+
+        // If not in the list, try to create a test ItemStack
+        try {
+            new ItemStack(material, 1);
+            // If successful, add to the cache and return true
+            giveableItems.add(material);
+            return true;
+        } catch (IllegalArgumentException e) {
+            // Material cannot be used to create ItemStacks
+            return false;
+        }
     }
 }

@@ -1,0 +1,40 @@
+# Custom Items Configuration
+# Defines custom items with optional texture support
+# 
+# Format:
+#   items:
+#     <item_id>:
+#       material: <material_name>
+#       name: "<display_name>"
+#       lore:
+#         - "<line1>"
+#         - "<line2>"
+#       texture-type: item_model  # or "custommodeldata"
+#       item_model: "<namespace:model>"  # string, float, or int (only if texture-type is item_model)
+#       custommodeldata: <int>  # only if texture-type is custommodeldata
+#       single-use: true  # optional: marks item as consumable after use
+
+items:
+  # Built-in Tree Axe - chops entire trees with one hit
+  tree_axe:
+    material: NETHERITE_AXE
+    name: "§dLazy Axe"
+    lore:
+      - "§7A magical netherite axe that"
+      - "§7chops down entire trees with one hit!"
+    texture-type: custommodeldata
+    custommodeldata: 1001
+
+  # Built-in Spawner Type Changer - change spawner types using eggs
+  spawner_changer:
+    material: BLAZE_ROD
+    name: "§6§lSpawner Type Changer"
+    lore:
+      - "§7Right-Click on any spawner"
+      - "§7with this tool to open"
+      - "§7the changer menu."
+      - ""
+      - "§cWarning: This item only has one use!"
+    texture-type: custommodeldata
+    custommodeldata: 1002
+    single-use: true

@@ -1,0 +1,44 @@
+# Nickname animations configuration
+# Each animation is a list of color codes that will be cycled through
+# Use & for color codes (e.g., &a for green, &l for bold)
+# For gradients, use the format: <gradient:color1,color2,color3>
+
+animations:
+  # Simple color cycle
+  rainbow:
+    speed: 5 # Ticks between updates (20 ticks = 1 second)
+    frames:
+      - "&c"
+      - "&6"
+      - "&e"
+      - "&a"
+      - "&b"
+      - "&9"
+      - "&d"
+  
+  # Gradient animations
+  fire:
+    speed: 3
+    frames:
+      - "<gradient:#FF512F,#F09819>"
+      - "<gradient:#F09819,#FF512F>"
+  
+  ocean:
+    speed: 4
+    frames:
+      - "<gradient:#1A2980,#26D0CE>"
+      - "<gradient:#26D0CE,#1A2980>"
+  
+  # More complex gradient with multiple colors
+  galaxy:
+    speed: 5
+    frames:
+      - "<gradient:#8E0E00,#1F1C18,#8E0E00>"
+      - "<gradient:#1F1C18,#8E0E00,#1F1C18>"
+
+# Default settings
+defaults:
+  max-nick-length: 20
+  min-nick-length: 3
+  allowed-characters: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+  cooldown: 60 # Cooldown in seconds between nickname changes

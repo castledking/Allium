@@ -5,6 +5,9 @@ import net.survivalfun.core.managers.DB.Database;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import net.survivalfun.core.managers.core.Text;
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -21,10 +24,11 @@ public class EconomyManager {
     private int decimalPlaces;
     private boolean symbolBeforeAmount;
     private boolean spaceBetween;
+    private boolean allowNegativeBalance;
 
-    public EconomyManager(PluginStart plugin, Database database) {
+    public EconomyManager(PluginStart plugin) {
         this.plugin = plugin;
-        this.database = database;
+        this.database = plugin.getDatabase();
         loadConfig();
     }
     
@@ -49,6 +53,8 @@ public class EconomyManager {
         
         // Load space between setting from config
         spaceBetween = config.getBoolean("economy.space-between", false);
+
+        allowNegativeBalance = config.getBoolean("economy.allow-negative-balance", false);
     }
 
     /**
@@ -92,8 +98,8 @@ public class EconomyManager {
      * @return true if successful, false otherwise
      */
     public boolean setBalance(UUID playerUUID, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) < 0) {
-            return false; // Don't allow negative balances
+        if (!allowNegativeBalance && amount.compareTo(BigDecimal.ZERO) < 0) {
+            return false; // Don't allow negative balances unless enabled
         }
         return database.setPlayerBalance(playerUUID, amount);
     }
@@ -187,6 +193,10 @@ public class EconomyManager {
     public boolean createAccount(UUID playerUUID) {
         // Create account with default balance
         return database.setPlayerBalance(playerUUID, defaultBalance);
+    }
+
+    public boolean isNegativeBalanceAllowed() {
+        return allowNegativeBalance;
     }
 
     /**

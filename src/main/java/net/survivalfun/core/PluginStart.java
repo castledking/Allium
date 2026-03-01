@@ -65,24 +65,27 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import net.survivalfun.core.listeners.PlaceholderAPIRegistrationListener;
 import net.survivalfun.core.commands.TrashCommand;
 import net.survivalfun.core.commands.Unnote;
 import net.survivalfun.core.commands.Vanish;
 import net.survivalfun.core.commands.AutoRestartCommand;
 import net.survivalfun.core.listeners.chat.SignColorListener;
 import net.survivalfun.core.listeners.chat.FormatChatListener;
-import net.survivalfun.core.listeners.chat.PacketChatTracker;
-import net.survivalfun.core.managers.core.TabListManager;
+import net.survivalfun.core.packetevents.ChatPacketTracker;
+import net.survivalfun.core.packetevents.PacketEventsLoader;
+import net.survivalfun.core.packetevents.TabListManager;
 import net.survivalfun.core.commands.PartyCommand;
 import net.survivalfun.core.listeners.PartyListener;
 import net.survivalfun.core.managers.core.PartyManager;
-import com.github.retrooper.packetevents.PacketEvents;
-import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import net.survivalfun.core.listeners.jobs.MailManager;
 import net.survivalfun.core.listeners.jobs.CreeperExplosion;
 import net.survivalfun.core.listeners.jobs.FireballExplosion;
@@ -190,7 +193,7 @@ public class PluginStart extends JavaPlugin {
     private DynamicPermissionManager dynamicPermissionManager;
     private WarpManager warpManager;
     private ChatMessageManager chatMessageManager;
-    private PacketChatTracker packetChatTracker;
+    private ChatPacketTracker chatPacketTracker = new net.survivalfun.core.packetevents.ChatPacketTrackerNoOp();
     private TabListManager tabListManager;
     private CommandBridgeManager commandBridgeManager;
     private InventoryManager inventoryManager;
@@ -347,12 +350,12 @@ public class PluginStart extends JavaPlugin {
 
     /**
      * Gets the PacketEvents chat tracker, if available.
-     * This may be null when PacketEvents is not present or failed to initialize.
+     * Returns a no-op implementation when PacketEvents is not present.
      *
-     * @return the PacketChatTracker instance or null
+     * @return the ChatPacketTracker instance (never null)
      */
-    public PacketChatTracker getPacketChatTracker() {
-        return packetChatTracker;
+    public ChatPacketTracker getChatPacketTracker() {
+        return chatPacketTracker;
     }
 
     /**
@@ -454,7 +457,9 @@ public class PluginStart extends JavaPlugin {
         dialogManager.generateDataPack();
         
         instance = this;
+        Text.setPlugin(this);
         SchedulerAdapter.init(this);
+        PlayerVisibilityHelper.initialize(this);
         migrationManager = new MigrationManager(getLogger(), getDataFolder());
 
         // Perform migration if needed
@@ -541,6 +546,14 @@ public class PluginStart extends JavaPlugin {
         } catch (Throwable t) {
             Text.sendDebugLog(WARN, "Failed to schedule preferred command enforcement: " + t.getMessage(), true);
         }
+
+        // Update checker (delayed to avoid blocking startup)
+        SchedulerAdapter.runLater(() -> {
+            boolean enabled = getConfig().getBoolean("update-checker.enabled", true);
+            String notifyMode = getConfig().getString("update-checker.notify-mode", "both");
+            net.survivalfun.core.util.UpdateChecker.checkForUpdates(
+                    this, 126462, enabled, notifyMode, getDescription().getVersion());
+        }, 50L);
 
         // /dialog watchdog removed
     }
@@ -654,19 +667,16 @@ public class PluginStart extends JavaPlugin {
             Text.sendDebugLog(INFO, "HandcuffsListener cleaned up.", true);
         }
 
-        // Unregister PacketEvents listeners and terminate API to prevent classloader leaks across reloads
+        // Shutdown packet-based trackers (unregister from PacketEvents when applicable)
         try {
-            if (packetChatTracker != null) {
-                PacketEvents.getAPI().getEventManager().unregisterListener(packetChatTracker);
-                packetChatTracker = null;
+            if (chatPacketTracker != null) {
+                chatPacketTracker.shutdown();
+            }
+            if (tabListManager != null) {
+                tabListManager.shutdown();
             }
         } catch (Throwable t) {
-            Text.sendDebugLog(WARN, "Failed to unregister PacketEvents listeners: " + t.getMessage());
-        }
-        try {
-            PacketEvents.getAPI().terminate();
-        } catch (Throwable t) {
-            Text.sendDebugLog(WARN, "Failed to terminate PacketEvents API: " + t.getMessage());
+            Text.sendDebugLog(WARN, "Failed to shutdown packet listeners: " + t.getMessage());
         }
 
         // Unregister all Bukkit listeners
@@ -677,20 +687,7 @@ public class PluginStart extends JavaPlugin {
      * Check if PacketEvents plugin is available.
      */
     private boolean isPacketEventsAvailable() {
-        org.bukkit.plugin.Plugin pe = Bukkit.getPluginManager().getPlugin("packetevents");
-        if (pe == null) {
-            pe = Bukkit.getPluginManager().getPlugin("PacketEvents");
-        }
-        if (pe != null && pe.isEnabled()) {
-            try {
-                Class.forName("com.github.retrooper.packetevents.PacketEvents");
-                getLogger().info("PacketEvents detected: " + pe.getName() + " v" + pe.getDescription().getVersion());
-                return true;
-            } catch (ClassNotFoundException e) {
-                getLogger().warning("PacketEvents plugin found but classes not yet loaded");
-            }
-        }
-        return false;
+        return PacketEventsLoader.isPacketEventsAvailable();
     }
 
     /**
@@ -857,42 +854,65 @@ public class PluginStart extends JavaPlugin {
     }
 
     /**
-     * Initializes PacketEvents for comprehensive chat message tracking
+     * Initializes chat packet tracking. Uses PacketEvents when available, otherwise no-op.
      */
     private void initializePacketEvents() {
-        if (!isPacketEventsAvailable()) {
-            Text.sendDebugLog(WARN, "PacketEvents plugin not found. Packet-level chat tracking will be disabled.");
-            return;
-        }
-
         try {
-            this.packetChatTracker = new PacketChatTracker(this, chatMessageManager, PacketListenerPriority.NORMAL);
-
-            getServer().getScheduler().runTaskLater(this, () -> {
-                try {
-                    PacketEvents.getAPI().getEventManager().registerListener(packetChatTracker);
-                    Text.sendDebugLog(INFO, "PacketEvents chat tracking enabled");
-                } catch (Throwable e) {
-                    Text.sendDebugLog(WARN, "Failed to register PacketEvents listener: " + e.getMessage());
-                }
-            }, 20L);
-
-            Text.sendDebugLog(INFO, "PacketEvents detected - registering chat tracking in 1 second...");
+            this.chatPacketTracker = PacketEventsLoader.createChatPacketTracker(this, chatMessageManager);
+            if (PacketEventsLoader.isPacketEventsAvailable()) {
+                Text.sendDebugLog(INFO, "PacketEvents chat tracking enabled");
+            } else {
+                Text.sendDebugLog(WARN, "PacketEvents plugin not found. Packet-level chat tracking disabled.");
+            }
         } catch (Throwable e) {
-            Text.sendDebugLog(WARN, "PacketEvents API not available; packet-level features will be disabled: " + e.getMessage());
-            Text.sendDebugLog(WARN, "Chat message deletion will work only for plugin-handled messages");
+            Text.sendDebugLog(WARN, "Failed to initialize chat packet tracker: " + e.getMessage());
+            this.chatPacketTracker = new net.survivalfun.core.packetevents.ChatPacketTrackerNoOp();
         }
     }
     
     private void initializePlaceholderAPI() {
-        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            // Register master AlliumPlaceholder expansion that delegates to all others
-            placeholder = new AlliumPlaceholder(this);
-            placeholder.register();
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") == null) {
+            Text.sendDebugLog(WARN, "PlaceholderAPI not found. Expansion will not be available.");
+            return;
+        }
+        getServer().getPluginManager().registerEvents(new PlaceholderAPIRegistrationListener(this), this);
+        SchedulerAdapter.runLater(() -> {
+            if (placeholder == null || !placeholder.isRegistered()) {
+                if (registerPlaceholderExpansion()) {
+                    getLogger().info("PlaceholderAPI expansion 'allium' registered.");
+                }
+            }
+        }, 20L);
+    }
 
-            Text.sendDebugLog(INFO, "PlaceholderAPI expansions registered successfully (Allium).");
-        } else {
-            Text.sendDebugLog(WARN, "PlaceholderAPI not found. Custom placeholders will not be available.");
+    public AlliumPlaceholder getPlaceholderExpansion() {
+        return placeholder;
+    }
+
+    public void setPlaceholderExpansion(AlliumPlaceholder expansion) {
+        this.placeholder = expansion;
+    }
+
+    private boolean registerPlaceholderExpansion() {
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") == null) {
+            return false;
+        }
+        if (placeholder != null && placeholder.isRegistered()) {
+            return true;
+        }
+        try {
+            placeholder = new AlliumPlaceholder(this);
+            boolean ok = placeholder.register();
+            if (!ok && isDebugMode()) {
+                getLogger().info("AlliumPlaceholder.register() returned false - expansion may already exist or validation failed.");
+            }
+            return ok;
+        } catch (Throwable t) {
+            getLogger().warning("PlaceholderAPI expansion registration threw: " + t.getMessage());
+            if (isDebugMode()) {
+                t.printStackTrace();
+            }
+            return false;
         }
     }
 
@@ -921,19 +941,29 @@ public class PluginStart extends JavaPlugin {
 
             boolean coreServicesReady = false; // Track readiness of permission/chat/economy
 
-            // Set service instances if available
+            // Set service instances if available (use Proxy to avoid ClassCastException with LuckPerms/JarInJarClassLoader)
             if (permissionProvider != null) {
-                vaultPerms = (Permission) permissionProvider.getProvider();
-                Text.sendDebugLog(INFO, "Vault Permission service initialized: " + vaultPerms.getName());
-                coreServicesReady = true;
+                try {
+                    Object permProvider = permissionProvider.getProvider();
+                    vaultPerms = createVaultPermissionProxy(permProvider);
+                    Text.sendDebugLog(INFO, "Vault Permission service initialized: " + vaultPerms.getName());
+                    coreServicesReady = true;
+                } catch (Throwable t) {
+                    Text.sendDebugLog(WARN, "Failed to initialize Vault Permission (LuckPerms classloader?): " + t.getMessage());
+                }
             } else {
                 Text.sendDebugLog(WARN, "Vault Permission service not found. Permission checks will not work correctly.");
             }
 
             if (chatProvider != null) {
-                vaultChat = (Chat) chatProvider.getProvider();
-                Text.sendDebugLog(INFO, "Vault Chat service initialized: " + vaultChat.getName());
-                coreServicesReady = true;
+                try {
+                    Object chatProviderObj = chatProvider.getProvider();
+                    vaultChat = createVaultChatProxy(chatProviderObj);
+                    Text.sendDebugLog(INFO, "Vault Chat service initialized: " + vaultChat.getName());
+                    coreServicesReady = true;
+                } catch (Throwable t) {
+                    Text.sendDebugLog(WARN, "Failed to initialize Vault Chat (LuckPerms classloader?): " + t.getMessage());
+                }
             } else {
                 Text.sendDebugLog(WARN, "Vault Chat service not found. Chat formatting and group-specific features may not work.");
             }
@@ -963,6 +993,60 @@ public class PluginStart extends JavaPlugin {
         } else {
             Text.sendDebugLog(WARN, "Vault plugin not found. Some features may not work correctly.");
             return false;
+        }
+    }
+
+    /**
+     * Creates a Permission proxy that delegates to the provider via reflection.
+     * Avoids ClassCastException when the provider (e.g. LuckPerms) uses a different classloader.
+     */
+    private Permission createVaultPermissionProxy(Object provider) {
+        InvocationHandler handler = (proxy, method, args) -> {
+            Method m = findMethod(provider.getClass(), method.getName(), method.getParameterTypes());
+            return m.invoke(provider, args);
+        };
+        return (Permission) Proxy.newProxyInstance(
+            Permission.class.getClassLoader(),
+            new Class<?>[] { Permission.class },
+            handler
+        );
+    }
+
+    /**
+     * Creates a Chat proxy that delegates to the provider via reflection.
+     * Avoids ClassCastException when the provider uses a different classloader.
+     */
+    private Chat createVaultChatProxy(Object provider) {
+        InvocationHandler handler = (proxy, method, args) -> {
+            Method m = findMethod(provider.getClass(), method.getName(), method.getParameterTypes());
+            return m.invoke(provider, args);
+        };
+        return (Chat) Proxy.newProxyInstance(
+            Chat.class.getClassLoader(),
+            new Class<?>[] { Chat.class },
+            handler
+        );
+    }
+
+    /** Find method, trying exact match first then by name and param count for overloads. */
+    private Method findMethod(Class<?> clazz, String name, Class<?>[] paramTypes) throws NoSuchMethodException {
+        try {
+            return clazz.getMethod(name, paramTypes);
+        } catch (NoSuchMethodException e) {
+            for (Method m : clazz.getMethods()) {
+                if (m.getName().equals(name) && m.getParameterCount() == paramTypes.length) {
+                    Class<?>[] actual = m.getParameterTypes();
+                    boolean compatible = true;
+                    for (int i = 0; i < paramTypes.length; i++) {
+                        if (!actual[i].isAssignableFrom(paramTypes[i])) {
+                            compatible = false;
+                            break;
+                        }
+                    }
+                    if (compatible) return m;
+                }
+            }
+            throw e;
         }
     }
 
@@ -1062,6 +1146,8 @@ public class PluginStart extends JavaPlugin {
         }
 
         // Initialize TabListManager for party system
+        // Entity hide/show (radius) uses Bukkit API and works without PacketEvents.
+        // Only tab list re-add requires PacketEvents; don't disable locator bar when PE unavailable.
         try {
             boolean locatorBarEnabled = getServer().getWorlds().stream()
                     .findFirst()
@@ -1069,29 +1155,50 @@ public class PluginStart extends JavaPlugin {
                     .orElse(Boolean.TRUE);
 
             if (!locatorBarEnabled) {
-                Text.sendDebugLog(INFO, "Locator bar gamerule disabled; skipping TabListManager initialization");
-            } else if (!isPacketEventsAvailable()) {
-                Text.sendDebugLog(WARN, "PacketEvents not available; skipping TabListManager initialization");
+                Text.sendDebugLog(INFO, "Locator bar gamerule disabled; TabListManager using no-op");
+                this.tabListManager = new net.survivalfun.core.packetevents.TabListManagerNoOp();
+                partyManager.setTabListManager(this.tabListManager);
+                partyManager.setPartyLocatorBarEnabled(false);
             } else {
-                // Check if tab list management is enabled in config
-                boolean hideNonPartyMembersTab = getConfig().getBoolean("party-manager.hide-non-party-members-tab", false);
-
-                // Always register TabListManager to ensure all players are visible in tab list
-                // The TabListManager will either hide non-party members (if config is true) or ensure all players are visible (if config is false)
-                this.tabListManager = new TabListManager(this, partyManager, vanishManager);
-
-                // Set TabListManager reference in PartyManager for integration
+                this.tabListManager = PacketEventsLoader.createTabListManager(this, partyManager, vanishManager);
                 partyManager.setTabListManager(this.tabListManager);
 
-                if (hideNonPartyMembersTab) {
-                    Text.sendDebugLog(INFO, "Tab list management enabled - non-party members will be hidden from tab list");
+                if (tabListManager.supportsTabListUpdates()) {
+                    Text.sendDebugLog(INFO, "Tab list management enabled - party-locator-bar active");
                 } else {
-                    Text.sendDebugLog(INFO, "Tab list management enabled - all players visible in tab list");
+                    Text.sendDebugLog(WARN, "PacketEvents not ready at startup; entity hide/show active. Will retry TabListManager in 2s.");
+                    // Retry in case PacketEvents loads after us
+                    SchedulerAdapter.runLater(() -> retryTabListManagerInit(), 40L);
                 }
             }
         } catch (Throwable e) {
             Text.sendDebugLog(WARN, "Failed to initialize TabListManager: " + e.getMessage());
-            this.tabListManager = null;
+            this.tabListManager = new net.survivalfun.core.packetevents.TabListManagerNoOp();
+            partyManager.setTabListManager(this.tabListManager);
+            SchedulerAdapter.runLater(() -> retryTabListManagerInit(), 40L);
+        }
+    }
+
+    /**
+     * Retry TabListManager init (e.g. when PacketEvents loads after Allium at startup).
+     */
+    private void retryTabListManagerInit() {
+        if (tabListManager != null && tabListManager.supportsTabListUpdates()) return;
+        boolean locatorBarEnabled = getServer().getWorlds().stream()
+                .findFirst()
+                .map(w -> w.getGameRuleValue(org.bukkit.GameRule.LOCATOR_BAR))
+                .orElse(Boolean.TRUE);
+        if (!locatorBarEnabled) return;
+        try {
+            TabListManager next = PacketEventsLoader.createTabListManager(this, partyManager, vanishManager);
+            if (next.supportsTabListUpdates()) {
+                if (tabListManager != null) tabListManager.shutdown();
+                tabListManager = next;
+                partyManager.setTabListManager(tabListManager);
+                Text.sendDebugLog(INFO, "Tab list management enabled (delayed init) - party-locator-bar active");
+            }
+        } catch (Throwable e) {
+            Text.sendDebugLog(WARN, "TabListManager retry failed: " + e.getMessage());
         }
     }
 
@@ -1220,8 +1327,17 @@ public class PluginStart extends JavaPlugin {
             Restore restoreCommand = new Restore(this, inventoryManager);
             registerCommand("restore", restoreCommand);
             
-            // Party command
+            // Party command - take over from mcMMO when present (loadafter + force ownership)
             registerCommand("party", new PartyCommand(this, partyManager), new PartyCommand(this, partyManager));
+            if (getServer().getPluginManager().getPlugin("mcMMO") != null) {
+                try {
+                    forceCommandOwnership("party");
+                } catch (Throwable t) {
+                    if (isDebugMode()) {
+                        Text.sendDebugLog(WARN, "Could not take over /party from mcMMO: " + t.getMessage());
+                    }
+                }
+            }
 
             // Locator bar command
             LocatorBarCommand locatorBarCommand = new LocatorBarCommand(this, partyManager);
@@ -1385,6 +1501,7 @@ public class PluginStart extends JavaPlugin {
         try {
             // Register core listeners
             registerListenerSafely(pm, "ConnectionManager", new ConnectionManager(this));
+            registerListenerSafely(pm, "UpdateCheckerListener", new net.survivalfun.core.listeners.UpdateCheckerListener());
             
             if (creativeManager != null) {
                 registerListenerSafely(pm, "CreativeManager", creativeManager);

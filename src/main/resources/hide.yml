@@ -59,5 +59,6 @@ groups:
       - spawn
       - back
       - rtp
+      - party
     tabcompletes:
       - ^

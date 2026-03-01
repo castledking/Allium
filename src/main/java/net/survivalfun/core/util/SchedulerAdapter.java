@@ -5,6 +5,8 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.entity.Entity;
 
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -13,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.Text;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 
@@ -124,13 +127,13 @@ public final class SchedulerAdapter {
                 // Not a regionized server (Folia/Canvas/etc)
             }
 
-            // Also check server name/version as fallback
+            // Also check server name/version as fallback (Canvas, Folia, etc. use regionized scheduler)
             String serverName = Bukkit.getName();
             String version = Bukkit.getVersion();
-            boolean isFoliaByName = serverName != null && serverName.toLowerCase().contains("folia");
-            boolean isFoliaByVersion = version != null && version.toLowerCase().contains("folia");
+            String combined = ((serverName != null ? serverName : "") + " " + (version != null ? version : "")).toLowerCase();
+            boolean isRegionizedByName = combined.contains("folia") || combined.contains("canvas");
 
-            if (hasRegionizedServer || isFoliaByName || isFoliaByVersion) {
+            if (hasRegionizedServer || isRegionizedByName) {
                 // Try to resolve Server#getGlobalRegionScheduler at runtime
                 getGlobalRegionScheduler = Bukkit.getServer().getClass().getMethod("getGlobalRegionScheduler");
                 Object grs = getGlobalRegionScheduler.invoke(Bukkit.getServer());
@@ -223,13 +226,20 @@ public final class SchedulerAdapter {
         return () -> bt.cancel();
     }
 
+    private static boolean isDebugScheduler() {
+        PluginStart p = PluginStart.getInstance();
+        return p != null && p.getConfig().getBoolean("debug-scheduler", false);
+    }
+
     // Folia-safe: schedule at the specific entity's scheduler
     public static TaskHandle runAtEntity(Entity entity, Runnable task) {
         ensureInit();
         String entityName = entity != null ? entity.getName() : "null";
         String taskInfo = task != null ? task.getClass().getSimpleName() : "null";
         
-        Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Scheduling task " + taskInfo + " for entity: " + entityName);
+        if (isDebugScheduler()) {
+            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Scheduling task " + taskInfo + " for entity: " + entityName);
+        }
         
         if (foliaAvailable) {
             try {
@@ -242,13 +252,17 @@ public final class SchedulerAdapter {
                         }
 
                         Runnable runnableWrapper = () -> {
-                            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Starting execution of task " + taskInfo + " for " + entityName);
+                            if (isDebugScheduler()) {
+                                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Starting execution of task " + taskInfo + " for " + entityName);
+                            }
                             long startTime = System.currentTimeMillis();
                             try {
                                 if (task != null) {
                                     task.run();
-                                    long duration = System.currentTimeMillis() - startTime;
-                                    Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Completed task " + taskInfo + " for " + entityName + " in " + duration + "ms");
+                                    if (isDebugScheduler()) {
+                                        long duration = System.currentTimeMillis() - startTime;
+                                        Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Completed task " + taskInfo + " for " + entityName + " in " + duration + "ms");
+                                    }
                                 }
                             } catch (Throwable t) {
                                 Text.sendDebugLog(ERROR, "[SCHEDULER] [runAtEntity] Error in task " + taskInfo + " for " + entityName + ": " + t.getMessage());
@@ -256,7 +270,9 @@ public final class SchedulerAdapter {
                             }
                         };
 
-                        Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Using Folia entity scheduler for " + entityName);
+                        if (isDebugScheduler()) {
+                            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Using Folia entity scheduler for " + entityName);
+                        }
                         Object scheduledEntityTask;
                         if (methods.runUsesRunnable) {
                             scheduledEntityTask = methods.runMethod.invoke(es, plugin, runnableWrapper);
@@ -267,7 +283,9 @@ public final class SchedulerAdapter {
                                     : methods.runMethod.invoke(es, plugin, consumer);
                         }
                         return () -> {
-                            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Cancelling task " + taskInfo + " for " + entityName);
+                            if (isDebugScheduler()) {
+                                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Cancelling task " + taskInfo + " for " + entityName);
+                            }
                             invokeCancelSafe(scheduledEntityTask);
                         };
                     }
@@ -279,13 +297,17 @@ public final class SchedulerAdapter {
         }
 
         Runnable wrappedTask = () -> {
-            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Starting fallback task execution for " + entityName);
+            if (isDebugScheduler()) {
+                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Starting fallback task execution for " + entityName);
+            }
             long startTime = System.currentTimeMillis();
             try {
                 if (task != null) {
                     task.run();
-                    long duration = System.currentTimeMillis() - startTime;
-                    Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Completed fallback task for " + entityName + " in " + duration + "ms");
+                    if (isDebugScheduler()) {
+                        long duration = System.currentTimeMillis() - startTime;
+                        Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Completed fallback task for " + entityName + " in " + duration + "ms");
+                    }
                 }
             } catch (Throwable t) {
                 Text.sendDebugLog(ERROR, "[SCHEDULER] [runAtEntity] Error in fallback task for " + entityName + ": " + t.getMessage());
@@ -294,27 +316,39 @@ public final class SchedulerAdapter {
         };
 
         if (foliaAvailable && entity != null && entity.getLocation() != null) {
-            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Falling back to region scheduler for " + entityName);
+            if (isDebugScheduler()) {
+                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Falling back to region scheduler for " + entityName);
+            }
             Object regionTask = Bukkit.getRegionScheduler().run(plugin, entity.getLocation(), schTask -> wrappedTask.run());
             return () -> {
-                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Cancelling region fallback task for " + entityName);
+                if (isDebugScheduler()) {
+                    Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Cancelling region fallback task for " + entityName);
+                }
                 invokeCancelSafe(regionTask);
             };
         }
 
         if (foliaAvailable) {
-            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Falling back to Folia global scheduler for " + entityName);
+            if (isDebugScheduler()) {
+                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Falling back to Folia global scheduler for " + entityName);
+            }
             TaskHandle handle = foliaRun(wrappedTask);
             return () -> {
-                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Cancelling Folia fallback task for " + entityName);
+                if (isDebugScheduler()) {
+                    Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Cancelling Folia fallback task for " + entityName);
+                }
                 handle.cancel();
             };
         }
 
-        Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Falling back to Bukkit scheduler for " + entityName);
+        if (isDebugScheduler()) {
+            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Falling back to Bukkit scheduler for " + entityName);
+        }
         BukkitTask bt = Bukkit.getScheduler().runTask(plugin, wrappedTask);
         return () -> {
-            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Cancelling Bukkit task for " + entityName);
+            if (isDebugScheduler()) {
+                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntity] Cancelling Bukkit task for " + entityName);
+            }
             bt.cancel();
         };
     }
@@ -324,8 +358,10 @@ public final class SchedulerAdapter {
         String entityName = entity != null ? entity.getName() : "null";
         String taskInfo = task != null ? task.getClass().getSimpleName() : "null";
         
-        Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Scheduling delayed task " + taskInfo + " for entity: " + 
-            entityName + " with delay: " + delayTicks + " ticks");
+        if (isDebugScheduler()) {
+            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Scheduling delayed task " + taskInfo + " for entity: " + 
+                entityName + " with delay: " + delayTicks + " ticks");
+        }
         
         if (foliaAvailable) {
             try {
@@ -337,14 +373,18 @@ public final class SchedulerAdapter {
                     }
 
                     Runnable runnableWrapper = () -> {
-                        Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Starting execution of delayed task " + taskInfo + " for " + entityName);
+                        if (isDebugScheduler()) {
+                            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Starting execution of delayed task " + taskInfo + " for " + entityName);
+                        }
                         long startTime = System.currentTimeMillis();
                         try {
                             if (task != null) {
                                 task.run();
-                                long duration = System.currentTimeMillis() - startTime;
-                                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Completed delayed task " + taskInfo + " for " + 
-                                    entityName + " in " + duration + "ms");
+                                if (isDebugScheduler()) {
+                                    long duration = System.currentTimeMillis() - startTime;
+                                    Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Completed delayed task " + taskInfo + " for " + 
+                                        entityName + " in " + duration + "ms");
+                                }
                             }
                         } catch (Throwable t) {
                             Text.sendDebugLog(ERROR, "[SCHEDULER] [runAtEntityLater] Error in delayed task " + taskInfo + 
@@ -353,7 +393,9 @@ public final class SchedulerAdapter {
                         }
                     };
 
-                    Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Using Folia entity scheduler with delay for " + entityName);
+                    if (isDebugScheduler()) {
+                        Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Using Folia entity scheduler with delay for " + entityName);
+                    }
                     try {
                         Object scheduledEntityTask;
                         if (methods.runDelayedUsesRunnable) {
@@ -366,7 +408,9 @@ public final class SchedulerAdapter {
                         }
                         final Object scheduledTaskFinal = scheduledEntityTask;
                         return () -> {
-                            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Cancelling delayed task " + taskInfo + " for " + entityName);
+                            if (isDebugScheduler()) {
+                                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Cancelling delayed task " + taskInfo + " for " + entityName);
+                            }
                             invokeCancelSafe(scheduledTaskFinal);
                         };
                     } catch (Throwable reflectionError) {
@@ -382,13 +426,17 @@ public final class SchedulerAdapter {
         }
 
         Runnable wrappedTask = () -> {
-            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Starting fallback delayed task execution for " + entityName);
+            if (isDebugScheduler()) {
+                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Starting fallback delayed task execution for " + entityName);
+            }
             long startTime = System.currentTimeMillis();
             try {
                 if (task != null) {
                     task.run();
-                    long duration = System.currentTimeMillis() - startTime;
-                    Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Completed fallback delayed task for " + entityName + " in " + duration + "ms");
+                    if (isDebugScheduler()) {
+                        long duration = System.currentTimeMillis() - startTime;
+                        Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Completed fallback delayed task for " + entityName + " in " + duration + "ms");
+                    }
                 }
             } catch (Throwable t) {
                 Text.sendDebugLog(ERROR, "[SCHEDULER] [runAtEntityLater] Error in fallback delayed task for " + entityName + ": " + t.getMessage());
@@ -397,27 +445,39 @@ public final class SchedulerAdapter {
         };
 
         if (foliaAvailable && entity != null && entity.getLocation() != null) {
-            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Falling back to region scheduler with delay for " + entityName);
+            if (isDebugScheduler()) {
+                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Falling back to region scheduler with delay for " + entityName);
+            }
             Object regionTask = Bukkit.getRegionScheduler().runDelayed(plugin, entity.getLocation(), schTask -> wrappedTask.run(), delayTicks);
             return () -> {
-                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Cancelling region fallback delayed task for " + entityName);
+                if (isDebugScheduler()) {
+                    Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Cancelling region fallback delayed task for " + entityName);
+                }
                 invokeCancelSafe(regionTask);
             };
         }
 
         if (foliaAvailable) {
-            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Falling back to Folia global scheduler for " + entityName);
+            if (isDebugScheduler()) {
+                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Falling back to Folia global scheduler for " + entityName);
+            }
             TaskHandle handle = foliaRunDelayed(wrappedTask, delayTicks);
             return () -> {
-                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Cancelling Folia fallback delayed task for " + entityName);
+                if (isDebugScheduler()) {
+                    Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Cancelling Folia fallback delayed task for " + entityName);
+                }
                 handle.cancel();
             };
         }
 
-        Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Falling back to Bukkit scheduler for " + entityName);
+        if (isDebugScheduler()) {
+            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Falling back to Bukkit scheduler for " + entityName);
+        }
         BukkitTask bt = Bukkit.getScheduler().runTaskLater(plugin, wrappedTask, delayTicks);
         return () -> {
-            Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Cancelling Bukkit delayed task for " + entityName);
+            if (isDebugScheduler()) {
+                Text.sendDebugLog(INFO, "[SCHEDULER] [runAtEntityLater] Cancelling Bukkit delayed task for " + entityName);
+            }
             bt.cancel();
         };
     }
@@ -446,11 +506,37 @@ public final class SchedulerAdapter {
     }
 
     private static TaskHandle foliaRunAtFixedRate(Runnable task, long initialDelay, long period) {
+        // Prefer direct API (works reliably on Folia/Canvas); reflection can fail on some forks
+        try {
+            var scheduledTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, (ScheduledTask st) -> task.run(), initialDelay, period);
+            return () -> scheduledTask.cancel();
+        } catch (NoSuchMethodError | NoClassDefFoundError ignored) {
+            // Paper/Folia API not available at runtime (e.g. Spigot)
+        }
         try {
             Object grs = getGlobalRegionScheduler.invoke(Bukkit.getServer());
             Object scheduledTask = grsRunAtFixedRate.invoke(grs, plugin, (java.util.function.Consumer<Object>) st -> task.run(), initialDelay, period);
             return () -> invokeCancelSafe(scheduledTask);
         } catch (IllegalAccessException | InvocationTargetException e) {
+            // On Folia, Bukkit.getScheduler().runTaskTimer throws UnsupportedOperationException - do not use it
+            if (foliaAvailable) {
+                // Fallback: use ScheduledExecutorService and schedule work on global region each tick
+                long initialDelayMs = initialDelay * 50;
+                long periodMs = period * 50;
+                java.util.concurrent.ScheduledExecutorService exec = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+                java.util.concurrent.ScheduledFuture<?> future = exec.scheduleAtFixedRate(() -> {
+                    try {
+                        Object grs = getGlobalRegionScheduler.invoke(Bukkit.getServer());
+                        grsRun.invoke(grs, plugin, (java.util.function.Consumer<Object>) st -> task.run());
+                    } catch (Throwable t) {
+                        Text.sendDebugLog(ERROR, "[SCHEDULER] foliaRunAtFixedRate fallback error: " + t.getMessage());
+                    }
+                }, initialDelayMs, periodMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+                return () -> {
+                    future.cancel(true);
+                    exec.shutdown();
+                };
+            }
             BukkitTask bt = Bukkit.getScheduler().runTaskTimer(plugin, task, initialDelay, period);
             return () -> bt.cancel();
         }

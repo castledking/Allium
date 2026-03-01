@@ -632,6 +632,9 @@ public class Lang {
     private void performChangesForVersion0_1_4a() {
         Text.sendDebugLog(INFO, "Applying 0.1.4a changes to lang.yml...");
 
+        // Add all missing keys from default lang.yml (new keys in 0.1.4a)
+        addMissingKeysFromDefault();
+
         // Ensure invalid message follows new syntax format using targeted replacement
         String invalidMessage = langConfig.getString("invalid");
         String updatedInvalid = "Invalid {arg} {syntax}";
@@ -643,6 +646,54 @@ public class Lang {
                 Text.sendDebugLog(INFO, "Updated invalid message syntax for 0.1.4a");
             }
             langConfig.set("invalid", updatedInvalid);
+        }
+    }
+
+    /**
+     * Adds any keys present in the default lang.yml but missing from the user's lang file.
+     * Used during 0.1.3a -> 0.1.4a migration to seamlessly add new message keys.
+     */
+    private void addMissingKeysFromDefault() {
+        if (defaultLangConfig == null) {
+            initializeDefaultMessages();
+        }
+        if (defaultLangConfig == null) {
+            Text.sendDebugLog(WARN, "Cannot add missing lang keys - default lang resource not loaded");
+            return;
+        }
+
+        List<String> addedKeys = new ArrayList<>();
+        addMissingKeysRecursive(defaultLangConfig, langConfig, "", addedKeys);
+
+        if (!addedKeys.isEmpty()) {
+            Text.sendDebugLog(INFO, "Added " + addedKeys.size() + " missing lang keys from 0.1.4a: " + String.join(", ", addedKeys));
+            try {
+                langConfig.save(langFile);
+                Text.sendDebugLog(INFO, "Saved lang.yml with new keys");
+            } catch (IOException e) {
+                Text.sendDebugLog(ERROR, "Failed to save lang.yml after adding missing keys", e);
+            }
+        }
+    }
+
+    private void addMissingKeysRecursive(ConfigurationSection from, ConfigurationSection to, String path, List<String> addedKeys) {
+        for (String key : from.getKeys(false)) {
+            String fullPath = path.isEmpty() ? key : path + "." + key;
+            Object fromValue = from.get(key);
+
+            if (fromValue instanceof ConfigurationSection fromSection) {
+                ConfigurationSection toSection = to.getConfigurationSection(key);
+                if (toSection == null) {
+                    toSection = to.createSection(key);
+                    // Create the section and recurse - we need to add all nested keys
+                }
+                addMissingKeysRecursive(fromSection, toSection, fullPath, addedKeys);
+            } else {
+                if (!to.contains(key)) {
+                    to.set(key, fromValue);
+                    addedKeys.add(fullPath);
+                }
+            }
         }
     }
 

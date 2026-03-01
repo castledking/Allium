@@ -24,6 +24,14 @@ public class Config {
     private static final Map<String, List<String>> SECTION_HEADERS;
     static {
         Map<String, List<String>> headers = new LinkedHashMap<>();
+        headers.put("update-checker:", Arrays.asList(
+                "############################################################",
+                "# +------------------------------------------------------+ #",
+                "# |                 Update Checker                       | #",
+                "# +------------------------------------------------------+ #",
+                "############################################################",
+                ""
+        ));
         headers.put("discord:", Arrays.asList(
                 "############################################################",
                 "# +------------------------------------------------------+ #",
@@ -261,11 +269,18 @@ public class Config {
         
         Text.sendDebugLog(INFO, "Config version: " + configVersion + ", Current: " + CURRENT_VERSION);
         boolean configChanged = performChangesForVersion(configVersion);
+        // Ensure version is updated when upgrading, even if no migrations ran (e.g. updateConfig already added keys)
+        if (!configChanged && configVersion.compareTo(CURRENT_VERSION) < 0) {
+            configChanged = true;
+            Text.sendDebugLog(INFO, "Upgrading config version from " + configVersion + " to " + CURRENT_VERSION);
+        }
         
         if (configChanged) {
             try {
                 config.set("version", CURRENT_VERSION);
                 saveConfigWithCommentsPreserved();
+                // Fallback: ensure version is written (saveConfigWithCommentsPreserved may reorder keys)
+                ensureVersionInFile(CURRENT_VERSION);
                 plugin.reloadConfig();
                 Text.sendDebugLog(INFO, "Config updated to version " + CURRENT_VERSION);
                 // Verify chat-hover section after save
@@ -276,13 +291,36 @@ public class Config {
         }
     }
 
+    /**
+     * Ensures the version line in the config file is updated. Fallback for when the main save
+     * doesn't persist the version correctly (e.g. key ordering, format differences).
+     */
+    private void ensureVersionInFile(String targetVersion) {
+        try {
+            if (!configFile.exists()) return;
+            String content = new String(Files.readAllBytes(configFile.toPath()), StandardCharsets.UTF_8);
+            // Match version: 0.1.3a or version: "0.1.3a" etc.
+            String updated = content.replaceAll("version:\\s*[\"']?0\\.1\\.3a[\"']?\\s*", "version: " + targetVersion + "\n");
+            if (!updated.equals(content)) {
+                Files.write(configFile.toPath(), updated.getBytes(StandardCharsets.UTF_8));
+                Text.sendDebugLog(INFO, "Ensured version " + targetVersion + " in config file (fallback)");
+            }
+        } catch (IOException e) {
+            Text.sendDebugLog(WARN, "Could not ensure version in config file: " + e.getMessage());
+        }
+    }
+
     private boolean performChangesForVersion(String fromVersion) {
         FileConfiguration config = plugin.getConfig();
         boolean configChanged = false;
+
+        // Always migrate legacy party-manager key (hide-non-party-members -> party-locator-bar)
+        configChanged |= migrateHideNonPartyMembersToPartyLocatorBar(config);
         
-        // Handle changes for version 0.1.3a or lower
-        if (fromVersion.compareTo("0.1.4a") <= 0 || fromVersion.equals("0.0.0")) {
-            Text.sendDebugLog(INFO, "Detected version " + fromVersion + ", applying 0.1.4a updates...");
+        // Migrate 0.1.3a (and older) configs to 0.1.4a
+        if (fromVersion.compareTo("0.1.4a") < 0 || fromVersion.equals("0.0.0")) {
+            Text.sendDebugLog(INFO, "Migrating config from " + fromVersion + " to 0.1.4a...");
+            configChanged |= migrate0_1_3aTo0_1_4a(config);
             configChanged |= changeEcoToMoney(config);
             configChanged |= removeTeleportAutoDisable(config);
             configChanged |= addChatHoverEntries(config);
@@ -492,6 +530,106 @@ public class Config {
         }
         
         return changed;
+    }
+
+    /**
+     * Migrate 0.1.3a config to 0.1.4a - adds new sections introduced in 0.1.4a.
+     * updateConfig() also adds missing defaults; this handles any 0.1.3a-specific gaps.
+     */
+    private boolean migrate0_1_3aTo0_1_4a(FileConfiguration config) {
+        boolean changed = false;
+
+        // Permission migration flags (core.* -> allium.*)
+        if (!config.contains("group_migration_completed")) {
+            config.set("group_migration_completed", false);
+            changed = true;
+        }
+        if (!config.contains("player_migration_completed")) {
+            config.set("player_migration_completed", false);
+            changed = true;
+        }
+
+        // Debug scheduler option (Folia)
+        if (!config.contains("debug-scheduler")) {
+            config.set("debug-scheduler", false);
+            changed = true;
+        }
+
+        // Update checker
+        if (!config.contains("update-checker")) {
+            config.set("update-checker.enabled", true);
+            config.set("update-checker.notify-mode", "both");
+            changed = true;
+        }
+
+        // Dialog settings
+        if (!config.contains("dialog")) {
+            config.set("dialog.use-datapack", true);
+            config.set("dialog.auto-show-join-delay-ticks", 40);
+            changed = true;
+        }
+
+        // Chat deletion resend
+        if (!config.contains("chat")) {
+            config.set("chat.deletion_resend.header_enabled", true);
+            config.set("chat.deletion_resend.header", "&8&oChat re-synced by staff; a message was deleted");
+            changed = true;
+        }
+
+        // Auto-restart
+        if (!config.contains("auto-restart")) {
+            config.set("auto-restart.enabled", false);
+            config.set("auto-restart.times", Arrays.asList("04:00", "12:00", "20:00"));
+            config.set("auto-restart.pre-commands", Arrays.asList("save-all", "say Server restarting in 30 seconds!"));
+            config.set("auto-restart.command-delay", 30);
+            config.set("auto-restart.countdown-times", Arrays.asList(60, 30, 15, 10, 5, 4, 3, 2, 1));
+            config.set("auto-restart.restart-on-crash", true);
+            config.set("auto-restart.save-before-restart", true);
+            changed = true;
+        }
+
+        // Commands list (allium.player permissions)
+        if (!config.contains("commands")) {
+            config.set("commands", Arrays.asList("help", "tpa", "spawn", "tppet", "mail", "mail.send", "mail.gift", "mail.read",
+                    "msg", "reply", "home", "sethome", "delhome", "tpaccept", "tpdeny", "tptoggle", "balance", "baltop",
+                    "back", "pay", "tpcancel", "tpahere", "party"));
+            changed = true;
+        }
+
+        // Party manager (if missing - may exist from hide-non-party-members migration)
+        if (!config.contains("party-manager.party-locator-bar")) {
+            config.set("party-manager.party-locator-bar", true);
+            config.set("party-manager.show-non-party-members-radius", 128);
+            config.set("party-manager.sync-with-mcmmo", true);
+            changed = true;
+        }
+
+        // Handcuffs
+        if (!config.contains("handcuffs")) {
+            config.set("handcuffs.commands-on-quit", Arrays.asList("ban {player} Logged out while restrained"));
+            changed = true;
+        }
+
+        if (changed) {
+            Text.sendDebugLog(INFO, "Applied 0.1.3a -> 0.1.4a config migration");
+        }
+        return changed;
+    }
+
+    private boolean migrateHideNonPartyMembersToPartyLocatorBar(FileConfiguration config) {
+        String legacyKey = "party-manager.hide-non-party-members";
+        String newKey = "party-manager.party-locator-bar";
+        if (config.contains(legacyKey) && !config.contains(newKey)) {
+            Text.sendDebugLog(INFO, "Migrating hide-non-party-members to party-locator-bar...");
+            config.set(newKey, config.getBoolean(legacyKey, true));
+            config.set(legacyKey, null);
+            return true;
+        }
+        if (config.contains(legacyKey)) {
+            config.set(legacyKey, null);
+            return true;
+        }
+        return false;
     }
 
     private boolean verifyMailCooldownInFile() {
@@ -867,6 +1005,11 @@ public class Config {
 
     private void createDefaultConfig() {
         try {
+            // Ensure plugin data folder exists (may be missing if deleted during runtime)
+            java.io.File parent = configFile.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs()) {
+                throw new IOException("Could not create plugin folder: " + parent);
+            }
             // First try to copy the config from the plugin's resources
             InputStream templateStream = plugin.getResource("config.yml");
             if (templateStream != null) {

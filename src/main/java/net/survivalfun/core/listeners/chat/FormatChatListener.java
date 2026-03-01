@@ -59,7 +59,7 @@ public class FormatChatListener implements Listener {
         legacyComponentSerializer = LegacyComponentSerializer.builder().hexColors().character('&').build();
         miniMessage = MiniMessage.miniMessage();
 
-        this.defaultFormat = config.getString("chat-format.default", "<prefix> &a<player>&f: &f<message>");
+        this.defaultFormat = plugin.getConfig().getString("chat-format.default", "<prefix> &a%allium_nickname%&f: &f<message>");
 
         this.placeholderAPIEnabled = Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
         if (!placeholderAPIEnabled) {
@@ -169,9 +169,13 @@ public class FormatChatListener implements Listener {
 
     /**
      * Processes PlaceholderAPI placeholders in configuration values (hover, format, etc.)
-     * This does NOT require permission as it's for server-configured content
+     * This does NOT require permission as it's for server-configured content.
+     * When PlaceholderAPI is not installed, replaces %allium_*% ourselves.
+     * Always runs our own %allium_nickname% replacement as fallback (handles PAPI missing or expansion not registered).
      */
     private String processPlaceholderAPIPlaceholdersInConfig(String text, Player player) {
+        // Replace our placeholders FIRST so we control the output (PAPI expansion may return blank)
+        text = replaceAlliumPlaceholders(text, player);
         if (!placeholderAPIEnabled) {
             return text;
         }
@@ -194,6 +198,35 @@ public class FormatChatListener implements Listener {
         matcher.appendTail(buffer);
 
         return buffer.toString();
+    }
+
+    /** Returns the player's display name (nickname if set, otherwise username) with formatting applied. */
+    private String getPlayerDisplayName(Player player) {
+        if (player == null) return "";
+        net.survivalfun.core.managers.NicknameManager nm = plugin.getNicknameManager();
+        if (nm == null) return player.getName();
+        String stored = nm.getStoredNickname(player);
+        String formatted = nm.getFormattedNickname(player, stored != null && !stored.isEmpty() ? stored : player.getName());
+        return (formatted != null && !formatted.isEmpty()) ? formatted : player.getName();
+    }
+
+    /**
+     * Replaces %allium_nickname% and %allium_nickname_raw% with our own logic.
+     * Used when PlaceholderAPI is missing or as fallback when our expansion isn't registered.
+     * Defaults to player's real in-game name when no nickname is set.
+     */
+    private String replaceAlliumPlaceholders(String text, Player player) {
+        if (text == null || player == null) return text;
+        if (!text.contains("%allium_")) return text;
+
+        net.survivalfun.core.managers.NicknameManager nm = plugin.getNicknameManager();
+        String formatted = (nm != null) ? nm.getFormattedNickname(player, nm.getStoredNickname(player)) : player.getName();
+        String raw = (nm != null) ? nm.getStoredNickname(player) : player.getName();
+        if (formatted == null || formatted.isEmpty()) formatted = player.getName();
+        if (raw == null || raw.isEmpty()) raw = player.getName();
+
+        return text.replace("%allium_nickname%", formatted)
+                   .replace("%allium_nickname_raw%", raw);
     }
 
     private String getFormattedPrefix(Player player) {
@@ -562,7 +595,9 @@ public class FormatChatListener implements Listener {
         final boolean hasSuffix = (suffix != null && !suffix.trim().isEmpty());
         final Component suffixComponent = hasSuffix ? (containsMiniMessageTags(suffix) ? miniMessage.deserialize(suffix) : legacyComponentSerializer.deserialize(suffix)) : Component.empty();
         final Component baseSuffixComponent = hasSuffix ? applyHoverClick(player, suffixComponent, "suffix") : Component.empty();
-        final Component basePlayerComponent = applyHoverClick(player, Component.text(player.getName()), "name");
+        String playerDisplayName = getPlayerDisplayName(player);
+        final Component basePlayerComponent = applyHoverClick(player,
+            legacyComponentSerializer.deserialize(playerDisplayName), "name");
          
         // If no prefix, remove the <prefix> token and surrounding whitespace to avoid stray spaces
         String formatBase = chatFormat;
@@ -713,11 +748,19 @@ public class FormatChatListener implements Listener {
     }
 
     /**
-     * Processes PlaceholderAPI placeholders in user-generated chat messages
-     * This REQUIRES the chat.placeholderapi permission
+     * Processes PlaceholderAPI placeholders in user-generated chat messages.
+     * This REQUIRES the chat.placeholderapi permission.
+     * When PlaceholderAPI is missing, we still replace our own %allium_nickname% placeholders.
      */
     private String processPlaceholderAPIPlaceholdersInChat(String text, Player player) {
-        if (!placeholderAPIEnabled || vaultPermission == null) {
+        if (vaultPermission == null) {
+            return text;
+        }
+        // Always replace our own placeholders (works with or without PlaceholderAPI)
+        if (text.contains("%allium_")) {
+            text = replaceAlliumPlaceholders(text, player);
+        }
+        if (!placeholderAPIEnabled) {
             return text;
         }
         

@@ -46,6 +46,45 @@ public class Give implements CommandExecutor {
             this.parameters = parameters;
         }
     }
+
+    /**
+     * Parsed item spec with optional inline amount (e.g. "dirt:1" or "stick;sharpness:5:12")
+     */
+    private static class ItemSpec {
+        final String itemString;
+        final int amount;
+
+        ItemSpec(String itemString, int amount) {
+            this.itemString = itemString;
+            this.amount = amount;
+        }
+    }
+
+    /**
+     * Parse comma-separated item specs, extracting :amount from the end of each if present.
+     * Examples: "dirt:1,grass_block:1" -> [(dirt,1), (grass_block,1)]
+     *           "stick;sharpness:5:1" -> [(stick;sharpness:5, 1)]
+     */
+    private List<ItemSpec> parseItemSpecs(String arg, int defaultAmount) {
+        List<ItemSpec> specs = new ArrayList<>();
+        for (String part : arg.split(",", -1)) {
+            part = part.trim();
+            if (part.isEmpty()) continue;
+            int amount = defaultAmount;
+            int lastColon = part.lastIndexOf(':');
+            if (lastColon > 0) {
+                String suffix = part.substring(lastColon + 1);
+                if (suffix.matches("\\d+")) {
+                    try {
+                        amount = Integer.parseInt(suffix);
+                        part = part.substring(0, lastColon).trim();
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            specs.add(new ItemSpec(part, amount));
+        }
+        return specs;
+    }
     public Give(PluginStart plugin) {
         this.plugin = plugin;
         this.lang = plugin.getLangManager();
@@ -153,10 +192,16 @@ public class Give implements CommandExecutor {
                     }
                 }
 
-                // Process each entity
+                // Process each entity - support comma-separated items with optional :amount
+                List<ItemSpec> specs = parseItemSpecs(arg, amount);
                 for (Entity entity : entities) {
                     if (entity instanceof Player) {
-                        giveItemToPlayer((Player) entity, createItemStack(arg, sender, amount), sender);
+                        for (ItemSpec spec : specs) {
+                            ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
+                            if (item != null) {
+                                giveItemToPlayer((Player) entity, item, sender);
+                            }
+                        }
                     }
                 }
                 
@@ -187,10 +232,13 @@ public class Give implements CommandExecutor {
         }
 
         try {
-            ItemStack item = createItemStack(arg, sender, amount);
-            if (item == null) return; // Error handled in createItemStack
-            
-            giveItemToPlayer(target, item, sender);
+            // Support comma-separated items with optional :amount per item
+            List<ItemSpec> specs = parseItemSpecs(arg, amount);
+            for (ItemSpec spec : specs) {
+                ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
+                if (item == null) return; // Error handled in createItemStack
+                giveItemToPlayer(target, item, sender);
+            }
         } catch (Exception e) {
             Text.sendDebugLog(ERROR, "Error processing give command for " + sender.getName() + ": " + e.getMessage(), e);
             Text.sendErrorMessage(sender, "contact-admin", lang);
@@ -316,7 +364,7 @@ public class Give implements CommandExecutor {
             
             ItemStack item = new ItemStack(material, amount <= 0 ? material.getMaxStackSize() : Math.min(amount, material.getMaxStackSize()));
             
-            // Apply alias parameters (potion effects, etc.) if this was a complex alias
+            // Apply alias parameters (potion effects, spawner entity, etc.) if this was a complex alias
             if (parsedAliasResult != null && parsedAliasResult.parameters != null) {
                 // Handle potion items specially
                 if (material == Material.POTION || material == Material.SPLASH_POTION ||
@@ -324,12 +372,28 @@ public class Give implements CommandExecutor {
                     // Create parts array for Potion.applyPotionMeta
                     String[] potionParts = ("potion;" + parsedAliasResult.parameters).split(";");
                     Potion.applyPotionMeta(sender, item, potionParts);
+                } else if (material == Material.SPAWNER) {
+                    // Handle spawner entity type from alias
+                    String[] spawnerParts = ("spawner;" + parsedAliasResult.parameters).split(";");
+                    Spawner.applySpawnerMeta(sender, item, spawnerParts);
                 } else {
                     // Apply other alias parameters (enchantments, names, etc.)
                     applyAliasParameters(item, parsedAliasResult.parameters, sender);
                 }
                 // Clear the parsed result after use
                 parsedAliasResult = null;
+            }
+            
+            // Apply potion meta when user provides effect params directly (e.g. potion;poison, splash_potion;poison)
+            // This fixes potion/splash_potion/tipped_arrow/lingering_potion with ;effect giving uncraftable potions
+            if (parts.length > 1 && (material == Material.POTION || material == Material.SPLASH_POTION ||
+                material == Material.LINGERING_POTION || material == Material.TIPPED_ARROW)) {
+                Potion.applyPotionMeta(sender, item, parts);
+            }
+            
+            // Apply spawner meta when user provides entity type (e.g. spawner;Axolotl)
+            if (parts.length > 1 && material == Material.SPAWNER) {
+                Spawner.applySpawnerMeta(sender, item, parts);
             }
             
             // Apply any additional parameters (enchantments, etc.)

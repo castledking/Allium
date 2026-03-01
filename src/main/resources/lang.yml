@@ -101,6 +101,7 @@ location-not-found: "Could not find location for {name}."
 world-not-found: "World {world} not found."
 world-not-allowed: "You don't have permission to use /{cmd} in {world}."
 invalid: "Invalid {arg} {syntax}"
+invalid-time-format: "&cInvalid time format. Use: 1 (seconds), 30s, 5m, 1h, etc."
 no-permission: "You don't have permission to use /{cmd}"
 hold-item: "You must be holding an item to {modify} it."
 can-not-stack: "This item cannot be stacked."
@@ -521,7 +522,7 @@ autorestart:
   help-header: "&6&lAutoRestart Commands"
   help-reload: "&e/ar reload &7- Reload the auto-restart configuration"
   help-time: "&e/ar time &7- Show time until next restart"
-  help-now: "&e/ar now <time> &7- Schedule a restart in the specified time (e.g., 30s, 5m, 1h)"
+  help-now: "&e/ar now [time] &7- Restart now or in specified time (e.g., 1, 30s, 5m, 1h)"
   help-stop: "&e/ar stop &7- Cancel the next scheduled restart"
   
   # Status messages
@@ -540,11 +541,12 @@ autorestart:
   countdown: "&c[!] &6Server restarting in &c{time} &6second{plural}!"
   
   # Kick and restart messages
+  warning: "&c[!] Server restarting! Saving and disconnecting..."
   kick-message: "&cServer is restarting. Please reconnect in a moment."
   
   # Error messages
   no-permission: "&cYou don't have permission to use this command."
-  invalid-time-format: "&cInvalid time format. Use: 30s, 5m, 1h, etc."
+  invalid-time-format: "&cInvalid time format. Use: 1 (seconds), 30s, 5m, 1h, etc."
   
   # Success messages
   success: "&a{message}"

@@ -74,7 +74,10 @@ public class NicknameGUI extends BaseGUI {
     public NicknameGUI(Player player, PluginStart plugin) {
         super(player, "Nickname Editor", 6, plugin);
         this.nicknameManager = plugin.getNicknameManager();
-        this.currentNickname = player.getName();
+        this.currentNickname = nicknameManager.getStoredNickname(player);
+        if (this.currentNickname == null || this.currentNickname.isEmpty()) {
+            this.currentNickname = player.getName();
+        }
         initialize();
     }
 
@@ -244,6 +247,20 @@ public class NicknameGUI extends BaseGUI {
         getInventory().setItem(22, preview);
     }
 
+    /** Builds the nickname string with style for storage (DB) and %allium_nickname% placeholder. */
+    private String buildDisplayStringForStorage() {
+        if (currentStyle.startsWith("gradient:")) {
+            String[] parts = currentStyle.substring(9).split(",");
+            if (parts.length >= 2) {
+                return nicknameManager.applyGradient(currentNickname, parts[0], parts[1]);
+            }
+        } else if (!currentStyle.isEmpty()) {
+            String hex = currentStyle.startsWith("#") ? currentStyle.substring(1) : currentStyle;
+            return "&#" + hex + currentNickname;
+        }
+        return currentNickname;
+    }
+
     @Override
     public void handleClick(InventoryClickEvent event) {
         event.setCancelled(true);
@@ -316,6 +333,7 @@ public class NicknameGUI extends BaseGUI {
             currentNickname = player.getName();
             currentStyle = "";
             currentAnimation = "none";
+            nicknameManager.resetNickname(player); // updates display and persists so %allium_nickname% updates
             updatePreview();
             return;
         }
@@ -335,15 +353,13 @@ public class NicknameGUI extends BaseGUI {
                 return;
             }
 
-            // Build the final nickname with style
-            String displayName = currentStyle + currentNickname;
-            player.setDisplayName(displayName);
-            player.setPlayerListName(displayName);
-            
-            // Set cooldown
-            nicknameManager.setCooldown(player);
-            
-            player.sendMessage(ChatColor.GREEN + "Nickname updated to: " + displayName);
+            String displayString = buildDisplayStringForStorage();
+            boolean success = nicknameManager.setNickname(player, displayString);
+            if (success) {
+                player.sendMessage(ChatColor.GREEN + "Nickname updated to: " + nicknameManager.formatNickname(player, displayString));
+            } else {
+                player.sendMessage(ChatColor.RED + "Failed to save nickname.");
+            }
             player.closeInventory();
         }
     }

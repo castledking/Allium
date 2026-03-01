@@ -5,7 +5,8 @@ api-version: 1.21
 folia-supported: true
 author: towkio
 description: "A secure, modern Essentials solution."
-soft-depend: [Vault, PlaceholderAPI, packetevents, floodgate]
+soft-depend: [Vault, PlaceholderAPI, packetevents, floodgate, mcMMO]
+loadafter: [PlaceholderAPI, mcMMO, packetevents]
 
 commands:
   nickname:
@@ -358,6 +359,15 @@ commands:
     description: "Set the time to night"
     usage: "/night [set|add] [time] [world]"
     permission: allium.time
+
+  autorestart:
+    description: "Schedule or manage server auto-restarts"
+    usage: "/autorestart <help|time|now|stop|reload> [time]"
+    permission: allium.autorestart.help
+  ar:
+    description: "Schedule or manage server auto-restarts (alias)"
+    usage: "/ar <help|time|now|stop> [time]"
+    permission: allium.autorestart.help
   
   warp:
     description: "Teleport to a warp or list available warps"
@@ -381,6 +391,9 @@ commands:
     permission: allium.warpinfo
 
 permissions:
+  allium.player:
+    description: "Gives access to player commands"
+    default: true
   allium.staff:
     description: "Gives access to staff commands"
     default: op

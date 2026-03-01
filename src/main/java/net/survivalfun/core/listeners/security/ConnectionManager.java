@@ -44,6 +44,18 @@ public class ConnectionManager implements Listener {
         // Store login time for online duration tracking
         playerLoginTimes.put(playerUUID, System.currentTimeMillis());
         
+        // Restore nickname from database on join
+        Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
+            String storedNick = plugin.getDatabase().getStoredPlayerDisplayname(playerUUID);
+            if (storedNick != null && !storedNick.trim().isEmpty()) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (player.isOnline() && plugin.getNicknameManager() != null) {
+                        plugin.getNicknameManager().restoreDisplayNameFromStored(player, storedNick);
+                    }
+                });
+            }
+        });
+        
         // Update last seen date in database asynchronously
         Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
             boolean success = plugin.getDatabase().updatePlayerLastSeen(playerUUID, playerName);

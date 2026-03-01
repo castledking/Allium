@@ -3,6 +3,7 @@ package net.survivalfun.core.commands;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
+import net.survivalfun.core.util.SchedulerAdapter;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -14,6 +15,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.Objects;
@@ -21,9 +24,11 @@ import java.util.Objects;
 public class AutoRestartCommand implements CommandExecutor, TabCompleter {
     private final PluginStart plugin;
     private final Lang lang;
-    private int taskId = -1;
+    private SchedulerAdapter.TaskHandle countdownTask;
     private long restartTime = -1;
     private boolean restartScheduled = false;
+    private boolean skipPreCommands = false; // true when /ar now - skip pre-commands
+    private boolean dryRun = false; // true when --dry-run - run countdown/pre-commands but don't restart
     private final List<Long> restartTimes = new ArrayList<>();
     private final List<String> preRestartCommands = new ArrayList<>();
     private final List<Integer> countdownTimes = new ArrayList<>(Arrays.asList(60, 30, 15, 10, 5, 4, 3, 2, 1));
@@ -110,16 +115,38 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
                 
             case "now":
             case "delay":
-                if (args.length < 2) {
-                    Text.sendErrorMessage(sender, "invalid-usage", lang, "/ar now <time>");
-                    return true;
-                }
                 try {
-                    long delay = parseTimeString(args[1]) * 1000; // Convert to milliseconds
-                    scheduleRestart(delay, true);
-                    Text.broadcast("lang:autorestart.scheduled", "time", Text.formatTime((int)(delay / 1000)));
+                    boolean dryRunFlag = false;
+                    String timeArg = null;
+                    for (int i = 1; i < args.length; i++) {
+                        if ("--dry-run".equalsIgnoreCase(args[i])) {
+                            dryRunFlag = true;
+                        } else if (timeArg == null) {
+                            timeArg = args[i];
+                        }
+                    }
+                    long delay;
+                    if (timeArg == null || timeArg.isBlank() || timeArg.equalsIgnoreCase("now")) {
+                        // /ar now with no time = restart immediately
+                        delay = 0;
+                    } else {
+                        delay = parseTimeString(timeArg.trim()) * 1000; // Convert to milliseconds
+                    }
+                    scheduleRestart(delay, true, dryRunFlag);
+                    String msg = dryRunFlag
+                        ? "Dry run: restart scheduled in " + Text.formatTime((int)(delay / 1000)) + " (server will NOT restart)"
+                        : lang.get("autorestart.scheduled").replace("{time}", Text.formatTime((int)(delay / 1000)));
+                    Text.broadcast(msg);
                 } catch (IllegalArgumentException e) {
-                    Text.sendErrorMessage(sender, "invalid-time-format", lang);
+                    String errMsg = lang.getRaw("autorestart.invalid-time-format");
+                    if (errMsg != null && !errMsg.contains("Missing translation")) {
+                        Text.sendErrorMessage(sender, "autorestart.invalid-time-format", lang);
+                    } else {
+                        sender.sendMessage(Text.parseColors("&cInvalid time format. Use: 1 (seconds), 30s, 5m, 1h"));
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().warning("AutoRestart error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+                    sender.sendMessage(Text.parseColors("&cError: " + e.getMessage()));
                 }
                 break;
                 
@@ -195,47 +222,54 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         }
         
         if (nextRestart > 0) {
-            scheduleRestart(nextRestart, false);
+            scheduleRestart(nextRestart, false, false);
             plugin.getLogger().info("Next restart scheduled in " + Text.formatTime((int)(nextRestart / 1000)));
         }
     }
 
-    private void scheduleRestart(long delay, boolean force) {
+    private void scheduleRestart(long delay, boolean force, boolean dryRunMode) {
         // Cancel any existing restart task
         cancelRestart();
         
         restartTime = System.currentTimeMillis() + delay;
         restartScheduled = true;
+        skipPreCommands = force; // /ar now = force = true, skip pre-commands
+        dryRun = dryRunMode;
         
-        // Schedule the restart
-        taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+        // Schedule the restart (use SchedulerAdapter for Folia/Canvas compatibility)
+        // Folia/Canvas requires initialDelayTicks > 0; use 1 tick minimum
+        long initialDelayTicks = 1L;
+        long periodTicks = 20L;
+        countdownTask = SchedulerAdapter.runTimer(() -> {
             long timeLeft = (restartTime - System.currentTimeMillis()) / 1000;
             
             // Check for countdown times
             if (countdownTimes.contains((int) timeLeft)) {
+                String plural = (timeLeft == 1) ? "" : lang.get("autorestart.plural");
                 String message = lang.get("autorestart.countdown")
                         .replace("{time}", String.valueOf(timeLeft))
+                        .replace("{plural}", plural)
                         .replace("\n", " ");
-                Bukkit.broadcastMessage(message);
+                Bukkit.broadcastMessage(net.survivalfun.core.managers.core.Text.parseColors(message));
             }
             
             // Check for restart time
-            if (timeLeft <= 0) {
+            if (timeLeft <= 0 && !isShuttingDown) {
                 executeRestart();
             }
-        }, 0L, 20L);
+        }, initialDelayTicks, periodTicks);
         
-        // Schedule pre-commands
-        if (preRestartCommands.size() > 0) {
-            long commandDelay = Math.max(0, delay - (plugin.getConfig().getInt("auto-restart.command-delay", 30) * 1000L));
-            Bukkit.getScheduler().runTaskLater(plugin, this::executePreRestartCommands, commandDelay / 50);
+        // Schedule pre-commands (skip when /ar now)
+        if (!skipPreCommands && !preRestartCommands.isEmpty()) {
+            long commandDelayTicks = Math.max(0, (delay - (plugin.getConfig().getInt("auto-restart.command-delay", 30) * 1000L)) / 50);
+            SchedulerAdapter.runLater(this::executePreRestartCommands, commandDelayTicks);
         }
     }
 
     private void cancelRestart() {
-        if (taskId != -1) {
-            Bukkit.getScheduler().cancelTask(taskId);
-            taskId = -1;
+        if (countdownTask != null) {
+            countdownTask.cancel();
+            countdownTask = null;
         }
         restartScheduled = false;
         restartTime = -1;
@@ -263,16 +297,26 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
     
     private void executeRestart() {
         if (isShuttingDown) {
-            plugin.getLogger().warning("Shutdown already in progress");
             return;
         }
+        isShuttingDown = true;
+        cancelRestart(); // Stop repeating task immediately to prevent re-entry
         
         synchronized (shutdownLock) {
-            isShuttingDown = true;
-            cancelRestart();
+            boolean wasDryRun = dryRun;
             
-            // Remove shutdown hook as it can cause issues with the server's shutdown process
-            // Runtime.getRuntime().addShutdownHook(new Thread(this::finalCleanup, "ShutdownCleanup"));
+            if (wasDryRun) {
+                // Dry run: run pre-commands and broadcast, but do NOT kick/save/shutdown
+                String dryRunMsg = net.survivalfun.core.managers.core.Text.parseColors("&e[Dry Run] &fRestart sequence complete - server would have restarted.");
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.sendMessage(dryRunMsg);
+                }
+                Bukkit.getConsoleSender().sendMessage("[Allium] Dry run complete - server was NOT restarted.");
+                if (!skipPreCommands) {
+                    executePreRestartCommands();
+                }
+                return;
+            }
             
             // Broadcast initial warning
             String warningMsg = lang.get("autorestart.warning");
@@ -284,7 +328,7 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
             Bukkit.getOnlinePlayers().forEach(player -> {
                 try {
                     player.saveData();
-player.kick(Component.text(lang.get("autorestart.kick-message")));
+                    player.kick(Component.text(lang.get("autorestart.kick-message")));
                 } catch (Exception e) {
                     plugin.getLogger().warning("Failed to save data for " + player.getName() + ": " + e.getMessage());
                 }
@@ -293,11 +337,13 @@ player.kick(Component.text(lang.get("autorestart.kick-message")));
             // Save all worlds with retry logic
             saveAllWorlds();
             
-            // Execute pre-commands if any
-            executePreRestartCommands();
+            // Execute pre-commands if any (skip when /ar now)
+            if (!skipPreCommands) {
+                executePreRestartCommands();
+            }
             
             // Schedule the actual shutdown with a delay to ensure everything is saved
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerAdapter.runLater(() -> {
                 try {
                     // Close plugin resources if needed
                     closePluginResources();
@@ -352,42 +398,56 @@ player.kick(Component.text(lang.get("autorestart.kick-message")));
         }
     }
 
+    private static final Pattern TIME_PATTERN = Pattern.compile("^(\\d+)\\s*([smhd])?\\s*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern HHMM_PATTERN = Pattern.compile("^(\\d{1,2}):(\\d{2})$");
+    // Fallback: extract leading digits + optional trailing unit
+    private static final Pattern LOOSE_PATTERN = Pattern.compile("(\\d+)\\s*([smhd])?", Pattern.CASE_INSENSITIVE);
+
     private long parseTimeString(String timeStr) throws IllegalArgumentException {
-        timeStr = timeStr.trim().toLowerCase();
-        
-        try {
-            // Handle HH:mm format (e.g., "04:00", "16:30")
-            if (timeStr.matches("^\\d{1,2}:\\d{2}$")) {
-                String[] parts = timeStr.split(":");
-                int hours = Integer.parseInt(parts[0]);
-                int minutes = Integer.parseInt(parts[1]);
-                
-                if (hours < 0 || hours > 23) {
-                    throw new IllegalArgumentException("Hours must be between 0 and 23");
-                }
-                if (minutes < 0 || minutes > 59) {
-                    throw new IllegalArgumentException("Minutes must be between 0 and 59");
-                }
-                
-                return (hours * 3600L) + (minutes * 60L);
-            }
-            // Handle time with units (e.g., "30s", "5m", "2h", "1d")
-            else if (timeStr.endsWith("s")) {
-                return Long.parseLong(timeStr.substring(0, timeStr.length() - 1));
-            } else if (timeStr.endsWith("m")) {
-                return Long.parseLong(timeStr.substring(0, timeStr.length() - 1)) * 60;
-            } else if (timeStr.endsWith("h")) {
-                return Long.parseLong(timeStr.substring(0, timeStr.length() - 1)) * 60 * 60;
-            } else if (timeStr.endsWith("d")) {
-                return Long.parseLong(timeStr.substring(0, timeStr.length() - 1)) * 24 * 60 * 60;
-            } 
-            // Default to seconds if no unit is specified
-            else {
-                return Long.parseLong(timeStr);
-            }
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid time format: " + timeStr + ". Expected format: HH:mm or number with unit (s/m/h/d)");
+        if (timeStr == null || (timeStr = timeStr.trim()).isEmpty()) {
+            throw new IllegalArgumentException("Time cannot be empty");
         }
+        // Normalize: remove any non-printable chars, collapse spaces
+        timeStr = timeStr.replaceAll("[\\s\\p{C}]", " ").trim();
+        String lower = timeStr.toLowerCase(Locale.ROOT);
+
+        // HH:mm format (e.g., "04:00", "16:30")
+        Matcher hhmm = HHMM_PATTERN.matcher(lower);
+        if (hhmm.matches()) {
+            int hours = Integer.parseInt(hhmm.group(1));
+            int minutes = Integer.parseInt(hhmm.group(2));
+            if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+                throw new IllegalArgumentException("Invalid HH:mm");
+            }
+            return (hours * 3600L) + (minutes * 60L);
+        }
+
+        // Strict: Number + optional unit (1, 1s, 30s, 5m, 2h, 1d)
+        Matcher m = TIME_PATTERN.matcher(lower);
+        if (m.matches()) {
+            return parseTimeFromMatcher(m);
+        }
+        // Loose fallback: extract number and unit from start of string
+        Matcher loose = LOOSE_PATTERN.matcher(lower);
+        if (loose.find() && loose.start() == 0) {
+            return parseTimeFromMatcher(loose);
+        }
+        throw new IllegalArgumentException("Invalid time format: " + timeStr + ". Use: 1, 30s, 5m, 1h, etc.");
+    }
+
+    private long parseTimeFromMatcher(Matcher m) {
+        long num = Long.parseLong(m.group(1));
+        String unit = m.group(2);
+        if (unit == null || unit.isEmpty()) {
+            return num; // plain number = seconds
+        }
+        return switch (Character.toLowerCase(unit.charAt(0))) {
+            case 's' -> num;
+            case 'm' -> num * 60;
+            case 'h' -> num * 3600;
+            case 'd' -> num * 86400;
+            default -> num;
+        };
     }
 
 
@@ -418,8 +478,15 @@ player.kick(Component.text(lang.get("autorestart.kick-message")));
             return completions.stream()
                     .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
-        } else if (args.length == 2 && (args[0].equalsIgnoreCase("now") || args[0].equalsIgnoreCase("delay"))) {
-            return Arrays.asList("30s", "1m", "5m", "10m", "30m", "1h");
+        } else if (args.length >= 2 && (args[0].equalsIgnoreCase("now") || args[0].equalsIgnoreCase("delay"))) {
+            List<String> completions = new ArrayList<>(Arrays.asList("30s", "1m", "5m", "10m", "30m", "1h", "--dry-run"));
+            String partial = args.length == 2 ? args[1] : (args.length == 3 ? args[2] : "");
+            if (!partial.isEmpty()) {
+                return completions.stream()
+                        .filter(s -> s.toLowerCase().startsWith(partial.toLowerCase()))
+                        .collect(Collectors.toList());
+            }
+            return completions;
         }
         
         return Collections.emptyList();

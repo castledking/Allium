@@ -198,7 +198,14 @@ public class Nick implements CommandExecutor {
                 return setNickname(player, target, nickname);
             }
             
-            // Check if GUI mode (has both gui and others)
+            String nickname = actualArgs[1];
+            // If nickname contains color codes and user has permission, bypass GUI and set directly
+            boolean hasColorCodes = nickname.contains("&") || nickname.contains("§") || nickname.contains("#")
+                || nickname.contains("<gradient") || nickname.contains("<rainbow");
+            if (hasGuiPerm && hasColorCodes && hasColorPermission(player, nickname)) {
+                return setNickname(player, target, nickname);
+            }
+            // Check if GUI mode (has both gui and others) - only when no color codes
             if (hasGuiPerm) {
                 try {
                     NicknameGUI gui = new NicknameGUI(player, plugin, target.getName());
@@ -209,7 +216,6 @@ public class Nick implements CommandExecutor {
                 return true;
             }
             
-            String nickname = actualArgs[1];
             if (!hasColorPermission(player, nickname)) {
                 Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "use those colors/formats.", true);
                 return true;

@@ -870,6 +870,18 @@ public class Database {
         return null;
     }
 
+    /**
+     * Gets the stored display name (nickname) for a player from the database.
+     * @param playerUUID The player's UUID
+     * @return The stored nickname with color codes, or null if none/not found
+     */
+    public String getStoredPlayerDisplayname(UUID playerUUID) {
+        if (!columnExists("player_data", "player_displayname")) {
+            return null;
+        }
+        return queryString("SELECT player_displayname FROM player_data WHERE uuid = ?", playerUUID.toString());
+    }
+
     public String getServerData(String key) {
         return queryString("SELECT \"value\" FROM server_data WHERE \"key\" = ?", key);
     }

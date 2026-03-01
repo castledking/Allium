@@ -2,12 +2,16 @@ package net.survivalfun.core.managers.core.placeholderapi;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import net.survivalfun.core.PluginStart;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import net.survivalfun.core.managers.core.Text;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -76,6 +80,52 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
     }
 
     @Override
+    public boolean canRegister() {
+        return Bukkit.getPluginManager().getPlugin("Allium") != null
+            && Bukkit.getPluginManager().getPlugin("Allium").isEnabled();
+    }
+
+    @Override
+    public @NotNull List<String> getPlaceholders() {
+        return Arrays.asList(
+            "ping", "nickname", "nickname_raw",
+            "fly", "god", "reply", "mail_unread", "mail_gifts",
+            "spy", "spy_target",
+            "world_date", "world_time", "world_time_24h",
+            "teleport_cooldown", "teleport_request_timestamp", "teleport_requests", "teleport_toggled",
+            "spectator_location", "logout_location", "spawn_location", "back_location",
+            "home_max", "home_set",
+            "baltop_balance_1", "baltop_balance_commas_1", "baltop_balance_formatted_1", "baltop_balance_fixed_1",
+            "baltop_player_1", "baltop_player_stripped_1"
+        );
+    }
+
+    @Override
+    public String onRequest(OfflinePlayer offlinePlayer, @NotNull String params) {
+        // Essentials expansion pattern: handle player-dependent placeholders only when player is online
+        if (offlinePlayer == null) {
+            return "";
+        }
+        if (!offlinePlayer.isOnline()) {
+            // Offline: only time/baltop-style placeholders work; most return empty
+            return "";
+        }
+        Player p = offlinePlayer.getPlayer();
+        if (p == null) {
+            return "";
+        }
+        try {
+            return onPlaceholderRequest(p, params);
+        } catch (Throwable t) {
+            plugin.getLogger().warning("PlaceholderAPI allium error for '" + params + "': " + t.getMessage());
+            if (plugin.isDebugMode()) {
+                t.printStackTrace();
+            }
+            return "";
+        }
+    }
+
+    @Override
     public String onPlaceholderRequest(Player player, @NotNull String params) {
         if (player == null) {
             return "";
@@ -84,6 +134,11 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         // Delegate to appropriate placeholder handler based on the parameter
         String result;
         
+        // Diagnostic: %allium_ping% returns "ok" if expansion is working
+        if ("ping".equals(params)) {
+            return "ok";
+        }
+
         /*
           Placeholders:
           %allium_fly% - Returns "yes" if the player has flight enabled, "no" otherwise.
@@ -209,7 +264,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
             return result;
         }
         
-        // No handler found for this placeholder
-        return "";
+        // No handler found - return null so PlaceholderAPI knows we didn't handle it (Essentials pattern)
+        return null;
     }
 }

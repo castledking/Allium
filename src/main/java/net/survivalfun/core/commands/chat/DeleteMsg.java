@@ -76,11 +76,10 @@ public class DeleteMsg implements CommandExecutor {
             if (chatMessageManager.deleteMessage(messageId)) {
                 player.sendMessage(Component.text("§aMessage deleted successfully."));
 
-                // Use PacketChatTracker for robust chat history resend if available
-                if (plugin.getPacketChatTracker() != null) {
-                    plugin.getPacketChatTracker().resendChatHistoryToAllPlayers();
+                // Use ChatPacketTracker for robust chat history resend (no-op when PacketEvents unavailable)
+                if (plugin.getChatPacketTracker().supportsResend()) {
+                    plugin.getChatPacketTracker().resendChatHistoryToAllPlayers();
                 } else {
-                    // Fallback to simple replacement message if PacketTracker not available
                     sendReplacementMessageToAllPlayers(message);
                 }
 

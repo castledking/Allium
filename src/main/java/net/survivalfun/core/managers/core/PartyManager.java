@@ -1,8 +1,11 @@
 package net.survivalfun.core.managers.core;
 
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.packetevents.TabListManager;
 import net.survivalfun.core.util.PlayerVisibilityHelper;
 import net.survivalfun.core.util.SchedulerAdapter;
+
+import static net.survivalfun.core.managers.core.Text.DebugSeverity.INFO;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.GameRule;
@@ -29,10 +32,9 @@ public class PartyManager {
     private TabListManager tabListManager;
     
     // Config values
-    private boolean hideNonPartyMembers;
+    private boolean partyLocatorBar;
     private int showNonPartyMembersRadius;
-    private boolean hideNonPartyMembersTab;
-    private boolean paperAPIAvailable;
+    private boolean syncWithMcMMO;
 
     // Temporary visibility overrides: player -> (target -> expiration time)
     private final Map<UUID, Map<UUID, Long>> forcedVisibilityOverrides = new ConcurrentHashMap<>();
@@ -50,30 +52,27 @@ public class PartyManager {
     }
 
     private boolean shouldSendTabPackets() {
-        return tabListManager != null && hideNonPartyMembers;
+        return tabListManager != null && tabListManager.supportsTabListUpdates() && partyLocatorBar;
     }
 
     /**
      * Load configuration values from config.yml
      */
     private void loadConfig() {
-        this.hideNonPartyMembers = plugin.getConfig().getBoolean("party-manager.hide-non-party-members", true);
-        this.showNonPartyMembersRadius = plugin.getConfig().getInt("party-manager.show-non-party-members-radius", 48);
-        this.hideNonPartyMembersTab = plugin.getConfig().getBoolean("party-manager.hide-non-party-members-tab", false);
-
-        // Check if Paper API is available for entity visibility
-        try {
-            // Try to call a Paper API method to see if it's available
-            org.bukkit.entity.Player testPlayer = plugin.getServer().getOnlinePlayers().stream().findFirst().orElse(null);
-            if (testPlayer != null) {
-                testPlayer.hideEntity(plugin, testPlayer); // This will throw NoSuchMethodError if Paper API not available
-                this.paperAPIAvailable = true;
-            } else {
-                this.paperAPIAvailable = false;
-            }
-        } catch (NoSuchMethodError e) {
-            this.paperAPIAvailable = false;
+        this.partyLocatorBar = plugin.getConfig().getBoolean("party-manager.party-locator-bar", true);
+        // Party locator bar does not work on Folia (regionized threading); auto-disable
+        if (SchedulerAdapter.isFolia() && partyLocatorBar) {
+            partyLocatorBar = false;
+            Text.sendDebugLog(INFO, "party-locator-bar auto-disabled on Folia (not supported)");
         }
+        this.showNonPartyMembersRadius = plugin.getConfig().getInt("party-manager.show-non-party-members-radius", 48);
+        this.syncWithMcMMO = plugin.getConfig().getBoolean("party-manager.sync-with-mcmmo", true);
+    }
+
+    /** Override party-locator-bar (e.g. set false when PacketEvents not available). */
+    public void setPartyLocatorBarEnabled(boolean enabled) {
+        this.partyLocatorBar = enabled;
+        startDistanceCheckTask();
     }
 
     /**
@@ -81,7 +80,7 @@ public class PartyManager {
      */
     public void reloadConfig() {
         loadConfig();
-        // Removed debug log to reduce spam
+        startDistanceCheckTask();
     }
 
     /**
@@ -92,14 +91,31 @@ public class PartyManager {
     }
 
     /**
-     * Start the periodic distance check task for showing non-party members at radius
+     * Start the periodic distance check task - forces visibility updates so hidePlayer/showPlayer
+     * are applied even when movement events don't fire (teleports, AFK, etc.)
      */
     private void startDistanceCheckTask() {
         if (distanceCheckTask != null) {
             distanceCheckTask.cancel();
         }
-        // Optional periodic visibility updates - can be enabled if needed
-        // Currently disabled as visibility is event-driven for better performance
+        if (!partyLocatorBar) {
+            return;
+        }
+        distanceCheckTask = SchedulerAdapter.runTimer(() -> {
+            if (!partyLocatorBar) return;
+            List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+            for (Player viewer : online) {
+                if (!viewer.isOnline()) continue;
+                for (Player target : online) {
+                    if (viewer.equals(target) || !target.isOnline()) continue;
+                    if (SchedulerAdapter.isFolia()) {
+                        SchedulerAdapter.runAtEntity(viewer, () -> updatePlayerVisibility(viewer, target));
+                    } else {
+                        updatePlayerVisibility(viewer, target);
+                    }
+                }
+            }
+        }, 5L, 5L); // Every 5 ticks (0.25s) - faster response when moving in/out of radius
     }
 
     /**
@@ -221,22 +237,8 @@ public class PartyManager {
             return true;
         }
 
-        // If hide-non-party-members-tab is false, everyone is visible
-        if (!hideNonPartyMembersTab) {
-            return true;
-        }
-
-        // Check if both players are in the same party
-        Party viewerParty = getPlayerParty(viewer.getUniqueId());
-        Party targetParty = getPlayerParty(target.getUniqueId());
-
-        // Party members are always visible to each other
-        if (viewerParty != null && targetParty != null && viewerParty.equals(targetParty)) {
-            return true;
-        }
-
-        // Non-party members are hidden when hide-non-party-members-tab is true
-        return false;
+        // Everyone stays in tab list (entity hidden via hidePlayer when beyond radius)
+        return true;
     }
 
     /**
@@ -259,6 +261,15 @@ public class PartyManager {
                 List<Player> allOtherPlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
                 allOtherPlayers.remove(leaderPlayer);
                 handleRadiusVisibilityChange(leaderPlayer, allOtherPlayers);
+            }
+        }
+
+        // Sync with mcMMO if enabled and mcMMO is installed.
+        // Use createParty so the party is added to mcMMO's internal list; addToParty creates orphans otherwise.
+        if (syncWithMcMMO) {
+            Player leaderPlayer = Bukkit.getPlayer(leader);
+            if (leaderPlayer != null) {
+                McMMOPartySync.createParty(leaderPlayer, name);
             }
         }
         return true;
@@ -285,6 +296,16 @@ public class PartyManager {
                         List<Player> allOtherPlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
                         allOtherPlayers.remove(member);
                         handleRadiusVisibilityChange(member, allOtherPlayers);
+                    }
+                }
+            }
+
+            // Sync with mcMMO: remove all members from mcMMO party
+            if (syncWithMcMMO) {
+                for (UUID memberId : party.getMembers()) {
+                    Player member = Bukkit.getPlayer(memberId);
+                    if (member != null) {
+                        McMMOPartySync.removeFromParty(member);
                     }
                 }
             }
@@ -334,6 +355,15 @@ public class PartyManager {
                 handleRadiusVisibilityChange(joiningPlayer, allOtherPlayers);
             }
         }
+
+        // Sync with mcMMO if enabled and mcMMO is installed.
+        // Run delayed so mcMMO has time to load the joining player's profile (UserManager.getPlayer can be null otherwise).
+        if (syncWithMcMMO) {
+            Player joiningPlayer = Bukkit.getPlayer(player);
+            if (joiningPlayer != null) {
+                SchedulerAdapter.runLater(() -> McMMOPartySync.addToParty(joiningPlayer, name), 5L);
+            }
+        }
         return PartyJoinResult.SUCCESS;
     }
 
@@ -361,6 +391,14 @@ public class PartyManager {
                         List<Player> allOtherPlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
                         allOtherPlayers.remove(leavingPlayer);
                         handleRadiusVisibilityChange(leavingPlayer, allOtherPlayers);
+                    }
+                }
+
+                // Sync with mcMMO if enabled and mcMMO is installed
+                if (syncWithMcMMO) {
+                    Player leavingPlayer = Bukkit.getPlayer(player);
+                    if (leavingPlayer != null) {
+                        McMMOPartySync.removeFromParty(leavingPlayer);
                     }
                 }
             }
@@ -442,7 +480,7 @@ public class PartyManager {
      * avoiding the previous O(N²) complexity.
      */
     public void updateVisibility() {
-        if (!hideNonPartyMembers) {
+        if (!partyLocatorBar) {
             return;
         }
 
@@ -467,7 +505,7 @@ public class PartyManager {
      * @param player The player whose visibility should be updated
      */
     public void updateVisibilityForPlayer(Player player) {
-        if (!hideNonPartyMembers) {
+        if (!partyLocatorBar) {
             return;
         }
 
@@ -483,9 +521,20 @@ public class PartyManager {
     }
 
     public boolean arePartyFeaturesEnabled() {
-        return hideNonPartyMembers;
+        return partyLocatorBar;
     }
-    
+
+    public boolean isPartyLocatorBarEnabled() {
+        return partyLocatorBar;
+    }
+
+    /** Forces immediate visibility refresh for all players (for debugging). */
+    public void forceVisibilityRefresh() {
+        if (!partyLocatorBar) return;
+        for (Player viewer : Bukkit.getOnlinePlayers()) {
+            updateVisibilityForPlayer(viewer);
+        }
+    }
 
     /**
      * Handles player movement - updates visibility when players move in/out of radius
@@ -495,7 +544,7 @@ public class PartyManager {
      * Party members always see each other regardless of distance.
      */
     public void onPlayerMove(Player movedPlayer) {
-        if (!hideNonPartyMembers) {
+        if (!partyLocatorBar) {
             return;
         }
 
@@ -531,7 +580,7 @@ public class PartyManager {
      * @param target The target player to show/hide
      */
     private void updatePlayerVisibility(Player viewer, Player target) {
-        if (!hideNonPartyMembers) {
+        if (!partyLocatorBar) {
             return;
         }
         UUID viewerId = viewer.getUniqueId();
@@ -539,7 +588,8 @@ public class PartyManager {
         Party targetParty = getPlayerParty(target.getUniqueId());
         boolean sameParty = viewerParty != null && targetParty != null && viewerParty.equals(targetParty);
 
-        if (!Boolean.TRUE.equals(viewer.getWorld().getGameRuleValue(GameRule.LOCATOR_BAR))) {
+        // Only skip when locator bar is explicitly disabled (null/absent = assume enabled)
+        if (Boolean.FALSE.equals(viewer.getWorld().getGameRuleValue(GameRule.LOCATOR_BAR))) {
             return;
         }
 
@@ -568,7 +618,7 @@ public class PartyManager {
      * Shows players if they are within the configured radius.
      */
     private void handleNonPartyVisibility(Player viewer, Player target) {
-        if (!hideNonPartyMembers) {
+        if (!partyLocatorBar) {
             return;
         }
         if (isSpectatorWithPermission(viewer)) {
@@ -596,16 +646,19 @@ public class PartyManager {
             }
         } else {
             PlayerVisibilityHelper.hidePlayer(viewer, target);
+            // hidePlayer removes from tab list; re-add via packets (entity hidden, tab list still shows them)
             if (shouldSendTabPackets()) {
-                if (tabListManager.shouldBeVisibleInTabList(viewer, target)) {
-                    // Keep non-party members visible in tablist when configured to do so
-                    plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                        if (shouldSendTabPackets()) {
-                            tabListManager.sendTabListAddPacket(target, List.of(viewer));
-                        }
-                    }, 2L); // 2 tick delay to ensure entity visibility is processed first
-                } else {
-                    tabListManager.sendTabListRemovePacket(target, List.of(viewer));
+                Runnable sendAdd = () -> {
+                    if (shouldSendTabPackets() && viewer.isOnline() && target.isOnline()) {
+                        tabListManager.forceSendTabListAddPacket(target, List.of(viewer));
+                    }
+                };
+                for (long delay : new long[] { 0L, 1L, 2L, 3L, 5L, 8L, 13L, 21L, 34L, 55L }) {
+                    if (SchedulerAdapter.isFolia()) {
+                        SchedulerAdapter.runAtEntityLater(viewer, sendAdd, delay);
+                    } else {
+                        SchedulerAdapter.runLater(sendAdd, delay);
+                    }
                 }
             }
         }
@@ -616,11 +669,13 @@ public class PartyManager {
             PlayerVisibilityHelper.hidePlayer(viewer, target);
             // Send proactive tablist add packet to ensure spectator stays visible in tablist
             if (shouldSendTabPackets() && tabListManager.shouldBeVisibleInTabList(viewer, target)) {
-                plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                    if (shouldSendTabPackets()) {
-                        tabListManager.sendTabListAddPacket(target, List.of(viewer));
-                    }
-                }, 2L); // 2 tick delay to ensure entity visibility is processed first
+                for (long d : new long[] { 0L, 1L, 3L, 5L }) {
+                    SchedulerAdapter.runLater(() -> {
+                        if (shouldSendTabPackets()) {
+                            tabListManager.sendTabListAddPacket(target, List.of(viewer));
+                        }
+                    }, d);
+                }
             }
         } else {
             PlayerVisibilityHelper.showPlayer(viewer, target);
@@ -679,83 +734,62 @@ public class PartyManager {
 
     /**
      * Handles player join event - updates visibility for the joining player.
+     * Respects party-locator-bar: when enabled, hides/shows based on radius and party.
      */
     public void onPlayerJoin(Player player) {
         // Initialize visibility tracking for the joining player
         visiblePlayers.computeIfAbsent(player.getUniqueId(), k -> Collections.newSetFromMap(new ConcurrentHashMap<>()));
-        
-        if (!hideNonPartyMembers) {
-            return;
-        }
-        // Update visibility for the joining player
-        updateVisibilityForPlayer(player);
 
-        if (shouldSendTabPackets()) {
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                if (shouldSendTabPackets()) {
-                    tabListManager.ensureAllPlayersVisibleInTabLists();
-                }
-            }, 5L);
-
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                if (shouldSendTabPackets() && player.isOnline()) {
-                    List<Player> others = new ArrayList<>(plugin.getServer().getOnlinePlayers());
-                    others.remove(player);
-
-                    if (!others.isEmpty()) {
-                        tabListManager.forceSendTabListAddPacketForMultiplePlayers(Collections.singletonList(player), others);
-                        tabListManager.forceSendTabListAddPacketForMultiplePlayers(others, Collections.singletonList(player));
-                    }
-                }
-            }, 2L);
-        }
-
-        // Send immediate tablist add packets AFTER entity visibility updates with a delay
-        // This ensures TAB plugin entity visibility processing completes before we establish tablist
-        if (shouldSendTabPackets() && !hideNonPartyMembersTab) {
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                if (shouldSendTabPackets() && player.isOnline()) {
-                    List<Player> allOnlinePlayers = new ArrayList<>(plugin.getServer().getOnlinePlayers());
-                    allOnlinePlayers.remove(player); // Don't add the joining player to themselves
-
-                    // Send packets TO the joining player (they see everyone)
-                    tabListManager.sendTabListAddPacketForMultiplePlayers(allOnlinePlayers, Arrays.asList(player));
-
-                    // Send packets FROM the joining player TO everyone else (everyone sees them)
-                    for (Player otherPlayer : allOnlinePlayers) {
-                        tabListManager.sendTabListAddPacket(player, List.of(otherPlayer));
-                    }
-                }
-            }, 20L); // 20 tick delay to ensure entity visibility processing completes
-        }
-
-        // Send pending party invitations to the player
+        // Send pending party invitations (always, so /party invite works even when locator bar off)
         UUID playerId = player.getUniqueId();
         Set<String> invites = pendingInvites.get(playerId);
         if (invites != null) {
             for (String partyName : invites) {
                 Party party = parties.get(partyName);
                 if (party != null) {
-                    // Send invitation message to the player
                     player.sendMessage("You have been invited to join party " + partyName);
                 }
             }
         }
 
-        // Send initial tablist state for the joining player
+        if (!partyLocatorBar) {
+            return;
+        }
+
+        // Delayed visibility update - player needs valid location after spawn
+        SchedulerAdapter.runLater(() -> {
+            if (!partyLocatorBar || !player.isOnline()) return;
+            updateVisibilityForPlayer(player);
+        }, 5L);
+
         if (shouldSendTabPackets()) {
-            if (!hideNonPartyMembersTab) {
-                // When hide-non-party-members-tab is false, use delayed sendInitialTabListState
-                // This ensures all players are visible in tablist after entity visibility processing
-                plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                    if (shouldSendTabPackets() && player.isOnline()) {
-                        tabListManager.sendInitialTabListState(player);
-                    }
-                }, 20L); // 20 tick delay for extra safety
-            } else {
-                // When hide-non-party-members-tab is true, use party-based visibility rules
+            // Re-add all players to tab lists (counteract hidePlayer removals)
+            SchedulerAdapter.runLater(() -> {
+                if (shouldSendTabPackets()) tabListManager.ensureAllPlayersVisibleInTabLists();
+            }, 2L);
+
+            // Add joiner to others' tab lists and others to joiner's tab list
+            SchedulerAdapter.runLater(() -> {
+                if (!shouldSendTabPackets() || !player.isOnline()) return;
+                List<Player> others = new ArrayList<>(Bukkit.getOnlinePlayers());
+                others.remove(player);
+                if (!others.isEmpty()) {
+                    tabListManager.forceSendTabListAddPacketForMultiplePlayers(Collections.singletonList(player), others);
+                    tabListManager.forceSendTabListAddPacketForMultiplePlayers(others, Collections.singletonList(player));
+                }
+            }, 3L);
+
+            // Additional tab list sync after entity visibility settles
+            SchedulerAdapter.runLater(() -> {
+                if (!shouldSendTabPackets() || !player.isOnline()) return;
+                List<Player> allOnline = new ArrayList<>(Bukkit.getOnlinePlayers());
+                allOnline.remove(player);
+                tabListManager.forceSendTabListAddPacketForMultiplePlayers(allOnline, List.of(player));
+                for (Player other : allOnline) {
+                    tabListManager.forceSendTabListAddPacket(player, List.of(other));
+                }
                 tabListManager.sendInitialTabListState(player);
-            }
+            }, 15L);
         }
     }
 
@@ -771,11 +805,7 @@ public class PartyManager {
             visibleSet.remove(playerId);
         }
 
-        if (!hideNonPartyMembers) {
-            return;
-        }
-
-        // Leave their current party (if any)
+        // Leave their current party (if any) - always run so /party commands work
         leaveParty(playerId);
 
         // Clean up any pending invites this player has sent to others
@@ -820,15 +850,10 @@ public class PartyManager {
 
         // Remove the leaving player from all tab lists
         if (shouldSendTabPackets()) {
-            // Send immediately for instant effect
             tabListManager.sendTabListRemoveForLeavingPlayer(player);
-            
-            // Send again with delay as backup (TAB plugin might interfere)
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                if (shouldSendTabPackets()) {
-                    tabListManager.sendTabListRemoveForLeavingPlayer(player);
-                }
-            }, 2L); // 2 tick delay
+            SchedulerAdapter.runLater(() -> {
+                if (shouldSendTabPackets()) tabListManager.sendTabListRemoveForLeavingPlayer(player);
+            }, 2L);
         }
     }
 

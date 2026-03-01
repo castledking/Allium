@@ -133,20 +133,34 @@ public class NicknameManager {
         if (nickname == null || nickname.isEmpty()) {
             return "";
         }
-        
-        // Apply PrismaticAPI formatting
-        return PrismaticAPI.colorize(player, nickname);
+        try {
+            String result = PrismaticAPI.colorize(player, nickname);
+            return (result != null && !result.isEmpty()) ? result : nickname;
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Error formatting nickname for " + (player != null ? player.getName() : "?") + ": " + e.getMessage());
+            return nickname;
+        }
     }
 
+    /**
+     * Gets the stored nickname for a player. Only returns DB value when explicitly set via GUI or /nick.
+     * Returns player's default in-game name when not edited.
+     */
     public String getStoredNickname(Player player) {
         if (player == null) return "";
-        // Return the player's display name or their actual name
-        String displayName = player.displayName() != null ? 
-            net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(player.displayName()) : "";
-        if (displayName == null || displayName.isEmpty()) {
-            return player.getName();
+        String defaultName = player.getName();
+        if (defaultName == null || defaultName.isEmpty()) {
+            defaultName = player.getUniqueId().toString();
         }
-        return PrismaticAPI.stripAll(displayName);
+        try {
+            String dbNick = database.getStoredPlayerDisplayname(player.getUniqueId());
+            if (dbNick != null && !dbNick.trim().isEmpty()) {
+                return dbNick;
+            }
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Error loading nickname from DB for " + player.getName() + ": " + e.getMessage());
+        }
+        return defaultName;
     }
 
     /**
@@ -216,12 +230,33 @@ public class NicknameManager {
         
         String playerName = player.getName();
         String formattedNick = formatNickname(player, playerName);
-        // Update player's display name using modern API
         player.displayName(Component.text(formattedNick));
         player.playerListName(Component.text(formattedNick));
-        // database.removeNickname(player.getUniqueId());
-        
+        try {
+            database.executeUpdate(
+                "UPDATE player_data SET player_displayname = ? WHERE uuid = ?",
+                playerName,
+                player.getUniqueId().toString()
+            );
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Error resetting nickname in DB for " + player.getName() + ": " + e.getMessage());
+        }
         player.sendMessage(PrismaticAPI.colorize(player, "&aYour nickname has been reset to " + playerName));
+    }
+
+    /**
+     * Restores a player's display name from stored nickname (e.g. on join).
+     * Does not validate, set cooldown, or save to DB.
+     */
+    public void restoreDisplayNameFromStored(Player player, String storedNick) {
+        if (player == null || storedNick == null || storedNick.trim().isEmpty()) return;
+        try {
+            String formatted = getFormattedNickname(player, storedNick);
+            player.displayName(Component.text(formatted));
+            player.playerListName(Component.text(formatted));
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Error restoring nickname for " + player.getName() + ": " + e.getMessage());
+        }
     }
 
     public Map<String, String[]> getTemplates() {
@@ -264,8 +299,12 @@ public class NicknameManager {
         
         for (int i = 0; i < letters.length; i++) {
             String color = letterColors.get(i);
-            if (color != null) {
-                result.append(color).append(letters[i]);
+            if (color != null && !color.isEmpty()) {
+                // LetterColorGUI stores "a","b",etc. Prepend & for legacy; &#xxxxxx for hex
+                String code = (color.length() == 1 && "0123456789abcdefABCDEF".indexOf(color.charAt(0)) >= 0)
+                    ? "&" + color
+                    : (color.startsWith("#") ? "&#" + color.substring(1) : color);
+                result.append(code).append(letters[i]);
             } else {
                 result.append(letters[i]);
             }
@@ -292,17 +331,22 @@ public class NicknameManager {
     }
 
     public String getFormattedNickname(Player player, String nickname) {
+        String fallback = (player != null) ? (player.getName() != null && !player.getName().isEmpty() ? player.getName() : player.getUniqueId().toString()) : "";
+        if (nickname == null || nickname.isEmpty()) {
+            return fallback;
+        }
         String formatted = formatNickname(player, nickname);
-        
+        if (formatted == null || formatted.isEmpty()) {
+            return fallback;
+        }
         if (hasLetterColors(player)) {
             formatted = applyLetterColors(player, formatted);
         }
-        
         if (hasGlowEffect(player)) {
             formatted = "§k" + formatted + "§r";
         }
-        
-        return formatted;
+        // Final safety: never return blank when we have a valid player
+        return (formatted != null && !formatted.trim().isEmpty()) ? formatted : fallback;
     }
 
     public int getMaxNickLength() {

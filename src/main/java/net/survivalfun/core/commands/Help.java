@@ -780,7 +780,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             }
 
             PluginCommand cmd = Bukkit.getPluginCommand(query);
-            if (cmd != null && sender.hasPermission("allium.admin")) {
+            if (cmd != null && sender.hasPermission("allium.help")) {
                 displayCommandHelp(sender, cmd);
                 return;
             }

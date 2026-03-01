@@ -5,7 +5,6 @@ import net.survivalfun.core.PluginStart;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.RegisteredServiceProvider;
 
 import net.survivalfun.core.managers.core.Text;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
@@ -32,8 +31,7 @@ public class PermissionCache {
     }
 
     private Permission getVaultPermission() {
-        RegisteredServiceProvider<Permission> rsp = Bukkit.getServicesManager().getRegistration(Permission.class);
-        return rsp != null ? rsp.getProvider() : null;
+        return plugin.getVaultPermission();
     }
 
     private void updateCache(UUID playerId, String permission, boolean hasPermission) {

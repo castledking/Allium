@@ -2,7 +2,7 @@ package net.survivalfun.core.listeners;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.PartyManager;
-import net.survivalfun.core.managers.core.TabListManager;
+import net.survivalfun.core.packetevents.TabListManager;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -24,30 +24,19 @@ public class PartyListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
-        if (!partyManager.arePartyFeaturesEnabled()) {
-            return;
-        }
         Player player = event.getPlayer();
         partyManager.onPlayerJoin(player);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
-        if (!partyManager.arePartyFeaturesEnabled()) {
-            return;
-        }
         Player player = event.getPlayer();
         partyManager.onPlayerQuit(player);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerMove(PlayerMoveEvent event) {
-        // Skip processing if party features are disabled
-        if (!partyManager.arePartyFeaturesEnabled()) {
-            return;
-        }
-        
-        // Only update visibility if the player actually moved to a different block
+        if (!partyManager.isPartyLocatorBarEnabled()) return;
         if (event.getFrom().getBlockX() != event.getTo().getBlockX() ||
             event.getFrom().getBlockZ() != event.getTo().getBlockZ()) {
             partyManager.onPlayerMove(event.getPlayer());

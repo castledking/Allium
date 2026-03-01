@@ -324,8 +324,8 @@ public class FlightRestoration implements Listener {
 
         PotionEffect current = player.getPotionEffect(PotionEffectType.SLOW_FALLING);
         if (current == null || current.getDuration() <= 40) {
-            // Schedule the potion effect on the proper thread for Folia compatibility
-            SchedulerAdapter.run(() -> {
+            // Must run on entity's region for Folia - addPotionEffect modifies entity state
+            SchedulerAdapter.runAtEntity(player, () -> {
                 if (player.isOnline()) {
                     player.addPotionEffect(new PotionEffect(
                             PotionEffectType.SLOW_FALLING,

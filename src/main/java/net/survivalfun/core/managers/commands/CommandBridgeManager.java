@@ -280,9 +280,13 @@ public class CommandBridgeManager {
         for (BridgeDef d : bridges.values()) {
             if (!d.allowBaseCmd) continue;
             String label = d.id.toLowerCase(Locale.ROOT);
-            // Hard-protect the native '/dialog' command to avoid breaking Minecraft dialogs
+            // Hard-protect commands that must not be overridden by bridges
             if ("dialog".equals(label)) {
                 Text.sendDebugLog(WARN, "Skipping registration of base command '/dialog' because it conflicts with the native Minecraft command.");
+                continue;
+            }
+            if ("ar".equals(label) || "autorestart".equals(label)) {
+                Text.sendDebugLog(WARN, "Skipping registration of base command '/" + label + "' - reserved for AutoRestart.");
                 continue;
             }
             try {

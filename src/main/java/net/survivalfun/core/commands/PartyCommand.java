@@ -98,6 +98,10 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
                 handleReload(player);
                 break;
 
+            case "visibility":
+                handleVisibility(player);
+                break;
+
             default:
                 showHelp(player);
                 break;
@@ -177,10 +181,21 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(Text.colorize("&e/party info &7- Show your party info"));
         player.sendMessage(Text.colorize("&e/party list &7- List all parties"));
         player.sendMessage(Text.colorize("&e/party reload &7- Reload party configuration (admin only)"));
+        player.sendMessage(Text.colorize("&e/party visibility &7- Force visibility refresh (admin only)"));
     }
 
     private String generatePartyName(String playerName) {
         return (playerName + "'s party").toLowerCase(Locale.ROOT);
+    }
+
+    private void handleVisibility(Player player) {
+        if (!player.hasPermission("allium.party.reload")) {
+            player.sendMessage(Text.colorize("&cYou don't have permission."));
+            return;
+        }
+        partyManager.forceVisibilityRefresh();
+        player.sendMessage(Text.colorize("&aVisibility refresh forced. Config: party-locator-bar=" + partyManager.isPartyLocatorBarEnabled()
+                + ", radius=" + partyManager.getShowNonPartyMembersRadius() + ", locator-bar-enabled=" + Boolean.TRUE.equals(player.getWorld().getGameRuleValue(org.bukkit.GameRule.LOCATOR_BAR))));
     }
 
     private void handleLeave(Player player) {
@@ -254,7 +269,7 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> completions = new ArrayList<>();
             String partial = args[0].toLowerCase();
-            for (String sub : new String[]{"create", "invite", "join", "leave", "info", "list", "reload"}) {
+            for (String sub : new String[]{"create", "invite", "join", "leave", "disband", "info", "list", "reload", "visibility"}) {
                 if (sub.startsWith(partial)) {
                     completions.add(sub);
                 }

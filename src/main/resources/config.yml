@@ -14,6 +14,22 @@ server-name: "Unknown Server"
 group_migration_completed: false
 player_migration_completed: false
 
+# Debug options (debug-mode can also be toggled via /core debug)
+# debug-scheduler: when true, logs runAtEntity/runAtEntityLater scheduler activity (very verbose on Folia)
+debug-scheduler: false
+
+############################################################
+# +------------------------------------------------------+ #
+# |                 Update Checker                       | #
+# +------------------------------------------------------+ #
+############################################################
+# Checks SpigotMC for new versions on startup.
+# notify-mode: off = disabled, console = log to console only,
+#   in-game = notify players with allium.admin on join, both = console + in-game
+update-checker:
+  enabled: true
+  notify-mode: both
+
 ############################################################
 # +------------------------------------------------------+ #
 # |                 Discord Settings                     | #
@@ -196,16 +212,19 @@ commands:
   - pay
   - tpcancel
   - tpahere
+  - party
 
 party-manager:
-  # Whether to hide non-party members from the locator bar
-  hide-non-party-members: false
-
-  # Whether to hide non-party members from the tab list
-  hide-non-party-members-tab: false # false requires PacketEvents
+  # When true, hides non-party members beyond radius from locator bar (requires PacketEvents)
+  # Set to false automatically when PacketEvents is not available; /party commands still work
+  party-locator-bar: true
   
   # Amount of blocks to start showing non-party members. (shows up on locator bar)
   show-non-party-members-radius: 128 # 128 is default
+
+  # Sync party commands with mcMMO parties. When true, create/join/leave/disband also update mcMMO
+  # so Allium and mcMMO parties stay in sync. Only runs if mcMMO is installed.
+  sync-with-mcmmo: true
 
 creative-manager:
   # Here you can add blocks and entities that will be
@@ -379,4 +398,4 @@ world-defaults:
 #    - send-command-feedback: false
 
 # Version of the config file (do not modify)
-version: 0.1.3a
+version: 0.1.4a

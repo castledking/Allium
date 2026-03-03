@@ -56,10 +56,6 @@ commands:
     description: "Core plugin command. Subcommands: reload, debug, voucher, etc."
     usage: "/core"
     aliases: [allium]
-  core item:
-    description: "Give custom items to players"
-    usage: "/core item give <item> [amount]"
-    permission: allium.coreitem.give
   rename:
     description: "Rename item in main hand"
     usage: "/rename <name>"

@@ -97,10 +97,12 @@ public class Gamemode implements CommandExecutor {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label);
             return true;
         }
-        // Check if using a direct gamemode command (gmc, gms, gma, gmsp)
-        GameMode directMode = commandAliases.get(label.toLowerCase());
+        // Strip namespace (e.g. "allium:creative" -> "creative") so namespaced commands work as direct mode commands
+        String effectiveLabel = label.contains(":") ? label.substring(label.indexOf(':') + 1) : label;
+        // Check if using a direct gamemode command (gmc, gms, gma, gmsp, creative, survival, etc.)
+        GameMode directMode = commandAliases.get(effectiveLabel.toLowerCase());
         if (directMode != null) {
-            return handleDirectGamemodeCommand(sender, directMode, args, label);
+            return handleDirectGamemodeCommand(sender, directMode, args, effectiveLabel);
         }
 
         // Standard gamemode command handling

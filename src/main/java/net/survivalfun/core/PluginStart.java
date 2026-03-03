@@ -1714,52 +1714,37 @@ public class PluginStart extends JavaPlugin {
         final long retryDelay = 40L; // 2 seconds
         final int[] attempts = {0};
         final SchedulerAdapter.TaskHandle[] handle = new SchedulerAdapter.TaskHandle[1];
+        final String[] commandsToEnforce = {
+            "core", "restore", "god", "heal", "gamemode",
+            "msg", "reply", "mail",
+            "tp", "tpa", "tpcancel", "tpaccept", "tpdeny", "tppet", "tpmob", "tppos",
+            "tphere", "tpahere", "tptoggle", "back", "otp", "top", "bottom"
+        };
         handle[0] = SchedulerAdapter.runTimer(() -> {
             attempts[0]++;
-            boolean coreOk = false;
-            boolean restoreOk = false;
-            boolean godOk = false;
-            boolean healOk = false;
-            
-            try {
-                coreOk = forceCommandOwnership("core");
-            } catch (Throwable t) {
-                if (isDebugMode()) {
-                    Text.sendDebugLog(WARN, "forceCoreCommandOwnership error: " + t.getMessage());
-                }
-            }
-            try {
-                restoreOk = forceCommandOwnership("restore");
-            } catch (Throwable t) {
-                if (isDebugMode()) {
-                    Text.sendDebugLog(WARN, "forceRestoreCommandOwnership error: " + t.getMessage());
-                }
-            }
-            try {
-                godOk = forceCommandOwnership("god");
-            } catch (Throwable t) {
-                if (isDebugMode()) {
-                    Text.sendDebugLog(WARN, "forceGodCommandOwnership error: " + t.getMessage());
-                }
-            }
-            try {
-                healOk = forceCommandOwnership("heal");
-            } catch (Throwable t) {
-                if (isDebugMode()) {
-                    Text.sendDebugLog(WARN, "forceHealCommandOwnership error: " + t.getMessage());
+            boolean allOk = true;
+            for (String cmd : commandsToEnforce) {
+                try {
+                    if (!forceCommandOwnership(cmd)) {
+                        allOk = false;
+                    }
+                } catch (Throwable t) {
+                    if (isDebugMode()) {
+                        Text.sendDebugLog(WARN, "forceCommandOwnership(" + cmd + ") error: " + t.getMessage());
+                    }
+                    allOk = false;
                 }
             }
 
-            boolean ok = coreOk && restoreOk && godOk && healOk;
+            boolean ok = allOk;
             // Stop retrying if success, ran out of attempts, or enforcement unsupported on this server
             if (ok || attempts[0] >= maxAttempts || commandMapEnforceUnsupportedWarned) {
                 if (ok) {
                     if (isDebugMode()) {
-                        Text.sendDebugLog(INFO, "Confirmed Allium owns '/core', '/restore', '/god', and '/heal' after " + attempts[0] + " attempt(s).");
+                        Text.sendDebugLog(INFO, "Confirmed Allium owns preferred commands (including /allium:tp, /allium:tpa, etc.) after " + attempts[0] + " attempt(s).");
                     }
                 } else {
-                    Text.sendDebugLog(WARN, "Could not ensure Allium owns all commands after " + attempts[0] + " attempt(s). Core: " + coreOk + 
-                                          ", Restore: " + restoreOk + ", God: " + godOk + ", Heal: " + healOk);
+                    Text.sendDebugLog(WARN, "Could not ensure Allium owns all preferred commands after " + attempts[0] + " attempt(s).");
                 }
                 handle[0].cancel();
             }

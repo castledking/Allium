@@ -654,25 +654,24 @@ public class Give implements CommandExecutor {
             org.bukkit.Bukkit.getPluginManager().callEvent(evt);
         }
     
-    // Send success message to the command sender
+    // Send success message (use give.equipped when armor was equipped to slot)
     if (sender.getName().equals(target.getName())) {
-        // Message for when giving to self
-        String successMessage = lang.get("give.success")
+        String messageKey = wasEquipped ? "give.equipped" : "give.success";
+        String successMessage = lang.get(messageKey)
             .replace("{name}", "yourself")
             .replace("{amount}", String.valueOf(totalGiven))
             .replace("{item}", finalItemName);
         lang.sendMessage(sender, successMessage);
     } else {
-        // Message for when giving to another player
         String successMessage = lang.get("give.success")
             .replace("{name}", target.getName())
             .replace("{amount}", String.valueOf(totalGiven))
             .replace("{item}", finalItemName);
         lang.sendMessage(sender, successMessage);
 
-        // Send receive message to the target player if online
         if (target.isOnline()) {
-            String receiveMessage = lang.get("give.receive")
+            String receiveKey = wasEquipped ? "give.equipped" : "give.receive";
+            String receiveMessage = lang.get(receiveKey)
                 .replace("{amount}", String.valueOf(totalGiven))
                 .replace("{item}", finalItemName);
             lang.sendMessage(target, receiveMessage);
@@ -1002,13 +1001,13 @@ public class Give implements CommandExecutor {
         
         // Check if the item is armor and if the corresponding armor slot is empty
         Material material = item.getType();
-        if (material.name().endsWith("_HELMET") && inventory.getHelmet() == null) {
+        if (material.name().endsWith("_HELMET") && isArmorSlotEmpty(inventory.getHelmet())) {
             return false; // Helmet slot is empty
-        } else if (material.name().endsWith("_CHESTPLATE") && inventory.getChestplate() == null) {
+        } else if (material.name().endsWith("_CHESTPLATE") && isArmorSlotEmpty(inventory.getChestplate())) {
             return false; // Chestplate slot is empty
-        } else if (material.name().endsWith("_LEGGINGS") && inventory.getLeggings() == null) {
+        } else if (material.name().endsWith("_LEGGINGS") && isArmorSlotEmpty(inventory.getLeggings())) {
             return false; // Leggings slot is empty
-        } else if (material.name().endsWith("_BOOTS") && inventory.getBoots() == null) {
+        } else if (material.name().endsWith("_BOOTS") && isArmorSlotEmpty(inventory.getBoots())) {
             return false; // Boots slot is empty
         }
         
@@ -1032,6 +1031,11 @@ public class Give implements CommandExecutor {
         return total;
     }
     
+    /** Check if armor slot is empty (handles null and ItemStack.EMPTY/AIR in newer Bukkit). */
+    private boolean isArmorSlotEmpty(ItemStack stack) {
+        return stack == null || stack.getType() == Material.AIR || stack.isEmpty();
+    }
+
     /**
      * Attempts to equip an armor item in the appropriate slot.
      * 
@@ -1046,22 +1050,22 @@ public class Give implements CommandExecutor {
         
         // Determine the appropriate slot based on the armor type
         if (material.name().endsWith("_HELMET") || material.name().equals("TURTLE_HELMET")) {
-            if (inventory.getHelmet() == null) {
+            if (isArmorSlotEmpty(inventory.getHelmet())) {
                 inventory.setHelmet(armorItem);
                 return true;
             }
         } else if (material.name().endsWith("_CHESTPLATE") || material.name().equals("ELYTRA")) {
-            if (inventory.getChestplate() == null) {
+            if (isArmorSlotEmpty(inventory.getChestplate())) {
                 inventory.setChestplate(armorItem);
                 return true;
             }
         } else if (material.name().endsWith("_LEGGINGS")) {
-            if (inventory.getLeggings() == null) {
+            if (isArmorSlotEmpty(inventory.getLeggings())) {
                 inventory.setLeggings(armorItem);
                 return true;
             }
         } else if (material.name().endsWith("_BOOTS")) {
-            if (inventory.getBoots() == null) {
+            if (isArmorSlotEmpty(inventory.getBoots())) {
                 inventory.setBoots(armorItem);
                 return true;
             }

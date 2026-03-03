@@ -642,11 +642,6 @@ public class Give implements CommandExecutor {
                                       ", totalGiven=" + totalGiven);
             }
         }
-        
-        // Add equipped armor piece if applicable
-        if (wasEquipped) {
-            totalGiven++; // Add the equipped armor piece
-        }
 
         // Fire event for other plugins (e.g. WAYC Creative Tracker)
         if (totalGiven > 0) {

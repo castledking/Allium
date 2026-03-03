@@ -603,12 +603,12 @@ public class Core implements CommandExecutor, TabCompleter {
     private void handleEscalateCommand(CommandSender sender, String[] args) {
         // This command is console-only
         if (!(sender instanceof org.bukkit.command.ConsoleCommandSender)) {
-            Text.sendErrorMessage(sender, "command.console-only", lang, Collections.emptyMap());
+            Text.sendErrorMessage(sender, "console-only", lang);
             return;
         }
 
         if (args.length < 4) {
-            sender.sendMessage(lang.get("command-usage").replace("{cmd}", "escalate").replace("{args}", "<staffmember> <target> <reason>"));
+            lang.sendMessage(sender, "command-usage", "{cmd}", "/core escalate", "{args}", "<staffmember> <target> <reason>");
             return;
         }
 

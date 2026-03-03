@@ -507,7 +507,6 @@ command:
       not-configured: "&cDiscord escalation is not configured"
       failed: "&cFailed to send escalation"
       success: "&aEscalation sent to staff!"
-    console-only: "&cThis command can only be run from the console."
 
 #==========================================#
 #                ECONOMY                   #

@@ -972,18 +972,17 @@ public class Lang {
                     if (line.contains("&") || line.contains("§")) {
                         String legacyParsed = Text.parseColors(line);
                         
-                        if (paperAvailable) {
+                        if (paperAvailable && !line.contains("{")) {
+                            // Skip MiniMessage when line has placeholders ({name}, {amount}, etc.) - they cause parse errors
                             try {
-                                // If Paper is available, try to parse MiniMessage tags
                                 net.kyori.adventure.text.Component component = MINI_MESSAGE.deserialize(legacyParsed);
                                 result.add(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(component));
                             } catch (Exception e) {
-                                // If MiniMessage parsing fails, fall back to just legacy colors
                                 Text.sendDebugLog(WARN, "Failed to parse MiniMessage in line (falling back to legacy): " + line);
                                 result.add(legacyParsed);
                             }
                         } else {
-                            // If Paper is not available, just use the legacy parsed colors
+                            // No Paper, or line has placeholders - use legacy only
                             result.add(legacyParsed);
                         }
                     } else if (paperAvailable) {

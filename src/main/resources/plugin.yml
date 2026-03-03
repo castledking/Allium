@@ -5,8 +5,8 @@ api-version: 1.21
 folia-supported: true
 author: towkio
 description: "A secure, modern Essentials solution."
-soft-depend: [Vault, PlaceholderAPI, packetevents, floodgate, mcMMO]
-loadafter: [PlaceholderAPI, mcMMO, packetevents]
+soft-depend: [Vault, PlaceholderAPI, packetevents, floodgate, mcMMO, LuckPerms]
+loadafter: [PlaceholderAPI, mcMMO, packetevents, Vault, LuckPerms]
 
 commands:
   nickname:

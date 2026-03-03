@@ -941,11 +941,11 @@ public class PluginStart extends JavaPlugin {
 
             boolean coreServicesReady = false; // Track readiness of permission/chat/economy
 
-            // Set service instances if available (use Proxy to avoid ClassCastException with LuckPerms/JarInJarClassLoader)
+            // Set service instances (use delegate to avoid "not an interface" - Permission is abstract class)
             if (permissionProvider != null) {
                 try {
                     Object permProvider = permissionProvider.getProvider();
-                    vaultPerms = createVaultPermissionProxy(permProvider);
+                    vaultPerms = new net.survivalfun.core.managers.vault.VaultPermissionDelegate(permProvider);
                     Text.sendDebugLog(INFO, "Vault Permission service initialized: " + vaultPerms.getName());
                     coreServicesReady = true;
                 } catch (Throwable t) {
@@ -958,7 +958,7 @@ public class PluginStart extends JavaPlugin {
             if (chatProvider != null) {
                 try {
                     Object chatProviderObj = chatProvider.getProvider();
-                    vaultChat = createVaultChatProxy(chatProviderObj);
+                    vaultChat = createVaultChatProxy(chatProviderObj, chatClass);
                     Text.sendDebugLog(INFO, "Vault Chat service initialized: " + vaultChat.getName());
                     coreServicesReady = true;
                 } catch (Throwable t) {
@@ -997,33 +997,21 @@ public class PluginStart extends JavaPlugin {
     }
 
     /**
-     * Creates a Permission proxy that delegates to the provider via reflection.
-     * Avoids ClassCastException when the provider (e.g. LuckPerms) uses a different classloader.
-     */
-    private Permission createVaultPermissionProxy(Object provider) {
-        InvocationHandler handler = (proxy, method, args) -> {
-            Method m = findMethod(provider.getClass(), method.getName(), method.getParameterTypes());
-            return m.invoke(provider, args);
-        };
-        return (Permission) Proxy.newProxyInstance(
-            Permission.class.getClassLoader(),
-            new Class<?>[] { Permission.class },
-            handler
-        );
-    }
-
-    /**
      * Creates a Chat proxy that delegates to the provider via reflection.
-     * Avoids ClassCastException when the provider uses a different classloader.
+     * Uses the Chat class from Vault's classloader to avoid "not an interface" with bundled API.
      */
-    private Chat createVaultChatProxy(Object provider) {
+    private Chat createVaultChatProxy(Object provider, Class<?> chatInterface) {
+        if (!chatInterface.isInterface()) {
+            Text.sendDebugLog(WARN, "Vault Chat is abstract class, skipping proxy");
+            return null;
+        }
         InvocationHandler handler = (proxy, method, args) -> {
             Method m = findMethod(provider.getClass(), method.getName(), method.getParameterTypes());
             return m.invoke(provider, args);
         };
         return (Chat) Proxy.newProxyInstance(
-            Chat.class.getClassLoader(),
-            new Class<?>[] { Chat.class },
+            chatInterface.getClassLoader(),
+            new Class<?>[] { chatInterface },
             handler
         );
     }

@@ -247,7 +247,8 @@ public class TP implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
-        String usedCommand = label.toLowerCase();
+        // Strip namespace (e.g. "allium:back" -> "back") so namespaced commands work
+        String usedCommand = (label.contains(":") ? label.substring(label.indexOf(':') + 1) : label).toLowerCase();
 
         // Handle basic teleport command
         if (teleportCommandAliases.contains(usedCommand)) {
@@ -1703,14 +1704,17 @@ public class TP implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleTeleport(CommandSender sender, String[] args, String label) {
-        // Check if no arguments are provided
+        // Check if no arguments are provided (except /back which is valid with no args)
         if (args.length == 0) {
-            // Show usage for /tp command
-            String usage = lang.get("command-usage")
-                .replace("{cmd}", "tp")
-                .replace("{args}", "<player> [target]");
-            lang.sendMessage(sender, "command-usage", usage);
-            return true;
+            if (!label.equalsIgnoreCase("back")) {
+                // Show usage for /tp command
+                String usage = lang.get("command-usage")
+                    .replace("{cmd}", "tp")
+                    .replace("{args}", "<player> [target]");
+                lang.sendMessage(sender, "command-usage", usage);
+                return true;
+            }
+            // /back with no args falls through to back handling below
         }
 
         // Handle coordinate-based teleport: /tp @s x y z or /tp player x y z

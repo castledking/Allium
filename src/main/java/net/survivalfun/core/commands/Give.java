@@ -1,6 +1,7 @@
 package net.survivalfun.core.commands;
 
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.events.ItemGiveEvent;
 import net.survivalfun.core.items.CustomItem;
 import net.survivalfun.core.items.CustomItemRegistry;
 import net.survivalfun.core.managers.core.*;
@@ -126,7 +127,8 @@ public class Give implements CommandExecutor {
                 itemArg = args[0];
                 amount = args.length > 1 ? Integer.parseInt(args[1]) : 0;
             }
-            giveItems(playerName, itemArg, sender, amount);
+            String source = label.equalsIgnoreCase("give") ? "give" : "item";
+            giveItems(playerName, itemArg, sender, amount, source);
         } catch (NumberFormatException e) {
             String invalidArg = label.equalsIgnoreCase("give") && args.length > 2 ? args[2] : args[1];
             Text.sendErrorMessage(sender, "invalid", lang, "{arg}", invalidArg);
@@ -134,7 +136,7 @@ public class Give implements CommandExecutor {
         return true;
     }
 
-    private void giveItems(String targetSelector, String arg, CommandSender sender, int amount) {
+    private void giveItems(String targetSelector, String arg, CommandSender sender, int amount, String source) {
         // Handle selectors
         if (targetSelector.startsWith("@")) {
             // Get the command block or console sender's location for selector targeting
@@ -199,7 +201,7 @@ public class Give implements CommandExecutor {
                         for (ItemSpec spec : specs) {
                             ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
                             if (item != null) {
-                                giveItemToPlayer((Player) entity, item, sender);
+                                giveItemToPlayer((Player) entity, item, sender, source);
                             }
                         }
                     }
@@ -237,7 +239,7 @@ public class Give implements CommandExecutor {
             for (ItemSpec spec : specs) {
                 ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
                 if (item == null) return; // Error handled in createItemStack
-                giveItemToPlayer(target, item, sender);
+                giveItemToPlayer(target, item, sender, source);
             }
         } catch (Exception e) {
             Text.sendDebugLog(ERROR, "Error processing give command for " + sender.getName() + ": " + e.getMessage(), e);
@@ -396,6 +398,27 @@ public class Give implements CommandExecutor {
                 Spawner.applySpawnerMeta(sender, item, parts);
             }
             
+            // Apply player head owner when user provides name (e.g. player_head;Notch)
+            if (parts.length > 1 && material == Material.PLAYER_HEAD) {
+                String owner = null;
+                for (int i = 1; i < parts.length; i++) {
+                    String part = parts[i];
+                    if (part.toLowerCase().startsWith("owner:")) {
+                        owner = part.substring(6).trim();
+                        break;
+                    }
+                }
+                if (owner == null) {
+                    owner = parts[1].trim(); // First param is owner (e.g. player_head;Notch)
+                }
+                if (owner != null && !owner.isEmpty()) {
+                    ItemStack skull = resolvePlayerHead(owner, sender);
+                    if (skull != null) {
+                        item.setItemMeta(skull.getItemMeta());
+                    }
+                }
+            }
+            
             // Apply any additional parameters (enchantments, etc.)
             if (parts.length > 1) {
                 Map<Enchantment, Integer> enchantments = Meta.getEnchantmentsFromParts(parts);
@@ -424,7 +447,7 @@ public class Give implements CommandExecutor {
         }
     }
     
-    private void giveItemToPlayer(Player target, ItemStack item, CommandSender sender) {
+    private void giveItemToPlayer(Player target, ItemStack item, CommandSender sender, String source) {
         PlayerInventory inventory = target.getInventory();
         
         // Get the configuration values that will be needed throughout the method
@@ -457,8 +480,26 @@ public class Give implements CommandExecutor {
         boolean wasEquipped = false;
         
         if (!leftover.isEmpty()) {
-            // Try offhand if there are leftovers and offhand is empty
-            if (inventory.getItemInOffHand().getType() == Material.AIR) {
+            // For armor: try armor slot BEFORE offhand so helmet goes to helmet slot, not offhand
+            if (!leftover.isEmpty() && isArmor(item.getType())) {
+                ItemStack firstLeftover = leftover.values().iterator().next();
+                ItemStack armorItem = firstLeftover.clone();
+                armorItem.setAmount(1); // Only equip one piece
+                
+                boolean equipped = tryEquipArmor(inventory, armorItem);
+                if (equipped) {
+                    wasEquipped = true;
+                    addedAsArmor++;
+                    if (armorItem.getAmount() >= firstLeftover.getAmount()) {
+                        leftover.remove(leftover.keySet().iterator().next());
+                    } else {
+                        firstLeftover.setAmount(firstLeftover.getAmount() - 1);
+                    }
+                }
+            }
+            
+            // Try offhand if there are still leftovers and offhand is empty
+            if (!leftover.isEmpty() && inventory.getItemInOffHand().getType() == Material.AIR) {
                 ItemStack firstLeftover = leftover.values().iterator().next();
                 // Limit stack size to 99 for serialization compatibility
                 int maxSerializableStackSize = 99;
@@ -480,29 +521,6 @@ public class Give implements CommandExecutor {
                 
                 // Track items added to offhand
                 addedToOffhand = amountForOffhand;
-            }
-            
-            // If there are still leftovers, try to equip as armor if applicable
-            if (!leftover.isEmpty() && isArmor(item.getType())) {
-                ItemStack firstLeftover = leftover.values().iterator().next();
-                ItemStack armorItem = firstLeftover.clone();
-                armorItem.setAmount(1); // Only equip one piece
-                
-                // Try to equip the armor in the appropriate slot
-                boolean equipped = tryEquipArmor(inventory, armorItem);
-                
-                if (equipped) {
-                    wasEquipped = true;
-                    
-                    // Track items added as armor
-                    addedAsArmor++;
-                    
-                    if (armorItem.getAmount() >= firstLeftover.getAmount()) {
-                        leftover.remove(leftover.keySet().iterator().next());
-                    } else {
-                        firstLeftover.setAmount(firstLeftover.getAmount() - 1);
-                    }
-                }
             }
             
             // We already have the configuration values from the beginning of the method
@@ -629,6 +647,12 @@ public class Give implements CommandExecutor {
         if (wasEquipped) {
             totalGiven++; // Add the equipped armor piece
         }
+
+        // Fire event for other plugins (e.g. WAYC Creative Tracker)
+        if (totalGiven > 0) {
+            ItemGiveEvent evt = new ItemGiveEvent(target, item, totalGiven, sender, source);
+            org.bukkit.Bukkit.getPluginManager().callEvent(evt);
+        }
     
     // Send success message to the command sender
     if (sender.getName().equals(target.getName())) {
@@ -737,22 +761,18 @@ public class Give implements CommandExecutor {
                     item.setItemMeta(meta);
                 }
             } else if (part.toLowerCase().startsWith("owner:")) {
-                // Player head owner (explicit syntax) - use Minecraft-Heads API
+                // Player head owner (explicit syntax)
                 if (item.getType() == Material.PLAYER_HEAD) {
-                    String ownerName = part.substring(6);
-                    ItemStack skull = Skull.fetchPlayerHeadFromMinecraftHeads(ownerName);
+                    String ownerName = part.substring(6).trim();
+                    ItemStack skull = resolvePlayerHead(ownerName, sender);
                     if (skull != null) {
-                        // Replace the current item with the fetched skull
-                        item.setType(skull.getType());
                         item.setItemMeta(skull.getItemMeta());
                     }
                 }
             } else if (item.getType() == Material.PLAYER_HEAD && !part.toLowerCase().startsWith("name:")) {
-                // Player head owner (implicit syntax - no owner: prefix needed) - use Minecraft-Heads API
-                ItemStack skull = Skull.fetchPlayerHeadFromMinecraftHeads(part);
+                // Player head owner (implicit syntax - no owner: prefix needed)
+                ItemStack skull = resolvePlayerHead(part.trim(), sender);
                 if (skull != null) {
-                    // Replace the current item with the fetched skull
-                    item.setType(skull.getType());
                     item.setItemMeta(skull.getItemMeta());
                 }
             } else if (isEnchantmentParameter(part)) {
@@ -924,6 +944,23 @@ public class Give implements CommandExecutor {
         return null;
     }
     
+    /**
+     * Resolves a player head by owner name. Uses Bukkit PlayerProfile API first (EssentialsX-style),
+     * then OfflinePlayer, Mojang HTTP, Minecraft-Heads.
+     */
+    private ItemStack resolvePlayerHead(String ownerName, CommandSender sender) {
+        ItemStack head = Skull.fetchPlayerHeadViaProfile(ownerName);
+        if (head != null) return head;
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(ownerName);
+        if (offlinePlayer.hasPlayedBefore() || offlinePlayer.isOnline()) {
+            head = Skull.createPlayerHead(ownerName);
+            if (head != null) return head;
+        }
+        head = Skull.fetchPlayerHeadFromMojang(ownerName);
+        if (head != null) return head;
+        return Skull.fetchPlayerHeadFromMinecraftHeads(ownerName);
+    }
+
     /**
      * Checks if the given material is an armor item.
      * 

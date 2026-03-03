@@ -27,9 +27,20 @@ import net.survivalfun.core.managers.core.Text;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 
 /**
- * Skull manager class using Minecraft-Heads API 2.0
+ * Skull manager class. Uses Bukkit PlayerProfile API (EssentialsX-style) when available,
+ * with Mojang/Minecraft-Heads HTTP as fallback.
  */
 public class Skull implements CommandExecutor {
+
+    private static final boolean PLAYER_PROFILE_SUPPORTED;
+    static {
+        boolean supported = false;
+        try {
+            Class.forName("org.bukkit.profile.PlayerProfile");
+            supported = true;
+        } catch (ClassNotFoundException ignored) {}
+        PLAYER_PROFILE_SUPPORTED = supported;
+    }
     private static final String MINECRAFT_HEADS_API = "https://minecraft-heads.com/scripts/api.php?player=";
     private static final String MOJANG_PROFILE_API = "https://api.mojang.com/users/profiles/minecraft/";
     private static final String MOJANG_SESSION_API = "https://sessionserver.mojang.com/session/minecraft/profile/";
@@ -125,6 +136,32 @@ public class Skull implements CommandExecutor {
     }
 
     /**
+     * Fetches player head via Bukkit PlayerProfile API (EssentialsX-style).
+     * No HTTP calls - Bukkit fetches from Mojang internally.
+     * Requires 1.18.1+.
+     */
+    @Nullable
+    public static ItemStack fetchPlayerHeadViaProfile(String playerName) {
+        if (!PLAYER_PROFILE_SUPPORTED) return null;
+        try {
+            org.bukkit.profile.PlayerProfile profile = Bukkit.getServer().createPlayerProfile(null, playerName);
+            profile = profile.update().join();
+            if (profile == null) return null;
+
+            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta meta = (SkullMeta) head.getItemMeta();
+            if (meta == null) return null;
+
+            meta.setOwnerProfile(profile);
+            head.setItemMeta(meta);
+            return head;
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "PlayerProfile.update failed for " + playerName + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Fetches player head using Minecraft-Heads API 2.0
      */
     @Nullable
@@ -138,10 +175,11 @@ public class Skull implements CommandExecutor {
 
             String trimmed = response.trim();
             
-            // Check if the response looks like JSON
+            // Check if the response looks like JSON (API may return HTML or redirect now)
             if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-                Text.sendDebugLog(WARN, "Minecraft-Heads API returned non-JSON response for " + playerName + ": " + 
-                    (trimmed.length() > 100 ? trimmed.substring(0, 100) + "..." : trimmed));
+                Text.sendDebugLog(WARN, "Minecraft-Heads API returned non-JSON for " + playerName + ", trying Mojang");
+                ItemStack mojangHead = fetchPlayerHeadFromMojang(playerName);
+                if (mojangHead != null) return mojangHead;
                 return null;
             }
             
@@ -334,32 +372,32 @@ public class Skull implements CommandExecutor {
             return true;
         }
 
-        // Handle player head
-        player.sendMessage("§aFetching head for §e" + targetName + "§a using Minecraft-Heads API...");
+        // Handle player head - use Bukkit PlayerProfile API first (EssentialsX-style, no HTTP)
+        player.sendMessage("§aFetching head for §e" + targetName + "§a...");
 
-        // Use ExecutorService for async operations instead of BukkitRunnable
         java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
         executor.submit(() -> {
             try {
-                // First try offline player (for players who have joined the server)
-                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(targetName);
-                if (offlinePlayer.hasPlayedBefore()) {
-                    SchedulerAdapter.run(() -> {
-                        ItemStack skull = createPlayerHead(targetName);
-                        if (skull != null) {
-                            giveSkullItem(player, skull, targetName, "local player");
-                        } else {
-                            player.sendMessage("§cFailed to create local player head.");
-                        }
-                    });
-                    return;
+                // 1. Bukkit PlayerProfile API (1.18.1+) - fetches from Mojang internally, no HTTP
+                ItemStack skull = fetchPlayerHeadViaProfile(targetName);
+                String source = "Bukkit Profile API";
+                if (skull == null) {
+                    skull = createPlayerHead(targetName);
+                    source = "local player";
                 }
-
-                // Fetch head via Minecraft-Heads API for any player
-                ItemStack skull = fetchPlayerHeadFromMinecraftHeads(targetName);
+                if (skull == null) {
+                    skull = fetchPlayerHeadFromMojang(targetName);
+                    source = "Mojang API";
+                }
+                if (skull == null) {
+                    skull = fetchPlayerHeadFromMinecraftHeads(targetName);
+                    source = "Minecraft-Heads API";
+                }
+                final ItemStack result = skull;
+                final String resultSource = source;
                 SchedulerAdapter.run(() -> {
-                    if (skull != null) {
-                        giveSkullItem(player, skull, targetName, "Minecraft-Heads API");
+                    if (result != null) {
+                        giveSkullItem(player, result, targetName, resultSource);
                     } else {
                         player.sendMessage("§cCould not find a player with that name or failed to fetch head.");
                     }

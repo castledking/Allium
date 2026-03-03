@@ -278,23 +278,24 @@ public class Meta {
         } else if (base64 != null) {
             skull = Skull.createSkullWithTexture(base64);
         } else if (owner != null && !owner.isEmpty()) {
-            // First try to get the head for an online player
-            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(owner);
-            if (offlinePlayer.isOnline() || offlinePlayer.hasPlayedBefore()) {
-                skull = new ItemStack(Material.PLAYER_HEAD);
-                SkullMeta skullMeta = (SkullMeta) skull.getItemMeta();
-                if (skullMeta != null) {
-                    skullMeta.setOwningPlayer(offlinePlayer);
-                    skull.setItemMeta(skullMeta);
+            // Bukkit PlayerProfile API first (EssentialsX-style), then OfflinePlayer, then HTTP fallbacks
+            skull = Skull.fetchPlayerHeadViaProfile(owner);
+            if (skull == null) {
+                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(owner);
+                if (offlinePlayer.isOnline() || offlinePlayer.hasPlayedBefore()) {
+                    skull = new ItemStack(Material.PLAYER_HEAD);
+                    SkullMeta skullMeta = (SkullMeta) skull.getItemMeta();
+                    if (skullMeta != null) {
+                        skullMeta.setOwningPlayer(offlinePlayer);
+                        skull.setItemMeta(skullMeta);
+                    }
                 }
             }
-
             if (skull == null) {
-                // Try external sources when not available locally or fetch failed
+                skull = Skull.fetchPlayerHeadFromMojang(owner);
+            }
+            if (skull == null) {
                 skull = Skull.fetchPlayerHeadFromMinecraftHeads(owner);
-                if (skull == null) {
-                    skull = Skull.fetchPlayerHeadFromMojang(owner);
-                }
             }
         } else {
             // Create a default player head

@@ -55,6 +55,7 @@ commands:
   core:
     description: "Core plugin command. Subcommands: reload, debug, voucher, etc."
     usage: "/core"
+    aliases: [allium]
   core item:
     description: "Give custom items to players"
     usage: "/core item give <item> [amount]"

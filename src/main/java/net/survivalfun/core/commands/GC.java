@@ -120,7 +120,7 @@ public class GC implements CommandExecutor {
                     totalEntities.addAndGet(entities);
                     totalTileEntities.addAndGet(tileEntities);
 
-                    String tileDisplay = folia ? "" : "Tiles: &f" + tileEntities;
+                    String tileDisplay = folia ? "" : "&7, Tiles: &f" + tileEntities;
 
                     worldInfo.append("\n&7- &f")
                             .append(world.getName())

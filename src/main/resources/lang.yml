@@ -216,7 +216,10 @@ give:
     - "&aYou have given {name} {amount} {item}."
     - "[sound] entity.item.pickup 1 1"
   equipped: 
-    - "&aYou equipped {amount} {item}."
+    - "&aYou equipped {item}."
+    - "[sound] item.armor.equip_generic 1 1"
+  equipped-multiple:
+    - "&aYou equipped items."
     - "[sound] item.armor.equip_generic 1 1"
   receive: 
     - "&aYou have received {amount} {item}."

@@ -61,16 +61,34 @@ public class Give implements CommandExecutor {
         }
     }
 
+    /** Result from give operation when equip flag is used */
+    private static class GiveResult {
+        final int totalGiven;
+        final int equippedCount;
+        final String equippedItemName; // single item name, or null if multiple
+
+        GiveResult(int totalGiven, int equippedCount, String equippedItemName) {
+            this.totalGiven = totalGiven;
+            this.equippedCount = equippedCount;
+            this.equippedItemName = equippedItemName;
+        }
+    }
+
     /**
      * Parse comma-separated item specs, extracting :amount from the end of each if present.
      * Examples: "dirt:1,grass_block:1" -> [(dirt,1), (grass_block,1)]
      *           "stick;sharpness:5:1" -> [(stick;sharpness:5, 1)]
      */
     private List<ItemSpec> parseItemSpecs(String arg, int defaultAmount) {
+        // Strip -e/-equip from end of arg (e.g. "dhelmet,dboots -e" -> "dhelmet,dboots")
+        arg = arg.trim();
+        if (arg.endsWith(" -e") || arg.endsWith(" -equip")) {
+            arg = arg.substring(0, arg.lastIndexOf(" -")).trim();
+        }
         List<ItemSpec> specs = new ArrayList<>();
         for (String part : arg.split(",", -1)) {
             part = part.trim();
-            if (part.isEmpty()) continue;
+            if (part.isEmpty() || "-e".equalsIgnoreCase(part) || "-equip".equalsIgnoreCase(part)) continue;
             int amount = defaultAmount;
             int lastColon = part.lastIndexOf(':');
             if (lastColon > 0) {
@@ -104,39 +122,56 @@ public class Give implements CommandExecutor {
         String playerName;
         String itemArg;
         int amount;
+        boolean equipFlag = false;
 
         try {
             if (label.equalsIgnoreCase("give")) {
                 if (args.length < 2) {
-                    sender.sendMessage(lang.get("command-usage").replace("{cmd}", label).replace("{args}", "<player> <item> [amount]"));
+                    sender.sendMessage(lang.get("command-usage").replace("{cmd}", label).replace("{args}", "<player> <item> [amount] [-e]"));
                     return true;
                 }
                 playerName = args[0];
                 itemArg = args[1];
-                amount = args.length > 2 ? Integer.parseInt(args[2]) : 0;
+                amount = 0;
+                if (args.length >= 3 && ("-e".equalsIgnoreCase(args[2]) || "-equip".equalsIgnoreCase(args[2]))) {
+                    equipFlag = true;
+                } else if (args.length >= 3) {
+                    amount = Integer.parseInt(args[2]);
+                }
+                if (args.length >= 4 && ("-e".equalsIgnoreCase(args[3]) || "-equip".equalsIgnoreCase(args[3]))) {
+                    equipFlag = true;
+                }
             } else { // /i command
                 if (!(sender instanceof Player)) {
                     Text.sendErrorMessage(sender, "contact-admin", lang);
                     return true;
                 }
                 if (args.length < 1) {
-                    sender.sendMessage(lang.get("command-usage").replace("{cmd}", label).replace("{args}", "<item> [amount]"));
+                    sender.sendMessage(lang.get("command-usage").replace("{cmd}", label).replace("{args}", "<item> [amount] [-e]"));
                     return true;
                 }
                 playerName = sender.getName();
                 itemArg = args[0];
-                amount = args.length > 1 ? Integer.parseInt(args[1]) : 0;
+                amount = 0;
+                if (args.length >= 2 && ("-e".equalsIgnoreCase(args[1]) || "-equip".equalsIgnoreCase(args[1]))) {
+                    equipFlag = true;
+                } else if (args.length >= 2) {
+                    amount = Integer.parseInt(args[1]);
+                }
+                if (args.length >= 3 && ("-e".equalsIgnoreCase(args[2]) || "-equip".equalsIgnoreCase(args[2]))) {
+                    equipFlag = true;
+                }
             }
             String source = label.equalsIgnoreCase("give") ? "give" : "item";
-            giveItems(playerName, itemArg, sender, amount, source);
+            giveItems(playerName, itemArg, sender, amount, source, equipFlag);
         } catch (NumberFormatException e) {
-            String invalidArg = label.equalsIgnoreCase("give") && args.length > 2 ? args[2] : args[1];
+            String invalidArg = label.equalsIgnoreCase("give") && args.length > 2 ? args[2] : (args.length > 1 ? args[1] : args[0]);
             Text.sendErrorMessage(sender, "invalid", lang, "{arg}", invalidArg);
         }
         return true;
     }
 
-    private void giveItems(String targetSelector, String arg, CommandSender sender, int amount, String source) {
+    private void giveItems(String targetSelector, String arg, CommandSender sender, int amount, String source, boolean equipFlag) {
         // Handle selectors
         if (targetSelector.startsWith("@")) {
             // Get the command block or console sender's location for selector targeting
@@ -198,10 +233,46 @@ public class Give implements CommandExecutor {
                 List<ItemSpec> specs = parseItemSpecs(arg, amount);
                 for (Entity entity : entities) {
                     if (entity instanceof Player) {
-                        for (ItemSpec spec : specs) {
-                            ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
-                            if (item != null) {
-                                giveItemToPlayer((Player) entity, item, sender, source);
+                        if (equipFlag) {
+                            List<ItemSpec> armorSpecs = new ArrayList<>();
+                            List<ItemSpec> otherSpecs = new ArrayList<>();
+                            for (ItemSpec spec : specs) {
+                                ItemStack probe = createItemStack(spec.itemString, sender, 1);
+                                if (probe != null && Armor.isArmor(probe.getType())) {
+                                    armorSpecs.add(spec);
+                                } else {
+                                    otherSpecs.add(spec);
+                                }
+                            }
+                            if (!armorSpecs.isEmpty()) {
+                                giveItemsToPlayerWithEquip((Player) entity, armorSpecs, sender, source);
+                            }
+                            for (ItemSpec spec : otherSpecs) {
+                                int maxStack = getMaterialMaxStackSize(spec.itemString, sender);
+                                if (maxStack <= 0) maxStack = 64;
+                                if (spec.amount <= maxStack) {
+                                    ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
+                                    if (item != null) giveItemToPlayer((Player) entity, item, sender, source);
+                                } else {
+                                    ItemStack template = createItemStack(spec.itemString, sender, 1);
+                                    if (template != null) giveItemToPlayerBulk((Player) entity, template, spec.amount, sender, source);
+                                }
+                            }
+                        } else {
+                            for (ItemSpec spec : specs) {
+                                int maxStack = getMaterialMaxStackSize(spec.itemString, sender);
+                                if (maxStack <= 0) maxStack = 64;
+                                if (spec.amount <= maxStack) {
+                                    ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
+                                    if (item != null) {
+                                        giveItemToPlayer((Player) entity, item, sender, source);
+                                    }
+                                } else {
+                                    ItemStack template = createItemStack(spec.itemString, sender, 1);
+                                    if (template != null) {
+                                        giveItemToPlayerBulk((Player) entity, template, spec.amount, sender, source);
+                                    }
+                                }
                             }
                         }
                     }
@@ -234,12 +305,46 @@ public class Give implements CommandExecutor {
         }
 
         try {
-            // Support comma-separated items with optional :amount per item
             List<ItemSpec> specs = parseItemSpecs(arg, amount);
-            for (ItemSpec spec : specs) {
-                ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
-                if (item == null) return; // Error handled in createItemStack
-                giveItemToPlayer(target, item, sender, source);
+            if (equipFlag) {
+                List<ItemSpec> armorSpecs = new ArrayList<>();
+                List<ItemSpec> otherSpecs = new ArrayList<>();
+                for (ItemSpec spec : specs) {
+                    ItemStack probe = createItemStack(spec.itemString, sender, 1);
+                    if (probe != null && Armor.isArmor(probe.getType())) {
+                        armorSpecs.add(spec);
+                    } else {
+                        otherSpecs.add(spec);
+                    }
+                }
+                if (!armorSpecs.isEmpty()) {
+                    giveItemsToPlayerWithEquip(target, armorSpecs, sender, source);
+                }
+                for (ItemSpec spec : otherSpecs) {
+                    int maxStack = getMaterialMaxStackSize(spec.itemString, sender);
+                    if (maxStack <= 0) maxStack = 64;
+                    if (spec.amount <= maxStack) {
+                        ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
+                        if (item != null) giveItemToPlayer(target, item, sender, source);
+                    } else {
+                        ItemStack template = createItemStack(spec.itemString, sender, 1);
+                        if (template != null) giveItemToPlayerBulk(target, template, spec.amount, sender, source);
+                    }
+                }
+            } else {
+                for (ItemSpec spec : specs) {
+                    int maxStack = getMaterialMaxStackSize(spec.itemString, sender);
+                    if (maxStack <= 0) maxStack = 64;
+                    if (spec.amount <= maxStack) {
+                        ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
+                        if (item == null) return; // Error handled in createItemStack
+                        giveItemToPlayer(target, item, sender, source);
+                    } else {
+                        ItemStack template = createItemStack(spec.itemString, sender, 1);
+                        if (template == null) return;
+                        giveItemToPlayerBulk(target, template, spec.amount, sender, source);
+                    }
+                }
             }
         } catch (Exception e) {
             Text.sendDebugLog(ERROR, "Error processing give command for " + sender.getName() + ": " + e.getMessage(), e);
@@ -341,8 +446,7 @@ public class Give implements CommandExecutor {
                         for (int i = 1; i < parts.length; i++) {
                             String part = parts[i];
                             if (part.toLowerCase().startsWith("flag:")) {
-                                String flags = part.substring(5);
-                                applyItemFlags(meta, flags);
+                                Flag.applyItemFlags(meta, part.substring(5));
                             }
                         }
                         
@@ -419,12 +523,12 @@ public class Give implements CommandExecutor {
                 }
             }
             
-            // Apply any additional parameters (enchantments, etc.)
+            // Apply any additional parameters (enchantments, flags, etc.)
             if (parts.length > 1) {
                 Map<Enchantment, Integer> enchantments = Meta.getEnchantmentsFromParts(parts);
                 Meta.applyEnchantments(sender, item, enchantments);
                 
-                // Handle other item meta (name, lore, etc.)
+                // Handle other item meta (name, lore, flags, etc.)
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null) {
                     for (int i = 1; i < parts.length; i++) {
@@ -432,6 +536,12 @@ public class Give implements CommandExecutor {
                         if (part.toLowerCase().startsWith("name:")) {
                             Meta.applyDisplayName(meta, part.substring(5));
                             break; // Only one name can be applied
+                        }
+                    }
+                    for (int i = 1; i < parts.length; i++) {
+                        String part = parts[i];
+                        if (part.toLowerCase().startsWith("flag:")) {
+                            Flag.applyItemFlags(meta, part.substring(5));
                         }
                     }
                     item.setItemMeta(meta);
@@ -447,6 +557,20 @@ public class Give implements CommandExecutor {
         }
     }
     
+    /**
+     * Gets the max stack size for an item string (for deciding bulk give vs single give).
+     * Returns 64 for custom items or when material cannot be determined.
+     */
+    private int getMaterialMaxStackSize(String itemString, CommandSender sender) {
+        String[] parts = itemString.split(";", -1);
+        String itemName = parts[0];
+        if (itemName.toLowerCase().startsWith("ci:") || itemName.toLowerCase().startsWith("custom:")) {
+            return 64;
+        }
+        Material material = getMaterial(itemName, sender);
+        return material != null ? material.getMaxStackSize() : 64;
+    }
+
     private void giveItemToPlayer(Player target, ItemStack item, CommandSender sender, String source) {
         PlayerInventory inventory = target.getInventory();
         
@@ -457,7 +581,7 @@ public class Give implements CommandExecutor {
         // Check if the player's inventory is completely full before attempting to give items
         // Only show inventory full message if we can't equip armor or drop items
         boolean isInventoryCompletelyFull = isInventoryCompletelyFull(inventory, item);
-        boolean isArmor = isArmor(item.getType());
+        boolean isArmor = Armor.isArmor(item.getType());
         
         if (isInventoryCompletelyFull && !isArmor && !dropOverflowItems) {
             // Only show inventory full message if we can't equip armor and drop-overflow-items is false
@@ -481,12 +605,12 @@ public class Give implements CommandExecutor {
         
         if (!leftover.isEmpty()) {
             // For armor: try armor slot BEFORE offhand so helmet goes to helmet slot, not offhand
-            if (!leftover.isEmpty() && isArmor(item.getType())) {
+            if (!leftover.isEmpty() && Armor.isArmor(item.getType())) {
                 ItemStack firstLeftover = leftover.values().iterator().next();
                 ItemStack armorItem = firstLeftover.clone();
                 armorItem.setAmount(1); // Only equip one piece
                 
-                boolean equipped = tryEquipArmor(inventory, armorItem);
+                boolean equipped = Armor.tryEquipArmor(inventory, armorItem);
                 if (equipped) {
                     wasEquipped = true;
                     addedAsArmor++;
@@ -649,29 +773,283 @@ public class Give implements CommandExecutor {
             org.bukkit.Bukkit.getPluginManager().callEvent(evt);
         }
     
-    // Send success message (use give.equipped when armor was equipped to slot)
+    // Send success message (use lang key for sound; give.equipped has no {amount})
     if (sender.getName().equals(target.getName())) {
         String messageKey = wasEquipped ? "give.equipped" : "give.success";
-        String successMessage = lang.get(messageKey)
-            .replace("{name}", "yourself")
-            .replace("{amount}", String.valueOf(totalGiven))
-            .replace("{item}", finalItemName);
-        lang.sendMessage(sender, successMessage);
+        if (wasEquipped) {
+            lang.sendMessage(sender, messageKey, "{item}", finalItemName);
+        } else {
+            lang.sendMessage(sender, messageKey, "{name}", "yourself", "{amount}", String.valueOf(totalGiven), "{item}", finalItemName);
+        }
     } else {
-        String successMessage = lang.get("give.success")
-            .replace("{name}", target.getName())
-            .replace("{amount}", String.valueOf(totalGiven))
-            .replace("{item}", finalItemName);
-        lang.sendMessage(sender, successMessage);
-
+        lang.sendMessage(sender, "give.success", "{name}", target.getName(), "{amount}", String.valueOf(totalGiven), "{item}", finalItemName);
         if (target.isOnline()) {
             String receiveKey = wasEquipped ? "give.equipped" : "give.receive";
-            String receiveMessage = lang.get(receiveKey)
-                .replace("{amount}", String.valueOf(totalGiven))
-                .replace("{item}", finalItemName);
-            lang.sendMessage(target, receiveMessage);
+            if (wasEquipped) {
+                lang.sendMessage(target, receiveKey, "{item}", finalItemName);
+            } else {
+                lang.sendMessage(target, receiveKey, "{amount}", String.valueOf(totalGiven), "{item}", finalItemName);
+            }
         }
         }
+    }
+
+    /**
+     * Gives multiple items to a player when amount exceeds max stack size (e.g. 100 totems).
+     * Respects item max stack size and config give.max-items-dropped for overflow.
+     */
+    private void giveItemToPlayerBulk(Player target, ItemStack template, int totalAmount, CommandSender sender, String source) {
+        PlayerInventory inventory = target.getInventory();
+        boolean dropOverflowItems = plugin.getConfig().getBoolean("give.drop-overflow-items", true);
+        int maxItemsDropped = plugin.getConfig().getInt("give.max-items-dropped", 64);
+        int maxStack = template.getType().getMaxStackSize();
+        boolean isArmor = Armor.isArmor(template.getType());
+
+        if (isInventoryCompletelyFull(inventory, template) && !isArmor && !dropOverflowItems) {
+            Text.sendErrorMessage(sender, "inventory-full", lang);
+            return;
+        }
+
+        int totalGiven = 0;
+        int totalDropped = 0;
+        boolean wasEquipped = false;
+        int remainingToGive = totalAmount;
+        boolean inventoryFull = false;
+
+        while (remainingToGive > 0) {
+            if (inventoryFull) {
+                // Inventory/offhand/armor full - drop remaining chunks directly (respecting max-items-dropped)
+                if (!dropOverflowItems) break;
+                int dropBudget = maxItemsDropped >= 0 ? Math.max(0, maxItemsDropped - totalDropped) : Integer.MAX_VALUE;
+                if (dropBudget <= 0) break;
+                int chunkSize = Math.min(remainingToGive, Math.min(maxStack, dropBudget));
+                ItemStack dropStack = template.clone();
+                dropStack.setAmount(chunkSize);
+                target.getWorld().dropItemNaturally(target.getLocation(), dropStack);
+                totalGiven += chunkSize;
+                totalDropped += chunkSize;
+                remainingToGive -= chunkSize;
+                continue;
+            }
+
+            int chunkSize = Math.min(remainingToGive, maxStack);
+            ItemStack stack = template.clone();
+            stack.setAmount(chunkSize);
+
+            HashMap<Integer, ItemStack> leftover = inventory.addItem(stack);
+            int added = chunkSize - (leftover.isEmpty() ? 0 : calculateTotalAmount(leftover.values()));
+            totalGiven += added;
+            remainingToGive -= chunkSize;
+
+            if (!leftover.isEmpty()) {
+                if (isArmor) {
+                    ItemStack firstLeftover = leftover.values().iterator().next();
+                    ItemStack armorItem = firstLeftover.clone();
+                    armorItem.setAmount(1);
+                    if (Armor.tryEquipArmor(inventory, armorItem)) {
+                        wasEquipped = true;
+                        totalGiven++;
+                        leftover.remove(leftover.keySet().iterator().next());
+                    }
+                }
+                if (!leftover.isEmpty() && inventory.getItemInOffHand().getType() == Material.AIR) {
+                    ItemStack firstLeftover = leftover.values().iterator().next();
+                    int amountForOffhand = Math.min(firstLeftover.getAmount(), Math.min(99, maxStack));
+                    ItemStack offhandItem = firstLeftover.clone();
+                    offhandItem.setAmount(amountForOffhand);
+                    inventory.setItemInOffHand(offhandItem);
+                    totalGiven += amountForOffhand;
+                    if (amountForOffhand >= firstLeftover.getAmount()) {
+                        leftover.remove(leftover.keySet().iterator().next());
+                    } else {
+                        firstLeftover.setAmount(firstLeftover.getAmount() - amountForOffhand);
+                    }
+                }
+                if (!leftover.isEmpty() && dropOverflowItems) {
+                    int dropBudget = maxItemsDropped >= 0 ? Math.max(0, maxItemsDropped - totalDropped) : Integer.MAX_VALUE;
+                    for (Map.Entry<Integer, ItemStack> entry : leftover.entrySet()) {
+                        if (dropBudget <= 0) break;
+                        ItemStack drop = entry.getValue().clone();
+                        int amountToDrop = Math.min(drop.getAmount(), dropBudget);
+                        if (amountToDrop > 0) {
+                            ItemStack dropStack = drop.clone();
+                            dropStack.setAmount(amountToDrop);
+                            target.getWorld().dropItemNaturally(target.getLocation(), dropStack);
+                            totalDropped += amountToDrop;
+                            totalGiven += amountToDrop;
+                            dropBudget -= amountToDrop;
+                        }
+                    }
+                }
+                inventoryFull = true; // Next chunks go to drops
+            }
+        }
+
+        String finalItemName;
+        ItemMeta meta = template.getItemMeta();
+        if (meta != null && meta.hasDisplayName()) {
+            finalItemName = meta.getDisplayName();
+        } else {
+            finalItemName = Meta.formatName(template.getType().name());
+        }
+        if (meta != null && meta.hasEnchants()) {
+            finalItemName = lang.getFirstColorCode("give.equipped") + "enchanted " + finalItemName;
+        }
+
+        if (totalGiven > 0) {
+            ItemGiveEvent evt = new ItemGiveEvent(target, template, totalGiven, sender, source);
+            org.bukkit.Bukkit.getPluginManager().callEvent(evt);
+        }
+
+        if (sender.getName().equals(target.getName())) {
+            String messageKey = wasEquipped ? "give.equipped" : "give.success";
+            if (wasEquipped) {
+                lang.sendMessage(sender, messageKey, "{item}", finalItemName);
+            } else {
+                lang.sendMessage(sender, messageKey, "{name}", "yourself", "{amount}", String.valueOf(totalGiven), "{item}", finalItemName);
+            }
+        } else {
+            lang.sendMessage(sender, "give.success", "{name}", target.getName(), "{amount}", String.valueOf(totalGiven), "{item}", finalItemName);
+            if (target.isOnline()) {
+                String receiveKey = wasEquipped ? "give.equipped" : "give.receive";
+                if (wasEquipped) {
+                    lang.sendMessage(target, receiveKey, "{item}", finalItemName);
+                } else {
+                    lang.sendMessage(target, receiveKey, "{amount}", String.valueOf(totalGiven), "{item}", finalItemName);
+                }
+            }
+        }
+    }
+
+    /**
+     * Gives items with -e flag: equips armor first, then populates inventory/drops.
+     * Sends one message at end. For multi-equip uses "items" placeholder.
+     */
+    private void giveItemsToPlayerWithEquip(Player target, List<ItemSpec> specs, CommandSender sender, String source) {
+        int totalGiven = 0;
+        int equippedCount = 0;
+        String singleEquippedName = null;
+        PlayerInventory inventory = target.getInventory();
+        boolean dropOverflowItems = plugin.getConfig().getBoolean("give.drop-overflow-items", true);
+        int maxItemsDropped = plugin.getConfig().getInt("give.max-items-dropped", 64);
+        int[] totalDroppedSoFar = {0};
+
+        for (ItemSpec spec : specs) {
+            ItemStack item = createItemStack(spec.itemString, sender, spec.amount);
+            if (item == null) return;
+            int toEquip = 1;
+            int toGive = Math.max(0, spec.amount - toEquip);
+            ItemStack equipPiece = item.clone();
+            equipPiece.setAmount(1);
+            boolean equipped = Armor.tryEquipArmor(inventory, equipPiece);
+            if (equipped) {
+                equippedCount++;
+                singleEquippedName = formatItemName(equipPiece);
+                totalGiven++;
+                if (target.isOnline()) {
+                    ItemGiveEvent evt = new ItemGiveEvent(target, equipPiece, 1, sender, source);
+                    org.bukkit.Bukkit.getPluginManager().callEvent(evt);
+                }
+            } else {
+                toGive = spec.amount;
+            }
+            if (toGive > 0) {
+                ItemStack remainder = item.clone();
+                remainder.setAmount(toGive);
+                int dropBudget = maxItemsDropped >= 0 ? Math.max(0, maxItemsDropped - totalDroppedSoFar[0]) : Integer.MAX_VALUE;
+                GiveResult r = giveItemToPlayerSilent(target, remainder, dropOverflowItems, dropBudget, totalDroppedSoFar);
+                totalGiven += r.totalGiven;
+                if (r.totalGiven > 0) {
+                    ItemGiveEvent evt = new ItemGiveEvent(target, remainder, r.totalGiven, sender, source);
+                    org.bukkit.Bukkit.getPluginManager().callEvent(evt);
+                }
+            }
+        }
+
+        if (totalGiven == 0) return;
+
+        // Only show equipped message when we actually equipped (populated empty armor slot)
+        boolean showEquippedMessage = equippedCount > 0;
+        String itemDisplay = equippedCount > 1 ? "items" : (singleEquippedName != null ? singleEquippedName : "items");
+        String messageKey = showEquippedMessage ? (equippedCount > 1 ? "give.equipped-multiple" : "give.equipped") : "give.success";
+        String receiveKey = showEquippedMessage ? (equippedCount > 1 ? "give.equipped-multiple" : "give.equipped") : "give.receive";
+
+        if (sender.getName().equals(target.getName())) {
+            if (showEquippedMessage) {
+                lang.sendMessage(sender, messageKey, "{item}", itemDisplay);
+            } else {
+                lang.sendMessage(sender, messageKey, "{name}", "yourself", "{amount}", String.valueOf(totalGiven), "{item}", itemDisplay);
+            }
+        } else {
+            lang.sendMessage(sender, "give.success", "{name}", target.getName(), "{amount}", String.valueOf(totalGiven), "{item}", itemDisplay);
+            if (target.isOnline()) {
+                if (showEquippedMessage) {
+                    lang.sendMessage(target, receiveKey, "{item}", itemDisplay);
+                } else {
+                    lang.sendMessage(target, receiveKey, "{amount}", String.valueOf(totalGiven), "{item}", itemDisplay);
+                }
+            }
+        }
+    }
+
+    private String formatItemName(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null && meta.hasDisplayName()) {
+            return meta.getDisplayName();
+        }
+        String name = Meta.formatName(item.getType().name());
+        if (meta != null && meta.hasEnchants()) {
+            name = lang.getFirstColorCode("give.equipped") + "enchanted " + name;
+        }
+        return name;
+    }
+
+    /**
+     * Gives item to player without sending success message. Returns total given.
+     * Used by giveItemsToPlayerWithEquip for remainder after equipping.
+     * @param totalDroppedSoFar int[1] to accumulate drops (respects config max-items-dropped across calls)
+     */
+    private GiveResult giveItemToPlayerSilent(Player target, ItemStack item,
+            boolean dropOverflowItems, int dropBudget, int[] totalDroppedSoFar) {
+        PlayerInventory inventory = target.getInventory();
+        int originalAmount = item.getAmount();
+        HashMap<Integer, ItemStack> leftover = inventory.addItem(item);
+        int added = originalAmount - (leftover.isEmpty() ? 0 : calculateTotalAmount(leftover.values()));
+        int totalGiven = added;
+
+        if (!leftover.isEmpty()) {
+            if (inventory.getItemInOffHand().getType() == Material.AIR) {
+                ItemStack first = leftover.values().iterator().next();
+                int amt = Math.min(first.getAmount(), Math.min(99, first.getType().getMaxStackSize()));
+                ItemStack off = first.clone();
+                off.setAmount(amt);
+                inventory.setItemInOffHand(off);
+                totalGiven += amt;
+                if (amt >= first.getAmount()) {
+                    leftover.remove(leftover.keySet().iterator().next());
+                } else {
+                    first.setAmount(first.getAmount() - amt);
+                }
+            }
+            if (!leftover.isEmpty() && dropOverflowItems && dropBudget > 0) {
+                for (Map.Entry<Integer, ItemStack> e : leftover.entrySet()) {
+                    if (dropBudget <= 0) break;
+                    ItemStack drop = e.getValue().clone();
+                    int amt = Math.min(drop.getAmount(), dropBudget);
+                    if (amt > 0) {
+                        ItemStack d = drop.clone();
+                        d.setAmount(amt);
+                        target.getWorld().dropItemNaturally(target.getLocation(), d);
+                        totalGiven += amt;
+                        dropBudget -= amt;
+                        if (totalDroppedSoFar != null) {
+                            totalDroppedSoFar[0] += amt;
+                        }
+                    }
+                }
+            }
+        }
+        return new GiveResult(totalGiven, 0, null);
     }
 
     /**
@@ -956,24 +1334,6 @@ public class Give implements CommandExecutor {
     }
 
     /**
-     * Checks if the given material is an armor item.
-     * 
-     * @param material The material to check
-     * @return true if the material is armor, false otherwise
-     */
-    private boolean isArmor(Material material) {
-        if (material == null) return false;
-        
-        String name = material.name();
-        return name.endsWith("_HELMET") || 
-               name.endsWith("_CHESTPLATE") || 
-               name.endsWith("_LEGGINGS") || 
-               name.endsWith("_BOOTS") ||
-               material == Material.TURTLE_HELMET ||
-               material == Material.ELYTRA;
-    }
-    
-    /**
      * Checks if a player's inventory is completely full with no space for the given item.
      * This means no empty slots, no populatable stacks, and no armor equippables.
      * 
@@ -996,13 +1356,13 @@ public class Give implements CommandExecutor {
         
         // Check if the item is armor and if the corresponding armor slot is empty
         Material material = item.getType();
-        if (material.name().endsWith("_HELMET") && isArmorSlotEmpty(inventory.getHelmet())) {
+        if (material.name().endsWith("_HELMET") && Armor.isArmorSlotEmpty(inventory.getHelmet())) {
             return false; // Helmet slot is empty
-        } else if (material.name().endsWith("_CHESTPLATE") && isArmorSlotEmpty(inventory.getChestplate())) {
+        } else if (material.name().endsWith("_CHESTPLATE") && Armor.isArmorSlotEmpty(inventory.getChestplate())) {
             return false; // Chestplate slot is empty
-        } else if (material.name().endsWith("_LEGGINGS") && isArmorSlotEmpty(inventory.getLeggings())) {
+        } else if (material.name().endsWith("_LEGGINGS") && Armor.isArmorSlotEmpty(inventory.getLeggings())) {
             return false; // Leggings slot is empty
-        } else if (material.name().endsWith("_BOOTS") && isArmorSlotEmpty(inventory.getBoots())) {
+        } else if (material.name().endsWith("_BOOTS") && Armor.isArmorSlotEmpty(inventory.getBoots())) {
             return false; // Boots slot is empty
         }
         
@@ -1024,80 +1384,5 @@ public class Give implements CommandExecutor {
             }
         }
         return total;
-    }
-    
-    /** Check if armor slot is empty (handles null and ItemStack.EMPTY/AIR in newer Bukkit). */
-    private boolean isArmorSlotEmpty(ItemStack stack) {
-        return stack == null || stack.getType() == Material.AIR || stack.isEmpty();
-    }
-
-    /**
-     * Attempts to equip an armor item in the appropriate slot.
-     * 
-     * @param inventory The player's inventory
-     * @param armorItem The armor item to equip
-     * @return true if the armor was equipped, false otherwise
-     */
-    private boolean tryEquipArmor(PlayerInventory inventory, ItemStack armorItem) {
-        if (armorItem == null) return false;
-        
-        Material material = armorItem.getType();
-        
-        // Determine the appropriate slot based on the armor type
-        if (material.name().endsWith("_HELMET") || material.name().equals("TURTLE_HELMET")) {
-            if (isArmorSlotEmpty(inventory.getHelmet())) {
-                inventory.setHelmet(armorItem);
-                return true;
-            }
-        } else if (material.name().endsWith("_CHESTPLATE") || material.name().equals("ELYTRA")) {
-            if (isArmorSlotEmpty(inventory.getChestplate())) {
-                inventory.setChestplate(armorItem);
-                return true;
-            }
-        } else if (material.name().endsWith("_LEGGINGS")) {
-            if (isArmorSlotEmpty(inventory.getLeggings())) {
-                inventory.setLeggings(armorItem);
-                return true;
-            }
-        } else if (material.name().endsWith("_BOOTS")) {
-            if (isArmorSlotEmpty(inventory.getBoots())) {
-                inventory.setBoots(armorItem);
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
-    private void applyItemFlags(ItemMeta meta, String flags) {
-        String[] flagList = flags.split(",");
-        
-        for (String flag : flagList) {
-            flag = flag.trim().toUpperCase();
-            
-            switch (flag) {
-                case "UNBREAKABLE":
-                    meta.setUnbreakable(true);
-                    break;
-                case "HIDE_ENCHANTS":
-                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
-                    break;
-                case "HIDE_ATTRIBUTES":
-                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
-                    break;
-                case "HIDE_UNBREAKABLE":
-                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE);
-                    break;
-                case "HIDE_DESTROYS":
-                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_DESTROYS);
-                    break;
-                case "HIDE_PLACED_ON":
-                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_PLACED_ON);
-                    break;
-                default:
-                    Text.sendDebugLog(INFO, "Unknown item flag: " + flag);
-                    break;
-            }
-        }
     }
 }

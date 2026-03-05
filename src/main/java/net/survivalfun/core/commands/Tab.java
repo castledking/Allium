@@ -512,11 +512,38 @@ public class Tab implements TabCompleter {
             suggestions.addAll(cachedMaterialNames);
             return filterSuggestions(suggestions, firstPart);
         } else if (args.length == 3) {
-            // Amount suggestions
+            // Amount or -e suggestions (when second arg is armor)
+            if (isArmorItem(args[1])) {
+                List<String> opts = new ArrayList<>(Arrays.asList("1", "16", "32", "64"));
+                if ("-e".startsWith(args[2].toLowerCase()) || "-equip".startsWith(args[2].toLowerCase())) {
+                    opts.add("-e");
+                    opts.add("-equip");
+                }
+                return filterSuggestions(opts, args[2]);
+            }
             return Arrays.asList("1", "16", "32", "64");
+        } else if (args.length == 4 && isArmorItem(args[1])) {
+            // -e tag for give (fourth arg)
+            return filterSuggestions(Arrays.asList("-e", "-equip"), args[3]);
         }
 
         return suggestions;
+    }
+
+    private boolean isArmorItem(String itemArg) {
+        String firstPart = itemArg.split(";", -1)[0].trim();
+        String materialName = Alias.getMaterialFromAlias(firstPart.toLowerCase(Locale.ENGLISH));
+        if (materialName == null) {
+            Material m = LegacyID.getMaterialFromLegacyId(firstPart);
+            materialName = m != null ? m.name() : null;
+        }
+        if (materialName == null && Material.matchMaterial(firstPart) != null) {
+            materialName = firstPart.toUpperCase(Locale.ENGLISH);
+        }
+        if (materialName == null) return false;
+        String upper = materialName.toUpperCase(Locale.ENGLISH);
+        return upper.endsWith("_HELMET") || upper.endsWith("_CHESTPLATE") || upper.endsWith("_LEGGINGS")
+                || upper.endsWith("_BOOTS") || "TURTLE_HELMET".equals(upper) || "ELYTRA".equals(upper);
     }
 
     private List<String> getLoreSuggestions(@NotNull CommandSender sender, String [] args) {
@@ -770,9 +797,19 @@ public class Tab implements TabCompleter {
             suggestions.addAll(cachedMaterialNames);
             return filterSuggestions(suggestions, firstPart);
         } else if (args.length == 2) {
-            // Duration suggestions
-            suggestions.addAll(getDurationSuggestions());
-            return filterSuggestions(suggestions, args[1]);
+            // Amount or -e (when first arg is armor)
+            if (isArmorItem(args[0])) {
+                List<String> opts = new ArrayList<>(getDurationSuggestions());
+                if ("-e".startsWith(args[1].toLowerCase()) || "-equip".startsWith(args[1].toLowerCase())) {
+                    opts.add("-e");
+                    opts.add("-equip");
+                }
+                return filterSuggestions(opts, args[1]);
+            }
+            return filterSuggestions(getDurationSuggestions(), args[1]);
+        } else if (args.length == 3 && isArmorItem(args[0])) {
+            // -e tag for /i (third arg)
+            return filterSuggestions(Arrays.asList("-e", "-equip"), args[2]);
         }
 
         return Collections.emptyList();

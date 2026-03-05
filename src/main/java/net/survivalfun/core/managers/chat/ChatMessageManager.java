@@ -1,6 +1,7 @@
 package net.survivalfun.core.managers.chat;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 
 import net.survivalfun.core.managers.core.Text;
@@ -90,41 +91,67 @@ public class ChatMessageManager {
         return messageId;
     }
     
+    /** Time window (ms) to treat as same logical message when deleting duplicates (e.g. formatted vs packet raw). */
+    private static final long DUPLICATE_TIME_MS = 3000;
+
     /**
-     * Mark a message as deleted by message ID in all collections
+     * Mark a message as deleted by message ID in all collections.
+     * Also marks any "duplicate" messages (same content, within a short time) so that
+     * both the formatted copy (from FormatChatListener) and the raw copy (from PacketEvents) are removed.
      */
     public boolean deleteMessage(long messageId) {
+        ChatMessage target = getMessage(messageId);
+        if (target == null) return false;
+
+        String targetPlain = PlainTextComponentSerializer.plainText().serialize(target.getOriginalMessage()).trim();
+        long targetTime = target.getTimestamp();
+        if (targetPlain.isEmpty()) targetPlain = null;
+
         boolean found = false;
-        
-        // Mark in playerMessages (database cache)
+
+        // Mark by ID and by content+time in playerMessages
         for (Deque<ChatMessage> messages : playerMessages.values()) {
             for (ChatMessage message : messages) {
-                if (message.getMessageId() == messageId) {
+                if (message.getMessageId() == messageId || isDuplicateContent(message, targetPlain, targetTime)) {
                     message.setDeleted(true);
                     found = true;
                 }
             }
         }
-        
+
         // Mark in per-player chat histories (used for resend)
         for (Deque<ChatMessage> history : playerChatHistory.values()) {
             for (ChatMessage message : history) {
-                if (message.getMessageId() == messageId) {
+                if (message.getMessageId() == messageId || isDuplicateContent(message, targetPlain, targetTime)) {
                     message.setDeleted(true);
                     found = true;
                 }
             }
         }
-        
+
         // Mark in global chat history (used for resend)
         for (ChatMessage message : globalChatHistory) {
-            if (message.getMessageId() == messageId) {
+            if (message.getMessageId() == messageId || isDuplicateContent(message, targetPlain, targetTime)) {
                 message.setDeleted(true);
                 found = true;
             }
         }
-        
+
         return found;
+    }
+
+    /**
+     * True if this message is a duplicate of the target (same content within time window).
+     * Catches packet-tracked "raw" copy when staff deletes the formatted copy.
+     */
+    private boolean isDuplicateContent(ChatMessage message, String targetPlain, long targetTime) {
+        if (targetPlain == null) return false;
+        String plain = PlainTextComponentSerializer.plainText().serialize(message.getOriginalMessage()).trim();
+        if (plain.isEmpty()) return false;
+        long diff = Math.abs(message.getTimestamp() - targetTime);
+        if (diff > DUPLICATE_TIME_MS) return false;
+        // One contains the other so we match both "Prefix Name: hello" and "hello"
+        return plain.contains(targetPlain) || targetPlain.contains(plain);
     }
     
     /**

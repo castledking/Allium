@@ -94,6 +94,7 @@ block-unicode: true # Set to false to allow Unicode symbols
 
 chat:
   deletion_resend:
+    clear_lines: 500  # Number of invisible unicode lines to send before header (clears chat)
     header_enabled: true
     header: "&8&oChat re-synced by staff; a message was deleted"
     

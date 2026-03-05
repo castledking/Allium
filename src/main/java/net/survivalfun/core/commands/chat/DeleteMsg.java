@@ -5,6 +5,7 @@ import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.chat.ChatMessageManager;
 
 import net.survivalfun.core.managers.core.Text;
+import net.survivalfun.core.util.SchedulerAdapter;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 
 import org.bukkit.command.Command;
@@ -12,8 +13,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.UUID;
 
 /**
  * Handles the deletion of chat messages by staff members
@@ -76,12 +75,21 @@ public class DeleteMsg implements CommandExecutor {
             if (chatMessageManager.deleteMessage(messageId)) {
                 player.sendMessage(Component.text("§aMessage deleted successfully."));
 
-                // Use ChatPacketTracker for robust chat history resend (no-op when PacketEvents unavailable)
-                if (plugin.getChatPacketTracker().supportsResend()) {
-                    plugin.getChatPacketTracker().resendChatHistoryToAllPlayers();
-                } else {
-                    sendReplacementMessageToAllPlayers(message);
-                }
+                // Full clear+resend only works with PacketEvents (tracks all chat including other plugins).
+                // Without it, we only have FormatChatListener messages - resending would lose other plugin messages.
+                SchedulerAdapter.runLater(() -> {
+                    if (plugin.getChatPacketTracker().supportsResend()) {
+                        plugin.getChatPacketTracker().resendChatHistoryToAllPlayers();
+                    } else {
+                        plugin.retryChatPacketTrackerInitIfNeeded();
+                        if (plugin.getChatPacketTracker().supportsResend()) {
+                            plugin.getChatPacketTracker().resendChatHistoryToAllPlayers();
+                        } else {
+                            Text.sendDebugLog(WARN, "/delmsg: PacketEvents unavailable - sending header only (no clear/resend). Run with debug-mode: true and check logs for [delmsg] PacketEvents status.");
+                            sendHeaderToAllPlayers();
+                        }
+                    }
+                }, 1L);
 
                 // Log the deletion
                 String senderName = message.getSenderName() != null ? message.getSenderName() : "unknown";
@@ -105,24 +113,21 @@ public class DeleteMsg implements CommandExecutor {
             return true;
         }
     }
-    
+
     /**
-     * Send a replacement message to all online players to overwrite the deleted message
-     * This is a fallback method when PacketChatTracker is not available
+     * Fallback when PacketEvents unavailable: send config header only.
+     * Full clear+resend requires PacketEvents to track messages from all plugins.
      */
-    private void sendReplacementMessageToAllPlayers(ChatMessageManager.ChatMessage deletedMessage) {
+    private void sendHeaderToAllPlayers() {
         try {
-            // Create a replacement message that shows the message was deleted
-            Component replacementMessage = Component.text("§7§o[Message deleted by staff]");
-            
-            // Send the replacement message to all online players
-            for (Player onlinePlayer : plugin.getServer().getOnlinePlayers()) {
-                if (onlinePlayer != null && onlinePlayer.isOnline()) {
-                    onlinePlayer.sendMessage(replacementMessage);
-                }
+            if (!plugin.getConfig().getBoolean("chat.deletion_resend.header_enabled", true)) return;
+            String header = plugin.getConfig().getString("chat.deletion_resend.header", "&8&oChat re-synced by staff; a message was deleted");
+            Component msg = Text.colorize(header);
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                if (p != null && p.isOnline()) p.sendMessage(msg);
             }
         } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Error sending replacement message: " + e.getMessage());
+            Text.sendDebugLog(WARN, "Error sending deletion header: " + e.getMessage());
         }
     }
 }

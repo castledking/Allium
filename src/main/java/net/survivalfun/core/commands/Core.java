@@ -126,6 +126,10 @@ public class Core implements CommandExecutor, TabCompleter {
                 handleDialogSubcommand(sender, args);
                 break;
 
+            case "delmsg":
+                handleDelmsgStatusCommand(sender);
+                break;
+
             default:
                 sender.sendMessage("§cUnknown subcommand. Use /core for help.");
                 break;
@@ -403,6 +407,26 @@ public class Core implements CommandExecutor, TabCompleter {
             sender.sendMessage("§aUpdated gamerule '" + gamerule + "' to '" + value + "' and applied it to all worlds.");
         } catch (NumberFormatException e) {
             sender.sendMessage("§cInvalid value. Use true, false, or a number.");
+        }
+    }
+
+    private void handleDelmsgStatusCommand(CommandSender sender) {
+        if (!sender.hasPermission("allium.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang);
+            return;
+        }
+        boolean supportsResend = plugin.getChatPacketTracker().supportsResend();
+        if (supportsResend) {
+            sender.sendMessage(Component.text("§a/delmsg: PacketEvents OK - full clear+resend enabled"));
+        } else {
+            sender.sendMessage(Component.text("§e/delmsg: PacketEvents not available - only header sent. Retrying init..."));
+            plugin.retryChatPacketTrackerInitIfNeeded();
+            if (plugin.getChatPacketTracker().supportsResend()) {
+                sender.sendMessage(Component.text("§aRetry succeeded - full clear+resend now enabled"));
+            } else {
+                sender.sendMessage(Component.text("§cRetry failed. Ensure PacketEvents plugin JAR is in plugins/ and loads before Allium. Enable debug-mode in config for details."));
+                net.survivalfun.core.packetevents.PacketEventsLoader.logPacketEventsStatus(plugin.getLogger());
+            }
         }
     }
 

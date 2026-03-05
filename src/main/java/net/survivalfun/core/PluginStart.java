@@ -495,6 +495,9 @@ public class PluginStart extends JavaPlugin {
         
         // Initialize PacketEvents for comprehensive chat message tracking
         initializePacketEvents();
+        if (isDebugMode()) {
+            PacketEventsLoader.logPacketEventsStatus(getLogger());
+        }
         
         // Register commands and non-Vault-dependent listeners
         registerCommands();
@@ -859,14 +862,41 @@ public class PluginStart extends JavaPlugin {
     private void initializePacketEvents() {
         try {
             this.chatPacketTracker = PacketEventsLoader.createChatPacketTracker(this, chatMessageManager);
-            if (PacketEventsLoader.isPacketEventsAvailable()) {
-                Text.sendDebugLog(INFO, "PacketEvents chat tracking enabled");
+            if (chatPacketTracker.supportsResend()) {
+                Text.sendDebugLog(INFO, "PacketEvents chat tracking enabled (clear+resend on /delmsg)");
             } else {
-                Text.sendDebugLog(WARN, "PacketEvents plugin not found. Packet-level chat tracking disabled.");
+                Text.sendDebugLog(WARN, "PacketEvents not available. Chat deletion will only send header (no clear/resend).");
+                SchedulerAdapter.runLater(this::retryChatPacketTrackerInit, 40L);
             }
         } catch (Throwable e) {
             Text.sendDebugLog(WARN, "Failed to initialize chat packet tracker: " + e.getMessage());
             this.chatPacketTracker = new net.survivalfun.core.packetevents.ChatPacketTrackerNoOp();
+            SchedulerAdapter.runLater(this::retryChatPacketTrackerInit, 40L);
+        }
+    }
+
+    /**
+     * Retry ChatPacketTracker init if currently using NoOp. Called from /delmsg when PacketEvents
+     * may have loaded late. Also used at startup.
+     */
+    public void retryChatPacketTrackerInitIfNeeded() {
+        retryChatPacketTrackerInit();
+    }
+
+    /**
+     * Retry ChatPacketTracker init (e.g. when PacketEvents loads after Allium at startup).
+     */
+    private void retryChatPacketTrackerInit() {
+        if (chatPacketTracker != null && chatPacketTracker.supportsResend()) return;
+        try {
+            ChatPacketTracker next = PacketEventsLoader.createChatPacketTracker(this, chatMessageManager);
+            if (next.supportsResend()) {
+                if (chatPacketTracker != null) chatPacketTracker.shutdown();
+                chatPacketTracker = next;
+                Text.sendDebugLog(INFO, "PacketEvents chat tracking enabled (delayed init) - clear+resend on /delmsg");
+            }
+        } catch (Throwable e) {
+            Text.sendDebugLog(WARN, "ChatPacketTracker retry failed: " + e.getMessage());
         }
     }
     

@@ -570,6 +570,10 @@ public class Config {
         }
 
         // Chat deletion resend
+        if (!config.contains("chat.deletion_resend.clear_lines")) {
+            config.set("chat.deletion_resend.clear_lines", 500);
+            changed = true;
+        }
         if (!config.contains("chat")) {
             config.set("chat.deletion_resend.header_enabled", true);
             config.set("chat.deletion_resend.header", "&8&oChat re-synced by staff; a message was deleted");

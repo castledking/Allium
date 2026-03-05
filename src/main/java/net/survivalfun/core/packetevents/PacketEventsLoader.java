@@ -19,9 +19,17 @@ public final class PacketEventsLoader {
      * Check if PacketEvents plugin and API are available.
      */
     public static boolean isPacketEventsAvailable() {
-        org.bukkit.plugin.Plugin pe = Bukkit.getPluginManager().getPlugin("packetevents");
+        org.bukkit.plugin.Plugin pe = Bukkit.getPluginManager().getPlugin("PacketEvents");
         if (pe == null) {
-            pe = Bukkit.getPluginManager().getPlugin("PacketEvents");
+            pe = Bukkit.getPluginManager().getPlugin("packetevents");
+        }
+        if (pe == null) {
+            for (org.bukkit.plugin.Plugin p : Bukkit.getPluginManager().getPlugins()) {
+                if (p != null && p.isEnabled() && p.getName().toLowerCase().contains("packetevents")) {
+                    pe = p;
+                    break;
+                }
+            }
         }
         if (pe == null || !pe.isEnabled()) {
             return false;
@@ -31,6 +39,36 @@ public final class PacketEventsLoader {
             return true;
         } catch (ClassNotFoundException e) {
             return false;
+        }
+    }
+
+    /**
+     * Diagnostic: log why PacketEvents is or isn't available. Call when debug-mode is on.
+     */
+    public static void logPacketEventsStatus(java.util.logging.Logger logger) {
+        org.bukkit.plugin.Plugin pe = Bukkit.getPluginManager().getPlugin("PacketEvents");
+        if (pe == null) pe = Bukkit.getPluginManager().getPlugin("packetevents");
+        if (pe == null) {
+            for (org.bukkit.plugin.Plugin p : Bukkit.getPluginManager().getPlugins()) {
+                if (p != null && p.getName().toLowerCase().contains("packetevents")) {
+                    pe = p;
+                    break;
+                }
+            }
+        }
+        if (pe == null) {
+            logger.info("[delmsg] PacketEvents: plugin not found (no plugin named PacketEvents/packetevents)");
+            return;
+        }
+        if (!pe.isEnabled()) {
+            logger.info("[delmsg] PacketEvents: plugin found (" + pe.getName() + ") but disabled");
+            return;
+        }
+        try {
+            Class.forName("com.github.retrooper.packetevents.PacketEvents");
+            logger.info("[delmsg] PacketEvents: OK (plugin=" + pe.getName() + ", API loaded)");
+        } catch (ClassNotFoundException e) {
+            logger.info("[delmsg] PacketEvents: plugin found (" + pe.getName() + ") but API class not found - ensure packetevents-spigot JAR is in plugins/");
         }
     }
 

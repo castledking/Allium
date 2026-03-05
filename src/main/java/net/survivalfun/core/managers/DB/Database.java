@@ -610,7 +610,8 @@ public class Database {
 
     public void addPlayerPermission(UUID playerId, String permission) {
         try {
-            try (PreparedStatement stmt = getConnection().prepareStatement(
+            try (Connection conn = getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(
                     "INSERT INTO player_permissions (player_uuid, permission) VALUES (?, ?)") ) {
                 stmt.setString(1, playerId.toString());
                 stmt.setString(2, permission);
@@ -689,7 +690,8 @@ public class Database {
             String sql = "SELECT b.uuid, p.name, b.balance FROM player_balances b " +
                     "LEFT JOIN player_data p ON b.uuid = p.uuid " +
                     "ORDER BY b.balance DESC LIMIT ?";
-            try (PreparedStatement statement = getConnection().prepareStatement(sql)) {
+            try (Connection connection = getConnection();
+                 PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, limit);
                 try (ResultSet resultSet = statement.executeQuery()) {
                     while (resultSet.next()) {
@@ -723,7 +725,8 @@ public class Database {
                 "walk_speed = VALUES(walk_speed), " +
                 "fly_speed = VALUES(fly_speed), " +
                 "last_updated = CURRENT_TIMESTAMP";
-        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, playerUUID.toString());
             stmt.setString(2, ""); // Placeholder name - we don't have it in this context
             stmt.setString(3, gameMode != null ? gameMode.name() : null);
@@ -750,7 +753,8 @@ public class Database {
                 "fly_speed = VALUES(fly_speed), " +
                 "vanish_level = VALUES(vanish_level), " +
                 "last_updated = CURRENT_TIMESTAMP";
-        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, playerUUID.toString());
             stmt.setString(2, ""); // Placeholder name - we don't have it in this context
             stmt.setString(3, gameMode != null ? gameMode.name() : null);
@@ -819,7 +823,8 @@ public class Database {
      */
     public void saveVanishState(UUID playerUUID, int vanishLevel, GameMode gameMode) throws SQLException {
         String sql = "UPDATE player_data SET vanish_level = ?, gamemode = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?";
-        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, vanishLevel);
             stmt.setString(2, gameMode != null ? gameMode.name() : null);
             stmt.setString(3, playerUUID.toString());
@@ -832,7 +837,8 @@ public class Database {
      */
     public void removeVanishState(UUID playerUUID) throws SQLException {
         String sql = "UPDATE player_data SET vanish_level = 0, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?";
-        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, playerUUID.toString());
             stmt.executeUpdate();
         }
@@ -843,7 +849,8 @@ public class Database {
      */
     public void savePlayerSpeeds(UUID playerUUID, float walkSpeed, float flySpeed) throws SQLException {
         String sql = "UPDATE player_data SET walk_speed = ?, fly_speed = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?";
-        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setFloat(1, walkSpeed);
             stmt.setFloat(2, flySpeed);
             stmt.setString(3, playerUUID.toString());
@@ -856,7 +863,8 @@ public class Database {
      */
     public Map<String, Float> loadPlayerSpeeds(UUID playerUUID) throws SQLException {
         String sql = "SELECT walk_speed, fly_speed FROM player_data WHERE uuid = ?";
-        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, playerUUID.toString());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -890,7 +898,8 @@ public class Database {
         try {
             String sql = "INSERT INTO server_data (\"key\", \"value\") VALUES (?, ?) " +
                          "ON DUPLICATE KEY UPDATE \"value\" = VALUES(\"value\")";
-            try (PreparedStatement statement = getConnection().prepareStatement(sql)) {
+            try (Connection connection = getConnection();
+                 PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, key);
                 statement.setString(2, value);
                 statement.executeUpdate();
@@ -958,7 +967,8 @@ public class Database {
             String sql = "INSERT INTO player_locations (player_uuid, location_type, home_name, world, x, y, z, yaw, pitch, timestamp, last_updated) " +
                     "VALUES (?, 'HOME', ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) " +
                     "ON DUPLICATE KEY UPDATE world = ?, x = ?, y = ?, z = ?, yaw = ?, pitch = ?, timestamp = ?, last_updated = CURRENT_TIMESTAMP";
-            try (PreparedStatement statement = getConnection().prepareStatement(sql)) {
+            try (Connection connection = getConnection();
+                 PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, playerUUID.toString());
                 statement.setString(2, homeName);
                 statement.setString(3, location.getWorld().getName());
@@ -1100,7 +1110,8 @@ public class Database {
             String sql = "SELECT timestamp FROM player_locations " +
                     "WHERE player_uuid = ? AND location_type = ? " +
                     "ORDER BY timestamp DESC, last_updated DESC LIMIT 1";
-            try (PreparedStatement statement = getConnection().prepareStatement(sql)) {
+            try (Connection connection = getConnection();
+                 PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, playerUUID.toString());
                 statement.setString(2, locationType.name());
                 try (ResultSet resultSet = statement.executeQuery()) {
@@ -1120,7 +1131,8 @@ public class Database {
             String sql = "SELECT location_type, world, x, y, z, yaw, pitch, timestamp " +
                     "FROM player_locations WHERE player_uuid = ? " +
                     "ORDER BY timestamp DESC, last_updated DESC LIMIT 1";
-            try (PreparedStatement statement = getConnection().prepareStatement(sql)) {
+            try (Connection connection = getConnection();
+                 PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, playerUUID.toString());
                 try (ResultSet resultSet = statement.executeQuery()) {
                     if (resultSet.next()) {
@@ -1148,7 +1160,8 @@ public class Database {
             String sql = "SELECT world, x, y, z, yaw, pitch FROM player_locations " +
                     "WHERE player_uuid = ? AND location_type != 'DEATH' " +
                     "ORDER BY timestamp DESC, last_updated DESC LIMIT 1";
-            try (PreparedStatement statement = getConnection().prepareStatement(sql)) {
+            try (Connection connection = getConnection();
+                 PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, playerUUID.toString());
                 try (ResultSet resultSet = statement.executeQuery()) {
                     if (resultSet.next()) {
@@ -1174,7 +1187,8 @@ public class Database {
     public void saveTeleportToggleState(UUID playerUuid, boolean state) {
         String sql = "REPLACE INTO player_teleport_toggle (player_uuid, state) VALUES (?, ?)";
         try {
-            try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
+            try (Connection conn = getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, playerUuid.toString());
                 pstmt.setBoolean(2, state);
                 pstmt.executeUpdate();
@@ -1186,11 +1200,13 @@ public class Database {
 
     public Boolean getTeleportToggleState(UUID playerUuid) {
         String sql = "SELECT state FROM player_teleport_toggle WHERE player_uuid = ?";
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, playerUuid.toString());
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                return rs.getBoolean("state");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBoolean("state");
+                }
             }
         } catch (SQLException e) {
             Text.sendDebugLog(ERROR, "Error loading teleport toggle state", e);
@@ -1217,7 +1233,8 @@ public class Database {
     public boolean deletePlayerLocation(UUID playerUUID, LocationType locationType) {
         try {
             String sql = "DELETE FROM player_locations WHERE player_uuid = ? AND location_type = ?";
-            try (PreparedStatement statement = getConnection().prepareStatement(sql)) {
+            try (Connection connection = getConnection();
+                 PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, playerUUID.toString());
                 statement.setString(2, locationType.name());
                 statement.executeUpdate();
@@ -1455,7 +1472,8 @@ public class Database {
     public BigDecimal getPlayerBalance(UUID playerUUID) {
         String sql = "SELECT balance FROM player_balances WHERE uuid = ?";
         try {
-            try (PreparedStatement statement = getConnection().prepareStatement(sql)) {
+            try (Connection connection = getConnection();
+                 PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, playerUUID.toString());
                 try (ResultSet resultSet = statement.executeQuery()) {
                     if (resultSet.next()) {
@@ -1475,7 +1493,8 @@ public class Database {
         BigDecimal defaultBalance = new BigDecimal("0.00");
         try {
             String sql = "INSERT INTO player_balances (uuid, balance) VALUES (?, ?)";
-            try (PreparedStatement statement = getConnection().prepareStatement(sql)) {
+            try (Connection connection = getConnection();
+                 PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, playerUUID.toString());
                 statement.setBigDecimal(2, defaultBalance);
                 statement.executeUpdate();
@@ -1790,7 +1809,8 @@ public class Database {
     }
 
     public boolean deleteNote(int noteId, UUID staffUuid, boolean isAdmin) throws SQLException {
-        try (PreparedStatement statement = getConnection().prepareStatement(
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(
                 "DELETE FROM player_notes WHERE id = ? AND (staff_uuid = ? OR ? = true)")) {
             statement.setInt(1, noteId);
             statement.setString(2, staffUuid != null ? staffUuid.toString() : null);
@@ -2440,7 +2460,8 @@ public class Database {
                     
                     if (rowCount == 0) {
                         // Check if the player exists in the database
-                        try (PreparedStatement checkPlayer = dataSource.getConnection().prepareStatement(
+                        try (Connection checkConn = dataSource.getConnection();
+                             PreparedStatement checkPlayer = checkConn.prepareStatement(
                                 "SELECT name FROM player_data WHERE uuid = ?")) {
                             checkPlayer.setString(1, playerId.toString());
                             try (ResultSet playerRs = checkPlayer.executeQuery()) {

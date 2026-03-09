@@ -219,11 +219,14 @@ public class FormatChatListener implements Listener {
         if (text == null || player == null) return text;
         if (!text.contains("%allium_")) return text;
 
+        String defaultName = player.getName();
+        if (defaultName == null || defaultName.isEmpty()) defaultName = player.getUniqueId().toString();
+
         net.survivalfun.core.managers.NicknameManager nm = plugin.getNicknameManager();
-        String formatted = (nm != null) ? nm.getFormattedNickname(player, nm.getStoredNickname(player)) : player.getName();
-        String raw = (nm != null) ? nm.getStoredNickname(player) : player.getName();
-        if (formatted == null || formatted.isEmpty()) formatted = player.getName();
-        if (raw == null || raw.isEmpty()) raw = player.getName();
+        String raw = (nm != null) ? nm.getStoredNickname(player) : defaultName;
+        if (raw == null || raw.isEmpty()) raw = defaultName;
+        String formatted = (nm != null) ? nm.getFormattedNickname(player, raw) : defaultName;
+        if (formatted == null || formatted.isEmpty()) formatted = defaultName;
 
         return text.replace("%allium_nickname%", formatted)
                    .replace("%allium_nickname_raw%", raw);

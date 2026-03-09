@@ -1,7 +1,6 @@
 package net.survivalfun.core.listeners.jobs;
 
 import net.survivalfun.core.managers.core.Text;
-import net.survivalfun.core.util.SchedulerAdapter;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
@@ -71,8 +70,8 @@ public class SlimeJump implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onFallDamage(EntityDamageEvent event) {
-        // Check if it's fall damage to a player
-        if (event.getEntityType() != EntityType.PLAYER || event.getCause() != EntityDamageEvent.DamageCause.FALL) {
+        // Check if it's fall damage to a player (use getEntity().getType() - EntityDamageEvent has no getEntityType())
+        if (event.getEntity().getType() != EntityType.PLAYER || event.getCause() != EntityDamageEvent.DamageCause.FALL) {
             return;
         }
 
@@ -107,7 +106,7 @@ public class SlimeJump implements Listener {
             }
 
             // Debug info
-            if (plugin.getConfig().getBoolean("debug", false)) {
+            if (plugin.getConfig().getBoolean("debug-mode", false)) {
                 Text.sendDebugLog(INFO, "Player " + player.getName() + " cushioned fall. Original damage: " +
                         originalDamage + ", New damage: " + newDamage);
             }
@@ -115,7 +114,8 @@ public class SlimeJump implements Listener {
     }
 
     /**
-     * Applies a bounce effect to the player based on the fall damage
+     * Applies a bounce effect to the player based on the fall damage.
+     * Must run in the same tick as the damage event so velocity is not zeroed by the server before we apply it.
      *
      * @param player The player to bounce
      * @param fallDamage The original fall damage amount
@@ -125,32 +125,28 @@ public class SlimeJump implements Listener {
         // Higher damage = higher bounce
         double bounceVelocity = Math.min(fallDamage * bounceMultiplier, maxBounceVelocity);
 
-        // Apply the upward velocity
+        // Apply the upward velocity immediately so it takes effect before the server finishes the event
         Vector currentVelocity = player.getVelocity();
         Vector newVelocity = new Vector(
                 currentVelocity.getX() * 0.8, // Preserve some horizontal momentum
                 bounceVelocity,               // Set upward velocity based on damage
                 currentVelocity.getZ() * 0.8  // Preserve some horizontal momentum
         );
+        player.setVelocity(newVelocity);
 
-        // Apply the velocity on the entity's region/thread (Folia-safe)
-        SchedulerAdapter.runAtEntity(player, () -> {
-            player.setVelocity(newVelocity);
+        // Play bounce sound
+        if (playSound) {
+            player.playSound(player.getLocation(), Sound.ENTITY_SLIME_JUMP, 1.0f,
+                    // Adjust pitch based on bounce height - higher bounce = lower pitch
+                    (float)(1.0 - (bounceVelocity / maxBounceVelocity) * 0.3));
+        }
 
-            // Play bounce sound
-            if (playSound) {
-                player.playSound(player.getLocation(), Sound.ENTITY_SLIME_JUMP, 1.0f,
-                        // Adjust pitch based on bounce height - higher bounce = lower pitch
-                        (float)(1.0 - (bounceVelocity / maxBounceVelocity) * 0.3));
-            }
-
-            // Debug info
-            if (plugin.getConfig().getBoolean("debug", false)) {
-                Text.sendDebugLog(INFO, "Applied bounce to " + player.getName() +
-                        " with velocity: " + bounceVelocity +
-                        " (fall damage: " + fallDamage + ")");
-            }
-        });
+        // Debug info
+        if (plugin.getConfig().getBoolean("debug-mode", false)) {
+            Text.sendDebugLog(INFO, "Applied bounce to " + player.getName() +
+                    " with velocity: " + bounceVelocity +
+                    " (fall damage: " + fallDamage + ")");
+        }
     }
 
     /**

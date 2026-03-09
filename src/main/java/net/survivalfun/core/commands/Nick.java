@@ -4,6 +4,7 @@ import me.croabeast.prismatic.PrismaticAPI;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.inventory.gui.NicknameGUI;
+import net.survivalfun.core.managers.core.Dialog;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -51,27 +52,62 @@ public class Nick implements CommandExecutor {
             return true;
         }
         
-        // /nick with no args - open GUI or show usage
-        if (args.length == 0 || (argIndex == 0 && args.length > 0 && !args[0].startsWith("-"))) {
+        // Adjust args to skip flags
+        String[] actualArgs = new String[args.length - argIndex];
+        System.arraycopy(args, argIndex, actualArgs, 0, actualArgs.length);
+        
+        // /nick --apply <nickname> [<playerName>] (from dialog; server runs command, so last arg is target player)
+        if (actualArgs.length >= 1 && "--apply".equals(actualArgs[0])) {
+            if (actualArgs.length < 2) return true;
+            // Last arg is the target player name (appended by dialog when run as console)
+            int end = actualArgs.length - 1;
+            String targetName = actualArgs[end];
+            Player target = Bukkit.getPlayerExact(targetName);
+            if (target == null || !target.isOnline()) {
+                if (sender instanceof Player) ((Player) sender).sendMessage("§cPlayer not found: " + targetName);
+                return true;
+            }
+            String nickname = (end > 1)
+                ? String.join(" ", java.util.Arrays.copyOfRange(actualArgs, 1, end)).trim()
+                : actualArgs[1].trim();
+            if (nickname.isEmpty()) return true;
+            if (!target.hasPermission("allium.nick.gui")) return true;
+            if (!plugin.getNicknameManager().isValidNickname(nickname)) {
+                target.sendMessage("§cInvalid nickname.");
+                return true;
+            }
+            if (plugin.getNicknameManager().isOnCooldown(target)) {
+                target.sendMessage("§cCooldown. Wait " + plugin.getNicknameManager().getRemainingCooldown(target) + "s.");
+                return true;
+            }
+            if (plugin.getNicknameManager().setNickname(target, nickname)) {
+                target.sendMessage("§aNickname updated.");
+            }
+            return true;
+        }
+        
+        // /nick with no args - open dialog or show usage
+        if (actualArgs.length == 0) {
             if (!isPlayer) {
                 Text.sendErrorMessage(sender, "player-only-command", plugin.getLangManager(), "use /{cmd}", "execute this command.", true);
                 return true;
             }
-            
             Player player = (Player) sender;
-            
-            // If force command mode (-c) is used, skip GUI
             if (forceCommand || (!hasGuiPerm && hasNickPerm)) {
                 sender.sendMessage("§cUsage: /nick <name>");
                 return true;
             }
-            
             if (hasGuiPerm) {
                 try {
-                    new NicknameGUI(player, plugin).open();
+                    String currentNick = plugin.getNicknameManager().getStoredNickname(player);
+                    if (currentNick == null || currentNick.isEmpty()) currentNick = player.getName();
+                    int maxLength = plugin.getNicknameManager().getMaxNickLength();
+                    Dialog.showTextInput(plugin, player, "Edit Nickname",
+                        "Edit your nickname below. Supports color codes (&a, &b, &c, etc.) and formatting.",
+                        "nickname", "Nickname:", currentNick, maxLength, "Apply", "nick_apply");
                 } catch (Exception e) {
                     Text.sendErrorMessage(player, "command-error", plugin.getLangManager(), "{cmd}", "/" + label, true);
-                    plugin.getLogger().warning("Error opening nickname GUI: " + e.getMessage());
+                    plugin.getLogger().warning("Error opening nickname dialog: " + e.getMessage());
                 }
                 return true;
             } else if (hasNickPerm) {
@@ -83,10 +119,40 @@ public class Nick implements CommandExecutor {
             }
         }
         
-        // /nick <name> or /nick <player> <name>
-        // Adjust args to skip flags
-        String[] actualArgs = new String[args.length - argIndex];
-        System.arraycopy(args, argIndex, actualArgs, 0, actualArgs.length);
+        // /nick <name> - open dialog only if GUI perm and no color codes in arg; else set via command (works with allium.nick only)
+        if (actualArgs.length == 1) {
+            if (!isPlayer) {
+                Text.sendErrorMessage(sender, "player-only-command", plugin.getLangManager(), "use /{cmd}", "execute this command.", true);
+                return true;
+            }
+            Player player = (Player) sender;
+            if (!hasNickPerm && !hasGuiPerm) {
+                Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "{cmd}", "nick", true);
+                return true;
+            }
+            String firstArg = actualArgs[0];
+            boolean hasColorCodes = firstArg.contains("&") || firstArg.contains("§") || firstArg.contains("#")
+                || firstArg.contains("<gradient") || firstArg.contains("<rainbow");
+            // Open dialog only if they have GUI permission and first argument has no color codes (plain name = prefill dialog)
+            if (hasGuiPerm && !hasColorCodes) {
+                try {
+                    int maxLength = plugin.getNicknameManager().getMaxNickLength();
+                    Dialog.showTextInput(plugin, player, "Edit Nickname",
+                        "Edit your nickname below. Supports color codes (&a, &b, &c, etc.) and formatting.",
+                        "nickname", "Nickname:", firstArg, maxLength, "Apply", "nick_apply");
+                } catch (Exception e) {
+                    Text.sendErrorMessage(player, "command-error", plugin.getLangManager(), "{cmd}", "/" + label, true);
+                    plugin.getLogger().warning("Error opening nickname dialog: " + e.getMessage());
+                }
+                return true;
+            }
+            // Set via command: /nick <name> with allium.nick, or /nick <&6name> with color to bypass dialog
+            if (!hasColorPermission(player, firstArg)) {
+                Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "use those colors/formats.", true);
+                return true;
+            }
+            return setNickname(player, player, firstArg);
+        }
         
         // Pass-through mode (-p): directly set nickname without GUI
         if (passThrough) {
@@ -124,42 +190,6 @@ public class Nick implements CommandExecutor {
         }
         
         String targetName = actualArgs[0];
-        
-        if (actualArgs.length == 1) {
-            // /nick <name> - editing own nickname
-            if (!isPlayer) {
-                Text.sendErrorMessage(sender, "player-only-command", plugin.getLangManager(), "use /{cmd}", "execute this command.", true);
-                return true;
-            }
-            
-            Player player = (Player) sender;
-            
-            // Check permission for using /nick command
-            if (!hasNickPerm && !hasGuiPerm) {
-                Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "set your nickname.", true);
-                return true;
-            }
-            
-            // Force command mode if -c flag used
-            if (forceCommand || (!hasGuiPerm && hasNickPerm)) {
-                // Validate color/format permissions
-                String nickname = actualArgs[0];
-                if (!hasColorPermission(player, nickname)) {
-                    Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "use those colors/formats.", true);
-                    return true;
-                }
-                return setNickname(player, player, nickname);
-            }
-            
-            // Validate color/format permissions
-            String nickname = actualArgs[0];
-            if (!hasColorPermission(player, nickname)) {
-                Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "use those colors/formats.", true);
-                return true;
-            }
-            
-            return setNickname(player, player, nickname);
-        }
         
         // /nick <player> <name> - editing others
         if (actualArgs.length >= 2) {
@@ -238,8 +268,10 @@ public class Nick implements CommandExecutor {
             }
         }
         
-        // Check for minimessage patterns
-        if (nickname.contains("<gradient") || nickname.contains("<rainbow")) {
+        // Check for MiniMessage patterns (<red>, <gradient:...>, <rainbow>, etc.)
+        if (nickname.contains("<gradient") || nickname.contains("<rainbow")
+                || nickname.contains("<red>") || nickname.contains("<blue>") || nickname.contains("<green>")
+                || nickname.matches(".*<[a-zA-Z0-9_]+>.*")) {
             if (!player.hasPermission("allium.nick.minimessage")) {
                 return false;
             }

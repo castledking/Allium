@@ -60,18 +60,13 @@ public class NV implements CommandExecutor {
 
         // Toggle night vision for self
         boolean enabled = toggleNightVision(player);
-        String stateKey = enabled ? "enabled" : "disabled";
-        
-        // Send the formatted message using the lang system
-        lang.sendMessage(player, "nv.toggle",
-            "state", enabled ? lang.get("nv.enabled") : lang.get("nv.disabled"),
-            "name", player.getName()
-        );
-        
-        // Play sound if available
-        String sound = enabled ? "block.beacon.activate" : "block.beacon.deactivate";
-        player.playSound(player.getLocation(), sound, 1.0f, 1.2f);
-        
+        String firstColor = lang.getFirstColorCode("nv.toggle");
+        String stateValue = enabled
+            ? lang.get("styles.state.true") + "enabled" + firstColor
+            : lang.get("styles.state.false") + "disabled" + firstColor;
+
+        lang.sendMessage(player, "nv.toggle", "state", stateValue, "name", "");
+
         return true;
     }
 
@@ -98,20 +93,14 @@ public class NV implements CommandExecutor {
         }
         
         boolean enabled = toggleNightVision(target);
-        String stateKey = enabled ? "nv.enabled" : "nv.disabled";
-        
-        // Send message to console
-        lang.sendMessage(sender, "nv.toggle.other",
-            "state", lang.get(stateKey),
-            "name", target.getName()
-        );
-        
-        // Send message to target
-        lang.sendMessage(target, "nv.toggle",
-            "state", lang.get(stateKey),
-            "name", target.getName()
-        );
-        
+        String firstColor = lang.getFirstColorCode("nv.toggle");
+        String stateValue = enabled
+            ? lang.get("styles.state.true") + "enabled" + firstColor
+            : lang.get("styles.state.false") + "disabled" + firstColor;
+
+        lang.sendMessage(sender, "nv.toggle.other", "state", stateValue, "name", target.getName());
+        lang.sendMessage(target, "nv.toggle", "state", stateValue, "name", "");
+
         return true;
     }
     
@@ -147,22 +136,16 @@ public class NV implements CommandExecutor {
         }
         
         boolean enabled = toggleNightVision(target);
-        String stateKey = enabled ? "nv.enabled" : "nv.disabled";
-        
-        // Send message to command sender
-        lang.sendMessage(sender, "nv.toggle.other",
-            "state", lang.get(stateKey),
-            "name", target.getName()
-        );
-        
-        // Send message to target if different from sender
+        String firstColor = lang.getFirstColorCode("nv.toggle");
+        String stateValue = enabled
+            ? lang.get("styles.state.true") + "enabled" + firstColor
+            : lang.get("styles.state.false") + "disabled" + firstColor;
+
+        lang.sendMessage(sender, "nv.toggle.other", "state", stateValue, "name", target.getName());
         if (!sender.equals(target)) {
-            lang.sendMessage(target, "nv.toggle",
-                "state", lang.get(stateKey),
-                "name", target.getName()
-            );
+            lang.sendMessage(target, "nv.toggle", "state", stateValue, "name", "");
         }
-        
+
         return true;
     }
     

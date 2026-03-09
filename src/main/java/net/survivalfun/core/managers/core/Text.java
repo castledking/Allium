@@ -364,6 +364,7 @@ public class Text {
 
     public static ColorFormat detectColorFormat(String input) {
         if (input.contains("<gradient:") || input.contains("</gradient>") ||
+            input.contains("<rainbow>") || input.contains("</rainbow>") ||
             SIMPLE_HEX_PATTERN.matcher(input).find()) {
             return ColorFormat.MINI_MESSAGE;
         }
@@ -371,6 +372,10 @@ public class Text {
         // Check for MiniMessage tags (more specific than just < and >)
         // MiniMessage tags typically contain colons, equals signs, or specific keywords
         if (input.contains("<") && input.contains(">")) {
+            // Simple color/format tags: <red>, <blue>, <rainbow>, <bold>, etc.
+            if (Pattern.compile("<(red|blue|green|yellow|white|black|dark_red|gold|aqua|gray|dark_purple|dark_aqua|dark_blue|dark_gray|rainbow|bold|italic|underline|strikethrough|obfuscated)>").matcher(input).find()) {
+                return ColorFormat.MINI_MESSAGE;
+            }
             // Look for patterns that indicate actual MiniMessage tags
             // Tags like <color:red>, <hover:...>, <click:...>, etc.
             Pattern miniMessageTagPattern = Pattern.compile("<[^>]*[:=][^>]*>");

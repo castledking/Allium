@@ -471,8 +471,8 @@ public class Explode implements CommandExecutor {
                 player.getWorld().strikeLightningEffect(new Location(player.getWorld(), x + offsetX, player.getLocation().getY(), z + offsetZ));
             }
 
-            // Add end crystal explosion particles
-            player.getWorld().spawnParticle(org.bukkit.Particle.FLASH, player.getLocation(),
+            // Add end crystal explosion particles (FLASH can require Color on some servers; use EXPLOSION for compatibility)
+            player.getWorld().spawnParticle(org.bukkit.Particle.EXPLOSION, player.getLocation(),
                     8 + (power - 50) / 5, 2.0, 1.0, 2.0, 0.1);
 
             // Play dragon death sound

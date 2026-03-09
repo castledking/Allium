@@ -5,10 +5,10 @@ import net.survivalfun.core.managers.core.Meta;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 
-import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -35,7 +35,6 @@ public class Enchant implements CommandExecutor {
 
         Player player = (Player) sender;
 
-        // Base permission required for any enchant usage
         if (!player.hasPermission("allium.enchant")) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "enchant");
             return true;
@@ -49,106 +48,53 @@ public class Enchant implements CommandExecutor {
             return true;
         }
 
-        ItemStack originalItem = player.getInventory().getItemInMainHand().clone();
-        ItemStack item = originalItem;
+        ItemStack item = player.getInventory().getItemInMainHand();
         if (item == null || item.getType().isAir()) {
             Text.sendErrorMessage(player, "hold-item", lang, "{modify}", label);
             return true;
         }
 
-        String enchantName = args[0].toLowerCase();
+        Enchantment enchantment = Meta.getEnchantment(args[0].toLowerCase());
+        if (enchantment == null) {
+            Text.sendErrorMessage(player, "invalid", lang, "{syntax}", "Enchantment not found.");
+            return true;
+        }
+
         int level;
         try {
             level = Integer.parseInt(args[1]);
         } catch (NumberFormatException e) {
-            Text.sendErrorMessage(player, "invalid", lang, "{arg}", "level");
+            Text.sendErrorMessage(player, "invalid", lang, "{syntax}", "Level must be a number.");
             return true;
         }
 
-        // Get the enchantment
-        Enchantment enchantment = Meta.getEnchantment(enchantName);
-        
-        if (enchantment == null) {
-            Text.sendErrorMessage(player, "invalid", lang, "{arg}", "enchantment");
-            return true;
-        }
+        boolean allowUnsafe = plugin.getConfig().getBoolean("allow-unsafe-enchants", false)
+            && player.hasPermission("allium.enchant.unsafe");
+        Map<Enchantment, Integer> toApply = Map.of(enchantment, level);
 
-        boolean isBook = item.getType().name().contains("ENCHANTED_BOOK");
-        boolean allowUnsafe = PluginStart.getInstance().getConfig().getBoolean("allow-unsafe-enchants", false);
-        boolean hasUnsafePerm = player.hasPermission("allium.enchant.unsafe");
+        Meta.applyEnchantments(player, item, toApply, allowUnsafe);
 
-        // Check if enchantment can be applied
-        if (!Meta.canEnchant(item, enchantment, level)) {
-            // If player has unsafe permission and config allows, proceed with unsafe application
-            if (!(allowUnsafe && hasUnsafePerm)) {
-                String itemName = toTitleCase(originalItem.getType().toString().toLowerCase().replace("_", " "));
-                String enchantNameKey = toTitleCase(enchantment.getKey().getKey().toLowerCase().replace("_", " "));
-                
-                if (level > enchantment.getMaxLevel()) {
-                    Text.sendErrorMessage(sender, "give.unsafe-level", lang, 
-                        "{enchant}", enchantNameKey,
-                        "{maxLevel}", String.valueOf(enchantment.getMaxLevel())
-                    );
-                } else if (!enchantment.canEnchantItem(item)) {
-                    Text.sendErrorMessage(sender, "give.unsafe-enchant", lang,
-                        "{enchant}", enchantNameKey,
-                        "{item}", itemName
-                    );
-                } else {
-                    Text.sendErrorMessage(sender, "give.conflicting-enchants", lang,
-                        "{enchant}", enchantNameKey,
-                        "{item}", itemName
-                    );
-                }
-                return true;
+        boolean applied = wasEnchantApplied(item, enchantment);
+        if (applied) {
+            String itemName = Meta.formatName(item.getType().name());
+            if (item.getItemMeta() != null && item.getItemMeta().hasDisplayName()) {
+                itemName = item.getItemMeta().getDisplayName();
             }
-            // else: allowed to apply unsafely
+            String enchantName = Meta.formatName(enchantment.getKey().getKey());
+            String successMessage = lang.get("enchant.success")
+                .replace("{item}", itemName)
+                .replace("{enchant}", enchantName)
+                .replace("{level}", String.valueOf(level));
+            lang.sendMessage(player, "enchant.success", successMessage);
         }
-
-        // Apply the enchantment
-        if (isBook) {
-            EnchantmentStorageMeta meta = (EnchantmentStorageMeta) item.getItemMeta();
-            meta.addStoredEnchant(enchantment, level, allowUnsafe && hasUnsafePerm);
-            item.setItemMeta(meta);
-        } else {
-            if (!Meta.canEnchant(item, enchantment, level)) {
-                // Only reach here if unsafe is permitted
-                item.addUnsafeEnchantment(enchantment, level);
-            } else {
-                // Safe path
-                item.addEnchantment(enchantment, level);
-            }
-        }
-        
-        // Set the modified item back to player's main hand
-        player.getInventory().setItemInMainHand(item);
-        String itemName = toTitleCase(originalItem.getType().toString().toLowerCase().replace("_", " "));
-        enchantName = toTitleCase(enchantment.getKey().getKey().toLowerCase().replace("_", " "));
-
-        String successMessage = lang.get("enchant.success")
-            .replace("{item}", (originalItem.getItemMeta() != null && originalItem.getItemMeta().getDisplayName() != null) ? originalItem.getItemMeta().getDisplayName() : itemName)
-            .replace("{enchant}", enchantName)
-            .replace("{level}", String.valueOf(level));
-        lang.sendMessage(player, successMessage);
         return true;
     }
-    
-    private static String toTitleCase(String s) {
-        if (s == null || s.isEmpty()) return s;
-        StringBuilder sb = new StringBuilder(s.length());
-        boolean cap = true;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (Character.isWhitespace(c)) {
-                cap = true;
-                sb.append(c);
-            } else if (cap) {
-                sb.append(Character.toUpperCase(c));
-                cap = false;
-            } else {
-                sb.append(Character.toLowerCase(c));
-            }
+
+    private static boolean wasEnchantApplied(ItemStack item, Enchantment enchantment) {
+        if (item.getType() == Material.ENCHANTED_BOOK) {
+            if (!(item.getItemMeta() instanceof EnchantmentStorageMeta bookMeta)) return false;
+            return bookMeta.hasStoredEnchant(enchantment);
         }
-        return sb.toString();
+        return item.containsEnchantment(enchantment);
     }
 }

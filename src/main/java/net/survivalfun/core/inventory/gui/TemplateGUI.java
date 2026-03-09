@@ -63,7 +63,7 @@ public class TemplateGUI extends BaseGUI {
         int slot = event.getSlot();
         
         if (slot == 35) {
-            player.openInventory(new NicknameGUI(player, plugin).getInventory());
+            player.openInventory(new NicknameHomeGUI(player, plugin).getInventory());
             return;
         }
         

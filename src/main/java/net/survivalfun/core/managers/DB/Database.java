@@ -10,6 +10,7 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
 
 import java.io.ByteArrayInputStream;
@@ -605,6 +606,17 @@ public class Database {
                 statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS player_displayname VARCHAR(100)");
                 Text.sendDebugLog(INFO, "Successfully added player_displayname column to player_data table");
             }
+
+            // Table for staff-set / migrated max homes per player (-1 or missing = use permissions)
+            if (!tableExists(connection, "player_max_homes")) {
+                Text.sendDebugLog(INFO, "Creating player_max_homes table...");
+                statement.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS player_max_homes (" +
+                    "uuid VARCHAR(36) PRIMARY KEY, " +
+                    "max_homes INT NOT NULL DEFAULT 1" +
+                    ")");
+                Text.sendDebugLog(INFO, "Successfully created player_max_homes table");
+            }
         }
     }
 
@@ -890,6 +902,27 @@ public class Database {
         return queryString("SELECT player_displayname FROM player_data WHERE uuid = ?", playerUUID.toString());
     }
 
+    /**
+     * Saves the stored display name (nickname) for a player. Creates a player_data row if one does not exist
+     * so the nickname persists across restarts.
+     * @param playerUUID The player's UUID
+     * @param playerName The player's current in-game name (used for the name column when inserting)
+     * @param displayName The nickname/display name to store (can be same as playerName to clear custom nick)
+     */
+    public void setStoredPlayerDisplayname(UUID playerUUID, String playerName, String displayName) {
+        if (!columnExists("player_data", "player_displayname")) {
+            return;
+        }
+        if (playerName == null) playerName = "";
+        if (displayName == null) displayName = "";
+        try {
+            String sql = "MERGE INTO player_data (uuid, name, player_displayname, last_updated) KEY (uuid) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
+            executeUpdate(sql, playerUUID.toString(), playerName, displayName);
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Failed to save nickname for " + playerUUID + ": " + e.getMessage(), e);
+        }
+    }
+
     public String getServerData(String key) {
         return queryString("SELECT \"value\" FROM server_data WHERE \"key\" = ?", key);
     }
@@ -1063,12 +1096,59 @@ public class Database {
         String sql = "DELETE FROM player_locations WHERE player_uuid = ? AND location_type = 'HOME' AND home_name = ?";
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            
+
             statement.setString(1, playerUUID.toString());
             statement.setString(2, homeName);
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             Text.sendDebugLog(WARN, "Failed to delete home '" + homeName + "' for player UUID: " + playerUUID, e);
+            return false;
+        }
+    }
+
+    /**
+     * Gets the max homes override for a player. Returns -1 if not set (use permissions).
+     */
+    public int getPlayerMaxHomes(UUID playerUUID) {
+        if (!tableExists(null, "player_max_homes")) {
+            return -1;
+        }
+        String sql = "SELECT max_homes FROM player_max_homes WHERE uuid = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, playerUUID.toString());
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() ? rs.getInt("max_homes") : -1;
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to get max homes for " + playerUUID, e);
+            return -1;
+        }
+    }
+
+    /**
+     * Sets the max homes override for a player. Use -1 to clear (use permissions again).
+     */
+    public boolean setPlayerMaxHomes(UUID playerUUID, int maxHomes) {
+        if (!tableExists(null, "player_max_homes")) {
+            return false;
+        }
+        try (Connection connection = getConnection()) {
+            if (maxHomes < 0) {
+                try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM player_max_homes WHERE uuid = ?")) {
+                    stmt.setString(1, playerUUID.toString());
+                    return stmt.executeUpdate() >= 0;
+                }
+            }
+            // MERGE for H2 (upsert)
+            String sql = "MERGE INTO player_max_homes (uuid, max_homes) KEY(uuid) VALUES (?, ?)";
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setString(1, playerUUID.toString());
+                stmt.setInt(2, maxHomes);
+                return stmt.executeUpdate() > 0;
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to set max homes for " + playerUUID, e);
             return false;
         }
     }
@@ -2855,20 +2935,34 @@ public class Database {
         }
     }
     
+    /** Maximum allowed array size when deserializing item stacks (avoids NegativeArraySizeException / OOM from corrupt data). */
+    private static final int MAX_DESERIALIZE_ITEM_STACK_SIZE = 1024;
+
     private ItemStack[] deserializeItemStacks(byte[] data) {
         if (data == null || data.length == 0) {
             return new ItemStack[0];
         }
         
         try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
-             DataInputStream dataInput = new DataInputStream(inputStream)) {
+             BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream)) {
             
             int size = dataInput.readInt();
+            if (size < 0 || size > MAX_DESERIALIZE_ITEM_STACK_SIZE) {
+                Text.sendDebugLog(ERROR, "Invalid item stack array size: " + size + " (expected 0-" + MAX_DESERIALIZE_ITEM_STACK_SIZE + ")");
+                return new ItemStack[0];
+            }
             ItemStack[] items = new ItemStack[size];
             
             for (int i = 0; i < size; i++) {
                 try {
-                    items[i] = ItemStack.deserializeBytes(dataInput.readAllBytes());
+                    Object obj = dataInput.readObject();
+                    if (obj instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        ItemStack stack = ItemStack.deserialize((Map<String, Object>) obj);
+                        items[i] = stack;
+                    } else {
+                        items[i] = null;
+                    }
                 } catch (Exception e) {
                     items[i] = null;
                 }

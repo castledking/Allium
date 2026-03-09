@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 
 import me.croabeast.prismatic.PrismaticAPI;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -27,6 +28,8 @@ public class NicknameManager {
     private FileConfiguration animationsConfig;
     private final Map<String, NicknameAnimation> animations = new HashMap<>();
     private final Map<UUID, Long> cooldowns = new ConcurrentHashMap<>();
+    /** In-memory nickname so placeholders (%allium_nickname%, etc.) see the current value immediately after set/reset. */
+    private final Map<UUID, String> inMemoryNicknames = new ConcurrentHashMap<>();
     private final Map<UUID, Map<Integer, String>> playerLetterColors = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> playerGlowEffects = new ConcurrentHashMap<>();
     private int defaultCooldown;
@@ -126,7 +129,11 @@ public class NicknameManager {
     
     private String stripColor(String text) {
         if (text == null) return "";
-        return text.replaceAll("&[0-9a-fk-orA-FK-OR]", "").replaceAll("§[0-9a-fk-orA-FK-OR]", "");
+        // Strip legacy & and § codes
+        text = text.replaceAll("&[0-9a-fk-orA-FK-OR]", "").replaceAll("§[0-9a-fk-orA-FK-OR]", "");
+        // Strip MiniMessage tags (<red>, <gradient:...>, </gradient>, etc.) so validation checks only visible text
+        text = text.replaceAll("<[^>]+>", "");
+        return text;
     }
     
     public String formatNickname(Player player, String nickname) {
@@ -134,6 +141,11 @@ public class NicknameManager {
             return "";
         }
         try {
+            // Support MiniMessage tags (<red>, <gradient:#x:#y>, <rainbow>) like lore/rename
+            if (Text.detectColorFormat(nickname) == Text.ColorFormat.MINI_MESSAGE) {
+                String result = Text.parseColors(nickname);
+                return (result != null && !result.isEmpty()) ? result : nickname;
+            }
             String result = PrismaticAPI.colorize(player, nickname);
             return (result != null && !result.isEmpty()) ? result : nickname;
         } catch (Exception e) {
@@ -144,7 +156,7 @@ public class NicknameManager {
 
     /**
      * Gets the stored nickname for a player. Only returns DB value when explicitly set via GUI or /nick.
-     * Returns player's default in-game name when not edited.
+     * Returns player's default in-game name when not edited. Never returns null or empty when player is non-null.
      */
     public String getStoredNickname(Player player) {
         if (player == null) return "";
@@ -152,6 +164,9 @@ public class NicknameManager {
         if (defaultName == null || defaultName.isEmpty()) {
             defaultName = player.getUniqueId().toString();
         }
+        String inMem = inMemoryNicknames.get(player.getUniqueId());
+        if (inMem != null && !inMem.trim().isEmpty()) return inMem;
+        if (database == null) return defaultName;
         try {
             String dbNick = database.getStoredPlayerDisplayname(player.getUniqueId());
             if (dbNick != null && !dbNick.trim().isEmpty()) {
@@ -159,6 +174,27 @@ public class NicknameManager {
             }
         } catch (Exception e) {
             Text.sendDebugLog(WARN, "Error loading nickname from DB for " + player.getName() + ": " + e.getMessage());
+        }
+        return defaultName;
+    }
+
+    /**
+     * Gets the stored nickname for an offline player by UUID (e.g. for PlaceholderAPI tab/scoreboard).
+     * Returns the given defaultName when no nickname is stored.
+     */
+    public String getStoredNickname(UUID playerUUID, String defaultName) {
+        if (playerUUID == null || defaultName == null) return (defaultName != null) ? defaultName : "";
+        if (defaultName.isEmpty()) defaultName = playerUUID.toString();
+        String inMem = inMemoryNicknames.get(playerUUID);
+        if (inMem != null && !inMem.trim().isEmpty()) return inMem;
+        if (database == null) return defaultName;
+        try {
+            String dbNick = database.getStoredPlayerDisplayname(playerUUID);
+            if (dbNick != null && !dbNick.trim().isEmpty()) {
+                return dbNick;
+            }
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Error loading nickname from DB for " + playerUUID + ": " + e.getMessage());
         }
         return defaultName;
     }
@@ -183,16 +219,20 @@ public class NicknameManager {
             // Format the nickname with colors and styles
             String formattedNick = formatNickname(player, nickname);
 
-            // Update the player's display name
-            player.displayName(Component.text(formattedNick));
-            player.playerListName(Component.text(formattedNick));
+            // Update the player's display name (normalize & to § then deserialize so colors render)
+            Component displayComponent = LegacyComponentSerializer.legacySection().deserialize(formattedNick.replace('&', '§'));
+            player.displayName(displayComponent);
+            player.playerListName(displayComponent);
 
-            // Save to database
-            database.executeUpdate(
-                "UPDATE player_data SET player_displayname = ? WHERE uuid = ?",
-                nickname,
-                player.getUniqueId().toString()
-            );
+            // So placeholders (%allium_nickname%, etc.) see the new value immediately
+            inMemoryNicknames.put(player.getUniqueId(), nickname);
+
+            // Persist to database (creates player_data row if needed so nickname survives restarts)
+            if (database != null) {
+                database.setStoredPlayerDisplayname(player.getUniqueId(), player.getName(), nickname);
+            } else {
+                Text.sendDebugLog(WARN, "Database not available; nickname for " + player.getName() + " applied in-session only and will not persist.");
+            }
 
             // Set cooldown
             setCooldown(player);
@@ -230,16 +270,16 @@ public class NicknameManager {
         
         String playerName = player.getName();
         String formattedNick = formatNickname(player, playerName);
-        player.displayName(Component.text(formattedNick));
-        player.playerListName(Component.text(formattedNick));
-        try {
-            database.executeUpdate(
-                "UPDATE player_data SET player_displayname = ? WHERE uuid = ?",
-                playerName,
-                player.getUniqueId().toString()
-            );
-        } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Error resetting nickname in DB for " + player.getName() + ": " + e.getMessage());
+        Component displayComponent = LegacyComponentSerializer.legacySection().deserialize(formattedNick.replace('&', '§'));
+        player.displayName(displayComponent);
+        player.playerListName(displayComponent);
+        inMemoryNicknames.put(player.getUniqueId(), playerName);
+        if (database != null) {
+            try {
+                database.setStoredPlayerDisplayname(player.getUniqueId(), playerName, playerName);
+            } catch (Exception e) {
+                Text.sendDebugLog(WARN, "Error resetting nickname in DB for " + player.getName() + ": " + e.getMessage());
+            }
         }
         player.sendMessage(PrismaticAPI.colorize(player, "&aYour nickname has been reset to " + playerName));
     }
@@ -251,9 +291,11 @@ public class NicknameManager {
     public void restoreDisplayNameFromStored(Player player, String storedNick) {
         if (player == null || storedNick == null || storedNick.trim().isEmpty()) return;
         try {
+            inMemoryNicknames.put(player.getUniqueId(), storedNick);
             String formatted = getFormattedNickname(player, storedNick);
-            player.displayName(Component.text(formatted));
-            player.playerListName(Component.text(formatted));
+            Component displayComponent = LegacyComponentSerializer.legacySection().deserialize(formatted.replace('&', '§'));
+            player.displayName(displayComponent);
+            player.playerListName(displayComponent);
         } catch (Exception e) {
             Text.sendDebugLog(WARN, "Error restoring nickname for " + player.getName() + ": " + e.getMessage());
         }

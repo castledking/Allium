@@ -102,25 +102,22 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
 
     @Override
     public String onRequest(OfflinePlayer offlinePlayer, @NotNull String params) {
-        // Essentials expansion pattern: handle player-dependent placeholders only when player is online
-        if (offlinePlayer == null) {
-            return "";
+        if (offlinePlayer == null) return "";
+        // Nickname placeholders work for offline players (stored name or default from UUID/name)
+        if ("nickname".equals(params) || "nickname_raw".equals(params)) {
+            String result = nicknamePlaceholder.onRequest(offlinePlayer, params);
+            return (result != null && !result.isEmpty()) ? result : (offlinePlayer.getName() != null ? offlinePlayer.getName() : "");
         }
         if (!offlinePlayer.isOnline()) {
-            // Offline: only time/baltop-style placeholders work; most return empty
             return "";
         }
         Player p = offlinePlayer.getPlayer();
-        if (p == null) {
-            return "";
-        }
+        if (p == null) return "";
         try {
             return onPlaceholderRequest(p, params);
         } catch (Throwable t) {
             plugin.getLogger().warning("PlaceholderAPI allium error for '" + params + "': " + t.getMessage());
-            if (plugin.isDebugMode()) {
-                t.printStackTrace();
-            }
+            if (plugin.isDebugMode()) t.printStackTrace();
             return "";
         }
     }

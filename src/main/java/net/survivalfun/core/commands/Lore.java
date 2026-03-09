@@ -1,6 +1,7 @@
 package net.survivalfun.core.commands;
 
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.managers.core.Dialog;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.core.Text;
 import net.kyori.adventure.text.Component;
@@ -14,7 +15,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Lore implements CommandExecutor {
 
@@ -36,6 +40,34 @@ public class Lore implements CommandExecutor {
         Player player = (Player) sender;
         ItemStack item = player.getInventory().getItemInMainHand();
 
+        // /lore --apply <line1> | <line2> ... [<playerName>] (from dialog; last arg is target player when run as console)
+        if (args.length >= 1 && "--apply".equalsIgnoreCase(args[0])) {
+            if (args.length < 2) return true;
+            // Last arg is target player name (appended by dialog)
+            int end = args.length - 1;
+            String targetName = args[end];
+            Player target = org.bukkit.Bukkit.getPlayerExact(targetName);
+            if (target == null || !target.isOnline()) {
+                if (sender instanceof Player) ((Player) sender).sendMessage("§cPlayer not found: " + targetName);
+                return true;
+            }
+            if (!target.hasPermission("allium.lore.gui")) return true;
+            ItemStack targetItem = target.getInventory().getItemInMainHand();
+            if (targetItem.getType().isAir() || !targetItem.hasItemMeta()) {
+                target.sendMessage("§cHold an item to set lore.");
+                return true;
+            }
+            String combined = (end > 1) ? String.join(" ", Arrays.copyOfRange(args, 1, end)) : args[1];
+            List<String> lines = Arrays.stream(combined.split(" \\| "))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Text::parseColors)
+                .collect(Collectors.toList());
+            net.survivalfun.core.managers.core.Lore.setLore(targetItem, lines);
+            target.updateInventory();
+            target.sendMessage("§aLore updated.");
+            return true;
+        }
 
         ItemMeta meta = item.getItemMeta();
         if (item.getType().isAir()) {
@@ -49,6 +81,10 @@ public class Lore implements CommandExecutor {
         List<String> lore = net.survivalfun.core.managers.core.Lore.getLore(item);
 
         if (args.length == 0) {
+            if (player.hasPermission("allium.lore.gui")) {
+                Dialog.showLoreInput(plugin, player, lore);
+                return true;
+            }
             player.sendMessage(Component.text("Lore Command Usage:", NamedTextColor.RED));
             String usageTemplate = lang.get("command-usage");
 

@@ -53,12 +53,12 @@ groups:
       - tpno
       - tpcancel
       - tptoggle
-      - tpoffline
-      - tpauto
-      - tppet
       - spawn
       - back
-      - rtp
+      - msg
+      - reply
+      - r
       - party
+      - mail
     tabcompletes:
       - ^

@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.inventory.InventoryManager;
+import net.survivalfun.core.items.CustomItemRegistry;
 import net.survivalfun.core.items.HandcuffsItem;
 import net.survivalfun.core.listeners.security.CommandManager;
 import net.survivalfun.core.listeners.security.CreativeManager;
@@ -14,7 +15,9 @@ import net.survivalfun.core.managers.core.LegacyID;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.lang.Lang;
+import net.survivalfun.core.managers.migration.EssentialsMigration;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -130,6 +133,13 @@ public class Core implements CommandExecutor, TabCompleter {
                 handleDelmsgStatusCommand(sender);
                 break;
 
+            case "migrate":
+                handleMigrateCommand(sender, args);
+                break;
+            case "sethomes":
+                handleSethomesCommand(sender, args);
+                break;
+
             default:
                 sender.sendMessage("§cUnknown subcommand. Use /core for help.");
                 break;
@@ -181,6 +191,27 @@ public class Core implements CommandExecutor, TabCompleter {
                 target.getInventory().addItem(HandcuffsItem.createHandcuffs());
                 sender.sendMessage("§aGave handcuffs to " + target.getName());
                 break;
+            case "lazy_axe":
+            case "tree_axe": {
+                net.survivalfun.core.items.CustomItem item = CustomItemRegistry.getInstance() != null ? CustomItemRegistry.getInstance().getItem("tree_axe") : null;
+                if (item != null) {
+                    target.getInventory().addItem(item.createItemStack(1));
+                    sender.sendMessage("§aGave Lazy Axe to " + target.getName());
+                } else {
+                    sender.sendMessage("§cCustom item system not available.");
+                }
+                break;
+            }
+            case "spawner_changer": {
+                net.survivalfun.core.items.CustomItem item = CustomItemRegistry.getInstance() != null ? CustomItemRegistry.getInstance().getItem("spawner_changer") : null;
+                if (item != null) {
+                    target.getInventory().addItem(item.createItemStack(1));
+                    sender.sendMessage("§aGave Spawner Changer to " + target.getName());
+                } else {
+                    sender.sendMessage("§cCustom item system not available.");
+                }
+                break;
+            }
             default:
                 sender.sendMessage("§cUnknown item: " + itemName);
                 break;
@@ -190,6 +221,8 @@ public class Core implements CommandExecutor, TabCompleter {
     private void handleItemListCommand(CommandSender sender) {
         sender.sendMessage("§aAvailable items:");
         sender.sendMessage("§ehandcuffs §7- Handcuffs item for restraining players");
+        sender.sendMessage("§elazy_axe §7- Lazy Axe (chops entire trees)");
+        sender.sendMessage("§espawner_changer §7- Spawner Type Changer (right-click spawners)");
     }
 
     private void handleDialogSubcommand(CommandSender sender, String[] args) {
@@ -370,6 +403,8 @@ public class Core implements CommandExecutor, TabCompleter {
         sender.sendMessage("§ehideupdate §7- Refresh tab completion for player.");
         sender.sendMessage("§erestore §7- Open inventory restoration GUI.");
         sender.sendMessage("§eescalate §7- Escalate an issue to staff.");
+        sender.sendMessage("§emigrate §7- Migrate Essentials userdata (homes, economy, warps).");
+        sender.sendMessage("§esethomes §7- Set a player's max homes (staff override).");
     }
 
     private void handleSetGameruleCommand(CommandSender sender, String[] args) {
@@ -427,6 +462,109 @@ public class Core implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Component.text("§cRetry failed. Ensure PacketEvents plugin JAR is in plugins/ and loads before Allium. Enable debug-mode in config for details."));
                 net.survivalfun.core.packetevents.PacketEventsLoader.logPacketEventsStatus(plugin.getLogger());
             }
+        }
+    }
+
+    private void handleMigrateCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("allium.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core migrate");
+            return;
+        }
+        // /core migrate [homes|economy|warps|all] [path]
+        String type = args.length >= 2 ? args[1].toLowerCase() : "all";
+        File basePath;
+        if (args.length >= 3) {
+            basePath = new File(args[2]);
+            if (!basePath.isDirectory()) {
+                sender.sendMessage(Component.text("§cPath is not a directory: " + basePath.getAbsolutePath()));
+                return;
+            }
+        } else {
+            basePath = new File(plugin.getDataFolder().getParentFile(), "Essentials");
+            if (!basePath.isDirectory()) {
+                sender.sendMessage(Component.text("§cEssentials folder not found. Use: /core migrate <homes|economy|warps|all> <path>"));
+                return;
+            }
+        }
+        EssentialsMigration migration = new EssentialsMigration(plugin.getLogger(), plugin.getDatabase(), basePath);
+        sender.sendMessage(Component.text("§7Migrating from: " + basePath.getAbsolutePath()));
+
+        if ("homes".equals(type) || "all".equals(type)) {
+            if (!migration.hasUserdata()) {
+                sender.sendMessage(Component.text("§eNo userdata folder found, skipping homes."));
+            } else {
+                EssentialsMigration.MigrationResult r = migration.migrateHomes();
+                sender.sendMessage(Component.text("§aHomes: " + r.getSuccess().size() + " players migrated."));
+                for (String e : r.getErrors()) sender.sendMessage(Component.text("§c  " + e));
+                for (String s : r.getSkipped()) sender.sendMessage(Component.text("§e  " + s));
+            }
+        }
+        if ("economy".equals(type) || "all".equals(type)) {
+            if (!migration.hasUserdata()) {
+                sender.sendMessage(Component.text("§eNo userdata folder found, skipping economy."));
+            } else {
+                EssentialsMigration.MigrationResult r = migration.migrateEconomy();
+                sender.sendMessage(Component.text("§aEconomy: " + r.getSuccess().size() + " players migrated."));
+                for (String e : r.getErrors()) sender.sendMessage(Component.text("§c  " + e));
+            }
+        }
+        if ("warps".equals(type) || "all".equals(type)) {
+            if (!migration.hasWarps()) {
+                sender.sendMessage(Component.text("§eNo warps source found (warps/ directory or warps.yml), skipping warps."));
+            } else {
+                EssentialsMigration.MigrationResult r = migration.migrateWarps();
+                sender.sendMessage(Component.text("§aWarps: " + r.getSuccess().size() + " warps migrated."));
+                for (String e : r.getErrors()) sender.sendMessage(Component.text("§c  " + e));
+            }
+        }
+        if (!"homes".equals(type) && !"economy".equals(type) && !"warps".equals(type) && !"all".equals(type)) {
+            sender.sendMessage(Component.text("§cUsage: /core migrate <homes|economy|warps|all> [path]"));
+        }
+    }
+
+    private void handleSethomesCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("allium.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core sethomes");
+            return;
+        }
+        if (args.length < 3) {
+            sender.sendMessage(Component.text("§eUsage: /core sethomes <player> <number>"));
+            sender.sendMessage(Component.text("§7Set a player's max homes. Use -1 to clear (use permissions again)."));
+            return;
+        }
+        OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(args[1]);
+        if (target == null) {
+            for (OfflinePlayer p : Bukkit.getOfflinePlayers()) {
+                if (p.getName() != null && p.getName().equalsIgnoreCase(args[1])) {
+                    target = p;
+                    break;
+                }
+            }
+        }
+        if (target == null || (!target.hasPlayedBefore() && !target.isOnline())) {
+            Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[1]);
+            return;
+        }
+        int maxHomes;
+        try {
+            maxHomes = Integer.parseInt(args[2]);
+        } catch (NumberFormatException e) {
+            sender.sendMessage(Component.text("§cInvalid number. Use -1 to clear override."));
+            return;
+        }
+        if (maxHomes < -1 || maxHomes > 1000) {
+            sender.sendMessage(Component.text("§cNumber must be between -1 and 1000 (-1 = use permissions)."));
+            return;
+        }
+        boolean ok = plugin.getDatabase().setPlayerMaxHomes(target.getUniqueId(), maxHomes);
+        if (ok) {
+            if (maxHomes < 0) {
+                sender.sendMessage(Component.text("§aCleared max homes override for " + (target.getName() != null ? target.getName() : target.getUniqueId()) + ". They now use permissions."));
+            } else {
+                sender.sendMessage(Component.text("§aSet max homes for " + (target.getName() != null ? target.getName() : target.getUniqueId()) + " to " + maxHomes + "."));
+            }
+        } else {
+            sender.sendMessage(Component.text("§cFailed to set max homes (check console)."));
         }
     }
 
@@ -875,6 +1013,8 @@ public class Core implements CommandExecutor, TabCompleter {
                 suggestions.add("dialog");
                 suggestions.add("item");
                 suggestions.add("rp");
+                suggestions.add("migrate");
+                suggestions.add("sethomes");
             }
             if (sender.hasPermission("allium.restore")) {
                 suggestions.add("restore");
@@ -935,6 +1075,34 @@ public class Core implements CommandExecutor, TabCompleter {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     suggestions.add(player.getName());
                 }
+            }
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("migrate")) {
+            if (args.length == 2) {
+                suggestions.addAll(List.of("homes", "economy", "warps", "all"));
+            }
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("sethomes")) {
+            if (args.length == 2) {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    suggestions.add(player.getName());
+                }
+                for (OfflinePlayer p : Bukkit.getOfflinePlayers()) {
+                    if (p.getName() != null && !p.getName().isEmpty()) {
+                        suggestions.add(p.getName());
+                    }
+                }
+            } else if (args.length == 3) {
+                suggestions.addAll(List.of("1", "3", "5", "10", "-1"));
+            }
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("item")) {
+            if (args.length == 2) {
+                suggestions.add("give");
+                suggestions.add("list");
+            } else if (args.length == 3 && args[1].equalsIgnoreCase("give")) {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    suggestions.add(player.getName());
+                }
+            } else if (args.length == 4 && args[1].equalsIgnoreCase("give")) {
+                suggestions.addAll(List.of("handcuffs", "lazy_axe", "spawner_changer"));
             }
         }
         // Filter final list of completions by currentArg. This handles cases where completions were added without pre-filtering.

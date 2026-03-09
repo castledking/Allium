@@ -70,11 +70,18 @@ public class Meta {
     }
 
     public static void applyEnchantments(CommandSender sender, ItemStack item, Map<Enchantment, Integer> enchantments) {
+        applyEnchantments(sender, item, enchantments, configManager.getBoolean("allow-unsafe-enchants"));
+    }
+
+    /**
+     * Apply enchantments to an item, with explicit unsafe flag (e.g. from command permission).
+     */
+    public static void applyEnchantments(CommandSender sender, ItemStack item, Map<Enchantment, Integer> enchantments, boolean allowUnsafe) {
         if (item == null || enchantments == null || enchantments.isEmpty()) {
             return;
         }
 
-        boolean unsafe = configManager.getBoolean("allow-unsafe-enchants");
+        boolean unsafe = allowUnsafe;
         boolean isEnchantmentBook = item.getType() == Material.ENCHANTED_BOOK;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return;
@@ -241,14 +248,16 @@ public class Meta {
         // Check if enchant can be applied to this item
         if (!enchant.canEnchantItem(item)) return false;
         
-        // Check for conflicts with existing enchants
+        return true;
+    }
+
+    public static boolean hasConflictingEnchant(ItemStack item, Enchantment enchant) {
         for (Map.Entry<Enchantment, Integer> entry : item.getEnchantments().entrySet()) {
             if (enchant.conflictsWith(entry.getKey())) {
-                return false;
+                return true;
             }
         }
-        
-        return true;
+        return false;
     }
 
     public static ItemStack createPlayerHead(CommandSender sender, String[] parts, int amount, Map<Enchantment, Integer> enchantments) {

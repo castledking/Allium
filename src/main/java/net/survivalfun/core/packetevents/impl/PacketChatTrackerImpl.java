@@ -49,7 +49,7 @@ public class PacketChatTrackerImpl extends PacketListenerAbstract implements Cha
     private static final char[] INVISIBLE_UNICODE = {
         ' ',                                    // Regular space
         '\u2000', '\u2001', '\u2002', '\u2003', // En quad, Em quad, En space, Em space
-        '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200A'                              // Zero-width no-break (BOM)
+        '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200A' // Various spaces
     };
 
     public PacketChatTrackerImpl(PluginStart plugin, ChatMessageManager chatMessageManager) {

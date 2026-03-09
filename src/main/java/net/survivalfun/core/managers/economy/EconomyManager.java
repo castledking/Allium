@@ -2,6 +2,7 @@ package net.survivalfun.core.managers.economy;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.Database;
+import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -9,6 +10,7 @@ import net.survivalfun.core.managers.core.Text;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -243,12 +245,41 @@ public class EconomyManager {
     }
 
     /**
-     * Get the top balances
+     * Get the top balances. Resolves UUID to player name when name is missing or a UUID fragment.
      * @param limit The maximum number of entries to return
-     * @return A list of top balances
+     * @return A list of top balances with display names resolved
      */
     public List<BalanceEntry> getTopBalances(int limit) {
-        return database.getTopBalances(limit);
+        List<BalanceEntry> raw = database.getTopBalances(limit);
+        List<BalanceEntry> resolved = new ArrayList<>(raw.size());
+        for (BalanceEntry e : raw) {
+            String name = e.getPlayerName();
+            if (name == null || name.isEmpty() || isUuidFragment(name)) {
+                OfflinePlayer off = Bukkit.getOfflinePlayer(e.getPlayerUUID());
+                name = off.getName();
+                if (name == null || name.isEmpty()) {
+                    name = e.getPlayerName();
+                }
+                if (name == null || name.isEmpty()) {
+                    name = e.getPlayerUUID().toString().substring(0, 8);
+                }
+                resolved.add(new BalanceEntry(e.getPlayerUUID(), name, e.getBalance()));
+            } else {
+                resolved.add(e);
+            }
+        }
+        return resolved;
+    }
+
+    /** True if the string looks like a UUID fragment (e.g. 8 hex chars) used as a fallback display. */
+    private static boolean isUuidFragment(String s) {
+        if (s == null || s.length() != 8) return false;
+        for (int i = 0; i < 8; i++) {
+            char c = s.charAt(i);
+            if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) continue;
+            return false;
+        }
+        return true;
     }
 
     /**

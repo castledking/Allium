@@ -714,6 +714,10 @@ public class Home implements CommandExecutor, TabCompleter {
     }
 
     private int getMaxHomes(Player player) {
+        int dbMax = database.getPlayerMaxHomes(player.getUniqueId());
+        if (dbMax >= 0) {
+            return dbMax;
+        }
         for (int i = 100; i >= 0; i--) {
             if (player.hasPermission("allium.sethome." + i)) {
                 return i;

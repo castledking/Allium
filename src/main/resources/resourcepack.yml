@@ -4,11 +4,11 @@
 # The resource pack will be automatically sent to players on join.
 
 # URL to the resource pack ZIP file
-url: "https://download.mc-packs.net/pack/73f21a4847b50270b52f84951774ad1e108766bc.zip"
+url: "https://download.mc-packs.net/pack/72b63069a0518e26888c61e4a6ae9e80aec8e1b1.zip"
 
 # SHA-1 hash of the resource pack (optional but recommended)
 # You can generate this with: sha1sum resourcepack.zip
-hash: "73f21a4847b50270b52f84951774ad1e108766bc"
+hash: "72b63069a0518e26888c61e4a6ae9e80aec8e1b1"
 
 # Force players to accept the resource pack
 # If true, players who decline will be kicked

@@ -83,6 +83,12 @@
          DEPENDENCY REPOSITORIES
          ================================================== -->
     <repositories>
+        <!-- OpenCollab (Floodgate API) - check first so SNAPSHOT resolves quickly -->
+        <repository>
+            <id>opencollab-snapshot</id>
+            <url>https://repo.opencollab.dev/main/</url>
+        </repository>
+
         <!-- PaperMC Repository -->
         <repository>
             <id>papermc-repo</id>
@@ -135,10 +141,6 @@
         <repository>
             <id>codemc-nms</id>
             <url>https://repo.codemc.io/repository/nms/</url>
-        </repository>
-        <repository>
-            <id>opencollab-snapshot</id>
-            <url>https://repo.opencollab.dev/main/</url>
         </repository>
     </repositories>
 

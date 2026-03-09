@@ -486,6 +486,13 @@ public class CreeperExplosion implements Listener {
         }
     }
 
+    /** Returns true if the current block at a restore location can be overwritten to restore (air or fluid flow). Player-placed blocks (e.g. shulker) are not restorable. */
+    private static boolean isRestorableCurrentBlock(Material material) {
+        return material == Material.AIR
+            || material == Material.WATER
+            || material == Material.LAVA;
+    }
+
     private boolean isOreMaterial(Material material) {
         switch (material) {
             // Coal ores
@@ -578,7 +585,8 @@ public class CreeperExplosion implements Listener {
 
                 // Schedule the block regeneration
                 Bukkit.getRegionScheduler().runDelayed(plugin, task.location, (ScheduledTask scheduled) -> {
-                    if (task.location.getBlock().getType() == Material.AIR) {
+                    // Restore if still restorable (air or fluid flow); don't overwrite player-placed blocks
+                    if (isRestorableCurrentBlock(task.location.getBlock().getType())) {
                         // Check if the block to be regenerated is an ore - if so, skip it
                         if (isOreMaterial(task.state.getType())) {
                             if (plugin.getConfig().getBoolean("debug-mode")) {

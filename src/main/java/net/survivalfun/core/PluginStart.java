@@ -1411,7 +1411,7 @@ public class PluginStart extends JavaPlugin {
             ResourcePackManager resourcePackManager = new ResourcePackManager(this);
             Text.sendDebugLog(INFO, "Resource pack manager initialized");
             
-            // Register nickname command
+            // Register nickname command and dialog apply command
             Nick nicknameCommand = new Nick(this);
             registerCommand("nickname", nicknameCommand);
             Text.sendDebugLog(INFO, "Nickname command registered");
@@ -1520,6 +1520,7 @@ public class PluginStart extends JavaPlugin {
             // Register core listeners
             registerListenerSafely(pm, "ConnectionManager", new ConnectionManager(this));
             registerListenerSafely(pm, "UpdateCheckerListener", new net.survivalfun.core.listeners.UpdateCheckerListener());
+            registerListenerSafely(pm, "DialogApplyListener", new net.survivalfun.core.listeners.DialogApplyListener(this));
             
             if (creativeManager != null) {
                 registerListenerSafely(pm, "CreativeManager", creativeManager);

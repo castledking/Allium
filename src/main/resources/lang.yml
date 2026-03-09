@@ -2,7 +2,7 @@
 #              SFCORE LANG(en)             #
 #==========================================#
 
-version: 0.1.4a
+version: 0.1.5a
 # This is the version of the language file.
 # Currently only used to remove deprecated
 # keys from this file on load.
@@ -100,7 +100,7 @@ no-entities-found: "No entities found."
 location-not-found: "Could not find location for {name}."
 world-not-found: "World {world} not found."
 world-not-allowed: "You don't have permission to use /{cmd} in {world}."
-invalid: "Invalid {arg} {syntax}"
+invalid: "Invalid syntax: {syntax}"
 invalid-time-format: "&cInvalid time format. Use: 1 (seconds), 30s, 5m, 1h, etc."
 no-permission: "You don't have permission to use /{cmd}"
 hold-item: "You must be holding an item to {modify} it."
@@ -438,26 +438,6 @@ tp:
     {info}
   tpe-action: "&aEntity &e{mob} &ahas been {state}."
 
-whois:
-  header: "&6&l--- Whois: {player_name} ---"
-  uuid: "&eUUID: &f{uuid}"
-  prefix: "&ePrefix: &f{prefix}"
-  first-joined: "&eFirst Joined: &f{first_join_date}"
-  playtime: "&ePlaytime: &f{playtime}"
-  status-online: "&eStatus: &aOnline &f(for {duration})"
-  status-offline: "&eStatus: &cOffline &f(since &6{last_seen_date} &f- &6{duration_offline}&f)"
-  gamemode: "&eGame Mode: &f{gamemode}"
-  fly-mode: "&eFly Mode: {fly_status}"
-  god-mode: "&eGod Mode: {god_status}"
-  world-position: "&eLocation: &f{world} {x}, {y}, {z} &7(Click to teleport)"
-  death-location: "&eLast Death: &f{world} {x}, {y}, {z} &7(Click to teleport)"
-  no-death-location: "&eLast Death: &fNever died or location unknown."
-  actions-header: "&6&l--- Actions ---"
-  action-coreprotect-diamonds: "&7- &fMined Diamonds &7(CoreProtect)"
-  action-ban-history: "&7- &fBan History &7(LiteBans)"
-  action-chat-sentry: "&7- &fChat Violations &7(ChatSentry)"
-  footer: "&6&l---------------------------"
-
 note:
   usage: "Usage: /note <player> <note>"
   success: "&aNote added to {player}: &f{note}"
@@ -510,10 +490,6 @@ command:
       not-configured: "&cDiscord escalation is not configured"
       failed: "&cFailed to send escalation"
       success: "&aEscalation sent to staff!"
-
-#==========================================#
-#                ECONOMY                   #
-#==========================================#
 
 #==========================================#
 #              AUTO RESTART               #

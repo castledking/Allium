@@ -213,6 +213,15 @@ public class NicknameGUI extends BaseGUI {
                 "&7nickname"
             )
             .build());
+
+        // Slot 53: Back to home menu
+        getInventory().setItem(53, new ItemBuilder(Material.ARROW)
+            .name("&f&lBack to Menu")
+            .lore(
+                "",
+                "&7Return to nickname menu"
+            )
+            .build());
     }
 
     private void updatePreview() {
@@ -335,6 +344,12 @@ public class NicknameGUI extends BaseGUI {
             currentAnimation = "none";
             nicknameManager.resetNickname(player); // updates display and persists so %allium_nickname% updates
             updatePreview();
+            return;
+        }
+
+        // Back to home menu (slot 53)
+        if (slot == 53) {
+            player.openInventory(new NicknameHomeGUI(player, plugin).getInventory());
             return;
         }
 

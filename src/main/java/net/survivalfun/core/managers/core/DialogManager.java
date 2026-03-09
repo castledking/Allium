@@ -20,6 +20,7 @@ public class DialogManager {
     private final PluginStart plugin;
     private final Map<String, Map<String, Object>> dialogs = new HashMap<>();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON_COMPACT = new Gson();
     private String dataPackName = "allium_dialogs";
 
     public DialogManager(PluginStart plugin) {
@@ -191,6 +192,10 @@ public class DialogManager {
     }
 
     private String convertToDialogJson(Map<String, Object> dialogData, String dialogName) {
+        return convertToDialogJson(dialogData, dialogName, true);
+    }
+
+    private String convertToDialogJson(Map<String, Object> dialogData, String dialogName, boolean pretty) {
         Map<String, Object> json = new LinkedHashMap<>();
 
         // Type
@@ -267,14 +272,10 @@ public class DialogManager {
 
         // Actions based on dialog type
         if (type.equals("notice")) {
-            // For notice type, use "actions" array with proper 1.21.4+ format
+            // For notice type, use singular "action" (NBT compound), not "actions" array (wiki: Dialog § notice)
             Map<String, Object> actionData = (Map<String, Object>) dialogData.get("action");
             if (actionData != null) {
-                List<Map<String, Object>> actionsList = new ArrayList<>();
                 Map<String, Object> action = new LinkedHashMap<>();
-                
-                // Check if this has inputs (dynamic command) - if so, use template
-                boolean hasInputs = dialogData.containsKey("inputs") && !((List<?>)dialogData.get("inputs")).isEmpty();
                 
                 // Set button text - MUST have "label" field at top level
                 String label = convertColorCodes((String) actionData.getOrDefault("label", "OK"));
@@ -282,61 +283,62 @@ public class DialogManager {
                 labelObj.put("text", label);
                 action.put("label", labelObj);
                 
-                // Check for template field (dynamic commands with inputs)
-                if (actionData.containsKey("template")) {
-                    // Dynamic command with input variables
-                    action.put("type", "minecraft:dynamic_run_command");
+                // Check for custom_id (dynamic/custom: server receives payload via PlayerCustomClickEvent)
+                // Wiki: button has "label" and nested "action" with "type" and type-specific fields
+                if (actionData.containsKey("custom_id")) {
+                    String id = (String) actionData.get("custom_id");
+                    Map<String, Object> inner = new LinkedHashMap<>();
+                    inner.put("type", "minecraft:dynamic/custom");
+                    inner.put("id", id != null && id.contains(":") ? id : "allium:" + id);
+                    action.put("action", inner);
+                } else if (actionData.containsKey("template")) {
+                    Map<String, Object> inner = new LinkedHashMap<>();
+                    inner.put("type", "minecraft:dynamic/run_command");
                     String template = convertColorCodes((String) actionData.get("template"));
-                    action.put("template", template);
+                    inner.put("template", template);
+                    action.put("action", inner);
                 } else {
-                    // Regular action
+                    // Regular/static action: wiki says button has "action": { "type": "...", ... }
+                    Map<String, Object> inner = new LinkedHashMap<>();
                     Object actionObj = actionData.get("action");
                     if (actionObj instanceof String) {
                         String actionType = (String) actionObj;
                         if (actionType.equals("run_command") && actionData.containsKey("command")) {
-                            action.put("type", "minecraft:run_command");
-                            String cmd = convertColorCodes((String) actionData.get("command"));
-                            action.put("command", cmd);
+                            inner.put("type", "minecraft:run_command");
+                            inner.put("command", convertColorCodes((String) actionData.get("command")));
                         } else if (actionType.equals("open_url") && actionData.containsKey("url")) {
-                            action.put("type", "minecraft:open_url");
-                            action.put("url", actionData.get("url"));
+                            inner.put("type", "minecraft:open_url");
+                            inner.put("url", actionData.get("url"));
                         } else if (actionType.equals("show_dialog") && actionData.containsKey("dialog")) {
-                            action.put("type", "minecraft:show_dialog");
+                            inner.put("type", "minecraft:show_dialog");
                             String dialog = actionData.get("dialog").toString();
-                            if (!dialog.contains(":")) {
-                                dialog = "allium:" + dialog;
-                            }
-                            action.put("dialog", dialog);
+                            inner.put("dialog", dialog.contains(":") ? dialog : "allium:" + dialog);
                         } else if (actionType.equals("close")) {
-                            action.put("type", "minecraft:close");
+                            inner.put("type", "minecraft:close");
                         }
                     } else if (actionObj instanceof Map) {
                         Map<String, Object> nested = (Map<String, Object>) actionObj;
                         String nestedType = (String) nested.getOrDefault("type", "run_command");
-                        
-                        // Check for template in nested
                         if (nested.containsKey("template")) {
-                            action.put("type", "minecraft:dynamic_run_command");
-                            String template = convertColorCodes((String) nested.get("template"));
-                            action.put("template", template);
+                            inner.put("type", "minecraft:dynamic/run_command");
+                            inner.put("template", convertColorCodes((String) nested.get("template")));
                         } else {
-                            action.put("type", "minecraft:" + nestedType);
+                            inner.put("type", "minecraft:" + nestedType);
                             if (nested.containsKey("command")) {
-                                String cmd = convertColorCodes((String) nested.get("command"));
-                                action.put("command", cmd);
+                                inner.put("command", convertColorCodes((String) nested.get("command")));
                             }
                             if (nested.containsKey("url")) {
-                                action.put("url", nested.get("url"));
+                                inner.put("url", nested.get("url"));
                             }
                         }
+                    }
+                    if (!inner.isEmpty()) {
+                        action.put("action", inner);
                     }
                 }
                 
                 if (!action.isEmpty()) {
-                    actionsList.add(action);
-                }
-                if (!actionsList.isEmpty()) {
-                    json.put("actions", actionsList);
+                    json.put("action", action);
                 }
             }
         } else if (type.equals("confirmation")) {
@@ -415,7 +417,7 @@ public class DialogManager {
             }
         }
 
-        return GSON.toJson(json);
+        return (pretty ? GSON : GSON_COMPACT).toJson(json);
     }
 
     /**
@@ -430,30 +432,28 @@ public class DialogManager {
         labelObj.put("text", label);
         action.put("label", labelObj);
         
-        String actionType = (String) actionData.getOrDefault("type", "close");
-        
-        // Check for template (dynamic commands)
-        if (actionData.containsKey("template")) {
-            action.put("type", "minecraft:dynamic_run_command");
-            String template = convertColorCodes((String) actionData.get("template"));
-            action.put("template", template);
+        // Wiki: button has nested "action" with type and type-specific fields
+        Map<String, Object> inner = new LinkedHashMap<>();
+        if (actionData.containsKey("custom_id")) {
+            String id = (String) actionData.get("custom_id");
+            inner.put("type", "minecraft:dynamic/custom");
+            inner.put("id", id != null && id.contains(":") ? id : "allium:" + id);
+        } else if (actionData.containsKey("template")) {
+            inner.put("type", "minecraft:dynamic/run_command");
+            inner.put("template", convertColorCodes((String) actionData.get("template")));
         } else {
-            action.put("type", "minecraft:" + actionType);
-
+            String actionType = (String) actionData.getOrDefault("type", "close");
+            inner.put("type", "minecraft:" + actionType);
             if (actionType.equals("run_command") && actionData.containsKey("command")) {
-                String cmd = convertColorCodes((String) actionData.get("command"));
-                action.put("command", cmd);
+                inner.put("command", convertColorCodes((String) actionData.get("command")));
             } else if (actionType.equals("open_url") && actionData.containsKey("url")) {
-                action.put("url", actionData.get("url"));
+                inner.put("url", actionData.get("url"));
             } else if (actionType.equals("show_dialog") && actionData.containsKey("dialog")) {
                 String dialog = actionData.get("dialog").toString();
-                if (!dialog.contains(":")) {
-                    dialog = "allium:" + dialog;
-                }
-                action.put("dialog", dialog);
+                inner.put("dialog", dialog.contains(":") ? dialog : "allium:" + dialog);
             }
         }
-        
+        action.put("action", inner);
         return action;
     }
 
@@ -471,7 +471,7 @@ public class DialogManager {
         
         // Check for template (dynamic commands)
         if (actionData.containsKey("template")) {
-            action.put("type", "minecraft:dynamic_run_command");
+            action.put("type", "minecraft:dynamic/run_command");
             String template = convertColorCodes((String) actionData.get("template"));
             action.put("template", template);
         } else {
@@ -509,6 +509,25 @@ public class DialogManager {
         Map<String, Object> textObj = new LinkedHashMap<>();
         textObj.put("text", text);
         return Collections.singletonList(textObj);
+    }
+
+    /**
+     * Build inline dialog JSON from a programmatic map (no YAML/datapack).
+     * Use for runtime-built dialogs e.g. nickname editor with current value as initial.
+     */
+    public String getInlineJsonFromData(Map<String, Object> dialogData, String dialogName) {
+        return convertToDialogJson(dialogData, dialogName, false);
+    }
+
+    /**
+     * Same as getInlineJsonFromData but runs PlaceholderAPI replacement for the player.
+     */
+    public String getInlineJsonFromData(Map<String, Object> dialogData, String dialogName, Player player) {
+        String json = convertToDialogJson(dialogData, dialogName, false);
+        if (player != null && player.isOnline()) {
+            json = parsePlaceholderApi(json, player);
+        }
+        return json;
     }
 
     public void showDialog(Player player, String dialogName) {
@@ -553,7 +572,7 @@ public class DialogManager {
         }
 
         Player player = Bukkit.getPlayerExact(playerName);
-        String json = convertToDialogJson(dialogData, dialogName);
+        String json = convertToDialogJson(dialogData, dialogName, false);
 
         // Parse PlaceholderAPI if available and player is online
         if (player != null && player.isOnline()) {

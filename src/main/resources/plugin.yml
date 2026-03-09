@@ -1,5 +1,5 @@
 name: Allium
-version: 0.1.4a
+version: 0.1.5a
 main: net.survivalfun.core.PluginStart
 api-version: 1.21
 folia-supported: true
@@ -14,7 +14,6 @@ commands:
     usage: "/nickname"
     permission: allium.nick.gui
     aliases: [nick]
-    
   redeem:
     description: Allows eligible players to redeem a rank and rewards.
     usage: /redeem
@@ -439,6 +438,8 @@ permissions:
       allium.enchant: true
       allium.enchant.unsafe: true
       allium.withertoggle: true
+      allium.migrate: true
+      allium.sethomes: true
       allium.withertoggle.notify: true
 
   allium.handcuffs:
@@ -457,6 +458,12 @@ permissions:
     default: op
   
   allium.money:
+    default: op
+  allium.migrate:
+    description: "Allows migrating Essentials userdata (homes, economy, warps) via /core migrate"
+    default: op
+  allium.sethomes:
+    description: "Allows setting a player's max homes via /core sethomes"
     default: op
   allium.invsee:
     default: op
@@ -998,7 +1005,13 @@ permissions:
     default: op
   allium.rename:
     default: op
+  allium.rename.gui:
+    description: "Open rename edit dialog with /rename (no args)"
+    default: op
   allium.lore:
+    default: op
+  allium.lore.gui:
+    description: "Open lore edit dialog with /lore (no args)"
     default: op
   allium.god:
     default: op

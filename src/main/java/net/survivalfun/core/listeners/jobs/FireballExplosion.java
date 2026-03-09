@@ -174,8 +174,8 @@ public class FireballExplosion implements Listener {
                     @Override
                     public void run() {
                         Block currentBlock = task.location.getBlock();
-                        // Regenerate if it's air or fire (fireballs cause fire)
-                        if (currentBlock.getType() == Material.AIR || currentBlock.getType() == Material.FIRE) {
+                        // Regenerate if restorable: air, fire, or fluid flow (water/lava). Skip if e.g. player placed a shulker.
+                        if (isRestorableCurrentBlock(currentBlock.getType())) {
                             // Check if the block to be regenerated is an ore - if so, skip it
                             if (isOreMaterial(task.state.getType())) {
                                 if (plugin.getConfig().getBoolean("debug-mode")) {
@@ -214,6 +214,15 @@ public class FireballExplosion implements Listener {
                 }
             }.runTaskLater(plugin, DELAY_BETWEEN_LAYERS_TICKS);
         }
+    }
+
+    /** Returns true if the current block at a restore location can be overwritten to restore (air, fire, or fluid flow). Player-placed blocks (e.g. shulker) are not restorable. */
+    private static boolean isRestorableCurrentBlock(Material material) {
+        return material == Material.AIR
+            || material == Material.FIRE
+            || material == Material.SOUL_FIRE
+            || material == Material.WATER
+            || material == Material.LAVA;
     }
 
     private boolean isOreMaterial(Material material) {

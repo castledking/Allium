@@ -88,8 +88,8 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
         this.placeholderAPIEnabled = plugin.getServer().getPluginManager().getPlugin("PlaceholderAPI") != null;
         this.miniMessage = MiniMessage.miniMessage();
 
-        // Initialize command aliases
-        this.messageCommandAliases = Arrays.asList("msg", "tell", "w", "whisper", "t", "message", "m");
+        // Initialize command aliases (must match plugin.yml: msg aliases)
+        this.messageCommandAliases = Arrays.asList("msg", "tell", "w", "whisper", "pm", "t", "message", "m");
         this.replyCommandAliases = Arrays.asList("r", "reply");
         this.mailCommandAliases = Collections.singletonList("mail");
 
@@ -103,6 +103,10 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String usedCommand = label.toLowerCase();
+        // Strip namespaced prefix (e.g. allium:t -> t) so /allium:pm, /allium:t etc. work
+        if (usedCommand.contains(":")) {
+            usedCommand = usedCommand.substring(usedCommand.indexOf(':') + 1);
+        }
 
         // Handle message command
         if (messageCommandAliases.contains(usedCommand)) {

@@ -56,12 +56,7 @@ public class Spy implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        String spyToggleMessage = lang.get("spy.toggle");
-        // Use the new Lang method to get the first color code (e.g., "&a")
         String firstColorOfSpyToggle = lang.getFirstColorCode("spy.toggle");
-
-        String trueStyle = lang.get("styles.state.true");
-        String falseStyle = lang.get("styles.state.false");
 
         // Check if sender is a player
         if (!(sender instanceof Player player)) {
@@ -79,23 +74,20 @@ public class Spy implements CommandExecutor, TabCompleter {
             if (isGloballySpying) {
                 // Turn off global spying
                 spyingPlayers.remove(playerUUID);
-                sender.sendMessage(spyToggleMessage
-                        .replace("{state}", falseStyle + "disabled" + firstColorOfSpyToggle)
-                        .replace(" {name}", ""));
+                String stateValue = lang.get("styles.state.false") + "disabled" + firstColorOfSpyToggle;
+                lang.sendMessage(sender, "spy.toggle", "state", stateValue, "name", "");
                 return true;
             } else if (hasTargetedSpy) {
                 // Turn off all targeted spying
                 targetedSpying.remove(playerUUID);
-                sender.sendMessage(spyToggleMessage
-                        .replace("{state}", falseStyle + "disabled" + firstColorOfSpyToggle)
-                        .replace(" {name}", ""));
+                String stateValue = lang.get("styles.state.false") + "disabled" + firstColorOfSpyToggle;
+                lang.sendMessage(sender, "spy.toggle", "state", stateValue, "name", "");
                 return true;
             } else {
                 // Turn on global spying
                 spyingPlayers.add(playerUUID);
-                sender.sendMessage(spyToggleMessage
-                        .replace("{state}", trueStyle + "enabled" + firstColorOfSpyToggle)
-                        .replace(" {name}", ""));
+                String stateValue = lang.get("styles.state.true") + "enabled" + firstColorOfSpyToggle;
+                lang.sendMessage(sender, "spy.toggle", "state", stateValue, "name", "");
                 return true;
             }
         }
@@ -136,6 +128,8 @@ public class Spy implements CommandExecutor, TabCompleter {
         targetedSpying.put(playerUUID, newTargets);
 
         // Send appropriate message
+        String trueStyle = lang.get("styles.state.true");
+        String falseStyle = lang.get("styles.state.false");
         String message;
         if (wasGloballySpying) {
             message = lang.get("spy.toggle")

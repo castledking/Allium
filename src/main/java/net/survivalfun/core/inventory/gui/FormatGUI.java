@@ -72,7 +72,7 @@ public class FormatGUI extends BaseGUI {
         
         // Back button
         if (slot == 18) {
-            player.openInventory(new NicknameGUI(player, plugin).getInventory());
+            player.openInventory(new NicknameHomeGUI(player, plugin).getInventory());
             return;
         }
         

@@ -51,6 +51,9 @@ api-keys.yml
 Attach_pid*
 run/
 
+# Extracted reference (PrismaticColors)
+prismatic-extracted/
+
 # Custom
 /todos/
 Allium Plugin Documentation.bbcode

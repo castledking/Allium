@@ -48,17 +48,10 @@ public class God implements CommandExecutor {
                     return true;
                 }
                 boolean godModeToggled = toggleGodMode(player);
-                if (godModeToggled) {
-                    String enabledStyle = lang.get("styles.state.true");
-                    sender.sendMessage(lang.get("god.toggle")
-                            .replace("{state}", enabledStyle + "enabled" + firstColorOfGodToggle)
-                            .replace(" {name}", ""));
-                } else {
-                    String disabledStyle = lang.get("styles.state.false");
-                    sender.sendMessage(lang.get("god.toggle")
-                            .replace("{state}", disabledStyle + "disabled" + firstColorOfGodToggle)
-                            .replace(" {name}", ""));
-                }
+                String stateValue = godModeToggled
+                    ? lang.get("styles.state.true") + "enabled" + firstColorOfGodToggle
+                    : lang.get("styles.state.false") + "disabled" + firstColorOfGodToggle;
+                lang.sendMessage(sender, "god.toggle", "state", stateValue, "name", "");
 
 
             } else if (args.length == 1) {
@@ -81,25 +74,15 @@ public class God implements CommandExecutor {
                 }
 
                 boolean godModeToggled = toggleGodMode(target);
-                String stateStyle = godModeToggled ? 
-                    lang.get("styles.state.true") : 
-                    lang.get("styles.state.false");
-                String stateText = godModeToggled ? "enabled" : "disabled";
-                // Use lang.get("god.toggle") here to ensure we have the raw message for replacement
-                // if godToggleMessage was intended to be the raw message, this is fine.
-                // Otherwise, if godToggleMessage was already processed, this might be an issue.
-                // Assuming godToggleMessage was NOT yet processed by Text.parseColors for this specific construction.
-                // For consistency with other parts, it might be better to use lang.get("god.toggle") directly here too.
-                String formattedMessage = lang.get("god.toggle") // Changed from godToggleMessage to lang.get()
-                    .replace("{state}", stateStyle + stateText + firstColorOfGodToggle);
+                String stateValue = godModeToggled
+                    ? lang.get("styles.state.true") + "enabled" + firstColorOfGodToggle
+                    : lang.get("styles.state.false") + "disabled" + firstColorOfGodToggle;
 
                 if (sender instanceof Player && ((Player) sender).getUniqueId().equals(target.getUniqueId())) {
-                    // If sender is targeting themselves, show self message
-                    sender.sendMessage(formattedMessage.replace(" {name}", ""));
+                    lang.sendMessage(sender, "god.toggle", "state", stateValue, "name", "");
                 } else {
-                    // Show different messages for sender and target
-                    sender.sendMessage(formattedMessage.replace("{name}", "for " + target.getName()));
-                    target.sendMessage(formattedMessage.replace(" {name}", ""));
+                    lang.sendMessage(sender, "god.toggle", "state", stateValue, "name", "for " + target.getName());
+                    lang.sendMessage(target, "god.toggle", "state", stateValue, "name", "");
                 }
 
             } else {

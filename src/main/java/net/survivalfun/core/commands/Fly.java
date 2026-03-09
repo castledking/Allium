@@ -61,10 +61,7 @@ public class Fly implements CommandExecutor {
 
                 toggleFly(target, sender);
             } else {
-                String usage = lang.get("command-usage")
-                        .replace("{cmd}", label)
-                        .replace("{args}", "<player>");
-                lang.sendMessage(sender, usage);
+                lang.sendMessage(sender, "command-usage", "{cmd}", label, "{args}", "<player>");
                 return true;
             }
             return true;
@@ -81,16 +78,13 @@ public class Fly implements CommandExecutor {
             }
         }
 
-        String flyToggleMessage = lang.get("fly.toggle");
         String firstColorOfFlyToggle = lang.getFirstColorCode("fly.toggle");
+        boolean sameSenderAndPlayer = sender instanceof Player && ((Player) sender).getUniqueId().equals(player.getUniqueId());
 
         if (player.getAllowFlight()) {
             player.setAllowFlight(false);
             player.setFlying(false);
             boolean midAir = !player.isOnGround() && player.getGameMode() != GameMode.CREATIVE && player.getGameMode() != GameMode.SPECTATOR;
-
-            // Get the style for disabled state
-            String disabledStyle = lang.get("styles.state.false");
 
             if (midAir) {
                 FlightRestoration restoration = plugin.getFlyOnRejoinListener();
@@ -102,48 +96,21 @@ public class Fly implements CommandExecutor {
                 }
             }
 
-            String message = flyToggleMessage
-                    .replace("{state}", disabledStyle + "disabled" + firstColorOfFlyToggle)
-                    .replace(" {name}", "");
-            if (!(sender instanceof Player && ((Player) sender).getUniqueId().equals(player.getUniqueId()))) {
-                // Send message to command sender
-                String senderMessage = flyToggleMessage
-                        .replace("{state}", disabledStyle + "disabled" + firstColorOfFlyToggle)
-                        .replace("{name}", "for " + player.getName());
-                lang.sendMessage(sender, senderMessage);
-                
-                // Send message to player with sound
-                lang.sendMessage(player, message);
-            } else {
-                // Send message to player with sound
-                lang.sendMessage(player, message);
+            String stateValue = lang.get("styles.state.false") + "disabled" + firstColorOfFlyToggle;
+            if (!sameSenderAndPlayer) {
+                lang.sendMessage(sender, "fly.toggle", "state", stateValue, "name", "for " + player.getName());
             }
+            lang.sendMessage(player, "fly.toggle", "state", stateValue, "name", "");
 
         } else {
             player.setAllowFlight(true);
             player.removePotionEffect(PotionEffectType.SLOW_FALLING);
 
-            // Get the style for enabled state
-            String enabledStyle = lang.get("styles.state.true");
-
-            // Check if the sender is the same as the player being toggled.
-            String message = flyToggleMessage
-                    .replace("{state}", enabledStyle + "enabled" + firstColorOfFlyToggle)
-                    .replace(" {name}", ""); // Remove the space before {name} when it's empty
-                    
-            if (!(sender instanceof Player && ((Player) sender).getUniqueId().equals(player.getUniqueId()))) {
-                // Send message to command sender
-                String senderMessage = flyToggleMessage
-                        .replace("{state}", enabledStyle + "enabled" + firstColorOfFlyToggle)
-                        .replace("{name}", "for " + player.getName());
-                lang.sendMessage(sender, senderMessage);
-                
-                // Send message to player with sound
-                lang.sendMessage(player, message);
-            } else {
-                // Send message to player with sound
-                lang.sendMessage(player, message);
+            String stateValue = lang.get("styles.state.true") + "enabled" + firstColorOfFlyToggle;
+            if (!sameSenderAndPlayer) {
+                lang.sendMessage(sender, "fly.toggle", "state", stateValue, "name", "for " + player.getName());
             }
+            lang.sendMessage(player, "fly.toggle", "state", stateValue, "name", "");
         }
     }
 }

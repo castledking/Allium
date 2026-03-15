@@ -1,0 +1,106 @@
+# ==========================================
+#     Allium Language File - English (US)
+# ==========================================
+
+prefix: "&7[&dAllium&7]"
+
+core:
+  reload-success: "{prefix} &aConfiguration reloaded."
+  reload-failed: "{prefix} &cReload failed. Check console for details."
+  version: "{prefix} &fRunning Allium &dv{version}&f."
+
+error:
+  no-permission: "{prefix} &cYou don't have permission to do that."
+  player-only: "{prefix} &cThis command can only be used by players."
+  console-only: "{prefix} &cThis command can only be used from the console."
+  invalid-args: "{prefix} &cUsage: &f{usage}"
+  player-not-found: "{prefix} &cPlayer &f{player} &cnot found."
+  number-invalid: "{prefix} &c'{input}' is not a valid number."
+  world-not-found: "{prefix} &cWorld &f{world} &cnot found."
+  cooldown-active: "{prefix} &cPlease wait &f{time} &cbefore using this again."
+  module-disabled: "{prefix} &cThis feature is currently disabled."
+
+teleport:
+  success: "{prefix} &aTeleported to &f{target}&a."
+  request-sent: "{prefix} &aTeleport request sent to &f{player}&a."
+  request-received: "{prefix} &f{player} &awants to teleport to you. &f/tpaccept &aor &f/tpdeny"
+  accepted: "{prefix} &aTeleport request accepted."
+  denied: "{prefix} &cTeleport request denied."
+  cancelled: "{prefix} &cTeleport request expired."
+  back: "{prefix} &aReturned to your previous location."
+  no-back: "{prefix} &cNo previous location to return to."
+  no-pending: "{prefix} &cYou have no pending teleport requests."
+
+home:
+  set: "{prefix} &aHome &f{name} &aset."
+  deleted: "{prefix} &aHome &f{name} &adeleted."
+  not-found: "{prefix} &cHome &f{name} &cnot found."
+  limit-reached: "{prefix} &cYou have reached your home limit (&f{limit}&c)."
+  list: "{prefix} &fHomes: &d{homes}"
+  none: "{prefix} &cYou have no homes set."
+
+warp:
+  set: "{prefix} &aWarp &f{name} &aset."
+  deleted: "{prefix} &aWarp &f{name} &adeleted."
+  not-found: "{prefix} &cWarp &f{name} &cnot found."
+  list: "{prefix} &fWarps: &d{warps}"
+  none: "{prefix} &cNo warps available."
+
+spawn:
+  set: "{prefix} &aSpawn point set."
+  teleport: "{prefix} &aTeleported to spawn."
+  not-set: "{prefix} &cSpawn has not been set."
+
+kit:
+  received: "{prefix} &aReceived kit &f{name}&a."
+  not-found: "{prefix} &cKit &f{name} &cnot found."
+  list: "{prefix} &fKits: &d{kits}"
+  none: "{prefix} &cNo kits available."
+  cooldown: "{prefix} &cKit &f{name} &con cooldown. Wait &f{time}&c."
+
+economy:
+  balance: "{prefix} &fBalance: &a{amount}"
+  balance-other: "{prefix} &f{player}&f's balance: &a{amount}"
+  pay-sent: "{prefix} &aSent &f{amount} &ato &f{player}&a."
+  pay-received: "{prefix} &aReceived &f{amount} &afrom &f{player}&a."
+  insufficient: "{prefix} &cInsufficient funds."
+  invalid-amount: "{prefix} &cAmount must be greater than zero."
+
+chat:
+  msg-format: "&7[&f{sender} &7-> &f{receiver}&7] &f{message}"
+  no-reply: "{prefix} &cNo one to reply to."
+  socialspy-toggle: "{prefix} &fSocialSpy {state}&f."
+  broadcast: "&4[Broadcast] &c{message}"
+
+moderation:
+  ban: "{prefix} &f{player} &chas been banned. Reason: &f{reason}"
+  tempban: "{prefix} &f{player} &cbanned for &f{duration}&c. Reason: &f{reason}"
+  kick: "{prefix} &f{player} &chas been kicked. Reason: &f{reason}"
+  mute: "{prefix} &f{player} &chas been muted. Reason: &f{reason}"
+  tempmute: "{prefix} &f{player} &cmuted for &f{duration}&c. Reason: &f{reason}"
+  unmute: "{prefix} &f{player} &ahas been unmuted."
+  warn: "{prefix} &f{player} &chas been warned: &f{reason}"
+  muted-chat: "{prefix} &cYou are muted and cannot chat."
+
+player:
+  gamemode-self: "{prefix} &aGamemode set to &f{mode}&a."
+  gamemode-other: "{prefix} &aSet &f{player}&a's gamemode to &f{mode}&a."
+  fly-toggle: "{prefix} &fFly mode {state} &ffor &d{player}&f."
+  god-toggle: "{prefix} &fGod mode {state} &ffor &d{player}&f."
+  heal: "{prefix} &aYou have been healed."
+  heal-other: "{prefix} &aHealed &f{player}&a."
+  feed: "{prefix} &aYou have been fed."
+  feed-other: "{prefix} &aFed &f{player}&a."
+  speed-set: "{prefix} &a{type} speed set to &f{speed}&a."
+  vanish-toggle: "{prefix} &fVanish {state}&f."
+  afk-toggle: "{prefix} &f{player} &7is {state} AFK."
+  nick-set: "{prefix} &aNickname set to &f{nick}&a."
+  nick-reset: "{prefix} &aNickname reset."
+
+utility:
+  time-set: "{prefix} &aTime set to &f{time} &ain &f{world}&a."
+  weather-set: "{prefix} &aWeather set to &f{weather} &ain &f{world}&a."
+  seen-online: "{prefix} &f{player} &ais currently online. Joined &f{time} &aago."
+  seen-offline: "{prefix} &f{player} &cwas last seen &f{time} &cago."
+  near: "{prefix} &fNearby players: &d{players}"
+  near-none: "{prefix} &cNo players nearby."

@@ -1,0 +1,7 @@
+name: Allium
+version: '${version}'
+main: net.survivalfun.allium.Allium
+api-version: '1.20'
+description: A modern essentials suite built on Takion
+authors: [towkio]
+softdepend: [Vault, PlaceholderAPI]

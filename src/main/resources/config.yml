@@ -1,0 +1,41 @@
+# ==========================================
+#            Allium Configuration
+# ==========================================
+
+# Internal version tracker - do not modify
+config-version: 1
+
+# Database settings
+database:
+  # Type: MYSQL or SQLITE
+  type: SQLITE
+  # MySQL connection details (ignored if type is SQLITE)
+  mysql:
+    host: localhost
+    port: 3306
+    database: allium
+    username: root
+    password: ""
+    # HikariCP pool settings
+    pool:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+# Module toggles - enable/disable entire feature sets
+modules:
+  teleportation: true
+  economy: true
+  homes: true
+  warps: true
+  kits: true
+  chat: true
+  spawn: true
+  moderation: true
+
+# General settings
+settings:
+  debug: false
+  locale: en_US

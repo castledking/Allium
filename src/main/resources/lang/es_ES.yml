@@ -1,0 +1,106 @@
+# ==========================================
+#   Allium Archivo de Idioma - Espanol (ES)
+# ==========================================
+
+prefix: "&7[&dAllium&7]"
+
+core:
+  reload-success: "{prefix} &aConfiguracion recargada."
+  reload-failed: "{prefix} &cFallo al recargar. Revisa la consola."
+  version: "{prefix} &fEjecutando Allium &dv{version}&f."
+
+error:
+  no-permission: "{prefix} &cNo tienes permiso para hacer eso."
+  player-only: "{prefix} &cEste comando solo puede ser usado por jugadores."
+  console-only: "{prefix} &cEste comando solo puede ser usado desde la consola."
+  invalid-args: "{prefix} &cUso: &f{usage}"
+  player-not-found: "{prefix} &cJugador &f{player} &cno encontrado."
+  number-invalid: "{prefix} &c'{input}' no es un numero valido."
+  world-not-found: "{prefix} &cMundo &f{world} &cno encontrado."
+  cooldown-active: "{prefix} &cEspera &f{time} &cantes de usar esto de nuevo."
+  module-disabled: "{prefix} &cEsta funcion esta desactivada."
+
+teleport:
+  success: "{prefix} &aTeletransportado a &f{target}&a."
+  request-sent: "{prefix} &aSolicitud de teletransporte enviada a &f{player}&a."
+  request-received: "{prefix} &f{player} &aquiere teletransportarse a ti. &f/tpaccept &ao &f/tpdeny"
+  accepted: "{prefix} &aSolicitud de teletransporte aceptada."
+  denied: "{prefix} &cSolicitud de teletransporte denegada."
+  cancelled: "{prefix} &cSolicitud de teletransporte expirada."
+  back: "{prefix} &aRegresaste a tu ubicacion anterior."
+  no-back: "{prefix} &cNo hay ubicacion anterior."
+  no-pending: "{prefix} &cNo tienes solicitudes pendientes."
+
+home:
+  set: "{prefix} &aHogar &f{name} &aestablecido."
+  deleted: "{prefix} &aHogar &f{name} &aeliminado."
+  not-found: "{prefix} &cHogar &f{name} &cno encontrado."
+  limit-reached: "{prefix} &cHas alcanzado el limite de hogares (&f{limit}&c)."
+  list: "{prefix} &fHogares: &d{homes}"
+  none: "{prefix} &cNo tienes hogares establecidos."
+
+warp:
+  set: "{prefix} &aWarp &f{name} &aestablecido."
+  deleted: "{prefix} &aWarp &f{name} &aeliminado."
+  not-found: "{prefix} &cWarp &f{name} &cno encontrado."
+  list: "{prefix} &fWarps: &d{warps}"
+  none: "{prefix} &cNo hay warps disponibles."
+
+spawn:
+  set: "{prefix} &aPunto de aparicion establecido."
+  teleport: "{prefix} &aTeletransportado al spawn."
+  not-set: "{prefix} &cEl spawn no ha sido establecido."
+
+kit:
+  received: "{prefix} &aKit &f{name} &arecibido."
+  not-found: "{prefix} &cKit &f{name} &cno encontrado."
+  list: "{prefix} &fKits: &d{kits}"
+  none: "{prefix} &cNo hay kits disponibles."
+  cooldown: "{prefix} &cKit &f{name} &cen espera. Espera &f{time}&c."
+
+economy:
+  balance: "{prefix} &fSaldo: &a{amount}"
+  balance-other: "{prefix} &fSaldo de &f{player}&f: &a{amount}"
+  pay-sent: "{prefix} &aEnviaste &f{amount} &aa &f{player}&a."
+  pay-received: "{prefix} &aRecibiste &f{amount} &ade &f{player}&a."
+  insufficient: "{prefix} &cFondos insuficientes."
+  invalid-amount: "{prefix} &cLa cantidad debe ser mayor que cero."
+
+chat:
+  msg-format: "&7[&f{sender} &7-> &f{receiver}&7] &f{message}"
+  no-reply: "{prefix} &cNo hay nadie a quien responder."
+  socialspy-toggle: "{prefix} &fSocialSpy {state}&f."
+  broadcast: "&4[Anuncio] &c{message}"
+
+moderation:
+  ban: "{prefix} &f{player} &cha sido baneado. Razon: &f{reason}"
+  tempban: "{prefix} &f{player} &cbaneado por &f{duration}&c. Razon: &f{reason}"
+  kick: "{prefix} &f{player} &cha sido expulsado. Razon: &f{reason}"
+  mute: "{prefix} &f{player} &cha sido silenciado. Razon: &f{reason}"
+  tempmute: "{prefix} &f{player} &csilenciado por &f{duration}&c. Razon: &f{reason}"
+  unmute: "{prefix} &f{player} &aha sido des-silenciado."
+  warn: "{prefix} &f{player} &cha sido advertido: &f{reason}"
+  muted-chat: "{prefix} &cEstas silenciado y no puedes chatear."
+
+player:
+  gamemode-self: "{prefix} &aModo de juego cambiado a &f{mode}&a."
+  gamemode-other: "{prefix} &aCambiaste el modo de juego de &f{player} &aa &f{mode}&a."
+  fly-toggle: "{prefix} &fModo vuelo {state} &fpara &d{player}&f."
+  god-toggle: "{prefix} &fModo dios {state} &fpara &d{player}&f."
+  heal: "{prefix} &aHas sido curado."
+  heal-other: "{prefix} &aCuraste a &f{player}&a."
+  feed: "{prefix} &aHas sido alimentado."
+  feed-other: "{prefix} &aAlimentaste a &f{player}&a."
+  speed-set: "{prefix} &aVelocidad de {type} establecida a &f{speed}&a."
+  vanish-toggle: "{prefix} &fVanish {state}&f."
+  afk-toggle: "{prefix} &f{player} &7esta {state} AFK."
+  nick-set: "{prefix} &aApodo cambiado a &f{nick}&a."
+  nick-reset: "{prefix} &aApodo restablecido."
+
+utility:
+  time-set: "{prefix} &aTiempo establecido a &f{time} &aen &f{world}&a."
+  weather-set: "{prefix} &aClima establecido a &f{weather} &aen &f{world}&a."
+  seen-online: "{prefix} &f{player} &aesta en linea. Se unio hace &f{time}&a."
+  seen-offline: "{prefix} &f{player} &cfue visto por ultima vez hace &f{time}&c."
+  near: "{prefix} &fJugadores cercanos: &d{players}"
+  near-none: "{prefix} &cNo hay jugadores cercanos."

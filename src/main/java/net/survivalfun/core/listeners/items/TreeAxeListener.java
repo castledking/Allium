@@ -5,6 +5,7 @@ import net.survivalfun.core.items.CustomItemRegistry;
 import net.survivalfun.core.items.impl.TreeAxeItem;
 import net.survivalfun.core.items.impl.TreeAxeManager;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -39,9 +40,21 @@ public class TreeAxeListener implements Listener {
         }
 
         if (customItemRegistry.getItem(item) instanceof TreeAxeItem) {
-            if (treeAxeManager.isTreeLog(event.getBlock())) {
-                event.setCancelled(true);
-                treeAxeManager.breakTree(event.getPlayer(), event.getBlock(), item);
+            Block block = event.getBlock();
+            // Tree-feller style: also trigger when breaking root blocks (e.g. mangrove roots)
+            if (treeAxeManager.isRootMaterial(block)) {
+                Block trunk = treeAxeManager.resolveStartBlock(block);
+                if (trunk != null && treeAxeManager.willChopTree(trunk, event.getPlayer())) {
+                    event.setCancelled(true);
+                    treeAxeManager.breakSingleBlock(event.getPlayer(), block, item);
+                    treeAxeManager.breakTree(event.getPlayer(), trunk, item);
+                }
+            } else if (treeAxeManager.isTreeLog(block)) {
+                Block start = treeAxeManager.resolveStartBlock(block);
+                if (start != null && treeAxeManager.willChopTree(start, event.getPlayer())) {
+                    event.setCancelled(true);
+                    treeAxeManager.breakTree(event.getPlayer(), start, item);
+                }
             }
         }
     }

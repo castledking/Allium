@@ -73,8 +73,8 @@ public class ResourcePackManager implements Listener {
         resourcePackHash = config.getString("hash", "");
         forcePack = config.getBoolean("force", false);
         combinePacks = config.getBoolean("combine", true);
-        
-        enabled = !resourcePackUrl.isEmpty();
+
+        enabled = config.getBoolean("enabled", false);
     }
 
     private void createDefaultConfig() {
@@ -86,6 +86,7 @@ public class ResourcePackManager implements Listener {
                 Text.sendDebugLog(INFO, "Created resourcepack.yml from template");
             } else {
                 config = new YamlConfiguration();
+                config.set("enabled", false);
                 config.set("url", "");
                 config.set("hash", "");
                 config.set("force", false);

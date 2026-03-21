@@ -1,10 +1,18 @@
 # Resource Pack Configuration
-# 
+#
 # This file configures the automatic resource pack loading for Allium.
 # The resource pack will be automatically sent to players on join.
+#
+# For GitHub-hosted packs use the direct raw URL (Minecraft client often fails on
+# redirects). Use: https://raw.githubusercontent.com/OWNER/REPO/BRANCH/file.zip
+# Not: https://github.com/OWNER/REPO/raw/refs/heads/BRANCH/file.zip
+
+# Master switch for Allium resource pack hosting.
+# If false, Allium will not send a resource pack to players even if URL/hash are configured.
+enabled: false
 
 # URL to the resource pack ZIP file
-url: "https://download.mc-packs.net/pack/72b63069a0518e26888c61e4a6ae9e80aec8e1b1.zip"
+url: "https://raw.githubusercontent.com/castledking/Survival-Fun-RP/main/allium-rp-1.21.11-1.0.1.zip"
 
 # SHA-1 hash of the resource pack (optional but recommended)
 # You can generate this with: sha1sum resourcepack.zip

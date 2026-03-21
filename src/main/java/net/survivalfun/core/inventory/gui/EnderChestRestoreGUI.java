@@ -51,15 +51,9 @@ public class EnderChestRestoreGUI extends BaseGUI {
 
     private void addControls() {
         Player target = Bukkit.getPlayer(targetId);
-        String targetName;
-        if (target != null) {
-            targetName = target.getName();
-        } else {
-            targetName = Bukkit.getOfflinePlayer(targetId).getName();
-            if (targetName == null) {
-                targetName = "Unknown";
-            }
-        }
+        boolean targetOnline = target != null;
+        String targetName = resolveTargetName();
+        String targetLabel = targetName + (targetOnline ? "" : " (offline)");
 
         ItemStack restoreSelfBtn = new ItemBuilder(Material.ENDER_EYE)
             .name("&aRestore Ender Chest to Self")
@@ -71,10 +65,10 @@ public class EnderChestRestoreGUI extends BaseGUI {
 
         ItemStack restoreTargetBtn = new ItemBuilder(Material.PLAYER_HEAD)
             .skullOwner(targetName)
-            .name("&aRestore Ender Chest to " + targetName)
+            .name("&aRestore Ender Chest to " + targetLabel)
             .lore(
                 "&7Restores the saved ender chest",
-                "&7contents to " + targetName
+                targetOnline ? "&7contents to " + targetName : "&7contents to " + targetName + " on login"
             )
             .build();
 
@@ -85,7 +79,7 @@ public class EnderChestRestoreGUI extends BaseGUI {
 
         setItem(30, restoreSelfBtn, this::handleRestoreSelf);
 
-        if (target != null && !target.getUniqueId().equals(player.getUniqueId())) {
+        if (!targetId.equals(player.getUniqueId())) {
             setItem(32, restoreTargetBtn, this::handleRestoreTarget);
         }
 
@@ -101,7 +95,23 @@ public class EnderChestRestoreGUI extends BaseGUI {
     private void handleRestoreTarget(InventoryClickEvent event) {
         Player target = Bukkit.getPlayer(targetId);
         if (target == null) {
-            player.sendMessage("§cTarget player is no longer online.");
+            String targetName = resolveTargetName();
+            player.sendMessage("§aQueueing saved ender chest contents for " + targetName + " while they are offline...");
+            plugin.getOfflineInventoryManager().queueOfflineSnapshotRestore(
+                targetId,
+                targetName,
+                snapshot,
+                false,
+                false,
+                false,
+                true
+            ).whenComplete((ignored, error) -> SchedulerAdapter.runAtEntity(player, () -> {
+                if (error != null) {
+                    handleError("Error queueing ender chest restore", new RuntimeException(error), player);
+                    return;
+                }
+                player.sendMessage("§aQueued " + targetName + "'s ender chest restore for their next login.");
+            }));
             return;
         }
         player.sendMessage("§aRestoring saved ender chest contents to " + target.getName() + "...");
@@ -130,5 +140,15 @@ public class EnderChestRestoreGUI extends BaseGUI {
         if (notifyTarget != null && notifyTarget.isOnline()) {
             notifyTarget.sendMessage("§cAn error occurred: " + e.getMessage());
         }
+    }
+
+    private String resolveTargetName() {
+        Player target = Bukkit.getPlayer(targetId);
+        if (target != null) {
+            return target.getName();
+        }
+
+        String offlineName = Bukkit.getOfflinePlayer(targetId).getName();
+        return offlineName != null ? offlineName : "Unknown";
     }
 }

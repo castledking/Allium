@@ -247,9 +247,7 @@ public class Home implements CommandExecutor, TabCompleter {
                         }
                     });
                 } else {
-                    String finalMsg = lang.get("tp.delay")
-                    .replace("{delay}", Text.formatTime(Math.max(teleportDelay, 0)));
-                    lang.sendMessage(player, "tp.delay", finalMsg);
+                    lang.sendMessage(player, "tp.delay", "{delay}", Text.formatTime(Math.max(teleportDelay, 0)));
                     CancelTeleportation listener = new CancelTeleportation(plugin, player, player.getLocation(), TELEPORT_LENIENCY);
                     Bukkit.getPluginManager().registerEvents(listener, plugin);
                     player.getScheduler().runDelayed(plugin, scheduledTask -> {
@@ -317,8 +315,7 @@ public class Home implements CommandExecutor, TabCompleter {
                         }
                     });
                 } else {
-                    lang.sendMessage(player, "tp.delay"
-                        .replace("{delay}", Text.formatTime(Math.max(teleportDelay, 0))));
+                    lang.sendMessage(player, "tp.delay", "{delay}", Text.formatTime(Math.max(teleportDelay, 0)));
                     CancelTeleportation listener = new CancelTeleportation(plugin, player, player.getLocation(), TELEPORT_LENIENCY);
                     Bukkit.getPluginManager().registerEvents(listener, plugin);
                     player.getScheduler().runDelayed(plugin, scheduledTask -> {
@@ -537,8 +534,7 @@ public class Home implements CommandExecutor, TabCompleter {
                 }
             });
         } else {
-            lang.sendMessage(player, "tp.delay"
-                .replace("{delay}", Text.formatTime(Math.max(teleportDelay, 0))));
+            lang.sendMessage(player, "tp.delay", "{delay}", Text.formatTime(Math.max(teleportDelay, 0)));
             CancelTeleportation listener = new CancelTeleportation(plugin, player, player.getLocation(), TELEPORT_LENIENCY);
             Bukkit.getPluginManager().registerEvents(listener, plugin);
             player.getScheduler().runDelayed(plugin, scheduledTask -> {

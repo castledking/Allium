@@ -57,9 +57,13 @@ public class GeneralPlaceholder extends PlaceholderExpansion {
             return "";
         }
         
-        // Handle fly status placeholder
+        // Handle fly status placeholder: yes | no | temporary
         if (identifier.equals("fly")) {
             return getPlayerFlyStatus(player);
+        }
+        // Formatted tfly time remaining (e.g. 10m 30s)
+        if (identifier.equals("fly_time")) {
+            return getPlayerFlyTime(player);
         }
         
         // Handle god mode status placeholder
@@ -91,34 +95,26 @@ public class GeneralPlaceholder extends PlaceholderExpansion {
     }
     
     /**
-     * Get the player's fly status (yes/no)
+     * Get the player's fly status: yes (permanent fly on), no (fly off), temporary (tfly on).
      */
-    private String getPlayerFlyStatus(OfflinePlayer player) {
-        if (player == null) {
-            return "no";
-        }
-        
-        // Check if player is online first
-        if (player.isOnline()) {
-            return player.getPlayer().getAllowFlight() ? "yes" : "no";
-        }
-        
-        // For offline players, check the database
-        try {
-            Map<String, Object> result = database.queryRow(
-                "SELECT allow_flight FROM player_data WHERE uuid = ?",
-                player.getUniqueId().toString()
-            );
-            
-            if (result != null && result.get("allow_flight") != null) {
-                return (Boolean)result.get("allow_flight") ? "yes" : "no";
-            }
-        } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Error getting flight status for " + 
-                                  (player.getName() != null ? player.getName() : player.getUniqueId()), e);
-        }
-        
-        return "no";
+    private String getPlayerFlyStatus(Player player) {
+        if (player == null) return "no";
+        if (!player.getAllowFlight()) return "no";
+        if (player.hasPermission("allium.fly")) return "yes";
+        net.survivalfun.core.tfly.TFlyManager mgr = plugin.getTFlyManager();
+        if (mgr != null && mgr.isTFlyEnabled(player.getUniqueId())) return "temporary";
+        return "yes"; // allow flight on but no tfly state (e.g. spectator)
+    }
+    
+    /**
+     * Get formatted tfly time remaining (e.g. 10m 30s). For offline or no tfly, returns 0s.
+     */
+    private String getPlayerFlyTime(Player player) {
+        if (player == null) return "0s";
+        net.survivalfun.core.tfly.TFlyManager mgr = plugin.getTFlyManager();
+        if (mgr == null) return "0s";
+        long secs = mgr.getTFlyTime(player.getUniqueId());
+        return net.survivalfun.core.tfly.TFlyManager.formatTime(secs);
     }
     
     /**

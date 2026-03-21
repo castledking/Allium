@@ -264,11 +264,12 @@
             </exclusions>
         </dependency>
 
+        <!-- Vault Unlocked API: provided so runtime uses the plugin's Economy class. -->
         <dependency>
             <groupId>net.milkbowl.vault</groupId>
             <artifactId>VaultUnlockedAPI</artifactId>
-            <version>2.10</version>
-            <!-- Bundled so Allium loads without requiring Vault plugin to be installed first -->
+            <version>2.15</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- REMOVED: jopt-simple was only needed by OkHttp

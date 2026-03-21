@@ -241,6 +241,13 @@ creative-manager:
     blocks: []
     entities: []
 
+spawnercraft:
+  # Controls how crafted spawners are delivered:
+  # Vanilla = give a normal vanilla spawner item directly
+  # UpgradableSpawners = dispatch the UpgradableSpawners admin give command
+  # SpawnerMeta = dispatch the /sm give command structure
+  protocol: Vanilla
+
 # Creeper explosion regen speed (0 = disabled, 1 = slowest, 10 = fastest)
 creeper-explosion-regen-speed: 5
 

@@ -1,0 +1,49 @@
+# Allium Voucher Configuration
+# Vouchers are redeemable items that run commands and can grant permissions.
+#
+# Format:
+#   vouchers:
+#     VoucherId:
+#       Material: <MATERIAL_NAME>
+#       DisplayName: "&6Name"
+#       Lore:
+#         - "&fLine 1"
+#       Enchanted: true/false
+#       Commands:
+#         - "fly %player% add 10m"
+#       Grant:
+#         - "10:permission.node"   # chance:permission (only one selected by weight)
+#
+# Use %player% in commands for the redeemer's name.
+# Grant: only ONE permission is picked by weighted random; player must not already have it.
+
+vouchers:
+  TFly10m:
+    Material: FEATHER
+    DisplayName: "&6&l10m Fly Time &7(Click)"
+    Lore:
+      - "&fClick to redeem &610m&f of flight"
+      - "&ftime. &6/fly &fto toggle flight."
+    Enchanted: true
+    Commands:
+      - "fly %player% add 10m"
+    Grant: []
+
+  RandomGlow:
+    Material: GLOW_INK_SAC
+    DisplayName: "&d&lRandom Glow &7(Click)"
+    Lore:
+      - "&fClick to redeem a &drandom glow&f!"
+    Enchanted: true
+    Commands: []
+    Grant:
+      - "10:essentials.glow.color.aqua"
+      - "10:essentials.glow.color.blue"
+      - "10:essentials.glow.color.green"
+      - "10:essentials.glow.color.red"
+      - "10:essentials.glow.color.yellow"
+      - "10:essentials.glow.color.gold"
+      - "10:essentials.glow.color.light_purple"
+      - "10:essentials.glow.color.dark_purple"
+      - "10:essentials.glow.color.white"
+      - "1:essentials.glow.color.black"

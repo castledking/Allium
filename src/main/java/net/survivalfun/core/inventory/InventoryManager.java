@@ -130,6 +130,18 @@ public class InventoryManager {
         
         return future;
     }
+
+    public CompletableFuture<InventorySnapshot> getLatestSnapshot(UUID playerId) {
+        CompletableFuture<InventorySnapshot> future = new CompletableFuture<>();
+        getPlayerSnapshots(playerId, 0).whenComplete((snapshots, error) -> {
+            if (error != null) {
+                future.completeExceptionally(error);
+                return;
+            }
+            future.complete(snapshots.isEmpty() ? null : snapshots.get(0));
+        });
+        return future;
+    }
     
     private List<InventorySnapshot> getPaginatedSnapshots(List<InventorySnapshot> snapshots, int page) {
         if (snapshots.isEmpty()) {

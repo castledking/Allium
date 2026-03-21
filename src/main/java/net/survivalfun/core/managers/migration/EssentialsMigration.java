@@ -46,8 +46,11 @@ public class EssentialsMigration {
         return new File(basePath, "warps.yml");
     }
 
-    /** Warps directory: one &lt;warpName&gt;.yml per warp (Essentials format). */
+    /** Warps directory: one &lt;warpName&gt;.yml per warp (Essentials format). If basePath is already a directory named "warps", returns it. */
     public File getWarpsDir() {
+        if (basePath.isDirectory() && "warps".equals(basePath.getName())) {
+            return basePath;
+        }
         return new File(basePath, "warps");
     }
 
@@ -185,7 +188,7 @@ public class EssentialsMigration {
     public MigrationResult migrateWarps() {
         MigrationResult result = new MigrationResult("warps");
         UUID consoleUuid = new UUID(0, 0);
-        String consoleName = "EssentialsMigration";
+        String consoleName = "Migration"; // fits creator_name VARCHAR(16)
 
         // 1) Warps directory: one .yml file per warp
         File warpsDir = getWarpsDir();
@@ -253,20 +256,29 @@ public class EssentialsMigration {
 
     /**
      * Parse Essentials location section (world or world-name, x, y, z, yaw, pitch).
+     * Tries world-name first, then world (name or UUID); supports Essentials format with both keys.
      */
     private Location parseLocation(ConfigurationSection section) {
         String worldName = section.getString("world-name");
-        if (worldName == null) {
-            worldName = section.getString("world");
-        }
+        String worldRaw = section.getString("world");
+        if (worldName == null) worldName = worldRaw;
         if (worldName == null) return null;
         World world = Bukkit.getWorld(worldName);
         if (world == null) {
-            // Try UUID form
             try {
                 UUID worldUuid = UUID.fromString(worldName);
                 world = Bukkit.getWorld(worldUuid);
             } catch (Exception ignored) {
+            }
+        }
+        // If still null and we have a separate "world" key (e.g. UUID when world-name was the name), try it
+        if (world == null && worldRaw != null && !worldRaw.equals(worldName)) {
+            world = Bukkit.getWorld(worldRaw);
+            if (world == null) {
+                try {
+                    world = Bukkit.getWorld(UUID.fromString(worldRaw));
+                } catch (Exception ignored) {
+                }
             }
         }
         if (world == null) return null;

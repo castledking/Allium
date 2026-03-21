@@ -49,7 +49,7 @@ public class Give implements CommandExecutor {
     }
 
     /**
-     * Parsed item spec with optional inline amount (e.g. "dirt:1" or "stick;sharpness:5:12")
+     * Parsed item spec with optional inline amount (e.g. "dirt;1" or "stick;sharpness:5;12").
      */
     private static class ItemSpec {
         final String itemString;
@@ -75,9 +75,9 @@ public class Give implements CommandExecutor {
     }
 
     /**
-     * Parse comma-separated item specs, extracting :amount from the end of each if present.
-     * Examples: "dirt:1,grass_block:1" -> [(dirt,1), (grass_block,1)]
-     *           "stick;sharpness:5:1" -> [(stick;sharpness:5, 1)]
+     * Parse comma-separated item specs, extracting ;amount from the end of each if present.
+     * Examples: "dirt;1,grass_block;1" -> [(dirt,1), (grass_block,1)]
+     *           "stick;sharpness:5;1" -> [(stick;sharpness:5, 1)]
      */
     private List<ItemSpec> parseItemSpecs(String arg, int defaultAmount) {
         // Strip -e/-equip from end of arg (e.g. "dhelmet,dboots -e" -> "dhelmet,dboots")
@@ -90,13 +90,13 @@ public class Give implements CommandExecutor {
             part = part.trim();
             if (part.isEmpty() || "-e".equalsIgnoreCase(part) || "-equip".equalsIgnoreCase(part)) continue;
             int amount = defaultAmount;
-            int lastColon = part.lastIndexOf(':');
-            if (lastColon > 0) {
-                String suffix = part.substring(lastColon + 1);
+            int lastSemicolon = part.lastIndexOf(';');
+            if (lastSemicolon > 0) {
+                String suffix = part.substring(lastSemicolon + 1);
                 if (suffix.matches("\\d+")) {
                     try {
                         amount = Integer.parseInt(suffix);
-                        part = part.substring(0, lastColon).trim();
+                        part = part.substring(0, lastSemicolon).trim();
                     } catch (NumberFormatException ignored) {}
                 }
             }

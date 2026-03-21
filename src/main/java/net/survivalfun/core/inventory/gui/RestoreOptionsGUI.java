@@ -2,6 +2,7 @@ package net.survivalfun.core.inventory.gui;
 
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.inventory.InventorySnapshot;
+import net.survivalfun.core.inventory.OfflineInventoryData;
 import net.survivalfun.core.util.ItemBuilder;
 import net.survivalfun.core.util.SchedulerAdapter;
 
@@ -41,14 +42,10 @@ public class RestoreOptionsGUI extends BaseGUI {
                 ItemStack[] armor = snapshot.getArmorContents();
                 
                 // Get target player info
-                String targetName = "Unknown";
                 Player target = Bukkit.getPlayer(targetId);
-                if (target != null) {
-                    targetName = target.getName();
-                } else {
-                    // Try to get offline player name
-                    targetName = Bukkit.getOfflinePlayer(targetId).getName();
-                }
+                boolean targetOnline = target != null;
+                String targetName = resolveTargetName();
+                String restoreTargetLabel = targetName + (targetOnline ? "" : " (offline)");
                 
                 // Create restore buttons
                 ItemStack restoreSelfBtn = new ItemBuilder(Material.CHEST)
@@ -66,15 +63,16 @@ public class RestoreOptionsGUI extends BaseGUI {
 
                 ItemStack restoreTargetBtn = new ItemBuilder(Material.PLAYER_HEAD)
                     .skullOwner(targetName)
-                    .name("&aRestore to " + targetName)
+                    .name("&aRestore to " + restoreTargetLabel)
                     .lore(
-                        "&7Click to restore to " + targetName,
+                        targetOnline ? "&7Click to restore to " + targetName : "&7Click to queue a restore for " + targetName,
                         "",
                         "&eIncludes:",
                         "&7- Main inventory",
                         "&7- Armor & offhand",
                         "&7- Experience",
-                        "&7- Ender chest"
+                        "&7- Ender chest",
+                        targetOnline ? "" : "&7Applies the next time they join"
                     )
                     .build();
 
@@ -142,7 +140,7 @@ public class RestoreOptionsGUI extends BaseGUI {
                         setItem(51, enderChestBtn, this::handleOpenEnderChest);
                         
                         // Only show restore to target if target is not the viewer
-                        if (target != null && !target.getUniqueId().equals(player.getUniqueId())) {
+                        if (!targetId.equals(player.getUniqueId())) {
                             setItem(46, restoreTargetBtn, this::handleRestoreTarget);
                         }
                         
@@ -195,7 +193,9 @@ public class RestoreOptionsGUI extends BaseGUI {
             player.sendMessage("§aRestoring " + target.getName() + "'s inventory...");
             restoreInventory(target, true, true, true, true);
         } else {
-            player.sendMessage("§cPlayer is no longer online.");
+            String targetName = resolveTargetName();
+            player.sendMessage("§aQueueing a restore for " + targetName + " while they are offline...");
+            queueOfflineRestore(targetName, true, true, true, true);
         }
     }
 
@@ -235,40 +235,16 @@ public class RestoreOptionsGUI extends BaseGUI {
     }
 
     private void restoreInventory(Player target, boolean restoreInv, boolean restoreArmor, boolean restoreExp, boolean restoreEnderChest) {
-        SchedulerAdapter.runAtEntity(player, () -> {
+        SchedulerAdapter.runAtEntity(target, () -> {
             try {
-                if (restoreInv) {
-                    target.getInventory().setContents(snapshot.getInventoryContents());
-                }
-                if (restoreArmor) {
-                    target.getInventory().setArmorContents(Arrays.copyOf(snapshot.getArmorContents(), 4));
-                    if (snapshot.getArmorContents().length > 4) {
-                        target.getInventory().setItemInOffHand(snapshot.getArmorContents()[4]);
-                    }
-                    // Restore offhand item if available
-                    if (snapshot.getOffhandItem() != null) {
-                        target.getInventory().setItemInOffHand(snapshot.getOffhandItem());
-                    }
-                }
-                if (restoreExp) {
-                    // Set total experience and calculate proper level and exp bar
-                    target.setTotalExperience(snapshot.getExperience());
-
-                    // Calculate and set the correct level and experience bar
-                    int totalExp = snapshot.getExperience();
-                    int level = calculateLevelFromExperience(totalExp);
-                    float expProgress = calculateExpProgress(totalExp, level);
-
-                    target.setLevel(level);
-                    target.setExp(expProgress);
-                }
-
-                if (restoreEnderChest) {
-                    ItemStack[] savedEnderChest = snapshot.getEnderChestContents();
-                    target.getEnderChest().setContents(Arrays.copyOf(savedEnderChest, target.getEnderChest().getSize()));
-                }
-
-                target.updateInventory();
+                OfflineInventoryData override = OfflineInventoryData.fromSnapshot(
+                    snapshot,
+                    restoreInv,
+                    restoreArmor,
+                    restoreExp,
+                    restoreEnderChest
+                );
+                plugin.getOfflineInventoryManager().applyToOnlinePlayer(target, override);
                 target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.0f);
 
                 String message = "§aSuccessfully restored ";
@@ -293,6 +269,45 @@ public class RestoreOptionsGUI extends BaseGUI {
         });
     }
 
+    private void queueOfflineRestore(String targetName,
+                                     boolean restoreInv,
+                                     boolean restoreArmor,
+                                     boolean restoreExp,
+                                     boolean restoreEnderChest) {
+        plugin.getOfflineInventoryManager().queueOfflineSnapshotRestore(
+            targetId,
+            targetName,
+            snapshot,
+            restoreInv,
+            restoreArmor,
+            restoreExp,
+            restoreEnderChest
+        ).whenComplete((ignored, error) -> SchedulerAdapter.runAtEntity(player, () -> {
+            if (error != null) {
+                handleError("Error queueing offline restore", new RuntimeException(error), player);
+                return;
+            }
+
+            List<String> parts = new java.util.ArrayList<>();
+            if (restoreInv) parts.add("inventory");
+            if (restoreArmor) parts.add("armor");
+            if (restoreExp) parts.add("experience");
+            if (restoreEnderChest) parts.add("ender chest");
+
+            player.sendMessage("§aQueued " + targetName + "'s " + String.join(", ", parts) + " restore for their next login.");
+        }));
+    }
+
+    private String resolveTargetName() {
+        Player target = Bukkit.getPlayer(targetId);
+        if (target != null) {
+            return target.getName();
+        }
+
+        String offlineName = Bukkit.getOfflinePlayer(targetId).getName();
+        return offlineName != null ? offlineName : "Unknown";
+    }
+
     private void handleError(String message, Exception e) {
         handleError(message, e, player);
     }
@@ -305,37 +320,4 @@ public class RestoreOptionsGUI extends BaseGUI {
         }
     }
 
-    private int calculateLevelFromExperience(int totalExp) {
-        int level = 0;
-        int expForNextLevel = 0;
-
-        while (expForNextLevel <= totalExp) {
-            expForNextLevel += getExpForLevel(level);
-            level++;
-        }
-
-        return Math.max(0, level - 1);
-    }
-
-    private float calculateExpProgress(int totalExp, int level) {
-        int expForPreviousLevel = 0;
-        for (int i = 0; i < level; i++) {
-            expForPreviousLevel += getExpForLevel(i);
-        }
-
-        int expForCurrentLevel = getExpForLevel(level);
-        int expInCurrentLevel = totalExp - expForPreviousLevel;
-
-        return Math.min(1.0f, Math.max(0.0f, (float) expInCurrentLevel / expForCurrentLevel));
-    }
-
-    private int getExpForLevel(int level) {
-        if (level <= 15) {
-            return 2 * level + 7;
-        } else if (level <= 30) {
-            return 5 * level - 38;
-        } else {
-            return 9 * level - 158;
-        }
-    }
 }

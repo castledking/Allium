@@ -1,9 +1,11 @@
 package net.survivalfun.core.listeners.security;
 
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.commands.PvpCommand;
 import net.survivalfun.core.commands.TP;
 import net.survivalfun.core.managers.DB.Database.LocationType;
 import net.survivalfun.core.managers.DB.PlayerInventories;
+import net.milkbowl.vault.permission.Permission;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -18,6 +20,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -63,6 +66,49 @@ public class ConnectionManager implements Listener {
                 Text.sendDebugLog(WARN, "Failed to update last seen date for player: " + playerName);
             }
         });
+
+        Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
+            boolean pvpEnabled = plugin.getDatabase().getPvpEnabled(playerUUID);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()) {
+                    PvpCommand.setPvpEnabledState(plugin, player, pvpEnabled);
+                }
+            });
+        });
+
+        String ipAddress = getPlayerIpAddress(player);
+        if (ipAddress != null) {
+            Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
+                plugin.getDatabase().savePlayerIp(playerUUID, playerName, ipAddress);
+
+                if (!plugin.getDatabase().isPlayerAltOnIp(playerUUID, ipAddress)) {
+                    return;
+                }
+
+                Permission vaultPermission = plugin.getVaultPermission();
+                if (vaultPermission == null || !vaultPermission.hasGroupSupport()) {
+                    Text.sendDebugLog(WARN, "Unable to add alt group for " + playerName + ": Vault permissions group support is unavailable");
+                    return;
+                }
+
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (!player.isOnline()) {
+                        return;
+                    }
+
+                    try {
+                        if (!vaultPermission.playerInGroup(player, "alt")) {
+                            boolean added = vaultPermission.playerAddGroup(player, "alt");
+                            if (!added) {
+                                Text.sendDebugLog(WARN, "Failed to add alt group for " + playerName);
+                            }
+                        }
+                    } catch (Exception e) {
+                        Text.sendDebugLog(WARN, "Error while adding alt group for " + playerName, e);
+                    }
+                });
+            });
+        }
         
         // Load teleport toggle state asynchronously
         Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
@@ -90,6 +136,24 @@ public class ConnectionManager implements Listener {
                 Text.sendDebugLog(ERROR, "Error loading teleport toggle state for " + playerName + " (UUID: " + playerUUID + ")", e);
             }
         });
+
+        // Restore staff chat channel (ChatControl) from DB for players with allium.staffchat
+        if (player.hasPermission("allium.staffchat")) {
+            Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
+                boolean inStaffChat = plugin.getDatabase().getStaffChatMode(playerUUID);
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (!player.isOnline()) return;
+                    if (inStaffChat) {
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join staff-chat read " + playerName);
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join staff-chat write " + playerName);
+                    } else {
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join default read " + playerName);
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join default write " + playerName);
+                    }
+                });
+            });
+        }
+
         // --- Start of new logic for 'players-to-redeem' ---
         player.getScheduler().runDelayed(plugin, (task) -> {
             java.util.List<String> playersToRedeemEntries = plugin.getConfig().getStringList("players-to-redeem");
@@ -148,5 +212,13 @@ public class ConnectionManager implements Listener {
         Text.sendDebugLog(INFO, "Saved logout location to database for " + player.getName() +
             " at " + logoutLocation.getWorld().getName() + " (" +
             String.format("%.2f, %.2f, %.2f", logoutLocation.getX(), logoutLocation.getY(), logoutLocation.getZ()) + ")");
+    }
+
+    private String getPlayerIpAddress(Player player) {
+        InetSocketAddress address = player.getAddress();
+        if (address == null || address.getAddress() == null) {
+            return null;
+        }
+        return address.getAddress().getHostAddress();
     }
 }

@@ -89,7 +89,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
     public @NotNull List<String> getPlaceholders() {
         return Arrays.asList(
             "ping", "nickname", "nickname_raw",
-            "fly", "god", "reply", "mail_unread", "mail_gifts",
+            "fly", "fly_time", "god", "reply", "mail_unread", "mail_gifts",
             "spy", "spy_target",
             "world_date", "world_time", "world_time_24h",
             "teleport_cooldown", "teleport_request_timestamp", "teleport_requests", "teleport_toggled",

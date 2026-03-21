@@ -169,46 +169,52 @@ public class Text {
     }
     
     public static String formatTime(int seconds) {
-        int days = seconds / 86400;
-        seconds %= 86400;
+        return formatTime((long) seconds);
+    }
 
-        int hours = seconds / 3600;
-        seconds %= 3600;
+    public static String formatTime(long totalSeconds) {
+        if (totalSeconds <= 0) {
+            return "0s";
+        }
 
-        int minutes = seconds / 60;
-        seconds %= 60;
-        boolean sToSeconds = seconds <= 60 && minutes < 1 && hours < 1 && days < 1;
-        if (seconds <= 0) {
-            if (sToSeconds) {
-                return "0 seconds";
-            } else {
-                return "0s";
-            }
+        long days = totalSeconds / 86400;
+        long remaining = totalSeconds % 86400;
+
+        long hours = remaining / 3600;
+        remaining %= 3600;
+
+        long minutes = remaining / 60;
+        long seconds = remaining % 60;
+
+        if (days == 0 && hours == 0 && minutes == 0) {
+            return seconds == 1 ? "1 second" : seconds + " seconds";
         }
 
         StringBuilder timeString = new StringBuilder();
 
         if (days > 0) {
-            timeString.append(days).append("d ");
+            timeString.append(days).append("d");
         }
 
-        if (hours > 0 || days > 0) {
-            timeString.append(hours).append("h ");
-        }
-
-        if (minutes > 0 || hours > 0 || days > 0) {
-            timeString.append(minutes).append("m ");
-        }
-
-        if (seconds > 0 || timeString.length() == 0) {
-            if (sToSeconds) {
-                timeString.append(seconds).append(" seconds");
-            } else {
-                timeString.append(seconds).append("s");
+        if (hours > 0) {
+            if (timeString.length() > 0) {
+                timeString.append(" ");
             }
-        } else {
-            // Remove the trailing space if we added other units
-            timeString.deleteCharAt(timeString.length() - 1);
+            timeString.append(hours).append("h");
+        }
+
+        if (minutes > 0) {
+            if (timeString.length() > 0) {
+                timeString.append(" ");
+            }
+            timeString.append(minutes).append("m");
+        }
+
+        if (seconds > 0) {
+            if (timeString.length() > 0) {
+                timeString.append(" ");
+            }
+            timeString.append(seconds).append("s");
         }
 
         return timeString.toString();

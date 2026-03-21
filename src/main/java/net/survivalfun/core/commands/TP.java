@@ -1742,8 +1742,8 @@ public class TP implements CommandExecutor, TabCompleter {
                         Text.sendErrorMessage(sender, "invalid", lang, "{arg}", args[0]);
                         return true;
                     }
-                } else if (args.length >= 4 && isNumeric(args[1])) {
-                    // Format: /tp player x y z
+                } else if (args.length >= 4 && !isNumeric(args[0]) && isNumeric(args[1])) {
+                    // Format: /tp player x y z [yaw] [pitch] [world] — args[0] is player name
                     if (!sender.hasPermission("allium.tp.others")) {
                         Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "tp others");
                         return true;
@@ -1755,7 +1755,7 @@ public class TP implements CommandExecutor, TabCompleter {
                     }
                     coordIndex = 1;
                 } else if (sender instanceof Player) {
-                    // Format: /tp x y z
+                    // Format: /tp x y z [yaw] [pitch] [world] — self teleport, use sender's world when world not specified
                     targetPlayer = (Player) sender;
                 } else {
                     sender.sendMessage(lang.get("not-a-player"));
@@ -1805,21 +1805,11 @@ public class TP implements CommandExecutor, TabCompleter {
                 final double fx = x, fy = y, fz = z; // for lambda capture
                 targetPlayer.teleportAsync(targetLocation).thenAccept(success -> {
                     if (success) {
-                        // Send success message with sound and particles
-                        String position = lang.get("tp.position")
+                        String positionStr = lang.get("tp.position")
                                 .replace("{x}", String.format("%.1f", fx))
                                 .replace("{y}", String.format("%.1f", fy))
                                 .replace("{z}", String.format("%.1f", fz));
-                                
-                        lang.sendMessage(targetPlayer, "tp.position",
-                                "{player}", targetPlayer.getName(),
-                                "{target}", position,
-                                "{world}", targetLocation.getWorld().getName(),
-                                "{x}", String.format("%.1f", fx),
-                                "{y}", String.format("%.1f", fy),
-                                "{z}", String.format("%.1f", fz),
-                                Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f,
-                                Particle.PORTAL, 50, 0.5, 0.5, 0.5, 0.1);
+                        lang.sendMessage(targetPlayer, "tp.success", "{name}", "to", "{target}", positionStr);
                     } else {
                         targetPlayer.sendMessage(Text.colorize("&cTeleport failed."));
                     }
@@ -2492,7 +2482,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check permission
-        if (!player.hasPermission("allium.tpa")) {
+        if (!hasTeleportRequestPermission(player, isHereRequest)) {
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", isHereRequest ? "tpahere" : "tpa");
             return true;
         }
@@ -2830,6 +2820,10 @@ public class TP implements CommandExecutor, TabCompleter {
         return (teleportCooldowns.get(playerId) - System.currentTimeMillis()) / 1000 + 1; // +1 to round up
     }
 
+    private boolean hasTeleportRequestPermission(Player player, boolean isHereRequest) {
+        return isHereRequest ? player.hasPermission("allium.tpahere") : player.hasPermission("allium.tpa");
+    }
+
     /**
      * Sets a cooldown for a player
      * @param playerId UUID of the player to set cooldown for
@@ -3140,10 +3134,9 @@ public class TP implements CommandExecutor, TabCompleter {
                         positionInfo.append(")");
                     }
 
-                    lang.sendMessage(player, "tp.success", 
-                        "{name}", "", 
-                        "{target}", "to you",
-                        "{position}", positionInfo.toString());
+                    lang.sendMessage(player, "tp.success",
+                        "{name}", "to",
+                        "{target}", positionInfo.toString());
                 } else {
                     player.sendMessage(Text.colorize("&cTeleport failed."));
                 }
@@ -3830,4 +3823,3 @@ public class TP implements CommandExecutor, TabCompleter {
         }
     }
 }
-

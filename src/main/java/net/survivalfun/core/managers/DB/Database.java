@@ -34,6 +34,7 @@ import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 
 import net.survivalfun.core.managers.economy.BalanceEntry;
 import net.survivalfun.core.inventory.InventorySnapshot;
+import net.survivalfun.core.inventory.OfflineInventoryData;
 import net.survivalfun.core.managers.lang.Lang;
 
 public class Database {
@@ -246,7 +247,7 @@ public class Database {
         return -1; // Return -1 if no generated key was returned
     }
 
-    private static final int CURRENT_DB_VERSION = 4;
+    private static final int CURRENT_DB_VERSION = 6;
 
     private void createTables(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
@@ -307,10 +308,25 @@ public class Database {
                             "walk_speed FLOAT DEFAULT 0.2, " +
                             "fly_speed FLOAT DEFAULT 0.1, " +
                             "vanish_level INT DEFAULT 0, " +
+                            "last_ip VARCHAR(64), " +
+                            "pvp_enabled BOOLEAN DEFAULT TRUE, " +
                             "last_seen_date TIMESTAMP, " +
                             "last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                             ")"
             );
+
+            Text.sendDebugLog(INFO, "Creating player_ip_history table...");
+            statement.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS player_ip_history (" +
+                            "player_uuid VARCHAR(36) NOT NULL, " +
+                            "name VARCHAR(16) NOT NULL, " +
+                            "ip_address VARCHAR(64) NOT NULL, " +
+                            "first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                            "last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                            "PRIMARY KEY (player_uuid, ip_address)" +
+                            ")"
+            );
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_player_ip_history_ip ON player_ip_history (ip_address)");
 
             Text.sendDebugLog(INFO, "Creating player_inventories table...");
             statement.executeUpdate(
@@ -401,6 +417,34 @@ public class Database {
                 "INDEX idx_player (player_uuid), " +
                 "INDEX idx_timestamp (timestamp)" +
                 ")"
+            );
+
+            Text.sendDebugLog(INFO, "Creating offline_inventory_state table...");
+            statement.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS offline_inventory_state (" +
+                            "uuid VARCHAR(36) PRIMARY KEY, " +
+                            "name VARCHAR(16) NOT NULL, " +
+                            "inventory_data BLOB, " +
+                            "armor_data BLOB, " +
+                            "offhand_data BLOB, " +
+                            "enderchest_data BLOB, " +
+                            "experience INT, " +
+                            "last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                            ")"
+            );
+
+            Text.sendDebugLog(INFO, "Creating offline_inventory_overrides table...");
+            statement.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS offline_inventory_overrides (" +
+                            "uuid VARCHAR(36) PRIMARY KEY, " +
+                            "name VARCHAR(16) NOT NULL, " +
+                            "inventory_data BLOB, " +
+                            "armor_data BLOB, " +
+                            "offhand_data BLOB, " +
+                            "enderchest_data BLOB, " +
+                            "experience INT, " +
+                            "last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                            ")"
             );
 
             Text.sendDebugLog(INFO, "Creating player_locations table...");
@@ -558,6 +602,46 @@ public class Database {
 
             Text.sendDebugLog(INFO, "Applied migration to version 4");
         }
+
+        if (currentVersion < 5) {
+            try (Connection connection = getConnection()) {
+                if (tableExists(connection, "player_data") && !columnExists(connection, "player_data", "last_ip")) {
+                    Text.sendDebugLog(INFO, "Adding last_ip column to player_data table...");
+                    statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS last_ip VARCHAR(64)");
+                    Text.sendDebugLog(INFO, "Successfully added last_ip column to player_data table");
+                }
+
+                if (!tableExists(connection, "player_ip_history")) {
+                    Text.sendDebugLog(INFO, "Creating player_ip_history table...");
+                    statement.executeUpdate(
+                        "CREATE TABLE IF NOT EXISTS player_ip_history (" +
+                        "player_uuid VARCHAR(36) NOT NULL, " +
+                        "name VARCHAR(16) NOT NULL, " +
+                        "ip_address VARCHAR(64) NOT NULL, " +
+                        "first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "PRIMARY KEY (player_uuid, ip_address)" +
+                        ")"
+                    );
+                    statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_player_ip_history_ip ON player_ip_history (ip_address)");
+                    Text.sendDebugLog(INFO, "Successfully created player_ip_history table");
+                }
+            }
+
+            Text.sendDebugLog(INFO, "Applied migration to version 5");
+        }
+
+        if (currentVersion < 6) {
+            try (Connection connection = getConnection()) {
+                if (tableExists(connection, "player_data") && !columnExists(connection, "player_data", "pvp_enabled")) {
+                    Text.sendDebugLog(INFO, "Adding pvp_enabled column to player_data table...");
+                    statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS pvp_enabled BOOLEAN DEFAULT TRUE");
+                    Text.sendDebugLog(INFO, "Successfully added pvp_enabled column to player_data table");
+                }
+            }
+
+            Text.sendDebugLog(INFO, "Applied migration to version 6");
+        }
     }
 
     /**
@@ -606,6 +690,41 @@ public class Database {
                 statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS player_displayname VARCHAR(100)");
                 Text.sendDebugLog(INFO, "Successfully added player_displayname column to player_data table");
             }
+
+            // Add staff_chat column for /a (ChatControl channel toggle) persistence
+            if (!columnExists(connection, "player_data", "staff_chat")) {
+                Text.sendDebugLog(INFO, "Adding staff_chat column to player_data table...");
+                statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS staff_chat BOOLEAN DEFAULT FALSE");
+                Text.sendDebugLog(INFO, "Successfully added staff_chat column to player_data table");
+            }
+
+            if (!columnExists(connection, "player_data", "last_ip")) {
+                Text.sendDebugLog(INFO, "Adding last_ip column to player_data table...");
+                statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS last_ip VARCHAR(64)");
+                Text.sendDebugLog(INFO, "Successfully added last_ip column to player_data table");
+            }
+
+            if (!columnExists(connection, "player_data", "pvp_enabled")) {
+                Text.sendDebugLog(INFO, "Adding pvp_enabled column to player_data table...");
+                statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS pvp_enabled BOOLEAN DEFAULT TRUE");
+                Text.sendDebugLog(INFO, "Successfully added pvp_enabled column to player_data table");
+            }
+
+            if (!tableExists(connection, "player_ip_history")) {
+                Text.sendDebugLog(INFO, "Creating player_ip_history table...");
+                statement.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS player_ip_history (" +
+                    "player_uuid VARCHAR(36) NOT NULL, " +
+                    "name VARCHAR(16) NOT NULL, " +
+                    "ip_address VARCHAR(64) NOT NULL, " +
+                    "first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "PRIMARY KEY (player_uuid, ip_address)" +
+                    ")"
+                );
+                Text.sendDebugLog(INFO, "Successfully created player_ip_history table");
+            }
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_player_ip_history_ip ON player_ip_history (ip_address)");
 
             // Table for staff-set / migrated max homes per player (-1 or missing = use permissions)
             if (!tableExists(connection, "player_max_homes")) {
@@ -915,11 +1034,123 @@ public class Database {
         }
         if (playerName == null) playerName = "";
         if (displayName == null) displayName = "";
-        try {
-            String sql = "MERGE INTO player_data (uuid, name, player_displayname, last_updated) KEY (uuid) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
-            executeUpdate(sql, playerUUID.toString(), playerName, displayName);
+        try (Connection conn = getConnection()) {
+            int updatedRows;
+            try (PreparedStatement stmt = conn.prepareStatement(
+                    "UPDATE player_data SET name = ?, player_displayname = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?")) {
+                stmt.setString(1, playerName);
+                stmt.setString(2, displayName);
+                stmt.setString(3, playerUUID.toString());
+                updatedRows = stmt.executeUpdate();
+            }
+
+            if (updatedRows == 0) {
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "INSERT INTO player_data (uuid, name, player_displayname, last_updated) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
+                    stmt.setString(1, playerUUID.toString());
+                    stmt.setString(2, playerName);
+                    stmt.setString(3, displayName);
+                    stmt.executeUpdate();
+                }
+            }
         } catch (Exception e) {
             Text.sendDebugLog(WARN, "Failed to save nickname for " + playerUUID + ": " + e.getMessage(), e);
+        }
+    }
+
+    /** Returns true if the player has staff chat mode on (ChatControl staff-chat channel). Default false. */
+    public boolean getStaffChatMode(UUID playerUUID) {
+        if (!columnExists("player_data", "staff_chat")) {
+            return false;
+        }
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT staff_chat FROM player_data WHERE uuid = ?")) {
+            stmt.setString(1, playerUUID.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBoolean("staff_chat");
+                }
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to get staff_chat for " + playerUUID, e);
+        }
+        return false;
+    }
+
+    /** Persists staff chat toggle state for /a command. */
+    public void setStaffChatMode(UUID playerUUID, String playerName, boolean staffChat) {
+        if (!columnExists("player_data", "staff_chat")) {
+            return;
+        }
+        if (playerName == null) playerName = "";
+        try (Connection conn = getConnection()) {
+            int updatedRows;
+            try (PreparedStatement stmt = conn.prepareStatement(
+                    "UPDATE player_data SET name = ?, staff_chat = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?")) {
+                stmt.setString(1, playerName);
+                stmt.setBoolean(2, staffChat);
+                stmt.setString(3, playerUUID.toString());
+                updatedRows = stmt.executeUpdate();
+            }
+
+            if (updatedRows == 0) {
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "INSERT INTO player_data (uuid, name, staff_chat, last_updated) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
+                    stmt.setString(1, playerUUID.toString());
+                    stmt.setString(2, playerName);
+                    stmt.setBoolean(3, staffChat);
+                    stmt.executeUpdate();
+                }
+            }
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Failed to save staff_chat for " + playerUUID + ": " + e.getMessage(), e);
+        }
+    }
+
+    public boolean getPvpEnabled(UUID playerUUID) {
+        if (!columnExists("player_data", "pvp_enabled")) {
+            return true;
+        }
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT pvp_enabled FROM player_data WHERE uuid = ?")) {
+            stmt.setString(1, playerUUID.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBoolean("pvp_enabled");
+                }
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to get pvp_enabled for " + playerUUID, e);
+        }
+        return true;
+    }
+
+    public void setPvpEnabled(UUID playerUUID, String playerName, boolean pvpEnabled) {
+        if (!columnExists("player_data", "pvp_enabled")) {
+            return;
+        }
+        if (playerName == null) playerName = "";
+        try (Connection conn = getConnection()) {
+            int updatedRows;
+            try (PreparedStatement stmt = conn.prepareStatement(
+                    "UPDATE player_data SET name = ?, pvp_enabled = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?")) {
+                stmt.setString(1, playerName);
+                stmt.setBoolean(2, pvpEnabled);
+                stmt.setString(3, playerUUID.toString());
+                updatedRows = stmt.executeUpdate();
+            }
+
+            if (updatedRows == 0) {
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "INSERT INTO player_data (uuid, name, pvp_enabled, last_updated) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
+                    stmt.setString(1, playerUUID.toString());
+                    stmt.setString(2, playerName);
+                    stmt.setBoolean(3, pvpEnabled);
+                    stmt.executeUpdate();
+                }
+            }
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Failed to save pvp_enabled for " + playerUUID + ": " + e.getMessage(), e);
         }
     }
 
@@ -1721,19 +1952,26 @@ public class Database {
                     addLastSeenDateColumn(connection);
                 }
                 
-                String sql = "MERGE INTO player_data (uuid, name, last_seen_date, last_updated) " +
-                        "KEY (uuid) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
-                                
-                try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                    statement.setString(1, playerUUID.toString());
-                    statement.setString(2, playerName);
-                    int rowsAffected = statement.executeUpdate();
-                    boolean success = rowsAffected > 0;
-                    
-                    if (success) {
-                        Text.sendDebugLog(INFO, "Successfully updated last seen for player: " + playerName);
-                        return true;
+                int rowsAffected;
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "UPDATE player_data SET name = ?, last_seen_date = CURRENT_TIMESTAMP, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?")) {
+                    statement.setString(1, playerName);
+                    statement.setString(2, playerUUID.toString());
+                    rowsAffected = statement.executeUpdate();
+                }
+
+                if (rowsAffected == 0) {
+                    try (PreparedStatement statement = connection.prepareStatement(
+                            "INSERT INTO player_data (uuid, name, last_seen_date, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")) {
+                        statement.setString(1, playerUUID.toString());
+                        statement.setString(2, playerName);
+                        rowsAffected = statement.executeUpdate();
                     }
+                }
+
+                if (rowsAffected > 0) {
+                    Text.sendDebugLog(INFO, "Successfully updated last seen for player: " + playerName);
+                    return true;
                 }
             } catch (SQLException e) {
                 Text.sendDebugLog(WARN, String.format("Attempt %d/%d - Failed to update last seen for player: %s", 
@@ -1772,6 +2010,163 @@ public class Database {
             }
         }
         
+        return false;
+    }
+
+    public void savePlayerIp(UUID playerUUID, String playerName, String ipAddress) {
+        if (ipAddress == null || ipAddress.isBlank()) {
+            return;
+        }
+
+        try (Connection connection = getConnection()) {
+            if (!columnExists(connection, "player_data", "last_ip")) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS last_ip VARCHAR(64)");
+                }
+            }
+
+            if (!tableExists(connection, "player_ip_history")) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.executeUpdate(
+                        "CREATE TABLE IF NOT EXISTS player_ip_history (" +
+                        "player_uuid VARCHAR(36) NOT NULL, " +
+                        "name VARCHAR(16) NOT NULL, " +
+                        "ip_address VARCHAR(64) NOT NULL, " +
+                        "first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "PRIMARY KEY (player_uuid, ip_address)" +
+                        ")"
+                    );
+                    statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_player_ip_history_ip ON player_ip_history (ip_address)");
+                }
+            }
+
+            int updatedPlayerRows;
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "UPDATE player_data SET name = ?, last_ip = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?")) {
+                statement.setString(1, playerName);
+                statement.setString(2, ipAddress);
+                statement.setString(3, playerUUID.toString());
+                updatedPlayerRows = statement.executeUpdate();
+            }
+
+            if (updatedPlayerRows == 0) {
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "INSERT INTO player_data (uuid, name, last_ip, last_updated) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
+                    statement.setString(1, playerUUID.toString());
+                    statement.setString(2, playerName);
+                    statement.setString(3, ipAddress);
+                    statement.executeUpdate();
+                }
+            }
+
+            int updatedRows;
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "UPDATE player_ip_history SET name = ?, last_seen = CURRENT_TIMESTAMP WHERE player_uuid = ? AND ip_address = ?")) {
+                statement.setString(1, playerName);
+                statement.setString(2, playerUUID.toString());
+                statement.setString(3, ipAddress);
+                updatedRows = statement.executeUpdate();
+            }
+
+            if (updatedRows == 0) {
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "INSERT INTO player_ip_history (player_uuid, name, ip_address, first_seen, last_seen) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")) {
+                    statement.setString(1, playerUUID.toString());
+                    statement.setString(2, playerName);
+                    statement.setString(3, ipAddress);
+                    statement.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to save IP history for player: " + playerName, e);
+        }
+    }
+
+    public String getPlayerLastIp(UUID playerUUID) {
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement("SELECT last_ip FROM player_data WHERE uuid = ?")) {
+            statement.setString(1, playerUUID.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getString("last_ip");
+                }
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to get last IP for player UUID: " + playerUUID, e);
+        }
+        return null;
+    }
+
+    public List<String> getPlayersSeenOnIp(String ipAddress, UUID excludedPlayerUUID) {
+        if (ipAddress == null || ipAddress.isBlank()) {
+            return Collections.emptyList();
+        }
+
+        List<String> names = new ArrayList<>();
+        String sql = excludedPlayerUUID == null
+            ? "SELECT DISTINCT name FROM player_ip_history WHERE ip_address = ? ORDER BY LOWER(name)"
+            : "SELECT DISTINCT name FROM player_ip_history WHERE ip_address = ? AND player_uuid <> ? ORDER BY LOWER(name)";
+
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, ipAddress);
+            if (excludedPlayerUUID != null) {
+                statement.setString(2, excludedPlayerUUID.toString());
+            }
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    String name = resultSet.getString("name");
+                    if (name != null && !name.isBlank()) {
+                        names.add(name);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to get players seen on IP: " + ipAddress, e);
+        }
+
+        return names;
+    }
+
+    public boolean isPlayerAltOnIp(UUID playerUUID, String ipAddress) {
+        if (ipAddress == null || ipAddress.isBlank()) {
+            return false;
+        }
+
+        String playerFirstSeenSql = "SELECT first_seen FROM player_ip_history WHERE player_uuid = ? AND ip_address = ?";
+        String existingEarlierAccountSql = "SELECT 1 FROM player_ip_history WHERE ip_address = ? AND player_uuid <> ? AND first_seen < ?";
+
+        try (Connection connection = getConnection();
+             PreparedStatement playerFirstSeenStatement = connection.prepareStatement(playerFirstSeenSql);
+             PreparedStatement existingEarlierAccountStatement = connection.prepareStatement(existingEarlierAccountSql)) {
+            playerFirstSeenStatement.setString(1, playerUUID.toString());
+            playerFirstSeenStatement.setString(2, ipAddress);
+
+            Timestamp playerFirstSeen;
+            try (ResultSet resultSet = playerFirstSeenStatement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return false;
+                }
+                playerFirstSeen = resultSet.getTimestamp("first_seen");
+            }
+
+            if (playerFirstSeen == null) {
+                return false;
+            }
+
+            existingEarlierAccountStatement.setString(1, ipAddress);
+            existingEarlierAccountStatement.setString(2, playerUUID.toString());
+            existingEarlierAccountStatement.setTimestamp(3, playerFirstSeen);
+
+            try (ResultSet resultSet = existingEarlierAccountStatement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to determine alt status for player UUID: " + playerUUID, e);
+        }
+
         return false;
     }
 
@@ -1958,14 +2353,25 @@ public class Database {
     }
 
     public void savePlayerGameMode(UUID uuid, String playerName, GameMode gameMode) throws SQLException {
-        String sql = "MERGE INTO player_data (uuid, name, gamemode, last_updated) " +
-                "KEY (uuid) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, uuid.toString());
-            stmt.setString(2, playerName);
-            stmt.setString(3, gameMode != null ? gameMode.name() : null);
-            stmt.executeUpdate();
+        try (Connection connection = dataSource.getConnection()) {
+            int updatedRows;
+            try (PreparedStatement stmt = connection.prepareStatement(
+                    "UPDATE player_data SET name = ?, gamemode = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?")) {
+                stmt.setString(1, playerName);
+                stmt.setString(2, gameMode != null ? gameMode.name() : null);
+                stmt.setString(3, uuid.toString());
+                updatedRows = stmt.executeUpdate();
+            }
+
+            if (updatedRows == 0) {
+                try (PreparedStatement stmt = connection.prepareStatement(
+                        "INSERT INTO player_data (uuid, name, gamemode, last_updated) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
+                    stmt.setString(1, uuid.toString());
+                    stmt.setString(2, playerName);
+                    stmt.setString(3, gameMode != null ? gameMode.name() : null);
+                    stmt.executeUpdate();
+                }
+            }
         }
     }
 
@@ -2893,6 +3299,108 @@ public class Database {
         
         return null;
     }
+
+    public boolean saveOfflineInventoryState(UUID playerUUID, String playerName, OfflineInventoryData data) {
+        return saveOfflineInventoryData("offline_inventory_state", playerUUID, playerName, data);
+    }
+
+    public OfflineInventoryData loadOfflineInventoryState(UUID playerUUID) {
+        return loadOfflineInventoryData("offline_inventory_state", playerUUID);
+    }
+
+    public boolean savePendingOfflineInventoryOverride(UUID playerUUID, String playerName, OfflineInventoryData data) {
+        return saveOfflineInventoryData("offline_inventory_overrides", playerUUID, playerName, data);
+    }
+
+    public OfflineInventoryData loadPendingOfflineInventoryOverride(UUID playerUUID) {
+        return loadOfflineInventoryData("offline_inventory_overrides", playerUUID);
+    }
+
+    public boolean deletePendingOfflineInventoryOverride(UUID playerUUID) {
+        String sql = "DELETE FROM offline_inventory_overrides WHERE uuid = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, playerUUID.toString());
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            Text.sendDebugLog(ERROR, "Failed to delete offline inventory override for " + playerUUID, e);
+            return false;
+        }
+    }
+
+    private boolean saveOfflineInventoryData(String tableName, UUID playerUUID, String playerName, OfflineInventoryData data) {
+        String sql = "MERGE INTO " + tableName + " (uuid, name, inventory_data, armor_data, offhand_data, enderchest_data, experience, last_updated) " +
+                "KEY (uuid) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, playerUUID.toString());
+            stmt.setString(2, playerName != null ? playerName : playerUUID.toString());
+            setNullableBlob(stmt, 3, data.inventory() == null ? null : serializeItemStacks(data.inventory()));
+            setNullableBlob(stmt, 4, data.armor() == null ? null : serializeItemStacks(data.armor()));
+            setNullableBlob(stmt, 5, serializeNullableItemStack(data.offhand()));
+            setNullableBlob(stmt, 6, data.enderChest() == null ? null : serializeItemStacks(data.enderChest()));
+            if (data.experience() != null) {
+                stmt.setInt(7, data.experience());
+            } else {
+                stmt.setNull(7, Types.INTEGER);
+            }
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException | IOException e) {
+            Text.sendDebugLog(ERROR, "Failed to save offline inventory data for " + playerUUID + " in " + tableName, e);
+            return false;
+        }
+    }
+
+    private OfflineInventoryData loadOfflineInventoryData(String tableName, UUID playerUUID) {
+        String sql = "SELECT inventory_data, armor_data, offhand_data, enderchest_data, experience " +
+                "FROM " + tableName + " WHERE uuid = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, playerUUID.toString());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+
+                Integer experience = null;
+                int value = rs.getInt("experience");
+                if (!rs.wasNull()) {
+                    experience = value;
+                }
+
+                return new OfflineInventoryData(
+                    deserializeNullableItemStacks(rs.getBytes("inventory_data")),
+                    deserializeNullableItemStacks(rs.getBytes("armor_data")),
+                    deserializeItemStack(rs.getBytes("offhand_data")),
+                    deserializeNullableItemStacks(rs.getBytes("enderchest_data")),
+                    experience
+                );
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(ERROR, "Failed to load offline inventory data for " + playerUUID + " from " + tableName, e);
+            return null;
+        }
+    }
+
+    private byte[] serializeNullableItemStack(ItemStack item) throws IOException {
+        if (item == null) {
+            return null;
+        }
+        return serializeItemStacks(new ItemStack[]{item});
+    }
+
+    private void setNullableBlob(PreparedStatement statement, int index, byte[] data) throws SQLException {
+        if (data == null) {
+            statement.setNull(index, Types.BLOB);
+        } else {
+            statement.setBytes(index, data);
+        }
+    }
     
     /**
      * Deserializes a single ItemStack from a byte array
@@ -2903,19 +3411,16 @@ public class Database {
         if (data == null || data.length == 0) {
             return null;
         }
-        
-        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
-             DataInputStream dataInput = new DataInputStream(inputStream)) {
-            
-            // Read the serialized data and convert back to ItemStack
-            // This is a placeholder - you'll need to implement the actual deserialization
-            // based on how your serialization works
-            return ItemStack.deserializeBytes(data);
-            
-        } catch (IOException e) {
-            Text.sendDebugLog(ERROR, "Failed to deserialize ItemStack", e);
+
+        ItemStack[] items = deserializeItemStacks(data);
+        return items.length > 0 ? items[0] : null;
+    }
+
+    private ItemStack[] deserializeNullableItemStacks(byte[] data) {
+        if (data == null) {
             return null;
         }
+        return deserializeItemStacks(data);
     }
     
     /**

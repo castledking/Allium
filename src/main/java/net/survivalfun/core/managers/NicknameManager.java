@@ -23,6 +23,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class NicknameManager {
+    private static final LegacyComponentSerializer DISPLAY_NAME_SERIALIZER =
+        LegacyComponentSerializer.builder().hexColors().character('§').build();
+
     private final PluginStart plugin;
     private final Database database;
     private FileConfiguration animationsConfig;
@@ -146,6 +149,10 @@ public class NicknameManager {
                 String result = Text.parseColors(nickname);
                 return (result != null && !result.isEmpty()) ? result : nickname;
             }
+            if (nickname.contains("&") || nickname.contains("§") || nickname.contains("#")) {
+                String result = Text.parseColors(nickname);
+                return (result != null && !result.isEmpty()) ? result : nickname;
+            }
             String result = PrismaticAPI.colorize(player, nickname);
             return (result != null && !result.isEmpty()) ? result : nickname;
         } catch (Exception e) {
@@ -220,7 +227,7 @@ public class NicknameManager {
             String formattedNick = formatNickname(player, nickname);
 
             // Update the player's display name (normalize & to § then deserialize so colors render)
-            Component displayComponent = LegacyComponentSerializer.legacySection().deserialize(formattedNick.replace('&', '§'));
+            Component displayComponent = DISPLAY_NAME_SERIALIZER.deserialize(formattedNick.replace('&', '§'));
             player.displayName(displayComponent);
             player.playerListName(displayComponent);
 
@@ -270,7 +277,7 @@ public class NicknameManager {
         
         String playerName = player.getName();
         String formattedNick = formatNickname(player, playerName);
-        Component displayComponent = LegacyComponentSerializer.legacySection().deserialize(formattedNick.replace('&', '§'));
+        Component displayComponent = DISPLAY_NAME_SERIALIZER.deserialize(formattedNick.replace('&', '§'));
         player.displayName(displayComponent);
         player.playerListName(displayComponent);
         inMemoryNicknames.put(player.getUniqueId(), playerName);
@@ -293,7 +300,7 @@ public class NicknameManager {
         try {
             inMemoryNicknames.put(player.getUniqueId(), storedNick);
             String formatted = getFormattedNickname(player, storedNick);
-            Component displayComponent = LegacyComponentSerializer.legacySection().deserialize(formatted.replace('&', '§'));
+            Component displayComponent = DISPLAY_NAME_SERIALIZER.deserialize(formatted.replace('&', '§'));
             player.displayName(displayComponent);
             player.playerListName(displayComponent);
         } catch (Exception e) {

@@ -22,6 +22,7 @@ import java.util.stream.Stream;
 import java.util.Objects;
 
 public class AutoRestartCommand implements CommandExecutor, TabCompleter {
+    private static final long MILLIS_PER_DAY = TimeUnit.DAYS.toMillis(1);
     private final PluginStart plugin;
     private final Lang lang;
     private SchedulerAdapter.TaskHandle countdownTask;
@@ -49,14 +50,18 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
             // Clear existing data
             restartTimes.clear();
             preRestartCommands.clear();
+
+            if (!plugin.getConfig().getBoolean("auto-restart.enabled", false)) {
+                cancelRestart();
+            }
             
-            // Load restart times from config (in minutes)
+            // Load restart times from config as daily clock times (HH:mm)
             List<String> times = plugin.getConfig().getStringList("auto-restart.times");
             if (times != null) {
                 for (String time : times) {
                     try {
                         if (time != null && !time.trim().isEmpty()) {
-                            restartTimes.add(parseTimeString(time) * 60 * 1000); // Convert to milliseconds
+                            restartTimes.add(parseScheduledRestartTime(time));
                         }
                     } catch (IllegalArgumentException e) {
                         plugin.getLogger().warning("Invalid time format in auto-restart.times: " + time);
@@ -125,17 +130,19 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
                             timeArg = args[i];
                         }
                     }
-                    long delay;
+                    long delaySeconds;
                     if (timeArg == null || timeArg.isBlank() || timeArg.equalsIgnoreCase("now")) {
                         // /ar now with no time = restart immediately
-                        delay = 0;
+                        delaySeconds = 0;
                     } else {
-                        delay = parseTimeString(timeArg.trim()) * 1000; // Convert to milliseconds
+                        delaySeconds = parseTimeString(timeArg.trim());
                     }
+                    long delay = TimeUnit.SECONDS.toMillis(delaySeconds);
                     scheduleRestart(delay, true, dryRunFlag);
+                    String displayTime = formatScheduledDelay(delaySeconds, timeArg);
                     String msg = dryRunFlag
-                        ? "Dry run: restart scheduled in " + Text.formatTime((int)(delay / 1000)) + " (server will NOT restart)"
-                        : lang.get("autorestart.scheduled").replace("{time}", Text.formatTime((int)(delay / 1000)));
+                        ? "Dry run: restart scheduled in " + displayTime + " (server will NOT restart)"
+                        : lang.get("autorestart.scheduled").replace("{time}", displayTime);
                     Text.broadcast(msg);
                 } catch (IllegalArgumentException e) {
                     String errMsg = lang.getRaw("autorestart.invalid-time-format");
@@ -186,15 +193,15 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         
         if (restartScheduled) {
             sender.sendMessage(lang.get("autorestart.next-restart")
-                    .replace("{time}", Text.formatTime((int)((restartTime - System.currentTimeMillis()) / 1000))));
+                    .replace("{time}", Text.formatTime(Math.max(0L, TimeUnit.MILLISECONDS.toSeconds(restartTime - System.currentTimeMillis())))));
         }
     }
 
     private void sendNextRestartTime(CommandSender sender) {
         if (restartScheduled) {
-            long timeLeft = (restartTime - System.currentTimeMillis()) / 1000;
+            long timeLeft = Math.max(0L, TimeUnit.MILLISECONDS.toSeconds(restartTime - System.currentTimeMillis()));
             sender.sendMessage(lang.get("autorestart.time-remaining")
-                    .replace("{time}", Text.formatTime((int)timeLeft)));
+                    .replace("{time}", Text.formatTime(timeLeft)));
         } else {
             sender.sendMessage(lang.get("autorestart.no-restart-scheduled"));
         }
@@ -207,13 +214,14 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         }
         
         long now = System.currentTimeMillis();
+        long nowMillisOfDay = Math.floorMod(now, MILLIS_PER_DAY);
         long nextRestart = -1;
         
         // Find the next restart time after now
-        for (long restartTime : restartTimes) {
-            long nextTime = (restartTime - (now % (24 * 60 * 60 * 1000)));
+        for (long scheduledMillisOfDay : restartTimes) {
+            long nextTime = scheduledMillisOfDay - nowMillisOfDay;
             if (nextTime < 0) {
-                nextTime += 24 * 60 * 60 * 1000; // Add a day if the time has already passed today
+                nextTime += MILLIS_PER_DAY; // Add a day if the time has already passed today
             }
             
             if (nextRestart == -1 || nextTime < nextRestart) {
@@ -223,7 +231,7 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         
         if (nextRestart > 0) {
             scheduleRestart(nextRestart, false, false);
-            plugin.getLogger().info("Next restart scheduled in " + Text.formatTime((int)(nextRestart / 1000)));
+            plugin.getLogger().info("Next restart scheduled in " + Text.formatTime(TimeUnit.MILLISECONDS.toSeconds(nextRestart)));
         }
     }
 
@@ -241,7 +249,8 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         long initialDelayTicks = 1L;
         long periodTicks = 20L;
         countdownTask = SchedulerAdapter.runTimer(() -> {
-            long timeLeft = (restartTime - System.currentTimeMillis()) / 1000;
+            long millisLeft = Math.max(0L, restartTime - System.currentTimeMillis());
+            long timeLeft = millisLeft == 0 ? 0 : (millisLeft + 999L) / 1000L;
             
             // Check for countdown times
             if (countdownTimes.contains((int) timeLeft)) {
@@ -435,6 +444,25 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         throw new IllegalArgumentException("Invalid time format: " + timeStr + ". Use: 1, 30s, 5m, 1h, etc.");
     }
 
+    private long parseScheduledRestartTime(String timeStr) throws IllegalArgumentException {
+        if (timeStr == null || (timeStr = timeStr.trim()).isEmpty()) {
+            throw new IllegalArgumentException("Time cannot be empty");
+        }
+
+        Matcher hhmm = HHMM_PATTERN.matcher(timeStr);
+        if (!hhmm.matches()) {
+            throw new IllegalArgumentException("Invalid HH:mm time: " + timeStr);
+        }
+
+        int hours = Integer.parseInt(hhmm.group(1));
+        int minutes = Integer.parseInt(hhmm.group(2));
+        if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+            throw new IllegalArgumentException("Invalid HH:mm time: " + timeStr);
+        }
+
+        return TimeUnit.HOURS.toMillis(hours) + TimeUnit.MINUTES.toMillis(minutes);
+    }
+
     private long parseTimeFromMatcher(Matcher m) {
         long num = Long.parseLong(m.group(1));
         String unit = m.group(2);
@@ -448,6 +476,22 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
             case 'd' -> num * 86400;
             default -> num;
         };
+    }
+
+    private String formatScheduledDelay(long delaySeconds, String rawArg) {
+        if (delaySeconds <= 0) {
+            return "0s";
+        }
+
+        if (rawArg != null) {
+            String normalized = rawArg.trim().toLowerCase(Locale.ROOT);
+            Matcher matcher = TIME_PATTERN.matcher(normalized);
+            if (matcher.matches() && matcher.group(2) != null) {
+                return matcher.group(1) + matcher.group(2).toLowerCase(Locale.ROOT);
+            }
+        }
+
+        return Text.formatTime(delaySeconds);
     }
 
 

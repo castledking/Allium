@@ -24,6 +24,8 @@ import org.jetbrains.annotations.NotNull;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -52,7 +54,7 @@ public class Seen implements CommandExecutor {
         }
 
         if (args.length == 0) {
-            player.sendMessage(Text.colorize("&cUsage: /seen <player>"));
+            player.sendMessage(Text.colorize("&cUsage: /" + label + " <player>"));
             // Play sound effect
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return true;
@@ -235,10 +237,14 @@ public class Seen implements CommandExecutor {
 
         // Show IP address if sender has permission
         if (sender.hasPermission("allium.seen.ip")) {
-            String ip = targetPlayer.getAddress() != null ?
-                targetPlayer.getAddress().getAddress().getHostAddress() : "Unknown";
+            String ip = getPlayerIpAddress(targetPlayer);
+            if (ip == null) {
+                ip = "Unknown";
+            }
             sender.sendMessage(Text.colorize(lang.get("seen.ip-address").replace("{ip}", ip)));
         }
+
+        appendSameIpAccounts(sender, targetPlayer.getUniqueId(), getPlayerIpAddress(targetPlayer));
     }
 
     private void showOfflinePlayerInfo(CommandSender sender, OfflinePlayer targetPlayer) {
@@ -333,11 +339,12 @@ public class Seen implements CommandExecutor {
         }
 
         // Show IP address if sender has permission and it's available in database
+        String lastIp = plugin.getDatabase().getPlayerLastIp(targetPlayer.getUniqueId());
         if (sender.hasPermission("allium.seen.ip")) {
-            // Note: IP addresses are not stored in the current database schema
-            // This would require additional database columns and tracking
-            sender.sendMessage(Text.colorize(lang.get("seen.ip-address").replace("{ip}", "Not available")));
+            sender.sendMessage(Text.colorize(lang.get("seen.ip-address").replace("{ip}", lastIp != null ? lastIp : "Not available")));
         }
+
+        appendSameIpAccounts(sender, targetPlayer.getUniqueId(), lastIp);
     }
 
     /**
@@ -356,5 +363,21 @@ public class Seen implements CommandExecutor {
         // Minecraft usernames can only contain letters, numbers, and underscores
         // and must be between 3 and 16 characters long
         return username.matches("^[a-zA-Z0-9_]{3,16}$");
+    }
+
+    private void appendSameIpAccounts(CommandSender sender, UUID targetUuid, String ipAddress) {
+        List<String> sameIpAccounts = plugin.getDatabase().getPlayersSeenOnIp(ipAddress, targetUuid);
+        String players = sameIpAccounts.isEmpty()
+            ? lang.getRaw("seen.same-ip-none")
+            : String.join(", ", sameIpAccounts);
+        sender.sendMessage(Text.colorize(lang.get("seen.same-ip-accounts").replace("{players}", players)));
+    }
+
+    private String getPlayerIpAddress(Player player) {
+        InetSocketAddress address = player.getAddress();
+        if (address == null || address.getAddress() == null) {
+            return null;
+        }
+        return address.getAddress().getHostAddress();
     }
 }

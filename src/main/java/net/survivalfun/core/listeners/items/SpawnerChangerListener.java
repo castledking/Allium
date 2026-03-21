@@ -55,4 +55,14 @@ public class SpawnerChangerListener implements Listener {
             spawnerChangerManager.openIntakeMenuFromBlock(event.getPlayer(), event.getClickedBlock().getLocation());
         }
     }
+
+    @EventHandler
+    public void onPlayerInteractAir(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_AIR) return;
+        ItemStack item = event.getItem();
+        if (item == null || item.getType() == Material.AIR) return;
+        if (customItemRegistry.getItem(item) instanceof SpawnerChangerItem) {
+            spawnerChangerManager.sendClickMessage(event.getPlayer());
+        }
+    }
 }

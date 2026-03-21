@@ -238,6 +238,10 @@ god:
     - "&aGod mode is now {state} {name}"
     - "[sound] item.totem.use 1 0.8"
 
+pvp:
+  toggle-self: "&aPvP is now {state}"
+  toggle-other: "&aPvP is now {state} for &e{player}&a."
+
 home:
   teleport:
     - "&6Teleporting to {home} {location}"
@@ -389,7 +393,7 @@ tp:
   success: 
     - "&6Teleporting {name} {target}"
     - "[sound] entity.enderman.teleport 1 1"
-  position: "&6{x}, {y}, {z}"
+  position: "&6{x}, {y}, {z}{world}"
   sent:
     - "&8[ &e&lTPA &8] &eRequest sent to &6{name}&e."
     - "&8[ &e&lTPA &8] &eTo cancel this request, type <click:run_command:'/tpcancel'><hover:show_text:'<red>Click to cancel'><red>/tpcancel</hover></click>&e."
@@ -607,10 +611,15 @@ whois:
 seen:
   header: "&6&l--- Player Information: {player} ---"
   status: "&7Status: {status} for {duration} ({last_seen_date})"
+  status-online: "&7Status: &aOnline &ffor {duration}"
   first-joined: "&7First joined: &f{first_join_date}"
   location: "&7Last location: &f{world} {x}, {y}, {z}"
   gamemode: "&7Game mode: &f{gamemode}"
+  fly-mode: "&7Fly mode: {fly_status}"
+  god-mode: "&7God mode: {god_status}"
   ip-address: "&7IP Address: &f{ip}"
+  same-ip-accounts: "&7Same IP accounts: &f{players}"
+  same-ip-none: "None"
 
 #==========================================#
 #                VANISH                    #

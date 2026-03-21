@@ -501,7 +501,7 @@ public class FormatChatListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerChat(@NotNull AsyncChatEvent event) {
         if (!config.getBoolean("enable-chat-formatting")) {
             return;

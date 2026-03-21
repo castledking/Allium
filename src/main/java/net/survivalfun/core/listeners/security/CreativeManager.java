@@ -26,6 +26,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.DB.PlayerInventories;
+import net.survivalfun.core.managers.core.SecurityAlertManager;
 import net.survivalfun.core.managers.core.Text;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 import net.survivalfun.core.util.SchedulerAdapter;
@@ -830,6 +831,7 @@ public class CreativeManager implements Listener {
         Player player = event.getPlayer();
         cachePlayerPermissions(player);
         lastKnownGamemodes.put(player.getUniqueId(), player.getGameMode());
+        auditJoinCreative(player);
         checkAndApplyGameModeReset(player);
     }
 
@@ -848,6 +850,22 @@ public class CreativeManager implements Listener {
         Plugin sourcePlugin = detectSourcePlugin();
         if (sourcePlugin == null || !sourcePlugin.getName().equals("Multiverse-Core")) {
             lastKnownGamemodes.put(event.getPlayer().getUniqueId(), event.getNewGameMode());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onGameModeAudit(PlayerGameModeChangeEvent event) {
+        Player player = event.getPlayer();
+        if (player.hasPermission("allium.gamemode.creative")) {
+            return;
+        }
+        if (player.getGameMode() == event.getNewGameMode()) {
+            return;
+        }
+
+        SecurityAlertManager alerts = plugin.getSecurityAlertManager();
+        if (alerts != null) {
+            alerts.broadcastGamemodeAudit(player, "switched gamemode", player.getGameMode(), event.getNewGameMode());
         }
     }
 
@@ -953,5 +971,19 @@ public class CreativeManager implements Listener {
             }
         }
         return null;
+    }
+
+    private void auditJoinCreative(Player player) {
+        if (player.getGameMode() != GameMode.CREATIVE) {
+            return;
+        }
+        if (player.hasPermission("allium.gamemode.creative")) {
+            return;
+        }
+
+        SecurityAlertManager alerts = plugin.getSecurityAlertManager();
+        if (alerts != null) {
+            alerts.broadcastGamemodeAudit(player, "joined in creative", null, player.getGameMode());
+        }
     }
 }

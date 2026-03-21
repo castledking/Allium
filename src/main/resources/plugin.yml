@@ -55,6 +55,10 @@ commands:
     description: "Core plugin command. Subcommands: reload, debug, voucher, etc."
     usage: "/core"
     aliases: [allium]
+  spawnercore:
+    description: "Give spawner cores to players (spawner craft)"
+    usage: "/spawnercore give <player> <mob> [amount]"
+    permission: allium.spawnercore
   rename:
     description: "Rename item in main hand"
     usage: "/rename <name>"
@@ -67,6 +71,10 @@ commands:
     description: "Toggle god mode"
     usage: "/god || /god <player>"
     permission: allium.god
+  pvp:
+    description: "Toggle PvP on or off"
+    usage: "/pvp [on|off] [player]"
+    permission: allium.pvp
   more:
     description: "Adds more items to your inventory"
     usage: "/more"
@@ -75,6 +83,18 @@ commands:
     description: "Toggle flight"
     usage: "/fly || /fly <player>"
     permission: allium.fly
+  xpbottle:
+    description: "Create XP bottle (amount or amountL); [player] allows range with .other"
+    usage: "/xpbottle <amount|amountL> [player]"
+    permission: allium.xpbottle
+  cheque:
+    description: "Write a cheque for yourself or another player"
+    usage: "/cheque <amount> | /cheque <player> <amount>"
+    permission: allium.cheque
+  voucher:
+    description: "Give vouchers, list, or reload config"
+    usage: "/voucher give|list|reload [player] [voucher]"
+    permission: allium.voucher.give
   gamemode:
     description: "Change gamemode"
     usage: "/gamemode <gamemode> <player>"
@@ -182,6 +202,11 @@ commands:
     description: "Release all currently restrained players"
     usage: "/unrestrain"
     permission: allium.admin
+
+  a:
+    description: "Toggle staff chat (ChatControl channel, state saved to DB)"
+    usage: "/a"
+    permission: allium.staffchat
     
   restore:
     description: "Restore a previous inventory"
@@ -302,6 +327,7 @@ commands:
     description: "Shows information about a player including their last seen time and location"
     usage: "/seen <player>"
     permission: allium.seen
+    aliases: [alts]
 
   maintenance:
     description: "Toggle maintenance mode"
@@ -446,6 +472,10 @@ permissions:
     description: "Allows using handcuffs commands"
     default: op
 
+  allium.staffchat:
+    description: "Allows toggling staff chat (/a) and using < / # redirect prefixes"
+    default: op
+
   allium.enchant:
     description: "Allows using the enchant command"
     default: op
@@ -476,6 +506,9 @@ permissions:
   allium.notes:
     default: op
   allium.unnote:
+    default: op
+  allium.alerts:
+    description: "Allows using /core alerts and receiving security alerts"
     default: op
 
   allium.gamemode.others:
@@ -577,6 +610,18 @@ permissions:
   allium.whois:
     description: "Allows using the /whois command."
     default: op
+  allium.pvp:
+    description: "Allows using the /pvp command on yourself."
+    default: op
+  allium.pvp.other:
+    description: "Allows using the /pvp command on other players."
+    default: op
+  allium.seen:
+    description: "Allows using the /seen command."
+    default: op
+  allium.seen.ip:
+    description: "Allows viewing raw IP addresses in /seen."
+    default: op
   allium.tpauto:
     default: op
   allium.spawn:
@@ -622,6 +667,42 @@ permissions:
   allium.fly:
     default: op
   allium.fly.others:
+    default: op
+  allium.tfly:
+    description: "Use temporary fly (toggle)"
+    default: op
+  allium.tfly.others:
+    description: "View others' tfly status"
+    default: op
+  allium.tfly.set:
+    description: "Set tfly time for a player"
+    default: op
+  allium.tfly.add:
+    description: "Add tfly time for a player"
+    default: op
+  allium.tfly.take:
+    description: "Take tfly time from a player"
+    default: op
+  allium.tfly.reset:
+    description: "Reset tfly for a player"
+    default: op
+  allium.xpbottle:
+    description: "Create XP bottles"
+    default: op
+  allium.xpbottle.other:
+    description: "Give XP bottles to other players (allows range)"
+    default: op
+  allium.cheque:
+    description: "Write cheques for self"
+    default: op
+  allium.cheque.other:
+    description: "Give cheques to other players"
+    default: op
+  allium.voucher.give:
+    description: "Give vouchers to players"
+    default: op
+  allium.voucher.reload:
+    description: "Reload vouchers.yml"
     default: op
     
   # Nickname permissions
@@ -709,6 +790,42 @@ permissions:
   allium.mail.color.white:
     default: op
   allium.mail.color.hex:
+    default: op
+  # Spawner changer & spawner craft
+  allium.spawner.vanilla:
+    description: Allow changing spawner type with vanilla spawn egg (bypass Spawner Type Changer)
+    default: op
+  allium.spawnerchanger.any:
+    description: Allow changing spawners to any restricted economy mob
+    default: op
+  allium.spawnerchanger.use.*:
+    description: Allow changing spawners to all restricted economy mobs
+    default: op
+    children:
+      allium.spawnerchanger.use.villager: true
+      allium.spawnerchanger.use.zombie_villager: true
+      allium.spawnerchanger.use.wandering_trader: true
+      allium.spawnerchanger.use.mooshroom: true
+      allium.spawnerchanger.use.cow: true
+      allium.spawnerchanger.use.sheep: true
+      allium.spawnerchanger.use.chicken: true
+      allium.spawnerchanger.use.spider: true
+      allium.spawnerchanger.use.zombie: true
+      allium.spawnerchanger.use.skeleton: true
+      allium.spawnerchanger.use.iron_golem: true
+      allium.spawnerchanger.use.enderman: true
+      allium.spawnerchanger.use.slime: true
+      allium.spawnerchanger.use.magma_cube: true
+      allium.spawnerchanger.use.squid: true
+      allium.spawnerchanger.use.glow_squid: true
+      allium.spawnerchanger.use.pig: true
+      allium.spawnerchanger.use.blaze: true
+      allium.spawnerchanger.use.creeper: true
+  allium.spawnercraft.craft:
+    description: Allow crafting spawners (core + 8 mob heads)
+    default: op
+  allium.spawnercore:
+    description: Give spawner cores to players (/spawnercore give)
     default: op
   allium.mail.format.*:
     default: op
@@ -1342,4 +1459,3 @@ permissions:
   allium.treeaxe.use:
     description: "Allows using the tree axe"
     default: true
-

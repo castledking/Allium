@@ -12,6 +12,7 @@ import net.survivalfun.core.managers.config.WorldDefaults;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 import net.survivalfun.core.managers.core.Alias;
 import net.survivalfun.core.managers.core.LegacyID;
+import net.survivalfun.core.managers.core.SecurityAlertManager;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.lang.Lang;
@@ -121,6 +122,9 @@ public class Core implements CommandExecutor, TabCompleter {
 
             case "restore":
                 handleRestoreCommand(sender, args);
+                break;
+            case "alerts":
+                handleAlertsCommand(sender, args);
                 break;
             case "item":
                 handleItemCommand(sender, args);
@@ -392,19 +396,82 @@ public class Core implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelpMessage(CommandSender sender) {
-        if(!sender.hasPermission("allium.admin")) {
+        boolean canAdmin = sender.hasPermission("allium.admin");
+        boolean canRestore = sender.hasPermission("allium.restore");
+        boolean canAlerts = sender.hasPermission("allium.alerts");
+        if (!canAdmin && !canRestore && !canAlerts) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
             return;
         }
         sender.sendMessage("§aAvailable /core subcommands:");
-        sender.sendMessage("§edebug §7- Toggle debug mode.");
-        sender.sendMessage("§ereload §7- Reload plugin configuration.");
-        sender.sendMessage("§ereload rp §7- Reload resourcepack.yml and refresh players.");
-        sender.sendMessage("§ehideupdate §7- Refresh tab completion for player.");
-        sender.sendMessage("§erestore §7- Open inventory restoration GUI.");
-        sender.sendMessage("§eescalate §7- Escalate an issue to staff.");
-        sender.sendMessage("§emigrate §7- Migrate Essentials userdata (homes, economy, warps).");
-        sender.sendMessage("§esethomes §7- Set a player's max homes (staff override).");
+        if (canAdmin) {
+            sender.sendMessage("§edebug §7- Toggle debug mode.");
+            sender.sendMessage("§ereload §7- Reload plugin configuration.");
+            sender.sendMessage("§ereload rp §7- Reload resourcepack.yml and refresh players.");
+            sender.sendMessage("§ehideupdate §7- Refresh tab completion for player.");
+            sender.sendMessage("§eescalate §7- Escalate an issue to staff.");
+            sender.sendMessage("§emigrate §7- Migrate Essentials userdata (homes, economy, warps).");
+            sender.sendMessage("§esethomes §7- Set a player's max homes (staff override).");
+        }
+        if (canRestore) {
+            sender.sendMessage("§erestore §7- Open inventory restoration GUI.");
+        }
+        if (canAlerts) {
+            sender.sendMessage("§ealerts §7- Toggle security alert feeds.");
+        }
+    }
+
+    private void handleAlertsCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            Text.sendErrorMessage(sender, "not-a-player", lang);
+            return;
+        }
+        if (!player.hasPermission("allium.alerts")) {
+            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "core alerts");
+            return;
+        }
+
+        SecurityAlertManager alerts = plugin.getSecurityAlertManager();
+        if (alerts == null) {
+            player.sendMessage("§cAlert system unavailable.");
+            return;
+        }
+
+        if (args.length == 1) {
+            sendAlertsCenter(player, alerts);
+            return;
+        }
+
+        if (!args[1].equalsIgnoreCase("gamemode")) {
+            player.sendMessage("§eUsage: /core alerts [gamemode [on|off|toggle]]");
+            return;
+        }
+
+        boolean enabled;
+        if (args.length == 2 || args[2].equalsIgnoreCase("toggle")) {
+            enabled = alerts.toggle(player, SecurityAlertManager.AlertType.GAMEMODE_AUDIT);
+        } else if (args[2].equalsIgnoreCase("on")) {
+            alerts.setEnabled(player, SecurityAlertManager.AlertType.GAMEMODE_AUDIT, true);
+            enabled = true;
+        } else if (args[2].equalsIgnoreCase("off")) {
+            alerts.setEnabled(player, SecurityAlertManager.AlertType.GAMEMODE_AUDIT, false);
+            enabled = false;
+        } else {
+            player.sendMessage("§eUsage: /core alerts [gamemode [on|off|toggle]]");
+            return;
+        }
+
+        player.sendMessage("§aGamemode audit alerts " + (enabled ? "enabled" : "disabled") + "§a.");
+        sendAlertsCenter(player, alerts);
+    }
+
+    private void sendAlertsCenter(Player player, SecurityAlertManager alerts) {
+        boolean gamemodeEnabled = alerts.isEnabled(player, SecurityAlertManager.AlertType.GAMEMODE_AUDIT);
+        player.sendMessage("§8§m-----------------");
+        player.sendMessage("§e/core alerts");
+        player.sendMessage("§7Gamemode audit alerts: " + (gamemodeEnabled ? "§aenabled" : "§cdisabled"));
+        player.sendMessage("§7Toggle: §f/core alerts gamemode");
+        player.sendMessage("§8§m-----------------");
     }
 
     private void handleSetGameruleCommand(CommandSender sender, String[] args) {
@@ -472,6 +539,14 @@ public class Core implements CommandExecutor, TabCompleter {
         }
         // /core migrate [homes|economy|warps|all] [path]
         String type = args.length >= 2 ? args[1].toLowerCase() : "all";
+
+        // Economy-only: alias for Vault live conversion (both economies running)
+        if ("economy".equals(type)) {
+            sender.sendMessage(Component.text("§7Running: /vault-convert Essentials-Economy Allium-Economy"));
+            Bukkit.dispatchCommand(sender, "vault-convert Essentials-Economy Allium-Economy");
+            return;
+        }
+
         File basePath;
         if (args.length >= 3) {
             basePath = new File(args[2]);
@@ -743,7 +818,7 @@ public class Core implements CommandExecutor, TabCompleter {
         boolean packChanged = rpm.hasPackChanged();
 
         if (!rpm.isEnabled()) {
-            sender.sendMessage("§eResource pack is disabled (no URL set in resourcepack.yml)");
+            sender.sendMessage("§eResource pack is disabled in resourcepack.yml (enabled: false).");
             return;
         }
 
@@ -759,6 +834,38 @@ public class Core implements CommandExecutor, TabCompleter {
             sender.sendMessage("§eRefreshing all online players anyway...");
             rpm.refreshAllPlayers();
             sender.sendMessage("§aDone! All players have been sent the resource pack.");
+        }
+
+        // Check if URL is reachable (Minecraft client often fails on redirects; use raw.githubusercontent.com for GitHub)
+        String urlToCheck = newUrl;
+        Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
+            boolean reachable = checkResourcePackUrlReachable(urlToCheck);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (reachable) {
+                    sender.sendMessage("§aResource pack URL is reachable from the server.");
+                } else {
+                    sender.sendMessage("§cResource pack URL could not be reached (HTTP error or redirect). If clients fail to download, use a direct URL (e.g. raw.githubusercontent.com for GitHub).");
+                }
+            });
+        });
+    }
+
+    /** Returns true if the URL returns 2xx when following redirects (HEAD request). */
+    private boolean checkResourcePackUrlReachable(String urlString) {
+        if (urlString == null || urlString.isEmpty()) return false;
+        try {
+            HttpURLConnection.setFollowRedirects(true);
+            HttpURLConnection conn = (HttpURLConnection) new URL(urlString).openConnection();
+            conn.setRequestMethod("HEAD");
+            conn.setRequestProperty("User-Agent", "Allium/1.0");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+            int code = conn.getResponseCode();
+            conn.disconnect();
+            return code >= 200 && code < 300;
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Resource pack URL check failed: " + e.getMessage());
+            return false;
         }
     }
 
@@ -923,7 +1030,7 @@ public class Core implements CommandExecutor, TabCompleter {
             }
             case "group": {
                 if (args.length < 5) {
-                    sender.sendMessage("§cUsage: /core hide group <name> <add [-s]|remove> <cmd>");
+                    sender.sendMessage("§cUsage: /core hide group <name> <add [-s]|remove|check> <cmd>");
                     return;
                 }
                 String group = args[2];
@@ -970,8 +1077,25 @@ public class Core implements CommandExecutor, TabCompleter {
                     } else {
                         sender.sendMessage("§e'" + cmd + "' was not present in group '" + group + "'.");
                     }
+                } else if (action.equals("check")) {
+                    boolean inCommands = containsIgnoreCase(commands, cmd);
+                    boolean inTabCompletes = containsIgnoreCase(tabcompletes, cmd);
+
+                    String location;
+                    if (inCommands && inTabCompletes) {
+                        location = "both commands and tabcompletes";
+                    } else if (inCommands) {
+                        location = "commands only";
+                    } else if (inTabCompletes) {
+                        location = "tabcompletes only";
+                    } else {
+                        location = "neither commands nor tabcompletes";
+                    }
+
+                    sender.sendMessage("§eCheck for '" + cmd + "' in group '" + group + "': §f" + location + "§e.");
+                    sender.sendMessage("§7commands: " + (inCommands ? "§aYES" : "§cNO") + " §8| §7tabcompletes: " + (inTabCompletes ? "§aYES" : "§cNO"));
                 } else {
-                    sender.sendMessage("§cUsage: /core hide group <name> <add [-s]|remove> <cmd>");
+                    sender.sendMessage("§cUsage: /core hide group <name> <add [-s]|remove|check> <cmd>");
                 }
                 break;
             }
@@ -986,6 +1110,18 @@ public class Core implements CommandExecutor, TabCompleter {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private boolean containsIgnoreCase(List<String> values, String target) {
+        if (values == null || target == null) {
+            return false;
+        }
+        for (String value : values) {
+            if (value != null && value.equalsIgnoreCase(target)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -1019,6 +1155,15 @@ public class Core implements CommandExecutor, TabCompleter {
             if (sender.hasPermission("allium.restore")) {
                 suggestions.add("restore");
             }
+            if (sender.hasPermission("allium.alerts")) {
+                suggestions.add("alerts");
+            }
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("alerts")) {
+            if (args.length == 2) {
+                suggestions.add("gamemode");
+            } else if (args.length == 3 && args[1].equalsIgnoreCase("gamemode")) {
+                suggestions.addAll(List.of("on", "off", "toggle"));
+            }
         } else if (args.length > 1 && args[0].equalsIgnoreCase("reload")) {
             if (args.length == 2) {
                 suggestions.add("rp");
@@ -1030,7 +1175,7 @@ public class Core implements CommandExecutor, TabCompleter {
             }
         } else if (args.length > 1 && args[0].equalsIgnoreCase("hide")) {
             if (args.length == 2) {
-                suggestions.addAll(List.of("creategroup", "deletegroup", "group"));
+                suggestions.addAll(List.of("creategroup", "deletegroup", "renamegroup", "group"));
             } else if (args.length == 3 && (args[1].equalsIgnoreCase("deletegroup") || args[1].equalsIgnoreCase("group"))) {
                 // Suggest group names for deletegroup/group
                 org.bukkit.configuration.file.YamlConfiguration hideConfig =
@@ -1039,10 +1184,30 @@ public class Core implements CommandExecutor, TabCompleter {
                 if (hideConfig.isConfigurationSection("groups")) {
                     suggestions.addAll(hideConfig.getConfigurationSection("groups").getKeys(false));
                 }
+            } else if (args.length == 3 && args[1].equalsIgnoreCase("renamegroup")) {
+                org.bukkit.configuration.file.YamlConfiguration hideConfig =
+                        org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                                new java.io.File(plugin.getDataFolder(), "hide.yml"));
+                if (hideConfig.isConfigurationSection("groups")) {
+                    suggestions.addAll(hideConfig.getConfigurationSection("groups").getKeys(false));
+                }
             } else if (args.length == 4 && args[1].equalsIgnoreCase("group")) {
-                suggestions.addAll(List.of("add", "remove"));
+                suggestions.addAll(List.of("add", "remove", "check"));
             } else if (args.length == 5 && args[1].equalsIgnoreCase("group") && args[3].equalsIgnoreCase("add")) {
                 suggestions.add("-s");
+            } else if (args.length == 5 && args[1].equalsIgnoreCase("group") && args[3].equalsIgnoreCase("check")) {
+                suggestions.addAll(List.of("*", "^", "bukkit:*", "minecraft:*"));
+                org.bukkit.configuration.file.YamlConfiguration hideConfig =
+                        org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                                new java.io.File(plugin.getDataFolder(), "hide.yml"));
+                String group = args[2];
+                suggestions.addAll(hideConfig.getStringList("groups." + group + ".commands"));
+                suggestions.addAll(hideConfig.getStringList("groups." + group + ".tabcompletes"));
+            } else if (args.length == 6 && args[1].equalsIgnoreCase("group") && args[3].equalsIgnoreCase("add") && args[4].equalsIgnoreCase("-s")) {
+                suggestions.addAll(List.of("*", "^", "bukkit:*", "minecraft:*"));
+            } else if ((args.length == 5 && args[1].equalsIgnoreCase("group") && (args[3].equalsIgnoreCase("add") || args[3].equalsIgnoreCase("remove")))
+                    || (args.length == 6 && args[1].equalsIgnoreCase("group") && args[3].equalsIgnoreCase("add") && args[4].equalsIgnoreCase("-s"))) {
+                suggestions.addAll(List.of("*", "^", "bukkit:*", "minecraft:*"));
             }
         } else if (args.length > 1 && args[0].equalsIgnoreCase("worlddefaults")) {
             suggestions.addAll(getWorldDefaultsSuggestions(sender, args));

@@ -27,6 +27,9 @@ import net.survivalfun.core.items.impl.SpawnerChangerItem;
 import net.survivalfun.core.items.impl.SpawnerChangerManager;
 import net.survivalfun.core.listeners.items.TreeAxeListener;
 import net.survivalfun.core.listeners.items.SpawnerChangerListener;
+import net.survivalfun.core.spawnercraft.MobHeadDropListener;
+import net.survivalfun.core.spawnercraft.SpawnerCoreManager;
+import net.survivalfun.core.spawnercraft.SpawnerCraftListener;
 import net.survivalfun.core.managers.ResourcePackManager;
 import net.survivalfun.core.managers.config.CustomItemsConfig;
 import net.survivalfun.core.commands.ItemDB;
@@ -41,6 +44,7 @@ import net.survivalfun.core.commands.Nick;
 import net.survivalfun.core.commands.Note;
 import net.survivalfun.core.commands.Notes;
 import net.survivalfun.core.commands.Pay;
+import net.survivalfun.core.commands.PvpCommand;
 import net.survivalfun.core.commands.Redeem;
 import net.survivalfun.core.commands.Rename;
 import net.survivalfun.core.commands.Restore;
@@ -51,6 +55,7 @@ import net.survivalfun.core.commands.Spy;
 import net.survivalfun.core.commands.TP;
 import net.survivalfun.core.commands.Tab;
 import net.survivalfun.core.commands.Time;
+import net.survivalfun.core.commands.StaffChatCommand;
 import net.survivalfun.core.commands.Unrestrain;
 import net.survivalfun.core.commands.Warp;
 import net.survivalfun.core.commands.SetWarp;
@@ -58,7 +63,11 @@ import net.survivalfun.core.commands.DelWarp;
 import net.survivalfun.core.commands.WarpInfo;
 import net.survivalfun.core.commands.WitherToggle;
 import net.survivalfun.core.commands.Whois;
+import net.survivalfun.core.commands.XpBottleCommand;
+import net.survivalfun.core.commands.ChequeCommand;
+import net.survivalfun.core.commands.VoucherCommand;
 import net.survivalfun.core.commands.Seen;
+import net.survivalfun.core.commands.SpawnerCoreCommand;
 import net.survivalfun.core.managers.DB.Database.PlayerLastSeenData;
 import net.survivalfun.core.managers.DB.Database.RestrainedPlayerData;
 import org.bukkit.Bukkit;
@@ -79,6 +88,7 @@ import net.survivalfun.core.commands.Unnote;
 import net.survivalfun.core.commands.Vanish;
 import net.survivalfun.core.commands.AutoRestartCommand;
 import net.survivalfun.core.listeners.chat.SignColorListener;
+import net.survivalfun.core.listeners.chat.StaffChatListener;
 import net.survivalfun.core.listeners.chat.FormatChatListener;
 import net.survivalfun.core.packetevents.ChatPacketTracker;
 import net.survivalfun.core.packetevents.PacketEventsLoader;
@@ -86,12 +96,17 @@ import net.survivalfun.core.packetevents.TabListManager;
 import net.survivalfun.core.commands.PartyCommand;
 import net.survivalfun.core.listeners.PartyListener;
 import net.survivalfun.core.managers.core.PartyManager;
+import net.survivalfun.core.tfly.TFlyManager;
+import net.survivalfun.core.voucher.VouchersConfig;
 import net.survivalfun.core.listeners.jobs.MailManager;
 import net.survivalfun.core.listeners.jobs.CreeperExplosion;
 import net.survivalfun.core.listeners.jobs.FireballExplosion;
 import net.survivalfun.core.listeners.jobs.Death;
 import net.survivalfun.core.listeners.jobs.SlimeJump;
 import net.survivalfun.core.listeners.jobs.WitherSpawnBlocker;
+import net.survivalfun.core.listeners.XpBottleRedeemListener;
+import net.survivalfun.core.listeners.ChequeRedeemListener;
+import net.survivalfun.core.listeners.VoucherRedeemListener;
 import net.survivalfun.core.listeners.jobs.WolfBehaviorListener;
 import net.survivalfun.core.listeners.jobs.LootTableListener;
 import net.survivalfun.core.listeners.security.CommandManager;
@@ -99,6 +114,7 @@ import net.survivalfun.core.listeners.security.CreativeManager;
 import net.survivalfun.core.listeners.security.FlightRestoration;
 import net.survivalfun.core.listeners.security.HandcuffsListener;
 import net.survivalfun.core.listeners.security.ConnectionManager;
+import net.survivalfun.core.listeners.security.AltProtectionListener;
 import net.survivalfun.core.listeners.security.InventorySnapshotListener;
 import net.survivalfun.core.listeners.security.MaintenanceManager;
 import net.survivalfun.core.listeners.security.SpectatorTeleport;
@@ -112,6 +128,7 @@ import net.survivalfun.core.managers.config.WorldDefaults;
 import net.survivalfun.core.managers.core.Alias;
 import net.survivalfun.core.managers.core.ItemDBManager;
 import net.survivalfun.core.managers.core.LegacyID;
+import net.survivalfun.core.managers.core.SecurityAlertManager;
 import net.survivalfun.core.managers.core.Item;
 import net.survivalfun.core.managers.core.placeholderapi.AlliumPlaceholder;
 import net.survivalfun.core.managers.economy.EconomyManager;
@@ -125,6 +142,7 @@ import net.survivalfun.core.managers.permissions.DynamicPermissionManager;
 import net.survivalfun.core.managers.chat.ChatMessageManager;
 import net.survivalfun.core.managers.commands.CommandBridgeManager;
 import net.survivalfun.core.inventory.InventoryManager;
+import net.survivalfun.core.inventory.OfflineInventoryManager;
 
 import net.survivalfun.core.managers.core.Text;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
@@ -197,6 +215,7 @@ public class PluginStart extends JavaPlugin {
     private TabListManager tabListManager;
     private CommandBridgeManager commandBridgeManager;
     private InventoryManager inventoryManager;
+    private OfflineInventoryManager offlineInventoryManager;
     private boolean commandMapEnforceUnsupportedWarned = false;
     private PartyManager partyManager;
     private HandcuffsListener handcuffsListener;
@@ -204,6 +223,10 @@ public class PluginStart extends JavaPlugin {
     private Freeze freezeCommand;
     private AutoRestartCommand autoRestartCommand;
     private Tab tabCompleter;
+    private SpawnerCoreManager spawnerCoreManager;
+    private TFlyManager tflyManager;
+    private VouchersConfig vouchersConfig;
+    private SecurityAlertManager securityAlertManager;
 
     /**
      * Gets the singleton instance of the plugin.
@@ -224,6 +247,15 @@ public class PluginStart extends JavaPlugin {
     }
 
     /**
+     * Gets the spawner core manager (spawner craft).
+     *
+     * @return The SpawnerCoreManager instance, or null if not initialized.
+     */
+    public SpawnerCoreManager getSpawnerCoreManager() {
+        return spawnerCoreManager;
+    }
+
+    /**
      * Gets the command manager.
      *
      * @return The CommandManager instance.
@@ -239,6 +271,10 @@ public class PluginStart extends JavaPlugin {
      */
     public Lang getLangManager() {
         return langManager;
+    }
+
+    public SecurityAlertManager getSecurityAlertManager() {
+        return securityAlertManager;
     }
 
     // get handcuff listener
@@ -327,6 +363,14 @@ public class PluginStart extends JavaPlugin {
         return economyManager;
     }
 
+    public VouchersConfig getVouchersConfig() {
+        return vouchersConfig;
+    }
+
+    public TFlyManager getTFlyManager() {
+        return tflyManager;
+    }
+
     public CommandBridgeManager getCommandBridgeManager() {
         return commandBridgeManager;
     }
@@ -337,6 +381,10 @@ public class PluginStart extends JavaPlugin {
      */
     public InventoryManager getInventoryManager() {
         return inventoryManager;
+    }
+
+    public OfflineInventoryManager getOfflineInventoryManager() {
+        return offlineInventoryManager;
     }
 
     /**
@@ -650,6 +698,10 @@ public class PluginStart extends JavaPlugin {
             Text.sendDebugLog(INFO, "Creative inventory manager cleaned up.", true);
         }
 
+        if (offlineInventoryManager != null) {
+            offlineInventoryManager.saveOnlinePlayerStates();
+        }
+
         // Unregister PlaceholderAPI expansion
         if (placeholder != null && placeholder.isRegistered()) {
             placeholder.unregister();
@@ -668,6 +720,12 @@ public class PluginStart extends JavaPlugin {
             saveRestrainedPlayersToDatabase();
             handcuffsListener.cleanup();
             Text.sendDebugLog(INFO, "HandcuffsListener cleaned up.", true);
+        }
+
+        // Stop TFly tick task
+        if (tflyManager != null) {
+            tflyManager.stop();
+            Text.sendDebugLog(INFO, "TFlyManager stopped.", true);
         }
 
         // Shutdown packet-based trackers (unregister from PacketEvents when applicable)
@@ -947,7 +1005,11 @@ public class PluginStart extends JavaPlugin {
     }
 
     private boolean initializeVault() {
+        // Support both Vault and VaultUnlocked (same API, different plugin names)
         Plugin vaultPlugin = getServer().getPluginManager().getPlugin("Vault");
+        if (vaultPlugin == null) {
+            vaultPlugin = getServer().getPluginManager().getPlugin("VaultUnlocked");
+        }
         if (vaultPlugin != null) {
             Text.sendDebugLog(INFO, "Vault plugin found. Attempting to initialize Vault services.");
 
@@ -1083,11 +1145,21 @@ public class PluginStart extends JavaPlugin {
     
         // Initialize inventory manager
         inventoryManager = new InventoryManager(this);
+        offlineInventoryManager = new OfflineInventoryManager(this, inventoryManager);
         permissionCache = new PermissionCache(this);
 
         // Initialize economy manager
         economyManager = new EconomyManager(this);
         vaultEcon = new VaultEconomyProvider(this, economyManager);
+        // Register Vault economy early (Essentials-style) so /vault-info and other plugins see us.
+        // No getPlugin("Vault") check: Economy class may be provided by Vault or VaultUnlocked at runtime.
+        try {
+            Class.forName("net.milkbowl.vault.economy.Economy");
+            getServer().getServicesManager().register(net.milkbowl.vault.economy.Economy.class, vaultEcon, this, ServicePriority.Normal);
+            Text.sendDebugLog(INFO, "Registered Allium economy with Vault API.");
+        } catch (ClassNotFoundException ignored) {
+            // Vault/VaultUnlocked not on classpath; delayed initializeVault() may still run when plugin loads
+        }
 
         // Command bridge (commands.yml)
         this.commandBridgeManager = new CommandBridgeManager(this);
@@ -1153,6 +1225,15 @@ public class PluginStart extends JavaPlugin {
         } else {
             Text.sendDebugLog(WARN, "Database not ready for ItemDB initialization, skipping...");
         }
+
+        // Initialize TFly manager (temporary fly)
+        tflyManager = new TFlyManager(this);
+        tflyManager.start();
+        Text.sendDebugLog(INFO, "TFlyManager initialized.");
+
+        // Initialize vouchers config
+        vouchersConfig = new VouchersConfig(this);
+        Text.sendDebugLog(INFO, "VouchersConfig initialized.");
 
         // Initialize HandcuffsListener
         try {
@@ -1227,6 +1308,7 @@ public class PluginStart extends JavaPlugin {
         try {
             // Core commands - initialize managers first
             commandManager = new CommandManager(this);
+            securityAlertManager = new SecurityAlertManager(this);
             creativeManager = new CreativeManager(this);
             
             // Link the managers together
@@ -1239,10 +1321,16 @@ public class PluginStart extends JavaPlugin {
             tabCompleter = new Tab(this); // Create single Tab instance for all commands
             registerCommand("gamemode", new Gamemode(this), tabCompleter);
             registerCommand("speed", new Speed(this), tabCompleter);
-            registerCommand("fly", new Fly(this), tabCompleter);
+            Fly flyCommand = new Fly(this);
+            registerCommand("fly", flyCommand, flyCommand);
+            registerCommand("xpbottle", new XpBottleCommand(this), new XpBottleCommand(this));
+            registerCommand("cheque", new ChequeCommand(this), new ChequeCommand(this));
+            registerCommand("voucher", new VoucherCommand(this), new VoucherCommand(this));
             registerCommand("heal", new Heal(langManager, getConfig(), this), tabCompleter);
             registerCommand("feed", new Feed(langManager, getConfig(), this), tabCompleter);
             registerCommand("god", new God(this), tabCompleter);
+            PvpCommand pvpCommand = new PvpCommand(this);
+            registerCommand("pvp", pvpCommand, pvpCommand);
             registerCommand("nv", new NV(this));
 
             // Vanish commands
@@ -1272,7 +1360,9 @@ public class PluginStart extends JavaPlugin {
             registerCommand("unnote", new Unnote(this));
 
             registerCommand("give", new Give(this), tabCompleter);
-            registerCommand("invsee", new Invsee(this));
+            Invsee invseeCommand = new Invsee(this);
+            registerCommand("invsee", invseeCommand);
+            registerListenerSafely(getServer().getPluginManager(), "Invsee", invseeCommand);
             registerCommand("enderchest", new EnderChestCommand(this));
             registerCommand("itemdb", new ItemDB(this));
             registerCommand("lore", new Lore(this), tabCompleter);
@@ -1389,17 +1479,33 @@ public class PluginStart extends JavaPlugin {
             registerCommand("unrestrain", unrestrainCommand);
             Text.sendDebugLog(INFO, "Unrestrain command registered");
 
+            // Register /a (staff chat toggle, ChatControl channel + DB persistence); override mcMMO's /a
+            StaffChatCommand staffChatCommand = new StaffChatCommand(this);
+            registerCommand("a", staffChatCommand, staffChatCommand);
+            try {
+                forceCommandOwnership("a");
+            } catch (Throwable t) {
+                Text.sendDebugLog(WARN, "Could not override /a (mcMMO may own it): " + t.getMessage());
+            }
+            Text.sendDebugLog(INFO, "Staff chat command /a registered");
+
             // Initialize Custom Items system
             CustomItemsConfig.initialize(this);
             CustomItemRegistry customItemRegistry = new CustomItemRegistry(this);
+            SpawnerChangerManager spawnerChangerManager = new SpawnerChangerManager(this, customItemRegistry);
             customItemRegistry.register(new TreeAxeItem(this));
-            customItemRegistry.register(new SpawnerChangerItem(this));
+            customItemRegistry.register(new SpawnerChangerItem(this, spawnerChangerManager));
             Text.sendDebugLog(INFO, "Registered " + customItemRegistry.getItemCount() + " custom items");
 
             // Register custom item listeners
             getServer().getPluginManager().registerEvents(new TreeAxeListener(this, customItemRegistry), this);
-            SpawnerChangerManager spawnerChangerManager = new SpawnerChangerManager(this);
+            getServer().getPluginManager().registerEvents(spawnerChangerManager, this);
             getServer().getPluginManager().registerEvents(new SpawnerChangerListener(this, customItemRegistry, spawnerChangerManager), this);
+            spawnerCoreManager = new SpawnerCoreManager(this);
+            getServer().getPluginManager().registerEvents(new MobHeadDropListener(this), this);
+            getServer().getPluginManager().registerEvents(new SpawnerCraftListener(this, spawnerCoreManager), this);
+            SpawnerCoreCommand spawnerCoreCommand = new SpawnerCoreCommand(this);
+            registerCommand("spawnercore", spawnerCoreCommand, spawnerCoreCommand);
             Text.sendDebugLog(INFO, "Custom item listeners registered");
 
             // Register /core item command
@@ -1519,8 +1625,12 @@ public class PluginStart extends JavaPlugin {
         try {
             // Register core listeners
             registerListenerSafely(pm, "ConnectionManager", new ConnectionManager(this));
+            registerListenerSafely(pm, "AltProtectionListener", new AltProtectionListener(this));
             registerListenerSafely(pm, "UpdateCheckerListener", new net.survivalfun.core.listeners.UpdateCheckerListener());
             registerListenerSafely(pm, "DialogApplyListener", new net.survivalfun.core.listeners.DialogApplyListener(this));
+            registerListenerSafely(pm, "XpBottleRedeemListener", new XpBottleRedeemListener(this));
+            registerListenerSafely(pm, "ChequeRedeemListener", new ChequeRedeemListener(this));
+            registerListenerSafely(pm, "VoucherRedeemListener", new VoucherRedeemListener(this));
             
             if (creativeManager != null) {
                 registerListenerSafely(pm, "CreativeManager", creativeManager);
@@ -1546,10 +1656,16 @@ public class PluginStart extends JavaPlugin {
             } catch (Throwable t) {
                 getLogger().warning("Failed to register InventorySnapshotListener: " + t.toString());
             }
+
+            if (offlineInventoryManager != null) {
+                registerListenerSafely(pm, "OfflineInventoryManager", offlineInventoryManager);
+            }
             
             if (handcuffsListener != null) {
                 registerListenerSafely(pm, "HandcuffsListener", handcuffsListener);
             }
+
+            registerListenerSafely(pm, "StaffChatListener", new StaffChatListener(this));
             
             if (witherSpawnBlocker != null) {
                 registerListenerSafely(pm, "WitherSpawnBlocker", witherSpawnBlocker);
@@ -1746,7 +1862,8 @@ public class PluginStart extends JavaPlugin {
         final int[] attempts = {0};
         final SchedulerAdapter.TaskHandle[] handle = new SchedulerAdapter.TaskHandle[1];
         final String[] commandsToEnforce = {
-            "core", "restore", "god", "heal", "gamemode",
+            "core", "restore", "god", "heal", "gamemode", "pvp",
+            "seen", "alts",
             "msg", "reply", "mail",
             "tp", "tpa", "tpcancel", "tpaccept", "tpdeny", "tppet", "tpmob", "tppos",
             "tphere", "tpahere", "tptoggle", "back", "otp", "top", "bottom"

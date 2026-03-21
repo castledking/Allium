@@ -1,15 +1,15 @@
 package net.survivalfun.core.commands;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -24,16 +24,18 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.inventory.OfflineInventoryData;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.util.SchedulerAdapter;
 
 public class EnderChestCommand implements CommandExecutor, TabCompleter, Listener {
 
+    private final PluginStart plugin;
     private final Lang lang;
-    private final Map<UUID, Inventory> openedEnderChests = new HashMap<>();
 
     public EnderChestCommand(PluginStart plugin) {
+        this.plugin = plugin;
         this.lang = plugin.getLangManager();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
@@ -50,7 +52,7 @@ public class EnderChestCommand implements CommandExecutor, TabCompleter, Listene
                 Text.sendErrorMessage(viewer, "no-permission", lang, "{cmd}", label.toLowerCase(Locale.ROOT));
                 return true;
             }
-            openEnderChest(viewer, viewer, true);
+            openOnlineEnderChest(viewer, viewer, true);
             return true;
         }
 
@@ -60,44 +62,60 @@ public class EnderChestCommand implements CommandExecutor, TabCompleter, Listene
         }
 
         Player target = Bukkit.getPlayer(args[0]);
+        if (target != null) {
+            openOnlineEnderChest(viewer, target, false);
+            return true;
+        }
 
-        if (target == null) {
+        OfflinePlayer offlineTarget = resolveOfflineTarget(args[0]);
+        if (offlineTarget == null) {
             Text.sendErrorMessage(viewer, "player-not-found", lang, "{name}", args[0]);
             return true;
         }
 
-        if (!target.hasPlayedBefore()) {
-            Text.sendErrorMessage(viewer, "player-not-online", lang, "{name}", args[0]);
-            return true;
-        }
+        plugin.getOfflineInventoryManager().getEffectiveInventory(offlineTarget.getUniqueId())
+            .whenComplete((data, error) -> SchedulerAdapter.runAtEntity(viewer, () -> {
+                if (error != null) {
+                    viewer.sendMessage(Text.colorize("&cFailed to load offline ender chest: " + error.getMessage()));
+                    return;
+                }
 
-        openEnderChest(viewer, target, false);
+                String targetName = offlineTarget.getName() != null ? offlineTarget.getName() : args[0];
+                ItemStack[] enderChest = data == null || data.enderChest() == null
+                    ? new ItemStack[27]
+                    : OfflineInventoryData.resize(data.enderChest(), 27);
+                openOfflineEnderChest(viewer, offlineTarget.getUniqueId(), targetName, enderChest);
+            }));
         return true;
     }
 
-    private void openEnderChest(Player viewer, Player target, boolean self) {
+    private void openOnlineEnderChest(Player viewer, Player target, boolean self) {
         SchedulerAdapter.runAtEntity(viewer, () -> {
-            // Create a copy of the enderchest instead of using direct reference
-            Inventory originalEnderChest = target.getEnderChest();
-            Inventory editableEnderChest = Bukkit.createInventory(viewer, originalEnderChest.getSize(), "§8Ender Chest");
-
-            // Copy all items from the original enderchest
-            for (int i = 0; i < originalEnderChest.getSize(); i++) {
-                ItemStack item = originalEnderChest.getItem(i);
-                if (item != null) {
-                    editableEnderChest.setItem(i, item.clone());
-                }
-            }
-
-            // Track this opened inventory for syncing back later
-            openedEnderChests.put(viewer.getUniqueId(), editableEnderChest);
-
-            viewer.openInventory(editableEnderChest);
+            viewer.openInventory(target.getEnderChest());
             if (self) {
                 viewer.sendMessage(Text.colorize("&aOpened your ender chest."));
             } else {
                 viewer.sendMessage(Text.colorize("&aOpened &e" + target.getName() + "&a's ender chest."));
             }
+        });
+    }
+
+    private void openOfflineEnderChest(Player viewer, UUID targetId, String targetName, ItemStack[] contents) {
+        SchedulerAdapter.runAtEntity(viewer, () -> {
+            String title = "§8Ender Chest: " + targetName + " §7(offline)";
+            ItemStack[] initialContents = OfflineInventoryData.resize(contents, 27);
+            Inventory editableEnderChest = Bukkit.createInventory(
+                new EnderChestHolder(targetId, targetName, initialContents),
+                initialContents.length,
+                title
+            );
+
+            for (int i = 0; i < initialContents.length; i++) {
+                editableEnderChest.setItem(i, cloneItem(initialContents[i]));
+            }
+
+            viewer.openInventory(editableEnderChest);
+            viewer.sendMessage(Text.colorize("&aOpened &e" + targetName + "&a's ender chest &7(offline)."));
         });
     }
 
@@ -107,32 +125,49 @@ public class EnderChestCommand implements CommandExecutor, TabCompleter, Listene
             return;
         }
 
-        UUID playerId = player.getUniqueId();
-        Inventory closedInventory = openedEnderChests.get(playerId);
+        if (!(event.getInventory().getHolder() instanceof EnderChestHolder holder)) {
+            return;
+        }
 
-        if (closedInventory != null && event.getInventory().equals(closedInventory)) {
-            // Only sync back if this is the player's own enderchest (not viewing others)
-            if (player.hasPermission("allium.enderchest")) {
-                // Sync changes back to the player's actual enderchest
-                Inventory actualEnderChest = player.getEnderChest();
+        ItemStack[] updatedContents = snapshotContents(event.getInventory());
+        if (sameContents(holder.initialContents(), updatedContents)) {
+            return;
+        }
 
-                // Clear the actual enderchest
-                actualEnderChest.clear();
+        Player onlineTarget = Bukkit.getPlayer(holder.targetId());
+        if (onlineTarget != null) {
+            SchedulerAdapter.runAtEntity(onlineTarget, () -> {
+                onlineTarget.getEnderChest().setContents(OfflineInventoryData.resize(updatedContents, onlineTarget.getEnderChest().getSize()));
+                onlineTarget.updateInventory();
+                plugin.getOfflineInventoryManager().savePlayerState(onlineTarget);
+            });
+            player.sendMessage(Text.colorize("&aEnder chest changes saved for &e" + holder.targetName() + "&a."));
+            return;
+        }
 
-                // Copy all items back
-                for (int i = 0; i < closedInventory.getSize(); i++) {
-                    ItemStack item = closedInventory.getItem(i);
-                    if (item != null) {
-                        actualEnderChest.setItem(i, item.clone());
-                    }
+        plugin.getOfflineInventoryManager().getEffectiveInventory(holder.targetId())
+            .whenComplete((currentState, error) -> SchedulerAdapter.runAtEntity(player, () -> {
+                if (error != null || currentState == null) {
+                    player.sendMessage(Text.colorize("&cFailed to save offline ender chest changes."));
+                    return;
                 }
 
-                player.sendMessage(Text.colorize("&aEnder chest changes saved."));
-            }
-
-            // Clean up tracking
-            openedEnderChests.remove(playerId);
-        }
+                OfflineInventoryData override = new OfflineInventoryData(
+                    null,
+                    null,
+                    null,
+                    updatedContents,
+                    null
+                );
+                OfflineInventoryData merged = currentState.merge(override);
+                plugin.getOfflineInventoryManager().queueOfflineInventoryEdit(
+                    holder.targetId(),
+                    holder.targetName(),
+                    merged,
+                    override
+                );
+                player.sendMessage(Text.colorize("&aQueued ender chest changes for &e" + holder.targetName() + "&a."));
+            }));
     }
 
     @Override
@@ -151,5 +186,52 @@ public class EnderChestCommand implements CommandExecutor, TabCompleter, Listene
         }
 
         return Collections.emptyList();
+    }
+
+    private @Nullable OfflinePlayer resolveOfflineTarget(String targetName) {
+        OfflinePlayer cached = Bukkit.getOfflinePlayerIfCached(targetName);
+        if (cached != null) {
+            return cached;
+        }
+
+        for (OfflinePlayer offlinePlayer : Bukkit.getOfflinePlayers()) {
+            if (offlinePlayer.getName() != null && offlinePlayer.getName().equalsIgnoreCase(targetName)) {
+                return offlinePlayer;
+            }
+        }
+
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(targetName);
+        return offlinePlayer.hasPlayedBefore() ? offlinePlayer : null;
+    }
+
+    private static ItemStack[] snapshotContents(Inventory inventory) {
+        ItemStack[] contents = new ItemStack[inventory.getSize()];
+        for (int i = 0; i < contents.length; i++) {
+            contents[i] = cloneItem(inventory.getItem(i));
+        }
+        return contents;
+    }
+
+    private static boolean sameContents(ItemStack[] first, ItemStack[] second) {
+        return Arrays.deepEquals(normalize(first), normalize(second));
+    }
+
+    private static ItemStack[] normalize(ItemStack[] contents) {
+        ItemStack[] normalized = new ItemStack[contents.length];
+        for (int i = 0; i < contents.length; i++) {
+            normalized[i] = cloneItem(contents[i]);
+        }
+        return normalized;
+    }
+
+    private static ItemStack cloneItem(ItemStack item) {
+        return item == null ? null : item.clone();
+    }
+
+    private record EnderChestHolder(UUID targetId, String targetName, ItemStack[] initialContents) implements org.bukkit.inventory.InventoryHolder {
+        @Override
+        public @Nullable Inventory getInventory() {
+            return null;
+        }
     }
 }

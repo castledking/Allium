@@ -1,0 +1,6 @@
+enabled: false
+
+# Scaffold only. Reserved for webhook notifications from chat modules.
+webhook-url: ''
+username: Allium Chat
+avatar-url: ''

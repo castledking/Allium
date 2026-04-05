@@ -247,7 +247,7 @@ public class Database {
         return -1; // Return -1 if no generated key was returned
     }
 
-    private static final int CURRENT_DB_VERSION = 6;
+    private static final int CURRENT_DB_VERSION = 7;
 
     private void createTables(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
@@ -304,6 +304,8 @@ public class Database {
                             "name VARCHAR(16) NOT NULL, " +
                             "is_flying BOOLEAN DEFAULT FALSE, " +
                             "allow_flight BOOLEAN DEFAULT FALSE, " +
+                            "tfly_time BIGINT DEFAULT 0, " +
+                            "tfly_enabled BOOLEAN DEFAULT FALSE, " +
                             "gamemode VARCHAR(20), " +
                             "walk_speed FLOAT DEFAULT 0.2, " +
                             "fly_speed FLOAT DEFAULT 0.1, " +
@@ -642,6 +644,23 @@ public class Database {
 
             Text.sendDebugLog(INFO, "Applied migration to version 6");
         }
+
+        if (currentVersion < 7) {
+            try (Connection connection = getConnection()) {
+                if (tableExists(connection, "player_data") && !columnExists(connection, "player_data", "tfly_time")) {
+                    Text.sendDebugLog(INFO, "Adding tfly_time column to player_data table...");
+                    statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS tfly_time BIGINT DEFAULT 0");
+                    Text.sendDebugLog(INFO, "Successfully added tfly_time column to player_data table");
+                }
+                if (tableExists(connection, "player_data") && !columnExists(connection, "player_data", "tfly_enabled")) {
+                    Text.sendDebugLog(INFO, "Adding tfly_enabled column to player_data table...");
+                    statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS tfly_enabled BOOLEAN DEFAULT FALSE");
+                    Text.sendDebugLog(INFO, "Successfully added tfly_enabled column to player_data table");
+                }
+            }
+
+            Text.sendDebugLog(INFO, "Applied migration to version 7");
+        }
     }
 
     /**
@@ -708,6 +727,18 @@ public class Database {
                 Text.sendDebugLog(INFO, "Adding pvp_enabled column to player_data table...");
                 statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS pvp_enabled BOOLEAN DEFAULT TRUE");
                 Text.sendDebugLog(INFO, "Successfully added pvp_enabled column to player_data table");
+            }
+
+            if (!columnExists(connection, "player_data", "tfly_time")) {
+                Text.sendDebugLog(INFO, "Adding tfly_time column to player_data table...");
+                statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS tfly_time BIGINT DEFAULT 0");
+                Text.sendDebugLog(INFO, "Successfully added tfly_time column to player_data table");
+            }
+
+            if (!columnExists(connection, "player_data", "tfly_enabled")) {
+                Text.sendDebugLog(INFO, "Adding tfly_enabled column to player_data table...");
+                statement.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS tfly_enabled BOOLEAN DEFAULT FALSE");
+                Text.sendDebugLog(INFO, "Successfully added tfly_enabled column to player_data table");
             }
 
             if (!tableExists(connection, "player_ip_history")) {
@@ -1871,6 +1902,7 @@ public class Database {
     }
 
     public record PlayerFlightData(boolean allowFlight, boolean isFlying) {}
+    public record PlayerTFlyData(long timeSeconds, boolean enabled) {}
     
     /**
      * Retrieves a player's flight status from the database
@@ -1892,6 +1924,52 @@ public class Database {
             }
         } catch (SQLException e) {
             Text.sendDebugLog(WARN, "Failed to get flight status for player: " + playerUUID, e);
+        }
+        return null;
+    }
+
+    public void savePlayerTFlyState(UUID playerUUID, String playerName, long timeSeconds, boolean enabled) {
+        String updateSql = "UPDATE player_data SET tfly_time = ?, tfly_enabled = ?, name = ?, last_updated = CURRENT_TIMESTAMP WHERE uuid = ?";
+        String insertSql = "INSERT INTO player_data (uuid, name, tfly_time, tfly_enabled, last_updated) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
+
+        try (Connection connection = getConnection();
+             PreparedStatement updateStmt = connection.prepareStatement(updateSql)) {
+
+            updateStmt.setLong(1, Math.max(0L, timeSeconds));
+            updateStmt.setBoolean(2, enabled);
+            updateStmt.setString(3, playerName == null ? "" : playerName);
+            updateStmt.setString(4, playerUUID.toString());
+
+            int rowsAffected = updateStmt.executeUpdate();
+            if (rowsAffected == 0) {
+                try (PreparedStatement insertStmt = connection.prepareStatement(insertSql)) {
+                    insertStmt.setString(1, playerUUID.toString());
+                    insertStmt.setString(2, playerName == null ? "" : playerName);
+                    insertStmt.setLong(3, Math.max(0L, timeSeconds));
+                    insertStmt.setBoolean(4, enabled);
+                    insertStmt.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to save tfly state for player: " + playerUUID, e);
+        }
+    }
+
+    public PlayerTFlyData getPlayerTFlyStatus(UUID playerUUID) {
+        String sql = "SELECT tfly_time, tfly_enabled FROM player_data WHERE uuid = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+
+            stmt.setString(1, playerUUID.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    long tflyTime = rs.getLong("tfly_time");
+                    boolean tflyEnabled = rs.getBoolean("tfly_enabled");
+                    return new PlayerTFlyData(Math.max(0L, tflyTime), tflyEnabled);
+                }
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to get tfly status for player: " + playerUUID, e);
         }
         return null;
     }

@@ -3,6 +3,7 @@ package net.survivalfun.core.listeners.security;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.util.SchedulerAdapter;
+import net.survivalfun.core.tfly.TFlyManager;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -105,6 +106,10 @@ public class FlightRestoration implements Listener {
 
         // Always save player state regardless of permissions
         savePlayerState(player);
+        TFlyManager tflyManager = plugin.getTFlyManager();
+        if (tflyManager != null) {
+            tflyManager.savePlayerState(player);
+        }
         
         if(!player.hasPermission("allium.fly")) {
             return;
@@ -122,6 +127,10 @@ public class FlightRestoration implements Listener {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
         String playerName = player.getName();
+        TFlyManager tflyManager = plugin.getTFlyManager();
+        if (tflyManager != null) {
+            tflyManager.loadPlayerState(player);
+        }
 
 
         // Check if player was in spectator mode when they quit
@@ -174,6 +183,9 @@ public class FlightRestoration implements Listener {
 
         // Handle flight status restoration for survival/adventure modes
         if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
+            boolean hasTimedFly = tflyManager != null && tflyManager.getTFlyTime(uuid) > 0;
+            boolean timedFlyEnabled = tflyManager != null && tflyManager.isTFlyEnabled(uuid);
+
             // Handle players with allium.fly permission
             if (player.hasPermission("allium.fly")) {
                 Database.PlayerFlightData flightData = database.getPlayerFlightStatus(uuid);
@@ -206,6 +218,27 @@ public class FlightRestoration implements Listener {
                     player.setFlying(false);
                     
                     Text.sendDebugLog(INFO, "Vanilla behavior: flight disabled for " + player.getName() + " (allium.fly permission, but wasn't flying)");
+                }
+            } else if (hasTimedFly) {
+                Database.PlayerFlightData flightData = database.getPlayerFlightStatus(uuid);
+                if (timedFlyEnabled) {
+                    player.setAllowFlight(true);
+                    if (flightData != null && flightData.isFlying() && !player.isOnGround()) {
+                        try {
+                            player.setFlying(true);
+                            Text.sendDebugLog(INFO, "Restored timed flight for " + player.getName() + " with remaining tfly time");
+                        } catch (IllegalArgumentException e) {
+                            Text.sendDebugLog(WARN, "Could not restore timed flying state for " + player.getName() + ": " + e.getMessage());
+                            applySlowFallingUntilLanded(player);
+                        }
+                    } else {
+                        player.setFlying(false);
+                        Text.sendDebugLog(INFO, "Restored timed fly toggle for " + player.getName() + " with remaining tfly time");
+                    }
+                } else {
+                    player.setAllowFlight(false);
+                    player.setFlying(false);
+                    Text.sendDebugLog(INFO, "Kept tfly time for " + player.getName() + " but left timed flight disabled");
                 }
             } else {
                 // Players without allium.fly permission - vanilla behavior (no slow falling protection)

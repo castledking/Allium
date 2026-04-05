@@ -2,7 +2,6 @@ package net.survivalfun.core.listeners.chat;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 import net.survivalfun.core.managers.core.Text;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
@@ -20,14 +19,12 @@ import java.util.regex.Pattern;
 public class SignColorListener implements Listener {
 
     private final boolean placeholderAPIEnabled;
-    private final LegacyComponentSerializer legacySerializer;
     
     // Pattern for MiniMessage tags
     private final Pattern miniMessagePattern = Pattern.compile("<([^>]+)>");
 
     public SignColorListener() {
         this.placeholderAPIEnabled = Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
-        this.legacySerializer = LegacyComponentSerializer.legacyAmpersand();
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -45,8 +42,7 @@ public class SignColorListener implements Listener {
                     Text.sendDebugLog(INFO, player.getName() + " - Line " + i + ": '" + line + "' -> '" + filteredLine + "'");
                 }
                 
-                // Use legacy serializer to properly parse color codes
-                event.line(i, legacySerializer.deserialize(filteredLine));
+                event.line(i, Text.colorize(filteredLine));
             }
         }
     }
@@ -169,6 +165,8 @@ public class SignColorListener implements Listener {
             if (tag.matches("color:[a-z_]+")) {
                 String colorName = tag.substring(6); // Remove "color:" prefix
                 keepTag = player.hasPermission("allium.sign.minimessage.color." + colorName);
+            } else if (isSimpleMiniMessageColorTag(tag)) {
+                keepTag = player.hasPermission("allium.sign.minimessage.color." + normalizeSimpleColorPermission(tag));
             } else if (tag.matches("#[0-9a-f]{6}")) {
                 keepTag = player.hasPermission("allium.sign.minimessage.color.hex");
             } else if (tag.equals("bold") || tag.equals("/bold")) {
@@ -203,6 +201,21 @@ public class SignColorListener implements Listener {
         result.append(message.substring(lastEnd));
 
         return result.toString();
+    }
+
+    private boolean isSimpleMiniMessageColorTag(String tag) {
+        String normalized = tag.startsWith("/") ? tag.substring(1) : tag;
+        return switch (normalized) {
+            case "black", "dark_blue", "dark_green", "dark_aqua", "dark_red", "dark_purple",
+                 "gold", "gray", "dark_gray", "blue", "green", "aqua", "red",
+                 "light_purple", "yellow", "white" -> true;
+            default -> false;
+        };
+    }
+
+    private String normalizeSimpleColorPermission(String tag) {
+        String normalized = tag.startsWith("/") ? tag.substring(1) : tag;
+        return normalized;
     }
 
     /**

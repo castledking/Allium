@@ -81,12 +81,11 @@ public abstract class CustomItem {
 
         String textureType = getTextureType();
         Text.sendDebugLog(INFO, "Creating item: " + id + ", textureType: " + textureType);
-        if (textureType != null && textureType.equalsIgnoreCase("custommodeldata")) {
-            int cmd = getCustomModelData();
+        int cmd = getCustomModelData();
+        if (cmd > 0 && textureType != null
+                && (textureType.equalsIgnoreCase("custommodeldata") || textureType.equalsIgnoreCase("item_model"))) {
             Text.sendDebugLog(INFO, "Setting custommodeldata: " + cmd);
-            if (cmd > 0) {
-                meta.setCustomModelData(cmd);
-            }
+            meta.setCustomModelData(cmd);
         }
 
         item.setItemMeta(meta);

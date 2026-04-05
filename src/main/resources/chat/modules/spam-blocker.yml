@@ -1,0 +1,95 @@
+enabled: true
+
+# --------------------------------------------------------------------------------------
+# Intelligent-ish Spam Blocker:
+# Blocks singular spammy messages and repeated similar messages in a short time frame.
+# Bypass permission: "allium.spamblocker.bypass"
+# --------------------------------------------------------------------------------------
+
+apply:
+  player-chat: true
+  player-commands: false
+  discord-to-minecraft: false
+
+# Some bots append random numbers or mixed garbage to evade repeat detection.
+# When enabled, the comparison normalizer tries to ignore likely trailing flood suffixes.
+flood-combater: true
+
+# Should singular messages that look spammy be blocked?
+# Examples:
+# - very elongated messages like "heyyyyyyyy"
+# - repeated same word/very low-diversity messages
+block-singular-message-spam: true
+
+# What to do when a singular message is identified as spam:
+# - NORMALIZE: rewrite the message into its simplified comparison form (default)
+# - BLOCK: block the message entirely
+singular-message-action: NORMALIZE
+
+# LOWEST, LOW, NORMAL, HIGH, HIGHEST
+singular-message-spam-processor-sensitivity: NORMAL
+
+# Repeated message similarity threshold.
+# 1.0 = exact same only
+# 0.0 = match almost anything
+block-repeated-message-similarity-threshold: 0.82
+
+# How many similar messages may be sent inside the repeat window before blocking starts.
+allowed-repeats: 4
+
+# How long a sent message stays in repeat history.
+repeat-cooldown-in-seconds: 15
+
+# Repeating these phrases is allowed if similarity to one of them is high enough.
+phrase-whitelist:
+  - wb
+  - welcome back
+  - wbbb
+  - yes
+  - yea
+  - ok
+  - sure
+  - no
+  - nope
+  - nah
+  - yup
+  - yep
+
+# Similarity required to match a whitelist phrase.
+phrase-whitelist-similarity-threshold: 0.65
+
+# Which commands the spam blocker applies to.
+# Empty list = all commands.
+affected-commands:
+  - /tell
+  - /t
+  - /msg
+  - /w
+  - /r
+  - /whisper
+  - /pm
+
+# Collapses repeated characters for message comparison.
+# This is what lets "heyyyyy" compare closer to "hey" for spam detection.
+repeat-collapse:
+  enabled: true
+  threshold: 3
+  replacement-count: 1
+
+# Optional hard limit on extremely long single words.
+long-word-limit:
+  enabled: false
+  length: 24
+
+# Optional short auto-mute for players who keep triggering the spam blocker.
+temporary-mute:
+  enabled: true
+  trigger-threshold: 3
+  duration-seconds: 10
+  window-seconds: 30
+
+messages:
+  blocked-chat: '&cMessage blocked as spam.'
+  blocked-command: '&cCommand blocked as spam.'
+  blocked-discord: '&7[Allium] Discord message blocked as spam.'
+  muted: '&cYou are temporarily muted for spam. Try again in {time}s.'

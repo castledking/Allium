@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -39,9 +40,38 @@ public class Text {
     private static final Pattern HEX_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})");
     private static final Pattern LEGACY_HEX_PATTERN = Pattern.compile("[&§]x([&§][A-Fa-f0-9]){6}");
     private static final Pattern SIMPLE_HEX_PATTERN = Pattern.compile("<#([A-Fa-f0-9]{6})>");
+    private static final Pattern LEGACY_COLOR_CODE_PATTERN = Pattern.compile("([&§])([0-9a-fk-orA-FK-OR])");
+    private static final Pattern MINI_MESSAGE_COLOR_TAG_PATTERN = Pattern.compile("</?(black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|dark_gray|blue|green|aqua|red|light_purple|yellow|white|reset|bold|italic|underline|underlined|strikethrough|obfuscated)>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern MINI_MESSAGE_ADVANCED_TAG_PATTERN = Pattern.compile("<(/)?(hover|click|rainbow|gradient|transition|selector|score|nbt|font|insertion|keybind)(:[^>]*)?>", Pattern.CASE_INSENSITIVE);
+    private static final Map<Character, String> LEGACY_TO_MINIMESSAGE = new HashMap<>();
 
     private static final MiniMessage miniMessage = MiniMessage.miniMessage();
     private static PluginStart plugin;
+
+    static {
+        LEGACY_TO_MINIMESSAGE.put('0', "<black>");
+        LEGACY_TO_MINIMESSAGE.put('1', "<dark_blue>");
+        LEGACY_TO_MINIMESSAGE.put('2', "<dark_green>");
+        LEGACY_TO_MINIMESSAGE.put('3', "<dark_aqua>");
+        LEGACY_TO_MINIMESSAGE.put('4', "<dark_red>");
+        LEGACY_TO_MINIMESSAGE.put('5', "<dark_purple>");
+        LEGACY_TO_MINIMESSAGE.put('6', "<gold>");
+        LEGACY_TO_MINIMESSAGE.put('7', "<gray>");
+        LEGACY_TO_MINIMESSAGE.put('8', "<dark_gray>");
+        LEGACY_TO_MINIMESSAGE.put('9', "<blue>");
+        LEGACY_TO_MINIMESSAGE.put('a', "<green>");
+        LEGACY_TO_MINIMESSAGE.put('b', "<aqua>");
+        LEGACY_TO_MINIMESSAGE.put('c', "<red>");
+        LEGACY_TO_MINIMESSAGE.put('d', "<light_purple>");
+        LEGACY_TO_MINIMESSAGE.put('e', "<yellow>");
+        LEGACY_TO_MINIMESSAGE.put('f', "<white>");
+        LEGACY_TO_MINIMESSAGE.put('k', "<obfuscated>");
+        LEGACY_TO_MINIMESSAGE.put('l', "<bold>");
+        LEGACY_TO_MINIMESSAGE.put('m', "<strikethrough>");
+        LEGACY_TO_MINIMESSAGE.put('n', "<underline>");
+        LEGACY_TO_MINIMESSAGE.put('o', "<italic>");
+        LEGACY_TO_MINIMESSAGE.put('r', "<reset>");
+    }
     
     /**
      * Sets the plugin instance for the Text utility class.
@@ -233,20 +263,23 @@ public class Text {
         ColorFormat format = detectColorFormat(text);
         if (format == ColorFormat.MINI_MESSAGE) {
             try {
-                // Log MiniMessage input for debugging
-                System.out.println("Parsing MiniMessage: " + text);
-                Component result = miniMessage.deserialize(text);
-                System.out.println("Parsed component: " + result);
-                return result;
+                String normalized = convertLegacyToMiniMessage(text);
+                if (containsAdvancedMiniMessage(normalized)) {
+                    return miniMessage.deserialize(normalized);
+                }
+
+                // For simple color/format tags, collapse MiniMessage down to legacy-compatible
+                // formatting so existing legacy chat layouts keep working.
+                String legacy = LegacyComponentSerializer.legacySection().serialize(miniMessage.deserialize(normalized));
+                return LegacyComponentSerializer.legacySection().deserialize(legacy);
             } catch (Exception e) {
-                System.err.println("MiniMessage parsing failed: " + e.getMessage());
-                e.printStackTrace();
+                sendDebugLog(DebugSeverity.WARN, "MiniMessage parsing failed, falling back to legacy: " + e.getMessage());
                 String legacy = parseColors(text);
-                return LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+                return LegacyComponentSerializer.legacySection().deserialize(legacy);
             }
         } else {
             String legacy = parseColors(text);
-            return LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+            return LegacyComponentSerializer.legacySection().deserialize(legacy);
         }
     }
 
@@ -255,10 +288,18 @@ public class Text {
 
         // First check if we should use MiniMessage format
         if (detectColorFormat(input) == ColorFormat.MINI_MESSAGE) {
-            Component component = miniMessage.deserialize(input);
-            return LegacyComponentSerializer.legacySection().serialize(component);
+            try {
+                Component component = miniMessage.deserialize(convertLegacyToMiniMessage(input));
+                return LegacyComponentSerializer.legacySection().serialize(component);
+            } catch (Exception e) {
+                sendDebugLog(DebugSeverity.WARN, "MiniMessage parsing failed in parseColors, falling back to legacy: " + e.getMessage());
+            }
         }
 
+        return applyLegacyFormatting(input);
+    }
+
+    private static String applyLegacyFormatting(String input) {
         // Important: Process hex colors FIRST before standard color codes
         if (input.contains("&#")) {
             input = colorizeHex(input);
@@ -353,10 +394,7 @@ public class Text {
     private static String parseRegularText(String text) {
         if (text == null || text.isEmpty()) return text;
 
-        text = miniMessage.stripTags(text);
-        return LegacyComponentSerializer.legacySection().serialize(
-            LegacyComponentSerializer.legacySection().deserialize(text)
-        );
+        return parseColors(text);
     }
 
     /**
@@ -369,6 +407,10 @@ public class Text {
     }
 
     public static ColorFormat detectColorFormat(String input) {
+        if (input == null || input.isEmpty()) {
+            return ColorFormat.NONE;
+        }
+
         if (input.contains("<gradient:") || input.contains("</gradient>") ||
             input.contains("<rainbow>") || input.contains("</rainbow>") ||
             SIMPLE_HEX_PATTERN.matcher(input).find()) {
@@ -417,6 +459,54 @@ public class Text {
         }
 
         return ColorFormat.NONE;
+    }
+
+    private static boolean containsAdvancedMiniMessage(String input) {
+        return input != null && MINI_MESSAGE_ADVANCED_TAG_PATTERN.matcher(input).find();
+    }
+
+    private static String convertLegacyToMiniMessage(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+
+        String converted = input;
+
+        if (converted.contains("&#")) {
+            Matcher matcher = HEX_PATTERN.matcher(converted);
+            StringBuffer buffer = new StringBuffer();
+            while (matcher.find()) {
+                matcher.appendReplacement(buffer, Matcher.quoteReplacement("<#" + matcher.group(1) + ">"));
+            }
+            matcher.appendTail(buffer);
+            converted = buffer.toString();
+        }
+
+        if (converted.contains("&x") || converted.contains("§x")) {
+            Matcher matcher = LEGACY_HEX_PATTERN.matcher(converted);
+            StringBuffer buffer = new StringBuffer();
+            while (matcher.find()) {
+                String hex = matcher.group().replaceAll("[&§]x|[&§]", "");
+                matcher.appendReplacement(buffer, Matcher.quoteReplacement("<#" + hex + ">"));
+            }
+            matcher.appendTail(buffer);
+            converted = buffer.toString();
+        }
+
+        Matcher matcher = LEGACY_COLOR_CODE_PATTERN.matcher(converted);
+        StringBuffer buffer = new StringBuffer();
+        while (matcher.find()) {
+            char code = Character.toLowerCase(matcher.group(2).charAt(0));
+            String replacement = LEGACY_TO_MINIMESSAGE.get(code);
+            if (replacement == null) {
+                matcher.appendReplacement(buffer, Matcher.quoteReplacement(matcher.group()));
+            } else {
+                matcher.appendReplacement(buffer, Matcher.quoteReplacement(replacement));
+            }
+        }
+        matcher.appendTail(buffer);
+
+        return buffer.toString();
     }
 
     private static String translateLegacyHexColors(String message) {

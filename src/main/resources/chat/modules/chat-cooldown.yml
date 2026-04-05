@@ -1,0 +1,6 @@
+enabled: false
+
+# Scaffold only. Reserved for per-player chat and command cooldowns.
+cooldown:
+  chat-seconds: 0
+  command-seconds: 0

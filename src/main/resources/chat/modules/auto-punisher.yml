@@ -1,0 +1,4 @@
+enabled: false
+
+# Scaffold only. Reserved for warning thresholds and automated punishment actions.
+thresholds: []

@@ -1,0 +1,4 @@
+enabled: false
+
+# Scaffold only. Reserved for join-rate protection.
+max-joins-per-minute: 15

@@ -1,0 +1,4 @@
+enabled: false
+
+# Scaffold only. Reserved for message/command triggered actions.
+rules: []

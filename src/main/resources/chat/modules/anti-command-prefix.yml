@@ -1,0 +1,4 @@
+enabled: false
+
+# Scaffold only. Reserved for stripping/denying namespaced command prefixes.
+mode: block

@@ -27,6 +27,7 @@ import net.survivalfun.core.items.impl.SpawnerChangerItem;
 import net.survivalfun.core.items.impl.SpawnerChangerManager;
 import net.survivalfun.core.listeners.items.TreeAxeListener;
 import net.survivalfun.core.listeners.items.SpawnerChangerListener;
+import net.survivalfun.core.listeners.items.OraxenSmeltingListener;
 import net.survivalfun.core.spawnercraft.MobHeadDropListener;
 import net.survivalfun.core.spawnercraft.SpawnerCoreManager;
 import net.survivalfun.core.spawnercraft.SpawnerCraftListener;
@@ -55,7 +56,7 @@ import net.survivalfun.core.commands.Spy;
 import net.survivalfun.core.commands.TP;
 import net.survivalfun.core.commands.Tab;
 import net.survivalfun.core.commands.Time;
-import net.survivalfun.core.commands.StaffChatCommand;
+import net.survivalfun.core.commands.ChannelCommand;
 import net.survivalfun.core.commands.Unrestrain;
 import net.survivalfun.core.commands.Warp;
 import net.survivalfun.core.commands.SetWarp;
@@ -88,7 +89,6 @@ import net.survivalfun.core.commands.Unnote;
 import net.survivalfun.core.commands.Vanish;
 import net.survivalfun.core.commands.AutoRestartCommand;
 import net.survivalfun.core.listeners.chat.SignColorListener;
-import net.survivalfun.core.listeners.chat.StaffChatListener;
 import net.survivalfun.core.listeners.chat.FormatChatListener;
 import net.survivalfun.core.packetevents.ChatPacketTracker;
 import net.survivalfun.core.packetevents.PacketEventsLoader;
@@ -134,12 +134,17 @@ import net.survivalfun.core.managers.core.placeholderapi.AlliumPlaceholder;
 import net.survivalfun.core.managers.economy.EconomyManager;
 import net.survivalfun.core.managers.economy.VaultEconomyProvider;
 import net.survivalfun.core.managers.warp.WarpManager;
+import net.survivalfun.core.managers.world.OreGenerationManager;
 import net.survivalfun.core.util.PlayerVisibilityHelper;
 import net.survivalfun.core.util.SchedulerAdapter;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.migration.MigrationManager;
 import net.survivalfun.core.managers.permissions.DynamicPermissionManager;
 import net.survivalfun.core.managers.chat.ChatMessageManager;
+import net.survivalfun.core.managers.chat.AlliumChannelManager;
+import net.survivalfun.core.managers.chat.ChatFilterManager;
+import net.survivalfun.core.managers.chat.SpamBlockerManager;
+import net.survivalfun.core.managers.chat.DiscordSrvMessageBridge;
 import net.survivalfun.core.managers.commands.CommandBridgeManager;
 import net.survivalfun.core.inventory.InventoryManager;
 import net.survivalfun.core.inventory.OfflineInventoryManager;
@@ -211,6 +216,10 @@ public class PluginStart extends JavaPlugin {
     private DynamicPermissionManager dynamicPermissionManager;
     private WarpManager warpManager;
     private ChatMessageManager chatMessageManager;
+    private SpamBlockerManager spamBlockerManager;
+    private ChatFilterManager chatFilterManager;
+    private AlliumChannelManager channelManager;
+    private DiscordSrvMessageBridge discordSrvMessageBridge;
     private ChatPacketTracker chatPacketTracker = new net.survivalfun.core.packetevents.ChatPacketTrackerNoOp();
     private TabListManager tabListManager;
     private CommandBridgeManager commandBridgeManager;
@@ -223,6 +232,7 @@ public class PluginStart extends JavaPlugin {
     private Freeze freezeCommand;
     private AutoRestartCommand autoRestartCommand;
     private Tab tabCompleter;
+    private OreGenerationManager oreGenerationManager;
     private SpawnerCoreManager spawnerCoreManager;
     private TFlyManager tflyManager;
     private VouchersConfig vouchersConfig;
@@ -404,6 +414,26 @@ public class PluginStart extends JavaPlugin {
      */
     public ChatPacketTracker getChatPacketTracker() {
         return chatPacketTracker;
+    }
+
+    public DiscordSrvMessageBridge getDiscordSrvMessageBridge() {
+        return discordSrvMessageBridge;
+    }
+
+    public AlliumChannelManager getChannelManager() {
+        return channelManager;
+    }
+
+    public ChatMessageManager getChatMessageManager() {
+        return chatMessageManager;
+    }
+
+    public SpamBlockerManager getSpamBlockerManager() {
+        return spamBlockerManager;
+    }
+
+    public ChatFilterManager getChatFilterManager() {
+        return chatFilterManager;
     }
 
     /**
@@ -724,6 +754,9 @@ public class PluginStart extends JavaPlugin {
 
         // Stop TFly tick task
         if (tflyManager != null) {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                tflyManager.savePlayerState(player);
+            }
             tflyManager.stop();
             Text.sendDebugLog(INFO, "TFlyManager stopped.", true);
         }
@@ -735,6 +768,9 @@ public class PluginStart extends JavaPlugin {
             }
             if (tabListManager != null) {
                 tabListManager.shutdown();
+            }
+            if (discordSrvMessageBridge != null) {
+                discordSrvMessageBridge.shutdown();
             }
         } catch (Throwable t) {
             Text.sendDebugLog(WARN, "Failed to shutdown packet listeners: " + t.getMessage());
@@ -1213,6 +1249,38 @@ public class PluginStart extends JavaPlugin {
         chatMessageManager = new ChatMessageManager();
         Text.sendDebugLog(INFO, "ChatMessageManager initialized.");
 
+        spamBlockerManager = new SpamBlockerManager(this);
+        getServer().getPluginManager().registerEvents(spamBlockerManager, this);
+        Text.sendDebugLog(INFO, "SpamBlockerManager initialized.");
+
+        chatFilterManager = new ChatFilterManager(this);
+        getServer().getPluginManager().registerEvents(chatFilterManager, this);
+        Text.sendDebugLog(INFO, "ChatFilterManager initialized.");
+
+        channelManager = new AlliumChannelManager(this);
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (channelManager != null) {
+                channelManager.retryDiscordHook();
+            }
+        }, 20L);
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (channelManager != null) {
+                channelManager.retryDiscordHook();
+            }
+        }, 100L);
+
+        discordSrvMessageBridge = new DiscordSrvMessageBridge(this);
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (discordSrvMessageBridge != null) {
+                discordSrvMessageBridge.retryHook();
+            }
+        }, 20L);
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (discordSrvMessageBridge != null) {
+                discordSrvMessageBridge.retryHook();
+            }
+        }, 100L);
+
         // Initialize dynamic permission manager
         dynamicPermissionManager = new DynamicPermissionManager(this);
         dynamicPermissionManager.registerDynamicPermissions();
@@ -1479,15 +1547,20 @@ public class PluginStart extends JavaPlugin {
             registerCommand("unrestrain", unrestrainCommand);
             Text.sendDebugLog(INFO, "Unrestrain command registered");
 
-            // Register /a (staff chat toggle, ChatControl channel + DB persistence); override mcMMO's /a
-            StaffChatCommand staffChatCommand = new StaffChatCommand(this);
-            registerCommand("a", staffChatCommand, staffChatCommand);
+            ChannelCommand channelCommand = new ChannelCommand(this, channelManager);
+            registerCommand("channel", channelCommand, channelCommand);
+            registerCommand("a", channelCommand, channelCommand);
+            registerCommand("staffchat", channelCommand, channelCommand);
+            registerCommand("local", channelCommand, channelCommand);
+            registerCommand("l", channelCommand, channelCommand);
+            registerCommand("g", channelCommand, channelCommand);
+            registerCommand("global", channelCommand, channelCommand);
             try {
                 forceCommandOwnership("a");
             } catch (Throwable t) {
                 Text.sendDebugLog(WARN, "Could not override /a (mcMMO may own it): " + t.getMessage());
             }
-            Text.sendDebugLog(INFO, "Staff chat command /a registered");
+            Text.sendDebugLog(INFO, "Channel commands registered");
 
             // Initialize Custom Items system
             CustomItemsConfig.initialize(this);
@@ -1501,6 +1574,7 @@ public class PluginStart extends JavaPlugin {
             getServer().getPluginManager().registerEvents(new TreeAxeListener(this, customItemRegistry), this);
             getServer().getPluginManager().registerEvents(spawnerChangerManager, this);
             getServer().getPluginManager().registerEvents(new SpawnerChangerListener(this, customItemRegistry, spawnerChangerManager), this);
+            getServer().getPluginManager().registerEvents(new OraxenSmeltingListener(), this);
             spawnerCoreManager = new SpawnerCoreManager(this);
             getServer().getPluginManager().registerEvents(new MobHeadDropListener(this), this);
             getServer().getPluginManager().registerEvents(new SpawnerCraftListener(this, spawnerCoreManager), this);
@@ -1569,6 +1643,23 @@ public class PluginStart extends JavaPlugin {
     private void registerNonVaultListeners() {
         PluginManager pm = getServer().getPluginManager();
         
+        // Initialize ore generation manager
+        getLogger().severe("[OreGen-INIT] Initializing OreGenerationManager...");
+        try {
+            oreGenerationManager = new OreGenerationManager(this);
+            getLogger().severe("[OreGen-INIT] OreGenerationManager initialized SUCCESSFULLY");
+            if (isDebugMode()) {
+                getLogger().info("Successfully initialized OreGenerationManager");
+            }
+        } catch (Throwable t) {
+            getLogger().severe("[OreGen-INIT] FAILED to initialize OreGenerationManager: " + t.getMessage());
+            getLogger().warning("Failed to initialize OreGenerationManager: " + t.getMessage());
+            if (isDebugMode()) {
+                t.printStackTrace();
+            }
+            oreGenerationManager = null;
+        }
+
         // Initialize SpectatorTeleport with proper error handling
         if (spectatorTeleport == null) {
             try {
@@ -1665,7 +1756,9 @@ public class PluginStart extends JavaPlugin {
                 registerListenerSafely(pm, "HandcuffsListener", handcuffsListener);
             }
 
-            registerListenerSafely(pm, "StaffChatListener", new StaffChatListener(this));
+            if (channelManager != null) {
+                registerListenerSafely(pm, "AlliumChannelManager", channelManager);
+            }
             
             if (witherSpawnBlocker != null) {
                 registerListenerSafely(pm, "WitherSpawnBlocker", witherSpawnBlocker);
@@ -1679,6 +1772,32 @@ public class PluginStart extends JavaPlugin {
             registerListenerWithErrorHandling(pm, "Death", () -> new Death(this));
             registerListenerWithErrorHandling(pm, "WolfBehaviorListener", WolfBehaviorListener::new);
             registerListenerWithErrorHandling(pm, "LootTableListener", () -> new LootTableListener(this));
+            
+            // Ore generation listener
+            getLogger().severe("[OreGen-REGISTER] Attempting to register OreGenerationListener...");
+            getLogger().severe("[OreGen-REGISTER] oreGenerationManager is " + (oreGenerationManager != null ? "NOT null" : "NULL"));
+            try {
+                if (oreGenerationManager != null) {
+                    getLogger().severe("[OreGen-REGISTER] Calling registerListenerSafely for OreGenerationListener");
+                    registerListenerSafely(pm, "OreGenerationListener", 
+                        new net.survivalfun.core.listeners.world.OreGenerationListener(this, oreGenerationManager));
+                    getLogger().severe("[OreGen-REGISTER] OreGenerationListener registration completed!");
+                } else {
+                    getLogger().severe("[OreGen-REGISTER] SKIPPING registration - oreGenerationManager is null!");
+                }
+            } catch (Throwable t) {
+                getLogger().severe("[OreGen-REGISTER] FAILED to register OreGenerationListener: " + t.toString());
+                t.printStackTrace();
+            }
+            
+            // Register NoteBlockPhysicsListener for Resource world ore protection
+            try {
+                registerListenerSafely(pm, "NoteBlockPhysicsListener", 
+                    new net.survivalfun.core.listeners.world.NoteBlockPhysicsListener());
+                getLogger().info("[OreGen] NoteBlockPhysicsListener registered for 'Resource' world");
+            } catch (Throwable t) {
+                getLogger().warning("[OreGen] Failed to register NoteBlockPhysicsListener: " + t.toString());
+            }
 
             // Message listeners
             if (msgCommand != null) {

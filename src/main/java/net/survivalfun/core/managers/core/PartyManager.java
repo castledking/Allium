@@ -28,6 +28,7 @@ public class PartyManager {
     private final Map<UUID, Set<String>> pendingInvites; // targetUUID -> set of party names (for quick lookup)
     // IMPROVED: Track visible players like PartyLocator for efficient visibility management
     private final Map<UUID, Set<UUID>> visiblePlayers;
+    private final Map<UUID, Set<UUID>> hiddenPlayers;
     private SchedulerAdapter.TaskHandle distanceCheckTask;
     private TabListManager tabListManager;
     
@@ -46,6 +47,7 @@ public class PartyManager {
         this.sentInvites = new HashMap<>(); // partyName -> (targetUUID -> senderUUID)
         this.pendingInvites = new HashMap<>(); // targetUUID -> set of party names (for quick lookup)
         this.visiblePlayers = new ConcurrentHashMap<>();
+        this.hiddenPlayers = new ConcurrentHashMap<>();
         loadConfig();
         
         startDistanceCheckTask();
@@ -605,7 +607,7 @@ public class PartyManager {
             showPlayerConsideringSpectator(viewer, target);
             return;
         } else if (override == -1) {
-            PlayerVisibilityHelper.hidePlayer(viewer, target);
+            hidePlayerAndRefreshTab(viewer, target);
             return;
         }
 
@@ -627,61 +629,98 @@ public class PartyManager {
         }
 
         if (shouldHideSpectator(viewer, target)) {
-            PlayerVisibilityHelper.hidePlayer(viewer, target);
+            hidePlayerAndRefreshTab(viewer, target);
             return;
         }
 
         // Check if players are in the same world
         if (!viewer.getWorld().equals(target.getWorld())) {
             // Players are in different worlds - hide non-party members
-            PlayerVisibilityHelper.hidePlayer(viewer, target);
+            hidePlayerAndRefreshTab(viewer, target);
             return;
         }
 
         double distance = viewer.getLocation().distance(target.getLocation());
         if (distance <= showNonPartyMembersRadius) {
-            PlayerVisibilityHelper.showPlayer(viewer, target);
-            if (shouldSendTabPackets()) {
-                tabListManager.forceSendTabListAddPacket(target, List.of(viewer));
-            }
+            showPlayerAndRefreshTab(viewer, target);
         } else {
-            PlayerVisibilityHelper.hidePlayer(viewer, target);
-            // hidePlayer removes from tab list; re-add via packets (entity hidden, tab list still shows them)
-            if (shouldSendTabPackets()) {
-                Runnable sendAdd = () -> {
-                    if (shouldSendTabPackets() && viewer.isOnline() && target.isOnline()) {
-                        tabListManager.forceSendTabListAddPacket(target, List.of(viewer));
-                    }
-                };
-                for (long delay : new long[] { 0L, 1L, 2L, 3L, 5L, 8L, 13L, 21L, 34L, 55L }) {
-                    if (SchedulerAdapter.isFolia()) {
-                        SchedulerAdapter.runAtEntityLater(viewer, sendAdd, delay);
-                    } else {
-                        SchedulerAdapter.runLater(sendAdd, delay);
-                    }
-                }
-            }
+            hidePlayerAndRefreshTab(viewer, target);
         }
     }
 
     private void showPlayerConsideringSpectator(Player viewer, Player target) {
         if (shouldHideSpectator(viewer, target)) {
-            PlayerVisibilityHelper.hidePlayer(viewer, target);
-            // Send proactive tablist add packet to ensure spectator stays visible in tablist
-            if (shouldSendTabPackets() && tabListManager.shouldBeVisibleInTabList(viewer, target)) {
-                for (long d : new long[] { 0L, 1L, 3L, 5L }) {
-                    SchedulerAdapter.runLater(() -> {
-                        if (shouldSendTabPackets()) {
-                            tabListManager.sendTabListAddPacket(target, List.of(viewer));
-                        }
-                    }, d);
+            hidePlayerAndRefreshTab(viewer, target);
+        } else {
+            showPlayerAndRefreshTab(viewer, target);
+        }
+    }
+
+    private void showPlayerAndRefreshTab(Player viewer, Player target) {
+        boolean wasVisible = isVisibleTo(viewer, target);
+        PlayerVisibilityHelper.showPlayer(viewer, target);
+        markVisible(viewer, target);
+
+        if (!wasVisible && shouldSendTabPackets()) {
+            Runnable sendAdd = () -> {
+                if (shouldSendTabPackets() && viewer.isOnline() && target.isOnline()) {
+                    tabListManager.forceSendTabListAddPacket(target, List.of(viewer));
+                }
+            };
+            for (long delay : new long[] { 0L, 1L, 3L, 5L }) {
+                if (SchedulerAdapter.isFolia()) {
+                    SchedulerAdapter.runAtEntityLater(viewer, sendAdd, delay);
+                } else {
+                    SchedulerAdapter.runLater(sendAdd, delay);
                 }
             }
-        } else {
-            PlayerVisibilityHelper.showPlayer(viewer, target);
-            if (shouldSendTabPackets()) {
-                tabListManager.forceSendTabListAddPacket(target, List.of(viewer));
+        }
+    }
+
+    private void hidePlayerAndRefreshTab(Player viewer, Player target) {
+        boolean wasHidden = isHiddenFrom(viewer, target);
+        PlayerVisibilityHelper.hidePlayer(viewer, target);
+        markHidden(viewer, target);
+
+        if (!wasHidden && shouldSendTabPackets() && tabListManager.shouldBeVisibleInTabList(viewer, target)) {
+            Runnable sendAdd = () -> {
+                if (shouldSendTabPackets() && viewer.isOnline() && target.isOnline()) {
+                    tabListManager.forceSendTabListAddPacket(target, List.of(viewer));
+                }
+            };
+            for (long delay : new long[] { 0L, 1L, 2L, 3L, 5L, 8L, 13L, 21L, 34L, 55L }) {
+                if (SchedulerAdapter.isFolia()) {
+                    SchedulerAdapter.runAtEntityLater(viewer, sendAdd, delay);
+                } else {
+                    SchedulerAdapter.runLater(sendAdd, delay);
+                }
             }
+        }
+    }
+
+    private boolean isVisibleTo(Player viewer, Player target) {
+        return visiblePlayers.getOrDefault(viewer.getUniqueId(), Collections.emptySet()).contains(target.getUniqueId());
+    }
+
+    private boolean isHiddenFrom(Player viewer, Player target) {
+        return hiddenPlayers.getOrDefault(viewer.getUniqueId(), Collections.emptySet()).contains(target.getUniqueId());
+    }
+
+    private void markVisible(Player viewer, Player target) {
+        visiblePlayers.computeIfAbsent(viewer.getUniqueId(), k -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
+                .add(target.getUniqueId());
+        Set<UUID> hidden = hiddenPlayers.get(viewer.getUniqueId());
+        if (hidden != null) {
+            hidden.remove(target.getUniqueId());
+        }
+    }
+
+    private void markHidden(Player viewer, Player target) {
+        hiddenPlayers.computeIfAbsent(viewer.getUniqueId(), k -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
+                .add(target.getUniqueId());
+        Set<UUID> visible = visiblePlayers.get(viewer.getUniqueId());
+        if (visible != null) {
+            visible.remove(target.getUniqueId());
         }
     }
 
@@ -739,6 +778,7 @@ public class PartyManager {
     public void onPlayerJoin(Player player) {
         // Initialize visibility tracking for the joining player
         visiblePlayers.computeIfAbsent(player.getUniqueId(), k -> Collections.newSetFromMap(new ConcurrentHashMap<>()));
+        hiddenPlayers.computeIfAbsent(player.getUniqueId(), k -> Collections.newSetFromMap(new ConcurrentHashMap<>()));
 
         // Send pending party invitations (always, so /party invite works even when locator bar off)
         UUID playerId = player.getUniqueId();
@@ -761,36 +801,6 @@ public class PartyManager {
             if (!partyLocatorBar || !player.isOnline()) return;
             updateVisibilityForPlayer(player);
         }, 5L);
-
-        if (shouldSendTabPackets()) {
-            // Re-add all players to tab lists (counteract hidePlayer removals)
-            SchedulerAdapter.runLater(() -> {
-                if (shouldSendTabPackets()) tabListManager.ensureAllPlayersVisibleInTabLists();
-            }, 2L);
-
-            // Add joiner to others' tab lists and others to joiner's tab list
-            SchedulerAdapter.runLater(() -> {
-                if (!shouldSendTabPackets() || !player.isOnline()) return;
-                List<Player> others = new ArrayList<>(Bukkit.getOnlinePlayers());
-                others.remove(player);
-                if (!others.isEmpty()) {
-                    tabListManager.forceSendTabListAddPacketForMultiplePlayers(Collections.singletonList(player), others);
-                    tabListManager.forceSendTabListAddPacketForMultiplePlayers(others, Collections.singletonList(player));
-                }
-            }, 3L);
-
-            // Additional tab list sync after entity visibility settles
-            SchedulerAdapter.runLater(() -> {
-                if (!shouldSendTabPackets() || !player.isOnline()) return;
-                List<Player> allOnline = new ArrayList<>(Bukkit.getOnlinePlayers());
-                allOnline.remove(player);
-                tabListManager.forceSendTabListAddPacketForMultiplePlayers(allOnline, List.of(player));
-                for (Player other : allOnline) {
-                    tabListManager.forceSendTabListAddPacket(player, List.of(other));
-                }
-                tabListManager.sendInitialTabListState(player);
-            }, 15L);
-        }
     }
 
     /**
@@ -803,6 +813,10 @@ public class PartyManager {
         visiblePlayers.remove(playerId);
         for (Set<UUID> visibleSet : visiblePlayers.values()) {
             visibleSet.remove(playerId);
+        }
+        hiddenPlayers.remove(playerId);
+        for (Set<UUID> hiddenSet : hiddenPlayers.values()) {
+            hiddenSet.remove(playerId);
         }
 
         // Leave their current party (if any) - always run so /party commands work

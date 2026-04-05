@@ -35,6 +35,8 @@ import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
  * PacketEvents-based chat message tracker. Loaded only when PacketEvents plugin is available.
  */
 public class PacketChatTrackerImpl extends PacketListenerAbstract implements ChatPacketTracker {
+    private static final UUID SYSTEM_UUID = new UUID(0, 0);
+    private static final long RESEND_DUPLICATE_WINDOW_MS = 3000L;
 
     private final PluginStart plugin;
     private final ChatMessageManager chatMessageManager;
@@ -184,7 +186,8 @@ public class PacketChatTrackerImpl extends PacketListenerAbstract implements Cha
         try {
             playersBeingResent.add(player.getUniqueId());
 
-            int clearLines = Math.max(0, plugin.getConfig().getInt("chat.deletion_resend.clear_lines", 500));
+            int configuredClearLines = Math.max(0, plugin.getConfig().getInt("chat.deletion_resend.clear_lines", 500));
+            int clearLines = Math.min(configuredClearLines, 180);
             int poolSize = INVISIBLE_UNICODE.length;
             List<Integer> indices = new ArrayList<>(poolSize);
             for (int i = 0; i < poolSize; i++) indices.add(i);
@@ -199,9 +202,10 @@ public class PacketChatTrackerImpl extends PacketListenerAbstract implements Cha
                 player.sendMessage(Text.colorize(header));
             }
 
-            List<ChatMessageManager.ChatMessage> chatHistory = chatMessageManager.getPlayerChatHistory(player.getUniqueId());
+            List<ChatMessageManager.ChatMessage> chatHistory = dedupeResendHistory(
+                    chatMessageManager.getPlayerChatHistory(player.getUniqueId()));
             if (chatHistory.isEmpty()) {
-                chatHistory = chatMessageManager.getRecentGlobalChatHistory(50);
+                chatHistory = dedupeResendHistory(chatMessageManager.getRecentGlobalChatHistory(50));
             }
             int maxMessages = 50;
             int startIndex = Math.max(0, chatHistory.size() - maxMessages);
@@ -213,7 +217,7 @@ public class PacketChatTrackerImpl extends PacketListenerAbstract implements Cha
                     boolean canDelete = player.hasPermission("allium.staff")
                             || player.hasPermission("allium.deletemsg")
                             || player.hasPermission("allium.delmsg");
-                    boolean isPlayerMessage = message.getSenderId() != null && !message.getSenderId().equals(new UUID(0, 0));
+                    boolean isPlayerMessage = message.getSenderId() != null && !message.getSenderId().equals(SYSTEM_UUID);
 
                     if (canDelete && isPlayerMessage) {
                         String mode = plugin.getConfig().getString("chat-hover.delete-hover-mode", "prefix").toLowerCase();
@@ -229,6 +233,61 @@ public class PacketChatTrackerImpl extends PacketListenerAbstract implements Cha
         } finally {
             playersBeingResent.remove(player.getUniqueId());
         }
+    }
+
+    private List<ChatMessageManager.ChatMessage> dedupeResendHistory(List<ChatMessageManager.ChatMessage> history) {
+        if (history == null || history.isEmpty()) {
+            return List.of();
+        }
+
+        List<ChatMessageManager.ChatMessage> deduped = new ArrayList<>(history.size());
+        for (ChatMessageManager.ChatMessage candidate : history) {
+            if (candidate == null || candidate.isDeleted()) {
+                continue;
+            }
+
+            if (deduped.isEmpty()) {
+                deduped.add(candidate);
+                continue;
+            }
+
+            ChatMessageManager.ChatMessage previous = deduped.get(deduped.size() - 1);
+            if (isDuplicateForResend(previous, candidate)) {
+                if (preferSecond(previous, candidate)) {
+                    deduped.set(deduped.size() - 1, candidate);
+                }
+            } else {
+                deduped.add(candidate);
+            }
+        }
+
+        return deduped;
+    }
+
+    private boolean isDuplicateForResend(ChatMessageManager.ChatMessage first, ChatMessageManager.ChatMessage second) {
+        long diff = Math.abs(first.getTimestamp() - second.getTimestamp());
+        if (diff > RESEND_DUPLICATE_WINDOW_MS) {
+            return false;
+        }
+
+        String firstPlain = plain(first.getOriginalMessage()).trim();
+        String secondPlain = plain(second.getOriginalMessage()).trim();
+        if (firstPlain.isEmpty() || secondPlain.isEmpty()) {
+            return false;
+        }
+
+        return firstPlain.equals(secondPlain)
+                || firstPlain.contains(secondPlain)
+                || secondPlain.contains(firstPlain);
+    }
+
+    private boolean preferSecond(ChatMessageManager.ChatMessage first, ChatMessageManager.ChatMessage second) {
+        boolean firstSystem = SYSTEM_UUID.equals(first.getSenderId());
+        boolean secondSystem = SYSTEM_UUID.equals(second.getSenderId());
+        if (firstSystem != secondSystem) {
+            return !secondSystem;
+        }
+        return second.getTimestamp() >= first.getTimestamp();
     }
 
     private Component applyStaffAugmentByMode(Component message, String mode, String senderName, long messageId) {

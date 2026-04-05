@@ -1,5 +1,7 @@
 package net.survivalfun.core.tfly;
 
+import net.survivalfun.core.PluginStart;
+import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.util.SchedulerAdapter;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -15,12 +17,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TFlyManager {
 
     private final Plugin plugin;
+    private final PluginStart alliumPlugin;
     private final Map<UUID, Long> tflyTime = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> tflyEnabled = new ConcurrentHashMap<>();
     private SchedulerAdapter.TaskHandle tickTask;
 
     public TFlyManager(Plugin plugin) {
         this.plugin = plugin;
+        this.alliumPlugin = plugin instanceof PluginStart ? (PluginStart) plugin : null;
     }
 
     public void start() {
@@ -92,6 +96,35 @@ public class TFlyManager {
             player.setAllowFlight(false);
             player.setFlying(false);
             player.setFallDistance(0f);
+        }
+    }
+
+    public void savePlayerState(Player player) {
+        if (player == null || alliumPlugin == null) return;
+        Database database = alliumPlugin.getDatabase();
+        if (database == null) return;
+        UUID uuid = player.getUniqueId();
+        database.savePlayerTFlyState(uuid, player.getName(), getTFlyTime(uuid), isTFlyEnabled(uuid));
+    }
+
+    public void loadPlayerState(Player player) {
+        if (player == null || alliumPlugin == null) return;
+        Database database = alliumPlugin.getDatabase();
+        if (database == null) return;
+        Database.PlayerTFlyData tflyData = database.getPlayerTFlyStatus(player.getUniqueId());
+        if (tflyData == null) return;
+
+        long timeSeconds = Math.max(0L, tflyData.timeSeconds());
+        if (timeSeconds > 0L) {
+            tflyTime.put(player.getUniqueId(), timeSeconds);
+        } else {
+            tflyTime.remove(player.getUniqueId());
+        }
+
+        if (tflyData.enabled() && timeSeconds > 0L) {
+            tflyEnabled.put(player.getUniqueId(), true);
+        } else {
+            tflyEnabled.remove(player.getUniqueId());
         }
     }
 

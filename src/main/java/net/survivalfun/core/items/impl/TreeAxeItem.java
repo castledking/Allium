@@ -33,12 +33,12 @@ public class TreeAxeItem extends CustomItem {
 
     @Override
     public String getTextureType() {
-        return "custommodeldata";
+        return "item_model";
     }
 
     @Override
     public Object getItemModel() {
-        return "allium:tree_axe";
+        return "oraxen:tree_axe";
     }
 
     @Override

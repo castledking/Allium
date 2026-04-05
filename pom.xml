@@ -89,6 +89,18 @@
             <url>https://repo.opencollab.dev/main/</url>
         </repository>
 
+        <!-- onarandombox Repository (Multiverse) -->
+        <repository>
+            <id>onarandombox</id>
+            <url>https://repo.onarandombox.com/content/groups/public/</url>
+        </repository>
+
+        <!-- Oraxen Repository -->
+        <repository>
+            <id>oraxen</id>
+            <url>https://repo.oraxen.com/releases/</url>
+        </repository>
+
         <!-- PaperMC Repository -->
         <repository>
             <id>papermc-repo</id>
@@ -141,6 +153,10 @@
         <repository>
             <id>codemc-nms</id>
             <url>https://repo.codemc.io/repository/nms/</url>
+        </repository>
+        <repository>
+            <id>discordsrv-repo</id>
+            <url>https://nexus.scarsz.me/content/groups/public/</url>
         </repository>
     </repositories>
 
@@ -207,6 +223,13 @@
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
             <version>2.11.6</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.discordsrv</groupId>
+            <artifactId>discordsrv</artifactId>
+            <version>1.30.3</version>
             <scope>provided</scope>
         </dependency>
 
@@ -301,6 +324,12 @@
             <artifactId>PrismaticAPI</artifactId>
             <version>1.1</version>
             <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>me.gabytm.util</groupId>
+                    <artifactId>actions-spigot</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Network & Protocol - provided: PacketEvents plugin must be installed; reduces JAR size -->
@@ -324,6 +353,28 @@
             <version>20231013</version>
         </dependency>
         
+        <!-- Multiverse-Core API for world management -->
+        <dependency>
+            <groupId>com.onarandombox.multiversecore</groupId>
+            <artifactId>Multiverse-Core</artifactId>
+            <version>4.3.12</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Oraxen API -->
+        <dependency>
+            <groupId>io.th0rgal</groupId>
+            <artifactId>oraxen</artifactId>
+            <version>1.211.0</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>me.gabytm.util</groupId>
+                    <artifactId>actions-spigot</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- JSpecify for null annotations -->
         <dependency>
             <groupId>org.jspecify</groupId>

@@ -22,7 +22,8 @@ items:
     lore:
       - "§7A magical netherite axe that"
       - "§7chops down entire trees with one hit!"
-    texture-type: custommodeldata
+    texture-type: item_model
+    item_model: "oraxen:tree_axe"
     custommodeldata: 1001
 
   # Built-in Spawner Type Changer - change spawner types using eggs
@@ -35,6 +36,7 @@ items:
       - "§7the changer menu."
       - ""
       - "§cWarning: This item only has one use!"
-    texture-type: custommodeldata
+    texture-type: item_model
+    item_model: "oraxen:spawner_changer"
     custommodeldata: 1002
     single-use: true

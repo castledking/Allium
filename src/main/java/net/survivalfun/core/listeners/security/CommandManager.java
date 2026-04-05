@@ -206,6 +206,7 @@ public class CommandManager implements Listener {
             return;
         }
 
+        Map<String, RawCommandGroup> rawGroups = new LinkedHashMap<>();
         for (String groupName : groupsSection.getKeys(false)) {
             ConfigurationSection groupSection = groupsSection.getConfigurationSection(groupName);
             if (groupSection == null) continue;
@@ -213,31 +214,173 @@ public class CommandManager implements Listener {
             boolean whitelist = groupSection.getBoolean("whitelist", true);
             List<String> commands = groupSection.getStringList("commands");
             List<String> tabCompletes = groupSection.getStringList("tabcompletes");
+            List<String> inheritedCommands = groupSection.getStringList("inherits.commands");
+            List<String> inheritedTabCompletes = groupSection.getStringList("inherits.tabcompletes");
 
-            List<String> expandedCommands = expandWildcardCommands(commands);
+            rawGroups.put(groupName.toLowerCase(Locale.ROOT), new RawCommandGroup(
+                    groupName,
+                    whitelist,
+                    commands,
+                    tabCompletes,
+                    inheritedCommands,
+                    inheritedTabCompletes
+            ));
+        }
 
-            if (tabCompletes.contains("^")) {
-                tabCompletes.remove("^");
-                for (String command : commands) {
-                    tabCompletes.add(command);
-                    String fullCommand = resolveFullCommandName(command);
-                    if (!command.equals(fullCommand)) {
-                        tabCompletes.add(fullCommand);
-                    }
-                }
-            }
-
-            List<String> expandedTabCompletes = expandWildcardCommands(tabCompletes);
-
-            CommandGroup group = new CommandGroup(groupName, whitelist, expandedCommands, expandedTabCompletes, hideNamespacedCommandsForBypass);
+        Map<String, CommandGroup> resolvedGroups = new LinkedHashMap<>();
+        for (String groupName : rawGroups.keySet()) {
+            CommandGroup group = resolveGroup(groupName, rawGroups, resolvedGroups, new HashSet<>());
             commandGroups.put(groupName, group);
 
             if (plugin.getConfig().getBoolean("debug-mode")) {
-                Text.sendDebugLog(INFO, "Loaded command group: " + groupName +
-                        " (whitelist: " + whitelist +
-                        ", commands: " + expandedCommands.size() +
-                        ", tabcompletes: " + expandedTabCompletes.size() + ")");
+                Text.sendDebugLog(INFO, "Loaded command group: " + group.name() +
+                        " (whitelist: " + group.whitelist() +
+                        ", commands: " + group.commands().size() +
+                        ", tabcompletes: " + group.tabCompletes().size() + ")");
             }
+        }
+    }
+
+    private CommandGroup resolveGroup(String groupName,
+                                      Map<String, RawCommandGroup> rawGroups,
+                                      Map<String, CommandGroup> resolvedGroups,
+                                      Set<String> resolving) {
+        String lowerGroup = groupName.toLowerCase(Locale.ROOT);
+        CommandGroup cached = resolvedGroups.get(lowerGroup);
+        if (cached != null) {
+            return cached;
+        }
+
+        RawCommandGroup rawGroup = rawGroups.get(lowerGroup);
+        if (rawGroup == null) {
+            return new CommandGroup(groupName, true, List.of(), List.of(), hideNamespacedCommandsForBypass);
+        }
+
+        if (!resolving.add(lowerGroup)) {
+            Text.sendDebugLog(WARN, "Detected recursive hide.yml inheritance for group: " + groupName);
+            return new CommandGroup(rawGroup.name(), rawGroup.whitelist(), List.of(), List.of(), hideNamespacedCommandsForBypass);
+        }
+
+        LinkedHashSet<String> resolvedCommands = new LinkedHashSet<>(rawGroup.commands());
+        LinkedHashSet<String> resolvedTabCompletes = new LinkedHashSet<>(rawGroup.tabCompletes());
+
+        for (String inheritedGroupName : getInheritedCommandGroupsFor(rawGroup, rawGroups.keySet())) {
+            CommandGroup inheritedGroup = resolveGroup(inheritedGroupName, rawGroups, resolvedGroups, resolving);
+            resolvedCommands.addAll(inheritedGroup.commands());
+        }
+        for (String inheritedGroupName : getInheritedTabCompleteGroupsFor(rawGroup, rawGroups.keySet())) {
+            CommandGroup inheritedGroup = resolveGroup(inheritedGroupName, rawGroups, resolvedGroups, resolving);
+            resolvedTabCompletes.addAll(inheritedGroup.tabCompletes());
+        }
+
+        if (resolvedTabCompletes.remove("^")) {
+            resolvedTabCompletes.addAll(resolvedCommands);
+        }
+
+        List<String> expandedCommands = expandWildcardCommands(new ArrayList<>(resolvedCommands));
+        List<String> expandedTabCompletes = expandWildcardCommands(new ArrayList<>(resolvedTabCompletes));
+
+        CommandGroup resolved = new CommandGroup(
+                rawGroup.name(),
+                rawGroup.whitelist(),
+                expandedCommands,
+                expandedTabCompletes,
+                hideNamespacedCommandsForBypass
+        );
+        resolvedGroups.put(lowerGroup, resolved);
+        resolving.remove(lowerGroup);
+        return resolved;
+    }
+
+    private Set<String> getInheritedCommandGroupsFor(RawCommandGroup rawGroup, Set<String> configuredGroups) {
+        return getScopedInheritedGroups(rawGroup.name(), rawGroup.inheritedCommands(), configuredGroups);
+    }
+
+    private Set<String> getInheritedTabCompleteGroupsFor(RawCommandGroup rawGroup, Set<String> configuredGroups) {
+        return getScopedInheritedGroups(rawGroup.name(), rawGroup.inheritedTabCompletes(), configuredGroups);
+    }
+
+    private Set<String> getScopedInheritedGroups(String groupName, List<String> explicitGroups, Set<String> configuredGroups) {
+        LinkedHashSet<String> inheritedGroups = new LinkedHashSet<>();
+
+        for (String inherited : explicitGroups) {
+            if (inherited != null && !inherited.isBlank()) {
+                inheritedGroups.add(inherited.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        int currentWeight = getGroupWeight(groupName);
+        for (String parentGroup : getInheritedPermissionGroups(groupName)) {
+            if (!configuredGroups.contains(parentGroup)) {
+                continue;
+            }
+            if (getGroupWeight(parentGroup) <= currentWeight) {
+                inheritedGroups.add(parentGroup);
+            }
+        }
+
+        inheritedGroups.remove(groupName.toLowerCase(Locale.ROOT));
+        return inheritedGroups;
+    }
+
+    private int getGroupWeight(String groupName) {
+        try {
+            if (groupName == null || groupName.isBlank() || groupName.equalsIgnoreCase("default")) {
+                return 0;
+            }
+            if (plugin.getVaultChat() == null) {
+                return 0;
+            }
+            String weightStr = plugin.getVaultChat().getGroupInfoString((String) null, groupName, "weight", "0");
+            return Integer.parseInt(weightStr);
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private Set<String> getInheritedPermissionGroups(String groupName) {
+        LinkedHashSet<String> parents = new LinkedHashSet<>();
+        collectLuckPermsParentGroups(groupName.toLowerCase(Locale.ROOT), parents, new HashSet<>());
+        return parents;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void collectLuckPermsParentGroups(String groupName, Set<String> output, Set<String> visited) {
+        if (groupName == null || groupName.isBlank() || !visited.add(groupName)) {
+            return;
+        }
+
+        try {
+            Class<?> luckPermsClass = Class.forName("net.luckperms.api.LuckPerms");
+            Object luckPerms = Bukkit.getServicesManager().load((Class) luckPermsClass);
+            if (luckPerms == null) {
+                return;
+            }
+
+            Object groupManager = luckPerms.getClass().getMethod("getGroupManager").invoke(luckPerms);
+            Object group = groupManager.getClass().getMethod("getGroup", String.class).invoke(groupManager, groupName);
+            if (group == null) {
+                return;
+            }
+
+            Class<?> nodeTypeClass = Class.forName("net.luckperms.api.node.NodeType");
+            Object inheritanceNodeType = nodeTypeClass.getField("INHERITANCE").get(null);
+            Collection<?> inheritanceNodes = (Collection<?>) group.getClass()
+                    .getMethod("getNodes", nodeTypeClass)
+                    .invoke(group, inheritanceNodeType);
+
+            for (Object node : inheritanceNodes) {
+                String parentName = (String) node.getClass().getMethod("getGroupName").invoke(node);
+                if (parentName == null || parentName.isBlank()) {
+                    continue;
+                }
+                String lowerParent = parentName.toLowerCase(Locale.ROOT);
+                if (output.add(lowerParent)) {
+                    collectLuckPermsParentGroups(lowerParent, output, visited);
+                }
+            }
+        } catch (Throwable ignored) {
+            // LuckPerms not present or API changed; fall back to explicit hide.yml inheritance only.
         }
     }
 
@@ -931,6 +1074,32 @@ public class CommandManager implements Listener {
                 return whitelist;
             }
             return !whitelist;
+        }
+    }
+
+    private record RawCommandGroup(String name, boolean whitelist, List<String> commands,
+                                   List<String> tabCompletes, List<String> inheritedCommands,
+                                   List<String> inheritedTabCompletes) {
+
+        private RawCommandGroup(String name, boolean whitelist, List<String> commands, List<String> tabCompletes,
+                                List<String> inheritedCommands, List<String> inheritedTabCompletes) {
+            this.name = name;
+            this.whitelist = whitelist;
+            this.commands = normalize(commands);
+            this.tabCompletes = normalize(tabCompletes);
+            this.inheritedCommands = normalize(inheritedCommands);
+            this.inheritedTabCompletes = normalize(inheritedTabCompletes);
+        }
+
+        private static List<String> normalize(List<String> values) {
+            if (values == null) {
+                return List.of();
+            }
+
+            return values.stream()
+                    .filter(Objects::nonNull)
+                    .map(value -> value.toLowerCase(Locale.ROOT))
+                    .toList();
         }
     }
 }

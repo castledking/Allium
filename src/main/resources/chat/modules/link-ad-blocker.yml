@@ -1,0 +1,10 @@
+enabled: false
+
+# Scaffold only. Reserved for link, domain, and server-ad detection.
+apply:
+  player-chat: true
+  player-commands: false
+  discord-to-minecraft: false
+
+whitelist:
+  domains: []

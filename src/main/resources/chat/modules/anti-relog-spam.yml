@@ -1,0 +1,5 @@
+enabled: false
+
+# Scaffold only. Reserved for relog cooldown escalation.
+base-cooldown-seconds: 15
+multiplier: 2.0

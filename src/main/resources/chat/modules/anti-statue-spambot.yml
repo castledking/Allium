@@ -1,0 +1,4 @@
+enabled: false
+
+# Scaffold only. Reserved for blocking chat/commands until a player moves.
+command-whitelist: []

@@ -1,0 +1,63 @@
+enabled: true
+
+apply:
+  player-chat: true
+  player-commands: false
+  discord-to-minecraft: true
+
+normalization:
+  casefold: true
+  unicode-nfkc: true
+  substitutions: true
+  preserve-apostrophes: true
+  join-split-letters: true
+
+limits:
+  max-phrase-tokens: 6
+
+messages:
+  blocked-chat: '&cMessage blocked by chat filter.'
+  blocked-command: '&cCommand blocked by chat filter.'
+  blocked-discord: '&7[Allium] Discord message blocked by chat filter.'
+
+# Match modes:
+# - token: safest default; matches a single normalized token only
+# - phrase: contiguous token sequence; best for 2-4 word phrases
+# - substring: matches inside a token; opt-in because false positives are easier
+# - regex: advanced; runs against raw or normalized whole message
+#
+# Strength:
+# - exact: least normalization; closest to literal token matching
+# - normal: default; substitutions and split-letter support
+# - loose: widest matching; also strips apostrophes inside tokens
+#
+# "except" values are literal phrases/tokens that skip the entry after normalization.
+#
+# Examples:
+# tokens:
+#   - donut
+#   - value: whore
+#     strength: normal
+#     except:
+#       - who're
+#
+# phrases:
+#   - go away
+#   - value: this is a phrase
+#     strength: normal
+#
+# substrings:
+#   - value: badword
+#     strength: exact
+#
+# regex:
+#   - \bfoo[0o]{2}\b
+#   - value: \bbar\b
+#     on: normalized
+#
+# Legacy entries: [] format is still accepted, but these section lists are preferred.
+
+tokens: []
+phrases: []
+substrings: []
+regex: []

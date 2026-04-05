@@ -503,6 +503,9 @@ public class FormatChatListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerChat(@NotNull AsyncChatEvent event) {
+        if (event.isCancelled()) {
+            return;
+        }
         if (!config.getBoolean("enable-chat-formatting")) {
             return;
         }
@@ -637,6 +640,9 @@ public class FormatChatListener implements Listener {
                 .replacement(baseSuffixComponent));
          
         long messageId = chatMessageManager.storeMessage(player, tempMessage);
+        if (plugin.getDiscordSrvMessageBridge() != null) {
+            plugin.getDiscordSrvMessageBridge().noteOutgoingPlayerChat(messageId, player, messageComponent, tempMessage);
+        }
          
         // Track this message for per-player chat history (for packet-based deletion)
         ChatMessageManager.ChatMessage chatMessage = new ChatMessageManager.ChatMessage(

@@ -1,0 +1,5 @@
+enabled: false
+
+# Scaffold only. Reserved for excessive caps handling.
+mode: lowercase
+threshold-percent: 70

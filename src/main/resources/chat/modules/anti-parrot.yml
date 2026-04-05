@@ -1,0 +1,5 @@
+enabled: false
+
+# Scaffold only. Reserved for copied-message detection across players.
+window-seconds: 15
+ignore-generic-messages: true

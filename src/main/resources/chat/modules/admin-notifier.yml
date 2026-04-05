@@ -1,0 +1,6 @@
+enabled: false
+
+# Scaffold only. Reserved for staff notifications when chat modules trigger.
+notify:
+  in-game: true
+  permission: allium.staff

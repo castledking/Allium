@@ -195,6 +195,7 @@ public class Whois implements CommandExecutor {
             
             String onlineStatusTemplate = lang.getRaw(statusKey);
             String onlineStatusRaw = onlineStatusTemplate
+                .replace("{duration}", durationFormatted)
                 .replace("{duration_offline}", durationFormatted)
                 .replace("{last_seen_date}", lastSeenDateFormatted);
             sender.sendMessage(Text.colorize(onlineStatusRaw));

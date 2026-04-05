@@ -1,0 +1,5 @@
+enabled: false
+
+# Scaffold only. Reserved for capitalization, punctuation, and typo transforms.
+capitalize-first-letter: true
+append-period: false

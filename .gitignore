@@ -55,6 +55,10 @@ run/
 prismatic-extracted/
 
 # Custom
+docs/
 /todos/
 Allium Plugin Documentation.bbcode
 h2.log.properties
+
+# Resource Pack Dev Work
+work/

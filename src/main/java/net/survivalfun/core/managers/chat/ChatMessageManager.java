@@ -258,4 +258,33 @@ public class ChatMessageManager {
         return null;
     }
 
+    public List<ChatMessage> getRecentActiveMessagesBySender(String senderName, UUID senderId, int amount) {
+        if (amount <= 0) {
+            return List.of();
+        }
+
+        List<ChatMessage> matches = new ArrayList<>();
+        for (Deque<ChatMessage> messages : playerMessages.values()) {
+            for (ChatMessage message : messages) {
+                if (message.isDeleted()) {
+                    continue;
+                }
+                if (senderId != null && senderId.equals(message.getSenderId())) {
+                    matches.add(message);
+                    continue;
+                }
+                if (senderName != null && message.getSenderName() != null
+                        && message.getSenderName().equalsIgnoreCase(senderName)) {
+                    matches.add(message);
+                }
+            }
+        }
+
+        matches.sort(Comparator.comparingLong(ChatMessage::getTimestamp).reversed());
+        if (matches.size() > amount) {
+            return new ArrayList<>(matches.subList(0, amount));
+        }
+        return matches;
+    }
+
 }

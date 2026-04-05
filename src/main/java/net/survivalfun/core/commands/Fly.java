@@ -117,6 +117,7 @@ public class Fly implements CommandExecutor, TabCompleter {
             tflyManager.setTFlyTime(target.getUniqueId(), 0);
             tflyManager.setTFlyEnabled(target.getUniqueId(), false);
             tflyManager.disableFlight(target);
+            tflyManager.savePlayerState(target);
             sender.sendMessage("§aTfly reset for " + target.getName());
             if (target.isOnline()) target.sendMessage("§eYour tfly was reset.");
             return true;
@@ -141,6 +142,7 @@ public class Fly implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 tflyManager.setTFlyTime(uuid, timeSeconds);
+                tflyManager.savePlayerState(target);
                 sender.sendMessage("§aSet " + target.getName() + " tfly to " + TFlyManager.formatTime(timeSeconds));
                 if (target.isOnline()) target.sendMessage("§eYour tfly was set to " + TFlyManager.formatTime(timeSeconds));
                 break;
@@ -151,6 +153,7 @@ public class Fly implements CommandExecutor, TabCompleter {
                 }
                 long newTime = current + timeSeconds;
                 tflyManager.setTFlyTime(uuid, newTime);
+                tflyManager.savePlayerState(target);
                 sender.sendMessage("§aAdded " + TFlyManager.formatTime(timeSeconds) + " for " + target.getName() + ". Total: " + TFlyManager.formatTime(newTime));
                 if (target.isOnline()) target.sendMessage("§eYou received " + TFlyManager.formatTime(timeSeconds) + " tfly. Total: " + TFlyManager.formatTime(newTime));
                 break;
@@ -165,6 +168,7 @@ public class Fly implements CommandExecutor, TabCompleter {
                     tflyManager.setTFlyEnabled(uuid, false);
                     tflyManager.disableFlight(target);
                 }
+                tflyManager.savePlayerState(target);
                 sender.sendMessage("§aTook " + TFlyManager.formatTime(timeSeconds) + " from " + target.getName() + ". Remaining: " + TFlyManager.formatTime(remaining));
                 if (target.isOnline()) target.sendMessage("§e" + TFlyManager.formatTime(timeSeconds) + " tfly was taken. Remaining: " + TFlyManager.formatTime(remaining));
                 break;
@@ -264,6 +268,7 @@ public class Fly implements CommandExecutor, TabCompleter {
             player.sendMessage("§eTfly disabled. Time remaining: " + TFlyManager.formatTime(timeRemaining));
             if (sender != player) sender.sendMessage("§eTfly disabled for " + player.getName() + ". Time remaining: " + TFlyManager.formatTime(timeRemaining));
         }
+        tflyManager.savePlayerState(player);
     }
 
     private long parseTime(String s) {

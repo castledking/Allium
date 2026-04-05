@@ -1,53 +1,41 @@
-############################################################
-# +------------------------------------------------------+ #
-# |                     Configuration                    | #
-# +------------------------------------------------------+ #
-############################################################
-# This is the main configuration file for Allium.
-# For more information, visit: https://github.com/castledking/Allium
-
-# Language for lang.yml
-lang: en
-server-name: "Unknown Server"
-
-# "core.*" to "allium.*" Permissions migration
-group_migration_completed: false
-player_migration_completed: false
-
-# Debug options (debug-mode can also be toggled via /core debug)
-# debug-scheduler: when true, logs runAtEntity/runAtEntityLater scheduler activity (very verbose on Folia)
-debug-scheduler: false
-
-############################################################
-# +------------------------------------------------------+ #
-# |                 Update Checker                       | #
-# +------------------------------------------------------+ #
-############################################################
-# Checks SpigotMC for new versions on startup.
-# notify-mode: off = disabled, console = log to console only,
-#   in-game = notify players with allium.admin on join, both = console + in-game
-update-checker:
-  enabled: true
-  notify-mode: both
-
-############################################################
-# +------------------------------------------------------+ #
-# |                 Discord Settings                     | #
-# +------------------------------------------------------+ #
-############################################################
-
-# Discord integration settings
-discord:
-  # Webhook for escalation command
-  escalate_webhook: ""
+# World generation settings
+ore-generation:
+  # Silver ore configuration
+  silver:
+    # Oraxen block ID for silver ore (noteblock state)
+    oraxen-id: "silver_ore"
+    # Maximum vein size (radius from center block)
+    vein-size: 8
+    # Minimum Y level for generation
+    min-height: -64
+    # Maximum Y level for generation
+    max-height: 16
+    # Chance per chunk to generate (0.0 - 1.0)
+    chance-per-chunk: 0.15
+    # Number of ores to try placing per vein
+    ores-per-vein: 4
   
-  # List of role IDs to mention in escalation messages
-  escalate_mentions: []
-  
-  # Bot display name (optional)
-  bot_name: "Server Escalation"
-  
-  # Bot avatar URL (optional)
+  # Galena (lead) ore configuration
+  galena:
+    # Oraxen block ID for galena ore (noteblock state)
+    oraxen-id: "galena_ore"
+    # Maximum vein size
+    vein-size: 8
+    # Height range
+    min-height: -64
+    max-height: 16
+    # Slightly rarer than silver
+    chance-per-chunk: 0.10
+    ores-per-vein: 4
+
+# Pregeneration settings
+pregen:
+  # Max chunks to generate per tick (higher = faster but more lag)
+  chunks-per-tick: 4
+  # Delay between chunk generations in ticks
+  delay-ticks: 1
+  # Whether to generate ores during pregen
+  generate-ores: true
   bot_avatar: ""
 
 ############################################################
@@ -97,6 +85,29 @@ chat:
     clear_lines: 500  # Number of invisible unicode lines to send before header (clears chat)
     header_enabled: true
     header: "&8&oChat re-synced by staff; a message was deleted"
+  channels:
+    enabled: true
+    # The normal public channel players fall back to.
+    default-write-channel: default
+    # Special channel used by /a and the #message shortcut.
+    staff-channel: staff-chat
+    list:
+      default:
+        display-name: "Global"
+        aliases: ["local", "l", "g", "global"]
+        format: "<prefix> &a%allium_nickname%&f: &f<message>"
+        discord-channel-id: ""
+        discord-in-format: "<dark_gray>[<blue>Discord</blue><dark_gray>] <white>{discord_username}<gray>: <white>{message}"
+        discord-out-format: "{player}: {message}"
+      staff-chat:
+        display-name: "Staff Chat"
+        aliases: ["a", "staffchat"]
+        format: "&8[&bStaff&8] %luckperms_prefix% &a%allium_nickname%&7: &f<message>"
+        discord-channel-id: ""
+        discord-in-format: "<dark_gray>[<dark_red><bold>Staff</bold></dark_red><dark_gray>] <white>{discord_username}<gray>: <white>{message}"
+        discord-out-format: "{message}"
+        # Use DiscordSRV's webhook delivery for this channel (shows player's linked Discord profile)
+        webhook-delivery: true
     
 chat-format:
   default: "<prefix> &a%allium_nickname%&f: &f<message>"

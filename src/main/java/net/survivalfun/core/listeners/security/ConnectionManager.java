@@ -32,10 +32,12 @@ public class ConnectionManager implements Listener {
 
     private final Map<UUID, Long> playerLoginTimes;
     private final PluginStart plugin;
+    private final boolean tabPluginPresent;
 
     public ConnectionManager(PluginStart plugin) {
         this.plugin = plugin;
         this.playerLoginTimes = plugin.getPlayerLoginTimes();
+        this.tabPluginPresent = plugin.getServer().getPluginManager().isPluginEnabled("TAB");
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -48,16 +50,18 @@ public class ConnectionManager implements Listener {
         playerLoginTimes.put(playerUUID, System.currentTimeMillis());
         
         // Restore nickname from database on join
-        Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
-            String storedNick = plugin.getDatabase().getStoredPlayerDisplayname(playerUUID);
-            if (storedNick != null && !storedNick.trim().isEmpty()) {
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (player.isOnline() && plugin.getNicknameManager() != null) {
-                        plugin.getNicknameManager().restoreDisplayNameFromStored(player, storedNick);
-                    }
-                });
-            }
-        });
+        if (!tabPluginPresent) {
+            Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
+                String storedNick = plugin.getDatabase().getStoredPlayerDisplayname(playerUUID);
+                if (storedNick != null && !storedNick.trim().isEmpty()) {
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (player.isOnline() && plugin.getNicknameManager() != null) {
+                            plugin.getNicknameManager().restoreDisplayNameFromStored(player, storedNick);
+                        }
+                    });
+                }
+            });
+        }
         
         // Update last seen date in database asynchronously
         Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
@@ -136,23 +140,6 @@ public class ConnectionManager implements Listener {
                 Text.sendDebugLog(ERROR, "Error loading teleport toggle state for " + playerName + " (UUID: " + playerUUID + ")", e);
             }
         });
-
-        // Restore staff chat channel (ChatControl) from DB for players with allium.staffchat
-        if (player.hasPermission("allium.staffchat")) {
-            Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
-                boolean inStaffChat = plugin.getDatabase().getStaffChatMode(playerUUID);
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (!player.isOnline()) return;
-                    if (inStaffChat) {
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join staff-chat read " + playerName);
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join staff-chat write " + playerName);
-                    } else {
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join default read " + playerName);
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join default write " + playerName);
-                    }
-                });
-            });
-        }
 
         // --- Start of new logic for 'players-to-redeem' ---
         player.getScheduler().runDelayed(plugin, (task) -> {

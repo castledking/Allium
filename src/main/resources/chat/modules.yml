@@ -1,0 +1,55 @@
+modules:
+  word-phrase-filter:
+    enabled: true
+    file: modules/word-phrase-filter.yml
+  spam-blocker:
+    enabled: true
+    file: modules/spam-blocker.yml
+  admin-notifier:
+    enabled: false
+    file: modules/admin-notifier.yml
+  discord-notifier:
+    enabled: false
+    file: modules/discord-notifier.yml
+  auto-punisher:
+    enabled: false
+    file: modules/auto-punisher.yml
+  link-ad-blocker:
+    enabled: false
+    file: modules/link-ad-blocker.yml
+  chat-cooldown:
+    enabled: false
+    file: modules/chat-cooldown.yml
+  anti-chat-flood:
+    enabled: false
+    file: modules/anti-chat-flood.yml
+  unicode-filter:
+    enabled: false
+    file: modules/unicode-filter.yml
+  cap-limiter:
+    enabled: false
+    file: modules/cap-limiter.yml
+  anti-parrot:
+    enabled: false
+    file: modules/anti-parrot.yml
+  chat-executor:
+    enabled: false
+    file: modules/chat-executor.yml
+  anti-statue-spambot:
+    enabled: false
+    file: modules/anti-statue-spambot.yml
+  anti-join-flood:
+    enabled: false
+    file: modules/anti-join-flood.yml
+  anti-relog-spam:
+    enabled: false
+    file: modules/anti-relog-spam.yml
+  anti-command-prefix:
+    enabled: false
+    file: modules/anti-command-prefix.yml
+  auto-grammar:
+    enabled: false
+    file: modules/auto-grammar.yml
+  command-spy:
+    enabled: false
+    file: modules/command-spy.yml

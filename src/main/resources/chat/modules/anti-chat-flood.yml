@@ -1,0 +1,5 @@
+enabled: false
+
+# Scaffold only. Reserved for message diversity/volume based flood detection.
+window-seconds: 10
+max-messages: 6

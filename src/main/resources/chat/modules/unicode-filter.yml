@@ -1,0 +1,8 @@
+enabled: false
+
+# Scaffold only. Reserved for unicode and lookalike filtering.
+mode: compatibility
+apply:
+  player-chat: true
+  player-commands: false
+  discord-to-minecraft: false

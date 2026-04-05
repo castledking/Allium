@@ -1,12 +1,12 @@
 name: Allium
-version: 0.1.5a
+version: 0.1.6a
 main: net.survivalfun.core.PluginStart
 api-version: 1.21
 folia-supported: true
 author: towkio
 description: "A secure, modern Essentials solution."
-soft-depend: [Vault, PlaceholderAPI, packetevents, floodgate, mcMMO, LuckPerms]
-loadafter: [PlaceholderAPI, mcMMO, packetevents, PacketEvents, Vault, LuckPerms]
+soft-depend: [Vault, PlaceholderAPI, packetevents, floodgate, mcMMO, LuckPerms, DiscordSRV]
+loadafter: [PlaceholderAPI, mcMMO, packetevents, PacketEvents, Vault, LuckPerms, DiscordSRV]
 
 commands:
   nickname:
@@ -82,7 +82,6 @@ commands:
   fly:
     description: "Toggle flight"
     usage: "/fly || /fly <player>"
-    permission: allium.fly
   xpbottle:
     description: "Create XP bottle (amount or amountL); [player] allows range with .other"
     usage: "/xpbottle <amount|amountL> [player]"
@@ -204,9 +203,40 @@ commands:
     permission: allium.admin
 
   a:
-    description: "Toggle staff chat (ChatControl channel, state saved to DB)"
+    description: "Toggle the Allium staff chat write channel"
     usage: "/a"
     permission: allium.staffchat
+
+  staffchat:
+    description: "Toggle the Allium staff chat write channel"
+    usage: "/staffchat"
+    permission: allium.staffchat
+
+  channel:
+    description: "View or join Allium chat channels"
+    usage: "/channel [join <channel> [read|write]]"
+    permission: allium.channel
+    aliases: [ch]
+
+  local:
+    description: "Switch your write channel to the default channel"
+    usage: "/local"
+    permission: allium.channel.join
+
+  l:
+    description: "Switch your write channel to the default channel"
+    usage: "/l"
+    permission: allium.channel.join
+
+  g:
+    description: "Switch your write channel to the default channel"
+    usage: "/g"
+    permission: allium.channel.join
+
+  global:
+    description: "Switch your write channel to the default channel"
+    usage: "/global"
+    permission: allium.channel.join
     
   restore:
     description: "Restore a previous inventory"
@@ -352,7 +382,7 @@ commands:
 
   enchant:
     description: Enchant an item in hand
-    usage: /enchant <enchantment> [level]
+    usage: /enchant [player] <enchantment> <level>
     permission: allium.enchant
 
   note:
@@ -462,6 +492,7 @@ permissions:
       allium.gamemode.spectator.teleport: true
       allium.chatmod: true
       allium.enchant: true
+      allium.enchant.other: true
       allium.enchant.unsafe: true
       allium.withertoggle: true
       allium.migrate: true
@@ -472,12 +503,36 @@ permissions:
     description: "Allows using handcuffs commands"
     default: op
 
+  allium.channel:
+    description: "Allows using /channel help and status"
+    default: op
+
+  allium.channel.join:
+    description: "Allows joining Allium chat channels"
+    default: op
+
+  allium.filter.test:
+    description: "Allows dry-running the Allium chat filter"
+    default: op
+
+  allium.chatfilter.bypass:
+    description: "Bypasses the Allium word and phrase filter"
+    default: op
+
+  allium.spamblocker.bypass:
+    description: "Bypasses the Allium spam blocker"
+    default: op
+
   allium.staffchat:
-    description: "Allows toggling staff chat (/a) and using < / # redirect prefixes"
+    description: "Legacy permission for toggling staff chat (/a)"
     default: op
 
   allium.enchant:
     description: "Allows using the enchant command"
+    default: op
+
+  allium.enchant.other:
+    description: "Allows enchanting the item in another player's main hand"
     default: op
 
   allium.enchant.unsafe:

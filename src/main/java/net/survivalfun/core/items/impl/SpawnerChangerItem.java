@@ -59,12 +59,12 @@ public class SpawnerChangerItem extends CustomItem {
 
     @Override
     public String getTextureType() {
-        return "custommodeldata";
+        return "item_model";
     }
 
     @Override
     public Object getItemModel() {
-        return "allium:spawner_changer";
+        return "oraxen:spawner_changer";
     }
 
     @Override

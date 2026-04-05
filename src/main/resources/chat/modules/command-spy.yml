@@ -1,0 +1,5 @@
+enabled: false
+
+# Scaffold only. Reserved for real-time command spy and filtering.
+mode: whitelist
+commands: []

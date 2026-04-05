@@ -111,13 +111,8 @@ public class Home implements CommandExecutor, TabCompleter {
         long timestamp = System.currentTimeMillis();
         database.savePlayerHome(player.getUniqueId(), homeName, location, timestamp);
 
-        String locationString = showLocation ? formatLocation(location) : lang.getFirstColorCode("home.set") + "current location";
-
-        String finalMsg = plugin.getLangManager().get("home.set"
-        .replace("{home}", homeName)
-        .replace("{location}", showLocation ? locationString : ""));
-
-        lang.sendMessage(player, "home.set", finalMsg);
+        String locationString = showLocation ? formatLocation(location) : "current location";
+        lang.sendMessage(player, "home.set", "{home}", homeName, "{location}", locationString);
         return true;    
     }
 
@@ -167,9 +162,7 @@ public class Home implements CommandExecutor, TabCompleter {
                     return teleportToHome(player, player.getUniqueId(), homes.get(0));
                 } else if (homes.size() > 1) {
                     String homeList = getFormattedHomeList(player, homes, player.getUniqueId());
-                    String finalMsg = lang.get("home.list"
-                        .replace("{homes}", homeList));
-                    lang.sendMessage(player, "home.list", finalMsg);
+                    lang.sendMessage(player, "home.list", "{homes}", homeList);
                     return handleHomes(player);
                 } else {
                     boolean spawnIfNoHome = plugin.getConfig().getBoolean("home.spawn-if-no-home", false);
@@ -236,11 +229,10 @@ public class Home implements CommandExecutor, TabCompleter {
                                 setCooldown(player.getUniqueId());
                             }
                             if (player.isOnline()) {
-                                String finalMsg = lang.get("home.bed-other"
-                                .replace("{name}", targetName)
-                                .replace("{home}", homeName)
-                                .replace("{location}", showLocation ? formatLocation(bedLocation) : ""));
-                                lang.sendMessage(player, "home.bed-other", finalMsg);
+                                lang.sendMessage(player, "home.bed-other",
+                                    "{name}", targetName + "'s",
+                                    "{bed}", "bed",
+                                    "{location}", showLocation ? formatLocation(bedLocation) : "");
                             }
                         } else if (player.isOnline()) {
                             player.sendMessage(Text.colorize("&cTeleport failed. Please try again."));
@@ -258,12 +250,13 @@ public class Home implements CommandExecutor, TabCompleter {
                                         setCooldown(player.getUniqueId());
                                     }
                                     if (player.isOnline()) {
-                                        lang.sendMessage(player, "tp.success"
-                                            .replace("{name}", "to " + targetName + "'s bed")
-                                            .replace("{target}", showLocation ? "at " + formatLocation(bedLocation) : ""));
+                                        lang.sendMessage(player, "home.bed-other",
+                                            "{name}", targetName + "'s",
+                                            "{bed}", "bed",
+                                            "{location}", showLocation ? formatLocation(bedLocation) : "");
                                     }
                                 } else if (player.isOnline()) {
-                                    lang.sendMessage(player, "&cTeleport failed. Please try again.");
+                                    player.sendMessage(Text.colorize("&cTeleport failed. Please try again."));
                                 }
                             });
                         }
@@ -304,13 +297,13 @@ public class Home implements CommandExecutor, TabCompleter {
                                 setCooldown(player.getUniqueId());
                             }
                             if (player.isOnline()) {
-                                lang.sendMessage(player, "tp.success"
-                                    .replace("{name}", "to your bed")
-                                    .replace("{target}", showLocation ? "at " + formatLocation(bedLocation) : ""));
+                                lang.sendMessage(player, "home.bed",
+                                    "{bed}", "your bed",
+                                    "{location}", showLocation ? formatLocation(bedLocation) : "");
                             }
                         } else {
                             if (player.isOnline()) {
-                                lang.sendMessage(player, "&cTeleport failed. Please try again.");
+                                player.sendMessage(Text.colorize("&cTeleport failed. Please try again."));
                             }
                         }
                     });
@@ -326,13 +319,13 @@ public class Home implements CommandExecutor, TabCompleter {
                                         setCooldown(player.getUniqueId());
                                     }
                                     if (player.isOnline()) {
-                                        lang.sendMessage(player, "tp.success"
-                                            .replace("{name}", "to your bed")
-                                            .replace("{target}", showLocation ? "at " + formatLocation(bedLocation) : ""));
+                                        lang.sendMessage(player, "home.bed",
+                                            "{bed}", "your bed",
+                                            "{location}", showLocation ? formatLocation(bedLocation) : "");
                                     }
                                 } else {
                                     if (player.isOnline()) {
-                                        lang.sendMessage(player, "&cTeleport failed. Please try again.");
+                                        player.sendMessage(Text.colorize("&cTeleport failed. Please try again."));
                                     }
                                 }
                             });
@@ -522,14 +515,14 @@ public class Home implements CommandExecutor, TabCompleter {
                         setCooldown(player.getUniqueId());
                     }
                     if (player.isOnline()) {
-                        String targetPlayerName = targetUUID.equals(player.getUniqueId()) ? "" : " " + Bukkit.getOfflinePlayer(targetUUID).getName() + "'s";
-                        lang.sendMessage(player, "tp.success",
-                            "{name}", "to" + targetPlayerName + " " + finalHomeName,
-                            "{target}", showLocation ? "at " + formatLocation(finalHome) : "");
+                        String targetPlayerName = targetUUID.equals(player.getUniqueId()) ? "" : Bukkit.getOfflinePlayer(targetUUID).getName() + "'s ";
+                        lang.sendMessage(player, "home.teleport",
+                            "{home}", targetPlayerName + finalHomeName,
+                            "{location}", showLocation ? formatLocation(finalHome) : "");
                     }
                 } else {
                     if (player.isOnline()) {
-                        lang.sendMessage(player, "&cTeleport failed. Please try again.");
+                        player.sendMessage(Text.colorize("&cTeleport failed. Please try again."));
                     }
                 }
             });
@@ -545,14 +538,14 @@ public class Home implements CommandExecutor, TabCompleter {
                                 setCooldown(player.getUniqueId());
                             }
                             if (player.isOnline()) {
-                                String targetPlayerName = targetUUID.equals(player.getUniqueId()) ? "" : " " + Bukkit.getOfflinePlayer(targetUUID).getName() + "'s";
-                                lang.sendMessage(player, "tp.success",
-                                    "{name}", "to" + targetPlayerName + " " + finalHomeName,
-                                    "{target}", showLocation ? "at " + formatLocation(finalHome) : "");
+                                String targetPlayerName = targetUUID.equals(player.getUniqueId()) ? "" : Bukkit.getOfflinePlayer(targetUUID).getName() + "'s ";
+                                lang.sendMessage(player, "home.teleport",
+                                    "{home}", targetPlayerName + finalHomeName,
+                                    "{location}", showLocation ? formatLocation(finalHome) : "");
                             }
                         } else {
                             if (player.isOnline()) {
-                                lang.sendMessage(player, "&cTeleport failed. Please try again.");
+                                player.sendMessage(Text.colorize("&cTeleport failed. Please try again."));
                             }
                         }
                     });
@@ -582,14 +575,11 @@ public class Home implements CommandExecutor, TabCompleter {
         String finalHomeName = actualHomeName;
         boolean deleted = database.deletePlayerHome(targetUUID, finalHomeName);
         if (deleted) {
-            lang.sendMessage(player, "home.remove".replace("{home}", finalHomeName));
+            lang.sendMessage(player, "home.remove", "{home}", finalHomeName);
         } else {
             String homeList = getFormattedHomeList(player, database.getPlayerHomes(targetUUID), targetUUID);
             String target = targetUUID.equals(player.getUniqueId()) ? "your" : targetUUID.toString();
-            lang.sendMessage(player, "home.not-found"
-                .replace("{home}", finalHomeName)
-                .replace("{target}", target)
-                .replace("{homes}", homeList));
+            lang.sendMessage(player, "home.not-found", "{home}", finalHomeName, "{target}", target, "{homes}", homeList);
         }
         return true;
     }

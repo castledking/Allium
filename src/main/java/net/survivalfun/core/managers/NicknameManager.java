@@ -28,6 +28,7 @@ public class NicknameManager {
 
     private final PluginStart plugin;
     private final Database database;
+    private final boolean tabPluginPresent;
     private FileConfiguration animationsConfig;
     private final Map<String, NicknameAnimation> animations = new HashMap<>();
     private final Map<UUID, Long> cooldowns = new ConcurrentHashMap<>();
@@ -46,6 +47,7 @@ public class NicknameManager {
     public NicknameManager(PluginStart plugin) {
         this.plugin = plugin;
         this.database = plugin.getDatabase();
+        this.tabPluginPresent = plugin.getServer().getPluginManager().isPluginEnabled("TAB");
         loadConfig();
         loadTemplates();
     }
@@ -228,8 +230,7 @@ public class NicknameManager {
 
             // Update the player's display name (normalize & to § then deserialize so colors render)
             Component displayComponent = DISPLAY_NAME_SERIALIZER.deserialize(formattedNick.replace('&', '§'));
-            player.displayName(displayComponent);
-            player.playerListName(displayComponent);
+            applyDisplayIdentity(player, displayComponent);
 
             // So placeholders (%allium_nickname%, etc.) see the new value immediately
             inMemoryNicknames.put(player.getUniqueId(), nickname);
@@ -278,8 +279,7 @@ public class NicknameManager {
         String playerName = player.getName();
         String formattedNick = formatNickname(player, playerName);
         Component displayComponent = DISPLAY_NAME_SERIALIZER.deserialize(formattedNick.replace('&', '§'));
-        player.displayName(displayComponent);
-        player.playerListName(displayComponent);
+        applyDisplayIdentity(player, displayComponent);
         inMemoryNicknames.put(player.getUniqueId(), playerName);
         if (database != null) {
             try {
@@ -301,11 +301,29 @@ public class NicknameManager {
             inMemoryNicknames.put(player.getUniqueId(), storedNick);
             String formatted = getFormattedNickname(player, storedNick);
             Component displayComponent = DISPLAY_NAME_SERIALIZER.deserialize(formatted.replace('&', '§'));
-            player.displayName(displayComponent);
-            player.playerListName(displayComponent);
+            applyDisplayIdentity(player, displayComponent);
         } catch (Exception e) {
             Text.sendDebugLog(WARN, "Error restoring nickname for " + player.getName() + ": " + e.getMessage());
         }
+    }
+
+    private void applyDisplayIdentity(Player player, Component displayComponent) {
+        if (tabPluginPresent) {
+            // With TAB present, do not mutate Bukkit display state at all.
+            // TAB, PlaceholderAPI and other formatting plugins should remain the sole owners of name presentation.
+            return;
+        }
+        player.displayName(displayComponent);
+        player.playerListName(displayComponent);
+    }
+
+    private void applyPlayerListName(Player player, Component displayComponent) {
+        if (tabPluginPresent) {
+            // TAB owns tablist formatting. Clear any plugin-set override so TAB can control the tab entry fully.
+            player.playerListName(null);
+            return;
+        }
+        player.playerListName(displayComponent);
     }
 
     public Map<String, String[]> getTemplates() {

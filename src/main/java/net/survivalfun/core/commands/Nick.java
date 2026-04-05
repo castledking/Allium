@@ -119,7 +119,7 @@ public class Nick implements CommandExecutor {
             }
         }
         
-        // /nick <name> - open dialog only if GUI perm and no color codes in arg; else set via command (works with allium.nick only)
+        // /nick <name> - always run as command with permission checks (no dialog bypass)
         if (actualArgs.length == 1) {
             if (!isPlayer) {
                 Text.sendErrorMessage(sender, "player-only-command", plugin.getLangManager(), "use /{cmd}", "execute this command.", true);
@@ -131,22 +131,7 @@ public class Nick implements CommandExecutor {
                 return true;
             }
             String firstArg = actualArgs[0];
-            boolean hasColorCodes = firstArg.contains("&") || firstArg.contains("§") || firstArg.contains("#")
-                || firstArg.contains("<gradient") || firstArg.contains("<rainbow");
-            // Open dialog only if they have GUI permission and first argument has no color codes (plain name = prefill dialog)
-            if (hasGuiPerm && !hasColorCodes) {
-                try {
-                    int maxLength = plugin.getNicknameManager().getMaxNickLength();
-                    Dialog.showTextInput(plugin, player, "Edit Nickname",
-                        "Edit your nickname below. Supports color codes (&a, &b, &c, etc.) and formatting.",
-                        "nickname", "Nickname:", firstArg, maxLength, "Apply", "nick_apply");
-                } catch (Exception e) {
-                    Text.sendErrorMessage(player, "command-error", plugin.getLangManager(), "{cmd}", "/" + label, true);
-                    plugin.getLogger().warning("Error opening nickname dialog: " + e.getMessage());
-                }
-                return true;
-            }
-            // Set via command: /nick <name> with allium.nick, or /nick <&6name> with color to bypass dialog
+            // Always check permissions when args are provided (no dialog bypass)
             if (!hasColorPermission(player, firstArg)) {
                 Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "use those colors/formats.", true);
                 return true;

@@ -17,6 +17,7 @@ import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.managers.DB.Database;
 import net.survivalfun.core.managers.lang.Lang;
 import net.survivalfun.core.managers.migration.EssentialsMigration;
+import net.survivalfun.core.managers.chat.ChatFilterManager;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -52,6 +53,35 @@ public class Core implements CommandExecutor, TabCompleter {
     private final CommandManager commandManager;
     private final CreativeManager creativeManager;
     private final InventoryManager inventoryManager;
+
+    private record HideScope(boolean commands, boolean tabCompletes, int nextArgIndex) {}
+    private enum FilterSectionType {
+        TOKEN("tokens"),
+        PHRASE("phrases"),
+        SUBSTRING("substrings"),
+        REGEX("regex");
+
+        private final String path;
+
+        FilterSectionType(String path) {
+            this.path = path;
+        }
+
+        public String path() {
+            return path;
+        }
+
+        static FilterSectionType from(String input) {
+            if (input == null) return null;
+            return switch (input.toLowerCase(Locale.ROOT)) {
+                case "token", "tokens" -> TOKEN;
+                case "phrase", "phrases" -> PHRASE;
+                case "substring", "substrings" -> SUBSTRING;
+                case "regex" -> REGEX;
+                default -> null;
+            };
+        }
+    }
 
     public Core(WorldDefaults worldDefaults, PluginStart plugin, FileConfiguration config, CommandManager commandManager
             , CreativeManager creativeManager, InventoryManager inventoryManager) {
@@ -131,6 +161,9 @@ public class Core implements CommandExecutor, TabCompleter {
                 break;
             case "dialog":
                 handleDialogSubcommand(sender, args);
+                break;
+            case "filter":
+                handleFilterSubcommand(sender, args);
                 break;
 
             case "delmsg":
@@ -781,6 +814,37 @@ public class Core implements CommandExecutor, TabCompleter {
                 plugin.reloadChatFormatter();
             }, 1L);
 
+            // Reload channel manager (chat channels and Discord settings)
+            try {
+                if (plugin.getChannelManager() != null) {
+                    plugin.getChannelManager().reload();
+                    Text.sendDebugLog(INFO, "Channel manager reloaded successfully.");
+                }
+            } catch (Exception e) {
+                Text.sendDebugLog(WARN, "Failed to reload channel manager: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            try {
+                if (plugin.getSpamBlockerManager() != null) {
+                    plugin.getSpamBlockerManager().reload();
+                    Text.sendDebugLog(INFO, "Spam blocker manager reloaded successfully.");
+                }
+            } catch (Exception e) {
+                Text.sendDebugLog(WARN, "Failed to reload spam blocker manager: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            try {
+                if (plugin.getChatFilterManager() != null) {
+                    plugin.getChatFilterManager().reload();
+                    Text.sendDebugLog(INFO, "Chat filter manager reloaded successfully.");
+                }
+            } catch (Exception e) {
+                Text.sendDebugLog(WARN, "Failed to reload chat filter manager: " + e.getMessage());
+                e.printStackTrace();
+            }
+
             // Build success message with optional debug status
             StringBuilder successMessage = new StringBuilder("§aConfiguration reloaded successfully.");
 
@@ -941,6 +1005,529 @@ public class Core implements CommandExecutor, TabCompleter {
         sender.sendMessage(Text.colorize("&aEscalation sent to staff!"));
     }
 
+    private void handleFilterSubcommand(CommandSender sender, String[] args) {
+        ChatFilterManager filterManager = plugin.getChatFilterManager();
+        if (filterManager == null) {
+            sender.sendMessage("§cChat filter manager is not available.");
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage("§eUsage: /core filter <test|check|add|remove|set> ...");
+            return;
+        }
+
+        String subcommand = args[1].toLowerCase(Locale.ROOT);
+        switch (subcommand) {
+            case "test" -> handleFilterTest(sender, args, filterManager);
+            case "check" -> handleFilterCheck(sender, args, filterManager);
+            case "add" -> handleFilterModify(sender, args, FilterModifyAction.ADD, filterManager);
+            case "remove" -> handleFilterModify(sender, args, FilterModifyAction.REMOVE, filterManager);
+            case "set" -> handleFilterModify(sender, args, FilterModifyAction.SET, filterManager);
+            default -> sender.sendMessage("§eUsage: /core filter <test|check|add|remove|set> ...");
+        }
+    }
+
+    private void handleFilterTest(CommandSender sender, String[] args, ChatFilterManager filterManager) {
+        if (!sender.hasPermission("allium.filter.test") && !sender.hasPermission("allium.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core filter test");
+            return;
+        }
+
+        int messageStartIndex = 3;
+        ChatFilterManager.FilterContext context = ChatFilterManager.FilterContext.PLAYER_CHAT;
+        if (args.length >= 3) {
+            String requestedContext = args[2].toLowerCase(Locale.ROOT);
+            if (requestedContext.equals("chat")) {
+                context = ChatFilterManager.FilterContext.PLAYER_CHAT;
+            } else if (requestedContext.equals("command")) {
+                context = ChatFilterManager.FilterContext.PLAYER_COMMAND;
+            } else if (requestedContext.equals("discord")) {
+                context = ChatFilterManager.FilterContext.DISCORD_TO_MINECRAFT;
+            } else {
+                messageStartIndex = 2;
+            }
+        } else {
+            messageStartIndex = 2;
+        }
+
+        if (args.length <= messageStartIndex) {
+            sender.sendMessage("§eUsage: /core filter test [chat|command|discord] <message>");
+            return;
+        }
+
+        String message = String.join(" ", Arrays.copyOfRange(args, messageStartIndex, args.length));
+        sendFilterEvaluation(sender, filterManager.dryRun(context, message), false);
+    }
+
+    private void handleFilterCheck(CommandSender sender, String[] args, ChatFilterManager filterManager) {
+        if (!sender.hasPermission("allium.filter.test") && !sender.hasPermission("allium.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core filter check");
+            return;
+        }
+        if (args.length < 3) {
+            sender.sendMessage("§eUsage: /core filter check <message>");
+            return;
+        }
+
+        String message = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+        sender.sendMessage("§eFilter check for: §f" + message);
+        sendFilterEvaluation(sender, filterManager.dryRun(ChatFilterManager.FilterContext.PLAYER_CHAT, message), true);
+        sendFilterEvaluation(sender, filterManager.dryRun(ChatFilterManager.FilterContext.PLAYER_COMMAND, message), true);
+        sendFilterEvaluation(sender, filterManager.dryRun(ChatFilterManager.FilterContext.DISCORD_TO_MINECRAFT, message), true);
+    }
+
+    private enum FilterModifyAction {
+        ADD,
+        REMOVE,
+        SET
+    }
+
+    private void handleFilterModify(CommandSender sender, String[] args, FilterModifyAction action, ChatFilterManager filterManager) {
+        if (!sender.hasPermission("allium.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core filter " + action.name().toLowerCase(Locale.ROOT));
+            return;
+        }
+        if (args.length < 4) {
+            sender.sendMessage("§eUsage: /core filter " + action.name().toLowerCase(Locale.ROOT) + " <token|phrase|substring|regex> <value>");
+            return;
+        }
+
+        FilterSectionType type = FilterSectionType.from(args[2]);
+        if (type == null) {
+            sender.sendMessage("§cUnknown filter type. Use token, phrase, substring, or regex.");
+            return;
+        }
+
+        File filterFile = getWordPhraseFilterFile();
+        org.bukkit.configuration.file.YamlConfiguration config = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(filterFile);
+        List<Object> sectionValues = new ArrayList<>(config.getList(type.path(), new ArrayList<>()));
+
+        switch (action) {
+            case ADD -> {
+                if (type == FilterSectionType.TOKEN) {
+                    TokenModifySpec spec = parseTokenAddSpec(args);
+                    if (spec.values().isEmpty()) {
+                        sender.sendMessage("§cYou must provide at least one token to add.");
+                        return;
+                    }
+                    List<String> added = new ArrayList<>();
+                    for (String tokenValue : spec.values()) {
+                        if (findFilterEntries(sectionValues, tokenValue).isEmpty()) {
+                            sectionValues.add(buildTokenEntryValue(tokenValue, spec.strength(), spec.exceptions()));
+                            added.add(tokenValue);
+                        }
+                    }
+                    if (added.isEmpty()) {
+                        sender.sendMessage("§eThose token entries already exist.");
+                        return;
+                    }
+                    config.set(type.path(), sectionValues);
+                    String suffix = describeTokenMetadata(spec.strength(), spec.exceptions());
+                    saveAndReloadFilterConfig(sender, filterFile, config, filterManager,
+                            "§aAdded token entr" + (added.size() == 1 ? "y" : "ies") + ": §f" + String.join(", ", added) + suffix);
+                    return;
+                }
+
+                String value = String.join(" ", Arrays.copyOfRange(args, 3, args.length)).trim();
+                if (value.isEmpty()) {
+                    sender.sendMessage("§cYou must provide a value to add.");
+                    return;
+                }
+                if (findFilterEntries(sectionValues, value).isEmpty()) {
+                    sectionValues.add(value);
+                    config.set(type.path(), sectionValues);
+                    saveAndReloadFilterConfig(sender, filterFile, config, filterManager, "§aAdded " + type.path() + " entry: §f" + value);
+                } else {
+                    sender.sendMessage("§eThat " + type.path() + " entry already exists: §f" + value);
+                }
+            }
+            case REMOVE -> {
+                if (type == FilterSectionType.TOKEN) {
+                    List<String> targets = parseCsvValues(args[3]);
+                    if (targets.isEmpty()) {
+                        sender.sendMessage("§cYou must provide a token to remove.");
+                        return;
+                    }
+                    List<FilterEntryRef> allMatches = new ArrayList<>();
+                    for (String target : targets) {
+                        allMatches.addAll(findFilterEntries(sectionValues, target));
+                    }
+                    if (allMatches.isEmpty()) {
+                        sender.sendMessage("§cNo matching token entries found for: §f" + String.join(", ", targets));
+                        return;
+                    }
+                    removeFilterEntries(sectionValues, allMatches);
+                    config.set(type.path(), sectionValues);
+                    saveAndReloadFilterConfig(sender, filterFile, config, filterManager,
+                            "§aRemoved " + allMatches.size() + " token entr" + (allMatches.size() == 1 ? "y" : "ies") + " matching: §f" + String.join(", ", targets));
+                    return;
+                }
+
+                String value = String.join(" ", Arrays.copyOfRange(args, 3, args.length)).trim();
+                if (value.isEmpty()) {
+                    sender.sendMessage("§cYou must provide a value to remove.");
+                    return;
+                }
+                List<FilterEntryRef> matches = findFilterEntries(sectionValues, value);
+                if (matches.isEmpty()) {
+                    sender.sendMessage("§cNo matching " + type.path() + " entry found for: §f" + value);
+                    return;
+                }
+                removeFilterEntries(sectionValues, matches);
+                config.set(type.path(), sectionValues);
+                saveAndReloadFilterConfig(sender, filterFile, config, filterManager, "§aRemoved " + matches.size() + " " + type.path() + " entr" + (matches.size() == 1 ? "y" : "ies") + " matching: §f" + value);
+            }
+            case SET -> {
+                if (type == FilterSectionType.TOKEN) {
+                    TokenSetSpec spec = parseTokenSetSpec(args);
+                    if (spec == null || spec.oldValue().isBlank() || spec.newValue().isBlank()) {
+                        sender.sendMessage("§eUsage: /core filter set token <current> <new> [exact|normal|loose] [except <csv>]");
+                        return;
+                    }
+                    List<FilterEntryRef> matches = findFilterEntries(sectionValues, spec.oldValue());
+                    if (matches.isEmpty()) {
+                        sender.sendMessage("§cNo matching tokens entry found for: §f" + spec.oldValue());
+                        return;
+                    }
+                    FilterEntryRef target = matches.get(0);
+                    TokenEntryData existing = getTokenEntryData(sectionValues, target);
+                    TokenEntryData updated = new TokenEntryData(
+                            spec.newValue(),
+                            spec.strength() != null ? spec.strength() : existing.strength(),
+                            spec.exceptions() != null ? spec.exceptions() : existing.exceptions()
+                    );
+                    setTokenEntryValue(sectionValues, target, updated);
+                    config.set(type.path(), sectionValues);
+                    saveAndReloadFilterConfig(sender, filterFile, config, filterManager,
+                            "§aUpdated token entry: §f" + spec.oldValue() + " §7-> §f" + spec.newValue()
+                                    + describeTokenMetadata(updated.strength(), updated.exceptions()));
+                    if (!existing.exceptions().isEmpty() && spec.exceptions() == null) {
+                        sender.sendMessage("§7Existing exceptions were preserved: §f" + String.join(", ", existing.exceptions()));
+                    }
+                    return;
+                }
+
+                FilterSetOperation operation = parseFilterSetOperation(args, type, sectionValues);
+                if (operation == null || operation.oldValue().isBlank() || operation.newValue().isBlank()) {
+                    sender.sendMessage("§eUsage: /core filter set <token|phrase|substring|regex> <current> <new>");
+                    sender.sendMessage("§7Tip: for phrases, you can also use §f=>§7 as a separator.");
+                    return;
+                }
+                List<FilterEntryRef> matches = findFilterEntries(sectionValues, operation.oldValue());
+                if (matches.isEmpty()) {
+                    sender.sendMessage("§cNo matching " + type.path() + " entry found for: §f" + operation.oldValue());
+                    return;
+                }
+                FilterEntryRef target = matches.get(0);
+                setFilterEntryValue(sectionValues, target, operation.newValue());
+                config.set(type.path(), sectionValues);
+                saveAndReloadFilterConfig(sender, filterFile, config, filterManager, "§aUpdated " + type.path() + " entry: §f" + operation.oldValue() + " §7-> §f" + operation.newValue());
+            }
+        }
+    }
+
+    private void sendFilterEvaluation(CommandSender sender, ChatFilterManager.EvaluationResult result, boolean verbose) {
+        sender.sendMessage("§7Context: §f" + result.context().name().toLowerCase(Locale.ROOT));
+        sender.sendMessage("§7Blocked: " + (result.blocked() ? "§cYES" : "§aNO"));
+        sender.sendMessage("§7Normalized: §f" + result.preparedMessage().normalizedMessage());
+        sender.sendMessage("§7Tokens: §f" + String.join(", ", result.preparedMessage().tokens()));
+        if (!result.preparedMessage().joinedLetterRuns().isEmpty()) {
+            sender.sendMessage("§7Joined letter runs: §f" + String.join(", ", result.preparedMessage().joinedLetterRuns()));
+        }
+        if (result.hits().isEmpty()) {
+            sender.sendMessage("§7Hits: §fNone");
+            return;
+        }
+
+        org.bukkit.configuration.file.YamlConfiguration config = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(getWordPhraseFilterFile());
+        for (ChatFilterManager.MatchHit hit : result.hits()) {
+            sender.sendMessage("§7Hit: §f" + hit.entryId() + " §8(" + hit.matchType().name().toLowerCase(Locale.ROOT) + "§8) §7detail=§f" + hit.detail());
+            if (verbose) {
+                List<String> paths = findFilterPaths(config, hit);
+                if (paths.isEmpty()) {
+                    sender.sendMessage("§8  location: §7not found in word-phrase-filter.yml");
+                } else {
+                    for (String path : paths) {
+                        sender.sendMessage("§8  location: §f" + path);
+                    }
+                }
+            }
+        }
+    }
+
+    private File getWordPhraseFilterFile() {
+        File file = new File(new File(plugin.getDataFolder(), "chat/modules"), "word-phrase-filter.yml");
+        if (!file.exists() && plugin.getChatFilterManager() != null) {
+            plugin.getChatFilterManager().reload();
+        }
+        return file;
+    }
+
+    private record FilterEntryRef(int index, String path, String value, boolean mapBacked) {}
+
+    private record FilterSetOperation(String oldValue, String newValue) {}
+
+    private record TokenModifySpec(List<String> values, String strength, List<String> exceptions) {}
+
+    private record TokenSetSpec(String oldValue, String newValue, String strength, List<String> exceptions) {}
+
+    private record TokenEntryData(String value, String strength, List<String> exceptions) {}
+
+    private List<FilterEntryRef> findFilterEntries(List<Object> values, String target) {
+        if (target == null) {
+            return List.of();
+        }
+        List<FilterEntryRef> matches = new ArrayList<>();
+        for (int i = 0; i < values.size(); i++) {
+            Object raw = values.get(i);
+            if (raw instanceof String stringValue) {
+                if (stringValue.equalsIgnoreCase(target)) {
+                    matches.add(new FilterEntryRef(i, "[" + i + "]", stringValue, false));
+                }
+            } else if (raw instanceof Map<?, ?> mapValue) {
+                Object valueObject = mapValue.containsKey("value") ? mapValue.get("value") : "";
+                String value = String.valueOf(valueObject).trim();
+                if (!value.isEmpty() && value.equalsIgnoreCase(target)) {
+                    matches.add(new FilterEntryRef(i, "[" + i + "].value", value, true));
+                }
+            }
+        }
+        return matches;
+    }
+
+    private void removeFilterEntries(List<Object> values, List<FilterEntryRef> matches) {
+        List<Integer> indices = matches.stream().map(FilterEntryRef::index).sorted(Comparator.reverseOrder()).toList();
+        for (Integer index : indices) {
+            values.remove((int) index);
+        }
+    }
+
+    private void setFilterEntryValue(List<Object> values, FilterEntryRef ref, String newValue) {
+        if (!ref.mapBacked()) {
+            values.set(ref.index(), newValue);
+            return;
+        }
+        Object raw = values.get(ref.index());
+        if (raw instanceof Map<?, ?> mapValue) {
+            Map<Object, Object> updated = new LinkedHashMap<>(mapValue);
+            updated.put("value", newValue);
+            values.set(ref.index(), updated);
+        }
+    }
+
+    private TokenModifySpec parseTokenAddSpec(String[] args) {
+        List<String> values = parseCsvValues(args[3]);
+        String strength = null;
+        List<String> exceptions = List.of();
+        if (args.length >= 5) {
+            String keyword = args[4].toLowerCase(Locale.ROOT);
+            if (isTokenStrength(keyword)) {
+                strength = keyword;
+                if (args.length >= 7 && args[5].equalsIgnoreCase("except")) {
+                    exceptions = parseCsvValues(args[6]);
+                }
+            } else if (keyword.equals("except") && args.length >= 6) {
+                exceptions = parseCsvValues(args[5]);
+            }
+        }
+        return new TokenModifySpec(values, strength, exceptions);
+    }
+
+    private TokenSetSpec parseTokenSetSpec(String[] args) {
+        if (args.length < 5) {
+            return null;
+        }
+        String oldValue = args[3].trim();
+        String newValue = args[4].trim();
+        String strength = null;
+        List<String> exceptions = null;
+
+        int index = 5;
+        while (index < args.length) {
+            String keyword = args[index].toLowerCase(Locale.ROOT);
+            if (isTokenStrength(keyword)) {
+                strength = keyword;
+                index++;
+                continue;
+            }
+            if (keyword.equals("except")) {
+                if (index + 1 >= args.length) {
+                    return null;
+                }
+                exceptions = parseCsvValues(args[index + 1]);
+                index += 2;
+                continue;
+            }
+            break;
+        }
+        return new TokenSetSpec(oldValue, newValue, strength, exceptions);
+    }
+
+    private boolean isTokenStrength(String value) {
+        return value.equals("exact") || value.equals("normal") || value.equals("loose");
+    }
+
+    private List<String> parseCsvValues(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .toList();
+    }
+
+    private Object buildTokenEntryValue(String value, String strength, List<String> exceptions) {
+        if ((strength == null || strength.isBlank()) && (exceptions == null || exceptions.isEmpty())) {
+            return value;
+        }
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("value", value);
+        if (strength != null && !strength.isBlank()) {
+            entry.put("strength", strength);
+        }
+        if (exceptions != null && !exceptions.isEmpty()) {
+            entry.put("except", new ArrayList<>(exceptions));
+        }
+        return entry;
+    }
+
+    private TokenEntryData getTokenEntryData(List<Object> values, FilterEntryRef ref) {
+        Object raw = values.get(ref.index());
+        if (raw instanceof String stringValue) {
+            return new TokenEntryData(stringValue, null, List.of());
+        }
+        if (raw instanceof Map<?, ?> mapValue) {
+            Object strengthObject = mapValue.containsKey("strength") ? mapValue.get("strength") : null;
+            String strength = strengthObject == null ? null : String.valueOf(strengthObject).trim();
+            List<String> exceptions = new ArrayList<>();
+            Object exceptObject = mapValue.get("except");
+            if (exceptObject instanceof Collection<?> collection) {
+                for (Object item : collection) {
+                    if (item != null) {
+                        String stringItem = String.valueOf(item).trim();
+                        if (!stringItem.isEmpty()) {
+                            exceptions.add(stringItem);
+                        }
+                    }
+                }
+            }
+            return new TokenEntryData(ref.value(), strength, List.copyOf(exceptions));
+        }
+        return new TokenEntryData(ref.value(), null, List.of());
+    }
+
+    private void setTokenEntryValue(List<Object> values, FilterEntryRef ref, TokenEntryData data) {
+        values.set(ref.index(), buildTokenEntryValue(data.value(), data.strength(), data.exceptions()));
+    }
+
+    private String describeTokenMetadata(String strength, List<String> exceptions) {
+        List<String> parts = new ArrayList<>();
+        if (strength != null && !strength.isBlank()) {
+            parts.add("strength=" + strength);
+        }
+        if (exceptions != null && !exceptions.isEmpty()) {
+            parts.add("exceptions=" + String.join(", ", exceptions));
+        }
+        if (parts.isEmpty()) {
+            return "";
+        }
+        return " §7(" + String.join(" | ", parts) + ")";
+    }
+
+    private FilterSetOperation parseFilterSetOperation(String[] args, FilterSectionType type, List<Object> existingValues) {
+        String joined = String.join(" ", Arrays.copyOfRange(args, 3, args.length)).trim();
+        if (joined.isEmpty()) {
+            return null;
+        }
+
+        int arrow = joined.indexOf("=>");
+        if (arrow >= 0) {
+            String oldValue = joined.substring(0, arrow).trim();
+            String newValue = joined.substring(arrow + 2).trim();
+            return new FilterSetOperation(oldValue, newValue);
+        }
+
+        List<String> candidates = new ArrayList<>();
+        for (Object value : existingValues) {
+            if (value instanceof String stringValue) {
+                candidates.add(stringValue);
+            } else if (value instanceof Map<?, ?> mapValue) {
+                Object valueObject = mapValue.containsKey("value") ? mapValue.get("value") : "";
+                String raw = String.valueOf(valueObject).trim();
+                if (!raw.isEmpty()) {
+                    candidates.add(raw);
+                }
+            }
+        }
+
+        String bestMatch = null;
+        for (String candidate : candidates) {
+            if (joined.equalsIgnoreCase(candidate) || joined.toLowerCase(Locale.ROOT).startsWith(candidate.toLowerCase(Locale.ROOT) + " ")) {
+                if (bestMatch == null || candidate.length() > bestMatch.length()) {
+                    bestMatch = candidate;
+                }
+            }
+        }
+
+        if (bestMatch != null) {
+            String remainder = joined.substring(bestMatch.length()).trim();
+            if (!remainder.isEmpty()) {
+                return new FilterSetOperation(bestMatch, remainder);
+            }
+        }
+
+        if (args.length >= 5) {
+            String oldValue = args[3];
+            String newValue = String.join(" ", Arrays.copyOfRange(args, 4, args.length)).trim();
+            if (!newValue.isEmpty()) {
+                return new FilterSetOperation(oldValue, newValue);
+            }
+        }
+
+        return null;
+    }
+
+    private void saveAndReloadFilterConfig(CommandSender sender, File filterFile,
+                                           org.bukkit.configuration.file.YamlConfiguration config,
+                                           ChatFilterManager filterManager, String successMessage) {
+        try {
+            config.save(filterFile);
+            filterManager.reload();
+            sender.sendMessage(successMessage);
+        } catch (Exception e) {
+            Text.sendDebugLog(ERROR, "Failed to save word-phrase-filter.yml", e);
+            sender.sendMessage("§cFailed to save word-phrase-filter.yml. Check console.");
+        }
+    }
+
+    private List<String> findFilterPaths(org.bukkit.configuration.file.YamlConfiguration config, ChatFilterManager.MatchHit hit) {
+        FilterSectionType type = switch (hit.matchType()) {
+            case TOKEN -> FilterSectionType.TOKEN;
+            case PHRASE -> FilterSectionType.PHRASE;
+            case SUBSTRING -> FilterSectionType.SUBSTRING;
+            case REGEX -> FilterSectionType.REGEX;
+        };
+
+        List<Object> values = new ArrayList<>(config.getList(type.path(), new ArrayList<>()));
+        List<String> paths = new ArrayList<>();
+        for (int i = 0; i < values.size(); i++) {
+            Object raw = values.get(i);
+            if (raw instanceof String stringValue && stringValue.equals(hit.value())) {
+                paths.add(type.path() + "[" + i + "]");
+            } else if (raw instanceof Map<?, ?> mapValue) {
+                Object valueObject = mapValue.containsKey("value") ? mapValue.get("value") : "";
+                String value = String.valueOf(valueObject).trim();
+                if (value.equals(hit.value())) {
+                    paths.add(type.path() + "[" + i + "].value");
+                }
+            }
+        }
+        return paths;
+    }
+
     private void handleHideSubcommand(@NotNull CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core hide");
@@ -966,9 +1553,7 @@ public class Core implements CommandExecutor, TabCompleter {
                     sender.sendMessage("§cGroup '" + group + "' already exists.");
                     return;
                 }
-                hideConfig.set(groupPath + group + ".whitelist", true);
-                hideConfig.set(groupPath + group + ".commands", new java.util.ArrayList<String>());
-                hideConfig.set(groupPath + group + ".tabcompletes", new java.util.ArrayList<String>());
+                initializeHideGroup(hideConfig, groupPath, group);
                 saveHideConfig(hideConfig, hideFile);
                 handleReloadCommand(sender, null);
                 sender.sendMessage("§aGroup '" + group + "' created.");
@@ -1014,11 +1599,15 @@ public class Core implements CommandExecutor, TabCompleter {
                 boolean whitelist = hideConfig.getBoolean(groupPath + oldGroup + ".whitelist");
                 java.util.List<String> commands = hideConfig.getStringList(groupPath + oldGroup + ".commands");
                 java.util.List<String> tabcompletes = hideConfig.getStringList(groupPath + oldGroup + ".tabcompletes");
+                java.util.List<String> inheritedCommands = hideConfig.getStringList(groupPath + oldGroup + ".inherits.commands");
+                java.util.List<String> inheritedTabCompletes = hideConfig.getStringList(groupPath + oldGroup + ".inherits.tabcompletes");
 
                 // Create new group with same settings
                 hideConfig.set(groupPath + newGroup + ".whitelist", whitelist);
                 hideConfig.set(groupPath + newGroup + ".commands", commands);
                 hideConfig.set(groupPath + newGroup + ".tabcompletes", tabcompletes);
+                hideConfig.set(groupPath + newGroup + ".inherits.commands", inheritedCommands);
+                hideConfig.set(groupPath + newGroup + ".inherits.tabcompletes", inheritedTabCompletes);
 
                 // Remove old group
                 hideConfig.set(groupPath + oldGroup, null);
@@ -1029,73 +1618,175 @@ public class Core implements CommandExecutor, TabCompleter {
                 break;
             }
             case "group": {
-                if (args.length < 5) {
-                    sender.sendMessage("§cUsage: /core hide group <name> <add [-s]|remove|check> <cmd>");
+                if (args.length < 4) {
+                    sender.sendMessage("§cUsage: /core hide group <name> <add|remove|check|inherit> ...");
                     return;
                 }
                 String group = args[2];
-                if (!hideConfig.contains(groupPath + group)) {
+                String action = args[3].toLowerCase();
+                boolean groupExists = hideConfig.contains(groupPath + group);
+                boolean createdGroup = false;
+
+                if ((action.equals("add") || action.equals("inherit")) && !groupExists) {
+                    initializeHideGroup(hideConfig, groupPath, group);
+                    groupExists = true;
+                    createdGroup = true;
+                }
+
+                if (!groupExists) {
                     sender.sendMessage("§cGroup '" + group + "' does not exist.");
                     return;
                 }
-                String action = args[3].toLowerCase();
-                boolean onlyCommands = false;
-                int cmdIndex = 4;
-                if (action.equals("add") && args[4].equalsIgnoreCase("-s")) {
-                    onlyCommands = true;
-                    cmdIndex = 5;
-                    if (args.length < 6) {
-                        sender.sendMessage("§cUsage: /core hide group <name> add [-s] <cmd>");
-                        return;
-                    }
-                }
-                String cmd = args[cmdIndex].toLowerCase();
-                List<String> commands = hideConfig.getStringList(groupPath + group + ".commands");
-                List<String> tabcompletes = hideConfig.getStringList(groupPath + group + ".tabcompletes");
-                if (action.equals("add")) {
-                    if (!commands.contains(cmd)) {
-                        commands.add(cmd);
-                    }
-                    if (!onlyCommands && !tabcompletes.contains(cmd)) {
-                        tabcompletes.add(cmd);
-                    }
-                    hideConfig.set(groupPath + group + ".commands", commands);
-                    if (!onlyCommands) hideConfig.set(groupPath + group + ".tabcompletes", tabcompletes);
-                    saveHideConfig(hideConfig, hideFile);
-                    handleReloadCommand(sender, null);
-                    sender.sendMessage("§aAdded '" + cmd + "' to group '" + group + "'.");
-                } else if (action.equals("remove")) {
-                    boolean changed = false;
-                    if (commands.remove(cmd)) changed = true;
-                    if (tabcompletes.remove(cmd)) changed = true;
-                    hideConfig.set(groupPath + group + ".commands", commands);
-                    hideConfig.set(groupPath + group + ".tabcompletes", tabcompletes);
-                    saveHideConfig(hideConfig, hideFile);
-                    handleReloadCommand(sender, null);
-                    if (changed) {
-                        sender.sendMessage("§aRemoved '" + cmd + "' from group '" + group + "'.");
-                    } else {
-                        sender.sendMessage("§e'" + cmd + "' was not present in group '" + group + "'.");
-                    }
-                } else if (action.equals("check")) {
-                    boolean inCommands = containsIgnoreCase(commands, cmd);
-                    boolean inTabCompletes = containsIgnoreCase(tabcompletes, cmd);
 
-                    String location;
-                    if (inCommands && inTabCompletes) {
-                        location = "both commands and tabcompletes";
-                    } else if (inCommands) {
-                        location = "commands only";
-                    } else if (inTabCompletes) {
-                        location = "tabcompletes only";
-                    } else {
-                        location = "neither commands nor tabcompletes";
-                    }
+                switch (action) {
+                    case "add": {
+                        HideScope scope = parseHideScope(args, 4);
+                        if (scope.nextArgIndex() >= args.length) {
+                            sender.sendMessage("§cUsage: /core hide group <name> add [-c|-t|-tc] <cmd[,cmd2,...]>");
+                            return;
+                        }
 
-                    sender.sendMessage("§eCheck for '" + cmd + "' in group '" + group + "': §f" + location + "§e.");
-                    sender.sendMessage("§7commands: " + (inCommands ? "§aYES" : "§cNO") + " §8| §7tabcompletes: " + (inTabCompletes ? "§aYES" : "§cNO"));
-                } else {
-                    sender.sendMessage("§cUsage: /core hide group <name> <add [-s]|remove|check> <cmd>");
+                        List<String> targets = parseHideTargets(args[scope.nextArgIndex()]);
+                        if (targets.isEmpty()) {
+                            sender.sendMessage("§cNo valid commands were provided.");
+                            return;
+                        }
+                        List<String> commands = hideConfig.getStringList(groupPath + group + ".commands");
+                        List<String> tabcompletes = hideConfig.getStringList(groupPath + group + ".tabcompletes");
+                        List<String> addedTargets = new ArrayList<>();
+
+                        for (String cmd : targets) {
+                            boolean added = false;
+                            if (scope.commands() && !containsIgnoreCase(commands, cmd)) {
+                                commands.add(cmd);
+                                added = true;
+                            }
+                            if (scope.tabCompletes() && !containsIgnoreCase(tabcompletes, cmd)) {
+                                tabcompletes.add(cmd);
+                                added = true;
+                            }
+                            if (added) {
+                                addedTargets.add(cmd);
+                            }
+                        }
+
+                        hideConfig.set(groupPath + group + ".commands", commands);
+                        hideConfig.set(groupPath + group + ".tabcompletes", tabcompletes);
+                        saveHideConfig(hideConfig, hideFile);
+                        handleReloadCommand(sender, null);
+                        String targetSummary = String.join(", ", targets);
+                        if (addedTargets.isEmpty()) {
+                            sender.sendMessage("§eNothing changed for " + describeHideScope(scope) + " in group '" + group + "': " + targetSummary +
+                                    (createdGroup ? " §7(Group created automatically.)" : ""));
+                        } else {
+                            sender.sendMessage("§aAdded " + String.join(", ", addedTargets) + " to " + describeHideScope(scope) + " for group '" + group + "'." +
+                                    (createdGroup ? " §7(Group created automatically.)" : ""));
+                        }
+                        break;
+                    }
+                    case "remove": {
+                        HideScope scope = parseHideScope(args, 4);
+                        if (scope.nextArgIndex() >= args.length) {
+                            sender.sendMessage("§cUsage: /core hide group <name> remove [-c|-t|-tc] <cmd[,cmd2,...]>");
+                            return;
+                        }
+
+                        List<String> targets = parseHideTargets(args[scope.nextArgIndex()]);
+                        if (targets.isEmpty()) {
+                            sender.sendMessage("§cNo valid commands were provided.");
+                            return;
+                        }
+                        List<String> commands = hideConfig.getStringList(groupPath + group + ".commands");
+                        List<String> tabcompletes = hideConfig.getStringList(groupPath + group + ".tabcompletes");
+                        List<String> removedTargets = new ArrayList<>();
+
+                        for (String cmd : targets) {
+                            boolean changed = false;
+                            if (scope.commands() && removeIgnoreCase(commands, cmd)) {
+                                changed = true;
+                            }
+                            if (scope.tabCompletes() && removeIgnoreCase(tabcompletes, cmd)) {
+                                changed = true;
+                            }
+                            if (changed) {
+                                removedTargets.add(cmd);
+                            }
+                        }
+
+                        hideConfig.set(groupPath + group + ".commands", commands);
+                        hideConfig.set(groupPath + group + ".tabcompletes", tabcompletes);
+                        saveHideConfig(hideConfig, hideFile);
+                        handleReloadCommand(sender, null);
+
+                        if (!removedTargets.isEmpty()) {
+                            sender.sendMessage("§aRemoved " + String.join(", ", removedTargets) + " from " + describeHideScope(scope) + " for group '" + group + "'.");
+                        } else {
+                            sender.sendMessage("§eNone of " + String.join(", ", targets) + " were present in " + describeHideScope(scope) + " for group '" + group + "'.");
+                        }
+                        break;
+                    }
+                    case "inherit": {
+                        if (args.length < 5) {
+                            sender.sendMessage("§cUsage: /core hide group <name> inherit <parent> [-c|-t|-tc]");
+                            return;
+                        }
+
+                        String parentGroup = args[4];
+                        if (!hideConfig.contains(groupPath + parentGroup)) {
+                            sender.sendMessage("§cParent group '" + parentGroup + "' does not exist in hide.yml.");
+                            return;
+                        }
+
+                        HideScope scope = parseHideScope(args, 5);
+                        List<String> inheritedCommands = hideConfig.getStringList(groupPath + group + ".inherits.commands");
+                        List<String> inheritedTabCompletes = hideConfig.getStringList(groupPath + group + ".inherits.tabcompletes");
+
+                        if (scope.commands() && !containsIgnoreCase(inheritedCommands, parentGroup)) {
+                            inheritedCommands.add(parentGroup);
+                        }
+                        if (scope.tabCompletes() && !containsIgnoreCase(inheritedTabCompletes, parentGroup)) {
+                            inheritedTabCompletes.add(parentGroup);
+                        }
+
+                        hideConfig.set(groupPath + group + ".inherits.commands", inheritedCommands);
+                        hideConfig.set(groupPath + group + ".inherits.tabcompletes", inheritedTabCompletes);
+                        saveHideConfig(hideConfig, hideFile);
+                        handleReloadCommand(sender, null);
+                        sender.sendMessage("§aGroup '" + group + "' now inherits " + describeHideScope(scope) + " from '" + parentGroup + "'." +
+                                (createdGroup ? " §7(Group created automatically.)" : ""));
+                        break;
+                    }
+                    case "check": {
+                        HideScope scope = parseHideScope(args, 4);
+                        if (scope.nextArgIndex() >= args.length) {
+                            sender.sendMessage("§cUsage: /core hide group <name> check [-c|-t|-tc] <cmd[,cmd2,...]>");
+                            return;
+                        }
+
+                        List<String> targets = parseHideTargets(args[scope.nextArgIndex()]);
+                        if (targets.isEmpty()) {
+                            sender.sendMessage("§cNo valid commands were provided.");
+                            return;
+                        }
+                        List<String> commands = hideConfig.getStringList(groupPath + group + ".commands");
+                        List<String> tabcompletes = hideConfig.getStringList(groupPath + group + ".tabcompletes");
+                        for (String cmd : targets) {
+                            boolean inCommands = containsIgnoreCase(commands, cmd);
+                            boolean inTabCompletes = containsIgnoreCase(tabcompletes, cmd);
+
+                            sender.sendMessage("§eCheck for '" + cmd + "' in group '" + group + "' (" + describeHideScope(scope) + "):");
+                            if (scope.commands()) {
+                                sender.sendMessage("§7commands: " + (inCommands ? "§aYES" : "§cNO"));
+                            }
+                            if (scope.tabCompletes()) {
+                                sender.sendMessage("§7tabcompletes: " + (inTabCompletes ? "§aYES" : "§cNO"));
+                            }
+                        }
+                        break;
+                    }
+                    default:
+                        sender.sendMessage("§cUsage: /core hide group <name> <add|remove|check|inherit> ...");
+                        break;
                 }
                 break;
             }
@@ -1104,12 +1795,56 @@ public class Core implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void initializeHideGroup(org.bukkit.configuration.file.YamlConfiguration hideConfig, String groupPath, String group) {
+        hideConfig.set(groupPath + group + ".whitelist", true);
+        hideConfig.set(groupPath + group + ".commands", new java.util.ArrayList<String>());
+        hideConfig.set(groupPath + group + ".tabcompletes", new java.util.ArrayList<String>());
+        hideConfig.set(groupPath + group + ".inherits.commands", new java.util.ArrayList<String>());
+        hideConfig.set(groupPath + group + ".inherits.tabcompletes", new java.util.ArrayList<String>());
+    }
+
     private void saveHideConfig(org.bukkit.configuration.file.YamlConfiguration hideConfig, java.io.File file) {
         try {
             hideConfig.save(file);
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private HideScope parseHideScope(String[] args, int index) {
+        if (index >= args.length) {
+            return new HideScope(true, true, index);
+        }
+
+        return switch (args[index].toLowerCase(Locale.ROOT)) {
+            case "-c", "-s" -> new HideScope(true, false, index + 1);
+            case "-t" -> new HideScope(false, true, index + 1);
+            case "-tc" -> new HideScope(true, true, index + 1);
+            default -> new HideScope(true, true, index);
+        };
+    }
+
+    private String describeHideScope(HideScope scope) {
+        if (scope.commands() && scope.tabCompletes()) {
+            return "commands and tabcompletes";
+        }
+        if (scope.commands()) {
+            return "commands";
+        }
+        return "tabcompletes";
+    }
+
+    private List<String> parseHideTargets(String rawValue) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return List.of();
+        }
+
+        return Arrays.stream(rawValue.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .distinct()
+                .toList();
     }
 
     private boolean containsIgnoreCase(List<String> values, String target) {
@@ -1122,6 +1857,23 @@ public class Core implements CommandExecutor, TabCompleter {
             }
         }
         return false;
+    }
+
+    private boolean removeIgnoreCase(List<String> values, String target) {
+        if (values == null || target == null) {
+            return false;
+        }
+
+        boolean removed = false;
+        Iterator<String> iterator = values.iterator();
+        while (iterator.hasNext()) {
+            String value = iterator.next();
+            if (value != null && value.equalsIgnoreCase(target)) {
+                iterator.remove();
+                removed = true;
+            }
+        }
+        return removed;
     }
 
     @Override
@@ -1147,6 +1899,7 @@ public class Core implements CommandExecutor, TabCompleter {
                 suggestions.add("cmd");
                 suggestions.add("command");
                 suggestions.add("dialog");
+                suggestions.add("filter");
                 suggestions.add("item");
                 suggestions.add("rp");
                 suggestions.add("migrate");
@@ -1163,6 +1916,42 @@ public class Core implements CommandExecutor, TabCompleter {
                 suggestions.add("gamemode");
             } else if (args.length == 3 && args[1].equalsIgnoreCase("gamemode")) {
                 suggestions.addAll(List.of("on", "off", "toggle"));
+            }
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("filter")) {
+            if (args.length == 2) {
+                suggestions.addAll(List.of("test", "check", "add", "remove", "set"));
+            } else if (args.length == 3 && args[1].equalsIgnoreCase("test")) {
+                suggestions.addAll(List.of("chat", "command", "discord"));
+            } else if (args.length == 3 && List.of("add", "remove", "set").contains(args[1].toLowerCase(Locale.ROOT))) {
+                suggestions.addAll(List.of("token", "phrase", "substring", "regex"));
+            } else if (args.length >= 4 && List.of("remove", "set").contains(args[1].toLowerCase(Locale.ROOT))) {
+                FilterSectionType type = FilterSectionType.from(args[2]);
+                if (type != null) {
+                    org.bukkit.configuration.file.YamlConfiguration filterConfig =
+                            org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(getWordPhraseFilterFile());
+                    for (Object raw : filterConfig.getList(type.path(), new ArrayList<>())) {
+                        if (raw instanceof String stringValue) {
+                            suggestions.add(stringValue);
+                        } else if (raw instanceof Map<?, ?> mapValue) {
+                            Object value = mapValue.get("value");
+                            if (value != null) {
+                                suggestions.add(String.valueOf(value));
+                            }
+                        }
+                    }
+                }
+            } else if (args.length >= 4 && args[1].equalsIgnoreCase("add") && args[2].equalsIgnoreCase("token")) {
+                if (args.length == 5) {
+                    suggestions.addAll(List.of("exact", "normal", "loose", "except"));
+                } else if (args.length == 6 && isTokenStrength(args[4].toLowerCase(Locale.ROOT))) {
+                    suggestions.add("except");
+                }
+            } else if (args.length >= 5 && args[1].equalsIgnoreCase("set") && args[2].equalsIgnoreCase("token")) {
+                if (args.length == 6) {
+                    suggestions.addAll(List.of("exact", "normal", "loose", "except"));
+                } else if (args.length == 7 && isTokenStrength(args[5].toLowerCase(Locale.ROOT))) {
+                    suggestions.add("except");
+                }
             }
         } else if (args.length > 1 && args[0].equalsIgnoreCase("reload")) {
             if (args.length == 2) {
@@ -1192,22 +1981,31 @@ public class Core implements CommandExecutor, TabCompleter {
                     suggestions.addAll(hideConfig.getConfigurationSection("groups").getKeys(false));
                 }
             } else if (args.length == 4 && args[1].equalsIgnoreCase("group")) {
-                suggestions.addAll(List.of("add", "remove", "check"));
-            } else if (args.length == 5 && args[1].equalsIgnoreCase("group") && args[3].equalsIgnoreCase("add")) {
-                suggestions.add("-s");
-            } else if (args.length == 5 && args[1].equalsIgnoreCase("group") && args[3].equalsIgnoreCase("check")) {
-                suggestions.addAll(List.of("*", "^", "bukkit:*", "minecraft:*"));
+                suggestions.addAll(List.of("add", "remove", "check", "inherit"));
+            } else if (args.length >= 5 && args[1].equalsIgnoreCase("group")) {
                 org.bukkit.configuration.file.YamlConfiguration hideConfig =
                         org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
                                 new java.io.File(plugin.getDataFolder(), "hide.yml"));
-                String group = args[2];
-                suggestions.addAll(hideConfig.getStringList("groups." + group + ".commands"));
-                suggestions.addAll(hideConfig.getStringList("groups." + group + ".tabcompletes"));
-            } else if (args.length == 6 && args[1].equalsIgnoreCase("group") && args[3].equalsIgnoreCase("add") && args[4].equalsIgnoreCase("-s")) {
-                suggestions.addAll(List.of("*", "^", "bukkit:*", "minecraft:*"));
-            } else if ((args.length == 5 && args[1].equalsIgnoreCase("group") && (args[3].equalsIgnoreCase("add") || args[3].equalsIgnoreCase("remove")))
-                    || (args.length == 6 && args[1].equalsIgnoreCase("group") && args[3].equalsIgnoreCase("add") && args[4].equalsIgnoreCase("-s"))) {
-                suggestions.addAll(List.of("*", "^", "bukkit:*", "minecraft:*"));
+                String action = args[3].toLowerCase(Locale.ROOT);
+                boolean scopeFlag = List.of("-c", "-t", "-tc", "-s").contains(args[4].toLowerCase(Locale.ROOT));
+
+                if (args.length == 5 && (action.equals("add") || action.equals("remove") || action.equals("check"))) {
+                    suggestions.addAll(List.of("-c", "-t", "-tc", "-s", "*", "^", "bukkit:*", "minecraft:*"));
+                    String group = args[2];
+                    suggestions.addAll(hideConfig.getStringList("groups." + group + ".commands"));
+                    suggestions.addAll(hideConfig.getStringList("groups." + group + ".tabcompletes"));
+                } else if (args.length == 5 && action.equals("inherit")) {
+                    if (hideConfig.isConfigurationSection("groups")) {
+                        suggestions.addAll(hideConfig.getConfigurationSection("groups").getKeys(false));
+                    }
+                } else if (args.length == 6 && (action.equals("add") || action.equals("remove") || action.equals("check")) && scopeFlag) {
+                    suggestions.addAll(List.of("*", "^", "bukkit:*", "minecraft:*"));
+                    String group = args[2];
+                    suggestions.addAll(hideConfig.getStringList("groups." + group + ".commands"));
+                    suggestions.addAll(hideConfig.getStringList("groups." + group + ".tabcompletes"));
+                } else if (args.length == 6 && action.equals("inherit")) {
+                    suggestions.addAll(List.of("-c", "-t", "-tc", "-s"));
+                }
             }
         } else if (args.length > 1 && args[0].equalsIgnoreCase("worlddefaults")) {
             suggestions.addAll(getWorldDefaultsSuggestions(sender, args));

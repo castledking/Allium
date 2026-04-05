@@ -299,6 +299,9 @@ public class NicknameManager {
         if (player == null || storedNick == null || storedNick.trim().isEmpty()) return;
         try {
             inMemoryNicknames.put(player.getUniqueId(), storedNick);
+            if (tabPluginPresent) {
+                return;
+            }
             String formatted = getFormattedNickname(player, storedNick);
             Component displayComponent = DISPLAY_NAME_SERIALIZER.deserialize(formatted.replace('&', '§'));
             applyDisplayIdentity(player, displayComponent);

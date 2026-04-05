@@ -32,12 +32,9 @@ public class ConnectionManager implements Listener {
 
     private final Map<UUID, Long> playerLoginTimes;
     private final PluginStart plugin;
-    private final boolean tabPluginPresent;
-
     public ConnectionManager(PluginStart plugin) {
         this.plugin = plugin;
         this.playerLoginTimes = plugin.getPlayerLoginTimes();
-        this.tabPluginPresent = plugin.getServer().getPluginManager().isPluginEnabled("TAB");
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -49,19 +46,18 @@ public class ConnectionManager implements Listener {
         // Store login time for online duration tracking
         playerLoginTimes.put(playerUUID, System.currentTimeMillis());
         
-        // Restore nickname from database on join
-        if (!tabPluginPresent) {
-            Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
-                String storedNick = plugin.getDatabase().getStoredPlayerDisplayname(playerUUID);
-                if (storedNick != null && !storedNick.trim().isEmpty()) {
-                    Bukkit.getScheduler().runTask(plugin, () -> {
-                        if (player.isOnline() && plugin.getNicknameManager() != null) {
-                            plugin.getNicknameManager().restoreDisplayNameFromStored(player, storedNick);
-                        }
-                    });
-                }
-            });
-        }
+        // Restore nickname from database on join.
+        // TAB should only stop Bukkit display/player-list mutation, not the nickname restore itself.
+        Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
+            String storedNick = plugin.getDatabase().getStoredPlayerDisplayname(playerUUID);
+            if (storedNick != null && !storedNick.trim().isEmpty()) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (player.isOnline() && plugin.getNicknameManager() != null) {
+                        plugin.getNicknameManager().restoreDisplayNameFromStored(player, storedNick);
+                    }
+                });
+            }
+        });
         
         // Update last seen date in database asynchronously
         Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {

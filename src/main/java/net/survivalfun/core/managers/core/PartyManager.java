@@ -807,8 +807,8 @@ public class PartyManager {
             hiddenSet.remove(playerId);
         }
 
-        // Leave their current party (if any) - always run so /party commands work
-        leaveParty(playerId);
+        // Note: Players now stay in their party when logging out (persistent parties)
+        // Party membership only changes via explicit /party leave or /party disband commands
 
         // Clean up any pending invites this player has sent to others
         // Now we can properly track and remove invites sent by this player

@@ -85,10 +85,21 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
                     String members = party.getMembers().stream()
                         .map(id -> {
                             Player p = Bukkit.getPlayer(id);
-                            return p != null ? p.getName() : "Offline";
+                            if (p != null) {
+                                return "&a" + p.getName();
+                            } else {
+                                // Try to get name from offline player
+                                org.bukkit.OfflinePlayer offline = Bukkit.getOfflinePlayer(id);
+                                String name = offline.getName();
+                                return name != null ? "&7" + name + " (offline)" : "&7Unknown (offline)";
+                            }
                         })
-                        .collect(Collectors.joining(", "));
-                    player.sendMessage(Text.colorize("&aParty '" + party.getName() + "' (" + party.getSize() + " members): " + members));
+                        .collect(Collectors.joining("&r, "));
+                    String leaderName = party.getLeader().equals(playerId) ? "You" : 
+                        Bukkit.getOfflinePlayer(party.getLeader()).getName();
+                    player.sendMessage(Text.colorize("&6Party: &f" + party.getName()));
+                    player.sendMessage(Text.colorize("&6Leader: &f" + leaderName));
+                    player.sendMessage(Text.colorize("&6Members (&f" + party.getSize() + "&6): &r" + members));
                 } else {
                     player.sendMessage(Text.colorize("&cYou're not in a party."));
                 }
@@ -112,8 +123,13 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
 
     private void handleCreate(Player player) {
         UUID playerId = player.getUniqueId();
-        if (partyManager.getPlayerParty(playerId) != null) {
-            player.sendMessage(Text.colorize("&cYou are already in a party."));
+        Party existingParty = partyManager.getPlayerParty(playerId);
+        if (existingParty != null) {
+            if (existingParty.getLeader().equals(playerId)) {
+                player.sendMessage(Text.colorize("&cYou are already the leader of party '" + existingParty.getName() + "'. Use /party disband to remove it first."));
+            } else {
+                player.sendMessage(Text.colorize("&cYou are already a member of party '" + existingParty.getName() + "'. Use /party leave to leave it first."));
+            }
             return;
         }
 

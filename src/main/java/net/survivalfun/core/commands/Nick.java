@@ -86,37 +86,19 @@ public class Nick implements CommandExecutor {
             return true;
         }
         
-        // /nick with no args - open dialog or show usage
+        // /nick with no args - show usage
         if (actualArgs.length == 0) {
             if (!isPlayer) {
                 Text.sendErrorMessage(sender, "player-only-command", plugin.getLangManager(), "use /{cmd}", "execute this command.", true);
                 return true;
             }
             Player player = (Player) sender;
-            if (forceCommand || (!hasGuiPerm && hasNickPerm)) {
+            if (hasNickPerm || hasGuiPerm) {
                 sender.sendMessage("§cUsage: /nick <name>");
-                return true;
-            }
-            if (hasGuiPerm) {
-                try {
-                    String currentNick = plugin.getNicknameManager().getStoredNickname(player);
-                    if (currentNick == null || currentNick.isEmpty()) currentNick = player.getName();
-                    int maxLength = plugin.getNicknameManager().getMaxNickLength();
-                    Dialog.showTextInput(plugin, player, "Edit Nickname",
-                        "Edit your nickname below. Supports color codes (&a, &b, &c, etc.) and formatting.",
-                        "nickname", "Nickname:", currentNick, maxLength, "Apply", "nick_apply");
-                } catch (Exception e) {
-                    Text.sendErrorMessage(player, "command-error", plugin.getLangManager(), "{cmd}", "/" + label, true);
-                    plugin.getLogger().warning("Error opening nickname dialog: " + e.getMessage());
-                }
-                return true;
-            } else if (hasNickPerm) {
-                sender.sendMessage("§cUsage: /nick <name>");
-                return true;
             } else {
                 Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "set your nickname.", true);
-                return true;
             }
+            return true;
         }
         
         // /nick <name> - always run as command with permission checks (no dialog bypass)
@@ -203,39 +185,12 @@ public class Nick implements CommandExecutor {
                 return true;
             }
             
-            // If force command mode (-c) or no GUI perm, use command mode
-            if (forceCommand || (!hasGuiPerm && hasNickPerm)) {
-                String nickname = actualArgs[1];
-                if (!hasColorPermission(player, nickname)) {
-                    Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "use those colors/formats.", true);
-                    return true;
-                }
-                return setNickname(player, target, nickname);
-            }
-            
+            // /nick <player> <name> - set directly without GUI
             String nickname = actualArgs[1];
-            // If nickname contains color codes and user has permission, bypass GUI and set directly
-            boolean hasColorCodes = nickname.contains("&") || nickname.contains("§") || nickname.contains("#")
-                || nickname.contains("<gradient") || nickname.contains("<rainbow");
-            if (hasGuiPerm && hasColorCodes && hasColorPermission(player, nickname)) {
-                return setNickname(player, target, nickname);
-            }
-            // Check if GUI mode (has both gui and others) - only when no color codes
-            if (hasGuiPerm) {
-                try {
-                    NicknameGUI gui = new NicknameGUI(player, plugin, target.getName());
-                    gui.open();
-                } catch (Exception e) {
-                    Text.sendErrorMessage(player, "command-error", plugin.getLangManager(), "{cmd}", "/" + label, true);
-                }
-                return true;
-            }
-            
             if (!hasColorPermission(player, nickname)) {
                 Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "use those colors/formats.", true);
                 return true;
             }
-            
             return setNickname(player, target, nickname);
         }
         

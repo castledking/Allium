@@ -180,19 +180,10 @@ public class PartyManager {
      * More efficient than updating all visibility
      */
     private void updateSingleRelation(Player viewer, Player target) {
-        boolean shouldSee = shouldBeVisible(viewer, target);
-        boolean doesSee = visiblePlayers.getOrDefault(viewer.getUniqueId(), Collections.emptySet()).contains(target.getUniqueId());
-
-        if (shouldSee && !doesSee) {
-            showPlayerConsideringSpectator(viewer, target);
-            visiblePlayers.computeIfAbsent(viewer.getUniqueId(), k -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(target.getUniqueId());
-        } else if (!shouldSee && doesSee) {
-            hidePlayer(viewer, target);
-            Set<UUID> visible = visiblePlayers.get(viewer.getUniqueId());
-            if (visible != null) {
-                visible.remove(target.getUniqueId());
-            }
-        }
+        // No-op: hidePlayer() affects tab completion, which we don't want.
+        // TAB plugin handles tab list visibility via groups.yml.
+        // Allium only intercepts remove packets in TabListManager.
+        // Entity/locator visibility is managed separately without hidePlayer.
     }
 
     /**

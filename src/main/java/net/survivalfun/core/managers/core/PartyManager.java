@@ -39,6 +39,10 @@ public class PartyManager {
 
     // Temporary visibility overrides: player -> (target -> expiration time)
     private final Map<UUID, Map<UUID, Long>> forcedVisibilityOverrides = new ConcurrentHashMap<>();
+    
+    // Movement throttling: player -> last update time
+    private final Map<UUID, Long> lastMoveUpdate = new ConcurrentHashMap<>();
+    private static final long MOVE_THROTTLE_MS = 100; // Max 10 updates per second per player
 
     public PartyManager(PluginStart plugin) {
         this.plugin = plugin;
@@ -526,7 +530,15 @@ public class PartyManager {
             return;
         }
 
+        // Throttle movement updates to prevent lag during flying
+        long now = System.currentTimeMillis();
         UUID movedPlayerId = movedPlayer.getUniqueId();
+        Long lastUpdate = lastMoveUpdate.get(movedPlayerId);
+        if (lastUpdate != null && now - lastUpdate < MOVE_THROTTLE_MS) {
+            return;
+        }
+        lastMoveUpdate.put(movedPlayerId, now);
+
         Party movedPlayerParty = getPlayerParty(movedPlayerId);
 
         // Update visibility for all other players relative to the moved player

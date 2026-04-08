@@ -111,7 +111,7 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
                         continue;
                     }
 
-                    // Only ensure player is listed - NEVER modify display name
+                    // Only ensure player is listed - NEVER modify display name or actions
                     // TAB plugin handles all formatting via groups.yml
                     if (!entry.isListed()) {
                         entry.setListed(true);
@@ -119,12 +119,8 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
                     }
                 }
 
+                // Only update entries, don't modify actions to prevent packet storms
                 if (touchedListed) {
-                    EnumSet<WrapperPlayServerPlayerInfoUpdate.Action> actions = EnumSet.copyOf(packet.getActions());
-                    if (!actions.contains(WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER)) {
-                        actions.add(WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LISTED);
-                    }
-                    packet.setActions(actions);
                     packet.setEntries(entries);
                 }
             }

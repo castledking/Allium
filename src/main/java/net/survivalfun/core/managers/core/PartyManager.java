@@ -197,34 +197,10 @@ public class PartyManager {
      * @param viewers List of players who can see this target (all online players except target)
      */
     public void handleRadiusVisibilityChange(Player targetPlayer, List<Player> viewers) {
-        if (!shouldSendTabPackets()) {
-            return;
-        }
-
-        List<Player> playersToAdd = new ArrayList<>();
-        List<Player> playersToRemove = new ArrayList<>();
-
-        for (Player viewer : viewers) {
-            if (viewer.equals(targetPlayer)) {
-                continue;
-            }
-
-            boolean shouldBeVisible = shouldBeVisibleToViewer(targetPlayer, viewer);
-
-            if (shouldBeVisible) {
-                playersToAdd.add(viewer);
-            } else {
-                playersToRemove.add(viewer);
-            }
-        }
-
-        // Send tablist update packets
-        if (!playersToAdd.isEmpty()) {
-            tabListManager.sendTabListAddPacket(targetPlayer, playersToAdd);
-        }
-        if (!playersToRemove.isEmpty()) {
-            tabListManager.sendTabListRemovePacket(targetPlayer, playersToRemove);
-        }
+        // Note: Allium no longer sends tab list add packets.
+        // TAB plugin handles all tab list management and formatting via groups.yml.
+        // We only intercept remove packets in TabListManager to prevent removing
+        // party members that should stay visible in tab.
     }
 
     /**

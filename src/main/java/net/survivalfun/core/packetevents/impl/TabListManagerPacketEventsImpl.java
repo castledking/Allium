@@ -100,7 +100,6 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
             if (event.getPacketType() == PacketType.Play.Server.PLAYER_INFO_UPDATE) {
                 WrapperPlayServerPlayerInfoUpdate packet = new WrapperPlayServerPlayerInfoUpdate(event);
                 List<WrapperPlayServerPlayerInfoUpdate.PlayerInfo> entries = new ArrayList<>(packet.getEntries());
-                boolean touchedDisplay = false;
                 boolean touchedListed = false;
 
                 for (WrapperPlayServerPlayerInfoUpdate.PlayerInfo entry : entries) {
@@ -112,24 +111,17 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
                         continue;
                     }
 
-                    Component desiredDisplay = resolveDisplayName(viewer, targetPlayer);
-                    if (!Objects.equals(entry.getDisplayName(), desiredDisplay)) {
-                        entry.setDisplayName(desiredDisplay);
-                        touchedDisplay = true;
-                    }
-
+                    // Only ensure player is listed - NEVER modify display name
+                    // TAB plugin handles all formatting via groups.yml
                     if (!entry.isListed()) {
                         entry.setListed(true);
                         touchedListed = true;
                     }
                 }
 
-                if (touchedDisplay || touchedListed) {
+                if (touchedListed) {
                     EnumSet<WrapperPlayServerPlayerInfoUpdate.Action> actions = EnumSet.copyOf(packet.getActions());
-                    if (touchedDisplay && !actions.contains(WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER)) {
-                        actions.add(WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_DISPLAY_NAME);
-                    }
-                    if (touchedListed && !actions.contains(WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER)) {
+                    if (!actions.contains(WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER)) {
                         actions.add(WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LISTED);
                     }
                     packet.setActions(actions);
@@ -339,58 +331,22 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
 
     @Override
     public void updateTablistAfterPartyEvent(Player player, boolean hideNonParty) {
-        Party playerParty = partyManager.getPlayerParty(player.getUniqueId());
-        for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
-            if (!otherPlayer.equals(player) && otherPlayer.isOnline()) {
-                Party otherParty = partyManager.getPlayerParty(otherPlayer.getUniqueId());
-                boolean sameParty = playerParty != null && otherParty != null && playerParty.equals(otherParty);
-                if (sameParty) {
-                    sendTabListAddPacket(otherPlayer, List.of(player));
-                } else if (!hideNonParty) {
-                    sendTabListAddPacket(otherPlayer, List.of(player));
-                } else {
-                    sendTabListRemovePacket(otherPlayer, List.of(player));
-                }
-            }
-        }
+        // No-op: TAB plugin handles all tab list management.
+        // Allium only intercepts remove packets to prevent removing party members.
     }
 
     @Override
     public void sendTabListAddPacket(Player targetPlayer, List<Player> viewers) {
-        sendTabListAddPacketInternal(targetPlayer, viewers, true);
+        // No-op: TAB plugin handles all tab list additions
     }
 
     @Override
     public void forceSendTabListAddPacket(Player targetPlayer, List<Player> viewers) {
-        sendTabListAddPacketInternal(targetPlayer, viewers, false);
+        // No-op: TAB plugin handles all tab list additions
     }
 
     private void sendTabListAddPacketInternal(Player targetPlayer, List<Player> viewers, boolean respectVisibilityRules) {
-        try {
-            List<Player> playersToAdd = new ArrayList<>();
-            for (Player viewer : viewers) {
-                if (!respectVisibilityRules || shouldBeVisibleInTabList(viewer, targetPlayer)) {
-                    playersToAdd.add(viewer);
-                }
-            }
-            if (playersToAdd.isEmpty()) return;
-
-            // Single packet with all actions - client expects combined add when re-adding to tab list
-            EnumSet<WrapperPlayServerPlayerInfoUpdate.Action> addActions = EnumSet.of(
-                WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER,
-                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LISTED,
-                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LATENCY,
-                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_GAME_MODE,
-                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_DISPLAY_NAME
-            );
-            for (Player viewer : playersToAdd) {
-                WrapperPlayServerPlayerInfoUpdate.PlayerInfo entry = createPlayerInfoEntry(viewer, targetPlayer);
-                WrapperPlayServerPlayerInfoUpdate packet = new WrapperPlayServerPlayerInfoUpdate(addActions, entry);
-                sendPlayerInfoUpdatePacket(viewer, packet);
-            }
-        } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Failed to send tablist add packet for " + targetPlayer.getName() + ": " + e.getMessage());
-        }
+        // No-op: TAB plugin handles all tab list additions
     }
 
     private void sendPlayerInfoUpdatePacket(Player viewer, WrapperPlayServerPlayerInfoUpdate packet) {
@@ -716,22 +672,16 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
 
     @Override
     public void sendTabListAddPacketForMultiplePlayers(List<Player> targetPlayers, List<Player> viewers) {
-        sendTabListAddPacketForMultiplePlayers(targetPlayers, viewers, true);
+        // No-op: TAB plugin handles all tab list additions
     }
 
     @Override
     public void forceSendTabListAddPacketForMultiplePlayers(List<Player> targetPlayers, List<Player> viewers) {
-        sendTabListAddPacketForMultiplePlayers(targetPlayers, viewers, false);
+        // No-op: TAB plugin handles all tab list additions
     }
 
     private void sendTabListAddPacketForMultiplePlayers(List<Player> targetPlayers, List<Player> viewers, boolean respectVisibilityRules) {
-        try {
-            for (Player targetPlayer : targetPlayers) {
-                sendTabListAddPacketInternal(targetPlayer, viewers, respectVisibilityRules);
-            }
-        } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Failed to send tablist add packets for multiple players: " + e.getMessage());
-        }
+        // No-op: TAB plugin handles all tab list additions
     }
 
     @Override
@@ -756,40 +706,8 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
 
     @Override
     public void sendInitialTabListState(Player joinedPlayer) {
-        try {
-            List<Player> onlinePlayers = new ArrayList<>(plugin.getServer().getOnlinePlayers());
-            onlinePlayers.remove(joinedPlayer);
-            List<Player> playersToShow = new ArrayList<>();
-
-            for (Player otherPlayer : onlinePlayers) {
-                if (shouldBeVisibleInTabList(joinedPlayer, otherPlayer)) {
-                    playersToShow.add(otherPlayer);
-                }
-            }
-
-            if (minTabListSize > 0 && playersToShow.size() < minTabListSize) {
-                List<Player> remainingPlayers = new ArrayList<>(onlinePlayers);
-                remainingPlayers.removeAll(playersToShow);
-                remainingPlayers.sort((p1, p2) -> {
-                    double dist1 = joinedPlayer.getLocation().distance(p1.getLocation());
-                    double dist2 = joinedPlayer.getLocation().distance(p2.getLocation());
-                    return Double.compare(dist1, dist2);
-                });
-                for (Player closestPlayer : remainingPlayers) {
-                    if (playersToShow.size() >= minTabListSize) break;
-                    playersToShow.add(closestPlayer);
-                }
-            }
-
-            for (Player otherPlayer : playersToShow) {
-                sendTabListAddPacket(otherPlayer, List.of(joinedPlayer));
-                if (shouldBeVisibleInTabList(otherPlayer, joinedPlayer)) {
-                    sendTabListAddPacket(joinedPlayer, List.of(otherPlayer));
-                }
-            }
-        } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Failed to send initial tab list state for " + joinedPlayer.getName() + ": " + e.getMessage());
-        }
+        // No-op: TAB plugin handles all tab list initialization and formatting.
+        // Allium only intercepts remove packets to prevent removing party members.
     }
 
     private GameMode convertBukkitGameModeToPacketEvents(org.bukkit.GameMode bukkitGameMode) {

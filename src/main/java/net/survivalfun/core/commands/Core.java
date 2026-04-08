@@ -638,6 +638,7 @@ public class Core implements CommandExecutor, TabCompleter {
         if (args.length < 3) {
             sender.sendMessage(Component.text("§eUsage: /core sethomes <player> <number>"));
             sender.sendMessage(Component.text("§7Set a player's max homes. Use -1 to clear (use permissions again)."));
+            sender.sendMessage(Component.text("§7Use +N or -N to add/subtract from current value (e.g., +1, -2)."));
             return;
         }
         OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(args[1]);
@@ -653,12 +654,35 @@ public class Core implements CommandExecutor, TabCompleter {
             Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[1]);
             return;
         }
+        String input = args[2].trim();
         int maxHomes;
-        try {
-            maxHomes = Integer.parseInt(args[2]);
-        } catch (NumberFormatException e) {
-            sender.sendMessage(Component.text("§cInvalid number. Use -1 to clear override."));
-            return;
+
+        // Check for relative operations (+N or -N)
+        if (input.startsWith("+") || (input.startsWith("-") && input.length() > 1)) {
+            try {
+                int relativeAmount = Integer.parseInt(input.substring(1));
+                int current = plugin.getDatabase().getPlayerMaxHomes(target.getUniqueId());
+                if (current < 0) {
+                    sender.sendMessage(Component.text("§cCannot use relative operation: player has no override set (using permissions)."));
+                    sender.sendMessage(Component.text("§7Set an absolute value first, or clear permissions."));
+                    return;
+                }
+                maxHomes = current + relativeAmount * (input.startsWith("+") ? 1 : -1);
+                if (maxHomes < -1) {
+                    sender.sendMessage(Component.text("§cResult would be below -1. Minimum is -1 (use permissions)."));
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage(Component.text("§cInvalid relative amount. Use +N or -N (e.g., +1, -2)."));
+                return;
+            }
+        } else {
+            try {
+                maxHomes = Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                sender.sendMessage(Component.text("§cInvalid number. Use -1 to clear override, or +N/-N for relative changes."));
+                return;
+            }
         }
         if (maxHomes < -1 || maxHomes > 1000) {
             sender.sendMessage(Component.text("§cNumber must be between -1 and 1000 (-1 = use permissions)."));

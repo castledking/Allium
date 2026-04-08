@@ -6,6 +6,7 @@ import net.survivalfun.core.managers.core.Text;
 import static net.survivalfun.core.managers.core.Text.DebugSeverity.*;
 
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -40,6 +41,7 @@ public class NicknameManager {
     private int maxNickLength;
     private int minNickLength;
     private String allowedCharacters;
+    private List<String> forbiddenNicks = new ArrayList<>();
     
     // Pre-built templates
     private final Map<String, String[]> templates = new HashMap<>();
@@ -120,7 +122,16 @@ public class NicknameManager {
         if (nickname == null || nickname.length() < minNickLength || nickname.length() > maxNickLength) {
             return false;
         }
-        
+        // Check for forbidden terms
+        for (String forbidden : forbiddenNicks) {
+            if (nickname.toLowerCase().contains(forbidden.toLowerCase())) {
+                return false;
+            }
+        }
+        // Check if nickname matches any existing player name (like Essentials)
+        if (isPlayerName(nickname)) {
+            return false;
+        }
         // Strip color codes and formatting for validation
         String stripped = stripColor(nickname);
         
@@ -139,6 +150,38 @@ public class NicknameManager {
         // Strip MiniMessage tags (<red>, <gradient:...>, </gradient>, etc.) so validation checks only visible text
         text = text.replaceAll("<[^>]+>", "");
         return text;
+    }
+    
+    /**
+     * Check if a nickname matches an existing player's name (online or offline)
+     * @param nickname The nickname to check
+     * @return true if the nickname matches a player's name
+     */
+    public boolean isPlayerName(String nickname) {
+        // Strip color codes for comparison
+        String strippedNickname = PrismaticAPI.stripAll(nickname).toLowerCase();
+        if (strippedNickname.isEmpty()) {
+            return false;
+        }
+        
+        // Check online players
+        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+            if (onlinePlayer.getName().equalsIgnoreCase(strippedNickname)) {
+                return true;
+            }
+        }
+        
+        // Check offline players via server
+        try {
+            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(strippedNickname);
+            if (offlinePlayer != null && offlinePlayer.hasPlayedBefore()) {
+                return true;
+            }
+        } catch (Exception e) {
+            // Ignore lookup errors
+        }
+        
+        return false;
     }
     
     public String formatNickname(Player player, String nickname) {

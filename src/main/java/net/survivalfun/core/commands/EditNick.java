@@ -3,7 +3,6 @@ package net.survivalfun.core.commands;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.Text;
 import net.survivalfun.core.inventory.gui.NicknameGUI;
-import net.survivalfun.core.managers.core.Dialog;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

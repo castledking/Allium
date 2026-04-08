@@ -42,6 +42,7 @@ import net.survivalfun.core.commands.More;
 import net.survivalfun.core.commands.Msg;
 import net.survivalfun.core.commands.NV;
 import net.survivalfun.core.commands.Nick;
+import net.survivalfun.core.commands.EditNick;
 import net.survivalfun.core.commands.Note;
 import net.survivalfun.core.commands.Notes;
 import net.survivalfun.core.commands.Pay;
@@ -1591,10 +1592,14 @@ public class PluginStart extends JavaPlugin {
             ResourcePackManager resourcePackManager = new ResourcePackManager(this);
             Text.sendDebugLog(INFO, "Resource pack manager initialized");
             
-            // Register nickname command and dialog apply command
+            // Register nickname commands
             Nick nicknameCommand = new Nick(this);
             registerCommand("nickname", nicknameCommand);
             Text.sendDebugLog(INFO, "Nickname command registered");
+            
+            EditNick editNickCommand = new EditNick(this);
+            registerCommand("editnick", editNickCommand);
+            Text.sendDebugLog(INFO, "EditNick command registered");
 
             if (witherSpawnBlocker == null) {
                 witherSpawnBlocker = new WitherSpawnBlocker(this);

@@ -3,8 +3,6 @@ package net.survivalfun.core.commands;
 import me.croabeast.prismatic.PrismaticAPI;
 import net.survivalfun.core.PluginStart;
 import net.survivalfun.core.managers.core.Text;
-import net.survivalfun.core.inventory.gui.NicknameGUI;
-import net.survivalfun.core.managers.core.Dialog;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -73,7 +71,15 @@ public class Nick implements CommandExecutor {
             if (nickname.isEmpty()) return true;
             if (!target.hasPermission("allium.nick.gui")) return true;
             if (!plugin.getNicknameManager().isValidNickname(nickname)) {
-                target.sendMessage("§cInvalid nickname.");
+                // Check if it's because the nickname matches a player name
+                String stripped = PrismaticAPI.stripAll(nickname);
+                if (plugin.getServer().getPlayerExact(stripped) != null || 
+                    (plugin.getServer().getOfflinePlayer(stripped) != null && 
+                     plugin.getServer().getOfflinePlayer(stripped).hasPlayedBefore())) {
+                    target.sendMessage("§cThat nickname is already in use by a player.");
+                } else {
+                    target.sendMessage("§cInvalid nickname.");
+                }
                 return true;
             }
             if (plugin.getNicknameManager().isOnCooldown(target)) {

@@ -14,6 +14,10 @@ commands:
     usage: "/nickname"
     permission: allium.nick.gui
     aliases: [nick]
+  editnick:
+    description: "Open the nickname editor GUI"
+    usage: "/editnick [player]"
+    permission: allium.editnick
   redeem:
     description: Allows eligible players to redeem a rank and rewards.
     usage: /redeem

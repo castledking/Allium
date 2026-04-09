@@ -120,8 +120,55 @@ public class Invsee implements CommandExecutor, Listener {
         }
 
         if (shiftClick) {
-            event.setCancelled(true);
-            viewer.updateInventory();
+            // Handle shift-click to move items between inventories
+            if (holder.isEditable()) {
+                ItemStack clickedItem = event.getCurrentItem();
+                if (clickedItem == null || clickedItem.getType().isAir()) {
+                    event.setCancelled(true);
+                    viewer.updateInventory();
+                    return;
+                }
+
+                if (clickingTop) {
+                    // Shift-click in top inventory: move to viewer's inventory
+                    if (!isEditableTopSlot(rawSlot)) {
+                        event.setCancelled(true);
+                        viewer.updateInventory();
+                        return;
+                    }
+                    // Let Bukkit handle the shift-click to move to bottom inventory
+                    // Don't cancel - allow the default behavior
+                } else {
+                    // Shift-click in bottom inventory: move to top inventory
+                    // Find first available slot in top inventory
+                    ItemStack[] topContents = topInventory.getContents();
+                    int firstEmpty = -1;
+                    for (int i = 0; i < MAIN_INVENTORY_SIZE; i++) {
+                        if (isEditableTopSlot(i) && (topContents[i] == null || topContents[i].getType().isAir())) {
+                            firstEmpty = i;
+                            break;
+                        }
+                    }
+
+                    if (firstEmpty == -1) {
+                        // No space in top inventory
+                        event.setCancelled(true);
+                        viewer.updateInventory();
+                        return;
+                    }
+
+                    // Move the item
+                    event.setCancelled(true);
+                    ItemStack itemToMove = clickedItem.clone();
+                    event.getClickedInventory().setItem(rawSlot - topInventory.getSize(), null);
+                    topInventory.setItem(firstEmpty, itemToMove);
+                    viewer.updateInventory();
+                }
+            } else {
+                // Not editable - cancel shift-click
+                event.setCancelled(true);
+                viewer.updateInventory();
+            }
             return;
         }
 

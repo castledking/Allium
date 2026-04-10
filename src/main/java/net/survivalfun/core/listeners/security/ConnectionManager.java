@@ -85,6 +85,12 @@ public class ConnectionManager implements Listener {
                     return;
                 }
 
+                // Check if player is exempted from alt detection
+                if (plugin.getDatabase().isPlayerAltExempt(playerUUID)) {
+                    Text.sendDebugLog(INFO, "Player " + playerName + " is exempted from alt detection, skipping alt group assignment");
+                    return;
+                }
+
                 Permission vaultPermission = plugin.getVaultPermission();
                 if (vaultPermission == null || !vaultPermission.hasGroupSupport()) {
                     Text.sendDebugLog(WARN, "Unable to add alt group for " + playerName + ": Vault permissions group support is unavailable");
@@ -97,8 +103,9 @@ public class ConnectionManager implements Listener {
                     }
 
                     try {
-                        if (!vaultPermission.playerInGroup(player, "alt")) {
-                            boolean added = vaultPermission.playerAddGroup(player, "alt");
+                        // Add alt group globally (null world parameter) instead of player's current world
+                        if (!vaultPermission.playerInGroup(playerName, "alt", null)) {
+                            boolean added = vaultPermission.playerAddGroup(playerName, "alt", null);
                             if (!added) {
                                 Text.sendDebugLog(WARN, "Failed to add alt group for " + playerName);
                             }

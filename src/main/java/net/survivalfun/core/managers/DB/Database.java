@@ -69,11 +69,10 @@ public class Database {
     private final boolean debugMode;
     private final Lang lang;
     private final String jdbcUrl;
-    private static final int MAX_POOL_SIZE = 30;  // Increased from 20
-    private static final int MIN_IDLE = 5;
+    private static final int MAX_POOL_SIZE = 10;  // Reduced to prevent memory issues
+    private static final int MIN_IDLE = 2;
     private static final long CONNECTION_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
     private static final long MAX_LIFETIME_MS = TimeUnit.MINUTES.toMillis(30);
-    private static final long LEAK_DETECTION_THRESHOLD_MS = TimeUnit.SECONDS.toMillis(60);
 
     public Database(PluginStart plugin) {
         this.plugin = plugin;
@@ -105,7 +104,8 @@ public class Database {
         config.setIdleTimeout(TimeUnit.MINUTES.toMillis(10));
         config.setMaxLifetime(MAX_LIFETIME_MS);
         config.setAutoCommit(true);
-        config.setLeakDetectionThreshold(LEAK_DETECTION_THRESHOLD_MS);
+        // Disabled leak detection to prevent issues with async operations
+        // config.setLeakDetectionThreshold(LEAK_DETECTION_THRESHOLD_MS);
         config.setKeepaliveTime(TimeUnit.SECONDS.toMillis(30));
         
         // Connection test query
@@ -247,7 +247,7 @@ public class Database {
         return -1; // Return -1 if no generated key was returned
     }
 
-    private static final int CURRENT_DB_VERSION = 7;
+    private static final int CURRENT_DB_VERSION = 8;
 
     private void createTables(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
@@ -660,6 +660,25 @@ public class Database {
             }
 
             Text.sendDebugLog(INFO, "Applied migration to version 7");
+        }
+
+        if (currentVersion < 8) {
+            try (Connection connection = getConnection()) {
+                if (!tableExists(connection, "alt_exceptions")) {
+                    Text.sendDebugLog(INFO, "Creating alt_exceptions table...");
+                    statement.executeUpdate(
+                        "CREATE TABLE IF NOT EXISTS alt_exceptions (" +
+                        "player_uuid VARCHAR(36) NOT NULL PRIMARY KEY, " +
+                        "added_by VARCHAR(36) NOT NULL, " +
+                        "reason TEXT, " +
+                        "added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                        ")"
+                    );
+                    Text.sendDebugLog(INFO, "Successfully created alt_exceptions table");
+                }
+            }
+
+            Text.sendDebugLog(INFO, "Applied migration to version 8");
         }
     }
 
@@ -2245,6 +2264,64 @@ public class Database {
             Text.sendDebugLog(WARN, "Failed to determine alt status for player UUID: " + playerUUID, e);
         }
 
+        return false;
+    }
+
+    /**
+     * Check if a player is exempted from alt detection
+     * @param playerUUID The player's UUID
+     * @return true if the player is exempted
+     */
+    public boolean isPlayerAltExempt(UUID playerUUID) {
+        String sql = "SELECT 1 FROM alt_exceptions WHERE player_uuid = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, playerUUID.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to check alt exemption for player UUID: " + playerUUID, e);
+        }
+        return false;
+    }
+
+    /**
+     * Add a player to the alt exemption list
+     * @param playerUUID The player's UUID to exempt
+     * @param addedBy The UUID of the admin who added the exemption
+     * @param reason The reason for the exemption
+     * @return true if successful
+     */
+    public boolean addAltExemption(UUID playerUUID, UUID addedBy, String reason) {
+        // Use MERGE for H2 database (upsert functionality)
+        String sql = "MERGE INTO alt_exceptions (player_uuid, added_by, reason, added_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, playerUUID.toString());
+            statement.setString(2, addedBy.toString());
+            statement.setString(3, reason);
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to add alt exemption for player UUID: " + playerUUID, e);
+        }
+        return false;
+    }
+
+    /**
+     * Remove a player from the alt exemption list
+     * @param playerUUID The player's UUID to remove
+     * @return true if successful
+     */
+    public boolean removeAltExemption(UUID playerUUID) {
+        String sql = "DELETE FROM alt_exceptions WHERE player_uuid = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, playerUUID.toString());
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to remove alt exemption for player UUID: " + playerUUID, e);
+        }
         return false;
     }
 

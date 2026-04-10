@@ -69,6 +69,7 @@ import net.survivalfun.core.commands.XpBottleCommand;
 import net.survivalfun.core.commands.ChequeCommand;
 import net.survivalfun.core.commands.VoucherCommand;
 import net.survivalfun.core.commands.Seen;
+import net.survivalfun.core.commands.AltExempt;
 import net.survivalfun.core.commands.SpawnerCoreCommand;
 import net.survivalfun.core.managers.DB.Database.PlayerLastSeenData;
 import net.survivalfun.core.managers.DB.Database.RestrainedPlayerData;
@@ -1417,6 +1418,7 @@ public class PluginStart extends JavaPlugin {
             registerCommand("spy", spyCommand, spyCommand);
             registerCommand("whois", new Whois(this));
             registerCommand("seen", new Seen(this));
+            registerCommand("altexempt", new AltExempt(this));
             registerCommand("gc", new GC(this), tabCompleter);
             Help helpCommand = new Help(this);
             helpCommand.register();

@@ -36,7 +36,7 @@ public class AltProtectionListener implements Listener {
         if (sharesCurrentIp(attacker, victim)
                 && vaultPermission != null
                 && vaultPermission.hasGroupSupport()
-                && vaultPermission.playerInGroup(victim, "alt")) {
+                && vaultPermission.playerInGroup(victim.getName(), "alt", null)) {
             event.setCancelled(true);
             return;
         }

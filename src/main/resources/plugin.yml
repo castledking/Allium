@@ -363,6 +363,11 @@ commands:
     permission: allium.seen
     aliases: [alts]
 
+  altexempt:
+    description: "Manage alt exemptions"
+    usage: "/altexempt <add|remove|check> <player> [reason]"
+    permission: allium.altexempt
+
   maintenance:
     description: "Toggle maintenance mode"
     usage: "/maintenance [on|off] [reason]"

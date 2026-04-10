@@ -125,7 +125,20 @@ public class Seen implements CommandExecutor {
                 Class<?> floodgateApiClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi");
                 Object floodgateApi = floodgateApiClass.getMethod("getInstance").invoke(null);
 
-                // floodgateApi.getPlayers() -> Collection<?>
+                // Try to get player by username using Floodgate API
+                try {
+                    Object playerObj = floodgateApiClass.getMethod("getPlayer", String.class).invoke(floodgateApi, playerName);
+                    if (playerObj != null) {
+                        Object uuidObj = playerObj.getClass().getMethod("getJavaUniqueId").invoke(playerObj);
+                        if (uuidObj instanceof UUID) {
+                            return (UUID) uuidObj;
+                        }
+                    }
+                } catch (NoSuchMethodException e) {
+                    // getPlayer method not available, fall back to iterating through players
+                }
+
+                // Fall back to iterating through all Floodgate players
                 Object playersObj = floodgateApiClass.getMethod("getPlayers").invoke(floodgateApi);
                 if (playersObj instanceof Collection<?>) {
                     Collection<?> players = (Collection<?>) playersObj;
@@ -359,7 +372,15 @@ public class Seen implements CommandExecutor {
             return false;
         }
 
-        // Check if username contains invalid characters
+        // Check for Bedrock player format (starts with *)
+        // Floodgate prefixes Bedrock player names with *
+        if (username.startsWith("*")) {
+            // Allow Bedrock names - they can contain various characters
+            // Just ensure it's not empty after the asterisk
+            return username.length() > 1;
+        }
+
+        // Check if username contains invalid characters for Java Edition
         // Minecraft usernames can only contain letters, numbers, and underscores
         // and must be between 3 and 16 characters long
         return username.matches("^[a-zA-Z0-9_]{3,16}$");

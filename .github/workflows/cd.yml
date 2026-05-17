@@ -1,3 +1,4 @@
+# Release pipeline: GitHub Release + Modrinth + SpigotMC + Discord
 name: Release on Tag
 
 on:

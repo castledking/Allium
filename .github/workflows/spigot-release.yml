@@ -1,3 +1,4 @@
+# Triggered when a GitHub Release is published; mirrors to Modrinth + SpigotMC
 name: SpigotMC & Modrinth Release
 
 on:

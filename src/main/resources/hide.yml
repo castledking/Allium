@@ -62,3 +62,18 @@ groups:
       - mail
     tabcompletes:
       - ^
+
+  # Alt accounts - blacklist mode: listed commands are blocked for alt accounts
+  # whitelist=false means these commands are BLOCKED (blacklist)
+  # whitelist=true means ONLY these commands are allowed
+  alt:
+    whitelist: false
+    commands:
+      - pay
+      - jobs
+      - quests
+      - tasks
+      - ah
+      - auctionhouse
+    tabcompletes:
+      - ^

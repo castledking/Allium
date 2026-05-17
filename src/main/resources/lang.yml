@@ -103,6 +103,7 @@ world-not-allowed: "You don't have permission to use /{cmd} in {world}."
 invalid: "Invalid syntax: {syntax}"
 invalid-time-format: "&cInvalid time format. Use: 1 (seconds), 30s, 5m, 1h, etc."
 no-permission: "You don't have permission to use /{cmd}"
+alt-account-restricted: "You are not allowed to use /{cmd} as an alt account. See /wiki alt-accounts for more information."
 hold-item: "You must be holding an item to {modify} it."
 can-not-stack: "This item cannot be stacked."
 inventory-full: Inventory full, make some space before giving more items.

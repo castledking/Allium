@@ -1,0 +1,26 @@
+# Discord Webhook Configuration for Allium Release Announcements
+webhook:
+  url: ""
+message:
+  username: "Allium Essentials"
+  avatar_url: "https://castled.codes/assets/allium.png"
+  content: "<@&1400394882727673906>"
+  attachments: []
+embed:
+  author:
+    name: "Download on Modrinth"
+    url: "https://modrinth.com/plugin/allium-essentials#download"
+    icon_url: "https://castled.codes/assets/modrinth.png"
+  color: 16748574
+  thumbnail:
+    url: "https://i.imgur.com/eKZj0dR.png"
+  image:
+    url: ""
+  footer:
+    text: "Released via GitHub Actions"
+    icon_url: ""
+  timestamp: true
+  fields: []
+use-short-md: true
+edit:
+  message_id: ""

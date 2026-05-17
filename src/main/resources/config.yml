@@ -91,10 +91,20 @@ chat:
     default-write-channel: default
     # Special channel used by /a and the #message shortcut.
     staff-channel: staff-chat
+    # Local channel settings - radius-based chat that doesn't go to Discord
+    local-channel:
+      # Radius in blocks for local chat messages
+      radius: 100
+      # Format for local chat messages. Use {local-channel} placeholder for the local indicator
+      format: "&8[&eLocal&8] <prefix> &a%allium_nickname%&f: &f<message>"
+      # Aliases for the local channel command
+      aliases: ["local", "l"]
+      # Whether local chat should be excluded from Discord relay
+      exclude-from-discord: true
     list:
       default:
         display-name: "Global"
-        aliases: ["local", "l", "g", "global"]
+        aliases: ["g", "global"]
         format: "<prefix> &a%allium_nickname%&f: &f<message>"
         discord-channel-id: ""
         discord-in-format: "<dark_gray>[<blue>Discord</blue><dark_gray>] <white>{discord_username}<gray>: <white>{message}"
@@ -198,6 +208,13 @@ auto-restart:
   
   # Whether to save the world before restarting
   save-before-restart: true
+
+# Nickname sync settings
+nickname:
+  # If EssentialsX is installed, sync Allium nicknames to Essentials storage.
+  # This ensures /whois and other Essentials commands show the correct nickname.
+  # Default: true
+  sync-to-essentials: true
 
 # Here you can add the specific commands that allium.player 
 # will have permission to use.
@@ -415,6 +432,17 @@ world-defaults:
 #
 #  world_the_end:
 #    - send-command-feedback: false
+
+# End Gateway safe teleport settings
+# Overrides vanilla "highest block" behavior near the main End island
+end-gateway:
+  # Maximum distance from (0, 0) in The End to apply safe teleport logic
+  # Gateways outside this radius will use vanilla behavior
+  max-distance-from-center: 512
+
+  # Search radius around the gateway to look for safe teleport locations
+  # Smaller values = closer to gateway, larger = more fallback options
+  search-radius: 5
 
 # Version of the config file (do not modify)
 version: 0.1.5a

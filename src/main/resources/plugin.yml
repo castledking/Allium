@@ -1,9 +1,9 @@
 name: Allium
-version: 0.1.6a
-main: net.survivalfun.core.PluginStart
+version: "${project.version}"
+main: codes.castled.allium.PluginStart
 api-version: 1.21
 folia-supported: true
-author: towkio
+author: castledking
 description: "A secure, modern Essentials solution."
 soft-depend: [Vault, PlaceholderAPI, packetevents, floodgate, mcMMO, LuckPerms, DiscordSRV]
 loadafter: [PlaceholderAPI, mcMMO, packetevents, PacketEvents, Vault, LuckPerms, DiscordSRV]
@@ -183,6 +183,7 @@ commands:
     description: "Control locator bar visibility - toggle, show, hide players"
     usage: "/locatorbar <toggle|show|hide> [player] [time]"
     permission: allium.locatorbar
+    aliases: [partybar, lbar, pbar]
     
   deletemsg:
     description: "Deletes a message"
@@ -489,6 +490,8 @@ permissions:
       allium.warpinfo: true
       allium.warps.*: true
       allium.warp.overwrite.*: true
+      allium.alerts: true
+      modguard.notify: true
 
   allium.admin:
     description: "Gives access to admin commands"
@@ -573,6 +576,10 @@ permissions:
     default: op
   allium.alerts:
     description: "Allows using /core alerts and receiving security alerts"
+    default: op
+
+  allium.gradientname:
+    description: "Allows animated MiniMessage gradient formatting for %gradientdisplayname% in chat"
     default: op
 
   allium.gamemode.others:
@@ -713,9 +720,15 @@ permissions:
   allium.party:
     description: "Allows using party commands"
     default: op
+  allium.party.staff:
+    description: "Allows seeing all players on locator bar regardless of distance (in creative/survival)"
+    default: op
 
   allium.locatorbar:
     description: "Allows using locator bar control commands"
+    default: op
+  allium.locatorbar.help:
+    description: "Allows viewing locator bar help text"
     default: op
 
   allium.mail.group:
@@ -1347,6 +1360,9 @@ permissions:
   chat.minimessage.gradient:
     description: Allows usage of gradient tags in MiniMessage
     default: op
+  chat.minimessage.gradient.animation:
+    description: Allows usage of animated gradient effects (with :phase parameter) in MiniMessage
+    default: op
     
   chat.minimessage.rainbow:
     description: Allows usage of rainbow effect in MiniMessage
@@ -1523,3 +1539,11 @@ permissions:
   allium.treeaxe.use:
     description: "Allows using the tree axe"
     default: true
+
+  # ModGuard permissions
+  modguard.bypass:
+    description: "Bypasses mod detection checks"
+    default: op
+  modguard.notify:
+    description: "Receives notifications when players are kicked for banned mods"
+    default: op

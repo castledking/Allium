@@ -62,6 +62,11 @@ h2.log.properties
 
 # Resource Pack Dev Work
 work/
+*.tar.gz
+*.zip
 
 # Notes
 notes/
+
+# Old release files
+.release/old/

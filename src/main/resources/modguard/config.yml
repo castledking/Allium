@@ -1,0 +1,138 @@
+# ModGuard - Client Mod Detection
+# Runtime path: plugins/Allium/modguard/config.yml
+
+# Enable mod detection
+enabled: true
+
+# Detection mode: 'blacklist' (ban specific mods) or 'whitelist' (allow only specific mods)
+mode: blacklist
+
+# Check for mods when player joins (delayed by check-delay-ticks)
+check-on-join: true
+
+# Kick players when banned mods are detected
+kick-on-detection: true
+
+# Delay after join before checking (ticks). Allows all mod channels to register.
+check-delay-ticks: 40
+
+# List of banned mod IDs/patterns (case-insensitive unless case-sensitive is true)
+banned-mods:
+  - freecam
+  - "fabric-freecam"
+  - "inventory-profiles-next"
+  - inventoryprofilesnext
+  - tweakeroo
+  - litematica
+  - minihud
+  - "meteor-client"
+  - meteor
+  - wurst
+  - "wurst-client"
+  - vape
+  - liquidbounce
+  - aristois
+  - sigma
+  - impact
+  - future
+  - konas
+  - rusherhack
+  - "inertia-client"
+  - phobos
+  - kami
+  - salhack
+  - "w+2"
+  - "w+3"
+  - pyro
+  - creepy-salhack
+  - gamesense
+  - xulu
+  - "3arthh4ck"
+  - earthhack
+  - "0x22"
+  - "auto-crystal"
+  - "crystal-aura"
+  - "kill-aura"
+  - "meteor_client"
+  - inventoryprofiles
+  - "inventory_profiles"
+  - "inventory_profiles_next"
+  - ipnext
+  - libipn
+  - baritone
+  - inertia
+
+# List of allowed mods (only used in whitelist mode)
+allowed-mods:
+  - optifabric
+  - sodium
+  - lithium
+  - phosphor
+  - iris
+  - fabric-api
+  - modmenu
+
+# Kick message shown to players using banned mods
+# Use {mod} for the detected mod name and {player} for player name.
+kick-message: |-
+  &c&lMODIFIED CLIENT DETECTED
+
+  &7You have been kicked from the server.
+  &7Reason: &cBanned modification detected
+
+  &7Detected mod: &e{mod}
+
+  &7Please remove this mod and rejoin.
+
+# Alert sent to staff when player is kicked for banned mod.
+staff-alert: "&7[&c&lModGuard&7] &e{player} &7was kicked for using: &c{mod}"
+
+# Log format for detected mods.
+detection-log: "&7[ModGuard] Detected mods for {player}: {mods} (brand: {brand})"
+
+# Notify staff with permission when players join with any mods (not just banned).
+notify-staff: true
+
+# Staff permission for notifications.
+staff-permission: "modguard.notify"
+
+# Bypass permission - players with this permission won't be checked.
+bypass-permission: "modguard.bypass"
+
+# Log all detected mods to console (not just banned ones).
+log-all-mods: false
+
+# Log detection events (kicks, banned mods found).
+log-detections: true
+
+# Check methods - enable/disable specific detection methods.
+check-brand: true
+check-channels: true
+check-fml-handshake: true
+
+# Matching settings.
+regex-matching: false
+case-sensitive: false
+
+# Debug mode - logs all plugin messages and detections.
+debug: false
+
+# Translation-key probe detection.
+# This requires PacketEvents and is disabled by default until verified on your exact server version.
+# Translation hits can be caused by resource packs, so checks default to alert and require corroboration before kick.
+translation-probe:
+  enabled: false
+  default-action: alert
+  delay-ticks: 60
+  timeout-ticks: 80
+  fallback-prefix: "allium_probe_"
+  alert-message: "&7[&cModGuard&7] &e{player} &7hit translation probe &c{check} &8(&f{key}&8) &7resolved=&f{resolved} &7confidence=&e{confidence}&7 action=&e{action}"
+  checks:
+    meteor-open-gui:
+      enabled: true
+      key: "key.meteorclient.opengui"
+      expected:
+        - "Open GUI"
+        - "Meteor Client"
+      action: alert
+      require-corroboration-for-kick: true

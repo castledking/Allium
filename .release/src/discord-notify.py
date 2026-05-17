@@ -85,9 +85,12 @@ def main():
     payload_json = json.dumps(payload)
 
     import urllib.request
+    # Cloudflare blocks the default Python-urllib User-Agent with rule 1010.
+    # Send a curl-style UA so the webhook actually reaches Discord.
+    ua = 'AlliumReleaseBot/1.0 (+https://github.com/castledking/Allium)'
     req = urllib.request.Request(
         webhook_url, data=payload_json.encode('utf-8'),
-        headers={'Content-Type': 'application/json'},
+        headers={'Content-Type': 'application/json', 'User-Agent': ua},
         method='POST')
 
     try:
@@ -105,7 +108,7 @@ def main():
             edit_req = urllib.request.Request(
                 f"{webhook_url}/messages/{msg_id}",
                 data=payload_json.encode('utf-8'),
-                headers={'Content-Type': 'application/json'},
+                headers={'Content-Type': 'application/json', 'User-Agent': ua},
                 method='PATCH')
             try:
                 resp = urllib.request.urlopen(edit_req)

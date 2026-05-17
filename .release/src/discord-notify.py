@@ -71,7 +71,7 @@ def main():
                 'icon_url': ec['footer'].get('icon_url', '')
             }
         if ec.get('timestamp', True):
-            embed['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+            embed['timestamp'] = datetime.now(datetime.UTC).isoformat()
         if 'fields' in ec:
             embed['fields'] = []
             for field in ec['fields']:

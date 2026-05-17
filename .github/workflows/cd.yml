@@ -61,10 +61,10 @@ jobs:
             VERSION=${{ inputs.version }}
           elif [ -n "${GITHUB_REF#refs/tags/}" ] && [ "${GITHUB_REF#refs/tags/}" != "${GITHUB_REF}" ]; then
             VERSION=${GITHUB_REF#refs/tags/}
-            VERSION=${VERSION#v}
           else
-            VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null)
           fi
+          VERSION=${VERSION#v}
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Find JAR

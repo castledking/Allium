@@ -55,9 +55,15 @@ async function loadCookies(page, cookiesB64) {
     const raw = JSON.parse(Buffer.from(cookiesB64, 'base64').toString());
     const cookies = raw.map(c => {
       const cookie = { ...c };
-      if (cookie.sameSite && ['lax', 'strict', 'no_restriction'].includes(cookie.sameSite.toLowerCase())) {
-        const map = { lax: 'Lax', strict: 'Strict', no_restriction: 'None' };
-        cookie.sameSite = map[cookie.sameSite.toLowerCase()];
+      const valid = ['strict', 'lax', 'none'];
+      if (cookie.sameSite) {
+        const lower = cookie.sameSite.toLowerCase();
+        if (valid.includes(lower)) {
+          const map = { lax: 'Lax', strict: 'Strict', none: 'None' };
+          cookie.sameSite = map[lower];
+        } else {
+          delete cookie.sameSite;
+        }
       }
       return cookie;
     });
@@ -70,18 +76,34 @@ async function loadCookies(page, cookiesB64) {
   }
 }
 
+async function findVisibleInput(page, selector) {
+  const inputs = page.locator(selector);
+  const count = await inputs.count();
+  for (let i = 0; i < count; i++) {
+    if (await inputs.nth(i).isVisible().catch(() => false)) return inputs.nth(i);
+  }
+  return null;
+}
+
 async function login(page, username, password) {
   log('Logging in...');
   await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
+  await sleep(2000);
 
   const radio = page.locator('#ctrl_pageLogin_registered');
-  if (await radio.isVisible()) {
+  if (await radio.isVisible().catch(() => false)) {
     await radio.check();
     await sleep(500);
   }
 
-  await page.fill('input[name="login"]', username);
-  await page.fill('input[name="password"]', password);
+  const loginInput = await findVisibleInput(page, 'input[name="login"]');
+  if (!loginInput) die('Could not find visible login input');
+  await loginInput.fill(username);
+
+  const passwordInput = await findVisibleInput(page, 'input[name="password"]');
+  if (!passwordInput) die('Could not find visible password input');
+  await passwordInput.fill(password);
+
   await page.click('input[type="submit"][value="Log in"]');
 
   try {

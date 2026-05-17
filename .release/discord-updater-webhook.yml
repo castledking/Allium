@@ -2,7 +2,7 @@
 webhook:
   url: ""
 message:
-  username: "Allium Essentials"
+  username: "Allium"
   avatar_url: "https://castled.codes/assets/allium.png"
   content: "<@&1400394882727673906>"
   attachments: []

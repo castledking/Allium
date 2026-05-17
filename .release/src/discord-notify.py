@@ -89,36 +89,33 @@ def main():
 
     import urllib.request
     # Cloudflare blocks the default Python-urllib User-Agent with rule 1010.
-    # Send a curl-style UA so the webhook actually reaches Discord.
+    # Send a bot-style UA so the webhook actually reaches Discord.
     ua = 'AlliumReleaseBot/1.0 (+https://github.com/castledking/Allium)'
+
+    # If edit.message_id is set, PATCH that message; otherwise POST a new one.
+    # Doing both produces a duplicate embed.
+    msg_id = (config.get('edit') or {}).get('message_id', '')
+    if msg_id:
+        url = f"{webhook_url}/messages/{msg_id}"
+        method = 'PATCH'
+        success_label = f"Discord message {msg_id} updated"
+    else:
+        url = webhook_url
+        method = 'POST'
+        success_label = "Discord notification sent"
+
     req = urllib.request.Request(
-        webhook_url, data=payload_json.encode('utf-8'),
+        url, data=payload_json.encode('utf-8'),
         headers={'Content-Type': 'application/json', 'User-Agent': ua},
-        method='POST')
+        method=method)
 
     try:
         resp = urllib.request.urlopen(req)
-        print(f"Discord notification sent (HTTP {resp.status})")
+        print(f"{success_label} (HTTP {resp.status})")
     except urllib.error.HTTPError as e:
         body = e.read().decode()
         print(f"Discord webhook error: {e.code} {body}")
         sys.exit(1)
-
-    # Edit mode
-    if 'edit' in config and config['edit'].get('message_id'):
-        msg_id = config['edit']['message_id']
-        if msg_id:
-            edit_req = urllib.request.Request(
-                f"{webhook_url}/messages/{msg_id}",
-                data=payload_json.encode('utf-8'),
-                headers={'Content-Type': 'application/json', 'User-Agent': ua},
-                method='PATCH')
-            try:
-                resp = urllib.request.urlopen(edit_req)
-                print(f"Discord message {msg_id} updated (HTTP {resp.status})")
-            except urllib.error.HTTPError as e:
-                body = e.read().decode()
-                print(f"Discord edit error: {e.code} {body}")
 
 if __name__ == '__main__':
     main()

@@ -1,4 +1,5 @@
-# Triggered when a GitHub Release is published; mirrors to Modrinth + SpigotMC
+# Triggered when a GitHub Release is published; mirrors to Modrinth + SpigotMC + Discord.
+# Use workflow_dispatch + run_* toggles to re-run individual destinations.
 name: SpigotMC & Modrinth Release
 
 on:
@@ -15,6 +16,21 @@ on:
         required: false
         default: false
         type: boolean
+      run_modrinth:
+        description: 'Release to Modrinth'
+        required: false
+        default: true
+        type: boolean
+      run_spigot:
+        description: 'Release to SpigotMC'
+        required: false
+        default: true
+        type: boolean
+      run_discord:
+        description: 'Send Discord notification'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   release:
@@ -25,12 +41,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_modrinth || inputs.run_spigot }}
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: temurin
 
       - name: Build with Maven
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_modrinth || inputs.run_spigot }}
         run: mvn install -DskipTests -B
 
       - name: Determine version
@@ -47,12 +65,14 @@ jobs:
 
       - name: Find JAR
         id: find-jar
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_modrinth || inputs.run_spigot }}
         run: |
           JAR=$(find target -name "Allium*.jar" -not -name "*-javadoc.jar" -not -name "*-sources.jar" | head -n1)
           echo "jar=${JAR}" >> $GITHUB_OUTPUT
 
       # --- Step 1: Modrinth ---
       - name: Release to Modrinth
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_modrinth }}
         env:
           MODRINTH_API_KEY: ${{ secrets.MODRINTH_API_KEY }}
           REPO_NAME: Allium
@@ -71,9 +91,11 @@ jobs:
 
       # --- Step 2: SpigotMC ---
       - name: Build Docker image
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_spigot }}
         run: docker build -t spigot-release-automation .release
 
       - name: Release to SpigotMC
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_spigot }}
         env:
           SPIGOT_USERNAME: ${{ secrets.SPIGOT_USERNAME }}
           SPIGOT_PASSWORD: ${{ secrets.SPIGOT_PASSWORD }}
@@ -103,7 +125,7 @@ jobs:
 
       # --- Step 3: Discord ---
       - name: Discord notification
-        if: always()
+        if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.run_discord) }}
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           REPO_NAME: Allium

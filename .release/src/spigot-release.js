@@ -131,7 +131,7 @@ function parseReleaseNotes(filePath) {
 
 async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, downloadUrl, dryRun) {
   log('--- SpigotMC submission ---');
-  await page.goto(`${BASE_URL}/resources/${resourceId}/add-update`, {
+  await page.goto(`${BASE_URL}/resources/${resourceId}/add-version`, {
     waitUntil: 'networkidle',
     timeout: 30000,
   });
@@ -173,26 +173,41 @@ async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, do
     log(`Filled title: ${cleanTitle}`);
   }
 
-  const externalRadio = await findVisibleInput(page, 'input[type="radio"][value*="external"]');
+  const externalRadio = await findVisibleInput(page, 'input[type="radio"][name="resource_file_type"][value="url"]');
   if (externalRadio) {
     await externalRadio.check();
     log('Selected external download link');
     await sleep(500);
   }
 
-  const urlInput = await findVisibleInput(page, 'input[name="external_url"]');
+  const urlInput = await findVisibleInput(page, 'input[name="download_url"]');
   if (urlInput) {
     await urlInput.fill(downloadUrl);
     log(`Filled download URL: ${downloadUrl}`);
   }
 
-  const messageEditor = page.locator('textarea[name="message"]');
-  if (await messageEditor.isVisible().catch(() => false) && bbcodeBody) {
-    await messageEditor.fill(bbcodeBody);
-    log('Filled BBCode description');
-  } else if (bbcodeBody) {
-    await messageEditor.first().fill(bbcodeBody, { force: true });
-    log('Filled BBCode description (forced into hidden textarea)');
+  // SpigotMC uses Redactor (WYSIWYG) for the message field. On submit, Redactor copies
+  // the iframe's HTML back into textarea[name="message_html"], which would wipe any
+  // value we filled directly. Click the BBCode-mode toggle first so the editor stops
+  // syncing from the iframe and the textarea content is what actually gets submitted.
+  if (bbcodeBody) {
+    const bbcodeToggle = page.locator('.redactor_btn_switchmode').first();
+    try {
+      await bbcodeToggle.click({ timeout: 5000 });
+      log('Toggled Redactor to BBCode mode');
+      await sleep(500);
+    } catch (e) {
+      log(`Could not toggle Redactor (continuing with forced fill): ${e.message}`);
+    }
+
+    const messageEditor = page.locator('textarea[name="message_html"]');
+    if (await messageEditor.isVisible().catch(() => false)) {
+      await messageEditor.fill(bbcodeBody);
+      log('Filled BBCode description');
+    } else {
+      await messageEditor.first().fill(bbcodeBody, { force: true });
+      log('Filled BBCode description (forced into hidden textarea)');
+    }
   }
 
   if (dryRun) {
@@ -204,8 +219,9 @@ async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, do
   await screenshot(page, 'before-submit');
 
   const submitBtn = page.locator(
-    'input[type="submit"][value="Save"], input[type="submit"][value="Submit"], ' +
-    'input[type="submit"][value="Add Update"], button:has-text("Save"), ' +
+    'input[type="submit"][value="Save Update"], input[type="submit"][value="Save"], ' +
+    'input[type="submit"][value="Submit"], input[type="submit"][value="Add Update"], ' +
+    'button:has-text("Save Update"), button:has-text("Save"), ' +
     'button:has-text("Submit"), button:has-text("Add Update")'
   );
 
@@ -219,13 +235,13 @@ async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, do
   log('Form submitted');
 
   try {
-    await page.waitForURL(url => !url.toString().includes('/add-update'), { timeout: 30000 });
+    await page.waitForURL(url => !url.toString().includes('/add-version'), { timeout: 30000 });
     log(`SpigotMC submission successful: ${page.url()}`);
   } catch {
     await screenshot(page, 'submission-result');
     const errorText = await page.locator('.error, .notice, .alert, .important, .warning').first().textContent().catch(() => 'none');
     log(`SpigotMC submission may have failed. Page errors: ${errorText}`);
-    throw new Error(`Submission stuck on add-update page. Errors: ${errorText}`);
+    throw new Error(`Submission stuck on add-version page. Errors: ${errorText}`);
   }
   return true;
 }

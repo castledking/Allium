@@ -218,14 +218,13 @@ async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, do
 
   await screenshot(page, 'before-submit');
 
-  const submitBtn = page.locator(
+  const submitSelector =
     'input[type="submit"][value="Save Update"], input[type="submit"][value="Save"], ' +
     'input[type="submit"][value="Submit"], input[type="submit"][value="Add Update"], ' +
     'button:has-text("Save Update"), button:has-text("Save"), ' +
-    'button:has-text("Submit"), button:has-text("Add Update")'
-  );
+    'button:has-text("Submit"), button:has-text("Add Update")';
 
-  const visibleSubmit = await findVisibleInput(page, submitBtn.selector);
+  const visibleSubmit = await findVisibleInput(page, submitSelector);
   if (!visibleSubmit) {
     await screenshot(page, 'no-submit-button');
     throw new Error('Could not find submit button');

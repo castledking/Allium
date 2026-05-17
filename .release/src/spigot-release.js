@@ -142,12 +142,27 @@ async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, do
   }
 
   log(`Page loaded: ${await page.title()}`);
-  await sleep(2000);
+  await sleep(3000);
 
-  const versionInput = page.locator('input[name="version_string"]');
-  if (await versionInput.isVisible().catch(() => false)) {
+  await page.evaluate(() => {
+    const forms = document.querySelectorAll('form');
+    console.log(`Found ${forms.length} form(s) on page`);
+    forms.forEach((f, i) => {
+      const fields = Array.from(f.querySelectorAll('input, textarea, select')).map(el => ({
+        name: el.name, type: el.type, id: el.id, visible: el.offsetParent !== null,
+        value: el.value, placeholder: el.placeholder,
+      }));
+      console.log(`Form ${i}: action=${f.action}, fields=`, JSON.stringify(fields));
+    });
+  });
+
+  const versionInput = await findVisibleInput(page, 'input[name="version_string"]');
+  if (versionInput) {
     await versionInput.fill(version);
     log(`Filled version: ${version}`);
+  } else {
+    await page.locator('input[name="version_string"]').first().fill(version, { force: true });
+    log(`Filled version (forced): ${version}`);
   }
 
   const titleInput = page.locator('input[name="title"]');
@@ -157,21 +172,15 @@ async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, do
     log(`Filled title: ${cleanTitle}`);
   }
 
-  const externalRadio = page.locator(
-    'input[type="radio"][value*="external"], ' +
-    'input[type="radio"][name*="download"][value*="url"], ' +
-    'label:has-text("External") input[type="radio"]'
-  );
-  if (await externalRadio.isVisible().catch(() => false)) {
+  const externalRadio = await findVisibleInput(page, 'input[type="radio"][value*="external"]');
+  if (externalRadio) {
     await externalRadio.check();
     log('Selected external download link');
     await sleep(500);
   }
 
-  const urlInput = page.locator(
-    'input[name="external_url"], input[name*="download_url"], input[type="url"]'
-  );
-  if (await urlInput.isVisible().catch(() => false)) {
+  const urlInput = await findVisibleInput(page, 'input[name="external_url"]');
+  if (urlInput) {
     await urlInput.fill(downloadUrl);
     log(`Filled download URL: ${downloadUrl}`);
   }
@@ -180,6 +189,9 @@ async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, do
   if (await messageEditor.isVisible().catch(() => false) && bbcodeBody) {
     await messageEditor.fill(bbcodeBody);
     log('Filled BBCode description');
+  } else if (bbcodeBody) {
+    await messageEditor.first().fill(bbcodeBody, { force: true });
+    log('Filled BBCode description (forced into hidden textarea)');
   }
 
   if (dryRun) {
@@ -188,26 +200,31 @@ async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, do
     return true;
   }
 
+  await screenshot(page, 'before-submit');
+
   const submitBtn = page.locator(
     'input[type="submit"][value="Save"], input[type="submit"][value="Submit"], ' +
     'input[type="submit"][value="Add Update"], button:has-text("Save"), ' +
     'button:has-text("Submit"), button:has-text("Add Update")'
   );
 
-  if (!await submitBtn.first().isVisible().catch(() => false)) {
+  const visibleSubmit = await findVisibleInput(page, submitBtn.selector);
+  if (!visibleSubmit) {
     await screenshot(page, 'no-submit-button');
     throw new Error('Could not find submit button');
   }
 
-  await submitBtn.first().click();
+  await visibleSubmit.click();
   log('Form submitted');
 
   try {
-    await page.waitForURL(url => !url.toString().includes('/add-update'), { timeout: 15000 });
+    await page.waitForURL(url => !url.toString().includes('/add-update'), { timeout: 30000 });
     log(`SpigotMC submission successful: ${page.url()}`);
   } catch {
     await screenshot(page, 'submission-result');
-    log('SpigotMC submission completed');
+    const errorText = await page.locator('.error, .notice, .alert, .important, .warning').first().textContent().catch(() => 'none');
+    log(`SpigotMC submission may have failed. Page errors: ${errorText}`);
+    throw new Error(`Submission stuck on add-update page. Errors: ${errorText}`);
   }
   return true;
 }

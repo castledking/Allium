@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Discord notification for plugin releases. Reads config from env vars and YAML."""
 import os, sys, json
-from datetime import datetime
+from datetime import datetime, timezone
 
 try:
     import yaml
@@ -71,7 +71,7 @@ def main():
                 'icon_url': ec['footer'].get('icon_url', '')
             }
         if ec.get('timestamp', True):
-            embed['timestamp'] = datetime.now(datetime.UTC).isoformat()
+            embed['timestamp'] = datetime.now(timezone.utc).isoformat()
         if 'fields' in ec:
             embed['fields'] = []
             for field in ec['fields']:

@@ -156,13 +156,14 @@ async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, do
     });
   });
 
+  const displayVersion = version.startsWith('v') ? version : `v${version}`;
   const versionInput = await findVisibleInput(page, 'input[name="version_string"]');
   if (versionInput) {
-    await versionInput.fill(version);
-    log(`Filled version: ${version}`);
+    await versionInput.fill(displayVersion);
+    log(`Filled version: ${displayVersion}`);
   } else {
-    await page.locator('input[name="version_string"]').first().fill(version, { force: true });
-    log(`Filled version (forced): ${version}`);
+    await page.locator('input[name="version_string"]').first().fill(displayVersion, { force: true });
+    log(`Filled version (forced): ${displayVersion}`);
   }
 
   const titleInput = page.locator('input[name="title"]');

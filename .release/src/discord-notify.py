@@ -38,7 +38,10 @@ def main():
     embed = {}
     use_short = config.get('use-short-md', False)
     notes_suffix = '-SHORT' if use_short else ''
-    notes_path = os.environ.get('RELEASE_NOTES_PATH', f".release/v{version}{notes_suffix}.md")
+    # Files live in .release/latest/ in the repo; CI copies them to /tmp/release-notes/
+    # for the Modrinth/Spigot scripts. Prefer the in-repo path so Discord works without
+    # the workflow having to copy/mount anything.
+    notes_path = os.environ.get('RELEASE_NOTES_PATH', f".release/latest/v{version}{notes_suffix}.md")
     if os.path.exists(notes_path):
         with open(notes_path) as f:
             lines = f.readlines()

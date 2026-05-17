@@ -269,9 +269,10 @@ async function release() {
 
   const finalResourceId = resourceId || String(repoConfig.spigot);
   const modrinthSlug = repoConfig?.modrinth || null;
+  const releaseTag = version.startsWith('v') ? version : `v${version}`;
   const downloadUrl = modrinthSlug
     ? `https://modrinth.com/plugin/${modrinthSlug}#download`
-    : `https://github.com/${repoOwner}/${repoName}/releases/download/${version}/${repoName}.jar`;
+    : `https://github.com/${repoOwner}/${repoName}/releases/download/${releaseTag}/${repoName}.jar`;
 
   log(`Releasing ${repoName} v${version}`);
   log(`SpigotMC resource: ${finalResourceId}`);

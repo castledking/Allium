@@ -61,6 +61,7 @@ jobs:
           else
             VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           fi
+          VERSION=${VERSION#v}
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Find JAR

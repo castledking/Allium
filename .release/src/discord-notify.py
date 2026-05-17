@@ -18,6 +18,9 @@ def main():
         return
 
     version = os.environ['VERSION']
+    version_number = version[1:] if version.startswith('v') else version
+    release_tag = version if version.startswith('v') else f"v{version}"
+    display_version = release_tag
     repo_name = os.environ.get('REPO_NAME', 'unknown')
     repo_owner = os.environ.get('REPO_OWNER', 'castledking')
 
@@ -41,19 +44,19 @@ def main():
     # Files live in .release/latest/ in the repo; CI copies them to /tmp/release-notes/
     # for the Modrinth/Spigot scripts. Prefer the in-repo path so Discord works without
     # the workflow having to copy/mount anything.
-    notes_path = os.environ.get('RELEASE_NOTES_PATH', f".release/latest/v{version}{notes_suffix}.md")
+    notes_path = os.environ.get('RELEASE_NOTES_PATH', f".release/latest/v{version_number}{notes_suffix}.md")
     if os.path.exists(notes_path):
         with open(notes_path) as f:
             lines = f.readlines()
-        embed['title'] = lines[0].strip() if lines else f"{repo_name} v{version}"
+        embed['title'] = lines[0].strip() if lines else f"{repo_name} {display_version}"
         body = ''.join(lines[1:]).strip()
         if len(body) > 4000: body = body[:4000] + "..."
         embed['description'] = body if body else "No release notes available."
     else:
-        embed['title'] = f"{repo_name} v{version}"
+        embed['title'] = f"{repo_name} {display_version}"
         embed['description'] = "No release notes available."
 
-    embed['url'] = f"https://github.com/{repo_owner}/{repo_name}/releases/tag/{version}"
+    embed['url'] = f"https://github.com/{repo_owner}/{repo_name}/releases/tag/{release_tag}"
 
     if 'embed' in config:
         ec = config['embed']

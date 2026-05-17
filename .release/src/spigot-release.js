@@ -52,7 +52,15 @@ function sleep(ms) {
 
 async function loadCookies(page, cookiesB64) {
   try {
-    const cookies = JSON.parse(Buffer.from(cookiesB64, 'base64').toString());
+    const raw = JSON.parse(Buffer.from(cookiesB64, 'base64').toString());
+    const cookies = raw.map(c => {
+      const cookie = { ...c };
+      if (cookie.sameSite && ['lax', 'strict', 'no_restriction'].includes(cookie.sameSite.toLowerCase())) {
+        const map = { lax: 'Lax', strict: 'Strict', no_restriction: 'None' };
+        cookie.sameSite = map[cookie.sameSite.toLowerCase()];
+      }
+      return cookie;
+    });
     await page.context().addCookies(cookies);
     log(`Loaded ${cookies.length} cookies`);
     return true;
@@ -66,7 +74,7 @@ async function login(page, username, password) {
   log('Logging in...');
   await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
 
-  const radio = page.locator('input[name="register"][value="0"]');
+  const radio = page.locator('#ctrl_pageLogin_registered');
   if (await radio.isVisible()) {
     await radio.check();
     await sleep(500);

@@ -102,7 +102,9 @@ async function login(page, username, password) {
   if (!passwordInput) die('Could not find visible password input');
   await passwordInput.fill(password);
 
-  await page.click('input[type="submit"][value="Log in"]');
+  const submitBtn = await findVisibleInput(page, 'input[type="submit"][value="Log in"]');
+  if (!submitBtn) die('Could not find visible login button');
+  await submitBtn.click();
 
   try {
     await page.waitForURL(url => !url.toString().includes('/login'), { timeout: 15000 });

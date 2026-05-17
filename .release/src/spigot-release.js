@@ -55,20 +55,18 @@ async function loadCookies(page, cookiesB64) {
     const raw = JSON.parse(Buffer.from(cookiesB64, 'base64').toString());
     const cookies = raw.map(c => {
       const cookie = { ...c };
-      const valid = ['strict', 'lax', 'none'];
-      if (cookie.sameSite) {
-        const lower = cookie.sameSite.toLowerCase();
-        if (valid.includes(lower)) {
-          const map = { lax: 'Lax', strict: 'Strict', none: 'None' };
-          cookie.sameSite = map[lower];
-        } else {
-          delete cookie.sameSite;
-        }
+      if ('sameSite' in cookie) {
+        const val = String(cookie.sameSite).toLowerCase();
+        if (val === 'lax') cookie.sameSite = 'Lax';
+        else if (val === 'strict') cookie.sameSite = 'Strict';
+        else if (val === 'none' || val === 'no_restriction') cookie.sameSite = 'None';
+        else delete cookie.sameSite;
       }
       return cookie;
     });
+    const sample = cookies.slice(0, 3).map(c => `${c.name}=${c.sameSite ?? 'undefined'}`);
     await page.context().addCookies(cookies);
-    log(`Loaded ${cookies.length} cookies`);
+    log(`Loaded ${cookies.length} cookies (samples: ${sample.join(', ')})`);
     return true;
   } catch (e) {
     log('Failed to load cookies:', e.message);

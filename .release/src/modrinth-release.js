@@ -68,7 +68,9 @@ async function main() {
     return;
   }
 
-  const notesPath = `/tmp/release-notes/v${version}.md`;
+  const versionNumber = version.startsWith('v') ? version.slice(1) : version;
+  const displayVersion = version.startsWith('v') ? version : `v${version}`;
+  const notesPath = `/tmp/release-notes/v${versionNumber}.md`;
   let changelogMd = `Version ${version}`;
   if (existsSync(notesPath)) {
     const content = readFileSync(notesPath, 'utf-8').replace(/\r\n/g, '\n');
@@ -95,8 +97,8 @@ async function main() {
       }
       try {
         const result = await releaseToModrinth({
-          token, projectId: project.project_id, version,
-          name: `${repoName} v${version}`,
+          token, projectId: project.project_id, version: versionNumber,
+          name: `${repoName} ${displayVersion}`,
           changelogMd,
           gameVersions: project.game_versions || [],
           loaders: project.loaders || ['paper'],
@@ -119,8 +121,8 @@ async function main() {
     const dependencies = loadExternalDependencies(repoName) || repoConfig.dependencies || [];
     try {
       const result = await releaseToModrinth({
-        token, projectId, version,
-        name: `${repoName} v${version}`,
+        token, projectId, version: versionNumber,
+        name: `${repoName} ${displayVersion}`,
         changelogMd,
         gameVersions: repoConfig.game_versions || [],
         loaders: repoConfig.loaders || ['paper'],

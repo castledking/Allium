@@ -61,7 +61,6 @@ jobs:
           else
             VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           fi
-          VERSION=${VERSION#v}
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Find JAR
@@ -84,9 +83,11 @@ jobs:
             echo "No JAR found, skipping Modrinth"
             exit 0
           fi
-          if [ -f ".release/latest/v${{ steps.version.outputs.version }}.md" ]; then
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION_NUMBER="${VERSION#v}"
+          if [ -f ".release/latest/v${VERSION_NUMBER}.md" ]; then
             mkdir -p /tmp/release-notes
-            cp ".release/latest/v${{ steps.version.outputs.version }}.md" /tmp/release-notes/
+            cp ".release/latest/v${VERSION_NUMBER}.md" "/tmp/release-notes/v${VERSION_NUMBER}.md"
           fi
           node .release/src/modrinth-release.js
 
@@ -109,8 +110,9 @@ jobs:
         run: |
           MOUNTS=""
           VERSION="${{ steps.version.outputs.version }}"
-          if [ -f ".release/latest/v${VERSION}.md" ]; then
-            MOUNTS="$MOUNTS -v $(pwd)/.release/latest/v${VERSION}.md:/tmp/release-notes/v${VERSION}.md:ro"
+          VERSION_NUMBER="${VERSION#v}"
+          if [ -f ".release/latest/v${VERSION_NUMBER}.md" ]; then
+            MOUNTS="$MOUNTS -v $(pwd)/.release/latest/v${VERSION_NUMBER}.md:/tmp/release-notes/v${VERSION_NUMBER}.md:ro"
           fi
           docker run --rm --shm-size=2g \
             -e SPIGOT_USERNAME \

@@ -56,7 +56,7 @@ def main():
         embed['title'] = f"{repo_name} {display_version}"
         embed['description'] = "No release notes available."
 
-    embed['url'] = f"https://github.com/{repo_owner}/{repo_name}/releases/tag/{release_tag}"
+    embed['url'] = f"https://github.com/{repo_owner}/{repo_name}"
 
     if 'embed' in config:
         ec = config['embed']
@@ -93,7 +93,7 @@ def main():
     import urllib.request
     # Cloudflare blocks the default Python-urllib User-Agent with rule 1010.
     # Send a bot-style UA so the webhook actually reaches Discord.
-    ua = 'AlliumReleaseBot/1.0 (+https://github.com/castledking/Allium)'
+    ua = f'{repo_name}ReleaseBot/1.0 (+https://github.com/{repo_owner}/{repo_name})'
 
     # If edit.message_id is set, PATCH that message; otherwise POST a new one.
     # Doing both produces a duplicate embed.

@@ -40,6 +40,29 @@ function loadRepoConfig(repoName) {
   return config[repoName] || null;
 }
 
+function resolveSpigotDownloadUrl(repoConfig, repoOwner, repoName, version) {
+  if (repoConfig?.spigot_download_url) {
+    return repoConfig.spigot_download_url;
+  }
+  if (repoConfig?.download_url) {
+    return repoConfig.download_url;
+  }
+
+  const modrinth = repoConfig?.modrinth;
+  if (typeof modrinth === 'string' && modrinth) {
+    return `https://modrinth.com/plugin/${modrinth}`;
+  }
+
+  const releaseTag = version.startsWith('v') ? version : `v${version}`;
+  return `https://github.com/${repoOwner}/${repoName}/releases/download/${releaseTag}/${repoName}.jar`;
+}
+
+function resolveSpigotVersionString(repoConfig, version) {
+  const versionNumber = version.startsWith('v') ? version.slice(1) : version;
+  const usePrefix = repoConfig?.spigot_version_prefix !== false;
+  return usePrefix ? `v${versionNumber}` : versionNumber;
+}
+
 async function screenshot(page, name) {
   if (!existsSync(SCREENSHOTS_DIR)) mkdirSync(SCREENSHOTS_DIR, { recursive: true });
   await page.screenshot({ path: `${SCREENSHOTS_DIR}/${name}.png`, fullPage: true });
@@ -129,7 +152,7 @@ function parseReleaseNotes(filePath) {
   return { title, body };
 }
 
-async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, downloadUrl, dryRun) {
+async function submitToSpigotmc(page, resourceId, repoConfig, version, title, bbcodeBody, downloadUrl, dryRun) {
   log('--- SpigotMC submission ---');
   await page.goto(`${BASE_URL}/resources/${resourceId}/add-version`, {
     waitUntil: 'networkidle',
@@ -156,7 +179,7 @@ async function submitToSpigotmc(page, resourceId, version, title, bbcodeBody, do
     });
   });
 
-  const displayVersion = version.startsWith('v') ? version : `v${version}`;
+  const displayVersion = resolveSpigotVersionString(repoConfig, version);
   const versionInput = await findVisibleInput(page, 'input[name="version_string"]');
   if (versionInput) {
     await versionInput.fill(displayVersion);
@@ -256,6 +279,8 @@ async function release() {
   const resourceIdsRaw = env('SPIGOT_RESOURCE_IDS');
   const dryRun = process.env.DRY_RUN === 'true';
   const version = env('VERSION');
+  const versionNumber = version.startsWith('v') ? version.slice(1) : version;
+  const displayVersion = version.startsWith('v') ? version : `v${version}`;
   const repoOwner = process.env.REPO_OWNER || 'castledking';
   const jarPath = process.env.JAR_PATH || '';
 
@@ -268,20 +293,16 @@ async function release() {
   }
 
   const finalResourceId = resourceId || String(repoConfig.spigot);
-  const modrinthSlug = repoConfig?.modrinth || null;
-  const releaseTag = version.startsWith('v') ? version : `v${version}`;
-  const downloadUrl = modrinthSlug
-    ? `https://modrinth.com/plugin/${modrinthSlug}#download`
-    : `https://github.com/${repoOwner}/${repoName}/releases/download/${releaseTag}/${repoName}.jar`;
+  const downloadUrl = resolveSpigotDownloadUrl(repoConfig, repoOwner, repoName, version);
 
-  log(`Releasing ${repoName} v${version}`);
+  log(`Releasing ${repoName} ${displayVersion}`);
   log(`SpigotMC resource: ${finalResourceId}`);
   log(`Download URL: ${downloadUrl}`);
 
   // Parse release notes
   let title = '';
   let rawBody = '';
-  const notesPath = `${RELEASE_NOTES_DIR}/v${version}.md`;
+  const notesPath = `${RELEASE_NOTES_DIR}/v${versionNumber}.md`;
   if (existsSync(notesPath)) {
     const notes = parseReleaseNotes(notesPath);
     title = notes.title;
@@ -309,7 +330,7 @@ async function release() {
       let loggedIn = false;
       if (cookiesB64) loggedIn = await loadCookies(page, cookiesB64);
       if (!loggedIn) await login(page, username, password);
-      await submitToSpigotmc(page, finalResourceId, version, title, bbcodeBody, downloadUrl, dryRun);
+      await submitToSpigotmc(page, finalResourceId, repoConfig, version, title, bbcodeBody, downloadUrl, dryRun);
     } catch (err) {
       await screenshot(page, 'error-spigot');
       log('SpigotMC error:', err.message);
@@ -325,13 +346,14 @@ async function release() {
     const projectId = repoConfig.modrinth_project_id || repoConfig.modrinth;
 
     if (dryRun) {
-      log(`DRY RUN - would create Modrinth version ${version} for ${projectId}`);
+      log(`DRY RUN - would create Modrinth version ${versionNumber} for ${projectId}`);
     } else {
       try {
         const result = await releaseToModrinth({
           token: modrinthToken,
           projectId: projectId,
-          version: version,
+          version: versionNumber,
+          name: `${repoName} ${displayVersion}`,
           changelogMd: rawBody || title || `Version ${version}`,
           gameVersions: repoConfig.game_versions || [],
           loaders: repoConfig.loaders || ['paper'],

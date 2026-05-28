@@ -21,6 +21,6 @@ embed:
     icon_url: ""
   timestamp: true
   fields: []
-use-short-md: true
+use-short-md: false
 edit:
   message_id: ""

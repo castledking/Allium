@@ -165,6 +165,7 @@ import codes.castled.allium.managers.permissions.DynamicPermissionManager;
 import codes.castled.allium.managers.warp.WarpManager;
 import codes.castled.allium.managers.world.OreGenerationManager;
 import codes.castled.allium.packetevents.ChatPacketTracker;
+import codes.castled.allium.packetevents.CrowBarDataSender;
 import codes.castled.allium.packetevents.PacketEventsLoader;
 import codes.castled.allium.packetevents.TabListManager;
 import codes.castled.allium.spawnercraft.MobHeadDropListener;
@@ -226,6 +227,7 @@ public class PluginStart extends JavaPlugin {
     private DiscordSrvMessageBridge discordSrvMessageBridge;
     private ChatPacketTracker chatPacketTracker = new codes.castled.allium.packetevents.ChatPacketTrackerNoOp();
     private TabListManager tabListManager;
+    private CrowBarDataSender crowBarDataSender;
     private InventoryManager inventoryManager;
     private OfflineInventoryManager offlineInventoryManager;
     private boolean commandMapEnforceUnsupportedWarned = false;
@@ -582,6 +584,14 @@ public class PluginStart extends JavaPlugin {
         if (isDebugMode()) {
             PacketEventsLoader.logPacketEventsStatus(getLogger());
         }
+
+        // Initialize CrowBar data sender
+        this.crowBarDataSender = new CrowBarDataSender(this);
+        getServer().getMessenger().registerOutgoingPluginChannel(this, "crowbar:player_data");
+        this.crowBarDataSender.start();
+        if (isDebugMode()) {
+            getLogger().info("CrowBar data sender started");
+        }
         
         // Register commands and non-Vault-dependent listeners
         registerCommands();
@@ -781,6 +791,10 @@ public class PluginStart extends JavaPlugin {
             }
             if (discordSrvMessageBridge != null) {
                 discordSrvMessageBridge.shutdown();
+            }
+            if (crowBarDataSender != null) {
+                crowBarDataSender.stop();
+                getServer().getMessenger().unregisterOutgoingPluginChannel(this, "crowbar:player_data");
             }
         } catch (Throwable t) {
             Text.sendDebugLog(WARN, "Failed to shutdown packet listeners: " + t.getMessage());

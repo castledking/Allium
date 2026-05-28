@@ -28,6 +28,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
@@ -76,6 +77,23 @@ public final class AlliumChannelManager implements Listener {
     private final Set<UUID> staffChatActive = ConcurrentHashMap.newKeySet();
     private final File playerChannelsFile;
     private FileConfiguration playerChannelsConfig;
+    
+    // Track recent staff-chat messages for Dynmap filtering (UUID -> timestamp)
+    private static final Map<UUID, Long> recentStaffChatMessages = new ConcurrentHashMap<>();
+    
+    // Expose this for Dynmap to check
+    public static boolean isRecentStaffChat(UUID playerUuid) {
+        Long timestamp = recentStaffChatMessages.get(playerUuid);
+        if (timestamp == null) {
+            return false;
+        }
+        // Expire after 2 seconds
+        if (System.currentTimeMillis() - timestamp > 2000) {
+            recentStaffChatMessages.remove(playerUuid);
+            return false;
+        }
+        return true;
+    }
 
     private volatile String defaultChannelName = "default";
     private volatile String staffChannelName = "staff-chat";
@@ -580,15 +598,35 @@ public final class AlliumChannelManager implements Listener {
 
         if (targetChannel.equals(staffChannelName)) {
             staffChatActive.add(player.getUniqueId());
+            recentStaffChatMessages.put(player.getUniqueId(), System.currentTimeMillis());
             if (plugin.isDebugMode()) {
                 Text.sendDebugLog(INFO, "[Channels] Early tracked staff-chat for " + player.getName());
             }
         }
     }
 
+    // Legacy event listener for Dynmap compatibility - Dynmap listens to AsyncPlayerChatEvent
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onPlayerChatLegacy(AsyncPlayerChatEvent event) {
+        if (!enabled) {
+            return;
+        }
+        
+        Player player = event.getPlayer();
+        String currentWrite = writeChannels.computeIfAbsent(player.getUniqueId(), ignored -> defaultChannelName);
+        
+        // Cancel staff-chat so Dynmap doesn't see it
+        if (currentWrite.equals(staffChannelName)) {
+            event.setCancelled(true);
+        } else {
+            // For global-chat: clear recipients to prevent vanilla broadcast duplicate
+            event.getRecipients().clear();
+        }
+    }
+
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = false)
     public void onPlayerChat(AsyncChatEvent event) {
-        if (!enabled || event.isCancelled()) {
+        if (!enabled) {
             return;
         }
 
@@ -676,7 +714,14 @@ public final class AlliumChannelManager implements Listener {
 
         // staffChatActive is already set in onPlayerChatEarly if this is staff-chat
 
-        event.setCancelled(true);
+        // Cancel staff-chat events entirely - prevents them from reaching Dynmap
+        // For global-chat: clear viewers to prevent vanilla broadcast duplicate, but don't cancel so Dynmap can process
+        boolean isStaffChat = targetChannel.equals(staffChannelName);
+        if (isStaffChat) {
+            event.setCancelled(true);
+        } else {
+            event.viewers().clear();
+        }
         sendPlayerMessage(player, targetChannel, message);
     }
 
@@ -715,10 +760,16 @@ public final class AlliumChannelManager implements Listener {
             
             recipient.sendMessage(applyStaffHoverForViewer(recipient, sender, messageId, rendered));
         }
-        Bukkit.getConsoleSender().sendMessage(LegacyComponentSerializer.legacySection().serialize(formatted));
-
+        
         // Track if we're in staff-chat mode so we can suppress DiscordSRV global relay
         boolean isStaffChatMessage = channel.name().equals(staffChannelName);
+        
+        // Add hidden marker for Dynmap to filter staff-chat
+        String consoleMessage = LegacyComponentSerializer.legacySection().serialize(formatted);
+        if (isStaffChatMessage) {
+            consoleMessage = "§x§0§0§0§0§0§0" + consoleMessage; // Zero-width color marker for Dynmap
+        }
+        Bukkit.getConsoleSender().sendMessage(consoleMessage);
         
         // Note: staffChatActive is already populated in onPlayerChat before this method is called
         // We only need to clean it up after relay
@@ -1322,12 +1373,30 @@ public final class AlliumChannelManager implements Listener {
                 }
             }
 
-            if (discordSrv.getDestinationTextChannelForGameChannelName(discordSrvChannelName) == null) {
+            Object textChannelObj = discordSrv.getDestinationTextChannelForGameChannelName(discordSrvChannelName);
+            if (plugin.isDebugMode()) {
+                Text.sendDebugLog(INFO, "[Channels] DiscordSRV.getDestinationTextChannelForGameChannelName('" 
+                        + discordSrvChannelName + "') returned: " + (textChannelObj != null ? "non-null" : "null"));
+            }
+            if (textChannelObj == null) {
                 if (plugin.isDebugMode()) {
                     Text.sendDebugLog(INFO, "[Channels] Discord relay skipped for " + channel.name()
                             + " because DiscordSRV has no linked game channel mapping for: " + discordSrvChannelName);
                 }
                 return;
+            }
+            
+            // Log the actual Discord channel ID being used
+            try {
+                String actualChannelId = (String) textChannelObj.getClass().getMethod("getId").invoke(textChannelObj);
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(INFO, "[Channels] Discord relay for " + channel.name() + " using game channel '" 
+                            + discordSrvChannelName + "' -> Discord channel ID: " + actualChannelId);
+                }
+            } catch (Throwable t) {
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(WARN, "[Channels] Failed to get Discord channel ID for logging: " + t.getMessage());
+                }
             }
 
             final DiscordSRV target = discordSrv;
@@ -1341,7 +1410,6 @@ public final class AlliumChannelManager implements Listener {
                 if (channel.webhookDelivery()) {
                     try {
                         // Use DiscordSRV's webhook delivery for proper profile/avatar display
-                        Object textChannelObj = target.getDestinationTextChannelForGameChannelName(finalChannelName);
                         if (textChannelObj != null) {
                             WebhookUtil.deliverMessage((github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel) textChannelObj, 
                                     finalSender, formatDiscordOutMessage(finalSender, channel, finalMessage));

@@ -11,7 +11,7 @@
 
     <groupId>net.survivalfun</groupId>
     <artifactId>Allium</artifactId>
-    <version>0.1.6a</version>
+    <version>0.1.7a</version>
     <name>Allium</name>
     <description>A secure, modern Essentials solution.</description>
 
@@ -158,6 +158,16 @@
             <id>discordsrv-repo</id>
             <url>https://nexus.scarsz.me/content/groups/public/</url>
         </repository>
+
+        <!-- IntellectualSites (FastAsyncWorldEdit) -->
+        <repository>
+            <id>intellectualsites-snapshots</id>
+            <url>https://mvn.intellectualsites.com/content/repositories/snapshots/</url>
+        </repository>
+        <repository>
+            <id>intellectualsites-releases</id>
+            <url>https://mvn.intellectualsites.com/content/repositories/releases/</url>
+        </repository>
     </repositories>
 
     <!-- ==================================================
@@ -287,12 +297,16 @@
             </exclusions>
         </dependency>
 
-        <!-- Vault Unlocked API: provided so runtime uses the plugin's Economy class. -->
+        <!-- Shade VaultUnlockedAPI so the plugin works without Vault installed.
+             Shading (compile scope) ensures the net.milkbowl.vault.* classes are
+             present in the JAR at load time.  When the real Vault plugin IS
+             installed the PluginClassLoader (child-first) will load them from
+             Vault's classloader first, so no conflict. -->
         <dependency>
             <groupId>net.milkbowl.vault</groupId>
             <artifactId>VaultUnlockedAPI</artifactId>
             <version>2.15</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
 
         <!-- REMOVED: jopt-simple was only needed by OkHttp
@@ -310,7 +324,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Vault API (redundant with VaultUnlockedAPI - exclude if causing conflicts) -->
+        <!-- Vault API (redundant with VaultUnlockedAPI above - kept for compatibility but not shaded) -->
         <dependency>
             <groupId>com.github.MilkBowl</groupId>
             <artifactId>VaultAPI</artifactId>
@@ -373,6 +387,14 @@
                     <artifactId>actions-spigot</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <!-- FastAsyncWorldEdit (WorldEdit API compatible) -->
+        <dependency>
+            <groupId>com.fastasyncworldedit</groupId>
+            <artifactId>FastAsyncWorldEdit-Core</artifactId>
+            <version>2.15.1</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- JSpecify for null annotations -->
@@ -441,7 +463,6 @@
                                         <exclude>META-INF/*.RSA</exclude>
                                         <exclude>META-INF/maven/**</exclude>
                                         <exclude>META-INF/versions/**</exclude>
-                                        <exclude>module-info.class</exclude>
                                         <exclude>META-INF/MANIFEST.MF</exclude>
                                     </excludes>
                                 </filter>
@@ -488,13 +509,22 @@
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
+                <filtering>true</filtering>
                 <excludes>
                     <exclude>*.md</exclude>
                     <exclude>*.txt</exclude>
                     <exclude>*.bbcode</exclude>
+                    <exclude>*.gz</exclude>
                     <exclude>dev/**</exclude>
                     <exclude>test/**</exclude>
                 </excludes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <includes>
+                    <include>*.gz</include>
+                </includes>
             </resource>
         </resources>
     </build>

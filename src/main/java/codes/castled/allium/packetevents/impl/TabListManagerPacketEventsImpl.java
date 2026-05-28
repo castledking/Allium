@@ -91,7 +91,7 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
             if (event.getPacketType() == PacketType.Play.Server.PLAYER_INFO_REMOVE) {
                 WrapperPlayServerPlayerInfoRemove packet = new WrapperPlayServerPlayerInfoRemove(event);
 
-                for (java.util.UUID targetUUID : packet.getProfileIds()) {
+                for (UUID targetUUID : packet.getProfileIds()) {
                     Player targetPlayer = plugin.getServer().getPlayer(targetUUID);
                     if (targetPlayer == null || !targetPlayer.isOnline()) continue;
                     if (shouldBeVisibleInTabList(viewer, targetPlayer)) {
@@ -106,6 +106,17 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
                 WrapperPlayServerPlayerInfoUpdate packet = new WrapperPlayServerPlayerInfoUpdate(event);
                 List<WrapperPlayServerPlayerInfoUpdate.PlayerInfo> entries = new ArrayList<>(packet.getEntries());
                 boolean touchedListed = false;
+
+                int originalSize = packet.getEntries().size();
+                entries.removeIf(entry -> {
+                    UUID profileId = entry.getProfileId();
+                    Player targetPlayer = plugin.getServer().getPlayer(profileId);
+                    if (targetPlayer == null || !targetPlayer.isOnline()) {
+                        return !entry.isListed();
+                    }
+                    return false;
+                });
+                boolean removedNpc = entries.size() < originalSize;
 
                 for (WrapperPlayServerPlayerInfoUpdate.PlayerInfo entry : entries) {
                     Player targetPlayer = plugin.getServer().getPlayer(entry.getProfileId());
@@ -125,7 +136,7 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
                 }
 
                 // Only update entries, don't modify actions to prevent packet storms
-                if (touchedListed) {
+                if (touchedListed || removedNpc) {
                     packet.setEntries(entries);
                 }
             }

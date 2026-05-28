@@ -256,24 +256,25 @@ public class CommandManager implements Listener {
 
         RawCommandGroup rawGroup = rawGroups.get(lowerGroup);
         if (rawGroup == null) {
-            return new CommandGroup(groupName, true, List.of(), List.of(), hideNamespacedCommandsForBypass);
+            return new CommandGroup(groupName, true, List.of(), List.of(), List.of(), hideNamespacedCommandsForBypass);
         }
 
         if (!resolving.add(lowerGroup)) {
             Text.sendDebugLog(WARN, "Detected recursive hide.yml inheritance for group: " + groupName);
-            return new CommandGroup(rawGroup.name(), rawGroup.whitelist(), List.of(), List.of(), hideNamespacedCommandsForBypass);
+            return new CommandGroup(rawGroup.name(), rawGroup.whitelist(), List.of(), List.of(), List.of(), hideNamespacedCommandsForBypass);
         }
 
         LinkedHashSet<String> resolvedCommands = new LinkedHashSet<>(rawGroup.commands());
         LinkedHashSet<String> resolvedTabCompletes = new LinkedHashSet<>(rawGroup.tabCompletes());
+        LinkedHashSet<String> inheritedAllowedCommands = new LinkedHashSet<>();
 
-        // For blacklist groups, do NOT inherit commands — adding whitelist commands
-        // to a blacklist would turn allowed commands into denied ones.
-        // Only whitelist groups benefit from command inheritance.
-        if (rawGroup.whitelist()) {
-            for (String inheritedGroupName : getInheritedCommandGroupsFor(rawGroup, rawGroups.keySet())) {
-                CommandGroup inheritedGroup = resolveGroup(inheritedGroupName, rawGroups, resolvedGroups, resolving);
+        for (String inheritedGroupName : getInheritedCommandGroupsFor(rawGroup, rawGroups.keySet())) {
+            CommandGroup inheritedGroup = resolveGroup(inheritedGroupName, rawGroups, resolvedGroups, resolving);
+            if (rawGroup.whitelist()) {
                 resolvedCommands.addAll(inheritedGroup.commands());
+            } else if (inheritedGroup.whitelist()) {
+                inheritedAllowedCommands.addAll(inheritedGroup.commands());
+                inheritedAllowedCommands.addAll(inheritedGroup.inheritedAllowedCommands());
             }
         }
 
@@ -287,12 +288,14 @@ public class CommandManager implements Listener {
         }
 
         List<String> expandedCommands = expandWildcardCommands(new ArrayList<>(resolvedCommands));
+        List<String> expandedInheritedAllowedCommands = expandWildcardCommands(new ArrayList<>(inheritedAllowedCommands));
         List<String> expandedTabCompletes = expandWildcardCommands(new ArrayList<>(resolvedTabCompletes));
 
         CommandGroup resolved = new CommandGroup(
                 rawGroup.name(),
                 rawGroup.whitelist(),
                 expandedCommands,
+                expandedInheritedAllowedCommands,
                 expandedTabCompletes,
                 hideNamespacedCommandsForBypass
         );
@@ -624,6 +627,7 @@ public class CommandManager implements Listener {
                 "op",
                 true,
                 Collections.singletonList("*"),
+                List.of(),
                 Collections.singletonList("*"),
                 hideNamespacedCommandsForBypass
         );
@@ -675,78 +679,28 @@ public class CommandManager implements Listener {
             return;
         }
 
-        boolean canUseCommand = false;
-
-        // First check if any blacklist group denies the command
         boolean blacklisted = false;
         for (CommandGroup group : playerGroups) {
-            if (group.whitelist()) continue;
-
-            String commandToCheck = fullCommand.toLowerCase();
-            String baseCommand = commandToCheck;
-            if (isNamespacedCommand) {
-                baseCommand = commandToCheck.substring(commandToCheck.indexOf(':') + 1);
-            }
-            boolean commandInList = group.commands().contains(commandToCheck) ||
-                                group.commands().contains(baseCommand);
-            // blacklist: if command is in list, it's denied
-            if (commandInList) {
+            if (!group.whitelist() && group.hasCommandInOwnList(fullCommand)) {
                 blacklisted = true;
                 break;
             }
         }
 
         if (blacklisted) {
-            canUseCommand = false;
-        } else {
-            // Then check whitelist groups
-            for (CommandGroup group : playerGroups) {
-                if (group.commands().contains("*") && group.whitelist()) {
-                    canUseCommand = true;
-                    break;
-                }
-
-                String commandToCheck = fullCommand.toLowerCase();
-                String baseCommand = commandToCheck;
-
-                if (isNamespacedCommand) {
-                    baseCommand = commandToCheck.substring(commandToCheck.indexOf(':') + 1);
-                }
-
-                boolean commandInList = group.commands().contains(commandToCheck) ||
-                                    group.commands().contains(baseCommand);
-
-                if (group.whitelist() ? commandInList : !commandInList) {
-                    canUseCommand = true;
-                    break;
-                }
-            }
-
-            // Special handling for namespaced commands
-            if (isNamespacedCommand && !canUseCommand) {
-                String baseCommand = fullCommand.substring(fullCommand.indexOf(':') + 1);
-                for (CommandGroup group : playerGroups) {
-                    if (group.commands().contains("*") && group.whitelist()) {
-                        canUseCommand = true;
-                        break;
-                    }
-
-                    boolean baseCommandInList = group.commands().contains(baseCommand);
-                    if (group.whitelist() ? baseCommandInList : !baseCommandInList) {
-                        canUseCommand = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!canUseCommand) {
             event.setCancelled(true);
-            if (blacklisted && isAltRestricted) {
+            if (isAltRestricted) {
                 Text.sendErrorMessage(player, "alt-account-restricted", lang, "{cmd}", fullCommand);
             } else {
                 sendUnknownCommandMessage(player, fullCommand, isNamespacedCommand);
             }
+            return;
+        }
+
+        boolean canUseCommand = playerGroups.stream().anyMatch(group -> group.isCommandAllowed(fullCommand));
+        if (!canUseCommand) {
+            event.setCancelled(true);
+            sendUnknownCommandMessage(player, fullCommand, isNamespacedCommand);
             return;
         }
 
@@ -764,13 +718,9 @@ public class CommandManager implements Listener {
             return;
         }
 
-        if (!resolvedCommand.testPermissionSilent(player)) {
+        if (!hasPermissionForCommand(player, resolvedCommand, fullCommand)) {
             event.setCancelled(true);
-            if (isAltRestricted) {
-                Text.sendErrorMessage(player, "alt-account-restricted", lang, "{cmd}", fullCommand);
-            } else {
-                sendUnknownCommandMessage(player, fullCommand, isNamespacedCommand);
-            }
+            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", fullCommand);
         }
     }
 
@@ -876,6 +826,38 @@ public class CommandManager implements Listener {
         return null;
     }
 
+    private boolean hasPermissionForCommand(Player player, Command command, String commandName) {
+        if (!command.testPermissionSilent(player)) {
+            return false;
+        }
+
+        String pluginPermission = getDerivedPluginCommandPermission(command, commandName);
+        return pluginPermission == null
+                || Bukkit.getPluginManager().getPermission(pluginPermission) == null
+                || player.hasPermission(pluginPermission);
+    }
+
+    private String getDerivedPluginCommandPermission(Command command, String commandName) {
+        String baseCommand = commandName == null ? "" : commandName.toLowerCase(Locale.ROOT);
+        if (baseCommand.contains(":")) {
+            baseCommand = baseCommand.substring(baseCommand.indexOf(':') + 1);
+        }
+        if (baseCommand.isBlank()) {
+            baseCommand = command.getName().toLowerCase(Locale.ROOT);
+        }
+
+        String pluginName = getPluginForCommand(command, commandName == null ? baseCommand : commandName)
+                .toLowerCase(Locale.ROOT);
+        if (pluginName.isBlank()) {
+            return null;
+        }
+
+        if (pluginName.equals("allium") && baseCommand.equals("fly")) {
+            return "allium.tfly";
+        }
+
+        return pluginName + "." + baseCommand;
+    }
 
 
     // Helper method to get NMS classes - adjust for your server version
@@ -1094,12 +1076,16 @@ public class CommandManager implements Listener {
     }
 
     private record CommandGroup(String name, boolean whitelist, List<String> commands,
+                           List<String> inheritedAllowedCommands,
                            List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
 
-        private CommandGroup(String name, boolean whitelist, List<String> commands, List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
+        private CommandGroup(String name, boolean whitelist, List<String> commands, List<String> inheritedAllowedCommands, List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
             this.name = name;
             this.whitelist = whitelist;
             this.commands = commands.stream()
+                    .map(String::toLowerCase)
+                    .toList();
+            this.inheritedAllowedCommands = inheritedAllowedCommands.stream()
                     .map(String::toLowerCase)
                     .toList();
             this.tabCompletes = tabCompletes.stream()
@@ -1110,33 +1096,43 @@ public class CommandManager implements Listener {
 
         public boolean isCommandAllowed(String commandName) {
             commandName = commandName.toLowerCase();
-            if (commands.contains(commandName)) {
+            if (hasCommandInList(commands, commandName)) {
                 return whitelist;
             }
-            String baseCommand = commandName.contains(":")
-                    ? commandName.substring(commandName.indexOf(':') + 1)
-                    : commandName;
-            if (commands.contains(baseCommand)) {
-                return whitelist;
+
+            if (!whitelist && !inheritedAllowedCommands.isEmpty()) {
+                return hasCommandInList(inheritedAllowedCommands, commandName);
             }
+
             return !whitelist;
+        }
+
+        public boolean hasCommandInOwnList(String commandName) {
+            return hasCommandInList(commands, commandName);
         }
 
         public boolean isTabCompletionAllowed(String commandName) {
             commandName = commandName.toLowerCase();
-            if (tabCompletes.contains(commandName)) {
-                return whitelist;
-            }
-            String baseCommand = commandName.contains(":")
-                    ? commandName.substring(commandName.indexOf(':') + 1)
-                    : commandName;
-            if (tabCompletes.contains(baseCommand)) {
+            if (hasCommandInList(tabCompletes, commandName)) {
                 return whitelist;
             }
             if (tabCompletes.contains("*")) {
                 return whitelist;
             }
             return !whitelist;
+        }
+
+        private static boolean hasCommandInList(List<String> commands, String commandName) {
+            if (commands.contains("*")) {
+                return true;
+            }
+            if (commands.contains(commandName)) {
+                return true;
+            }
+            String baseCommand = commandName.contains(":")
+                    ? commandName.substring(commandName.indexOf(':') + 1)
+                    : commandName;
+            return commands.contains(baseCommand);
         }
     }
 

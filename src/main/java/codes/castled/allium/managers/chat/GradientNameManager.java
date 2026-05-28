@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,6 +38,7 @@ public class GradientNameManager {
     private final PluginStart plugin;
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
     private final DecimalFormat phaseDecimalFormat;
+    private final AtomicBoolean paused = new AtomicBoolean(false);
     private SchedulerAdapter.TaskHandle phaseTask;
     private BigDecimal miniGradientPhase = PHASE_MIN;
 
@@ -45,6 +47,14 @@ public class GradientNameManager {
         this.phaseDecimalFormat = new DecimalFormat("#.#", DecimalFormatSymbols.getInstance(Locale.US));
         this.phaseDecimalFormat.setRoundingMode(RoundingMode.DOWN);
         this.phaseTask = SchedulerAdapter.runTimer(this::advancePhase, 0L, 1L);
+    }
+
+    public void setPaused(boolean value) {
+        paused.set(value);
+    }
+
+    public boolean isPaused() {
+        return paused.get();
     }
 
     public void shutdown() {
@@ -98,6 +108,9 @@ public class GradientNameManager {
     }
 
     private void advancePhase() {
+        if (paused.get()) {
+            return;
+        }
         miniGradientPhase = miniGradientPhase.add(PHASE_STEP);
         if (miniGradientPhase.compareTo(PHASE_MAX) > 0) {
             miniGradientPhase = PHASE_MIN;

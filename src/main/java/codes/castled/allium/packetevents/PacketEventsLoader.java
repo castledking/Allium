@@ -82,7 +82,7 @@ public final class PacketEventsLoader {
             return new ChatPacketTrackerNoOp();
         }
         try {
-            Class<?> clazz = Class.forName("net.survivalfun.core.packetevents.impl.PacketChatTrackerImpl");
+            Class<?> clazz = Class.forName("codes.castled.allium.packetevents.impl.PacketChatTrackerImpl");
             return (ChatPacketTracker) clazz
                 .getConstructor(PluginStart.class, ChatMessageManager.class)
                 .newInstance(plugin, chatMessageManager);
@@ -101,7 +101,7 @@ public final class PacketEventsLoader {
             return new TabListManagerNoOp();
         }
         try {
-            Class<?> clazz = Class.forName("net.survivalfun.core.packetevents.impl.TabListManagerPacketEventsImpl");
+            Class<?> clazz = Class.forName("codes.castled.allium.packetevents.impl.TabListManagerPacketEventsImpl");
             return (TabListManager) clazz
                 .getConstructor(PluginStart.class, PartyManager.class, VanishManager.class)
                 .newInstance(plugin, partyManager, vanishManager);

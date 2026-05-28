@@ -106,7 +106,8 @@ public class Database {
         config.setAutoCommit(true);
         // Disabled leak detection to prevent issues with async operations
         // config.setLeakDetectionThreshold(LEAK_DETECTION_THRESHOLD_MS);
-        config.setKeepaliveTime(TimeUnit.SECONDS.toMillis(30));
+        // setKeepaliveTime not available in HikariCP 3.4.5
+        // config.setKeepaliveTime(TimeUnit.SECONDS.toMillis(30));
         
         // Connection test query
         config.setConnectionTestQuery("SELECT 1");

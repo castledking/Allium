@@ -11,6 +11,7 @@ import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -35,6 +36,7 @@ public class FlightRestoration implements Listener {
     private final Set<UUID> playersWithslowFallingOnQuit = new HashSet<>();
     private final Map<UUID, io.papermc.paper.threadedregions.scheduler.ScheduledTask> slowFallTasks = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> pendingFlightRestore = new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> preTeleportAllowFlight = new ConcurrentHashMap<>();
 
     public FlightRestoration(PluginStart plugin) {
         this.plugin = plugin;
@@ -103,12 +105,30 @@ public class FlightRestoration implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerTeleport(PlayerTeleportEvent event) {
+        if (event.getTo() == null) return;
+        if (event.getFrom().getWorld().equals(event.getTo().getWorld())) return;
+
+        Player player = event.getPlayer();
+        preTeleportAllowFlight.put(player.getUniqueId(), player.getAllowFlight());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
         TFlyManager tflyManager = plugin.getTFlyManager();
 
         if (tflyManager == null) {
+            preTeleportAllowFlight.remove(uuid);
+            return;
+        }
+
+        // Use the pre-teleport allowFlight state if available, otherwise use current
+        Boolean hadAllowFlightBefore = preTeleportAllowFlight.remove(uuid);
+        boolean hadFlight = hadAllowFlightBefore != null ? hadAllowFlightBefore : player.getAllowFlight();
+
+        if (!hadFlight) {
             return;
         }
 
@@ -145,6 +165,12 @@ public class FlightRestoration implements Listener {
             // Check if they still have time
             long currentRemaining = tflyManager.getTFlyTime(uuid);
             if (currentRemaining <= 0) {
+                pendingFlightRestore.remove(uuid);
+                return;
+            }
+
+            // Re-check that tfly is still enabled (player may have toggled it off in the meantime)
+            if (!tflyManager.isTFlyEnabled(uuid)) {
                 pendingFlightRestore.remove(uuid);
                 return;
             }

@@ -574,6 +574,7 @@ public class PartyManager {
         if (!partyLocatorBar) {
             return;
         }
+
         UUID viewerId = viewer.getUniqueId();
         Party viewerParty = getPlayerParty(viewerId);
         Party targetParty = getPlayerParty(target.getUniqueId());
@@ -1026,4 +1027,5 @@ public class PartyManager {
     public boolean getStaffLocatorMode(Player player) {
         return staffLocatorMode.getOrDefault(player.getUniqueId(), player.hasPermission("allium.party.staff"));
     }
+
 }

@@ -11,7 +11,7 @@
 
     <groupId>net.survivalfun</groupId>
     <artifactId>Allium</artifactId>
-    <version>0.1.7a</version>
+    <version>0.1.8a</version>
     <name>Allium</name>
     <description>A secure, modern Essentials solution.</description>
 
@@ -297,16 +297,12 @@
             </exclusions>
         </dependency>
 
-        <!-- Shade VaultUnlockedAPI so the plugin works without Vault installed.
-             Shading (compile scope) ensures the net.milkbowl.vault.* classes are
-             present in the JAR at load time.  When the real Vault plugin IS
-             installed the PluginClassLoader (child-first) will load them from
-             Vault's classloader first, so no conflict. -->
+        <!-- VaultUnlockedAPI - provided scope to use the actual plugin's classes at runtime -->
         <dependency>
             <groupId>net.milkbowl.vault</groupId>
             <artifactId>VaultUnlockedAPI</artifactId>
             <version>2.15</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
         </dependency>
 
         <!-- REMOVED: jopt-simple was only needed by OkHttp

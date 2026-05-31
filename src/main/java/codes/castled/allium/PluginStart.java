@@ -653,6 +653,9 @@ public class PluginStart extends JavaPlugin {
         }, 50L);
 
         // /dialog watchdog removed
+
+        // Setup Citizens NPC waypoint range to suppress locator bar dots for NPCs
+        SchedulerAdapter.runLater(this::setupCitizensNpcWaypointRange, 100L);
     }
 
     @Override
@@ -978,6 +981,44 @@ public class PluginStart extends JavaPlugin {
     /**
      * Initializes chat packet tracking. Uses PacketEvents when available, otherwise no-op.
      */
+    private void setupCitizensNpcWaypointRange() {
+        try {
+            org.bukkit.plugin.Plugin citizens = getServer().getPluginManager().getPlugin("Citizens");
+            if (citizens == null) {
+                Text.sendDebugLog(INFO, "Citizens not found, skipping NPC waypoint range setup");
+                return;
+            }
+
+            ClassLoader cl = citizens.getClass().getClassLoader();
+            Class<?> citizensApiClass = Class.forName("net.citizensnpcs.api.CitizensAPI", true, cl);
+            java.lang.reflect.Method getRegistry = citizensApiClass.getMethod("getNPCRegistry");
+            Object registry = getRegistry.invoke(null);
+
+            java.lang.reflect.Method getEntity = null;
+            int count = 0;
+            for (Object obj : (Iterable<?>) registry) {
+                if (getEntity == null) {
+                    getEntity = obj.getClass().getMethod("getEntity");
+                }
+                Object entity = getEntity.invoke(obj);
+                if (entity instanceof org.bukkit.entity.LivingEntity living) {
+                    try {
+                        org.bukkit.attribute.AttributeInstance attr = living.getAttribute(org.bukkit.attribute.Attribute.WAYPOINT_RECEIVE_RANGE);
+                        if (attr != null) {
+                            attr.setBaseValue(-1);
+                            count++;
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+
+            Text.sendDebugLog(INFO, "Set waypoint_receive_range=-1 on " + count + " Citizens NPCs");
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Failed to setup Citizens NPC waypoint range: " + e.getMessage());
+        }
+    }
+
     private void initializePacketEvents() {
         try {
             this.chatPacketTracker = PacketEventsLoader.createChatPacketTracker(this, chatMessageManager);

@@ -827,14 +827,32 @@ public class CommandManager implements Listener {
     }
 
     private boolean hasPermissionForCommand(Player player, Command command, String commandName) {
-        if (!command.testPermissionSilent(player)) {
+        boolean testSilent = command.testPermissionSilent(player);
+        if (!testSilent) {
             return false;
         }
 
         String pluginPermission = getDerivedPluginCommandPermission(command, commandName);
-        return pluginPermission == null
+        
+        // Check Allium-specific permissions for commands Allium owns, regardless of which plugin's command object resolved
+        String baseCommand = commandName.toLowerCase(Locale.ROOT);
+        if (baseCommand.contains(":")) {
+            baseCommand = baseCommand.substring(baseCommand.indexOf(':') + 1);
+        }
+        
+        if (baseCommand.equals("fly")) {
+            boolean hasFly = player.hasPermission("allium.fly");
+            boolean hasTFly = player.hasPermission("allium.tfly");
+            if (hasFly || hasTFly) {
+                return true;
+            }
+        }
+
+        boolean hasPerm = pluginPermission == null
                 || Bukkit.getPluginManager().getPermission(pluginPermission) == null
                 || player.hasPermission(pluginPermission);
+        
+        return hasPerm;
     }
 
     private String getDerivedPluginCommandPermission(Command command, String commandName) {
@@ -850,10 +868,6 @@ public class CommandManager implements Listener {
                 .toLowerCase(Locale.ROOT);
         if (pluginName.isBlank()) {
             return null;
-        }
-
-        if (pluginName.equals("allium") && baseCommand.equals("fly")) {
-            return "allium.tfly";
         }
 
         return pluginName + "." + baseCommand;

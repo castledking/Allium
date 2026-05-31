@@ -107,20 +107,11 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
                 List<WrapperPlayServerPlayerInfoUpdate.PlayerInfo> entries = new ArrayList<>(packet.getEntries());
                 boolean touchedListed = false;
 
-                int originalSize = packet.getEntries().size();
-                entries.removeIf(entry -> {
-                    UUID profileId = entry.getProfileId();
-                    Player targetPlayer = plugin.getServer().getPlayer(profileId);
-                    if (targetPlayer == null || !targetPlayer.isOnline()) {
-                        return !entry.isListed();
-                    }
-                    return false;
-                });
-                boolean removedNpc = entries.size() < originalSize;
-
                 for (WrapperPlayServerPlayerInfoUpdate.PlayerInfo entry : entries) {
                     Player targetPlayer = plugin.getServer().getPlayer(entry.getProfileId());
                     if (targetPlayer == null || !targetPlayer.isOnline()) {
+                        // Citizens player NPCs often arrive as unlisted player-info entries
+                        // before Bukkit can resolve them as online players. Leave them intact.
                         continue;
                     }
                     if (!shouldBeVisibleInTabList(viewer, targetPlayer)) {
@@ -136,7 +127,7 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
                 }
 
                 // Only update entries, don't modify actions to prevent packet storms
-                if (touchedListed || removedNpc) {
+                if (touchedListed) {
                     packet.setEntries(entries);
                 }
             }

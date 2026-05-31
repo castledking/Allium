@@ -444,5 +444,11 @@ end-gateway:
   # Smaller values = closer to gateway, larger = more fallback options
   search-radius: 5
 
+# Per-player team color overrides for the CrowBar locator bar.
+# Useful for assigning specific colors to players regardless of their scoreboard team.
+# Format: "player_name": "#RRGGBB"
+player-colors:
+  ggpots: '#f44336'
+
 # Version of the config file (do not modify)
 version: 0.1.5a

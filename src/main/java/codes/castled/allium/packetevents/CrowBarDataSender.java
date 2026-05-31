@@ -20,26 +20,11 @@ import java.util.UUID;
 public class CrowBarDataSender {
     private static final Gson GSON = new Gson();
     private static final String CHANNEL = "crowbar:player_data";
-    private static final int TICK_INTERVAL = 5; // Send every 5 ticks (250ms)
+    private static final int TICK_INTERVAL = 1; // Send every tick (50ms)
     
-    private static final int[] MOJANGISH_DOT_COLORS = {
-        0x000000, // black
-        0x0000AA, // dark_blue
-        0x00AA00, // dark_green
-        0x00AAAA, // dark_aqua
-        0xAA0000, // dark_red
-        0xAA00AA, // dark_purple
-        0xFFAA00, // gold
-        0xAAAAAA, // gray
-        0x555555, // dark_gray
-        0x5555FF, // blue
-        0x55FF55, // green
-        0x55FFFF, // aqua
-        0xFF5555, // red
-        0xFF55FF, // light_purple
-        0xFFFF55, // yellow
-        0xFFFFFF  // white
-    };
+    // Golden angle (≈137.508°) — ensures maximally separated hues for any number of players.
+    // Colors are generated in HSV with high saturation & brightness so they never look muddy.
+    private static final float GOLDEN_ANGLE = 137.508f;
     
     private final JavaPlugin plugin;
     private int taskId = -1;
@@ -122,14 +107,16 @@ public class CrowBarDataSender {
     }
 
     private int getTeamColor(Player player) {
-        org.bukkit.scoreboard.Team team = player.getScoreboard().getEntryTeam(player.getName());
+        String playerName = player.getName().toLowerCase();
 
-        if (team != null && team.getColor() != null) {
-            net.md_5.bungee.api.ChatColor bungeeColor = team.getColor().asBungee();
-
-            if (bungeeColor != null && bungeeColor.getColor() != null) {
-                java.awt.Color color = bungeeColor.getColor();
-                return (color.getRed() << 16) | (color.getGreen() << 8) | color.getBlue();
+        // Check for per-player color override in config
+        String overrideColor = plugin.getConfig().getString("player-colors." + playerName);
+        if (overrideColor != null && !overrideColor.isEmpty()) {
+            try {
+                String hex = overrideColor.startsWith("#") ? overrideColor.substring(1) : overrideColor;
+                return Integer.parseInt(hex, 16);
+            } catch (NumberFormatException e) {
+                // Invalid hex color, fall through
             }
         }
 
@@ -137,8 +124,10 @@ public class CrowBarDataSender {
     }
 
     private static int getMojangishGeneratedColor(UUID uuid) {
-        int hash = uuid.hashCode();
-        int index = Math.floorMod(hash, MOJANGISH_DOT_COLORS.length);
-        return MOJANGISH_DOT_COLORS[index];
+        long hash = uuid.hashCode() & 0xffffffffL;
+        float hue = (hash * GOLDEN_ANGLE) % 360f;
+        float saturation = 0.75f + ((hash >> 8) & 0xFF) / 255f * 0.20f;
+        float brightness = 0.85f + ((hash >> 16) & 0xFF) / 255f * 0.15f;
+        return java.awt.Color.HSBtoRGB(hue / 360f, saturation, brightness) & 0xFFFFFF;
     }
 }

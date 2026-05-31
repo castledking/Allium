@@ -575,6 +575,12 @@ public class PartyManager {
             return;
         }
 
+        // Always show Citizens NPCs - don't manage their body visibility.
+        if (plugin.isCitizensNpc(target)) {
+            PlayerVisibilityHelper.showPlayer(viewer, target);
+            return;
+        }
+
         UUID viewerId = viewer.getUniqueId();
         Party viewerParty = getPlayerParty(viewerId);
         Party targetParty = getPlayerParty(target.getUniqueId());

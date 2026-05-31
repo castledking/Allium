@@ -5,8 +5,7 @@ api-version: 1.21
 folia-supported: true
 author: castledking
 description: "A secure, modern Essentials solution."
-soft-depend: [Vault, PlaceholderAPI, packetevents, floodgate, mcMMO, LuckPerms, DiscordSRV, FastAsyncWorldEdit, WorldEdit]
-loadafter: [PlaceholderAPI, mcMMO, packetevents, PacketEvents, Vault, LuckPerms, DiscordSRV, FastAsyncWorldEdit, WorldEdit]
+softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, FastAsyncWorldEdit, WorldEdit, Citizens]
 
 commands:
   nickname:

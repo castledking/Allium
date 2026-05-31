@@ -15,13 +15,13 @@ import java.lang.reflect.Proxy;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.command.PluginCommand;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -242,6 +242,7 @@ public class PluginStart extends JavaPlugin {
     private TFlyManager tflyManager;
     private VouchersConfig vouchersConfig;
     private SecurityAlertManager securityAlertManager;
+    private final Set<UUID> citizensNpcUuids = ConcurrentHashMap.newKeySet();
 
     /**
      * Gets the singleton instance of the plugin.
@@ -654,8 +655,10 @@ public class PluginStart extends JavaPlugin {
 
         // /dialog watchdog removed
 
-        // Setup Citizens NPC waypoint range to suppress locator bar dots for NPCs
-        SchedulerAdapter.runLater(this::setupCitizensNpcWaypointRange, 100L);
+        // Setup Citizens NPC waypoint range to suppress locator bar dots for NPCs.
+        // Run at tick 1 (before PartyManager starts at tick 5) so NPC UUIDs are
+        // registered before the first distance-check iteration.
+        SchedulerAdapter.runLater(this::setupCitizensNpcWaypointRange, 1L);
     }
 
     @Override
@@ -996,27 +999,47 @@ public class PluginStart extends JavaPlugin {
 
             java.lang.reflect.Method getEntity = null;
             int count = 0;
+            citizensNpcUuids.clear();
             for (Object obj : (Iterable<?>) registry) {
                 if (getEntity == null) {
                     getEntity = obj.getClass().getMethod("getEntity");
                 }
                 Object entity = getEntity.invoke(obj);
-                if (entity instanceof org.bukkit.entity.LivingEntity living) {
-                    try {
-                        org.bukkit.attribute.AttributeInstance attr = living.getAttribute(org.bukkit.attribute.Attribute.WAYPOINT_RECEIVE_RANGE);
-                        if (attr != null) {
-                            attr.setBaseValue(-1);
-                            count++;
-                        }
-                    } catch (Exception ignored) {
+                if (!(entity instanceof org.bukkit.entity.LivingEntity living)) continue;
+
+                citizensNpcUuids.add(living.getUniqueId());
+
+                // Citizens already sets WAYPOINT_TRANSMIT_RANGE=0 on Player-type NPCs at spawn
+                // (see CitizensNPC.java:403). Set as a fallback for any NPCs that missed it.
+                try {
+                    org.bukkit.attribute.AttributeInstance attr = living.getAttribute(org.bukkit.attribute.Attribute.WAYPOINT_TRANSMIT_RANGE);
+                    if (attr != null && attr.getBaseValue() != 0) {
+                        attr.setBaseValue(0);
+                        count++;
                     }
+                } catch (Exception ignored) {
                 }
             }
 
-            Text.sendDebugLog(INFO, "Set waypoint_receive_range=-1 on " + count + " Citizens NPCs");
+            Text.sendDebugLog(INFO, "Tracked " + citizensNpcUuids.size() + " Citizens NPC UUIDs, ensured WAYPOINT_TRANSMIT_RANGE=0 on " + count);
         } catch (Exception e) {
             Text.sendDebugLog(WARN, "Failed to setup Citizens NPC waypoint range: " + e.getMessage());
         }
+    }
+
+    public boolean isCitizensNpc(UUID uuid) {
+        return citizensNpcUuids.contains(uuid);
+    }
+
+    public boolean isCitizensNpc(Player player) {
+        if (player == null) {
+            return false;
+        }
+        if (player.hasMetadata("NPC")) {
+            citizensNpcUuids.add(player.getUniqueId());
+            return true;
+        }
+        return isCitizensNpc(player.getUniqueId());
     }
 
     private void initializePacketEvents() {

@@ -50,7 +50,7 @@ function resolveSpigotDownloadUrl(repoConfig, repoOwner, repoName, version) {
 
   const modrinth = repoConfig?.modrinth;
   if (typeof modrinth === 'string' && modrinth) {
-    return `https://modrinth.com/plugin/${modrinth}`;
+    return `https://modrinth.com/plugin/allium-essentials#download`;
   }
 
   const releaseTag = version.startsWith('v') ? version : `v${version}`;

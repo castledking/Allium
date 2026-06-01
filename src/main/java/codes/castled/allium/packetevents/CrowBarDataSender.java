@@ -52,6 +52,10 @@ public class CrowBarDataSender {
         JsonArray playersArray = new JsonArray();
 
         for (Player player : Bukkit.getOnlinePlayers()) {
+            if (PluginStart.getInstance().isCitizensNpc(player)) {
+                continue;
+            }
+
             JsonObject playerObj = new JsonObject();
             playerObj.addProperty("uuid", player.getUniqueId().toString());
             playerObj.addProperty("x", player.getLocation().getX());

@@ -64,7 +64,7 @@ jobs:
             echo "has_notes=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create GitHub Release
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -73,12 +73,29 @@ jobs:
           TITLE="${{ steps.notes.outputs.title }}"
           NOTES_FILE=".release/latest/v${VERSION}.md"
 
-          ARGS=()
-          if [ -n "$JAR" ]; then
-            ARGS+=("$JAR")
-          fi
-          if [ "${{ steps.notes.outputs.has_notes }}" = "true" ]; then
-            gh release create "v${VERSION}" --title "$TITLE" --notes-file "$NOTES_FILE" "${ARGS[@]}"
+          TAG="v${VERSION}"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; updating metadata and uploading assets."
+            if [ "${{ steps.notes.outputs.has_notes }}" = "true" ]; then
+              gh release edit "$TAG" --title "$TITLE" --notes-file "$NOTES_FILE"
+            else
+              gh release edit "$TAG" --title "$TITLE"
+            fi
+
+            if [ -n "$JAR" ]; then
+              gh release upload "$TAG" "$JAR" --clobber
+            else
+              echo "No JAR found; skipping asset upload."
+            fi
           else
-            gh release create "v${VERSION}" --title "$TITLE" --generate-notes "${ARGS[@]}"
+            ARGS=()
+            if [ -n "$JAR" ]; then
+              ARGS+=("$JAR")
+            fi
+            if [ "${{ steps.notes.outputs.has_notes }}" = "true" ]; then
+              gh release create "$TAG" --title "$TITLE" --notes-file "$NOTES_FILE" "${ARGS[@]}"
+            else
+              gh release create "$TAG" --title "$TITLE" --generate-notes "${ARGS[@]}"
+            fi
           fi

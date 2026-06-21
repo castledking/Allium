@@ -1,5 +1,18 @@
 package codes.castled.allium.listeners.security;
 
+import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
+
+import codes.castled.allium.PluginStart;
+import codes.castled.allium.managers.DB.Database;
+import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.tfly.TFlyManager;
+import codes.castled.allium.util.SchedulerAdapter;
+import java.sql.SQLException;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -15,28 +28,19 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-import codes.castled.allium.PluginStart;
-import codes.castled.allium.managers.DB.Database;
-import codes.castled.allium.managers.core.Text;
-import codes.castled.allium.tfly.TFlyManager;
-import codes.castled.allium.util.SchedulerAdapter;
-
-import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
-
-import java.sql.SQLException;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 public class FlightRestoration implements Listener {
+
     private final PluginStart plugin;
     private final Database database;
     private final Set<UUID> playersWithslowFallingOnQuit = new HashSet<>();
-    private final Map<UUID, io.papermc.paper.threadedregions.scheduler.ScheduledTask> slowFallTasks = new ConcurrentHashMap<>();
-    private final Map<UUID, Boolean> pendingFlightRestore = new ConcurrentHashMap<>();
-    private final Map<UUID, Boolean> preTeleportAllowFlight = new ConcurrentHashMap<>();
+    private final Map<
+        UUID,
+        io.papermc.paper.threadedregions.scheduler.ScheduledTask
+    > slowFallTasks = new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> pendingFlightRestore =
+        new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> preTeleportAllowFlight =
+        new ConcurrentHashMap<>();
 
     public FlightRestoration(PluginStart plugin) {
         this.plugin = plugin;
@@ -52,48 +56,75 @@ public class FlightRestoration implements Listener {
         boolean debugMode = plugin.getConfig().getBoolean("debug-mode");
 
         // Check if player is switching to Creative mode with slow falling active
-        if (newGamemode == GameMode.CREATIVE && player.hasPotionEffect(PotionEffectType.SLOW_FALLING)) {
+        if (
+            newGamemode == GameMode.CREATIVE &&
+            player.hasPotionEffect(PotionEffectType.SLOW_FALLING)
+        ) {
             // Remove slow falling effect
             player.removePotionEffect(PotionEffectType.SLOW_FALLING);
-            
+
             // Cancel any running landing check task for this player
-            io.papermc.paper.threadedregions.scheduler.ScheduledTask t = slowFallTasks.remove(player.getUniqueId());
+            io.papermc.paper.threadedregions.scheduler.ScheduledTask t =
+                slowFallTasks.remove(player.getUniqueId());
             if (t != null) t.cancel();
-            
+
             // Enable flight for creative mode
             player.setAllowFlight(true);
             player.setFlying(true);
-            
+
             if (debugMode) {
-                Text.sendDebugLog(INFO, "Removed slow falling from " + player.getName() + 
-                        " and enabled flight due to Creative mode");
+                Text.sendDebugLog(
+                    INFO,
+                    "Removed slow falling from " +
+                        player.getName() +
+                        " and enabled flight due to Creative mode"
+                );
             }
             return;
         }
 
-        
         // Check if player is switching from Creative to Survival
-        if ((newGamemode == GameMode.SURVIVAL || newGamemode == GameMode.ADVENTURE) && oldGamemode == GameMode.CREATIVE) {
+        if (
+            (newGamemode == GameMode.SURVIVAL ||
+                newGamemode == GameMode.ADVENTURE) &&
+            oldGamemode == GameMode.CREATIVE
+        ) {
             // If player is not on the ground, apply slow falling
             if (!player.isOnGround()) {
                 applyOrRefreshSlowFalling(player);
                 startSlowFallLandingCheck(player);
 
                 if (debugMode) {
-                    Text.sendDebugLog(INFO, "Applied slow falling to " + player.getName() +
-                            " after switching from Creative to Survival while in air");
+                    Text.sendDebugLog(
+                        INFO,
+                        "Applied slow falling to " +
+                            player.getName() +
+                            " after switching from Creative to Survival while in air"
+                    );
                 }
             } else if (player.hasPermission("allium.gamemode.creative")) {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE
-                        , 20 * 3, 0, false, true, true));
+                player.addPotionEffect(
+                    new PotionEffect(
+                        PotionEffectType.RESISTANCE,
+                        20 * 3,
+                        0,
+                        false,
+                        true,
+                        true
+                    )
+                );
             }
-            
+
             // Enable flight if player has permission
             if (player.hasPermission("allium.fly")) {
                 player.setAllowFlight(true);
                 if (debugMode) {
-                    Text.sendDebugLog(INFO, "Enabled flight for " + player.getName() + 
-                            " after switching to Survival (allium.fly permission)");
+                    Text.sendDebugLog(
+                        INFO,
+                        "Enabled flight for " +
+                            player.getName() +
+                            " after switching to Survival (allium.fly permission)"
+                    );
                 }
             }
 
@@ -110,7 +141,10 @@ public class FlightRestoration implements Listener {
         if (event.getFrom().getWorld().equals(event.getTo().getWorld())) return;
 
         Player player = event.getPlayer();
-        preTeleportAllowFlight.put(player.getUniqueId(), player.getAllowFlight());
+        preTeleportAllowFlight.put(
+            player.getUniqueId(),
+            player.getAllowFlight()
+        );
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -126,7 +160,10 @@ public class FlightRestoration implements Listener {
 
         // Use the pre-teleport allowFlight state if available, otherwise use current
         Boolean hadAllowFlightBefore = preTeleportAllowFlight.remove(uuid);
-        boolean hadFlight = hadAllowFlightBefore != null ? hadAllowFlightBefore : player.getAllowFlight();
+        boolean hadFlight =
+            hadAllowFlightBefore != null
+                ? hadAllowFlightBefore
+                : player.getAllowFlight();
 
         if (!hadFlight) {
             return;
@@ -150,51 +187,75 @@ public class FlightRestoration implements Listener {
         pendingFlightRestore.put(uuid, isFlying);
 
         if (plugin.getConfig().getBoolean("debug-mode")) {
-            Text.sendDebugLog(INFO, "Player " + player.getName()
-                    + " switching dimensions with timed flight active (remaining: " + remainingTime
-                    + "s, wasFlying: " + isFlying + ")");
+            Text.sendDebugLog(
+                INFO,
+                "Player " +
+                    player.getName() +
+                    " switching dimensions with timed flight active (remaining: " +
+                    remainingTime +
+                    "s, wasFlying: " +
+                    isFlying +
+                    ")"
+            );
         }
 
         // Schedule flight restoration after a short delay to allow dimension change to complete
-        SchedulerAdapter.runAtEntityLater(player, () -> {
-            if (!player.isOnline()) {
-                pendingFlightRestore.remove(uuid);
-                return;
-            }
-
-            // Check if they still have time
-            long currentRemaining = tflyManager.getTFlyTime(uuid);
-            if (currentRemaining <= 0) {
-                pendingFlightRestore.remove(uuid);
-                return;
-            }
-
-            // Re-check that tfly is still enabled (player may have toggled it off in the meantime)
-            if (!tflyManager.isTFlyEnabled(uuid)) {
-                pendingFlightRestore.remove(uuid);
-                return;
-            }
-
-            // Re-enable flight
-            player.setAllowFlight(true);
-
-            // Restore flying state if they were flying
-            Boolean shouldFly = pendingFlightRestore.remove(uuid);
-            if (Boolean.TRUE.equals(shouldFly) && !player.isOnGround()) {
-                try {
-                    player.setFlying(true);
-                    Text.sendDebugLog(INFO, "Restored timed flight for " + player.getName()
-                            + " after dimension change");
-                } catch (IllegalArgumentException e) {
-                    Text.sendDebugLog(WARN, "Could not restore flying state for " + player.getName()
-                            + " after dimension change: " + e.getMessage());
+        SchedulerAdapter.runAtEntityLater(
+            player,
+            () -> {
+                if (!player.isOnline()) {
+                    pendingFlightRestore.remove(uuid);
+                    return;
                 }
-            } else {
-                player.setFlying(false);
-                Text.sendDebugLog(INFO, "Restored timed fly toggle for " + player.getName()
-                        + " after dimension change (not flying)");
-            }
-        }, 5L);
+
+                // Check if they still have time
+                long currentRemaining = tflyManager.getTFlyTime(uuid);
+                if (currentRemaining <= 0) {
+                    pendingFlightRestore.remove(uuid);
+                    return;
+                }
+
+                // Re-check that tfly is still enabled (player may have toggled it off in the meantime)
+                if (!tflyManager.isTFlyEnabled(uuid)) {
+                    pendingFlightRestore.remove(uuid);
+                    return;
+                }
+
+                // Re-enable flight
+                player.setAllowFlight(true);
+
+                // Restore flying state if they were flying
+                Boolean shouldFly = pendingFlightRestore.remove(uuid);
+                if (Boolean.TRUE.equals(shouldFly) && !player.isOnGround()) {
+                    try {
+                        player.setFlying(true);
+                        Text.sendDebugLog(
+                            INFO,
+                            "Restored timed flight for " +
+                                player.getName() +
+                                " after dimension change"
+                        );
+                    } catch (IllegalArgumentException e) {
+                        Text.sendDebugLog(
+                            WARN,
+                            "Could not restore flying state for " +
+                                player.getName() +
+                                " after dimension change: " +
+                                e.getMessage()
+                        );
+                    }
+                } else {
+                    player.setFlying(false);
+                    Text.sendDebugLog(
+                        INFO,
+                        "Restored timed fly toggle for " +
+                            player.getName() +
+                            " after dimension change (not flying)"
+                    );
+                }
+            },
+            5L
+        );
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -207,16 +268,19 @@ public class FlightRestoration implements Listener {
         if (tflyManager != null) {
             tflyManager.savePlayerState(player);
         }
-        
-        if(!player.hasPermission("allium.fly")) {
-            return;
-        }
-        
+
+        // Check slow falling for all players who were in the air, not just allium.fly holders.
+        // TFly-only players (no allium.fly) also need slow falling protection on rejoin.
         if (player.hasPotionEffect(PotionEffectType.SLOW_FALLING)) {
             playersWithslowFallingOnQuit.add(player.getUniqueId());
-            Text.sendDebugLog(INFO, player.getName() + " has logged out with Slow Falling effect");
+            Text.sendDebugLog(
+                INFO,
+                player.getName() + " has logged out with Slow Falling effect"
+            );
+        } else if (!player.hasPermission("allium.fly")) {
+            // Players without allium.fly and no slow falling — nothing else to do
+            return;
         }
-        
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -229,7 +293,6 @@ public class FlightRestoration implements Listener {
             tflyManager.loadPlayerState(player);
         }
 
-
         // Check if player was in spectator mode when they quit
         if (player.getGameMode() == GameMode.SPECTATOR) {
             // Restore flight state for spectators - spectators always can fly
@@ -237,84 +300,173 @@ public class FlightRestoration implements Listener {
             try {
                 player.setFlying(true);
             } catch (IllegalArgumentException e) {
-                Text.sendDebugLog(WARN, "Could not set flying for spectator " + player.getName() + ": " + e.getMessage());
+                Text.sendDebugLog(
+                    WARN,
+                    "Could not set flying for spectator " +
+                        player.getName() +
+                        ": " +
+                        e.getMessage()
+                );
             }
-            Text.sendDebugLog(INFO, "Restored flight for spectator: " + player.getName());
+            Text.sendDebugLog(
+                INFO,
+                "Restored flight for spectator: " + player.getName()
+            );
             return;
         }
 
         // Handle creative mode players
         if (player.getGameMode() == GameMode.CREATIVE) {
             if (!player.hasPermission("allium.fly")) {
-                player.getScheduler().runDelayed(plugin, (task) -> {
-                    player.setAllowFlight(false);
-                    player.setFlying(false);
-                    Text.sendDebugLog(INFO, "Disabled flight for creative player without allium.fly permission: " + player.getName() + " (vanilla behavior)");
-                }, null, 5L);
+                player.getScheduler().runDelayed(
+                    plugin,
+                    task -> {
+                        player.setAllowFlight(false);
+                        player.setFlying(false);
+                        Text.sendDebugLog(
+                            INFO,
+                            "Disabled flight for creative player without allium.fly permission: " +
+                                player.getName() +
+                                " (vanilla behavior)"
+                        );
+                    },
+                    null,
+                    5L
+                );
                 return;
             }
-            player.getScheduler().runDelayed(plugin, (task) -> {
-                player.setAllowFlight(true);
-                try {
-                    player.setFlying(true);
-                } catch (IllegalArgumentException e) {
-                    Text.sendDebugLog(WARN, "Could not set flying for creative player " + player.getName() + ": " + e.getMessage());
-                }
-                Text.sendDebugLog(INFO, "Ensured flight is enabled for " + player.getName() + " in creative mode");
-            }, null, 5L);
+            player.getScheduler().runDelayed(
+                plugin,
+                task -> {
+                    player.setAllowFlight(true);
+                    try {
+                        player.setFlying(true);
+                    } catch (IllegalArgumentException e) {
+                        Text.sendDebugLog(
+                            WARN,
+                            "Could not set flying for creative player " +
+                                player.getName() +
+                                ": " +
+                                e.getMessage()
+                        );
+                    }
+                    Text.sendDebugLog(
+                        INFO,
+                        "Ensured flight is enabled for " +
+                            player.getName() +
+                            " in creative mode"
+                    );
+                },
+                null,
+                5L
+            );
             return;
         }
 
         // Handle spectator mode without permission
-        if (player.getGameMode() == GameMode.SPECTATOR && !player.hasPermission("allium.gamemode.spectator")) {
-            player.getScheduler().runDelayed(plugin, (task) -> {
-                player.setGameMode(GameMode.SURVIVAL);
-                player.sendMessage(plugin.getLangManager().get("gamemode.reset")
-                        .replace("{gamemode}", GameMode.SURVIVAL.toString()));
-                
-                Text.sendDebugLog(INFO, "Reset " + player.getName() + "'s gamemode from SPECTATOR to SURVIVAL (no permission)");
-                teleportToSavedLocation(player);
-            }, null, 5L);
+        if (
+            player.getGameMode() == GameMode.SPECTATOR &&
+            !player.hasPermission("allium.gamemode.spectator")
+        ) {
+            player.getScheduler().runDelayed(
+                plugin,
+                task -> {
+                    player.setGameMode(GameMode.SURVIVAL);
+                    player.sendMessage(
+                        plugin
+                            .getLangManager()
+                            .get("gamemode.reset")
+                            .replace("{gamemode}", GameMode.SURVIVAL.toString())
+                    );
+
+                    Text.sendDebugLog(
+                        INFO,
+                        "Reset " +
+                            player.getName() +
+                            "'s gamemode from SPECTATOR to SURVIVAL (no permission)"
+                    );
+                    teleportToSavedLocation(player);
+                },
+                null,
+                5L
+            );
             return;
         }
 
         // Handle flight status restoration for survival/adventure modes
-        if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
-            boolean hasTimedFly = tflyManager != null && tflyManager.getTFlyTime(uuid) > 0;
-            boolean timedFlyEnabled = tflyManager != null && tflyManager.isTFlyEnabled(uuid);
+        if (
+            player.getGameMode() == GameMode.SURVIVAL ||
+            player.getGameMode() == GameMode.ADVENTURE
+        ) {
+            boolean hasTimedFly =
+                tflyManager != null && tflyManager.getTFlyTime(uuid) > 0;
+            boolean timedFlyEnabled =
+                tflyManager != null && tflyManager.isTFlyEnabled(uuid);
 
             // Handle players with allium.fly permission
             if (player.hasPermission("allium.fly")) {
-                Database.PlayerFlightData flightData = database.getPlayerFlightStatus(uuid);
-                
-                
+                Database.PlayerFlightData flightData =
+                    database.getPlayerFlightStatus(uuid);
+
                 if (flightData != null) {
-                    Text.sendDebugLog(INFO, "Retrieved flight data for " + player.getName() + 
-                        " - Flying: " + flightData.isFlying() + ", AllowFlight: " + flightData.allowFlight());
+                    Text.sendDebugLog(
+                        INFO,
+                        "Retrieved flight data for " +
+                            player.getName() +
+                            " - Flying: " +
+                            flightData.isFlying() +
+                            ", AllowFlight: " +
+                            flightData.allowFlight()
+                    );
                 } else {
-                    Text.sendDebugLog(INFO, "No flight data found for " + player.getName());
+                    Text.sendDebugLog(
+                        INFO,
+                        "No flight data found for " + player.getName()
+                    );
                 }
-                
 
                 // Only restore flight if player was actually flying when they logged out (vanilla behavior)
-                if (flightData != null && flightData.isFlying() && !player.isOnGround()) {
+                if (
+                    flightData != null &&
+                    flightData.isFlying() &&
+                    !player.isOnGround()
+                ) {
                     // Enable flight and restore flying state INSTANTLY to prevent falling
                     player.setAllowFlight(true);
                     try {
                         player.setFlying(true);
-                        Text.sendDebugLog(INFO, "Successfully restored flying state instantly for " + player.getName());
+                        Text.sendDebugLog(
+                            INFO,
+                            "Successfully restored flying state instantly for " +
+                                player.getName()
+                        );
                     } catch (IllegalArgumentException e) {
-                        Text.sendDebugLog(WARN, "Could not restore flying state for " + player.getName() + ": " + e.getMessage());
+                        Text.sendDebugLog(
+                            WARN,
+                            "Could not restore flying state for " +
+                                player.getName() +
+                                ": " +
+                                e.getMessage()
+                        );
                         // Fallback to slow falling if flying cannot be set
                         applySlowFallingUntilLanded(player);
-                        Text.sendDebugLog(INFO, "Applied slow falling fallback for " + player.getName());
+                        Text.sendDebugLog(
+                            INFO,
+                            "Applied slow falling fallback for " +
+                                player.getName()
+                        );
                     }
                 } else {
                     // Vanilla behavior: flight disabled on join unless they were flying
                     player.setAllowFlight(false);
                     player.setFlying(false);
-                    
-                    Text.sendDebugLog(INFO, "Vanilla behavior: flight disabled for " + player.getName() + " (allium.fly permission, but wasn't flying)");
+
+                    Text.sendDebugLog(
+                        INFO,
+                        "Vanilla behavior: flight disabled for " +
+                            player.getName() +
+                            " (allium.fly permission, but wasn't flying)"
+                    );
                 }
             } else if (hasTimedFly) {
                 if (timedFlyEnabled) {
@@ -323,31 +475,70 @@ public class FlightRestoration implements Listener {
                     if (!player.isOnGround()) {
                         try {
                             player.setFlying(true);
-                            Text.sendDebugLog(INFO, "Restored timed flight for " + player.getName() + " with remaining tfly time");
+                            Text.sendDebugLog(
+                                INFO,
+                                "Restored timed flight for " +
+                                    player.getName() +
+                                    " with remaining tfly time"
+                            );
                         } catch (IllegalArgumentException e) {
-                            Text.sendDebugLog(WARN, "Could not restore timed flying state for " + player.getName() + ": " + e.getMessage());
+                            Text.sendDebugLog(
+                                WARN,
+                                "Could not restore timed flying state for " +
+                                    player.getName() +
+                                    ": " +
+                                    e.getMessage()
+                            );
                             applySlowFallingUntilLanded(player);
                         }
                     } else {
                         player.setFlying(false);
-                        Text.sendDebugLog(INFO, "Restored timed fly toggle for " + player.getName() + " with remaining tfly time (on ground)");
+                        Text.sendDebugLog(
+                            INFO,
+                            "Restored timed fly toggle for " +
+                                player.getName() +
+                                " with remaining tfly time (on ground)"
+                        );
                     }
                 } else {
                     player.setAllowFlight(false);
                     player.setFlying(false);
-                    Text.sendDebugLog(INFO, "Kept tfly time for " + player.getName() + " but left timed flight disabled");
+                    // Apply slow falling if player was in the air when they logged out,
+                    // similar to how allium.fly players get slow falling protection
+                    if (!player.isOnGround()) {
+                        applySlowFallingUntilLanded(player);
+                        Text.sendDebugLog(
+                            INFO,
+                            "Kept tfly time for " +
+                                player.getName() +
+                                " but left timed flight disabled (slow falling applied)"
+                        );
+                    } else {
+                        Text.sendDebugLog(
+                            INFO,
+                            "Kept tfly time for " +
+                                player.getName() +
+                                " but left timed flight disabled"
+                        );
+                    }
                 }
             } else {
                 // Players without allium.fly permission - vanilla behavior (no slow falling protection)
                 player.setAllowFlight(false);
                 player.setFlying(false);
-                
 
-                Text.sendDebugLog(INFO, "Disabled flight for " + player.getName() + " (no allium.fly permission, vanilla behavior)");
-            
+                Text.sendDebugLog(
+                    INFO,
+                    "Disabled flight for " +
+                        player.getName() +
+                        " (no allium.fly permission, vanilla behavior)"
+                );
             }
 
-            Text.sendDebugLog(INFO, "Flight restoration completed for " + player.getName());
+            Text.sendDebugLog(
+                INFO,
+                "Flight restoration completed for " + player.getName()
+            );
         }
 
         // Restore spectator gamemode only when player actually joined in spectator and has permission
@@ -356,19 +547,37 @@ public class FlightRestoration implements Listener {
             if (savedGamemode == GameMode.SPECTATOR) {
                 if (player.getGameMode() == GameMode.SPECTATOR) {
                     if (player.hasPermission("allium.gamemode.spectator")) {
-                        Text.sendDebugLog(INFO, "Confirmed spectator state for " + player.getName());
+                        Text.sendDebugLog(
+                            INFO,
+                            "Confirmed spectator state for " + player.getName()
+                        );
                     } else {
                         player.setGameMode(GameMode.SURVIVAL);
                         player.setAllowFlight(false);
                         player.setFlying(false);
-                        Text.sendDebugLog(INFO, "Cleared unauthorized spectator state for " + player.getName());
+                        Text.sendDebugLog(
+                            INFO,
+                            "Cleared unauthorized spectator state for " +
+                                player.getName()
+                        );
                     }
                 } else {
-                    Text.sendDebugLog(INFO, "Removing stale spectator state for " + player.getName());
+                    Text.sendDebugLog(
+                        INFO,
+                        "Removing stale spectator state for " + player.getName()
+                    );
                 }
             }
         } catch (SQLException e) {
-            Text.sendDebugLog(ERROR, "Error loading saved gamemode for " + player.getName() + " (UUID: " + uuid + ")", e);
+            Text.sendDebugLog(
+                ERROR,
+                "Error loading saved gamemode for " +
+                    player.getName() +
+                    " (UUID: " +
+                    uuid +
+                    ")",
+                e
+            );
         }
     }
 
@@ -391,27 +600,51 @@ public class FlightRestoration implements Listener {
         String playerName = player.getName();
         boolean canFly = player.hasPermission("allium.fly");
         boolean debugMode = plugin.getConfig().getBoolean("debug-mode");
-    
+
         // Save flight status if player has flight permission
         if (canFly) {
             database.savePlayerFlightStatus(player);
             if (debugMode) {
-                Text.sendDebugLog(INFO, "Saved flight state for " + player.getName() +
-                    " - Flying: " + player.isFlying() + ", AllowFlight: " + player.getAllowFlight());
+                Text.sendDebugLog(
+                    INFO,
+                    "Saved flight state for " +
+                        player.getName() +
+                        " - Flying: " +
+                        player.isFlying() +
+                        ", AllowFlight: " +
+                        player.getAllowFlight()
+                );
             }
         }
-    
+
         // Save spectator gamemode if player has permission and is in spectator mode
-        if (player.hasPermission("allium.gamemode.spectator") &&
-            player.getGameMode() == GameMode.SPECTATOR) {
+        if (
+            player.hasPermission("allium.gamemode.spectator") &&
+            player.getGameMode() == GameMode.SPECTATOR
+        ) {
             try {
-                database.savePlayerGameMode(uuid, playerName, GameMode.SPECTATOR);
+                database.savePlayerGameMode(
+                    uuid,
+                    playerName,
+                    GameMode.SPECTATOR
+                );
 
                 if (debugMode) {
-                    Text.sendDebugLog(INFO, "Saved spectator gamemode for " + player.getName());
+                    Text.sendDebugLog(
+                        INFO,
+                        "Saved spectator gamemode for " + player.getName()
+                    );
                 }
             } catch (SQLException e) {
-                Text.sendDebugLog(ERROR, "Error saving spectator gamemode for " + player.getName() + " (UUID: " + uuid + ")", e);
+                Text.sendDebugLog(
+                    ERROR,
+                    "Error saving spectator gamemode for " +
+                        player.getName() +
+                        " (UUID: " +
+                        uuid +
+                        ")",
+                    e
+                );
             }
         }
     }
@@ -424,16 +657,20 @@ public class FlightRestoration implements Listener {
         removeExistingSlowFallTask(player.getUniqueId());
 
         applyOrRefreshSlowFalling(player);
-        io.papermc.paper.threadedregions.scheduler.ScheduledTask task = player.getScheduler().runAtFixedRate(
+        io.papermc.paper.threadedregions.scheduler.ScheduledTask task = player
+            .getScheduler()
+            .runAtFixedRate(
                 plugin,
-                (t) -> {
+                t -> {
                     if (!player.isOnline()) {
                         t.cancel();
                         return;
                     }
 
                     if (player.isOnGround()) {
-                        player.removePotionEffect(PotionEffectType.SLOW_FALLING);
+                        player.removePotionEffect(
+                            PotionEffectType.SLOW_FALLING
+                        );
                         t.cancel();
                         return;
                     }
@@ -443,7 +680,7 @@ public class FlightRestoration implements Listener {
                 null,
                 1L,
                 40L
-        );
+            );
         slowFallTasks.put(player.getUniqueId(), task);
     }
 
@@ -452,26 +689,31 @@ public class FlightRestoration implements Listener {
             return;
         }
 
-        PotionEffect current = player.getPotionEffect(PotionEffectType.SLOW_FALLING);
+        PotionEffect current = player.getPotionEffect(
+            PotionEffectType.SLOW_FALLING
+        );
         if (current == null || current.getDuration() <= 40) {
             // Must run on entity's region for Folia - addPotionEffect modifies entity state
             SchedulerAdapter.runAtEntity(player, () -> {
                 if (player.isOnline()) {
-                    player.addPotionEffect(new PotionEffect(
+                    player.addPotionEffect(
+                        new PotionEffect(
                             PotionEffectType.SLOW_FALLING,
                             20 * 60,
                             0,
                             false,
                             false,
                             true
-                    ));
+                        )
+                    );
                 }
             });
         }
     }
 
     private void removeExistingSlowFallTask(UUID uuid) {
-        io.papermc.paper.threadedregions.scheduler.ScheduledTask existing = slowFallTasks.remove(uuid);
+        io.papermc.paper.threadedregions.scheduler.ScheduledTask existing =
+            slowFallTasks.remove(uuid);
         if (existing != null) {
             existing.cancel();
         }
@@ -483,31 +725,44 @@ public class FlightRestoration implements Listener {
      */
     private void startSlowFallLandingCheck(Player player) {
         // Cancel existing task for this player first
-        io.papermc.paper.threadedregions.scheduler.ScheduledTask existing = slowFallTasks.remove(player.getUniqueId());
+        io.papermc.paper.threadedregions.scheduler.ScheduledTask existing =
+            slowFallTasks.remove(player.getUniqueId());
         if (existing != null) existing.cancel();
 
-        io.papermc.paper.threadedregions.scheduler.ScheduledTask task = player.getScheduler().runAtFixedRate(
-            plugin,
-            (t) -> {
-                if (!player.isOnline()) {
-                    // Player is offline, save their state for when they return
-                    playersWithslowFallingOnQuit.add(player.getUniqueId());
-                    t.cancel();
-                    return;
-                }
+        io.papermc.paper.threadedregions.scheduler.ScheduledTask task = player
+            .getScheduler()
+            .runAtFixedRate(
+                plugin,
+                t -> {
+                    if (!player.isOnline()) {
+                        // Player is offline, save their state for when they return
+                        playersWithslowFallingOnQuit.add(player.getUniqueId());
+                        t.cancel();
+                        return;
+                    }
 
-                if (player.isOnGround()) {
-                    // Player has landed, remove the slow falling effect
-                    player.removePotionEffect(PotionEffectType.SLOW_FALLING);
-                    player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE
-                            , 20 * 3, 0, false, true, true));
-                    t.cancel();
-                }
-            },
-            null,
-            5L,
-            5L
-        );
+                    if (player.isOnGround()) {
+                        // Player has landed, remove the slow falling effect
+                        player.removePotionEffect(
+                            PotionEffectType.SLOW_FALLING
+                        );
+                        player.addPotionEffect(
+                            new PotionEffect(
+                                PotionEffectType.RESISTANCE,
+                                20 * 3,
+                                0,
+                                false,
+                                true,
+                                true
+                            )
+                        );
+                        t.cancel();
+                    }
+                },
+                null,
+                5L,
+                5L
+            );
         slowFallTasks.put(player.getUniqueId(), task);
     }
 
@@ -520,8 +775,8 @@ public class FlightRestoration implements Listener {
         try {
             // Query the database for the player's location
             Map<String, Object> locationData = database.queryRow(
-                    "SELECT world, x, y, z, yaw, pitch FROM player_spectator_locations WHERE player_uuid = ?",
-                    playerUUID.toString()
+                "SELECT world, x, y, z, yaw, pitch FROM player_spectator_locations WHERE player_uuid = ?",
+                playerUUID.toString()
             );
 
             if (locationData != null && !locationData.isEmpty()) {
@@ -537,30 +792,56 @@ public class FlightRestoration implements Listener {
 
                 if (world != null) {
                     // Create the location
-                    Location location = new Location(world, x, y, z, yaw, pitch);
+                    Location location = new Location(
+                        world,
+                        x,
+                        y,
+                        z,
+                        yaw,
+                        pitch
+                    );
 
                     // Ensure the chunk is loaded for safe teleportation
                     location.getChunk().load();
 
                     // Teleport the player
                     player.teleport(location);
-                    Text.sendDebugLog(INFO, "Teleported " + player.getName()
-                            + " to their saved location after spectator reset");
+                    Text.sendDebugLog(
+                        INFO,
+                        "Teleported " +
+                            player.getName() +
+                            " to their saved location after spectator reset"
+                    );
                 } else {
-                    Text.sendDebugLog(WARN, "Could not find world " + worldName +
-                            " for player " + player.getName() + " during spectator reset");
+                    Text.sendDebugLog(
+                        WARN,
+                        "Could not find world " +
+                            worldName +
+                            " for player " +
+                            player.getName() +
+                            " during spectator reset"
+                    );
                 }
             } else {
                 // If no saved location, just teleport to spawn
                 player.teleport(player.getWorld().getSpawnLocation());
-                if(plugin.getConfig().getBoolean("debug-mode")) {
-                    Text.sendDebugLog(INFO, "No saved location found for " + player.getName() +
-                            ", teleported to spawn after spectator reset");
+                if (plugin.getConfig().getBoolean("debug-mode")) {
+                    Text.sendDebugLog(
+                        INFO,
+                        "No saved location found for " +
+                            player.getName() +
+                            ", teleported to spawn after spectator reset"
+                    );
                 }
             }
         } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Failed to teleport " + player.getName()
-                    + " after spectator reset", e);
+            Text.sendDebugLog(
+                WARN,
+                "Failed to teleport " +
+                    player.getName() +
+                    " after spectator reset",
+                e
+            );
             // Fallback to spawn teleport
             player.teleport(player.getWorld().getSpawnLocation());
         }

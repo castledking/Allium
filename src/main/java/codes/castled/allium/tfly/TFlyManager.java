@@ -1,16 +1,14 @@
 package codes.castled.allium.tfly;
 
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
-
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.util.SchedulerAdapter;
-
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 /**
  * Manages temporary fly time and state per player. Ticks every second when flying.
@@ -25,7 +23,9 @@ public class TFlyManager {
 
     public TFlyManager(Plugin plugin) {
         this.plugin = plugin;
-        this.alliumPlugin = plugin instanceof PluginStart ? (PluginStart) plugin : null;
+        this.alliumPlugin = plugin instanceof PluginStart
+            ? (PluginStart) plugin
+            : null;
     }
 
     public void start() {
@@ -86,7 +86,9 @@ public class TFlyManager {
             } else if (timeRemaining == 10) {
                 player.sendMessage("§eTfly warning: 10 seconds remaining.");
             } else if (timeRemaining <= 5 && timeRemaining > 0) {
-                player.sendMessage("§eTfly warning: " + timeRemaining + " seconds remaining.");
+                player.sendMessage(
+                    "§eTfly warning: " + timeRemaining + " seconds remaining."
+                );
             }
         }
     }
@@ -105,14 +107,21 @@ public class TFlyManager {
         Database database = alliumPlugin.getDatabase();
         if (database == null) return;
         UUID uuid = player.getUniqueId();
-        database.savePlayerTFlyState(uuid, player.getName(), getTFlyTime(uuid), isTFlyEnabled(uuid));
+        database.savePlayerTFlyState(
+            uuid,
+            player.getName(),
+            getTFlyTime(uuid),
+            isTFlyEnabled(uuid)
+        );
     }
 
     public void loadPlayerState(Player player) {
         if (player == null || alliumPlugin == null) return;
         Database database = alliumPlugin.getDatabase();
         if (database == null) return;
-        Database.PlayerTFlyData tflyData = database.getPlayerTFlyStatus(player.getUniqueId());
+        Database.PlayerTFlyData tflyData = database.getPlayerTFlyStatus(
+            player.getUniqueId()
+        );
         if (tflyData == null) return;
 
         long timeSeconds = Math.max(0L, tflyData.timeSeconds());
@@ -122,11 +131,10 @@ public class TFlyManager {
             tflyTime.remove(player.getUniqueId());
         }
 
-        if (tflyData.enabled() && timeSeconds > 0L) {
-            tflyEnabled.put(player.getUniqueId(), true);
-        } else {
-            tflyEnabled.remove(player.getUniqueId());
-        }
+        // Never restore tflyEnabled on join — the player must re-enable with /fly.
+        // Another plugin (e.g. Multiverse) may forcibly set allowFlight=false on join,
+        // which would desync the command state from the actual flight state.
+        tflyEnabled.remove(player.getUniqueId());
     }
 
     /**

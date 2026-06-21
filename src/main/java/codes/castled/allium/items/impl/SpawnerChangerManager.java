@@ -173,7 +173,6 @@ public class SpawnerChangerManager implements Listener {
         if (block == null || block.getType() != Material.SPAWNER) return;
         if (!isSpawnerChanged(block.getLocation())) return;
         if (isHoldingTool(event.getPlayer())) return;
-        event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)

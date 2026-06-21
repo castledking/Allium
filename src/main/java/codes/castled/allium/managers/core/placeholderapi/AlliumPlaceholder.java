@@ -1,22 +1,19 @@
 package codes.castled.allium.managers.core.placeholderapi;
 
-import me.clip.placeholderapi.expansion.PlaceholderExpansion;
-
-import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
+import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
-
-import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import me.clip.placeholderapi.expansion.PlaceholderExpansion;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Master PlaceholderAPI expansion that delegates to specific placeholder handlers
@@ -26,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AlliumPlaceholder extends PlaceholderExpansion {
 
     private final PluginStart plugin;
-    
+
     // Delegate placeholder handlers
     private final GeneralPlaceholder generalPlaceholder;
     private final ViolationPlaceholder violationPlaceholder;
@@ -42,7 +39,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
 
     public AlliumPlaceholder(PluginStart plugin) {
         this.plugin = plugin;
-        
+
         // Initialize all delegate placeholder handlers
         this.generalPlaceholder = new GeneralPlaceholder(plugin);
         this.violationPlaceholder = new ViolationPlaceholder();
@@ -53,7 +50,12 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         Map<UUID, Long> teleportCooldowns = new ConcurrentHashMap<>();
         Map<UUID, Long> teleportRequestTimestamps = new ConcurrentHashMap<>();
         Map<UUID, UUID> teleportRequests = new ConcurrentHashMap<>();
-        this.teleportPlaceholder = new TeleportPlaceholder(plugin, teleportCooldowns, teleportRequestTimestamps, teleportRequests);
+        this.teleportPlaceholder = new TeleportPlaceholder(
+            plugin,
+            teleportCooldowns,
+            teleportRequestTimestamps,
+            teleportRequests
+        );
         this.locationPlaceholder = new LocationPlaceholder(plugin);
         this.homePlaceholder = new HomePlaceholder(plugin);
         this.commandPlaceholder = new CommandPlaceholder(plugin);
@@ -83,33 +85,70 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
 
     @Override
     public boolean canRegister() {
-        return Bukkit.getPluginManager().getPlugin("Allium") != null
-            && Bukkit.getPluginManager().getPlugin("Allium").isEnabled();
+        return (
+            Bukkit.getPluginManager().getPlugin("Allium") != null &&
+            Bukkit.getPluginManager().getPlugin("Allium").isEnabled()
+        );
     }
 
     @Override
     public @NotNull List<String> getPlaceholders() {
         return Arrays.asList(
-            "ping", "nickname", "nickname_raw",
-            "gradientdisplayname", "phase-mm-g", "-phase-mm-g", "phase_mm_g", "negative_phase_mm_g",
-            "fly", "fly_time", "god", "reply", "mail_unread", "mail_gifts",
-            "spy", "spy_target",
-            "world_date", "world_time", "world_time_24h",
-            "teleport_cooldown", "teleport_request_timestamp", "teleport_requests", "teleport_toggled",
-            "spectator_location", "logout_location", "spawn_location", "back_location",
-            "home_max", "home_set",
-            "baltop_balance_1", "baltop_balance_commas_1", "baltop_balance_formatted_1", "baltop_balance_fixed_1",
-            "baltop_player_1", "baltop_player_stripped_1"
+            "ping",
+            "nickname",
+            "nickname_raw",
+            "gradientdisplayname",
+            "phase-mm-g",
+            "-phase-mm-g",
+            "phase_mm_g",
+            "negative_phase_mm_g",
+            "fly",
+            "fly_time",
+            "god",
+            "reply",
+            "mail_unread",
+            "mail_gifts",
+            "spy",
+            "spy_target",
+            "world_date",
+            "world_time",
+            "world_time_24h",
+            "teleport_cooldown",
+            "teleport_request_timestamp",
+            "teleport_requests",
+            "teleport_toggled",
+            "spectator_location",
+            "logout_location",
+            "spawn_location",
+            "back_location",
+            "home_max",
+            "home_set",
+            "baltop_balance_1",
+            "baltop_balance_commas_1",
+            "baltop_balance_formatted_1",
+            "baltop_balance_fixed_1",
+            "baltop_player_1",
+            "baltop_player_stripped_1"
         );
     }
 
     @Override
-    public String onRequest(OfflinePlayer offlinePlayer, @NotNull String params) {
+    public String onRequest(
+        OfflinePlayer offlinePlayer,
+        @NotNull String params
+    ) {
         if (offlinePlayer == null) return "";
         // Nickname placeholders work for offline players (stored name or default from UUID/name)
         if ("nickname".equals(params) || "nickname_raw".equals(params)) {
-            String result = nicknamePlaceholder.onRequest(offlinePlayer, params);
-            return (result != null && !result.isEmpty()) ? result : (offlinePlayer.getName() != null ? offlinePlayer.getName() : "");
+            String result = nicknamePlaceholder.onRequest(
+                offlinePlayer,
+                params
+            );
+            return (result != null && !result.isEmpty())
+                ? result
+                : (offlinePlayer.getName() != null
+                      ? offlinePlayer.getName()
+                      : "");
         }
         if (!offlinePlayer.isOnline()) {
             return "";
@@ -119,7 +158,14 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         try {
             return onPlaceholderRequest(p, params);
         } catch (Throwable t) {
-            plugin.getLogger().warning("PlaceholderAPI allium error for '" + params + "': " + t.getMessage());
+            plugin
+                .getLogger()
+                .warning(
+                    "PlaceholderAPI allium error for '" +
+                        params +
+                        "': " +
+                        t.getMessage()
+                );
             if (plugin.isDebugMode()) t.printStackTrace();
             return "";
         }
@@ -133,7 +179,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
 
         // Delegate to appropriate placeholder handler based on the parameter
         String result;
-        
+
         // Diagnostic: %allium_ping% returns "ok" if expansion is working
         if ("ping".equals(params)) {
             return "ok";
@@ -141,25 +187,30 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
 
         if ("gradientdisplayname".equals(params)) {
             return plugin.getGradientNameManager() != null
-                    ? plugin.getGradientNameManager().buildAnimatedGradientDisplayName(player)
-                    : "";
+                ? plugin
+                      .getGradientNameManager()
+                      .buildAnimatedGradientDisplayName(player)
+                : "";
         }
 
         if ("phase-mm-g".equals(params) || "phase_mm_g".equals(params)) {
             return plugin.getGradientNameManager() != null
-                    ? plugin.getGradientNameManager().formatPhases("#phase-mm-g#")
-                    : "";
+                ? plugin.getGradientNameManager().formatPhases("#phase-mm-g#")
+                : "";
         }
 
-        if ("-phase-mm-g".equals(params) || "negative_phase_mm_g".equals(params)) {
+        if (
+            "-phase-mm-g".equals(params) || "negative_phase_mm_g".equals(params)
+        ) {
             return plugin.getGradientNameManager() != null
-                    ? plugin.getGradientNameManager().formatPhases("#-phase-mm-g#")
-                    : "";
+                ? plugin.getGradientNameManager().formatPhases("#-phase-mm-g#")
+                : "";
         }
 
         /*
           Placeholders:
-          %allium_fly% - Returns "yes" if the player has flight enabled, "no" otherwise.
+          %allium_fly% - Returns "yes" if the player has permanent flight, "temporary" if tfly is active and flying,
+                          "temporary-paused" if tfly is enabled but not currently flying, "no" otherwise.
           %allium_god% - Returns "yes" if the player has god mode enabled, "no" otherwise.
           %allium_reply% - Returns the name of the player that the specified player can reply to.
           %allium_mail_unread% - Returns the number of unread mail messages for a player.
@@ -183,7 +234,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         if (result != null) {
             return result;
         }
-        
+
         /*
           Placeholders:
           %allium_baltop_balance_<rank>% - Returns the balance of the specified rank.
@@ -197,7 +248,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         if (result != null) {
             return result;
         }
-        
+
         /*
           Placeholders:
           %allium_spy% - Returns the name of the player that the specified player is spying on.
@@ -208,7 +259,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         if (result != null) {
             return result;
         }
-        
+
         /*
           Placeholders:
           %allium_world_date% - Returns the current date.
@@ -220,7 +271,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         if (result != null) {
             return result;
         }
-        
+
         /*
           Placeholders:
           %allium_teleport_cooldown% - Returns the cooldown time for the specified player.
@@ -233,7 +284,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         if (result != null) {
             return result;
         }
-        
+
         /*
           Placeholders:
           %allium_spectator_location% - Returns the spectator location of the specified player.
@@ -246,7 +297,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         if (result != null) {
             return result;
         }
-        
+
         /*
           Placeholders:
           %allium_home_max% - Returns the maximum number of homes the player can have.
@@ -261,7 +312,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         if (result != null) {
             return result;
         }
-        
+
         /*
           Placeholders:
           %allium_command_<command>_canuse% - Returns true if the player can use the specified command.
@@ -271,7 +322,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         if (result != null) {
             return result;
         }
-        
+
         /*
           Placeholders:
           %allium_nickname% - Returns the player's formatted nickname.
@@ -281,7 +332,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         if (result != null) {
             return result;
         }
-        
+
         // No handler found - return null so PlaceholderAPI knows we didn't handle it (Essentials pattern)
         return null;
     }

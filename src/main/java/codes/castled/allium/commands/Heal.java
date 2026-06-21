@@ -290,8 +290,8 @@ public class Heal implements CommandExecutor {
                     maxHealth = 20.0;
                 }
                 
-                // Heal to max health
-                livingEntity.setHealth(Math.min(livingEntity.getHealth(), maxHealth));
+            // Heal to max health
+            livingEntity.setHealth(maxHealth);
                 
                 // Clear negative potion effects for living entities
                 livingEntity.clearActivePotionEffects();

@@ -51,6 +51,7 @@ import codes.castled.allium.commands.Freeze;
 import codes.castled.allium.commands.GC;
 import codes.castled.allium.commands.Gamemode;
 import codes.castled.allium.commands.Give;
+import codes.castled.allium.commands.Glow;
 import codes.castled.allium.commands.God;
 import codes.castled.allium.commands.Heal;
 import codes.castled.allium.commands.Help;
@@ -104,6 +105,7 @@ import codes.castled.allium.items.impl.SpawnerChangerItem;
 import codes.castled.allium.items.impl.SpawnerChangerManager;
 import codes.castled.allium.items.impl.TreeAxeItem;
 import codes.castled.allium.listeners.ChequeRedeemListener;
+import codes.castled.allium.listeners.JoinQuitMessages;
 import codes.castled.allium.listeners.PartyListener;
 import codes.castled.allium.listeners.PlaceholderAPIRegistrationListener;
 import codes.castled.allium.listeners.VoucherRedeemListener;
@@ -243,6 +245,7 @@ public class PluginStart extends JavaPlugin {
     private VouchersConfig vouchersConfig;
     private SecurityAlertManager securityAlertManager;
     private final Set<UUID> citizensNpcUuids = ConcurrentHashMap.newKeySet();
+    private Glow glowCommand;
 
     /**
      * Gets the singleton instance of the plugin.
@@ -1485,6 +1488,10 @@ public class PluginStart extends JavaPlugin {
             registerCommand("pvp", pvpCommand, pvpCommand);
             registerCommand("nv", new NV(this));
 
+            // Glow command
+            this.glowCommand = new Glow(this);
+            registerCommand("glow", this.glowCommand, this.glowCommand);
+
             // Vanish commands
             Vanish vanishCommand = new Vanish(this, vanishManager);
             registerCommand("vanish", vanishCommand, vanishCommand);
@@ -1919,6 +1926,14 @@ public class PluginStart extends JavaPlugin {
                 registerListenerSafely(pm, "PartyListener", 
                     () -> new PartyListener(this, partyManager, tabListManager));
             }
+
+            // Join & Quit messages
+            registerListenerSafely(pm, "JoinQuitMessages",
+                    new JoinQuitMessages(this, vanishManager));
+
+            // Glow listener — cleans up teams on quit
+            registerListenerSafely(pm, "GlowListener",
+                    new codes.castled.allium.listeners.GlowListener(this, glowCommand));
 
             // ModGuard - Client Mod Detection (replaces PacketEvents-based detection)
             // Uses Bukkit PluginMessageListener - no PacketEvents required

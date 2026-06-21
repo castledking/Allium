@@ -6,8 +6,6 @@ import org.bukkit.entity.Player;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.managers.core.Text;
-import codes.castled.allium.util.SchedulerAdapter;
-
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
 import java.util.*;
@@ -63,35 +61,32 @@ public class InventoryManager {
     public CompletableFuture<Boolean> saveSnapshot(Player player, String reason) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         
-        // Run snapshot creation on the appropriate scheduler
-        SchedulerAdapter.run(() -> {
-            try {
-                InventorySnapshot snapshot = new InventorySnapshot(player, reason);
-                
-                // Run database operation async
-                executorService.execute(() -> {
-                    try {
-                        if (database.saveInventorySnapshot(snapshot)) {
-                            // Cache the snapshot on success
-                            playerSnapshots.computeIfAbsent(
-                                player.getUniqueId(), 
-                                k -> new CopyOnWriteArrayList<>()
-                            ).add(0, snapshot);
-                            future.complete(true);
-                        } else {
-                            Text.sendDebugLog(WARN, "Failed to save inventory snapshot for " + player.getName());
-                            future.complete(false);
-                        }
-                    } catch (Exception e) {
-                        Text.sendDebugLog(ERROR, "Error saving inventory snapshot for " + player.getName(), e);
-                        future.completeExceptionally(e);
+        try {
+            InventorySnapshot snapshot = new InventorySnapshot(player, reason);
+            
+            // Run database operation async
+            executorService.execute(() -> {
+                try {
+                    if (database.saveInventorySnapshot(snapshot)) {
+                        // Cache the snapshot on success
+                        playerSnapshots.computeIfAbsent(
+                            player.getUniqueId(), 
+                            k -> new CopyOnWriteArrayList<>()
+                        ).add(0, snapshot);
+                        future.complete(true);
+                    } else {
+                        Text.sendDebugLog(WARN, "Failed to save inventory snapshot for " + player.getName());
+                        future.complete(false);
                     }
-                });
-            } catch (Exception e) {
-                Text.sendDebugLog(ERROR, "Error creating inventory snapshot for " + player.getName(), e);
-                future.completeExceptionally(e);
-            }
-        });
+                } catch (Exception e) {
+                    Text.sendDebugLog(ERROR, "Error saving inventory snapshot for " + player.getName(), e);
+                    future.completeExceptionally(e);
+                }
+            });
+        } catch (Exception e) {
+            Text.sendDebugLog(ERROR, "Error creating inventory snapshot for " + player.getName(), e);
+            future.completeExceptionally(e);
+        }
         
         return future;
     }

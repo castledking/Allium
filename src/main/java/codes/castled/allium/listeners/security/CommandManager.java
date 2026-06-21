@@ -56,6 +56,9 @@ public class CommandManager implements Listener {
     private final Map<String, CommandGroup> commandGroups = new HashMap<>();
     private final Permission vaultPermission;
     private CreativeManager creativeManager;
+    private Map<String, Command> knownCommandsCache;
+    private long knownCommandsCacheTime;
+    private static final long KNOWN_COMMANDS_CACHE_TTL = 2000;
 
     public CommandManager(PluginStart plugin) {
         this.plugin = plugin;
@@ -506,6 +509,16 @@ public class CommandManager implements Listener {
     }
 
     private Map<String, Command> getKnownCommands() {
+        long now = System.currentTimeMillis();
+        if (knownCommandsCache != null && now - knownCommandsCacheTime <= KNOWN_COMMANDS_CACHE_TTL) {
+            return knownCommandsCache;
+        }
+        knownCommandsCache = refreshKnownCommands();
+        knownCommandsCacheTime = now;
+        return knownCommandsCache;
+    }
+
+    private Map<String, Command> refreshKnownCommands() {
         try {
             SimpleCommandMap commandMap = (SimpleCommandMap) Bukkit.getServer().getClass()
                     .getMethod("getCommandMap")
@@ -522,13 +535,15 @@ public class CommandManager implements Listener {
                     filteredCommands.put(entry.getKey(), entry.getValue());
                 }
             }
-
             return filteredCommands;
-
         } catch (Exception e) {
             Text.sendDebugLog(ERROR, "Failed to access server command map", e);
             return Collections.emptyMap();
         }
+    }
+
+    public Map<String, Command> getCachedKnownCommands() {
+        return getKnownCommands();
     }
 
     private boolean isCommandFromPlugin(Command command, Plugin targetPlugin) {
@@ -561,37 +576,36 @@ public class CommandManager implements Listener {
         }
     }
 
-    private String findSimilarCommand(Player player, String attemptedCommand) {
-        Collection<String> availableCommands = new ArrayList<>();
-
-        Bukkit.getServer().getCommandMap().getKnownCommands().keySet().stream()
-                .map(String::toLowerCase)
-                .filter(cmd -> shouldShowCommand(player, cmd))
-                .filter(cmd -> {
-                    // Filter out namespaced commands for regular players and optionally ops based on config
-                    if (cmd.contains(":")) {
-                        if (player.hasPermission("allium.hide.bypass") || player.isOp()) {
-                            return !hideNamespacedCommandsForBypass; // hide from suggestions if configured
-                        }
-                        return false;
-                    }
-                    return true;
-                })
-                .forEach(availableCommands::add);
-
+    private String findSimilarCommand(Player player, List<CommandGroup> playerGroups, String attemptedCommand) {
         String bestMatch = null;
         int bestDistance = Integer.MAX_VALUE;
+        int attemptedLen = attemptedCommand.length();
 
-        for (String cmd : availableCommands) {
-            if (cmd.equals(attemptedCommand)) {
-                continue;
+        for (String cmd : getKnownCommands().keySet()) {
+            if (cmd == null) continue;
+
+            String lowerCmd = cmd.toLowerCase(Locale.ROOT);
+
+            if (Math.abs(lowerCmd.length() - attemptedLen) > 3) continue;
+
+            if (lowerCmd.contains(":")) {
+                if (player.hasPermission("allium.hide.bypass") || player.isOp()) {
+                    if (hideNamespacedCommandsForBypass) continue;
+                } else {
+                    continue;
+                }
             }
 
-            int distance = levenshteinDistance(attemptedCommand, cmd);
+            if (!shouldShowCommand(player, playerGroups, lowerCmd)) continue;
+            if (lowerCmd.equals(attemptedCommand)) continue;
 
-            if (distance < bestDistance && distance < Math.max(attemptedCommand.length(), cmd.length()) / 2) {
-                bestMatch = cmd;
+            int distance = levenshteinDistance(attemptedCommand, lowerCmd);
+            int maxLen = Math.max(attemptedLen, lowerCmd.length());
+
+            if (distance < bestDistance && distance < maxLen / 2) {
+                bestMatch = lowerCmd;
                 bestDistance = distance;
+                if (distance <= 1) break;
             }
         }
 
@@ -692,7 +706,7 @@ public class CommandManager implements Listener {
             if (isAltRestricted) {
                 Text.sendErrorMessage(player, "alt-account-restricted", lang, "{cmd}", fullCommand);
             } else {
-                sendUnknownCommandMessage(player, fullCommand, isNamespacedCommand);
+                sendUnknownCommandMessage(player, playerGroups, fullCommand, isNamespacedCommand);
             }
             return;
         }
@@ -700,7 +714,7 @@ public class CommandManager implements Listener {
         boolean canUseCommand = playerGroups.stream().anyMatch(group -> group.isCommandAllowed(fullCommand));
         if (!canUseCommand) {
             event.setCancelled(true);
-            sendUnknownCommandMessage(player, fullCommand, isNamespacedCommand);
+            sendUnknownCommandMessage(player, playerGroups, fullCommand, isNamespacedCommand);
             return;
         }
 
@@ -714,7 +728,7 @@ public class CommandManager implements Listener {
 
         if (resolvedCommand == null) {
             event.setCancelled(true);
-            sendUnknownCommandMessage(player, fullCommand, isNamespacedCommand);
+            sendUnknownCommandMessage(player, playerGroups, fullCommand, isNamespacedCommand);
             return;
         }
 
@@ -776,13 +790,13 @@ public class CommandManager implements Listener {
 
 
 
-    private void sendUnknownCommandMessage(Player player, String command, boolean isNamespacedCommand) {
+    private void sendUnknownCommandMessage(Player player, List<CommandGroup> playerGroups, String command, boolean isNamespacedCommand) {
         if (isNamespacedCommand) {
             Text.sendErrorMessage(player, "unknown-command", lang, "{cmd}", command);
             return;
         }
 
-        String similar = findSimilarCommand(player, command);
+        String similar = findSimilarCommand(player, playerGroups, command);
 
         if (similar != null) {
             Text.sendErrorMessage(player, "unknown-command-suggestion", lang,
@@ -888,8 +902,13 @@ public class CommandManager implements Listener {
         if (!enabled) {
             return true;
         }
+        return shouldShowCommand(player, getPlayerGroups(player), commandName);
+    }
 
-        List<CommandGroup> playerGroups = getPlayerGroups(player);
+    public boolean shouldShowCommand(Player player, List<CommandGroup> playerGroups, String commandName) {
+        if (!enabled) {
+            return true;
+        }
 
         if (playerGroups.isEmpty()) {
             return true;
@@ -902,17 +921,14 @@ public class CommandManager implements Listener {
             fullCommandName = resolveFullCommandName(commandName);
         }
 
-        // First check if any blacklist group denies the command
         for (CommandGroup group : playerGroups) {
             if (!group.whitelist()) {
-                // isCommandAllowed returns false for blacklisted commands
                 if (!group.isCommandAllowed(commandName) && !group.isCommandAllowed(fullCommandName)) {
                     return false;
                 }
             }
         }
 
-        // Then check whitelist groups
         for (CommandGroup group : playerGroups) {
             if (group.isCommandAllowed(commandName) || group.isCommandAllowed(fullCommandName)) {
                 return true;

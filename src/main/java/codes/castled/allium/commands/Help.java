@@ -21,7 +21,6 @@ import codes.castled.allium.managers.lang.Lang;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,6 +30,10 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
     private final CommandManager commandManager;
     private final int COMMANDS_PER_PAGE = 8;
     private final Lang lang;
+    private final Map<UUID, List<String>> availableCommandsCache = new HashMap<>();
+    private final Map<UUID, Long> availableCommandsCacheTime = new HashMap<>();
+    private static final long AVAIL_CMDS_CACHE_TTL = 3000;
+    private static final UUID CONSOLE_CACHE_KEY = UUID.randomUUID();
 
     public Help(PluginStart plugin) {
         this.plugin = plugin;
@@ -305,29 +308,20 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
     }
 
     private List<String> getAvailableCommands(CommandSender sender) {
-        List<String> result = new ArrayList<>();
-        Set<String> processedCommands = new HashSet<>(); // To avoid duplicates
+        UUID cacheKey = sender instanceof Player player ? player.getUniqueId() : CONSOLE_CACHE_KEY;
+        long now = System.currentTimeMillis();
+        Long cachedTime = availableCommandsCacheTime.get(cacheKey);
+        if (cachedTime != null && now - cachedTime < AVAIL_CMDS_CACHE_TTL) {
+            List<String> cached = availableCommandsCache.get(cacheKey);
+            if (cached != null) return cached;
+        }
 
-        // Only apply group filtering for players
+        List<String> result = new ArrayList<>();
+        Set<String> processedCommands = new HashSet<>();
+
         Player player = sender instanceof Player ? (Player) sender : null;
 
-        // Get commands directly from the server's command map
-        Map<String, Command> knownCommands;
-        try {
-            // Use reflection to get the server's command map
-            org.bukkit.command.CommandMap commandMap = (org.bukkit.command.CommandMap)
-                    Bukkit.getServer().getClass().getDeclaredMethod("getCommandMap").invoke(Bukkit.getServer());
-
-            // Get the known commands field through reflection
-            java.lang.reflect.Field knownCommandsField = org.bukkit.command.SimpleCommandMap.class.getDeclaredField("knownCommands");
-            knownCommandsField.setAccessible(true);
-
-            // Get all known commands
-            knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
-        } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Failed to access server commands: " + e.getMessage());
-            return result; // Return empty list if we can't access the command map
-        }
+        Map<String, Command> knownCommands = commandManager.getCachedKnownCommands();
 
         // Process all commands from the command map
         for (Map.Entry<String, Command> entry : knownCommands.entrySet()) {
@@ -383,9 +377,10 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             }
         }
 
-        // Sort the result for a cleaner display
         Collections.sort(result);
 
+        availableCommandsCache.put(cacheKey, result);
+        availableCommandsCacheTime.put(cacheKey, now);
         return result;
     }
 
@@ -547,17 +542,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
         String version = targetPlugin.getDescription().getVersion();
         String pluginName = targetPlugin.getName();
         List<Command> pluginCommands = new ArrayList<>();
-        Map<String, Command> knownCommands = new HashMap<>();
-        try {
-            CommandMap commandMap = Bukkit.getServer().getCommandMap();
-            if (commandMap != null && commandMap instanceof SimpleCommandMap) {
-                Field knownCommandsField = SimpleCommandMap.class.getDeclaredField("knownCommands");
-                knownCommandsField.setAccessible(true);
-                knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
-            }
-        } catch (Exception e) {
-            sender.sendMessage(ChatColor.RED + "Debug: Failed to access command map: " + e.getMessage());
-        }
+        Map<String, Command> knownCommands = commandManager.getCachedKnownCommands();
 
         for (Command command : knownCommands.values()) {
             if (command instanceof PluginCommand) {

@@ -13,7 +13,6 @@ import org.bukkit.event.*;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -3671,66 +3670,7 @@ public class TP implements CommandExecutor, TabCompleter {
         return future;
     }
 
-    /**
-     * Handle player teleport events to teleport selected pets and entities
-     */
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onPlayerTeleport(PlayerTeleportEvent event) {
-        Player player = event.getPlayer();
-        UUID playerUUID = player.getUniqueId();
-        
-        // Track last location for /back command
-        lastLocation.put(playerUUID, event.getFrom());
-        
-        // Redundantly persist back location to DB to ensure our teleports are saved
-        try {
-            if (database != null && event.getFrom() != null && event.getFrom().getWorld() != null) {
-                database.savePlayerLocation(playerUUID, LocationType.TELEPORT, event.getFrom(), System.currentTimeMillis());
-                if (config.getBoolean("debug-mode")) {
-                    plugin.getLogger().fine("[TP] Saved TELEPORT back location for " + player.getName() + " at " +
-                            event.getFrom().getWorld().getName() + " " +
-                            (int) event.getFrom().getX() + ", " + (int) event.getFrom().getY() + ", " + (int) event.getFrom().getZ());
-                }
-            }
-        } catch (Exception ex) {
-            if (config.getBoolean("debug-mode")) {
-                Text.sendDebugLog(WARN, "[TP] Failed to save TELEPORT back location for " + player.getName() + ": " + ex.getMessage());
-            }
-        }
-        
-        // Handle pet teleportation
-        List<Entity> playerPets = selectedPets.get(playerUUID);
-        if (playerPets != null && !playerPets.isEmpty()) {
-            // Schedule teleport after player has arrived on the player's entity scheduler (Folia-safe)
-            SchedulerAdapter.runAtEntityLater(player, () -> {
-                teleportPets(playerUUID, player, playerPets);
-            }, 5L); // 5 tick delay (1/4 second)
-        }
-        
-        // Handle entity teleportation (admin mode)
-        Map<UUID, Entity> playerEntities = selectedEntities.get(playerUUID);
-        if (playerEntities != null && !playerEntities.isEmpty() && player.hasPermission("allium.tpmob")) {
-            // Schedule teleport after player has arrived on the player's entity scheduler (Folia-safe)
-            SchedulerAdapter.runAtEntityLater(player, () -> {
-                // Convert map values to list for teleportation
-                List<Entity> entitiesToTeleport = new ArrayList<>(playerEntities.values());
-                Text.sendDebugLog(INFO, "Teleporting " + entitiesToTeleport.size() + " entities for player " + player.getName());
-                teleportEntities(playerUUID, player, entitiesToTeleport);
-                
-                // Cleanup selection and listener after teleport
-                Map<UUID, Entity> map = selectedEntities.get(playerUUID);
-                if (map != null) {
-                    map.clear();
-                    selectedEntities.remove(playerUUID);
-                }
-                EntityTeleportListener listener = activeEntityTeleportListeners.get(playerUUID);
-                if (listener != null) {
-                    listener.unregisterListener();
-                    activeEntityTeleportListeners.remove(playerUUID);
-                }
-            }, 5L); // 5 tick delay (1/4 second)
-        }
-    }
+    // Companion teleportation on teleport events is handled by TeleportBackListener.
     
     /**
      * Inner class to handle player quit events for pet teleport cleanup

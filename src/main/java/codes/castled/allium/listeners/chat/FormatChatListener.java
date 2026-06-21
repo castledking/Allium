@@ -1,6 +1,20 @@
 package codes.castled.allium.listeners.chat;
 
+import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
+
+import codes.castled.allium.PluginStart;
+import codes.castled.allium.managers.chat.ChatMessageManager;
+import codes.castled.allium.managers.config.Config;
+import codes.castled.allium.managers.core.Text;
 import io.papermc.paper.event.player.AsyncChatEvent;
+import java.awt.Color;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -11,7 +25,6 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.permission.Permission;
-
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -22,29 +35,20 @@ import org.bukkit.event.Listener;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 
-import codes.castled.allium.PluginStart;
-import codes.castled.allium.managers.chat.ChatMessageManager;
-import codes.castled.allium.managers.config.Config;
-import codes.castled.allium.managers.core.Text;
-
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
-
-import java.awt.Color;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-
 public class FormatChatListener implements Listener {
 
-    private static final Pattern LEGACY_HEX_PATTERN = Pattern.compile("(?i)[&§]#([A-F0-9]{6})");
-    private static final Pattern SECTION_HEX_PATTERN = Pattern.compile("(?i)[&§]x([&§][A-F0-9]){6}");
-    private static final Pattern MINI_HEX_PATTERN = Pattern.compile("(?i)(?<![&§])#([A-F0-9]{6})");
-    private static final Pattern LEGACY_COLOR_PATTERN = Pattern.compile("(?i)[&§]([0-9A-F])");
+    private static final Pattern LEGACY_HEX_PATTERN = Pattern.compile(
+        "(?i)[&§]#([A-F0-9]{6})"
+    );
+    private static final Pattern SECTION_HEX_PATTERN = Pattern.compile(
+        "(?i)[&§]x([&§][A-F0-9]){6}"
+    );
+    private static final Pattern MINI_HEX_PATTERN = Pattern.compile(
+        "(?i)(?<![&§])#([A-F0-9]{6})"
+    );
+    private static final Pattern LEGACY_COLOR_PATTERN = Pattern.compile(
+        "(?i)[&§]([0-9A-F])"
+    );
     private static final BigDecimal PHASE_STEP = new BigDecimal("0.1");
     private static final BigDecimal PHASE_MAX = new BigDecimal("1.0");
     private static final BigDecimal PHASE_MIN = new BigDecimal("-1.0");
@@ -58,9 +62,15 @@ public class FormatChatListener implements Listener {
     private final Config config;
     private final String defaultFormat;
     private final boolean placeholderAPIEnabled;
-    private final Pattern placeholderPattern = Pattern.compile("%\\{([^}]+)\\}%");
-    private final Pattern rawMessagePattern = Pattern.compile("\\[(&[0-9a-fA-Fk-oK-OrR].*?)\\]|\\[([^&].*?)\\]");
-    private final Pattern placeholderBracketPattern = Pattern.compile("\\{([^}]+)\\}");
+    private final Pattern placeholderPattern = Pattern.compile(
+        "%\\{([^}]+)\\}%"
+    );
+    private final Pattern rawMessagePattern = Pattern.compile(
+        "\\[(&[0-9a-fA-Fk-oK-OrR].*?)\\]|\\[([^&].*?)\\]"
+    );
+    private final Pattern placeholderBracketPattern = Pattern.compile(
+        "\\{([^}]+)\\}"
+    );
     private final MiniMessage miniMessage;
     private final DecimalFormat phaseDecimalFormat;
     private final boolean blockUnicode;
@@ -69,7 +79,12 @@ public class FormatChatListener implements Listener {
     private BigDecimal miniGradientPhase = PHASE_MIN;
     private BukkitTask phaseTask;
 
-    public FormatChatListener(PluginStart plugin, Chat vaultChat, Config config, ChatMessageManager chatMessageManager) {
+    public FormatChatListener(
+        PluginStart plugin,
+        Chat vaultChat,
+        Config config,
+        ChatMessageManager chatMessageManager
+    ) {
         this.plugin = plugin;
         this.config = config;
         this.vaultChat = vaultChat;
@@ -77,16 +92,31 @@ public class FormatChatListener implements Listener {
         this.vaultPermission = plugin.getVaultPermission();
         this.blockUnicode = config.getBoolean("block-unicode");
 
-        legacyComponentSerializer = LegacyComponentSerializer.builder().hexColors().character('&').build();
+        legacyComponentSerializer = LegacyComponentSerializer.builder()
+            .hexColors()
+            .character('&')
+            .build();
         miniMessage = MiniMessage.miniMessage();
-        phaseDecimalFormat = new DecimalFormat("#.#", DecimalFormatSymbols.getInstance(Locale.US));
+        phaseDecimalFormat = new DecimalFormat(
+            "#.#",
+            DecimalFormatSymbols.getInstance(Locale.US)
+        );
         phaseDecimalFormat.setRoundingMode(RoundingMode.DOWN);
 
-        this.defaultFormat = plugin.getConfig().getString("chat-format.default", "<prefix> &a%allium_nickname%&f: &f<message>");
+        this.defaultFormat = plugin
+            .getConfig()
+            .getString(
+                "chat-format.default",
+                "<prefix> &a%allium_nickname%&f: &f<message>"
+            );
 
-        this.placeholderAPIEnabled = Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
+        this.placeholderAPIEnabled =
+            Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
         if (!placeholderAPIEnabled) {
-            Text.sendDebugLog(INFO, "PlaceholderAPI not found. Placeholders in chat format will not work.");
+            Text.sendDebugLog(
+                INFO,
+                "PlaceholderAPI not found. Placeholders in chat format will not work."
+            );
         }
 
         groupFormats = new HashMap<>();
@@ -95,7 +125,9 @@ public class FormatChatListener implements Listener {
 
     private void loadGroupFormats() {
         FileConfiguration fileConfig = plugin.getConfig();
-        ConfigurationSection groupsSection = fileConfig.getConfigurationSection("chat-format.groups");
+        ConfigurationSection groupsSection = fileConfig.getConfigurationSection(
+            "chat-format.groups"
+        );
 
         if (groupsSection != null) {
             Map<String, Object> tempMap = groupsSection.getValues(false);
@@ -103,18 +135,26 @@ public class FormatChatListener implements Listener {
                 groupFormats.put(entry.getKey(), entry.getValue().toString());
             }
             if (config.getBoolean("debug-mode")) {
-                Text.sendDebugLog(INFO, "Loaded " + groupFormats.size() + " group chat formats.");
+                Text.sendDebugLog(
+                    INFO,
+                    "Loaded " + groupFormats.size() + " group chat formats."
+                );
             }
         }
     }
 
     private void startPhaseRenderer() {
-        phaseTask = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
-            miniGradientPhase = miniGradientPhase.add(PHASE_STEP);
-            if (miniGradientPhase.compareTo(PHASE_MAX) > 0) {
-                miniGradientPhase = PHASE_MIN;
-            }
-        }, 0L, 1L);
+        phaseTask = Bukkit.getScheduler().runTaskTimerAsynchronously(
+            plugin,
+            () -> {
+                miniGradientPhase = miniGradientPhase.add(PHASE_STEP);
+                if (miniGradientPhase.compareTo(PHASE_MAX) > 0) {
+                    miniGradientPhase = PHASE_MIN;
+                }
+            },
+            0L,
+            1L
+        );
     }
 
     public void shutdown() {
@@ -133,10 +173,13 @@ public class FormatChatListener implements Listener {
         try {
             groups = vaultPermission.getPlayerGroups(null, player);
         } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Error getting player groups: " + e.getMessage());
+            Text.sendDebugLog(
+                WARN,
+                "Error getting player groups: " + e.getMessage()
+            );
             return "default";
         }
-        
+
         if (groups == null || groups.length == 0) {
             return "default";
         }
@@ -149,7 +192,12 @@ public class FormatChatListener implements Listener {
             try {
                 int weight = 0;
                 if (vaultChat != null) {
-                    String weightStr = vaultChat.getGroupInfoString(player.getWorld().getName(), group, "weight", "0");
+                    String weightStr = vaultChat.getGroupInfoString(
+                        player.getWorld().getName(),
+                        group,
+                        "weight",
+                        "0"
+                    );
                     try {
                         weight = Integer.parseInt(weightStr);
                     } catch (NumberFormatException e) {
@@ -165,7 +213,13 @@ public class FormatChatListener implements Listener {
                 }
             } catch (Exception e) {
                 if (debugMode) {
-                    Text.sendDebugLog(WARN, "Error getting weight for group: " + group + " - " + e.getMessage());
+                    Text.sendDebugLog(
+                        WARN,
+                        "Error getting weight for group: " +
+                            group +
+                            " - " +
+                            e.getMessage()
+                    );
                 }
             }
         }
@@ -180,17 +234,30 @@ public class FormatChatListener implements Listener {
         }
 
         if (debugMode) {
-            Text.sendDebugLog(INFO, "Selected highest priority group: " + highestGroup + " with weight " + highestWeight);
+            Text.sendDebugLog(
+                INFO,
+                "Selected highest priority group: " +
+                    highestGroup +
+                    " with weight " +
+                    highestWeight
+            );
         }
         return highestGroup;
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> getHoverClickConfig(Player player, String element) {
+    private Map<String, Object> getHoverClickConfig(
+        Player player,
+        String element
+    ) {
         String group = getHighestPriorityGroup(player);
         String configPath = "chat-hover.groups." + group + "." + element;
 
-        if (!plugin.getConfig().contains("chat-hover.groups." + group + "." + element)) {
+        if (
+            !plugin
+                .getConfig()
+                .contains("chat-hover.groups." + group + "." + element)
+        ) {
             configPath = "chat-hover.groups.default." + element;
             if (!plugin.getConfig().contains(configPath)) {
                 return new HashMap<>();
@@ -212,7 +279,10 @@ public class FormatChatListener implements Listener {
      * When PlaceholderAPI is not installed, replaces %allium_*% ourselves.
      * Always runs our own %allium_nickname% replacement as fallback (handles PAPI missing or expansion not registered).
      */
-    private String processPlaceholderAPIPlaceholdersInConfig(String text, Player player) {
+    private String processPlaceholderAPIPlaceholdersInConfig(
+        String text,
+        Player player
+    ) {
         // Replace our placeholders FIRST so we control the output (PAPI expansion may return blank)
         text = replaceAlliumPlaceholders(text, player);
         if (!placeholderAPIEnabled) {
@@ -221,7 +291,10 @@ public class FormatChatListener implements Listener {
 
         if (text.contains("%gradientdisplayname%")) {
             if (player.hasPermission("allium.gradientname")) {
-                text = text.replace("%gradientdisplayname%", buildAnimatedGradientDisplayName(player));
+                text = text.replace(
+                    "%gradientdisplayname%",
+                    buildAnimatedGradientDisplayName(player)
+                );
             }
         }
 
@@ -232,13 +305,26 @@ public class FormatChatListener implements Listener {
 
         while (matcher.find()) {
             String placeholder = matcher.group(1);
-            if (placeholder.equals("player") || placeholder.equals("prefix") || placeholder.equals("group")) {
-                matcher.appendReplacement(buffer, Matcher.quoteReplacement(matcher.group(0)));
+            if (
+                placeholder.equals("player") ||
+                placeholder.equals("prefix") ||
+                placeholder.equals("group")
+            ) {
+                matcher.appendReplacement(
+                    buffer,
+                    Matcher.quoteReplacement(matcher.group(0))
+                );
                 continue;
             }
             String papiPlaceholder = "%" + placeholder + "%";
-            String replacement = PlaceholderAPI.setPlaceholders(player, papiPlaceholder);
-            matcher.appendReplacement(buffer, Matcher.quoteReplacement(replacement));
+            String replacement = PlaceholderAPI.setPlaceholders(
+                player,
+                papiPlaceholder
+            );
+            matcher.appendReplacement(
+                buffer,
+                Matcher.quoteReplacement(replacement)
+            );
         }
         matcher.appendTail(buffer);
 
@@ -248,11 +334,17 @@ public class FormatChatListener implements Listener {
     /** Returns the player's display name (nickname if set, otherwise username) with formatting applied. */
     private String getPlayerDisplayName(Player player) {
         if (player == null) return "";
-        codes.castled.allium.managers.NicknameManager nm = plugin.getNicknameManager();
+        codes.castled.allium.managers.NicknameManager nm =
+            plugin.getNicknameManager();
         if (nm == null) return player.getName();
         String stored = nm.getStoredNickname(player);
-        String formatted = nm.getFormattedNickname(player, stored != null && !stored.isEmpty() ? stored : player.getName());
-        return (formatted != null && !formatted.isEmpty()) ? formatted : player.getName();
+        String formatted = nm.getFormattedNickname(
+            player,
+            stored != null && !stored.isEmpty() ? stored : player.getName()
+        );
+        return (formatted != null && !formatted.isEmpty())
+            ? formatted
+            : player.getName();
     }
 
     /**
@@ -265,22 +357,30 @@ public class FormatChatListener implements Listener {
         if (!text.contains("%allium_")) return text;
 
         String defaultName = player.getName();
-        if (defaultName == null || defaultName.isEmpty()) defaultName = player.getUniqueId().toString();
+        if (defaultName == null || defaultName.isEmpty()) defaultName = player
+            .getUniqueId()
+            .toString();
 
-        codes.castled.allium.managers.NicknameManager nm = plugin.getNicknameManager();
+        codes.castled.allium.managers.NicknameManager nm =
+            plugin.getNicknameManager();
         String raw = (nm != null) ? nm.getStoredNickname(player) : defaultName;
         if (raw == null || raw.isEmpty()) raw = defaultName;
-        String formatted = (nm != null) ? nm.getFormattedNickname(player, raw) : defaultName;
+        String formatted = (nm != null)
+            ? nm.getFormattedNickname(player, raw)
+            : defaultName;
         if (formatted == null || formatted.isEmpty()) formatted = defaultName;
 
-        return text.replace("%allium_nickname%", formatted)
-                   .replace("%allium_nickname_raw%", raw);
+        return text
+            .replace("%allium_nickname%", formatted)
+            .replace("%allium_nickname_raw%", raw);
     }
 
     private String getFormattedPrefix(Player player) {
         String rawPrefix = getPrefix(player);
         if (rawPrefix != null && !rawPrefix.trim().isEmpty()) {
-            Component prefixComponent = legacyComponentSerializer.deserialize(rawPrefix);
+            Component prefixComponent = legacyComponentSerializer.deserialize(
+                rawPrefix
+            );
             return legacyComponentSerializer.serialize(prefixComponent);
         }
         return "";
@@ -288,11 +388,20 @@ public class FormatChatListener implements Listener {
 
     private String buildAnimatedGradientDisplayName(Player player) {
         if (plugin.getGradientNameManager() != null) {
-            return plugin.getGradientNameManager().buildAnimatedGradientDisplayName(player);
+            return plugin
+                .getGradientNameManager()
+                .buildAnimatedGradientDisplayName(player);
         }
 
-        String resolved = PlaceholderAPI.setPlaceholders(player, "%gradientdisplayname%");
-        if (resolved == null || resolved.isBlank() || "%gradientdisplayname%".equals(resolved)) {
+        String resolved = PlaceholderAPI.setPlaceholders(
+            player,
+            "%gradientdisplayname%"
+        );
+        if (
+            resolved == null ||
+            resolved.isBlank() ||
+            "%gradientdisplayname%".equals(resolved)
+        ) {
             return miniMessage.escapeTags(player.getName());
         }
 
@@ -306,16 +415,27 @@ public class FormatChatListener implements Listener {
         }
 
         String first = colors.isEmpty() ? "#FFFFFF" : colors.get(0);
-        String last = colors.size() >= 2 ? colors.get(colors.size() - 1) : first;
+        String last =
+            colors.size() >= 2 ? colors.get(colors.size() - 1) : first;
         String midpoint = nearestNamedColor(average(first, last));
         String visibleName = stripFormatting(resolved);
         if (visibleName.isBlank()) {
             visibleName = player.getName();
         }
 
-        return "<gradient:" + first + ":" + last + ":" + midpoint + ":" + getPhaseValue(false) + ">"
-                + miniMessage.escapeTags(visibleName)
-                + "</gradient>";
+        return (
+            "<gradient:" +
+            first +
+            ":" +
+            last +
+            ":" +
+            midpoint +
+            ":" +
+            getPhaseValue(false) +
+            ">" +
+            miniMessage.escapeTags(visibleName) +
+            "</gradient>"
+        );
     }
 
     private String formatPhases(String text) {
@@ -325,12 +445,15 @@ public class FormatChatListener implements Listener {
         if (text == null || text.indexOf('#') == -1) {
             return text;
         }
-        return text.replace("#phase-mm-g#", getPhaseValue(false))
-                .replace("#-phase-mm-g#", getPhaseValue(true));
+        return text
+            .replace("#phase-mm-g#", getPhaseValue(false))
+            .replace("#-phase-mm-g#", getPhaseValue(true));
     }
 
     private String getPhaseValue(boolean negative) {
-        BigDecimal phase = negative ? miniGradientPhase.multiply(PHASE_NEGATE) : miniGradientPhase;
+        BigDecimal phase = negative
+            ? miniGradientPhase.multiply(PHASE_NEGATE)
+            : miniGradientPhase;
         synchronized (phaseDecimalFormat) {
             return phaseDecimalFormat.format(phase);
         }
@@ -347,21 +470,39 @@ public class FormatChatListener implements Listener {
 
         Matcher hexMatcher = LEGACY_HEX_PATTERN.matcher(input);
         while (hexMatcher.find()) {
-            tokens.add(new ColorToken(hexMatcher.start(), "#" + hexMatcher.group(1).toUpperCase(Locale.ROOT)));
-            hexRanges.add(new int[] {hexMatcher.start(), hexMatcher.end()});
+            tokens.add(
+                new ColorToken(
+                    hexMatcher.start(),
+                    "#" + hexMatcher.group(1).toUpperCase(Locale.ROOT)
+                )
+            );
+            hexRanges.add(new int[] { hexMatcher.start(), hexMatcher.end() });
         }
 
         Matcher sectionHexMatcher = SECTION_HEX_PATTERN.matcher(input);
         while (sectionHexMatcher.find()) {
             String raw = sectionHexMatcher.group();
             String hex = raw.substring(2).replace("§", "").replace("&", "");
-            tokens.add(new ColorToken(sectionHexMatcher.start(), "#" + hex.toUpperCase(Locale.ROOT)));
-            hexRanges.add(new int[] {sectionHexMatcher.start(), sectionHexMatcher.end()});
+            tokens.add(
+                new ColorToken(
+                    sectionHexMatcher.start(),
+                    "#" + hex.toUpperCase(Locale.ROOT)
+                )
+            );
+            hexRanges.add(new int[] {
+                sectionHexMatcher.start(),
+                sectionHexMatcher.end(),
+            });
         }
 
         Matcher miniHexMatcher = MINI_HEX_PATTERN.matcher(input);
         while (miniHexMatcher.find()) {
-            tokens.add(new ColorToken(miniHexMatcher.start(), "#" + miniHexMatcher.group(1).toUpperCase(Locale.ROOT)));
+            tokens.add(
+                new ColorToken(
+                    miniHexMatcher.start(),
+                    "#" + miniHexMatcher.group(1).toUpperCase(Locale.ROOT)
+                )
+            );
         }
 
         Matcher legacyMatcher = LEGACY_COLOR_PATTERN.matcher(input);
@@ -402,7 +543,10 @@ public class FormatChatListener implements Listener {
         if (color.startsWith("#") && color.length() == 7) {
             return color.toUpperCase(Locale.ROOT);
         }
-        if (color.length() >= 2 && (color.charAt(0) == '&' || color.charAt(0) == '§')) {
+        if (
+            color.length() >= 2 &&
+            (color.charAt(0) == '&' || color.charAt(0) == '§')
+        ) {
             String hex = legacyColorToHex(color.charAt(1));
             if (hex != null) {
                 return hex;
@@ -425,7 +569,11 @@ public class FormatChatListener implements Listener {
     private Color average(String first, String last) {
         Color a = Color.decode(first);
         Color b = Color.decode(last);
-        return new Color((a.getRed() + b.getRed()) / 2, (a.getGreen() + b.getGreen()) / 2, (a.getBlue() + b.getBlue()) / 2);
+        return new Color(
+            (a.getRed() + b.getRed()) / 2,
+            (a.getGreen() + b.getGreen()) / 2,
+            (a.getBlue() + b.getBlue()) / 2
+        );
     }
 
     private String nearestNamedColor(Color color) {
@@ -487,23 +635,38 @@ public class FormatChatListener implements Listener {
 
     private record ColorToken(int index, String hex) {}
 
-    private Component applyHoverClick(Player player, Component component, String element) {
-        Map<String, Object> hoverClickConfig = getHoverClickConfig(player, element);
+    private Component applyHoverClick(
+        Player player,
+        Component component,
+        String element
+    ) {
+        Map<String, Object> hoverClickConfig = getHoverClickConfig(
+            player,
+            element
+        );
         if (hoverClickConfig.isEmpty()) {
             return component;
         }
 
         Component hoverComponent = Component.empty();
         if (hoverClickConfig.containsKey("hover")) {
-            List<String> hoverText = hoverClickConfig.get("hover") instanceof List ? (List<String>) hoverClickConfig.get("hover") : Collections.singletonList(hoverClickConfig.get("hover").toString());
+            List<String> hoverText = hoverClickConfig.get("hover") instanceof
+                List
+                ? (List<String>) hoverClickConfig.get("hover")
+                : Collections.singletonList(
+                      hoverClickConfig.get("hover").toString()
+                  );
 
             if (hoverText != null && !hoverText.isEmpty()) {
                 String hover = String.join("\n", hoverText)
-                        .replace("{player}", player.getName())
-                        .replace("{prefix}", getFormattedPrefix(player))
-                        .replace("{group}", getHighestPriorityGroup(player));
+                    .replace("{player}", player.getName())
+                    .replace("{prefix}", getFormattedPrefix(player))
+                    .replace("{group}", getHighestPriorityGroup(player));
 
-                hover = processPlaceholderAPIPlaceholdersInConfig(hover, player);
+                hover = processPlaceholderAPIPlaceholdersInConfig(
+                    hover,
+                    player
+                );
 
                 if (hover.contains("&") || hover.contains("§")) {
                     hover = convertLegacyToMiniMessage(hover);
@@ -513,20 +676,34 @@ public class FormatChatListener implements Listener {
                     hoverComponent = miniMessage.deserialize(hover);
                 } catch (Exception e) {
                     if (config.getBoolean("debug-mode")) {
-                        Text.sendDebugLog(WARN, "Error parsing hover text: " + e.getMessage());
+                        Text.sendDebugLog(
+                            WARN,
+                            "Error parsing hover text: " + e.getMessage()
+                        );
                     }
-                    hoverComponent = Component.text(LegacyComponentSerializer.legacyAmpersand().deserialize(hover).content());
+                    hoverComponent = Component.text(
+                        LegacyComponentSerializer.legacyAmpersand()
+                            .deserialize(hover)
+                            .content()
+                    );
                 }
             }
         }
 
         ClickEvent clickEvent = null;
-        if (hoverClickConfig.containsKey("action") && hoverClickConfig.get("action") != null && hoverClickConfig.containsKey("click") && hoverClickConfig.get("click") != null) {
+        if (
+            hoverClickConfig.containsKey("action") &&
+            hoverClickConfig.get("action") != null &&
+            hoverClickConfig.containsKey("click") &&
+            hoverClickConfig.get("click") != null
+        ) {
             String action = hoverClickConfig.get("action").toString();
-            String click = hoverClickConfig.get("click").toString()
-                    .replace("{player}", player.getName())
-                    .replace("{prefix}", getFormattedPrefix(player))
-                    .replace("{group}", getHighestPriorityGroup(player));
+            String click = hoverClickConfig
+                .get("click")
+                .toString()
+                .replace("{player}", player.getName())
+                .replace("{prefix}", getFormattedPrefix(player))
+                .replace("{group}", getHighestPriorityGroup(player));
 
             click = processPlaceholderAPIPlaceholdersInConfig(click, player);
 
@@ -541,12 +718,17 @@ public class FormatChatListener implements Listener {
                     clickEvent = ClickEvent.openUrl(click);
                     break;
                 case "copy-to-clipboard":
-                    String content = hoverClickConfig.containsKey("content") ? hoverClickConfig.get("content").toString() : click;
+                    String content = hoverClickConfig.containsKey("content")
+                        ? hoverClickConfig.get("content").toString()
+                        : click;
                     content = content
-                            .replace("{player}", player.getName())
-                            .replace("{prefix}", getFormattedPrefix(player))
-                            .replace("{group}", getHighestPriorityGroup(player));
-                    content = processPlaceholderAPIPlaceholdersInConfig(content, player);
+                        .replace("{player}", player.getName())
+                        .replace("{prefix}", getFormattedPrefix(player))
+                        .replace("{group}", getHighestPriorityGroup(player));
+                    content = processPlaceholderAPIPlaceholdersInConfig(
+                        content,
+                        player
+                    );
                     clickEvent = ClickEvent.copyToClipboard(content);
                     break;
             }
@@ -624,7 +806,7 @@ public class FormatChatListener implements Listener {
 
     private String editMessageWithRawText(String message, Player player) {
         if (message == null || message.isEmpty()) return message;
-        
+
         // Early exit if message doesn't contain any raw text patterns
         if (!message.matches(".*\\[.*\\].*")) {
             return message;
@@ -636,15 +818,18 @@ public class FormatChatListener implements Listener {
         boolean hasRawContent = false;
 
         while (matcher.find()) {
-            String rawText = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+            String rawText =
+                matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
             String fullMatch = matcher.group(0);
 
             // Append text before the match
             result.append(message, lastEnd, matcher.start());
 
             // Check if the text inside brackets contains any color codes or formatting
-            boolean hasFormatting = rawText.matches(".*[&§][0-9a-fA-Fk-oK-OrR].*");
-            
+            boolean hasFormatting = rawText.matches(
+                ".*[&§][0-9a-fA-Fk-oK-OrR].*"
+            );
+
             // Check if brackets are escaped (preceded by a color code with optional space)
             boolean isEscaped = false;
             if (matcher.start() > 0) {
@@ -663,22 +848,27 @@ public class FormatChatListener implements Listener {
             } else {
                 // Has formatting codes, process as raw text
                 hasRawContent = true;
-                String protectedMarker = "\uE000RAW_" + System.nanoTime() + "_" + rawText.hashCode() + "\uE000";
+                String protectedMarker =
+                    "\uE000RAW_" +
+                    System.nanoTime() +
+                    "_" +
+                    rawText.hashCode() +
+                    "\uE000";
                 result.append(protectedMarker);
-                
+
                 if (!rawTextMappings.containsKey(protectedMarker)) {
                     rawTextMappings.put(protectedMarker, rawText);
                 }
             }
-            
+
             lastEnd = matcher.end();
         }
-        
+
         // Append any remaining text after the last match
         if (lastEnd < message.length()) {
             result.append(message.substring(lastEnd));
         }
-        
+
         // If no raw content was processed, return the original message to preserve any formatting
         return hasRawContent ? result.toString() : message;
     }
@@ -686,16 +876,30 @@ public class FormatChatListener implements Listener {
     private boolean hasMiniMessagePermission(Player player, String tagType) {
         if (player == null) return false;
         String permission = "chat.minimessage." + tagType.toLowerCase();
-        return player.hasPermission(permission) || 
-               player.hasPermission("chat.minimessage.*") || 
-               player.hasPermission(permission + ".*");
+        return (
+            player.hasPermission(permission) ||
+            player.hasPermission("chat.minimessage.*") ||
+            player.hasPermission(permission + ".*")
+        );
     }
 
     private boolean validateMiniMessage(Player player, String message) {
-        if (message.matches("(?i).*<(black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|dark_gray|blue|green|aqua|red|light_purple|yellow|white)>.*")) {
+        if (
+            message.matches(
+                "(?i).*<(black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|dark_gray|blue|green|aqua|red|light_purple|yellow|white)>.*"
+            )
+        ) {
             if (!hasMiniMessagePermission(player, "color")) {
-                String color = message.replaceAll("(?i).*<(black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|dark_gray|blue|green|aqua|red|light_purple|yellow|white)>.*", "$1");
-                if (!hasMiniMessagePermission(player, "color." + color.toLowerCase())) {
+                String color = message.replaceAll(
+                    "(?i).*<(black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|dark_gray|blue|green|aqua|red|light_purple|yellow|white)>.*",
+                    "$1"
+                );
+                if (
+                    !hasMiniMessagePermission(
+                        player,
+                        "color." + color.toLowerCase()
+                    )
+                ) {
                     return false;
                 }
             }
@@ -733,7 +937,11 @@ public class FormatChatListener implements Listener {
             }
         }
 
-        if (message.matches("(?i).*<(b|bold|i|italic|u|underlined|st|strikethrough|obf|obfuscated|reset)>.*")) {
+        if (
+            message.matches(
+                "(?i).*<(b|bold|i|italic|u|underlined|st|strikethrough|obf|obfuscated|reset)>.*"
+            )
+        ) {
             if (!hasMiniMessagePermission(player, "format")) {
                 return false;
             }
@@ -743,10 +951,12 @@ public class FormatChatListener implements Listener {
     }
 
     private boolean containsMiniMessageTags(String message) {
-        Pattern miniMessagePattern = Pattern.compile("<[^>]+>|</[^>]+>|&#[0-9a-fA-F]{6}");
+        Pattern miniMessagePattern = Pattern.compile(
+            "<[^>]+>|</[^>]+>|&#[0-9a-fA-F]{6}"
+        );
         return miniMessagePattern.matcher(message).find();
     }
-    
+
     private Component processMessageContent(String content) {
         try {
             return miniMessage.deserialize(content);
@@ -766,31 +976,50 @@ public class FormatChatListener implements Listener {
 
         Player player = event.getPlayer();
         Component messageComponent = event.message();
-        String rawMessage = legacyComponentSerializer.serialize(messageComponent);
-        String originalMessage = PlainTextComponentSerializer.plainText().serialize(event.message());
+        String rawMessage = legacyComponentSerializer.serialize(
+            messageComponent
+        );
+        String originalMessage =
+            PlainTextComponentSerializer.plainText().serialize(event.message());
 
         boolean debugMode = config.getBoolean("debug-mode");
 
         // Unicode check and cleanup
         if (blockUnicode && !player.hasPermission("chat.unicode")) {
             if (containsUnicode(originalMessage)) {
-                String cleanedMessage = originalMessage.replaceAll("[^-\u007F]+", "");
+                String cleanedMessage = originalMessage.replaceAll(
+                    "[^-\u007F]+",
+                    ""
+                );
                 if (debugMode) {
-                    Text.sendDebugLog(INFO, "Stripped unicode from message by " + player.getName() + ": " + originalMessage + " -> " + cleanedMessage);
+                    Text.sendDebugLog(
+                        INFO,
+                        "Stripped unicode from message by " +
+                            player.getName() +
+                            ": " +
+                            originalMessage +
+                            " -> " +
+                            cleanedMessage
+                    );
                 }
-                rawMessage = legacyComponentSerializer.serialize(Component.text(cleanedMessage));
+                rawMessage = legacyComponentSerializer.serialize(
+                    Component.text(cleanedMessage)
+                );
                 originalMessage = cleanedMessage;
             }
         }
 
         // Process raw text in brackets FIRST, before any formatting processing
         String messageContent = editMessageWithRawText(rawMessage, player);
-        
+
         // Strip unauthorized formatting and track if we have legacy codes
         boolean hasLegacyCodes = false;
         if (vaultPermission != null) {
             hasLegacyCodes = rawMessage.matches(".*[&§][0-9a-fA-Fk-oK-OrR].*");
-            messageContent = stripUnauthorizedFormatting(messageContent, player);
+            messageContent = stripUnauthorizedFormatting(
+                messageContent,
+                player
+            );
             messageContent = convertLegacyToMiniMessage(messageContent);
         } else {
             messageContent = Text.stripColor(messageContent, null);
@@ -799,19 +1028,29 @@ public class FormatChatListener implements Listener {
         // Check MiniMessage permissions
         boolean useMiniMessage = false;
         boolean hasMiniMessageTags = containsMiniMessageTags(messageContent);
-        boolean hasOriginalMiniMessageTags = containsMiniMessageTags(rawMessage);
+        boolean hasOriginalMiniMessageTags = containsMiniMessageTags(
+            rawMessage
+        );
 
         if (hasMiniMessageTags) {
             if (hasLegacyCodes && !hasOriginalMiniMessageTags) {
                 useMiniMessage = true;
                 if (debugMode) {
-                    Text.sendDebugLog(INFO, "Allowing legacy-converted MiniMessage tags for " + player.getName());
+                    Text.sendDebugLog(
+                        INFO,
+                        "Allowing legacy-converted MiniMessage tags for " +
+                            player.getName()
+                    );
                 }
             } else if (player.hasPermission("chat.minimessage")) {
                 if (!validateMiniMessage(player, messageContent)) {
                     messageContent = miniMessage.stripTags(messageContent);
                     if (debugMode) {
-                        Text.sendDebugLog(INFO, "Stripped unauthorized MiniMessage tags from message by " + player.getName());
+                        Text.sendDebugLog(
+                            INFO,
+                            "Stripped unauthorized MiniMessage tags from message by " +
+                                player.getName()
+                        );
                     }
                 } else {
                     useMiniMessage = true;
@@ -819,14 +1058,25 @@ public class FormatChatListener implements Listener {
             } else {
                 messageContent = miniMessage.stripTags(messageContent);
                 if (debugMode) {
-                    Text.sendDebugLog(INFO, "Stripped MiniMessage tags from message by " + player.getName() + " (no permission)");
+                    Text.sendDebugLog(
+                        INFO,
+                        "Stripped MiniMessage tags from message by " +
+                            player.getName() +
+                            " (no permission)"
+                    );
                 }
             }
         }
 
         // Process PlaceholderAPI placeholders if player has permission
-        if (vaultPermission != null && vaultPermission.playerHas(player, "chat.placeholderapi")) {
-            messageContent = processPlaceholderAPIPlaceholdersInChat(messageContent, player);
+        if (
+            vaultPermission != null &&
+            vaultPermission.playerHas(player, "chat.placeholderapi")
+        ) {
+            messageContent = processPlaceholderAPIPlaceholdersInChat(
+                messageContent,
+                player
+            );
         }
 
         // Restore protected raw text as the final step
@@ -835,96 +1085,162 @@ public class FormatChatListener implements Listener {
         onPlayerChat(event, player, rawMessage, messageContent);
     }
 
-    private void onPlayerChat(AsyncChatEvent event, Player player, String message, String messageContent) {
+    private void onPlayerChat(
+        AsyncChatEvent event,
+        Player player,
+        String message,
+        String messageContent
+    ) {
         // Get chat format and prefix
         String chatFormat = getChatFormat(player);
-        
+
         // Process placeholders in the chat format string
-        chatFormat = processPlaceholderAPIPlaceholdersInConfig(chatFormat, player);
-        
+        chatFormat = processPlaceholderAPIPlaceholdersInConfig(
+            chatFormat,
+            player
+        );
+
         String prefix = getPrefix(player);
         String suffix = getSuffix(player);
-        
+
         // Process the message content with MiniMessage if needed
-        final Component messageComponent = processMessageContent(messageContent);
+        final Component messageComponent = processMessageContent(
+            messageContent
+        );
 
         // Create the basic chat components
         final boolean hasPrefix = (prefix != null && !prefix.trim().isEmpty());
-        final Component prefixComponent = hasPrefix ? (containsMiniMessageTags(prefix) ? miniMessage.deserialize(prefix) : legacyComponentSerializer.deserialize(prefix)) : Component.empty();
-        final Component basePrefixComponent = hasPrefix ? applyHoverClick(player, prefixComponent, "prefix") : Component.empty();
+        final Component prefixComponent = hasPrefix
+            ? (containsMiniMessageTags(prefix)
+                  ? miniMessage.deserialize(prefix)
+                  : legacyComponentSerializer.deserialize(prefix))
+            : Component.empty();
+        final Component basePrefixComponent = hasPrefix
+            ? applyHoverClick(player, prefixComponent, "prefix")
+            : Component.empty();
         final boolean hasSuffix = (suffix != null && !suffix.trim().isEmpty());
-        final Component suffixComponent = hasSuffix ? (containsMiniMessageTags(suffix) ? miniMessage.deserialize(suffix) : legacyComponentSerializer.deserialize(suffix)) : Component.empty();
-        final Component baseSuffixComponent = hasSuffix ? applyHoverClick(player, suffixComponent, "suffix") : Component.empty();
+        final Component suffixComponent = hasSuffix
+            ? (containsMiniMessageTags(suffix)
+                  ? miniMessage.deserialize(suffix)
+                  : legacyComponentSerializer.deserialize(suffix))
+            : Component.empty();
+        final Component baseSuffixComponent = hasSuffix
+            ? applyHoverClick(player, suffixComponent, "suffix")
+            : Component.empty();
         String playerDisplayName = getPlayerDisplayName(player);
-        final Component basePlayerComponent = applyHoverClick(player,
-            legacyComponentSerializer.deserialize(playerDisplayName), "name");
-         
-        // If no prefix, remove the <prefix> token and surrounding whitespace to avoid stray spaces
+        final Component basePlayerComponent = applyHoverClick(
+            player,
+            legacyComponentSerializer.deserialize(playerDisplayName),
+            "name"
+        );
+
+        // If no prefix/suffix, remove the token and collapse surrounding whitespace
+        // to avoid stray spaces. We replace the tag plus adjacent whitespace with a
+        // single space, then trim any leading/trailing space that may result.
         String formatBase = chatFormat;
         if (!hasPrefix) {
-            formatBase = formatBase.replaceAll("(?i)\\s*<prefix>\\s*", "");
+            formatBase = formatBase
+                .replaceAll("(?i)\\s*<prefix>\\s*", " ")
+                .trim();
         }
-        // If no suffix, remove the <suffix> token and surrounding whitespace as well
         if (!hasSuffix) {
-            formatBase = formatBase.replaceAll("(?i)\\s*<suffix>\\s*", "");
+            formatBase = formatBase
+                .replaceAll("(?i)\\s*<suffix>\\s*", " ")
+                .trim();
         }
+        // Collapse any runs of multiple spaces that may have been introduced
+        formatBase = formatBase.replaceAll(" {2,}", " ");
 
         // Replace placeholders in the format string with temporary markers
         String processedFormat = formatBase
-                .replace("<prefix>", "{PREFIX_COMPONENT}")
-                .replace("<player>", "{PLAYER_COMPONENT}")
-                .replace("<message>", "{MESSAGE_COMPONENT}")
-                .replace("<suffix>", "{SUFFIX_COMPONENT}");
-         
+            .replace("<prefix>", "{PREFIX_COMPONENT}")
+            .replace("<player>", "{PLAYER_COMPONENT}")
+            .replace("<message>", "{MESSAGE_COMPONENT}")
+            .replace("<suffix>", "{SUFFIX_COMPONENT}");
+
         // Build the final message using the processed format
         processedFormat = formatPhases(processedFormat);
         Component baseMessage = containsMiniMessageTags(processedFormat)
-                ? miniMessage.deserialize(convertLegacyToMiniMessage(processedFormat))
-                : legacyComponentSerializer.deserialize(processedFormat);
-         
+            ? miniMessage.deserialize(
+                  convertLegacyToMiniMessage(processedFormat)
+              )
+            : legacyComponentSerializer.deserialize(processedFormat);
+
         // Store the message for potential deletion by staff (using temporary message)
-        Component tempMessage = baseMessage.replaceText(builder -> builder
-            .matchLiteral("{PREFIX_COMPONENT}")
-            .replacement(basePrefixComponent))
-            .replaceText(builder -> builder
-                .matchLiteral("{PLAYER_COMPONENT}")
-                .replacement(basePlayerComponent))
-            .replaceText(builder -> builder
-                .matchLiteral("{MESSAGE_COMPONENT}")
-                .replacement(messageComponent))
-            .replaceText(builder -> builder
-                .matchLiteral("{SUFFIX_COMPONENT}")
-                .replacement(baseSuffixComponent));
-         
+        Component tempMessage = baseMessage
+            .replaceText(builder ->
+                builder
+                    .matchLiteral("{PREFIX_COMPONENT}")
+                    .replacement(basePrefixComponent)
+            )
+            .replaceText(builder ->
+                builder
+                    .matchLiteral("{PLAYER_COMPONENT}")
+                    .replacement(basePlayerComponent)
+            )
+            .replaceText(builder ->
+                builder
+                    .matchLiteral("{MESSAGE_COMPONENT}")
+                    .replacement(messageComponent)
+            )
+            .replaceText(builder ->
+                builder
+                    .matchLiteral("{SUFFIX_COMPONENT}")
+                    .replacement(baseSuffixComponent)
+            );
+
         long messageId = chatMessageManager.storeMessage(player, tempMessage);
         if (plugin.getDiscordSrvMessageBridge() != null) {
-            plugin.getDiscordSrvMessageBridge().noteOutgoingPlayerChat(messageId, player, messageComponent, tempMessage);
+            plugin
+                .getDiscordSrvMessageBridge()
+                .noteOutgoingPlayerChat(
+                    messageId,
+                    player,
+                    messageComponent,
+                    tempMessage
+                );
         }
-         
+
         // Track this message for per-player chat history (for packet-based deletion)
-        ChatMessageManager.ChatMessage chatMessage = new ChatMessageManager.ChatMessage(
-            messageId, player.getUniqueId(), player.getName(), tempMessage
-        );
-         
+        ChatMessageManager.ChatMessage chatMessage =
+            new ChatMessageManager.ChatMessage(
+                messageId,
+                player.getUniqueId(),
+                player.getName(),
+                tempMessage
+            );
+
         // Track this message for all online players (since chat is broadcast to everyone)
         for (Player onlinePlayer : plugin.getServer().getOnlinePlayers()) {
-            chatMessageManager.trackMessageForPlayer(onlinePlayer.getUniqueId(), chatMessage);
+            chatMessageManager.trackMessageForPlayer(
+                onlinePlayer.getUniqueId(),
+                chatMessage
+            );
         }
-         
+
         // Create the final message with base player component (no extra hover/suggest delete text)
-        Component finalMessage = baseMessage.replaceText(builder -> builder
-            .matchLiteral("{PREFIX_COMPONENT}")
-            .replacement(basePrefixComponent))
-            .replaceText(builder -> builder
-                .matchLiteral("{PLAYER_COMPONENT}")
-                .replacement(basePlayerComponent))
-            .replaceText(builder -> builder
-                .matchLiteral("{MESSAGE_COMPONENT}")
-                .replacement(messageComponent))
-            .replaceText(builder -> builder
-                .matchLiteral("{SUFFIX_COMPONENT}")
-                .replacement(baseSuffixComponent));
- 
+        Component finalMessage = baseMessage
+            .replaceText(builder ->
+                builder
+                    .matchLiteral("{PREFIX_COMPONENT}")
+                    .replacement(basePrefixComponent)
+            )
+            .replaceText(builder ->
+                builder
+                    .matchLiteral("{PLAYER_COMPONENT}")
+                    .replacement(basePlayerComponent)
+            )
+            .replaceText(builder ->
+                builder
+                    .matchLiteral("{MESSAGE_COMPONENT}")
+                    .replacement(messageComponent)
+            )
+            .replaceText(builder ->
+                builder
+                    .matchLiteral("{SUFFIX_COMPONENT}")
+                    .replacement(baseSuffixComponent)
+            );
+
         // Use a per-viewer renderer to append staff-only hover/click without altering the visible message
         final Component baseBroadcast = finalMessage; // capture for lambda
         final Component basePrefixForAugment = basePrefixComponent;
@@ -935,55 +1251,122 @@ public class FormatChatListener implements Listener {
         event.renderer((source, sourceDisplayName, msg, viewer) -> {
             if (viewer instanceof Player) {
                 Player v = (Player) viewer;
-                if (v.hasPermission("allium.deletemsg") || v.hasPermission("allium.delmsg") || v.hasPermission("allium.staff")) {
-                    String mode = config.getString("chat-hover.delete-hover-mode", "prefix").toLowerCase();
+                if (
+                    v.hasPermission("allium.deletemsg") ||
+                    v.hasPermission("allium.delmsg") ||
+                    v.hasPermission("allium.staff")
+                ) {
+                    String mode = config
+                        .getString("chat-hover.delete-hover-mode", "prefix")
+                        .toLowerCase();
                     String effectiveMode = mode;
-                    if (!hasPrefix && !"name".equals(effectiveMode) && !"player".equals(effectiveMode) && !"none".equals(effectiveMode)) {
+                    if (
+                        !hasPrefix &&
+                        !"name".equals(effectiveMode) &&
+                        !"player".equals(effectiveMode) &&
+                        !"none".equals(effectiveMode)
+                    ) {
                         effectiveMode = "name";
                     }
                     if ("none".equals(effectiveMode)) {
                         return baseBroadcast;
                     }
 
- 
                     // Helper to extend hover text and set suggest-command on a single component
-                    java.util.function.Function<Component, Component> augment = (comp) -> {
-                        HoverEvent<?> hv = comp.hoverEvent();
-                        Component hvText = null;
-                        if (hv != null && hv.action() == HoverEvent.Action.SHOW_TEXT) {
-                            Object value = hv.value();
-                            if (value instanceof Component) hvText = (Component) value;
-                        }
-                        if (hvText == null) hvText = Component.empty();
+                    java.util.function.Function<Component, Component> augment =
+                        comp -> {
+                            HoverEvent<?> hv = comp.hoverEvent();
+                            Component hvText = null;
+                            if (
+                                hv != null &&
+                                hv.action() == HoverEvent.Action.SHOW_TEXT
+                            ) {
+                                Object value = hv.value();
+                                if (value instanceof Component) hvText =
+                                    (Component) value;
+                            }
+                            if (hvText == null) hvText = Component.empty();
 
-                        String plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(hvText);
-                        if (!plain.contains("Click to delete this message")) {
-                            Component staffLine = Component.text("Click to delete this message ", NamedTextColor.RED)
-                                .append(Component.text("[", NamedTextColor.DARK_GRAY))
-                                .append(Component.text(String.valueOf(messageId), NamedTextColor.WHITE))
-                                .append(Component.text("]", NamedTextColor.DARK_GRAY));
-                            hvText = hvText.append(Component.newline()).append(staffLine);
-                        }
-                        return comp.hoverEvent(HoverEvent.showText(hvText))
-                                .clickEvent(ClickEvent.suggestCommand("/delmsg " + messageId));
-                    };
+                            String plain =
+                                net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(
+                                    hvText
+                                );
+                            if (
+                                !plain.contains("Click to delete this message")
+                            ) {
+                                Component staffLine = Component.text(
+                                    "Click to delete this message ",
+                                    NamedTextColor.RED
+                                )
+                                    .append(
+                                        Component.text(
+                                            "[",
+                                            NamedTextColor.DARK_GRAY
+                                        )
+                                    )
+                                    .append(
+                                        Component.text(
+                                            String.valueOf(messageId),
+                                            NamedTextColor.WHITE
+                                        )
+                                    )
+                                    .append(
+                                        Component.text(
+                                            "]",
+                                            NamedTextColor.DARK_GRAY
+                                        )
+                                    );
+                                hvText = hvText
+                                    .append(Component.newline())
+                                    .append(staffLine);
+                            }
+                            return comp
+                                .hoverEvent(HoverEvent.showText(hvText))
+                                .clickEvent(
+                                    ClickEvent.suggestCommand(
+                                        "/delmsg " + messageId
+                                    )
+                                );
+                        };
 
                     // Build per-viewer message: augment only the selected segment
-                    final Component viewerPrefixFinal = "prefix".equals(effectiveMode)
-                            ? augment.apply(basePrefixForAugment)
-                            : basePrefixForAugment;
-                    final Component viewerNameFinal = ("name".equals(effectiveMode) || "player".equals(effectiveMode))
-                            ? augment.apply(baseNameForAugment)
-                            : baseNameForAugment;
-                    final Component viewerSuffixFinal = "suffix".equals(effectiveMode)
-                            ? augment.apply(baseSuffixForAugment)
-                            : baseSuffixForAugment;
+                    final Component viewerPrefixFinal = "prefix".equals(
+                        effectiveMode
+                    )
+                        ? augment.apply(basePrefixForAugment)
+                        : basePrefixForAugment;
+                    final Component viewerNameFinal = ("name".equals(
+                            effectiveMode
+                        ) || "player".equals(effectiveMode))
+                        ? augment.apply(baseNameForAugment)
+                        : baseNameForAugment;
+                    final Component viewerSuffixFinal = "suffix".equals(
+                        effectiveMode
+                    )
+                        ? augment.apply(baseSuffixForAugment)
+                        : baseSuffixForAugment;
 
                     Component viewerMessage = baseMessageTemplate
-                        .replaceText(builder -> builder.matchLiteral("{PREFIX_COMPONENT}").replacement(viewerPrefixFinal))
-                        .replaceText(builder -> builder.matchLiteral("{PLAYER_COMPONENT}").replacement(viewerNameFinal))
-                        .replaceText(builder -> builder.matchLiteral("{MESSAGE_COMPONENT}").replacement(baseMsgForAugment))
-                        .replaceText(builder -> builder.matchLiteral("{SUFFIX_COMPONENT}").replacement(viewerSuffixFinal));
+                        .replaceText(builder ->
+                            builder
+                                .matchLiteral("{PREFIX_COMPONENT}")
+                                .replacement(viewerPrefixFinal)
+                        )
+                        .replaceText(builder ->
+                            builder
+                                .matchLiteral("{PLAYER_COMPONENT}")
+                                .replacement(viewerNameFinal)
+                        )
+                        .replaceText(builder ->
+                            builder
+                                .matchLiteral("{MESSAGE_COMPONENT}")
+                                .replacement(baseMsgForAugment)
+                        )
+                        .replaceText(builder ->
+                            builder
+                                .matchLiteral("{SUFFIX_COMPONENT}")
+                                .replacement(viewerSuffixFinal)
+                        );
                     return viewerMessage;
                 }
             }
@@ -992,7 +1375,7 @@ public class FormatChatListener implements Listener {
     }
 
     private String getChatFormat(Player player) {
-        String groupName = "default";   
+        String groupName = "default";
         boolean debugMode = config.getBoolean("debug-mode");
 
         if (vaultChat != null) {
@@ -1002,7 +1385,11 @@ public class FormatChatListener implements Listener {
             }
         } else {
             if (debugMode) {
-                Text.sendDebugLog(INFO, "Vault Chat unavailable, using default group for " + player.getName());
+                Text.sendDebugLog(
+                    INFO,
+                    "Vault Chat unavailable, using default group for " +
+                        player.getName()
+                );
             }
         }
 
@@ -1018,7 +1405,10 @@ public class FormatChatListener implements Listener {
      * This REQUIRES the chat.placeholderapi permission.
      * When PlaceholderAPI is missing, we still replace our own %allium_nickname% placeholders.
      */
-    private String processPlaceholderAPIPlaceholdersInChat(String text, Player player) {
+    private String processPlaceholderAPIPlaceholdersInChat(
+        String text,
+        Player player
+    ) {
         if (vaultPermission == null) {
             return text;
         }
@@ -1029,45 +1419,69 @@ public class FormatChatListener implements Listener {
         if (!placeholderAPIEnabled) {
             return text;
         }
-        
+
         // Check if player has the placeholderapi permission
         boolean hasPermission = false;
         try {
             // Try modern Vault method first (1.7.3+)
             try {
-                java.lang.reflect.Method hasMethod = vaultPermission.getClass().getMethod("playerHas", String.class, org.bukkit.OfflinePlayer.class, String.class);
-                hasPermission = (boolean) hasMethod.invoke(vaultPermission, player.getWorld().getName(), player, "chat.placeholderapi");
+                java.lang.reflect.Method hasMethod = vaultPermission
+                    .getClass()
+                    .getMethod(
+                        "playerHas",
+                        String.class,
+                        org.bukkit.OfflinePlayer.class,
+                        String.class
+                    );
+                hasPermission = (boolean) hasMethod.invoke(
+                    vaultPermission,
+                    player.getWorld().getName(),
+                    player,
+                    "chat.placeholderapi"
+                );
             } catch (NoSuchMethodException e) {
                 // Fall back to older methods
-                hasPermission = vaultPermission.has(player, "chat.placeholderapi") || 
-                               vaultPermission.playerHas((String)null, player, "chat.placeholderapi");
+                hasPermission =
+                    vaultPermission.has(player, "chat.placeholderapi") ||
+                    vaultPermission.playerHas(
+                        (String) null,
+                        player,
+                        "chat.placeholderapi"
+                    );
             }
         } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Error checking permission: " + e.getMessage());
+            Text.sendDebugLog(
+                WARN,
+                "Error checking permission: " + e.getMessage()
+            );
             return text;
         }
-        
+
         if (!hasPermission) {
             return text;
         }
-        
+
         // Handle TPS placeholders specially for Folia
         boolean isFolia = false;
         try {
             isFolia = Bukkit.getServer().getClass().getName().contains("folia");
             if (isFolia) {
-                text = text.replaceAll("%server_tps_\\d+%", "N/A")
-                          .replaceAll("%server_tps%", "N/A");
+                text = text
+                    .replaceAll("%server_tps_\\d+%", "N/A")
+                    .replaceAll("%server_tps%", "N/A");
             }
         } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Error checking for Folia: " + e.getMessage());
+            Text.sendDebugLog(
+                WARN,
+                "Error checking for Folia: " + e.getMessage()
+            );
         }
-        
+
         // Process %{placeholder}% format first
         Matcher matcher = placeholderPattern.matcher(text);
         StringBuffer buffer = new StringBuffer();
         boolean hasPlaceholders = false;
-    
+
         while (matcher.find()) {
             hasPlaceholders = true;
             String placeholder = matcher.group(1);
@@ -1075,37 +1489,56 @@ public class FormatChatListener implements Listener {
             String papiPlaceholder = "%" + placeholder + "%";
             String replacement;
             try {
-                replacement = PlaceholderAPI.setPlaceholders(player, papiPlaceholder);
+                replacement = PlaceholderAPI.setPlaceholders(
+                    player,
+                    papiPlaceholder
+                );
                 // If placeholder wasn't processed, keep the original %{placeholder}%
                 if (replacement.equals(papiPlaceholder)) {
                     replacement = matcher.group(0);
                 }
             } catch (Exception e) {
-                Text.sendDebugLog(WARN, "Error processing placeholder " + papiPlaceholder + ": " + e.getMessage());
+                Text.sendDebugLog(
+                    WARN,
+                    "Error processing placeholder " +
+                        papiPlaceholder +
+                        ": " +
+                        e.getMessage()
+                );
                 replacement = matcher.group(0);
             }
-            matcher.appendReplacement(buffer, Matcher.quoteReplacement(replacement));
+            matcher.appendReplacement(
+                buffer,
+                Matcher.quoteReplacement(replacement)
+            );
         }
-        
+
         if (hasPlaceholders) {
             matcher.appendTail(buffer);
             text = buffer.toString();
         }
-        
+
         // Process regular %placeholder% format if any placeholders remain
         if (text.contains("%")) {
             try {
                 text = PlaceholderAPI.setPlaceholders(player, text);
             } catch (UnsupportedOperationException e) {
-                if (e.getMessage() != null && e.getMessage().contains("Not on any region")) {
-                    Text.sendDebugLog(WARN, "PlaceholderAPI placeholder not supported in this context: " + text);
+                if (
+                    e.getMessage() != null &&
+                    e.getMessage().contains("Not on any region")
+                ) {
+                    Text.sendDebugLog(
+                        WARN,
+                        "PlaceholderAPI placeholder not supported in this context: " +
+                            text
+                    );
                     text = text.replaceAll("%[^%]+%", "[Placeholder Error]");
                 } else {
                     throw e;
                 }
             }
         }
-        
+
         return text;
     }
 
@@ -1122,7 +1555,11 @@ public class FormatChatListener implements Listener {
         while (i < s.length()) {
             if (s.charAt(i) == '&' && i + 1 < s.length()) {
                 char next = s.charAt(i + 1);
-                if (next == '#' && i + 7 < s.length() && s.substring(i + 2, i + 8).matches("[0-9a-fA-F]{6}")) {
+                if (
+                    next == '#' &&
+                    i + 7 < s.length() &&
+                    s.substring(i + 2, i + 8).matches("[0-9a-fA-F]{6}")
+                ) {
                     // &#rrggbb
                     last = s.substring(i, i + 8);
                     i += 8;
@@ -1130,16 +1567,23 @@ public class FormatChatListener implements Listener {
                     // &x&r&r&g&g&b&b Minecraft internal hex format
                     String candidate = s.substring(i, i + 14);
                     if (candidate.matches("&x(&[0-9a-fA-F]){6}")) {
-                        String hex = candidate.replaceAll("&x(&([0-9a-fA-F])){6}", "$2");
+                        String hex = candidate.replaceAll(
+                            "&x(&([0-9a-fA-F])){6}",
+                            "$2"
+                        );
                         // Rebuild &#rrggbb from the six nibbles
                         StringBuilder hexColor = new StringBuilder("&#");
-                        for (int j = 2; j < 14; j += 2) hexColor.append(candidate.charAt(j + 1));
+                        for (int j = 2; j < 14; j += 2) hexColor.append(
+                            candidate.charAt(j + 1)
+                        );
                         last = hexColor.toString();
                         i += 14;
                     } else {
                         i += 2;
                     }
-                } else if ("0123456789abcdefABCDEFklmnorKLMNOR".indexOf(next) >= 0) {
+                } else if (
+                    "0123456789abcdefABCDEFklmnorKLMNOR".indexOf(next) >= 0
+                ) {
                     last = "&" + next;
                     i += 2;
                 } else {
@@ -1161,24 +1605,39 @@ public class FormatChatListener implements Listener {
                 prefix = vaultChat.getPlayerPrefix(player);
                 if (prefix != null && prefix.trim().isEmpty()) {
                     if (debugMode) {
-                        Text.sendDebugLog(INFO, "Empty prefix detected for " + player.getName() + ", returning null");
+                        Text.sendDebugLog(
+                            INFO,
+                            "Empty prefix detected for " +
+                                player.getName() +
+                                ", returning null"
+                        );
                     }
                     return null;
                 }
                 prefix = Objects.requireNonNullElse(prefix, "");
-                
+
                 // Clean up unwanted group names or formatting that might appear before the actual prefix
                 if (prefix.contains("<") && prefix.contains(">")) {
                     // Remove patterns like <groupname> that appear before the actual prefix
                     prefix = prefix.replaceAll("<[^>]*>", "").trim();
                     if (debugMode) {
-                        Text.sendDebugLog(INFO, "Cleaned prefix for " + player.getName() + ": removed group tags, result: '" + prefix + "'");
+                        Text.sendDebugLog(
+                            INFO,
+                            "Cleaned prefix for " +
+                                player.getName() +
+                                ": removed group tags, result: '" +
+                                prefix +
+                                "'"
+                        );
                     }
                 }
-                
             } else {
                 if (debugMode) {
-                    Text.sendDebugLog(INFO, "Vault Chat unavailable, using empty prefix for " + player.getName());
+                    Text.sendDebugLog(
+                        INFO,
+                        "Vault Chat unavailable, using empty prefix for " +
+                            player.getName()
+                    );
                 }
             }
         } catch (Exception e) {
@@ -1197,23 +1656,38 @@ public class FormatChatListener implements Listener {
                 suffix = vaultChat.getPlayerSuffix(player);
                 if (suffix != null && suffix.trim().isEmpty()) {
                     if (debugMode) {
-                        Text.sendDebugLog(INFO, "Empty suffix detected for " + player.getName() + ", returning null");
+                        Text.sendDebugLog(
+                            INFO,
+                            "Empty suffix detected for " +
+                                player.getName() +
+                                ", returning null"
+                        );
                     }
                     return null;
                 }
                 suffix = Objects.requireNonNullElse(suffix, "");
-                
+
                 // Clean up unwanted group names or formatting that might appear before the actual suffix
                 if (suffix.contains("<") && suffix.contains(">")) {
                     suffix = suffix.replaceAll("<[^>]*>", "").trim();
                     if (debugMode) {
-                        Text.sendDebugLog(INFO, "Cleaned suffix for " + player.getName() + ": removed group tags, result: '" + suffix + "'");
+                        Text.sendDebugLog(
+                            INFO,
+                            "Cleaned suffix for " +
+                                player.getName() +
+                                ": removed group tags, result: '" +
+                                suffix +
+                                "'"
+                        );
                     }
                 }
-                
             } else {
                 if (debugMode) {
-                    Text.sendDebugLog(INFO, "Vault Chat unavailable, using empty suffix for " + player.getName());
+                    Text.sendDebugLog(
+                        INFO,
+                        "Vault Chat unavailable, using empty suffix for " +
+                            player.getName()
+                    );
                 }
             }
         } catch (Exception e) {
@@ -1228,52 +1702,156 @@ public class FormatChatListener implements Listener {
             return message;
         }
 
-        boolean allowAnyColor = player.hasPermission("chat.color") || player.hasPermission("chat.color.*");
-        boolean allowAnyFormat = player.hasPermission("chat.format") || player.hasPermission("chat.format.*");
-        boolean allowHex = allowAnyColor || player.hasPermission("chat.color.hex");
+        boolean allowAnyColor =
+            player.hasPermission("chat.color") ||
+            player.hasPermission("chat.color.*");
+        boolean allowAnyFormat =
+            player.hasPermission("chat.format") ||
+            player.hasPermission("chat.format.*");
+        boolean allowHex =
+            allowAnyColor || player.hasPermission("chat.color.hex");
 
         StringBuilder filteredMessage = new StringBuilder();
         int i = 0;
 
         while (i < message.length()) {
-            if (i + 1 < message.length() && (message.charAt(i) == '&' || message.charAt(i) == '\u00a7')) {
+            if (
+                i + 1 < message.length() &&
+                (message.charAt(i) == '&' || message.charAt(i) == '\u00a7')
+            ) {
                 char colorChar = Character.toLowerCase(message.charAt(i + 1));
                 boolean keepCode = false;
 
                 switch (colorChar) {
-                    case '0': keepCode = allowAnyColor || player.hasPermission("chat.color.black"); break;
-                    case '1': keepCode = allowAnyColor || player.hasPermission("chat.color.dark_blue"); break;
-                    case '2': keepCode = allowAnyColor || player.hasPermission("chat.color.dark_green"); break;
-                    case '3': keepCode = allowAnyColor || player.hasPermission("chat.color.dark_aqua"); break;
-                    case '4': keepCode = allowAnyColor || player.hasPermission("chat.color.dark_red"); break;
-                    case '5': keepCode = allowAnyColor || player.hasPermission("chat.color.dark_purple"); break;
-                    case '6': keepCode = allowAnyColor || player.hasPermission("chat.color.gold"); break;
-                    case '7': keepCode = allowAnyColor || player.hasPermission("chat.color.gray"); break;
-                    case '8': keepCode = allowAnyColor || player.hasPermission("chat.color.dark_gray"); break;
-                    case '9': keepCode = allowAnyColor || player.hasPermission("chat.color.blue"); break;
-                    case 'a': keepCode = allowAnyColor || player.hasPermission("chat.color.green"); break;
-                    case 'b': keepCode = allowAnyColor || player.hasPermission("chat.color.aqua"); break;
-                    case 'c': keepCode = allowAnyColor || player.hasPermission("chat.color.red"); break;
-                    case 'd': keepCode = allowAnyColor || player.hasPermission("chat.color.light_purple"); break;
-                    case 'e': keepCode = allowAnyColor || player.hasPermission("chat.color.yellow"); break;
-                    case 'f': keepCode = allowAnyColor || player.hasPermission("chat.color.white"); break;
-                    case 'l': keepCode = allowAnyFormat || player.hasPermission("chat.format.bold"); break;
-                    case 'o': keepCode = allowAnyFormat || player.hasPermission("chat.format.italic"); break;
-                    case 'n': keepCode = allowAnyFormat || player.hasPermission("chat.format.underline"); break;
-                    case 'm': keepCode = allowAnyFormat || player.hasPermission("chat.format.strikethrough"); break;
-                    case 'k': keepCode = allowAnyFormat || player.hasPermission("chat.format.magic"); break;
-                    case 'r': keepCode = allowAnyFormat || player.hasPermission("chat.format.reset"); break;
-                    default: keepCode = false; break;
+                    case '0':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.black");
+                        break;
+                    case '1':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.dark_blue");
+                        break;
+                    case '2':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.dark_green");
+                        break;
+                    case '3':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.dark_aqua");
+                        break;
+                    case '4':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.dark_red");
+                        break;
+                    case '5':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.dark_purple");
+                        break;
+                    case '6':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.gold");
+                        break;
+                    case '7':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.gray");
+                        break;
+                    case '8':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.dark_gray");
+                        break;
+                    case '9':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.blue");
+                        break;
+                    case 'a':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.green");
+                        break;
+                    case 'b':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.aqua");
+                        break;
+                    case 'c':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.red");
+                        break;
+                    case 'd':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.light_purple");
+                        break;
+                    case 'e':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.yellow");
+                        break;
+                    case 'f':
+                        keepCode =
+                            allowAnyColor ||
+                            player.hasPermission("chat.color.white");
+                        break;
+                    case 'l':
+                        keepCode =
+                            allowAnyFormat ||
+                            player.hasPermission("chat.format.bold");
+                        break;
+                    case 'o':
+                        keepCode =
+                            allowAnyFormat ||
+                            player.hasPermission("chat.format.italic");
+                        break;
+                    case 'n':
+                        keepCode =
+                            allowAnyFormat ||
+                            player.hasPermission("chat.format.underline");
+                        break;
+                    case 'm':
+                        keepCode =
+                            allowAnyFormat ||
+                            player.hasPermission("chat.format.strikethrough");
+                        break;
+                    case 'k':
+                        keepCode =
+                            allowAnyFormat ||
+                            player.hasPermission("chat.format.magic");
+                        break;
+                    case 'r':
+                        keepCode =
+                            allowAnyFormat ||
+                            player.hasPermission("chat.format.reset");
+                        break;
+                    default:
+                        keepCode = false;
+                        break;
                 }
 
                 if (keepCode) {
-                    filteredMessage.append(message.charAt(i)).append(message.charAt(i + 1));
+                    filteredMessage
+                        .append(message.charAt(i))
+                        .append(message.charAt(i + 1));
                     i += 2;
                 } else {
                     i += 2;
                 }
-            } else if (i + 7 < message.length() && message.charAt(i) == '&' && message.charAt(i + 1) == '#' &&
-                    message.substring(i + 2, i + 8).matches("[0-9a-fA-F]{6}")) {
+            } else if (
+                i + 7 < message.length() &&
+                message.charAt(i) == '&' &&
+                message.charAt(i + 1) == '#' &&
+                message.substring(i + 2, i + 8).matches("[0-9a-fA-F]{6}")
+            ) {
                 if (allowHex) {
                     filteredMessage.append(message, i, i + 8);
                     i += 8;
@@ -1298,15 +1876,15 @@ public class FormatChatListener implements Listener {
         if (message == null || rawTextMappings.isEmpty()) {
             return message;
         }
-        
+
         String result = message;
         for (Map.Entry<String, String> entry : rawTextMappings.entrySet()) {
             result = result.replace(entry.getKey(), entry.getValue());
         }
-        
+
         // Clear mappings after use to prevent memory leaks
         rawTextMappings.clear();
-        
+
         return result;
     }
 

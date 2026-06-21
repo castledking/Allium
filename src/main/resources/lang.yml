@@ -583,9 +583,21 @@ economy:
 #               {name} - The player's name
 # Example: "&aNight vision is now &aenabled &afor PlayerName"
 nv:
-  toggle: "&aNight vision is now {state} &afor {name}"
-  enabled: "&aenabled"
-  disabled: "&cdisabled"
+  toggle: 
+    - "<green>Night vision is now {state} {name}</green>"
+    - "[sound] block.beacon.activate 1 1.2"
+
+#==========================================#
+#                  GLOW                    #
+#==========================================#
+
+glow:
+  enabled:
+    - "&aGlow color set to &e{color}&a."
+  disabled:
+    - "&aGlow effect removed."
+  invalid-color:
+    - "&cInvalid color: &7{color}&c. Use a valid Minecraft color name."
 
 #==========================================#
 #                 WHOIS                    #

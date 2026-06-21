@@ -24,13 +24,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 public class TeleportBackListener implements Listener {
     private final PluginStart plugin;
     private final TP tpCommand;
-    private long lastSave = 0;
-    private static final long SAVE_COOLDOWN = TimeUnit.SECONDS.toMillis(5); // 5 second cooldown
 
     public TeleportBackListener(PluginStart plugin) {
         this.plugin = plugin;
@@ -43,70 +40,39 @@ public class TeleportBackListener implements Listener {
             Text.sendDebugLog(WARN, "[TeleportBackListener] Failed to resolve TP command instance", ex);
         }
         this.tpCommand = resolvedTp;
-        Text.sendDebugLog(INFO, "[TeleportBackListener] Debug mode enabled");
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerTeleport(PlayerTeleportEvent event) {
         Player player = event.getPlayer();
         if (player == null) return;
 
-        UUID playerUUID = player.getUniqueId();
-
-        Location from = event.getFrom();
-        if (from == null || from.getWorld() == null) return;
-
-        // Skip if the player is just looking around or the location is very close
-        if (event.getTo() != null && from.getWorld().equals(event.getTo().getWorld()) &&
-            from.distanceSquared(event.getTo()) < 1.0) {
+        PlayerTeleportEvent.TeleportCause cause = event.getCause();
+        if (cause != PlayerTeleportEvent.TeleportCause.COMMAND
+                && cause != PlayerTeleportEvent.TeleportCause.PLUGIN
+                && cause != PlayerTeleportEvent.TeleportCause.UNKNOWN) {
             return;
         }
 
-        // Save the back location
-        Location clonedLocation = event.getFrom().clone();
-        // Skip certain teleport causes that shouldn't update /back
-        switch (event.getCause()) {
-            case COMMAND:
-            case PLUGIN:
-            case UNKNOWN:
-                // These are the causes we want to track for /back (command and plugin teleports)
-                break;
-            case ENDER_PEARL:
-            default:
-                // Skip item-based teleports and other causes that players shouldn't /back from
-                return;
-        }
-
-        // Rate limiting check
-        long now = System.currentTimeMillis();
-        if (now - lastSave < SAVE_COOLDOWN) {
-            return;
-        }
-        lastSave = now;
+        Location location = player.getLocation();
+        if (location == null || location.getWorld() == null) return;
 
         UUID playerId = player.getUniqueId();
-        // Update in-memory cache
-        plugin.getTpInstance().getLastLocationMap().put(playerId, clonedLocation);
 
-        // Update database directly without scheduling a task
+        // Update in-memory cache
+        plugin.getTpInstance().getLastLocationMap().put(playerId, location.clone());
+
+        // Update database
         try {
             Database db = plugin.getDatabase();
             if (db != null) {
-                long ts = System.currentTimeMillis();
-                db.savePlayerLocation(playerId, LocationType.TELEPORT, clonedLocation, ts);
-                
-                Text.sendDebugLog(INFO, String.format(
-                    "[TeleportBack] Saved location for %s at %s (%.1f, %.1f, %.1f)",
-                    player.getName(),
-                    clonedLocation.getWorld().getName(),
-                    clonedLocation.getX(),
-                    clonedLocation.getY(),
-                    clonedLocation.getZ()
-                ));
+                db.savePlayerLocation(playerId, LocationType.TELEPORT, location, System.currentTimeMillis());
             }
         } catch (Exception e) {
+            // silently fail
         }
 
+        // Teleport companions
         Location toLocation = event.getTo();
         if (toLocation != null && tpCommand != null) {
             teleportCompanionsAndCleanup(player, toLocation);

@@ -1,5 +1,6 @@
 package codes.castled.allium.listeners;
 
+import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.milkbowl.vault.chat.Chat;
 
@@ -17,7 +18,9 @@ import codes.castled.allium.managers.core.VanishManager;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Handles join and quit messages with permission-based format overrides.
@@ -118,13 +121,11 @@ public class JoinQuitMessages implements Listener {
         // We look for any permission matching the prefix and use the first one found.
         String permPrefix = "allium." + type + "_message.";
 
-        // Iterate through player's effective permissions to find a matching one.
-        // We check permissions the player actually has, so we iterate known permissions.
         for (var permAttachment : player.getEffectivePermissions()) {
             if (!permAttachment.getValue()) continue;
             String perm = permAttachment.getPermission();
             if (perm.startsWith(permPrefix)) {
-                // Found a matching permission. Try to get the format from Vault metadata.
+                // Found a matching permission. Try to get the format from metadata.
                 String formatFromPerm = getFormatFromPermissionMetadata(player, perm);
                 if (formatFromPerm != null && !formatFromPerm.isEmpty()) {
                     Text.sendDebugLog(INFO, "Using permission-based " + type + " format for "
@@ -138,30 +139,70 @@ public class JoinQuitMessages implements Listener {
     }
 
     /**
-     * Attempts to retrieve a format string from a permission's metadata via Vault Chat.
+     * Attempts to retrieve a format string from a permission's meta value.
+     *
+     * <p>Uses the LuckPerms API directly (via Bukkit ServicesManager) to query
+     * meta nodes, avoiding the world-context mismatch in Vault Chat.</p>
+     *
+     * <p>Falls back to Vault Chat if LuckPerms is not available.</p>
      *
      * @param player the player
-     * @param perm   the permission node
-     * @return the metadata value, or null if unavailable
+     * @param perm   the permission node (used as the meta key)
+     * @return the meta value, or null if unavailable
      */
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private String getFormatFromPermissionMetadata(Player player, String perm) {
-        Chat chat = plugin.getVaultChat();
-        if (chat == null) {
-            return null;
-        }
+        // Try LuckPerms API directly first (avoids Vault world-context issues)
         try {
-            // Vault Chat provides permission metadata via getPermissionInfoString
-            // or we can use the permission info methods.
-            // Try to get the info string for this permission node.
-            String info = chat.getPlayerInfoString(player, perm, null);
-            if (info != null && !info.isEmpty()) {
-                return info;
+            Class<?> luckPermsClass = Class.forName("net.luckperms.api.LuckPerms");
+            Object luckPerms = Bukkit.getServicesManager().load((Class) luckPermsClass);
+            if (luckPerms != null) {
+                Object userManager = luckPermsClass.getMethod("getUserManager").invoke(luckPerms);
+                Object user = userManager.getClass().getMethod("getUser", java.util.UUID.class)
+                        .invoke(userManager, player.getUniqueId());
+                if (user == null) {
+                    CompletableFuture userFuture = (CompletableFuture) userManager.getClass()
+                            .getMethod("loadUser", java.util.UUID.class)
+                            .invoke(userManager, player.getUniqueId());
+                    user = userFuture != null ? (Object) userFuture.getClass().getMethod("join").invoke(userFuture) : null;
+                }
+                if (user != null) {
+                    Class<?> queryOptionsClass = Class.forName("net.luckperms.api.query.QueryOptions");
+                    Object nonContextual = queryOptionsClass.getMethod("nonContextual").invoke(null);
+                    Class<?> nodeTypeClass = Class.forName("net.luckperms.api.node.NodeType");
+                    Object metaNodeType = nodeTypeClass.getField("META").get(null);
+                    Collection<?> nodes = (Collection<?>) user.getClass()
+                            .getMethod("resolveInheritedNodes", nodeTypeClass, queryOptionsClass)
+                            .invoke(user, metaNodeType, nonContextual);
+
+                    for (Object node : nodes) {
+                        String metaKey = (String) node.getClass().getMethod("getMetaKey").invoke(node);
+                        if (metaKey.equalsIgnoreCase(perm)) {
+                            String metaValue = (String) node.getClass().getMethod("getMetaValue").invoke(node);
+                            if (metaValue != null && !metaValue.isEmpty()) {
+                                return metaValue;
+                            }
+                        }
+                    }
+                }
             }
-        } catch (UnsupportedOperationException e) {
-            // Some Vault implementations don't support this
-            Text.sendDebugLog(WARN, "Vault Chat does not support permission info strings for metadata");
-        } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Failed to get permission metadata: " + e.getMessage());
+        } catch (Throwable ignored) {
+            // LuckPerms not available or API mismatch - fall through to Vault
+        }
+
+        // Fallback: try Vault Chat
+        Chat chat = plugin.getVaultChat();
+        if (chat != null) {
+            try {
+                String info = chat.getPlayerInfoString(player, perm, null);
+                if (info != null && !info.isEmpty()) {
+                    return info;
+                }
+            } catch (UnsupportedOperationException e) {
+                Text.sendDebugLog(WARN, "Vault Chat does not support permission info strings for metadata");
+            } catch (Exception e) {
+                Text.sendDebugLog(WARN, "Failed to get permission metadata: " + e.getMessage());
+            }
         }
         return null;
     }
@@ -218,6 +259,15 @@ public class JoinQuitMessages implements Listener {
         }
         if (suffix == null) suffix = "";
         result = result.replace("%suffix%", suffix);
+
+        // Expand PlaceholderAPI expansions (includes %allium_nickname%, %allium_gradientdisplayname%, etc.)
+        try {
+            if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+                result = PlaceholderAPI.setPlaceholders(player, result);
+            }
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "Failed to expand placeholders for " + player.getName() + ": " + e.getMessage());
+        }
 
         // Parse color codes (&-style) into section-color format
         return Text.parseColors(result);

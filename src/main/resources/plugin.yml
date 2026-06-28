@@ -125,6 +125,11 @@ commands:
     usage: "/msg <player> <message>"
     aliases: [ tell, w, whisper, pm, message, m, t ]
 
+  ping:
+    description: "Check your ping or another player's ping"
+    usage: "/ping [player]"
+    permission: allium.ping
+
   speed:
     description: "Set walking or flying speed"
     usage: "/speed <type> <speed> [player]"
@@ -433,6 +438,10 @@ commands:
     description: "Schedule or manage server auto-restarts (alias)"
     usage: "/ar <help|time|now|stop> [time]"
     permission: allium.autorestart.help
+  voterestart:
+    description: "Vote to restart the server"
+    usage: "/voterestart"
+    permission: allium.autorestart.vote.yes
   
   warp:
     description: "Teleport to a warp or list available warps"
@@ -459,6 +468,12 @@ permissions:
   allium.player:
     description: "Gives access to player commands"
     default: true
+  allium.ping:
+    description: "Allows checking your own ping"
+    default: true
+  allium.ping.others:
+    description: "Allows checking another player's ping"
+    default: op
   allium.staff:
     description: "Gives access to staff commands"
     default: op
@@ -1216,6 +1231,29 @@ permissions:
     default: op
   allium.sign.minimessage.hover:
     default: op
+
+  # Auto-restart permissions
+  allium.autorestart.help:
+    description: "Allows viewing auto-restart help and status"
+    default: op
+  allium.autorestart.time:
+    description: "Allows viewing time until next restart"
+    default: op
+  allium.autorestart.now:
+    description: "Allows scheduling an immediate restart"
+    default: op
+  allium.autorestart.stop:
+    description: "Allows cancelling a scheduled restart"
+    default: op
+  allium.autorestart.reload:
+    description: "Allows reloading auto-restart config"
+    default: op
+  allium.autorestart.vote:
+    description: "Allows starting a restart vote"
+    default: op
+  allium.autorestart.vote.yes:
+    description: "Allows voting yes on a restart vote"
+    default: true
 
   allium.heal:
     default: op

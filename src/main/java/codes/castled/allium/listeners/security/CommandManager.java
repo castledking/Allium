@@ -862,6 +862,12 @@ public class CommandManager implements Listener {
             }
         }
 
+        if (baseCommand.equals("ping")) {
+            if (player.hasPermission("allium.ping")) {
+                return true;
+            }
+        }
+
         boolean hasPerm = pluginPermission == null
                 || Bukkit.getPluginManager().getPermission(pluginPermission) == null
                 || player.hasPermission(pluginPermission);

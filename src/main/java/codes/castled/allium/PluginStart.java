@@ -70,6 +70,7 @@ import codes.castled.allium.commands.Note;
 import codes.castled.allium.commands.Notes;
 import codes.castled.allium.commands.PartyCommand;
 import codes.castled.allium.commands.Pay;
+import codes.castled.allium.commands.Ping;
 import codes.castled.allium.commands.PvpCommand;
 import codes.castled.allium.commands.Redeem;
 import codes.castled.allium.commands.Rename;
@@ -88,6 +89,7 @@ import codes.castled.allium.commands.TrashCommand;
 import codes.castled.allium.commands.Unnote;
 import codes.castled.allium.commands.Unrestrain;
 import codes.castled.allium.commands.Vanish;
+import codes.castled.allium.commands.VoterRestartCommand;
 import codes.castled.allium.commands.VoucherCommand;
 import codes.castled.allium.commands.Warp;
 import codes.castled.allium.commands.WarpInfo;
@@ -1476,6 +1478,7 @@ public class PluginStart extends JavaPlugin {
             tabCompleter = new Tab(this); // Create single Tab instance for all commands
             registerCommand("gamemode", new Gamemode(this), tabCompleter);
             registerCommand("speed", new Speed(this), tabCompleter);
+            registerCommand("ping", new Ping(this), tabCompleter);
             Fly flyCommand = new Fly(this);
             registerCommand("fly", flyCommand, flyCommand);
             registerCommand("xpbottle", new XpBottleCommand(this), new XpBottleCommand(this));
@@ -1628,6 +1631,10 @@ public class PluginStart extends JavaPlugin {
                 getLogger().severe("Failed to initialize AutoRestart: " + e.getMessage());
                 e.printStackTrace();
             }
+
+            // Register the /voterestart command
+            VoterRestartCommand voterRestartCommand = new VoterRestartCommand(this);
+            registerCommand("voterestart", voterRestartCommand);
 
             // Register handcuffs command (always available)
             Handcuffs handcuffsCommand = new Handcuffs(this);

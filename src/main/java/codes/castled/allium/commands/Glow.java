@@ -146,9 +146,9 @@ public class Glow implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // Per-color permission check
+        // Per-color permission check — allium.glow.<color> or allium.glow.*
         String colorPerm = "allium.glow." + first.replace(" ", "_").toLowerCase();
-        if (!sender.hasPermission(colorPerm)) {
+        if (!sender.hasPermission(colorPerm) && !sender.hasPermission("allium.glow.*")) {
             sender.sendMessage("§cYou don't have permission for the color §e" + first + "§c.");
             return true;
         }
@@ -214,7 +214,7 @@ public class Glow implements CommandExecutor, TabCompleter {
             sender.sendMessage("§aGlow color set to §e" + colorName + "§a.");
         } else {
             sender.sendMessage("§aSet §e" + target.getName() + "§a's glow to §e" + colorName + "§a.");
-            target.sendMessage("§e" + sender.getName() + " §aset your glow to §e" + colorName + "§a.");
+            target.sendMessage("§aGlow color set to §e" + colorName + "§a.");
         }
     }
 
@@ -256,7 +256,7 @@ public class Glow implements CommandExecutor, TabCompleter {
             sender.sendMessage("§aRainbow glow enabled!");
         } else {
             sender.sendMessage("§aSet §e" + target.getName() + "§a's glow to §drainbow§a.");
-            target.sendMessage("§e" + sender.getName() + " §aset your glow to §drainbow§a.");
+            target.sendMessage("§aRainbow glow enabled!");
         }
     }
 
@@ -282,7 +282,7 @@ public class Glow implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§aGlow effect removed.");
             } else {
                 sender.sendMessage("§aRemoved glow from §e" + target.getName() + "§a.");
-                target.sendMessage("§e" + sender.getName() + "§c removed your glow.");
+                target.sendMessage("§aGlow effect removed.");
             }
         }
     }
@@ -412,7 +412,9 @@ public class Glow implements CommandExecutor, TabCompleter {
             if ("rainbow".startsWith(partial) && sender.hasPermission("allium.glow.rainbow"))
                 suggestions.add("rainbow");
             for (String name : COLORS.keySet()) {
-                if (name.startsWith(partial)) suggestions.add(name);
+                if (name.startsWith(partial) && (sender.hasPermission("allium.glow." + name) || sender.hasPermission("allium.glow.*"))) {
+                    suggestions.add(name);
+                }
             }
         } else if (args.length == 2 && sender.hasPermission("allium.glow.others")) {
             String partial = args[1].toLowerCase();

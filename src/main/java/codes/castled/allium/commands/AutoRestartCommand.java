@@ -15,6 +15,7 @@ import codes.castled.allium.managers.lang.Lang;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,6 +35,16 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
     private final List<Long> restartTimes = new ArrayList<>();
     private final List<String> preRestartCommands = new ArrayList<>();
     private final List<Integer> countdownTimes = new ArrayList<>(Arrays.asList(60, 30, 15, 10, 5, 4, 3, 2, 1));
+
+    // Vote restart state
+    private boolean voteActive = false;
+    private long voteEndTime = -1;
+    private final Set<UUID> voteYesPlayers = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> voteNoPlayers = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> votedPlayers = ConcurrentHashMap.newKeySet();
+    private SchedulerAdapter.TaskHandle voteTask;
+    private String voteInitiatorName = "";
+    private static final long VOTE_DURATION_SECONDS = 60;
 
     public AutoRestartCommand(PluginStart plugin) {
         this.plugin = Objects.requireNonNull(plugin, "PluginStart cannot be null");
@@ -165,7 +176,10 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
                 } else {
                     Text.sendErrorMessage(sender, "autorestart.not-scheduled", lang);
                 }
-                break;      
+                break;
+            case "vote":
+                handleVoteCommand(sender, args);
+                break;
             default:
                 sendHelp(sender);
                 break;
@@ -191,7 +205,12 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         if (hasPermission(sender, "allium.autorestart.stop") || hasPermission(sender, "allium.admin")) {
             sender.sendMessage(lang.get("autorestart.help-stop"));
         }
-        
+
+        if (hasPermission(sender, "allium.autorestart.vote") || hasPermission(sender, "allium.admin")) {
+            sender.sendMessage(lang.get("autorestart.help-vote-start"));
+        }
+        sender.sendMessage(lang.get("autorestart.help-vote"));
+
         if (restartScheduled) {
             sender.sendMessage(lang.get("autorestart.next-restart")
                     .replace("{time}", Text.formatTime(Math.max(0L, TimeUnit.MILLISECONDS.toSeconds(restartTime - System.currentTimeMillis())))));
@@ -500,6 +519,217 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         return sender.hasPermission(permission) || sender.isOp();
     }
 
+    // ==================== Vote Restart ====================
+
+    private void handleVoteCommand(CommandSender sender, String[] args) {
+        if (args.length >= 2 && args[1].equalsIgnoreCase("start")) {
+            // Admin starts a vote
+            if (!hasPermission(sender, "allium.autorestart.vote") && !hasPermission(sender, "allium.admin")) {
+                Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "start a restart vote");
+                return;
+            }
+            startVoteRestart(sender);
+        } else {
+            // Player votes yes
+            if (!(sender instanceof Player player)) {
+                Text.sendErrorMessage(sender, "not-a-player", lang);
+                return;
+            }
+            handleVote(player);
+        }
+    }
+
+    private void startVoteRestart(CommandSender sender) {
+        if (voteActive) {
+            Text.sendErrorMessage(sender, "autorestart.vote-already-active", lang);
+            return;
+        }
+
+        voteActive = true;
+        voteEndTime = System.currentTimeMillis() + (VOTE_DURATION_SECONDS * 1000L);
+        voteYesPlayers.clear();
+        voteNoPlayers.clear();
+        votedPlayers.clear();
+        voteInitiatorName = sender.getName();
+
+        // Broadcast the vote message with clickable elements
+        broadcastVoteMessage();
+
+        // Schedule vote end
+        voteTask = SchedulerAdapter.runLater(this::completeVote, VOTE_DURATION_SECONDS * 20L);
+    }
+
+    private void broadcastVoteMessage() {
+        String header = lang.get("autorestart.vote-header");
+        String line1 = lang.get("autorestart.vote-initiator").replace("{name}", voteInitiatorName);
+        String line2 = lang.get("autorestart.vote-instruction");
+        String yesText = lang.get("autorestart.vote-yes-text");
+        String noText = lang.get("autorestart.vote-no-text");
+        String hoverYes = lang.get("autorestart.vote-hover-yes");
+        String hoverNo = lang.get("autorestart.vote-hover-no");
+        String footer = lang.get("autorestart.vote-footer")
+                .replace("{time}", String.valueOf(VOTE_DURATION_SECONDS));
+
+        Component headerComp = Text.colorize(header);
+        Component line1Comp = Text.colorize(line1);
+        Component line2Comp = Text.colorize(line2);
+
+        Component yesButton = Text.colorize(yesText)
+                .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/voterestart yes"))
+                .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Text.colorize(hoverYes)));
+        Component noButton = Text.colorize(noText)
+                .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/voterestart no"))
+                .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Text.colorize(hoverNo)));
+
+        Component buttons = Component.empty()
+                .append(yesButton)
+                .append(Text.colorize(" &7| "))
+                .append(noButton);
+
+        Component footerComp = Text.colorize(footer);
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.sendMessage(headerComp);
+            player.sendMessage(line1Comp);
+            player.sendMessage(line2Comp);
+            player.sendMessage(buttons);
+            player.sendMessage(footerComp);
+        }
+
+        // Also send to console (strip click/hover for console)
+        Bukkit.getConsoleSender().sendMessage(headerComp);
+        Bukkit.getConsoleSender().sendMessage(line1Comp);
+        Bukkit.getConsoleSender().sendMessage(line2Comp);
+        Bukkit.getConsoleSender().sendMessage(footerComp);
+    }
+
+    public void handleVote(Player player) {
+        if (!voteActive) {
+            // No active vote — show next scheduled restart time
+            if (restartScheduled) {
+                long timeLeft = Math.max(0L, TimeUnit.MILLISECONDS.toSeconds(restartTime - System.currentTimeMillis()));
+                String msg = lang.get("autorestart.vote-none-active")
+                        .replace("{time}", Text.formatTime(timeLeft));
+                player.sendMessage(Text.parseColors(msg));
+            } else {
+                player.sendMessage(Text.parseColors(lang.get("autorestart.vote-none-active-no-schedule")));
+            }
+            return;
+        }
+
+        if (votedPlayers.contains(player.getUniqueId())) {
+            Text.sendErrorMessage(player, "autorestart.vote-already-voted", lang);
+            return;
+        }
+
+        // Default /ar vote = yes
+        votedPlayers.add(player.getUniqueId());
+        voteYesPlayers.add(player.getUniqueId());
+
+        String msg = lang.get("autorestart.vote-cast")
+                .replace("{player}", player.getName())
+                .replace("{vote}", lang.get("autorestart.vote-yes-label"));
+        Text.broadcast(msg);
+
+        // Check if all online players have voted yes — if so, complete the vote early
+        if (voteNoPlayers.isEmpty() && votedPlayers.size() == Bukkit.getOnlinePlayers().size()) {
+            // Cancel the scheduled vote-end task
+            if (voteTask != null) {
+                voteTask.cancel();
+                voteTask = null;
+            }
+            // Broadcast unanimous pass message
+            Text.broadcast(lang.get("autorestart.vote-passed-unanimous"));
+            // Schedule restart in 2 minutes immediately
+            voteActive = false;
+            voteYesPlayers.clear();
+            voteNoPlayers.clear();
+            votedPlayers.clear();
+            scheduleRestart(2 * 60 * 1000L, true, false);
+        }
+    }
+
+    public void handleVoteNo(Player player) {
+        if (!voteActive) {
+            if (restartScheduled) {
+                long timeLeft = Math.max(0L, TimeUnit.MILLISECONDS.toSeconds(restartTime - System.currentTimeMillis()));
+                String msg = lang.get("autorestart.vote-none-active")
+                        .replace("{time}", Text.formatTime(timeLeft));
+                player.sendMessage(Text.parseColors(msg));
+            } else {
+                player.sendMessage(Text.parseColors(lang.get("autorestart.vote-none-active-no-schedule")));
+            }
+            return;
+        }
+
+        if (votedPlayers.contains(player.getUniqueId())) {
+            Text.sendErrorMessage(player, "autorestart.vote-already-voted", lang);
+            return;
+        }
+
+        votedPlayers.add(player.getUniqueId());
+        voteNoPlayers.add(player.getUniqueId());
+
+        String msg = lang.get("autorestart.vote-cast")
+                .replace("{player}", player.getName())
+                .replace("{vote}", lang.get("autorestart.vote-no-label"));
+        Text.broadcast(msg);
+    }
+
+    private void completeVote() {
+        if (!voteActive) return;
+        voteActive = false;
+
+        int yesCount = voteYesPlayers.size();
+        int noCount = voteNoPlayers.size();
+
+        if (yesCount > noCount) {
+            // Vote passed
+            String passedMsg = lang.get("autorestart.vote-passed")
+                    .replace("{yes}", String.valueOf(yesCount))
+                    .replace("{no}", String.valueOf(noCount));
+            Text.broadcast(passedMsg);
+
+            // Schedule restart in 2 minutes
+            scheduleRestart(2 * 60 * 1000L, true, false);
+        } else {
+            // Vote failed
+            String failedMsg = lang.get("autorestart.vote-failed")
+                    .replace("{yes}", String.valueOf(yesCount))
+                    .replace("{no}", String.valueOf(noCount));
+            Text.broadcast(failedMsg);
+        }
+
+        voteYesPlayers.clear();
+        voteNoPlayers.clear();
+        votedPlayers.clear();
+    }
+
+    public boolean isVoteActive() {
+        return voteActive;
+    }
+
+    public boolean isRestartScheduled() {
+        return restartScheduled;
+    }
+
+    public long getRestartTime() {
+        return restartTime;
+    }
+
+    public void cancelVote() {
+        if (voteActive) {
+            voteActive = false;
+            if (voteTask != null) {
+                voteTask.cancel();
+                voteTask = null;
+            }
+            voteYesPlayers.clear();
+            voteNoPlayers.clear();
+            votedPlayers.clear();
+        }
+    }
+
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
         if (args.length == 1) {
@@ -518,6 +748,9 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
             }
             if (hasPermission(sender, "allium.autorestart.stop") || hasPermission(sender, "allium.admin")) {
                 completions.add("stop");
+            }
+            if (hasPermission(sender, "allium.autorestart.vote") || hasPermission(sender, "allium.admin")) {
+                completions.add("vote");
             }
             
             return completions.stream()

@@ -26,11 +26,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Server Version (Paper) -->
-        <paper.version>1.21.8-R0.1-SNAPSHOT</paper.version>
+        <paper.version>26.2.build.37-alpha</paper.version>
 
         <!-- Dependency Versions -->
-        <adventure.version>4.24.0</adventure.version>
-        <adventure.platform.version>4.4.1</adventure.platform.version>
+        <adventure.version>5.2.0</adventure.version>
         <gson.version>2.10.1</gson.version>
         <slf4j.version>2.0.16</slf4j.version>
         <log4j.version>2.24.1</log4j.version>
@@ -271,37 +270,21 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Adventure Platform Bukkit -->
-        <dependency>
-            <groupId>net.kyori</groupId>
-            <artifactId>adventure-platform-bukkit</artifactId>
-            <version>${adventure.platform.version}</version>
-            <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>net.kyori</groupId>
-                    <artifactId>adventure-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>net.kyori</groupId>
-                    <artifactId>adventure-text-serializer-gson</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>net.kyori</groupId>
-                    <artifactId>adventure-text-serializer-legacy</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.jetbrains.kotlin</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+
 
         <!-- VaultUnlockedAPI - provided scope to use the actual plugin's classes at runtime -->
         <dependency>
             <groupId>net.milkbowl.vault</groupId>
             <artifactId>VaultUnlockedAPI</artifactId>
             <version>2.15</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- LuckPerms API - for direct meta lookup (avoids Vault world-context mismatch) -->
+        <dependency>
+            <groupId>net.luckperms</groupId>
+            <artifactId>api</artifactId>
+            <version>5.5</version>
             <scope>provided</scope>
         </dependency>
 

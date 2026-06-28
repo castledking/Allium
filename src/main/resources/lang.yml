@@ -379,6 +379,10 @@ speed:
     - "&aSet &e{type} &aspeed to &e{speed} {name}"
     - "[sound] entity.horse.gallop 0.5 1.5"
 
+ping:
+  self: "&aYour ping is &e{ping}ms&a."
+  other: "&a{name}'s ping is &e{ping}ms&a."
+
 spy:
   toggle: "&aSpying is now {state} {name}"
   self: "You can't spy on yourself."
@@ -544,6 +548,29 @@ autorestart:
     hour: "hour"
     day: "day"
     and: "and"
+
+  # Vote restart messages
+  vote-header: "&6&l===== &eRestart Vote &6&l====="
+  vote-initiator: "&e{name} has started a vote to restart the server!"
+  vote-instruction: "&7Click an option below to vote:"
+  vote-yes-text: "&a&l[YES]"
+  vote-no-text: "&c&l[NO]"
+  vote-hover-yes: "&aClick to vote YES"
+  vote-hover-no: "&cClick to vote NO"
+  vote-footer: "&7You have &e{time} seconds &7to vote. &7Use &e/voterestart yes &7or &e/voterestart no"
+  vote-prompt: "&7Would you like to vote &a&lYES &7or &c&lNO&7?"
+  vote-already-active: "&cA restart vote is already in progress!"
+  vote-already-voted: "&cYou have already voted!"
+  vote-cast: "&e{player} &7voted &e{vote}&7."
+  vote-yes-label: "&aYes"
+  vote-no-label: "&cNo"
+  vote-passed: "&a&lVote passed! &e{yes} &ayes, &c{no} &cno. &7Server will restart in 2 minutes."
+  vote-passed-unanimous: "&a&lAll players voted yes! &7Server will restart in 2 minutes."
+  vote-failed: "&c&lVote failed! &e{yes} &ayes, &c{no} &cno. &7Server will not restart."
+  vote-none-active: "&7No restart vote active. Next automatic restart: &e{time}"
+  vote-none-active-no-schedule: "&7No restart vote active and no automatic restart scheduled."
+  help-vote-start: "&e/ar vote start &7- Start a vote to restart the server"
+  help-vote: "&e/voterestart &7- Vote yes on an active restart vote"
 
 #==========================================#
 #                ECONOMY                   #

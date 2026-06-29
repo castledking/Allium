@@ -12,6 +12,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.Collections;
 import java.util.List;
@@ -48,7 +49,7 @@ public class StaffChatCommand implements CommandExecutor, TabCompleter {
 
         if (currentlyInStaffChat) {
             // Switch to default channel
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            SchedulerAdapter.run(() -> {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join default read " + playerName);
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join default write " + playerName);
             });
@@ -56,7 +57,7 @@ public class StaffChatCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§8[§bStaff Chat§8] §eYou have switched back to §fglobal chat§e.");
         } else {
             // Switch to staff-chat channel
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            SchedulerAdapter.run(() -> {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join staff-chat read " + playerName);
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "channel join staff-chat write " + playerName);
             });

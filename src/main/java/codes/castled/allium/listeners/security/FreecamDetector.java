@@ -11,6 +11,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +43,7 @@ public class FreecamDetector implements Listener {
         
         if (enabled) {
             // Start the checker task
-            Bukkit.getScheduler().runTaskTimer(plugin, this::checkPlayers, 20L, 20L); // Check every second
+            SchedulerAdapter.runTimer(this::checkPlayers, 20L, 20L); // Check every second
             plugin.getLogger().info("[FreecamDetector] Enabled behavioral detection (rotation > " + rotationThreshold + "°/sec while stationary for " + stationaryTicksThreshold + " ticks)");
         } else {
             plugin.getLogger().warning("[FreecamDetector] DISABLED in config");
@@ -124,7 +125,7 @@ public class FreecamDetector implements Listener {
                         String message = plugin.getConfig().getString("mod-detection.kick-message", 
                             "§cYou are using a prohibited mod: §e{mod}\n\n§7Please remove this mod to join the server.").replace("{mod}", "freecam");
                         
-                        Bukkit.getScheduler().runTask(plugin, () -> player.kick(net.kyori.adventure.text.Component.text(message)));
+                        SchedulerAdapter.run(() -> player.kick(net.kyori.adventure.text.Component.text(message)));
                     }
                     
                     // Notify staff

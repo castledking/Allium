@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.DB.Database;
+import codes.castled.allium.util.SchedulerAdapter;
 
 /**
  * Handles staff chat redirect prefixes when using ChatControl:
@@ -74,7 +75,7 @@ public class StaffChatListener implements Listener {
     private void redirectMessage(@NotNull AsyncChatEvent event, String playerName, String channelName, String message) {
         event.setCancelled(true);
         String cmd = "channel sendas " + playerName + " " + channelName + " " + message;
-        Bukkit.getScheduler().runTask(plugin, () ->
+        SchedulerAdapter.runTask(plugin, () ->
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd));
     }
 }

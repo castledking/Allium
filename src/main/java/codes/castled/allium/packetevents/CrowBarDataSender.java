@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.util.SchedulerAdapter;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -33,25 +34,24 @@ public class CrowBarDataSender implements Listener {
     private static final float GOLDEN_ANGLE = 137.508f;
     
     private final JavaPlugin plugin;
-    private int taskId = -1;
+    private SchedulerAdapter.TaskHandle taskHandle = null;
 
     public CrowBarDataSender(JavaPlugin plugin) {
         this.plugin = plugin;
     }
 
     public void start() {
-        if (taskId != -1) {
-            return; // Already running
+        if (taskHandle != null) {
+            return;
         }
-
         Bukkit.getPluginManager().registerEvents(this, plugin);
-        taskId = Bukkit.getScheduler().runTaskTimer(plugin, () -> sendPlayerData(), 20L, TICK_INTERVAL).getTaskId();
+        taskHandle = SchedulerAdapter.runTimer(() -> sendPlayerData(), 20L, TICK_INTERVAL);
     }
 
     public void stop() {
-        if (taskId != -1) {
-            Bukkit.getScheduler().cancelTask(taskId);
-            taskId = -1;
+        if (taskHandle != null) {
+            taskHandle.cancel();
+            taskHandle = null;
         }
         HandlerList.unregisterAll(this);
     }
@@ -78,7 +78,7 @@ public class CrowBarDataSender implements Listener {
     }
 
     private void sendDelayedSnapshot(UUID recipientUuid, long delayTicks) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerAdapter.runLater(() -> {
             Player recipient = Bukkit.getPlayer(recipientUuid);
             if (recipient != null && recipient.isOnline()) {
                 sendPlayerDataTo(recipient, null);

@@ -621,14 +621,18 @@ public class PluginStart extends JavaPlugin {
             final int maxAttempts = 10;
             final long retryDelay = 40L; // 2 seconds per retry
             final int[] attempts = {0};
+            final boolean[] registered = {false};
             final SchedulerAdapter.TaskHandle[] handle = new SchedulerAdapter.TaskHandle[1];
             handle[0] = SchedulerAdapter.runTimer(() -> {
                 attempts[0]++;
                 Text.sendDebugLog(INFO, "Attempting Vault initialization (attempt " + attempts[0] + " of " + maxAttempts + ")");
                 if (initializeVault()) {
                     Text.sendDebugLog(INFO, "Vault services initialized successfully after " + attempts[0] + " attempt(s).");
-                    registerVaultDependentListeners();
-                    performPermissionMigration();
+                    if (!registered[0]) {
+                        registered[0] = true;
+                        registerVaultDependentListeners();
+                        performPermissionMigration();
+                    }
                     handle[0].cancel();
                 } else if (attempts[0] < maxAttempts) {
                     Text.sendDebugLog(WARN, "Vault services not yet available. Retrying in " + retryDelay + " ticks (attempt " + (attempts[0] + 1) + " of " + maxAttempts + ").");
@@ -637,7 +641,10 @@ public class PluginStart extends JavaPlugin {
                     Text.sendDebugLog(INFO, "Number of economy providers: " + getServer().getServicesManager().getRegistrations(net.milkbowl.vault.economy.Economy.class).size());
                 } else {
                     Text.sendDebugLog(WARN, "Failed to initialize Vault services after " + maxAttempts + " attempts. Using fallback formatting for chat.", true);
-                    registerVaultDependentListeners();
+                    if (!registered[0]) {
+                        registered[0] = true;
+                        registerVaultDependentListeners();
+                    }
                     handle[0].cancel();
                 }
             }, 100L, 40L);
@@ -1347,24 +1354,24 @@ public class PluginStart extends JavaPlugin {
         Text.sendDebugLog(INFO, "GradientNameManager initialized.");
 
         channelManager = new AlliumChannelManager(this);
-        Bukkit.getScheduler().runTaskLater(this, () -> {
+        SchedulerAdapter.runLater(() -> {
             if (channelManager != null) {
                 channelManager.retryDiscordHook();
             }
         }, 20L);
-        Bukkit.getScheduler().runTaskLater(this, () -> {
+        SchedulerAdapter.runLater(() -> {
             if (channelManager != null) {
                 channelManager.retryDiscordHook();
             }
         }, 100L);
 
         discordSrvMessageBridge = new DiscordSrvMessageBridge(this);
-        Bukkit.getScheduler().runTaskLater(this, () -> {
+        SchedulerAdapter.runLater(() -> {
             if (discordSrvMessageBridge != null) {
                 discordSrvMessageBridge.retryHook();
             }
         }, 20L);
-        Bukkit.getScheduler().runTaskLater(this, () -> {
+        SchedulerAdapter.runLater(() -> {
             if (discordSrvMessageBridge != null) {
                 discordSrvMessageBridge.retryHook();
             }

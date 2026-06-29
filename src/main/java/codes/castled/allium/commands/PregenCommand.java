@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.world.OreGenerationManager;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -109,7 +110,7 @@ public class PregenCommand implements CommandExecutor, TabCompleter {
         CompletableFuture<Void> future = oreManager.startGeneration(world, centerX, centerZ, radius);
         
         future.whenComplete((result, error) -> {
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            SchedulerAdapter.run(() -> {
                 activeTasks.remove(taskId);
                 
                 if (error != null) {

@@ -20,6 +20,7 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerCl
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerOpenSignEditor;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -79,7 +80,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         }
 
         long delayTicks = config().getLong("translation-probe.delay-ticks", 60L);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> startSession(player), delayTicks);
+        SchedulerAdapter.runLater(() -> startSession(player), delayTicks);
     }
 
     @EventHandler
@@ -111,7 +112,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         String resolved = lines.length == 0 || lines[0] == null ? "" : lines[0];
         ProbeCheck check = session.current;
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        SchedulerAdapter.run(() -> {
             Player player = Bukkit.getPlayer(uuid);
             if (player == null || !player.isOnline()) {
                 sessions.remove(uuid);
@@ -168,7 +169,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         sendProbePackets(player, session);
 
         long timeoutTicks = config().getLong("translation-probe.timeout-ticks", 80L);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerAdapter.runLater(() -> {
             ProbeSession active = sessions.get(player.getUniqueId());
             if (active == session && active.current == next) {
                 restoreFakeBlock(player, active);
@@ -185,7 +186,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
             playerPacket(player, new WrapperPlayServerBlockEntityData(session.position, BlockEntityTypes.SIGN, createSignNbt(check.key, session.fallback)));
             playerPacket(player, new WrapperPlayServerOpenSignEditor(session.position, true));
 
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerAdapter.runLater(() -> {
                 if (player.isOnline()) {
                     playerPacket(player, new WrapperPlayServerCloseWindow());
                 }

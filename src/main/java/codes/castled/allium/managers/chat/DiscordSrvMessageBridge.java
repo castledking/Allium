@@ -17,6 +17,7 @@ import org.bukkit.plugin.Plugin;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.INFO;
 import static codes.castled.allium.managers.core.Text.DebugSeverity.WARN;
@@ -278,7 +279,7 @@ public final class DiscordSrvMessageBridge implements Listener {
 
         long delay = WEBHOOK_LOOKUP_DELAYS_TICKS[attempt];
         pendingMessage.webhookLookupAttempts++;
-        Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> lookupWebhookMessage(pendingMessage), delay);
+        SchedulerAdapter.runLaterAsync(() -> lookupWebhookMessage(pendingMessage), delay);
     }
 
     private void lookupWebhookMessage(PendingChatMessage pendingMessage) {

@@ -46,7 +46,7 @@ public class GradientNameManager {
         this.plugin = plugin;
         this.phaseDecimalFormat = new DecimalFormat("#.#", DecimalFormatSymbols.getInstance(Locale.US));
         this.phaseDecimalFormat.setRoundingMode(RoundingMode.DOWN);
-        this.phaseTask = SchedulerAdapter.runTimer(this::advancePhase, 0L, 1L);
+        this.phaseTask = SchedulerAdapter.runTimer(this::advancePhase, 1L, 1L);
     }
 
     public void setPaused(boolean value) {

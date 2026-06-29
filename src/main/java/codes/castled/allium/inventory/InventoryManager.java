@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.SchedulerAdapter;
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
 import java.util.*;
@@ -49,7 +50,7 @@ public class InventoryManager {
     private void autosaveOnlinePlayers() {
         Text.sendDebugLog(INFO, "Running periodic autosave for online players...");
         // Run on main thread to get online players
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        SchedulerAdapter.run(() -> {
             int playerCount = 0;
             for (Player player : Bukkit.getOnlinePlayers()) {
                 saveSnapshot(player, "AUTOSAVE");

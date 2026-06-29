@@ -9,9 +9,9 @@
          ================================================== -->
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>net.survivalfun</groupId>
+    <groupId>codes.castled</groupId>
     <artifactId>Allium</artifactId>
-    <version>0.2.2a</version>
+    <version>0.2.3a</version>
     <name>Allium</name>
     <description>A secure, modern Essentials solution.</description>
 
@@ -26,7 +26,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Server Version (Paper) -->
-        <paper.version>26.2.build.37-alpha</paper.version>
+        <paper.version>26.2.build.835-alpha</paper.version>
 
         <!-- Dependency Versions -->
         <adventure.version>5.2.0</adventure.version>
@@ -106,6 +106,16 @@
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
 
+        <!-- CanvasMC Repository -->
+        <repository>
+            <id>canvasmc-releases</id>
+            <url>https://maven.canvasmc.io/releases/</url>
+        </repository>
+        <repository>
+            <id>canvasmc-snapshots</id>
+            <url>https://maven.canvasmc.io/snapshots/</url>
+        </repository>
+
         <!-- JitPack Repository (PrismaticAPI and other GitHub packages) -->
         <repository>
             <id>jitpack.io</id>
@@ -156,16 +166,6 @@
         <repository>
             <id>discordsrv-repo</id>
             <url>https://nexus.scarsz.me/content/groups/public/</url>
-        </repository>
-
-        <!-- IntellectualSites (FastAsyncWorldEdit) -->
-        <repository>
-            <id>intellectualsites-snapshots</id>
-            <url>https://mvn.intellectualsites.com/content/repositories/snapshots/</url>
-        </repository>
-        <repository>
-            <id>intellectualsites-releases</id>
-            <url>https://mvn.intellectualsites.com/content/repositories/releases/</url>
         </repository>
     </repositories>
 
@@ -243,8 +243,8 @@
         </dependency>
 
         <dependency>
-            <groupId>io.papermc.paper</groupId>
-            <artifactId>paper-api</artifactId>
+            <groupId>io.canvasmc.canvas</groupId>
+            <artifactId>canvas-api</artifactId>
             <version>${paper.version}</version>
             <scope>provided</scope>
         </dependency>
@@ -366,14 +366,6 @@
                     <artifactId>actions-spigot</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-
-        <!-- FastAsyncWorldEdit (WorldEdit API compatible) -->
-        <dependency>
-            <groupId>com.fastasyncworldedit</groupId>
-            <artifactId>FastAsyncWorldEdit-Core</artifactId>
-            <version>2.15.1</version>
-            <scope>provided</scope>
         </dependency>
 
         <!-- JSpecify for null annotations -->

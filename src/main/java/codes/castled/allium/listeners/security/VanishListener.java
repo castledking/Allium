@@ -13,6 +13,7 @@ import org.bukkit.event.player.*;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.core.VanishManager;
+import codes.castled.allium.util.SchedulerAdapter;
 
 public class VanishListener implements Listener {
 
@@ -184,7 +185,7 @@ public class VanishListener implements Listener {
 
         // Update visibility after teleport (in case of cross-world teleports)
         if (event.getTo() != null && !event.getTo().getWorld().equals(event.getFrom().getWorld())) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerAdapter.runTaskLater(plugin, () -> {
                 vanishManager.updateAllVisibility();
             }, 1L); // Small delay to ensure teleport is complete
         }
@@ -244,7 +245,7 @@ public class VanishListener implements Listener {
 
         if (vanishManager.isVanished(player)) {
             // Update visibility after respawn
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerAdapter.runTaskLater(plugin, () -> {
                 vanishManager.updateVisibility(player);
             }, 1L);
         }

@@ -30,6 +30,7 @@ import org.bukkit.inventory.ItemStack;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.items.HandcuffsItem;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.SchedulerAdapter;
 
 public class HandcuffsListener implements Listener {
     private final PluginStart plugin;
@@ -339,7 +340,7 @@ public class HandcuffsListener implements Listener {
                 releasePlayer(target);
 
                 // Schedule explicit visual state update to ensure it happens after all other updates
-                Bukkit.getScheduler().runTaskLater(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
+                SchedulerAdapter.runTaskLater(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
                     HandcuffsItem.updateHandcuffsModelData(player, "template:fishing_rod_handcuffs");
                     Text.sendDebugLog(INFO, player.getName() + " scheduled visual state update to fishing_rod_handcuffs after drop release");
                 }, 1L); // Run on next tick to ensure all other updates complete first
@@ -349,7 +350,7 @@ public class HandcuffsListener implements Listener {
             playersWaitingForUnrestrainInput.add(handcufferId);
 
             // Schedule visual state update to ensure it happens properly on main thread
-            Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
+            SchedulerAdapter.runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
                 HandcuffsItem.updateHandcuffsModelData(player, "template:fishing_rod_unlock");
                 Text.sendDebugLog(INFO, player.getName() + " dropped handcuffs with multiple players - set visual state to fishing_rod_unlock (unlock/chat prompt) on main thread");
             });
@@ -417,7 +418,7 @@ public class HandcuffsListener implements Listener {
 
                 // Release all restrained players for this handcuffer - schedule on main thread
                 final List<UUID> finalHandcuffees = new ArrayList<>(handcuffees);
-                Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
+                SchedulerAdapter.runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
                     int releasedCount = 0;
                     // Unmount players in reverse order (top-most first) for safety
                     for (int i = finalHandcuffees.size() - 1; i >= 0; i--) {
@@ -463,7 +464,7 @@ public class HandcuffsListener implements Listener {
 
             // Release the specific player - schedule on main thread to avoid IllegalStateException
             final Player finalTargetPlayer = targetPlayer;
-            Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
+            SchedulerAdapter.runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
                 Text.sendDebugLog(INFO, player.getName() + " releasing " + finalTargetPlayer.getName() + " via chat input");
                 releasePlayer(finalTargetPlayer);
 
@@ -773,7 +774,7 @@ public class HandcuffsListener implements Listener {
         // Unmount the player from their handcuffer (this properly unmounts them)
         if (handcuffer != null && handcuffer.isOnline()) {
             // Schedule on main thread to avoid IllegalStateException
-            Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
+            SchedulerAdapter.runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
                 if (handcuffer.getPassengers().contains(target)) {
                     handcuffer.removePassenger(target);
                 }
@@ -877,7 +878,7 @@ public class HandcuffsListener implements Listener {
 
         // Release all collected players - schedule on main thread for safety
         if (!playersToRelease.isEmpty()) {
-            Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
+            SchedulerAdapter.runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
                 // Unmount players in reverse order (top-most first) for safety
                 for (int i = playersToRelease.size() - 1; i >= 0; i--) {
                     Player handcuffee = playersToRelease.get(i);
@@ -973,7 +974,7 @@ public class HandcuffsListener implements Listener {
                 }
 
                 // Schedule remount after handcuffer teleport completes
-                Bukkit.getScheduler().runTaskLater(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
+                SchedulerAdapter.runTaskLater(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
                     if (player.isOnline()) {
                         Text.sendDebugLog(INFO, "[TELEPORT-HANDLER] Remounting " + handcuffees.size() + " handcuffees for " + player.getName());
 
@@ -1036,7 +1037,7 @@ public class HandcuffsListener implements Listener {
                 }
 
                 // Schedule teleport and remount after teleport completes
-                Bukkit.getScheduler().runTaskLater(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
+                SchedulerAdapter.runTaskLater(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
                     if (player.isOnline() && handcuffer.isOnline() &&
                         restrainedPlayers.containsKey(playerId) &&
                         restrainedPlayers.get(playerId).equals(handcufferId)) {

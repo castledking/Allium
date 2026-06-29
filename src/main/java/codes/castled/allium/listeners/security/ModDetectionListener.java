@@ -8,6 +8,7 @@ import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPluginMessage;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import com.github.retrooper.packetevents.wrapper.configuration.client.WrapperConfigClientPluginMessage;
 
@@ -316,7 +317,7 @@ public class ModDetectionListener extends PacketListenerAbstract implements List
         
         // Kick the player using kick() method (not deprecated)
         String message = kickMessage.replace("{mod}", modName);
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        SchedulerAdapter.runTask(plugin, () -> {
             bukkitPlayer.kick(net.kyori.adventure.text.Component.text(message));
         });
         
@@ -334,7 +335,7 @@ public class ModDetectionListener extends PacketListenerAbstract implements List
         if (!enabled) return;
         
         // Schedule a check after player fully joins to see what mods were detected
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerAdapter.runTaskLater(plugin, () -> {
             Player player = event.getPlayer();
             Set<String> mods = playerMods.get(player.getUniqueId());
             

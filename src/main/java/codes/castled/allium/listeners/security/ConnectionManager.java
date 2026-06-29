@@ -17,6 +17,7 @@ import codes.castled.allium.commands.TP;
 import codes.castled.allium.managers.DB.PlayerInventories;
 import codes.castled.allium.managers.DB.Database.LocationType;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -56,7 +57,7 @@ public class ConnectionManager implements Listener {
             String storedNick = plugin.getDatabase().getStoredPlayerDisplayname(playerUUID);
             if (storedNick != null && !storedNick.trim().isEmpty()) {
                 // Delay to ensure Essentials' on-join displayname is set first, then we override it
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                SchedulerAdapter.runLater(() -> {
                     if (player.isOnline() && plugin.getNicknameManager() != null) {
                         plugin.getNicknameManager().restoreDisplayNameFromStored(player, storedNick);
                     }
@@ -74,7 +75,7 @@ public class ConnectionManager implements Listener {
 
         Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
             boolean pvpEnabled = plugin.getDatabase().getPvpEnabled(playerUUID);
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            SchedulerAdapter.run(() -> {
                 if (player.isOnline()) {
                     PvpCommand.setPvpEnabledState(plugin, player, pvpEnabled);
                 }
@@ -102,7 +103,7 @@ public class ConnectionManager implements Listener {
                     return;
                 }
 
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                SchedulerAdapter.run(() -> {
                     if (!player.isOnline()) {
                         return;
                     }
@@ -129,7 +130,7 @@ public class ConnectionManager implements Listener {
                     if (rs.next()) {
                         boolean teleportToggleState = rs.getBoolean("state");
                         // Schedule sync task to update the player's state
-                        Bukkit.getScheduler().runTask(plugin, () -> {
+                        SchedulerAdapter.run(() -> {
                             TP tpInstance = plugin.getTpInstance();
                             if (tpInstance != null) {
                                 tpInstance.setTeleportToggled(playerUUID, teleportToggleState);

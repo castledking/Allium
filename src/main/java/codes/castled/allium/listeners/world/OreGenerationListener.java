@@ -10,6 +10,7 @@ import org.bukkit.event.world.WorldLoadEvent;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.world.OreGenerationManager;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -58,7 +59,7 @@ public class OreGenerationListener implements Listener {
             if (debugLogging) {
                 plugin.getLogger().info("[OreGen-INIT] Resource world '" + RESOURCE_WORLD_NAME + "' is ALREADY LOADED! Starting generation now...");
             }
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerAdapter.runLater(() -> {
                 if (debugLogging) {
                     plugin.getLogger().info("[OreGen-INIT] Calling startGeneration for already-loaded world...");
                 }
@@ -95,7 +96,7 @@ public class OreGenerationListener implements Listener {
             }
             
             // Start generation in this world
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerAdapter.runLater(() -> {
                 if (debugLogging) {
                     plugin.getLogger().info("[OreGen-EVENT] Calling oreManager.startGeneration()...");
                 }
@@ -144,7 +145,7 @@ public class OreGenerationListener implements Listener {
         if (processorRunning) return;
         processorRunning = true;
         
-        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+        SchedulerAdapter.runTimer(() -> {
             if (!autoGenerateEnabled || !oreManager.isGenerating()) {
                 return;
             }

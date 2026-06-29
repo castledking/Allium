@@ -10,6 +10,7 @@ import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,7 +42,7 @@ public class IPNDetector implements Listener {
         
         if (enabled) {
             // Cleanup task
-            Bukkit.getScheduler().runTaskTimer(plugin, this::cleanupOldData, 1200L, 1200L);
+            SchedulerAdapter.runTaskTimer(plugin, this::cleanupOldData, 1200L, 1200L);
             plugin.getLogger().info("[IPNDetector] Enabled behavioral detection (clicks/sec > " + clickThreshold + ", distance > " + slotDistanceThreshold + ")");
         } else {
             plugin.getLogger().warning("[IPNDetector] DISABLED in config");
@@ -85,7 +86,7 @@ public class IPNDetector implements Listener {
                     String message = plugin.getConfig().getString("mod-detection.kick-message", 
                         "§cYou are using a prohibited mod: §e{mod}\n\n§7Please remove this mod to join the server.").replace("{mod}", modName);
                     
-                    Bukkit.getScheduler().runTask(plugin, () -> player.kick(net.kyori.adventure.text.Component.text(message)));
+                    SchedulerAdapter.runTask(plugin, () -> player.kick(net.kyori.adventure.text.Component.text(message)));
                 }
                 
                 // Notify staff

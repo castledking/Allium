@@ -13,6 +13,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import java.io.File;
 import java.io.IOException;
@@ -359,7 +360,7 @@ public class ModGuardManager implements PluginMessageListener, Listener {
             return;
         }
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerAdapter.runLater(() -> {
             if (!player.isOnline()) {
                 cleanup(player);
                 return;

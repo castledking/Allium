@@ -13,6 +13,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -542,7 +543,7 @@ public class OreGenerationManager {
                         final int chunkZ = centerZ + dz;
                         
                         // Load chunk and generate ores
-                        Bukkit.getScheduler().runTask(plugin, () -> {
+                        SchedulerAdapter.run(() -> {
                             try {
                                 Chunk chunk = world.getChunkAt(chunkX, chunkZ);
                                 if (!chunk.isLoaded()) {

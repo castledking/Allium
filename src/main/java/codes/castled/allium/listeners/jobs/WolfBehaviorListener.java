@@ -11,6 +11,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
@@ -57,7 +58,7 @@ public class WolfBehaviorListener implements Listener {
         final Player finalTargetPlayer = targetPlayer;
         
         // Use Bukkit scheduler with longer delay for testing
-        Bukkit.getScheduler().runTaskLater(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
+        SchedulerAdapter.runTaskLater(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
             Text.sendDebugLog(INFO, "Delayed task running for wolf " + wolf.getUniqueId());
             
             if (!wolf.isValid()) {

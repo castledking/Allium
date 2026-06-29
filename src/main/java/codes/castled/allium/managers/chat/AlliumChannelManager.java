@@ -36,6 +36,7 @@ import org.bukkit.plugin.Plugin;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.NicknameManager;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.INFO;
 import static codes.castled.allium.managers.core.Text.DebugSeverity.WARN;
@@ -777,7 +778,7 @@ public final class AlliumChannelManager implements Listener {
         
         // Clean up staff-chat tracking after relay (with delay to ensure DiscordSRV's async event sees it)
         if (isStaffChatMessage) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerAdapter.runLater(() -> {
                 staffChatActive.remove(sender.getUniqueId());
             }, 40L); // 2 second delay (40 ticks) to ensure DiscordSRV events have fired
         }
@@ -1426,7 +1427,7 @@ public final class AlliumChannelManager implements Listener {
                     fallbackToJdaSend(target, finalSender, finalChannelName, finalMessage, channel);
                 }
             } else {
-                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                SchedulerAdapter.runAsync(() -> {
                     try {
                         target.processChatMessage(finalSender, finalMessage, finalChannelName, false);
                         if (plugin.isDebugMode()) {
@@ -1472,7 +1473,7 @@ public final class AlliumChannelManager implements Listener {
                 staffChatActive.add(sender.getUniqueId());
                 target.processChatMessage(sender, message, channelName, false);
                 // Delay cleanup to ensure DiscordSRV's async event sees it
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                SchedulerAdapter.runLater(() -> {
                     staffChatActive.remove(sender.getUniqueId());
                 }, 40L);
             } catch (Throwable t2) {
@@ -1953,7 +1954,7 @@ public final class AlliumChannelManager implements Listener {
         String formattedMessage = formatDiscordSrvMessage(format, username, effectiveName, roleAlias, roleColor, content, discordChannelName, isReply, replySnippet, useAlliumFormat);
         Component formatted = Text.colorize(formattedMessage);
         final String finalUsername = username;
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        SchedulerAdapter.run(() -> {
             long messageId = plugin.getChatMessageManager().storeMessage(DISCORD_SENDER_ID, finalUsername, formatted);
             int recipientCount = 0;
             for (Player recipient : Bukkit.getOnlinePlayers()) {

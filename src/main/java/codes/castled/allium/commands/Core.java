@@ -925,7 +925,7 @@ public class Core implements CommandExecutor, TabCompleter {
         String urlToCheck = newUrl;
         Bukkit.getAsyncScheduler().runNow(plugin, (task) -> {
             boolean reachable = checkResourcePackUrlReachable(urlToCheck);
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            SchedulerAdapter.run(() -> {
                 if (reachable) {
                     sender.sendMessage("§aResource pack URL is reachable from the server.");
                 } else {
@@ -981,7 +981,7 @@ public class Core implements CommandExecutor, TabCompleter {
         List<String> roleMentions = plugin.getConfig().getStringList("discord.escalate_mentions");
         String mentionString = roleMentions.stream().map(id -> "<@&" + id + ">").collect(Collectors.joining(" "));
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+        SchedulerAdapter.runAsync(() -> {
             try {
                 JSONObject embed = new JSONObject();
                 embed.put("title", "Escalation Request");

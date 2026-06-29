@@ -6,6 +6,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.chat.ChatMessageManager;
 import codes.castled.allium.managers.config.Config;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.SchedulerAdapter;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import java.awt.Color;
 import java.math.BigDecimal;
@@ -77,7 +78,7 @@ public class FormatChatListener implements Listener {
     private final Map<String, String> rawTextMappings = new HashMap<>();
     private final ChatMessageManager chatMessageManager;
     private BigDecimal miniGradientPhase = PHASE_MIN;
-    private BukkitTask phaseTask;
+    private SchedulerAdapter.TaskHandle phaseTask;
 
     public FormatChatListener(
         PluginStart plugin,
@@ -144,7 +145,7 @@ public class FormatChatListener implements Listener {
     }
 
     private void startPhaseRenderer() {
-        phaseTask = Bukkit.getScheduler().runTaskTimerAsynchronously(
+        phaseTask = SchedulerAdapter.runTaskTimerAsynchronously(
             plugin,
             () -> {
                 miniGradientPhase = miniGradientPhase.add(PHASE_STEP);

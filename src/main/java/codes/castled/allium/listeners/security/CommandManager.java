@@ -31,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.SchedulerAdapter;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
@@ -173,7 +174,7 @@ public class CommandManager implements Listener {
             if (!scheduled) {
                 // Legacy scheduler (non-Folia)
                 try {
-                    Bukkit.getScheduler().runTask(plugin, () -> refreshPlayerCommandState(player));
+                    SchedulerAdapter.runTask(plugin, () -> refreshPlayerCommandState(player));
                 } catch (Throwable t) {
                     Text.sendDebugLog(WARN, "Failed to schedule command refresh for " + player.getName() + ": " + t.getMessage());
                 }

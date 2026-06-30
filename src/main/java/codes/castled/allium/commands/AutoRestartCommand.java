@@ -255,7 +255,7 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private long lastCountdownTick = -1L;
+    private final AtomicLong countdownGeneration = new AtomicLong(0);
 
     private void scheduleRestart(long delay, boolean force, boolean dryRunMode) {
         // Cancel any existing restart task
@@ -270,15 +270,12 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         // Folia/Canvas requires initialDelayTicks > 0; use 1 tick minimum
         long initialDelayTicks = 1L;
         long periodTicks = 20L;
+        long gen = countdownGeneration.incrementAndGet();
         countdownTask = SchedulerAdapter.runTimer(() -> {
-            // Deduplication guard: on some Canvas builds, GlobalRegionScheduler
-            // may fire the task on multiple region threads. Ensure we only
-            // process once per server tick.
-            long currentTick = Bukkit.getCurrentTick();
-            if (currentTick == lastCountdownTick) {
-                return;
-            }
-            lastCountdownTick = currentTick;
+            // Generation guard: if cancel failed to stop a previous timer,
+            // the old timer will see gen != countdownGeneration.get() and bail.
+            // This prevents multiple running timers from all broadcasting.
+            if (countdownGeneration.get() != gen) return;
 
             long millisLeft = Math.max(0L, restartTime - System.currentTimeMillis());
             long timeLeft = millisLeft == 0 ? 0 : (millisLeft + 999L) / 1000L;

@@ -649,8 +649,8 @@ public class PluginStart extends JavaPlugin {
                         Text.sendDebugLog(INFO, "Number of economy providers: " + getServer().getServicesManager().getRegistrations(eClass).size());
                     } catch (ClassNotFoundException ignored) {}
                 } else {
-                    Text.sendDebugLog(WARN, "Failed to initialize Vault services after " + maxAttempts + " attempts. Using fallback formatting for chat.", true);
                     if (!registered[0]) {
+                        Text.sendDebugLog(WARN, "Failed to initialize Vault services after " + maxAttempts + " attempts. Using fallback formatting for chat.", true);
                         registered[0] = true;
                         registerVaultDependentListeners();
                     }

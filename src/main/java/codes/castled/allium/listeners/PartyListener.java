@@ -14,6 +14,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.PartyManager;
 import codes.castled.allium.packetevents.TabListManager;
+import codes.castled.allium.util.SchedulerAdapter;
 
 /**
  * Listener for party-related player events.
@@ -64,6 +65,6 @@ public class PartyListener implements Listener {
     public void onPlayerGameModeChange(PlayerGameModeChangeEvent event) {
         if (!partyManager.isPartyLocatorBarEnabled()) return;
         Player player = event.getPlayer();
-        plugin.getServer().getScheduler().runTask(plugin, () -> partyManager.updateVisibilityForPlayer(player));
+        SchedulerAdapter.run(() -> partyManager.updateVisibilityForPlayer(player));
     }
 }

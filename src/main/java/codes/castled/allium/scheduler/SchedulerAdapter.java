@@ -125,7 +125,29 @@ public final class SchedulerAdapter {
                     return new TaskHandle(m.invoke(global, plugin, consumer, safeDelay, safePeriod));
                 }
                 m = findMethod(global, "runAtFixedRate", Plugin.class, Consumer.class, long.class, long.class, TimeUnit.class);
-                return new TaskHandle(m.invoke(global, plugin, consumer, safeDelay * 50L, safePeriod * 50L, TimeUnit.MILLISECONDS));
+                if (m != null) {
+                    return new TaskHandle(m.invoke(global, plugin, consumer, safeDelay * 50L, safePeriod * 50L, TimeUnit.MILLISECONDS));
+                }
+                // Fallback: ScheduledExecutorService that bounces to global scheduler each tick.
+                // Returns a no-op TaskHandle — fallback tasks are fire-and-forget (matching old behavior).
+                long initialDelayMs = safeDelay * 50L;
+                long periodMs = safePeriod * 50L;
+                java.util.concurrent.ScheduledExecutorService exec = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                    Thread t = new Thread(r, "Allium-FoliaScheduler-Fallback");
+                    t.setDaemon(true);
+                    return t;
+                });
+                exec.scheduleAtFixedRate(() -> {
+                    try {
+                        Object grs = getGlobalScheduler();
+                        Consumer<Object> c = ignored -> runnable.run();
+                        Method run = findMethod(grs, "run", Plugin.class, Consumer.class);
+                        if (run != null) {
+                            run.invoke(grs, plugin, c);
+                        }
+                    } catch (Throwable ignored) {}
+                }, initialDelayMs, periodMs, TimeUnit.MILLISECONDS);
+                return new TaskHandle(null);
             } catch (Throwable t) {
                 throw new UnsupportedOperationException("Failed to schedule repeating global task on Folia", t);
             }
@@ -415,7 +437,7 @@ public final class SchedulerAdapter {
             if (types.length != paramTypes.length) continue;
             boolean matches = true;
             for (int i = 0; i < types.length; i++) {
-                if (!paramTypes[i].isAssignableFrom(types[i])) {
+                if (!types[i].isAssignableFrom(paramTypes[i])) {
                     matches = false;
                     break;
                 }

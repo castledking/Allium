@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.managers.core.PartyManager;
 import codes.castled.allium.util.SchedulerAdapter;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -115,6 +116,12 @@ public class CrowBarDataSender implements Listener {
                 continue;
             }
             if (PluginStart.getInstance().isCitizensNpc(player)) {
+                continue;
+            }
+            // Use party/locator visibility rules but ignore distance — CrowBar's
+            // whole purpose is showing players beyond the configured radius.
+            PartyManager pm = PluginStart.getInstance().getPartyManager();
+            if (pm != null && !pm.shouldBeVisibleIgnoreDistance(recipient, player)) {
                 continue;
             }
 

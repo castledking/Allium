@@ -577,7 +577,7 @@ public final class AlliumChannelManager implements Listener {
                 targetChannel = defaultChannelName;
                 message = oneShot;
             }
-        } else if (!currentWrite.equals(staffChannelName) && rawMessage.startsWith("#")) {
+        } else if (!currentWrite.equals(staffChannelName) && rawMessage.startsWith("#") && player.hasPermission("allium.staffchat")) {
             String oneShot = rawMessage.substring(1).trim();
             if (!oneShot.isEmpty()) {
                 targetChannel = staffChannelName;
@@ -992,7 +992,7 @@ public final class AlliumChannelManager implements Listener {
 
         String[] groups;
         try {
-            groups = plugin.getVaultPermission().getPlayerGroups(null, player);
+            groups = ((net.milkbowl.vault.permission.Permission) plugin.getVaultPermission()).getPlayerGroups(null, player);
         } catch (Exception e) {
             return "default";
         }
@@ -1002,7 +1002,7 @@ public final class AlliumChannelManager implements Listener {
 
         String highestGroup = "default";
         int highestWeight = Integer.MIN_VALUE;
-        Chat vaultChat = plugin.getVaultChat();
+        Chat vaultChat = (net.milkbowl.vault.chat.Chat) plugin.getVaultChat();
         for (String group : groups) {
             int weight = 0;
             if (vaultChat != null) {
@@ -1247,7 +1247,7 @@ public final class AlliumChannelManager implements Listener {
     }
 
     private String getPrefix(Player player) {
-        Chat vaultChat = plugin.getVaultChat();
+        Chat vaultChat = (net.milkbowl.vault.chat.Chat) plugin.getVaultChat();
         String prefix = "";
         if (vaultChat != null) {
             try {
@@ -1265,7 +1265,7 @@ public final class AlliumChannelManager implements Listener {
     }
 
     private String getSuffix(Player player) {
-        Chat vaultChat = plugin.getVaultChat();
+        Chat vaultChat = (net.milkbowl.vault.chat.Chat) plugin.getVaultChat();
         String suffix = "";
         if (vaultChat != null) {
             try {

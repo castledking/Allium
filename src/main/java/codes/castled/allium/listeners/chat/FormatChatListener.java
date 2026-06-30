@@ -90,7 +90,7 @@ public class FormatChatListener implements Listener {
         this.config = config;
         this.vaultChat = vaultChat;
         this.chatMessageManager = chatMessageManager;
-        this.vaultPermission = plugin.getVaultPermission();
+        this.vaultPermission = (net.milkbowl.vault.permission.Permission) plugin.getVaultPermission();
         this.blockUnicode = config.getBoolean("block-unicode");
 
         legacyComponentSerializer = LegacyComponentSerializer.builder()

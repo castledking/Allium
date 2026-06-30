@@ -200,8 +200,8 @@ public class PluginStart extends JavaPlugin {
     private NicknameManager nicknameManager;
     private static PluginStart instance;
     private Lang langManager;
-    private Chat vaultChat;
-    private Permission vaultPerms;
+    private Object vaultChat;
+    private Object vaultPerms;
     private Config configManager;
     private FormatChatListener formatChatListener;
     private Database database;
@@ -212,7 +212,7 @@ public class PluginStart extends JavaPlugin {
     private Spy spyCommand;
     private TP tpCommand;
     private CommandManager commandManager;
-    private net.milkbowl.vault.economy.Economy vaultEcon;
+    private Object vaultEcon;
     private FlightRestoration flyOnRejoinListener;
     private WitherSpawnBlocker witherSpawnBlocker;
     private AlliumPlaceholder placeholder;
@@ -247,7 +247,7 @@ public class PluginStart extends JavaPlugin {
     private VouchersConfig vouchersConfig;
     private SecurityAlertManager securityAlertManager;
     private final Set<UUID> citizensNpcUuids = ConcurrentHashMap.newKeySet();
-    private Glow glowCommand;
+    private Object glowCommand;
 
     /**
      * Gets the singleton instance of the plugin.
@@ -317,7 +317,7 @@ public class PluginStart extends JavaPlugin {
      *
      * @return The Chat instance, or null if not available.
      */
-    public Chat getVaultChat() {
+    public Object getVaultChat() {
         return vaultChat;
     }
 
@@ -326,7 +326,7 @@ public class PluginStart extends JavaPlugin {
      *
      * @return The Permission instance, or null if not available.
      */
-    public Permission getVaultPermission() {
+    public Object getVaultPermission() {
         return vaultPerms;
     }
 
@@ -371,7 +371,7 @@ public class PluginStart extends JavaPlugin {
      *
      * @return The Economy instance.
      */
-    public net.milkbowl.vault.economy.Economy getEconomy() {
+    public Object getEconomy() {
         return vaultEcon;
     }
 
@@ -636,9 +636,18 @@ public class PluginStart extends JavaPlugin {
                     handle[0].cancel();
                 } else if (attempts[0] < maxAttempts) {
                     Text.sendDebugLog(WARN, "Vault services not yet available. Retrying in " + retryDelay + " ticks (attempt " + (attempts[0] + 1) + " of " + maxAttempts + ").");
-                    Text.sendDebugLog(INFO, "Number of permission providers: " + getServer().getServicesManager().getRegistrations(Permission.class).size());
-                    Text.sendDebugLog(INFO, "Number of chat providers: " + getServer().getServicesManager().getRegistrations(Chat.class).size());
-                    Text.sendDebugLog(INFO, "Number of economy providers: " + getServer().getServicesManager().getRegistrations(net.milkbowl.vault.economy.Economy.class).size());
+                    try {
+                        Class<?> pClass = Class.forName("net.milkbowl.vault.permission.Permission");
+                        Text.sendDebugLog(INFO, "Number of permission providers: " + getServer().getServicesManager().getRegistrations(pClass).size());
+                    } catch (ClassNotFoundException ignored) {}
+                    try {
+                        Class<?> cClass = Class.forName("net.milkbowl.vault.chat.Chat");
+                        Text.sendDebugLog(INFO, "Number of chat providers: " + getServer().getServicesManager().getRegistrations(cClass).size());
+                    } catch (ClassNotFoundException ignored) {}
+                    try {
+                        Class<?> eClass = Class.forName("net.milkbowl.vault.economy.Economy");
+                        Text.sendDebugLog(INFO, "Number of economy providers: " + getServer().getServicesManager().getRegistrations(eClass).size());
+                    } catch (ClassNotFoundException ignored) {}
                 } else {
                     Text.sendDebugLog(WARN, "Failed to initialize Vault services after " + maxAttempts + " attempts. Using fallback formatting for chat.", true);
                     if (!registered[0]) {
@@ -671,6 +680,11 @@ public class PluginStart extends JavaPlugin {
         // Run at tick 1 (before PartyManager starts at tick 5) so NPC UUIDs are
         // registered before the first distance-check iteration.
         SchedulerAdapter.runLater(this::setupCitizensNpcWaypointRange, 1L);
+
+        // Periodic re-enforcement: re-scan for new NPCs and re-assert WAYPOINT_TRANSMIT_RANGE=0
+        // every 5 ticks. Handles NPCs that spawn after the initial scan or whose attribute
+        // was reset by another plugin.
+        SchedulerAdapter.runTimer(this::setupCitizensNpcWaypointRange, 5L, 5L);
     }
 
     @Override
@@ -723,13 +737,13 @@ public class PluginStart extends JavaPlugin {
         };
 
         // Migrate group permissions using Vault
-        for (String group : vaultPerms.getGroups()) {
+        for (String group : ((net.milkbowl.vault.permission.Permission) vaultPerms).getGroups()) {
             for (String perm : permissionsToMigrate) {
                 String oldPerm = "core." + perm;
                 String newPerm = "allium." + perm;
-                if (vaultPerms.groupHas((String) null, group, oldPerm)) {
-                    vaultPerms.groupRemove((String) null, group, oldPerm);
-                    vaultPerms.groupAdd((String) null, group, newPerm);
+                if (((net.milkbowl.vault.permission.Permission) vaultPerms).groupHas((String) null, group, oldPerm)) {
+                    ((net.milkbowl.vault.permission.Permission) vaultPerms).groupRemove((String) null, group, oldPerm);
+                    ((net.milkbowl.vault.permission.Permission) vaultPerms).groupAdd((String) null, group, newPerm);
                     Text.sendDebugLog(INFO, "Migrated group " + group + ": " + oldPerm + " -> " + newPerm);
                     migrated = true;
                 }
@@ -985,10 +999,17 @@ public class PluginStart extends JavaPlugin {
         if (formatChatListener != null) {
             formatChatListener.shutdown();
             HandlerList.unregisterAll(formatChatListener);
+            formatChatListener = null;
+        }
+
+        // Only create chat formatter when Vault Chat is available
+        if (vaultChat == null) {
+            Text.sendDebugLog(INFO, "Vault Chat not available — skipping chat formatter.", true);
+            return;
         }
 
         // Create and register new formatter
-        formatChatListener = new FormatChatListener(this, vaultChat, configManager, chatMessageManager);
+        formatChatListener = new FormatChatListener(this, (net.milkbowl.vault.chat.Chat) vaultChat, configManager, chatMessageManager);
         getServer().getPluginManager().registerEvents(formatChatListener, this);
         Text.sendDebugLog(INFO, "Chat formatter has been reloaded with new configuration.", true);
     }
@@ -1175,7 +1196,7 @@ public class PluginStart extends JavaPlugin {
                 try {
                     Object permProvider = permissionProvider.getProvider();
                     vaultPerms = new codes.castled.allium.managers.vault.VaultPermissionDelegate(permProvider);
-                    Text.sendDebugLog(INFO, "Vault Permission service initialized: " + vaultPerms.getName());
+                    Text.sendDebugLog(INFO, "Vault Permission service initialized: " + ((net.milkbowl.vault.permission.Permission) vaultPerms).getName());
                     coreServicesReady = true;
                 } catch (Throwable t) {
                     Text.sendDebugLog(WARN, "Failed to initialize Vault Permission (LuckPerms classloader?): " + t.getMessage());
@@ -1188,7 +1209,7 @@ public class PluginStart extends JavaPlugin {
                 try {
                     Object chatProviderObj = chatProvider.getProvider();
                     vaultChat = createVaultChatProxy(chatProviderObj, chatClass);
-                    Text.sendDebugLog(INFO, "Vault Chat service initialized: " + vaultChat.getName());
+                    Text.sendDebugLog(INFO, "Vault Chat service initialized: " + ((net.milkbowl.vault.chat.Chat) vaultChat).getName());
                     coreServicesReady = true;
                 } catch (Throwable t) {
                     Text.sendDebugLog(WARN, "Failed to initialize Vault Chat (LuckPerms classloader?): " + t.getMessage());
@@ -1200,7 +1221,7 @@ public class PluginStart extends JavaPlugin {
             // Ensure our Economy provider is present and mark core readiness if economy is available
             if (economyProvider != null) {
                 vaultEcon = economyProvider.getProvider();
-                Text.sendDebugLog(INFO, "Vault Economy service initialized: " + vaultEcon.getName());
+                Text.sendDebugLog(INFO, "Vault Economy service initialized: " + ((net.milkbowl.vault.economy.Economy) vaultEcon).getName());
                 coreServicesReady = true; // Economy alone is sufficient for core functionality
             } else {
                 try {
@@ -1229,7 +1250,7 @@ public class PluginStart extends JavaPlugin {
      * Creates a Chat proxy that delegates to the provider via reflection.
      * Uses the Chat class from Vault's classloader to avoid "not an interface" with bundled API.
      */
-    private Chat createVaultChatProxy(Object provider, Class<?> chatInterface) {
+    private Object createVaultChatProxy(Object provider, Class<?> chatInterface) {
         if (!chatInterface.isInterface()) {
             Text.sendDebugLog(WARN, "Vault Chat is abstract class, skipping proxy");
             return null;
@@ -1238,7 +1259,7 @@ public class PluginStart extends JavaPlugin {
             Method m = findMethod(provider.getClass(), method.getName(), method.getParameterTypes());
             return m.invoke(provider, args);
         };
-        return (Chat) Proxy.newProxyInstance(
+        return Proxy.newProxyInstance(
             chatInterface.getClassLoader(),
             new Class<?>[] { chatInterface },
             handler
@@ -1283,12 +1304,13 @@ public class PluginStart extends JavaPlugin {
 
         // Initialize economy manager
         economyManager = new EconomyManager(this);
-        vaultEcon = new VaultEconomyProvider(this, economyManager);
-        // Register Vault economy early (Essentials-style) so /vault-info and other plugins see us.
-        // No getPlugin("Vault") check: Economy class may be provided by Vault or VaultUnlocked at runtime.
+        // Only create VaultEconomyProvider and register with Vault API when Vault is available.
+        // VaultEconomyProvider implements Economy, so creating it unconditionally would
+        // force the JVM to load Economy (which fails when Vault isn't installed).
         try {
             Class.forName("net.milkbowl.vault.economy.Economy");
-            getServer().getServicesManager().register(net.milkbowl.vault.economy.Economy.class, vaultEcon, this, ServicePriority.Normal);
+            vaultEcon = new VaultEconomyProvider(this, economyManager);
+            getServer().getServicesManager().register(net.milkbowl.vault.economy.Economy.class, (net.milkbowl.vault.economy.Economy) vaultEcon, this, ServicePriority.Normal);
             Text.sendDebugLog(INFO, "Registered Allium economy with Vault API.");
         } catch (ClassNotFoundException ignored) {
             // Vault/VaultUnlocked not on classpath; delayed initializeVault() may still run when plugin loads
@@ -1498,9 +1520,13 @@ public class PluginStart extends JavaPlugin {
             registerCommand("pvp", pvpCommand, pvpCommand);
             registerCommand("nv", new NV(this));
 
-            // Glow command
-            this.glowCommand = new Glow(this);
-            registerCommand("glow", this.glowCommand, this.glowCommand);
+            // Glow command (requires PacketEvents)
+            if (isPacketEventsAvailable()) {
+                this.glowCommand = new Glow(this);
+                registerCommand("glow",
+                        (org.bukkit.command.CommandExecutor) this.glowCommand,
+                        (org.bukkit.command.TabCompleter) this.glowCommand);
+            }
 
             // Vanish commands
             Vanish vanishCommand = new Vanish(this, vanishManager);
@@ -1945,9 +1971,11 @@ public class PluginStart extends JavaPlugin {
             registerListenerSafely(pm, "JoinQuitMessages",
                     new JoinQuitMessages(this, vanishManager));
 
-            // Glow listener — cleans up teams on quit
-            registerListenerSafely(pm, "GlowListener",
-                    new codes.castled.allium.listeners.GlowListener(this, glowCommand));
+            // Glow listener — cleans up teams on quit (requires PacketEvents)
+            if (isPacketEventsAvailable()) {
+                registerListenerSafely(pm, "GlowListener",
+                        new codes.castled.allium.listeners.GlowListener(this, (codes.castled.allium.commands.Glow) glowCommand));
+            }
 
             // ModGuard - Client Mod Detection (replaces PacketEvents-based detection)
             // Uses Bukkit PluginMessageListener - no PacketEvents required
@@ -2358,9 +2386,9 @@ public class PluginStart extends JavaPlugin {
 
                     // Check and migrate core.* wildcard permission first
                     boolean migrated = false;
-                    if (vaultPerms.playerHas((String) null, player, "core.*")) {
-                        vaultPerms.playerRemove((String) null, player, "core.*");
-                        vaultPerms.playerAdd((String) null, player, "allium.*");
+                    if (((net.milkbowl.vault.permission.Permission) vaultPerms).playerHas((String) null, player, "core.*")) {
+                        ((net.milkbowl.vault.permission.Permission) vaultPerms).playerRemove((String) null, player, "core.*");
+                        ((net.milkbowl.vault.permission.Permission) vaultPerms).playerAdd((String) null, player, "allium.*");
                         Text.sendDebugLog(INFO, "Migrated player " + player.getName() + ": core.* -> allium.*");
                         migrated = true;
                     }
@@ -2369,9 +2397,9 @@ public class PluginStart extends JavaPlugin {
                     for (String perm : permissionsToMigrate) {
                         String oldPerm = "core." + perm;
                         String newPerm = "allium." + perm;
-                        if (vaultPerms.playerHas((String) null, player, oldPerm)) {
-                            vaultPerms.playerRemove((String) null, player, oldPerm);
-                            vaultPerms.playerAdd((String) null, player, newPerm);
+                        if (((net.milkbowl.vault.permission.Permission) vaultPerms).playerHas((String) null, player, oldPerm)) {
+                            ((net.milkbowl.vault.permission.Permission) vaultPerms).playerRemove((String) null, player, oldPerm);
+                            ((net.milkbowl.vault.permission.Permission) vaultPerms).playerAdd((String) null, player, newPerm);
                             Text.sendDebugLog(INFO, "Migrated player " + player.getName() + ": " + oldPerm + " -> " + newPerm);
                             migrated = true;
                         }

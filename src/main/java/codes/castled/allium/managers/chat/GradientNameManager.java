@@ -304,7 +304,7 @@ public class GradientNameManager {
             return "";
         }
         try {
-            String prefix = plugin.getVaultChat().getPlayerPrefix(player);
+            String prefix = ((net.milkbowl.vault.chat.Chat) plugin.getVaultChat()).getPlayerPrefix(player);
             return prefix == null ? "" : prefix;
         } catch (Throwable ignored) {
             return "";

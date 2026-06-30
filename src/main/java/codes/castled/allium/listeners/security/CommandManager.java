@@ -55,7 +55,7 @@ public class CommandManager implements Listener {
     private FileConfiguration config;
     private final Lang lang;
     private final Map<String, CommandGroup> commandGroups = new HashMap<>();
-    private final Permission vaultPermission;
+    private final Object vaultPermission;
     private CreativeManager creativeManager;
     private Map<String, Command> knownCommandsCache;
     private long knownCommandsCacheTime;
@@ -73,13 +73,19 @@ public class CommandManager implements Listener {
         this.creativeManager = creativeManager;
     }
 
-    private Permission setupVaultPermission() {
-        RegisteredServiceProvider<Permission> rsp = plugin.getServer().getServicesManager().getRegistration(Permission.class);
-        if (rsp == null) {
-            Text.sendDebugLog(WARN, "Vault permission service not found. Group checks will fall back to permission-based checks.");
+    private Object setupVaultPermission() {
+        try {
+            Class<?> permClass = Class.forName("net.milkbowl.vault.permission.Permission");
+            RegisteredServiceProvider<?> rsp = plugin.getServer().getServicesManager().getRegistration(permClass);
+            if (rsp == null) {
+                Text.sendDebugLog(WARN, "Vault permission service not found. Group checks will fall back to permission-based checks.");
+                return null;
+            }
+            return rsp.getProvider();
+        } catch (ClassNotFoundException e) {
+            Text.sendDebugLog(WARN, "Vault permission class not available. Group checks will fall back to permission-based checks.");
             return null;
         }
-        return rsp.getProvider();
     }
 
     private void registerEvents() {
@@ -347,7 +353,7 @@ public class CommandManager implements Listener {
             if (plugin.getVaultChat() == null) {
                 return 0;
             }
-            String weightStr = plugin.getVaultChat().getGroupInfoString((String) null, groupName, "weight", "0");
+            String weightStr = ((net.milkbowl.vault.chat.Chat) plugin.getVaultChat()).getGroupInfoString((String) null, groupName, "weight", "0");
             return Integer.parseInt(weightStr);
         } catch (Exception ignored) {
             return 0;
@@ -570,8 +576,9 @@ public class CommandManager implements Listener {
         }
 
         try {
+            net.milkbowl.vault.permission.Permission vaultPerm = (net.milkbowl.vault.permission.Permission) vaultPermission;
             // Check if the player is in the specified group using Vault (global context)
-            return vaultPermission.hasGroupSupport() && vaultPermission.playerInGroup((String) null, player.getName(), groupName);
+            return vaultPerm.hasGroupSupport() && vaultPerm.playerInGroup((String) null, player.getName(), groupName);
         } catch (Exception e) {
             return player.hasPermission("group." + groupName);
         }
@@ -681,8 +688,9 @@ public class CommandManager implements Listener {
         boolean isNamespacedCommand = fullCommand.contains(":");
 
         // alt account check - if player is in alt group and not exempted, flag for alt-specific messages
-        boolean isAltRestricted = vaultPermission != null && vaultPermission.hasGroupSupport()
-                && vaultPermission.playerInGroup((String) null, player.getName(), "alt")
+        boolean isAltRestricted = vaultPermission != null
+                && ((net.milkbowl.vault.permission.Permission) vaultPermission).hasGroupSupport()
+                && ((net.milkbowl.vault.permission.Permission) vaultPermission).playerInGroup((String) null, player.getName(), "alt")
                 && !plugin.getDatabase().isPlayerAltExempt(player.getUniqueId());
 
         List<CommandGroup> playerGroups = getPlayerGroups(player);

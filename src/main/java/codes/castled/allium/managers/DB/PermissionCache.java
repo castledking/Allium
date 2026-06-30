@@ -32,7 +32,7 @@ public class PermissionCache {
         this.database = plugin.getDatabase();
     }
 
-    private Permission getVaultPermission() {
+    private Object getVaultPermission() {
         return plugin.getVaultPermission();
     }
 
@@ -58,7 +58,7 @@ public class PermissionCache {
         // Use the global region scheduler for async tasks in Folia
         Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
             try {
-                Permission vaultPermission = getVaultPermission();
+                Object vaultPermission = getVaultPermission();
                 
                 // Cache critical permissions
                 String[] criticalPermissions = {"allium.lockdown.bypass", "allium.admin"};
@@ -78,7 +78,7 @@ public class PermissionCache {
                             
                             // Use the synchronous version with the online player
                             if (vaultPermission != null) {
-                                hasPerm = vaultPermission.playerHas("", onlinePlayer, perm);
+                                hasPerm = ((net.milkbowl.vault.permission.Permission) vaultPermission).playerHas("", onlinePlayer, perm);
                             } else {
                                 // Run database operation async to avoid blocking
                                 try {
@@ -134,20 +134,21 @@ public class PermissionCache {
         }
 
         // If not in cache, do a direct check (this should be rare)
-        Permission vaultPermission = getVaultPermission();
+        Object vaultPermission = getVaultPermission();
         boolean hasPermission;
         
         try {
             if (vaultPermission != null) {
+                net.milkbowl.vault.permission.Permission perm = (net.milkbowl.vault.permission.Permission) vaultPermission;
                 // For offline players during login events, try UUID-based check first
                 Player player = Bukkit.getPlayer(playerId);
                 if (player != null && player.isOnline()) {
-                    hasPermission = vaultPermission.playerHas("", player, permission);
+                    hasPermission = perm.playerHas("", player, permission);
                 } else {
                     // For offline players, try UUID-based check with Vault using OfflinePlayer
                     try {
                         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerId);
-                        hasPermission = vaultPermission.playerHas("", offlinePlayer, permission);
+                        hasPermission = perm.playerHas("", offlinePlayer, permission);
                         Text.sendDebugLog(INFO, "PermissionCache OfflinePlayer check for " + permission + " for " + playerId + " result: " + hasPermission);
                     } catch (Exception e) {
                         Text.sendDebugLog(WARN, "Vault OfflinePlayer check failed for " + permission + " falling back to database: " + e.getMessage());

@@ -97,7 +97,7 @@ public class ConnectionManager implements Listener {
                     return;
                 }
 
-                Permission vaultPermission = plugin.getVaultPermission();
+                Permission vaultPermission = (net.milkbowl.vault.permission.Permission) plugin.getVaultPermission();
                 if (vaultPermission == null || !vaultPermission.hasGroupSupport()) {
                     Text.sendDebugLog(WARN, "Unable to add alt group for " + playerName + ": Vault permissions group support is unavailable");
                     return;
@@ -276,7 +276,7 @@ public class ConnectionManager implements Listener {
         }
 
         // Fallback to Vault API
-        Permission vaultPermission = plugin.getVaultPermission();
+        Permission vaultPermission = (net.milkbowl.vault.permission.Permission) plugin.getVaultPermission();
         if (vaultPermission != null && vaultPermission.hasGroupSupport()) {
             try {
                 // Remove from any world-specific contexts first

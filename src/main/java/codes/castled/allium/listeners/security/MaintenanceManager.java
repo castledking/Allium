@@ -30,12 +30,12 @@ import java.util.concurrent.CompletableFuture;
 public class MaintenanceManager implements Listener {
 
     private final PluginStart plugin;
-    private final Permission perms;
+    private final Object perms;
     private final PermissionCache permissionCache;
     private FileConfiguration maintenanceConfig;
     private File configFile;
 
-    public MaintenanceManager(PluginStart plugin, Permission perms) {
+    public MaintenanceManager(PluginStart plugin, Object perms) {
         this.plugin = plugin;
         this.perms = perms;
         this.permissionCache = new PermissionCache(plugin);

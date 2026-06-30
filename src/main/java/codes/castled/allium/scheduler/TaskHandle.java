@@ -38,8 +38,11 @@ public final class TaskHandle {
                     Method cancel = foliaTask.getClass().getMethod("cancel");
                     cancel.invoke(foliaTask);
                 }
-            } catch (Throwable ignored) {
-                // Best-effort cancel
+            } catch (Throwable t) {
+                // Best-effort cancel — log for debugging
+                codes.castled.allium.managers.core.Text.sendDebugLog(
+                    codes.castled.allium.managers.core.Text.DebugSeverity.WARN,
+                    "[TaskHandle] cancel() failed: " + t.getMessage());
             }
         }
     }

@@ -669,7 +669,7 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
 
         if (plugin.getVaultPermission() != null) {
             try {
-                String primaryGroup = plugin.getVaultPermission().getPrimaryGroup((String) null, target.getName());
+                String primaryGroup = ((net.milkbowl.vault.permission.Permission) plugin.getVaultPermission()).getPrimaryGroup((String) null, target.getName());
                 if (primaryGroup != null && !primaryGroup.isBlank()) {
                     return primaryGroup;
                 }

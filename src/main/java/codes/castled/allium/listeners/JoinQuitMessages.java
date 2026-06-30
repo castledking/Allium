@@ -191,7 +191,7 @@ public class JoinQuitMessages implements Listener {
         }
 
         // Fallback: try Vault Chat
-        Chat chat = plugin.getVaultChat();
+        Chat chat = (net.milkbowl.vault.chat.Chat) plugin.getVaultChat();
         if (chat != null) {
             try {
                 String info = chat.getPlayerInfoString(player, perm, null);
@@ -237,7 +237,7 @@ public class JoinQuitMessages implements Listener {
 
         // %prefix% - Vault prefix
         String prefix = "";
-        Chat chat = plugin.getVaultChat();
+        Chat chat = (net.milkbowl.vault.chat.Chat) plugin.getVaultChat();
         if (chat != null) {
             try {
                 prefix = chat.getPlayerPrefix(player);

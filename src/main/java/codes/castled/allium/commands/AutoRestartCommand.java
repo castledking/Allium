@@ -255,6 +255,8 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private long lastCountdownTick = -1L;
+
     private void scheduleRestart(long delay, boolean force, boolean dryRunMode) {
         // Cancel any existing restart task
         cancelRestart();
@@ -269,6 +271,15 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         long initialDelayTicks = 1L;
         long periodTicks = 20L;
         countdownTask = SchedulerAdapter.runTimer(() -> {
+            // Deduplication guard: on some Canvas builds, GlobalRegionScheduler
+            // may fire the task on multiple region threads. Ensure we only
+            // process once per server tick.
+            long currentTick = Bukkit.getCurrentTick();
+            if (currentTick == lastCountdownTick) {
+                return;
+            }
+            lastCountdownTick = currentTick;
+
             long millisLeft = Math.max(0L, restartTime - System.currentTimeMillis());
             long timeLeft = millisLeft == 0 ? 0 : (millisLeft + 999L) / 1000L;
             
@@ -539,7 +550,7 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private void startVoteRestart(CommandSender sender) {
+    public void startVoteRestart(CommandSender sender) {
         if (voteActive) {
             Text.sendErrorMessage(sender, "autorestart.vote-already-active", lang);
             return;

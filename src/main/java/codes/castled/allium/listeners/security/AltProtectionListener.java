@@ -34,7 +34,7 @@ public class AltProtectionListener implements Listener {
             return;
         }
 
-        Permission vaultPermission = plugin.getVaultPermission();
+        Permission vaultPermission = (net.milkbowl.vault.permission.Permission) plugin.getVaultPermission();
         if (sharesCurrentIp(attacker, victim)
                 && vaultPermission != null
                 && vaultPermission.hasGroupSupport()

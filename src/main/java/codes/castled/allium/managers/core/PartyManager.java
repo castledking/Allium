@@ -71,11 +71,6 @@ public class PartyManager {
      */
     private void loadConfig() {
         this.partyLocatorBar = plugin.getConfig().getBoolean("party-manager.party-locator-bar", true);
-        // Party locator bar does not work on Folia (regionized threading); auto-disable
-        if (SchedulerAdapter.isFolia() && partyLocatorBar) {
-            partyLocatorBar = false;
-            Text.sendDebugLog(INFO, "party-locator-bar auto-disabled on Folia (not supported)");
-        }
         this.showNonPartyMembersRadius = plugin.getConfig().getInt("party-manager.show-non-party-members-radius", 48);
         this.syncWithMcMMO = plugin.getConfig().getBoolean("party-manager.sync-with-mcmmo", true);
     }
@@ -115,13 +110,32 @@ public class PartyManager {
         distanceCheckTask = SchedulerAdapter.runTimer(() -> {
             if (!partyLocatorBar) return;
             List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
-            for (Player viewer : online) {
-                if (!viewer.isOnline()) continue;
-                for (Player target : online) {
-                    if (viewer.equals(target) || !target.isOnline()) continue;
-                    if (SchedulerAdapter.isFolia()) {
-                        SchedulerAdapter.runAtEntity(viewer, () -> updatePlayerVisibility(viewer, target));
-                    } else {
+            if (SchedulerAdapter.isFolia()) {
+                // On Folia, batch all updates per-viewer into a single entity-scheduler task
+                // to avoid flooding the scheduler with thousands of micro-tasks per tick.
+                for (Player viewer : online) {
+                    if (!viewer.isOnline()) continue;
+                    List<Player> targets = new ArrayList<>();
+                    for (Player target : online) {
+                        if (!viewer.equals(target) && target.isOnline()) {
+                            targets.add(target);
+                        }
+                    }
+                    if (!targets.isEmpty()) {
+                        SchedulerAdapter.runAtEntity(viewer, () -> {
+                            for (Player target : targets) {
+                                if (target.isOnline()) {
+                                    updatePlayerVisibility(viewer, target);
+                                }
+                            }
+                        });
+                    }
+                }
+            } else {
+                for (Player viewer : online) {
+                    if (!viewer.isOnline()) continue;
+                    for (Player target : online) {
+                        if (viewer.equals(target) || !target.isOnline()) continue;
                         updatePlayerVisibility(viewer, target);
                     }
                 }
@@ -153,6 +167,23 @@ public class PartyManager {
         double distanceSquared = viewer.getLocation().distanceSquared(target.getLocation());
         int radiusSquared = showNonPartyMembersRadius * showNonPartyMembersRadius;
         return distanceSquared <= radiusSquared;
+    }
+
+    /**
+     * Determine if a target player should be visible to a viewer for CrowBar.
+     * Same as shouldBeVisible but skips the distance check so CrowBar can show
+     * players beyond the configured radius (which is the whole point of CrowBar).
+     */
+    public boolean shouldBeVisibleIgnoreDistance(Player viewer, Player target) {
+        if (viewer.equals(target)) return true;
+
+        int override = getForcedVisibilityOverride(viewer.getUniqueId(), target.getUniqueId());
+        if (override == 1) return true;
+        if (override == -1) return false;
+
+        if (!viewer.getWorld().equals(target.getWorld())) return false;
+
+        return true;
     }
 
     /**
@@ -575,9 +606,12 @@ public class PartyManager {
             return;
         }
 
-        // Always show Citizens NPCs - don't manage their body visibility.
+        // Always show Citizens NPCs — but only call showPlayer if not already visible
+        // to avoid re-sending entity info packets every 5 ticks (which flashes the waypoint dot).
         if (plugin.isCitizensNpc(target)) {
-            PlayerVisibilityHelper.showPlayer(viewer, target);
+            if (!viewer.canSee(target)) {
+                PlayerVisibilityHelper.showPlayer(viewer, target);
+            }
             return;
         }
 

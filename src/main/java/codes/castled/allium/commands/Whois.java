@@ -111,9 +111,9 @@ public class Whois implements CommandExecutor {
         Component prefixComponent;
         String rawPrefix = "N/A";
         if (plugin.getVaultChat() != null && targetOnlinePlayer != null) {
-            rawPrefix = plugin.getVaultChat().getPlayerPrefix(targetOnlinePlayer);
+            rawPrefix = ((net.milkbowl.vault.chat.Chat) plugin.getVaultChat()).getPlayerPrefix(targetOnlinePlayer);
         } else if (plugin.getVaultChat() != null) {
-            String prefix = plugin.getVaultChat().getPlayerPrefix((String) null, effectiveTarget.getName());
+            String prefix = ((net.milkbowl.vault.chat.Chat) plugin.getVaultChat()).getPlayerPrefix((String) null, effectiveTarget.getName());
             if (prefix == null || prefix.isEmpty()) {
                 rawPrefix = lang.getRaw("whois.prefix_none");
             } else {

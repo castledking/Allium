@@ -1,36 +1,6 @@
 package codes.castled.allium;
 
-import net.milkbowl.vault.chat.Chat;
-import net.milkbowl.vault.permission.Permission;
-
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.entity.Player;
-
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
-
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-import org.bukkit.Bukkit;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandMap;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.PluginManager;
-import org.bukkit.plugin.RegisteredServiceProvider;
-import org.bukkit.plugin.ServicePriority;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import codes.castled.allium.commands.AltExempt;
 import codes.castled.allium.commands.AutoRestartCommand;
@@ -137,12 +107,12 @@ import codes.castled.allium.listeners.security.MaintenanceManager;
 import codes.castled.allium.listeners.security.SpectatorTeleport;
 import codes.castled.allium.listeners.security.VanishListener;
 import codes.castled.allium.listeners.security.VanishPingListener;
-import codes.castled.allium.managers.NicknameManager;
-import codes.castled.allium.managers.ResourcePackManager;
 import codes.castled.allium.managers.DB.Database;
-import codes.castled.allium.managers.DB.PermissionCache;
 import codes.castled.allium.managers.DB.Database.PlayerLastSeenData;
 import codes.castled.allium.managers.DB.Database.RestrainedPlayerData;
+import codes.castled.allium.managers.DB.PermissionCache;
+import codes.castled.allium.managers.NicknameManager;
+import codes.castled.allium.managers.ResourcePackManager;
 import codes.castled.allium.managers.chat.AlliumChannelManager;
 import codes.castled.allium.managers.chat.ChatFilterManager;
 import codes.castled.allium.managers.chat.ChatMessageManager;
@@ -179,24 +149,50 @@ import codes.castled.allium.tfly.TFlyManager;
 import codes.castled.allium.util.PlayerVisibilityHelper;
 import codes.castled.allium.util.SchedulerAdapter;
 import codes.castled.allium.voucher.VouchersConfig;
-
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
-import java.util.HashMap;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
+import net.milkbowl.vault.chat.Chat;
+import net.milkbowl.vault.permission.Permission;
+import org.bukkit.Bukkit;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandMap;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
+import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.plugin.ServicePriority;
+import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Main plugin class for Allium, responsible for initializing managers, commands, listeners, and services.
  */
 public class PluginStart extends JavaPlugin {
+
     private NicknameManager nicknameManager;
     private static PluginStart instance;
     private Lang langManager;
@@ -229,7 +225,8 @@ public class PluginStart extends JavaPlugin {
     private GradientNameManager gradientNameManager;
     private AlliumChannelManager channelManager;
     private DiscordSrvMessageBridge discordSrvMessageBridge;
-    private ChatPacketTracker chatPacketTracker = new codes.castled.allium.packetevents.ChatPacketTrackerNoOp();
+    private ChatPacketTracker chatPacketTracker =
+        new codes.castled.allium.packetevents.ChatPacketTrackerNoOp();
     private TabListManager tabListManager;
     private CrowBarDataSender crowBarDataSender;
     private InventoryManager inventoryManager;
@@ -525,7 +522,7 @@ public class PluginStart extends JavaPlugin {
     public NicknameManager getNicknameManager() {
         return nicknameManager;
     }
-    
+
     /**
      * Gets the AutoRestartCommand instance.
      *
@@ -534,20 +531,21 @@ public class PluginStart extends JavaPlugin {
     public AutoRestartCommand getAutoRestartCommand() {
         return autoRestartCommand;
     }
-    
+
     @Override
     public void onEnable() {
         // Initialize database first (required by NicknameManager and other managers)
         database = new Database(this);
-        
+
         // Initialize NicknameManager (needs database)
         this.nicknameManager = new NicknameManager(this);
-        
+
         // Initialize DialogManager and load dialogs
-        codes.castled.allium.managers.core.DialogManager dialogManager = new codes.castled.allium.managers.core.DialogManager(this);
+        codes.castled.allium.managers.core.DialogManager dialogManager =
+            new codes.castled.allium.managers.core.DialogManager(this);
         dialogManager.loadDialogs();
         dialogManager.generateDataPack();
-        
+
         instance = this;
         Text.setPlugin(this);
         SchedulerAdapter.init(this);
@@ -556,12 +554,19 @@ public class PluginStart extends JavaPlugin {
 
         // Perform migration if needed
         if (migrationManager.isMigrationNeeded()) {
-            Text.sendDebugLog(INFO, "Allium folder detected, performing migration...");
+            Text.sendDebugLog(
+                INFO,
+                "Allium folder detected, performing migration..."
+            );
             migrationManager.performMigration();
         }
 
         // Log loaded plugins for debugging
-        Text.sendDebugLog(INFO, "Loaded plugins: " + Arrays.toString(getServer().getPluginManager().getPlugins()));
+        Text.sendDebugLog(
+            INFO,
+            "Loaded plugins: " +
+                Arrays.toString(getServer().getPluginManager().getPlugins())
+        );
 
         // DialogAPI bootstrap disabled; dialog features removed
         Text.sendDebugLog(INFO, "Dialog and datapack features are disabled.");
@@ -569,22 +574,31 @@ public class PluginStart extends JavaPlugin {
         // Initialize core managers
         initializeManagers();
         initializePlaceholderAPI();
-        
+
         // Cleanup old restrained player records (older than 1 day) and restore active ones
         try {
             if (database.isReady()) {
                 int cleanedCount = database.cleanupOldRestrainedPlayers();
                 if (cleanedCount > 0) {
-                    Text.sendDebugLog(INFO, "Cleaned up " + cleanedCount + " old restrained player record(s) on startup");
+                    Text.sendDebugLog(
+                        INFO,
+                        "Cleaned up " +
+                            cleanedCount +
+                            " old restrained player record(s) on startup"
+                    );
                 }
-                
+
                 // Load and restore any still-restrained players
                 loadAndRestoreRestrainedPlayers();
             }
         } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Failed to process restrained player records on startup: " + e.getMessage());
+            Text.sendDebugLog(
+                WARN,
+                "Failed to process restrained player records on startup: " +
+                    e.getMessage()
+            );
         }
-        
+
         // Initialize PacketEvents for comprehensive chat message tracking
         initializePacketEvents();
         if (isDebugMode()) {
@@ -593,24 +607,33 @@ public class PluginStart extends JavaPlugin {
 
         // Initialize CrowBar data sender
         this.crowBarDataSender = new CrowBarDataSender(this);
-        getServer().getMessenger().registerOutgoingPluginChannel(this, "crowbar:player_data");
+        getServer()
+            .getMessenger()
+            .registerOutgoingPluginChannel(this, "crowbar:player_data");
         this.crowBarDataSender.start();
         if (isDebugMode()) {
             getLogger().info("CrowBar data sender started");
         }
-        
+
         // Register commands and non-Vault-dependent listeners
         registerCommands();
         registerNonVaultListeners();
 
         // Register the built-in permission migration listener
         try {
-            getServer().getPluginManager().registerEvents(new PlayerPermissionMigrationListener(), this);
+            getServer()
+                .getPluginManager()
+                .registerEvents(new PlayerPermissionMigrationListener(), this);
             if (isDebugMode()) {
-                getLogger().info("Registered PlayerPermissionMigrationListener");
+                getLogger().info(
+                    "Registered PlayerPermissionMigrationListener"
+                );
             }
         } catch (Exception e) {
-            getLogger().warning("Failed to register PlayerPermissionMigrationListener: " + e.toString());
+            getLogger().warning(
+                "Failed to register PlayerPermissionMigrationListener: " +
+                    e.toString()
+            );
             if (isDebugMode()) {
                 e.printStackTrace();
             }
@@ -620,58 +643,133 @@ public class PluginStart extends JavaPlugin {
         {
             final int maxAttempts = 10;
             final long retryDelay = 40L; // 2 seconds per retry
-            final int[] attempts = {0};
-            final boolean[] registered = {false};
-            final SchedulerAdapter.TaskHandle[] handle = new SchedulerAdapter.TaskHandle[1];
-            handle[0] = SchedulerAdapter.runTimer(() -> {
-                attempts[0]++;
-                Text.sendDebugLog(INFO, "Attempting Vault initialization (attempt " + attempts[0] + " of " + maxAttempts + ")");
-                if (initializeVault()) {
-                    Text.sendDebugLog(INFO, "Vault services initialized successfully after " + attempts[0] + " attempt(s).");
-                    if (!registered[0]) {
-                        registered[0] = true;
-                        registerVaultDependentListeners();
-                        performPermissionMigration();
+            final int[] attempts = { 0 };
+            final boolean[] registered = { false };
+            final SchedulerAdapter.TaskHandle[] handle =
+                new SchedulerAdapter.TaskHandle[1];
+            handle[0] = SchedulerAdapter.runTimer(
+                () -> {
+                    attempts[0]++;
+                    Text.sendDebugLog(
+                        INFO,
+                        "Attempting Vault initialization (attempt " +
+                            attempts[0] +
+                            " of " +
+                            maxAttempts +
+                            ")"
+                    );
+                    if (initializeVault()) {
+                        Text.sendDebugLog(
+                            INFO,
+                            "Vault services initialized successfully after " +
+                                attempts[0] +
+                                " attempt(s)."
+                        );
+                        if (!registered[0]) {
+                            registered[0] = true;
+                            registerVaultDependentListeners();
+                            performPermissionMigration();
+                        }
+                        handle[0].cancel();
+                    } else if (attempts[0] < maxAttempts) {
+                        Text.sendDebugLog(
+                            WARN,
+                            "Vault services not yet available. Retrying in " +
+                                retryDelay +
+                                " ticks (attempt " +
+                                (attempts[0] + 1) +
+                                " of " +
+                                maxAttempts +
+                                ")."
+                        );
+                        try {
+                            Class<?> pClass = Class.forName(
+                                "net.milkbowl.vault.permission.Permission"
+                            );
+                            Text.sendDebugLog(
+                                INFO,
+                                "Number of permission providers: " +
+                                    getServer()
+                                        .getServicesManager()
+                                        .getRegistrations(pClass)
+                                        .size()
+                            );
+                        } catch (ClassNotFoundException ignored) {}
+                        try {
+                            Class<?> cClass = Class.forName(
+                                "net.milkbowl.vault.chat.Chat"
+                            );
+                            Text.sendDebugLog(
+                                INFO,
+                                "Number of chat providers: " +
+                                    getServer()
+                                        .getServicesManager()
+                                        .getRegistrations(cClass)
+                                        .size()
+                            );
+                        } catch (ClassNotFoundException ignored) {}
+                        try {
+                            Class<?> eClass = Class.forName(
+                                "net.milkbowl.vault.economy.Economy"
+                            );
+                            Text.sendDebugLog(
+                                INFO,
+                                "Number of economy providers: " +
+                                    getServer()
+                                        .getServicesManager()
+                                        .getRegistrations(eClass)
+                                        .size()
+                            );
+                        } catch (ClassNotFoundException ignored) {}
+                    } else {
+                        if (!registered[0]) {
+                            Text.sendDebugLog(
+                                WARN,
+                                "Failed to initialize Vault services after " +
+                                    maxAttempts +
+                                    " attempts. Using fallback formatting for chat.",
+                                true
+                            );
+                            registered[0] = true;
+                            registerVaultDependentListeners();
+                        }
+                        handle[0].cancel();
                     }
-                    handle[0].cancel();
-                } else if (attempts[0] < maxAttempts) {
-                    Text.sendDebugLog(WARN, "Vault services not yet available. Retrying in " + retryDelay + " ticks (attempt " + (attempts[0] + 1) + " of " + maxAttempts + ").");
-                    try {
-                        Class<?> pClass = Class.forName("net.milkbowl.vault.permission.Permission");
-                        Text.sendDebugLog(INFO, "Number of permission providers: " + getServer().getServicesManager().getRegistrations(pClass).size());
-                    } catch (ClassNotFoundException ignored) {}
-                    try {
-                        Class<?> cClass = Class.forName("net.milkbowl.vault.chat.Chat");
-                        Text.sendDebugLog(INFO, "Number of chat providers: " + getServer().getServicesManager().getRegistrations(cClass).size());
-                    } catch (ClassNotFoundException ignored) {}
-                    try {
-                        Class<?> eClass = Class.forName("net.milkbowl.vault.economy.Economy");
-                        Text.sendDebugLog(INFO, "Number of economy providers: " + getServer().getServicesManager().getRegistrations(eClass).size());
-                    } catch (ClassNotFoundException ignored) {}
-                } else {
-                    if (!registered[0]) {
-                        Text.sendDebugLog(WARN, "Failed to initialize Vault services after " + maxAttempts + " attempts. Using fallback formatting for chat.", true);
-                        registered[0] = true;
-                        registerVaultDependentListeners();
-                    }
-                    handle[0].cancel();
-                }
-            }, 100L, 40L);
+                },
+                100L,
+                40L
+            );
         }
-        
+
         // After plugins have registered their commands, force our preferred command ownerships
         try {
             forcePreferredCommandsWithRetry();
         } catch (Throwable t) {
-            Text.sendDebugLog(WARN, "Failed to schedule preferred command enforcement: " + t.getMessage(), true);
+            Text.sendDebugLog(
+                WARN,
+                "Failed to schedule preferred command enforcement: " +
+                    t.getMessage(),
+                true
+            );
         }
 
         // Update checker (delayed to avoid blocking startup)
         SchedulerAdapter.runLater(() -> {
-            boolean enabled = getConfig().getBoolean("update-checker.enabled", true);
-            String notifyMode = getConfig().getString("update-checker.notify-mode", "both");
+            boolean enabled = getConfig().getBoolean(
+                "update-checker.enabled",
+                true
+            );
+            String notifyMode = getConfig().getString(
+                "update-checker.notify-mode",
+                "both"
+            );
             codes.castled.allium.util.UpdateChecker.checkForUpdates(
-                    this, 126462, enabled, notifyMode, getDescription().getVersion());
+                this,
+                126462,
+                enabled,
+                notifyMode,
+                getDescription().getVersion()
+            );
         }, 50L);
 
         // /dialog watchdog removed
@@ -691,60 +789,175 @@ public class PluginStart extends JavaPlugin {
     public void onLoad() {
         // Using external PacketEvents plugin; do not build or load API here
         try {
-            if (getServer().getPluginManager().getPlugin("packetevents") != null) {
-                Text.sendDebugLog(INFO, "Detected external PacketEvents plugin; API will be initialized by it.");
+            if (
+                getServer().getPluginManager().getPlugin("packetevents") != null
+            ) {
+                Text.sendDebugLog(
+                    INFO,
+                    "Detected external PacketEvents plugin; API will be initialized by it."
+                );
             } else {
-                Text.sendDebugLog(WARN, "PacketEvents plugin not found. Packet-level chat tracking will be disabled.");
+                Text.sendDebugLog(
+                    WARN,
+                    "PacketEvents plugin not found. Packet-level chat tracking will be disabled."
+                );
             }
         } catch (Throwable t) {
-            Text.sendDebugLog(WARN, "PacketEvents detection error: " + t.getMessage(), true);
+            Text.sendDebugLog(
+                WARN,
+                "PacketEvents detection error: " + t.getMessage(),
+                true
+            );
         }
     }
 
     private void performPermissionMigration() {
         if (vaultPerms == null) {
-            Text.sendDebugLog(ERROR, "Cannot perform permission migration: Vault permission provider not found!");
+            Text.sendDebugLog(
+                ERROR,
+                "Cannot perform permission migration: Vault permission provider not found!"
+            );
             return;
         }
 
         // Check if group migration has already been completed
         if (getConfig().getBoolean("group_migration_completed", false)) {
-            Text.sendDebugLog(INFO, "Group permission migration already completed, skipping.");
+            Text.sendDebugLog(
+                INFO,
+                "Group permission migration already completed, skipping."
+            );
             return;
         }
 
         boolean migrated = false;
         String[] permissionsToMigrate = {
-            "explode", "gc", "give", "itemdb", "heal", "feed", "admin", "rename", "lore",
-            "god", "more", "fly", "gamemode", "nv", "skull", "home", "homes", "sethome",
-            "delhome", "balance", "pay", "baltop", "tp", "tpa", "tpcancel", "tpaccept",
-            "tpdeny", "tppet", "tpmob", "tppos", "tphere", "tpahere", "tptoggle", "top",
-            "bottom", "whois", "invsee", "enchant", "staff", "note", "notes", "unnote",
-            "time", "time.set", "time.add",
-            "escalate", "spy", "spy.others", "gamemode.others", "gamemode.spectator",
-            "gamemode.survival", "gamemode.survival.nv", "gamemode.creative",
-            "gamemode.creative.inventory", "gamemode.creative.container", "gamemode.creative.pickup",
-            "gamemode.creative.drop", "gamemode.creative.break", "gamemode.creative.place",
-            "gamemode.creative.interact", "gamemode.creative.use", "gamemode.creative.spawn",
-            "gamemode.creative.blacklist", "gamemode.creative.nv", "gamemode.adventure",
-            "gamemode.adventure.nv", "gamemode.spectator", "nv.others", "nv.adventure",
-            "nv.creative", "nv.spectator", "nv.survival", "tp.others", "tp.override",
-            "tpa.nodelay", "tpa.nocooldown", "voucher.give", "lockdown.bypass", "tpall",
-            "tptoggle.others", "tpauto", "spawn", "setspawn", "help", "sethome.unlimited",
-            "home.others", "home.nocooldown", "hide.group", "hide.bypass", "hide.default",
-            "fly.others", "explode.others", "explode.exempt", "heal.others", "heal.nocooldown",
-            "feed.others", "feed.nocooldown", "*"
+            "explode",
+            "gc",
+            "give",
+            "itemdb",
+            "heal",
+            "feed",
+            "admin",
+            "rename",
+            "lore",
+            "god",
+            "more",
+            "fly",
+            "gamemode",
+            "nv",
+            "skull",
+            "home",
+            "homes",
+            "sethome",
+            "delhome",
+            "balance",
+            "pay",
+            "baltop",
+            "tp",
+            "tpa",
+            "tpcancel",
+            "tpaccept",
+            "tpdeny",
+            "tppet",
+            "tpmob",
+            "tppos",
+            "tphere",
+            "tpahere",
+            "tptoggle",
+            "top",
+            "bottom",
+            "whois",
+            "invsee",
+            "enchant",
+            "staff",
+            "note",
+            "notes",
+            "unnote",
+            "time",
+            "time.set",
+            "time.add",
+            "escalate",
+            "spy",
+            "spy.others",
+            "gamemode.others",
+            "gamemode.spectator",
+            "gamemode.survival",
+            "gamemode.survival.nv",
+            "gamemode.creative",
+            "gamemode.creative.inventory",
+            "gamemode.creative.container",
+            "gamemode.creative.pickup",
+            "gamemode.creative.drop",
+            "gamemode.creative.break",
+            "gamemode.creative.place",
+            "gamemode.creative.interact",
+            "gamemode.creative.use",
+            "gamemode.creative.spawn",
+            "gamemode.creative.blacklist",
+            "gamemode.creative.nv",
+            "gamemode.adventure",
+            "gamemode.adventure.nv",
+            "gamemode.spectator",
+            "nv.others",
+            "nv.adventure",
+            "nv.creative",
+            "nv.spectator",
+            "nv.survival",
+            "tp.others",
+            "tp.override",
+            "tpa.nodelay",
+            "tpa.nocooldown",
+            "voucher.give",
+            "lockdown.bypass",
+            "tpall",
+            "tptoggle.others",
+            "tpauto",
+            "spawn",
+            "setspawn",
+            "help",
+            "sethome.unlimited",
+            "home.others",
+            "home.nocooldown",
+            "hide.group",
+            "hide.bypass",
+            "hide.default",
+            "fly.others",
+            "explode.others",
+            "explode.exempt",
+            "heal.others",
+            "heal.nocooldown",
+            "feed.others",
+            "feed.nocooldown",
+            "*",
         };
 
         // Migrate group permissions using Vault
-        for (String group : ((net.milkbowl.vault.permission.Permission) vaultPerms).getGroups()) {
+        for (String group : (
+            (net.milkbowl.vault.permission.Permission) vaultPerms
+        ).getGroups()) {
             for (String perm : permissionsToMigrate) {
                 String oldPerm = "core." + perm;
                 String newPerm = "allium." + perm;
-                if (((net.milkbowl.vault.permission.Permission) vaultPerms).groupHas((String) null, group, oldPerm)) {
-                    ((net.milkbowl.vault.permission.Permission) vaultPerms).groupRemove((String) null, group, oldPerm);
-                    ((net.milkbowl.vault.permission.Permission) vaultPerms).groupAdd((String) null, group, newPerm);
-                    Text.sendDebugLog(INFO, "Migrated group " + group + ": " + oldPerm + " -> " + newPerm);
+                if (
+                    (
+                        (net.milkbowl.vault.permission.Permission) vaultPerms
+                    ).groupHas((String) null, group, oldPerm)
+                ) {
+                    (
+                        (net.milkbowl.vault.permission.Permission) vaultPerms
+                    ).groupRemove((String) null, group, oldPerm);
+                    (
+                        (net.milkbowl.vault.permission.Permission) vaultPerms
+                    ).groupAdd((String) null, group, newPerm);
+                    Text.sendDebugLog(
+                        INFO,
+                        "Migrated group " +
+                            group +
+                            ": " +
+                            oldPerm +
+                            " -> " +
+                            newPerm
+                    );
                     migrated = true;
                 }
             }
@@ -754,7 +967,10 @@ public class PluginStart extends JavaPlugin {
         if (migrated) {
             getConfig().set("group_migration_completed", true);
             saveConfig();
-            Text.sendDebugLog(INFO, "Group permission migration from core.* to allium.* completed!");
+            Text.sendDebugLog(
+                INFO,
+                "Group permission migration from core.* to allium.* completed!"
+            );
         } else {
             Text.sendDebugLog(INFO, "No group permissions needed migration.");
         }
@@ -773,7 +989,11 @@ public class PluginStart extends JavaPlugin {
         // Cleanup creative manager
         if (creativeManager != null) {
             creativeManager.cleanup();
-            Text.sendDebugLog(INFO, "Creative inventory manager cleaned up.", true);
+            Text.sendDebugLog(
+                INFO,
+                "Creative inventory manager cleaned up.",
+                true
+            );
         }
 
         if (offlineInventoryManager != null) {
@@ -787,7 +1007,11 @@ public class PluginStart extends JavaPlugin {
         // Unregister PlaceholderAPI expansion
         if (placeholder != null && placeholder.isRegistered()) {
             placeholder.unregister();
-            Text.sendDebugLog(INFO, "PlaceholderAPI expansion unregistered.", true);
+            Text.sendDebugLog(
+                INFO,
+                "PlaceholderAPI expansion unregistered.",
+                true
+            );
         }
 
         // Cleanup dynamic permissions
@@ -826,10 +1050,70 @@ public class PluginStart extends JavaPlugin {
             }
             if (crowBarDataSender != null) {
                 crowBarDataSender.stop();
-                getServer().getMessenger().unregisterOutgoingPluginChannel(this, "crowbar:player_data");
+                getServer()
+                    .getMessenger()
+                    .unregisterOutgoingPluginChannel(
+                        this,
+                        "crowbar:player_data"
+                    );
             }
         } catch (Throwable t) {
-            Text.sendDebugLog(WARN, "Failed to shutdown packet listeners: " + t.getMessage());
+            Text.sendDebugLog(
+                WARN,
+                "Failed to shutdown packet listeners: " + t.getMessage()
+            );
+        }
+
+        // Close database connection pool and deregister JDBC driver
+        if (database != null) {
+            database.close();
+        }
+        try {
+            java.util.Enumeration<java.sql.Driver> drivers =
+                java.sql.DriverManager.getDrivers();
+            while (drivers.hasMoreElements()) {
+                java.sql.Driver driver = drivers.nextElement();
+                try {
+                    if (
+                        driver.getClass().getClassLoader() ==
+                        getClass().getClassLoader()
+                    ) {
+                        java.sql.DriverManager.deregisterDriver(driver);
+                    }
+                } catch (IllegalStateException e) {
+                    // Handle cases where the plugin classloader has thrown a zip file error
+                    // This can happen during plugin shutdown when JAR files are being closed
+                    if (isDebugMode()) {
+                        Text.sendDebugLog(
+                            WARN,
+                            "!!! ZIP FILE ERROR DETECTED - Rebuilding PluginStart for rapid fix !!!",
+                            true
+                        );
+                        getLogger().info("Original ZIP file error: " + e.getMessage());
+                    }
+                    // Re-throw as error if debug mode for rapid iteration, otherwise log
+                    if (isDebugMode()) {
+                        throw e;
+                    } else {
+                        Text.sendDebugLog(
+                            ERROR,
+                            "CRITICAL: Plugin classloader zip file error detected! " +
+                            "Allium requires restart. Error: " + e.getMessage()
+                        );
+                    }
+                } catch (Exception e) {
+                    // Handle other potential errors during driver deregistration
+                    Text.sendDebugLog(
+                        WARN,
+                        "Failed to deregister JDBC driver: " + e.getMessage()
+                    );
+                }
+            }
+        } catch (Exception e) {
+            Text.sendDebugLog(
+                WARN,
+                "Failed to deregister JDBC drivers: " + e.getMessage()
+            );
         }
 
         // Unregister all Bukkit listeners
@@ -852,13 +1136,22 @@ public class PluginStart extends JavaPlugin {
         }
 
         try {
-            List<RestrainedPlayerData> restrainedPlayers = database.loadRestrainedPlayers();
+            List<RestrainedPlayerData> restrainedPlayers =
+                database.loadRestrainedPlayers();
             if (restrainedPlayers.isEmpty()) {
-                Text.sendDebugLog(INFO, "No restrained players to restore from database");
+                Text.sendDebugLog(
+                    INFO,
+                    "No restrained players to restore from database"
+                );
                 return;
             }
 
-            Text.sendDebugLog(INFO, "Loading " + restrainedPlayers.size() + " restrained players from database");
+            Text.sendDebugLog(
+                INFO,
+                "Loading " +
+                    restrainedPlayers.size() +
+                    " restrained players from database"
+            );
 
             int restoredCount = 0;
             for (RestrainedPlayerData data : restrainedPlayers) {
@@ -871,67 +1164,145 @@ public class PluginStart extends JavaPlugin {
                 Player handcufferPlayer = Bukkit.getPlayer(handcufferUUID);
 
                 if (restrainedPlayer != null && restrainedPlayer.isOnline()) {
-                    if (handcufferPlayer != null && handcufferPlayer.isOnline()) {
+                    if (
+                        handcufferPlayer != null && handcufferPlayer.isOnline()
+                    ) {
                         // Both players are online, restore the restraint
                         try {
                             // Use reflection to call the applyHandcuffs method since it's private
-                            java.lang.reflect.Method applyHandcuffs = handcuffsListener.getClass()
-                                .getDeclaredMethod("applyHandcuffs", Player.class, Player.class, boolean.class);
+                            java.lang.reflect.Method applyHandcuffs =
+                                handcuffsListener
+                                    .getClass()
+                                    .getDeclaredMethod(
+                                        "applyHandcuffs",
+                                        Player.class,
+                                        Player.class,
+                                        boolean.class
+                                    );
                             applyHandcuffs.setAccessible(true);
-                            applyHandcuffs.invoke(handcuffsListener, restrainedPlayer, handcufferPlayer, false);
+                            applyHandcuffs.invoke(
+                                handcuffsListener,
+                                restrainedPlayer,
+                                handcufferPlayer,
+                                false
+                            );
 
-                            Text.sendDebugLog(INFO, "Restored restraint: " + restrainedPlayer.getName() + " <- " + handcufferPlayer.getName());
+                            Text.sendDebugLog(
+                                INFO,
+                                "Restored restraint: " +
+                                    restrainedPlayer.getName() +
+                                    " <- " +
+                                    handcufferPlayer.getName()
+                            );
                             restoredCount++;
                         } catch (Exception e) {
-                            Text.sendDebugLog(ERROR, "Failed to restore restraint for " + restrainedPlayer.getName() + ": " + e.getMessage());
+                            Text.sendDebugLog(
+                                ERROR,
+                                "Failed to restore restraint for " +
+                                    restrainedPlayer.getName() +
+                                    ": " +
+                                    e.getMessage()
+                            );
                         }
                     } else {
                         // Handcuffer is offline, check offline time and execute commands-on-quit if needed
-                        checkOfflineTimeAndExecuteCommands(restrainedUUID, handcufferUUID, handcufferLocation);
+                        checkOfflineTimeAndExecuteCommands(
+                            restrainedUUID,
+                            handcufferUUID,
+                            handcufferLocation
+                        );
                     }
                 } else {
                     // Restrained player is offline, check offline time and execute commands-on-quit if needed
-                    checkOfflineTimeAndExecuteCommands(restrainedUUID, handcufferUUID, handcufferLocation);
+                    checkOfflineTimeAndExecuteCommands(
+                        restrainedUUID,
+                        handcufferUUID,
+                        handcufferLocation
+                    );
                 }
 
                 // Remove from database regardless
                 try {
                     database.removeRestrainedPlayer(restrainedUUID);
                 } catch (SQLException e) {
-                    Text.sendDebugLog(ERROR, "Failed to remove restored restrained player from database: " + e.getMessage());
+                    Text.sendDebugLog(
+                        ERROR,
+                        "Failed to remove restored restrained player from database: " +
+                            e.getMessage()
+                    );
                 }
             }
 
-            Text.sendDebugLog(INFO, "Restored " + restoredCount + " restrained players from database");
-
+            Text.sendDebugLog(
+                INFO,
+                "Restored " +
+                    restoredCount +
+                    " restrained players from database"
+            );
         } catch (Exception e) {
-            Text.sendDebugLog(ERROR, "Failed to load restrained players from database: " + e.getMessage(), e);
+            Text.sendDebugLog(
+                ERROR,
+                "Failed to load restrained players from database: " +
+                    e.getMessage(),
+                e
+            );
         }
     }
 
     /**
      * Checks offline time for a restrained player and executes commands-on-quit if they've been offline too long
      */
-    private void checkOfflineTimeAndExecuteCommands(UUID restrainedUUID, UUID handcufferUUID, Location handcufferLocation) {
+    private void checkOfflineTimeAndExecuteCommands(
+        UUID restrainedUUID,
+        UUID handcufferUUID,
+        Location handcufferLocation
+    ) {
         try {
             // Get the last seen date for the restrained player
-            PlayerLastSeenData lastSeenData = database.getPlayerLastSeen(restrainedUUID);
+            PlayerLastSeenData lastSeenData = database.getPlayerLastSeen(
+                restrainedUUID
+            );
             if (lastSeenData != null && lastSeenData.lastSeenDate() != null) {
-                long offlineTimeMs = System.currentTimeMillis() - lastSeenData.lastSeenDate().getTime();
+                long offlineTimeMs =
+                    System.currentTimeMillis() -
+                    lastSeenData.lastSeenDate().getTime();
                 long offlineTimeHours = offlineTimeMs / (1000 * 60 * 60);
 
                 // If offline for more than 24 hours (1 day), execute commands-on-quit
                 if (offlineTimeHours > 24) {
-                    Text.sendDebugLog(INFO, "Player " + restrainedUUID + " has been offline for " + offlineTimeHours + " hours, executing commands-on-quit");
+                    Text.sendDebugLog(
+                        INFO,
+                        "Player " +
+                            restrainedUUID +
+                            " has been offline for " +
+                            offlineTimeHours +
+                            " hours, executing commands-on-quit"
+                    );
 
                     // Execute commands-on-quit using the database method
-                    database.executeCommandsOnQuitForOfflinePlayer(restrainedUUID, handcufferUUID);
+                    database.executeCommandsOnQuitForOfflinePlayer(
+                        restrainedUUID,
+                        handcufferUUID
+                    );
                 } else {
-                    Text.sendDebugLog(INFO, "Player " + restrainedUUID + " has been offline for " + offlineTimeHours + " hours, keeping restraint active");
+                    Text.sendDebugLog(
+                        INFO,
+                        "Player " +
+                            restrainedUUID +
+                            " has been offline for " +
+                            offlineTimeHours +
+                            " hours, keeping restraint active"
+                    );
                 }
             }
         } catch (Exception e) {
-            Text.sendDebugLog(ERROR, "Failed to check offline time for restrained player " + restrainedUUID + ": " + e.getMessage());
+            Text.sendDebugLog(
+                ERROR,
+                "Failed to check offline time for restrained player " +
+                    restrainedUUID +
+                    ": " +
+                    e.getMessage()
+            );
         }
     }
 
@@ -947,7 +1318,10 @@ public class PluginStart extends JavaPlugin {
             // Get all restrained players from the listener
             Map<UUID, UUID> restrainedPlayers = getRestrainedPlayersMap();
             if (restrainedPlayers.isEmpty()) {
-                Text.sendDebugLog(INFO, "No restrained players to save to database");
+                Text.sendDebugLog(
+                    INFO,
+                    "No restrained players to save to database"
+                );
                 return;
             }
 
@@ -959,14 +1333,28 @@ public class PluginStart extends JavaPlugin {
                 // Get handcuffer's current location
                 Player handcuffer = Bukkit.getPlayer(handcufferUUID);
                 if (handcuffer != null && handcuffer.isOnline()) {
-                    database.saveRestrainedPlayer(restrainedUUID, handcufferUUID, handcuffer.getLocation());
+                    database.saveRestrainedPlayer(
+                        restrainedUUID,
+                        handcufferUUID,
+                        handcuffer.getLocation()
+                    );
                     savedCount++;
                 }
             }
 
-            Text.sendDebugLog(INFO, "Saved " + savedCount + " restrained players to database for restart restoration");
+            Text.sendDebugLog(
+                INFO,
+                "Saved " +
+                    savedCount +
+                    " restrained players to database for restart restoration"
+            );
         } catch (Exception e) {
-            Text.sendDebugLog(ERROR, "Failed to save restrained players to database: " + e.getMessage(), e);
+            Text.sendDebugLog(
+                ERROR,
+                "Failed to save restrained players to database: " +
+                    e.getMessage(),
+                e
+            );
         }
     }
 
@@ -977,11 +1365,19 @@ public class PluginStart extends JavaPlugin {
     @SuppressWarnings("unchecked")
     private Map<UUID, UUID> getRestrainedPlayersMap() {
         try {
-            java.lang.reflect.Field restrainedPlayersField = handcuffsListener.getClass().getDeclaredField("restrainedPlayers");
+            java.lang.reflect.Field restrainedPlayersField = handcuffsListener
+                .getClass()
+                .getDeclaredField("restrainedPlayers");
             restrainedPlayersField.setAccessible(true);
-            return (Map<UUID, UUID>) restrainedPlayersField.get(handcuffsListener);
+            return (Map<UUID, UUID>) restrainedPlayersField.get(
+                handcuffsListener
+            );
         } catch (Exception e) {
-            Text.sendDebugLog(ERROR, "Failed to access restrained players map via reflection: " + e.getMessage());
+            Text.sendDebugLog(
+                ERROR,
+                "Failed to access restrained players map via reflection: " +
+                    e.getMessage()
+            );
             return new HashMap<>();
         }
     }
@@ -991,7 +1387,11 @@ public class PluginStart extends JavaPlugin {
      */
     public void reloadChatFormatter() {
         if (!getConfig().getBoolean("enable-chat-formatting", true)) {
-            Text.sendDebugLog(INFO, "Chat formatting is disabled in config.yml.", true);
+            Text.sendDebugLog(
+                INFO,
+                "Chat formatting is disabled in config.yml.",
+                true
+            );
             return;
         }
 
@@ -1004,14 +1404,27 @@ public class PluginStart extends JavaPlugin {
 
         // Only create chat formatter when Vault Chat is available
         if (vaultChat == null) {
-            Text.sendDebugLog(INFO, "Vault Chat not available — skipping chat formatter.", true);
+            Text.sendDebugLog(
+                INFO,
+                "Vault Chat not available — skipping chat formatter.",
+                true
+            );
             return;
         }
 
         // Create and register new formatter
-        formatChatListener = new FormatChatListener(this, (net.milkbowl.vault.chat.Chat) vaultChat, configManager, chatMessageManager);
+        formatChatListener = new FormatChatListener(
+            this,
+            (net.milkbowl.vault.chat.Chat) vaultChat,
+            configManager,
+            chatMessageManager
+        );
         getServer().getPluginManager().registerEvents(formatChatListener, this);
-        Text.sendDebugLog(INFO, "Chat formatter has been reloaded with new configuration.", true);
+        Text.sendDebugLog(
+            INFO,
+            "Chat formatter has been reloaded with new configuration.",
+            true
+        );
     }
 
     /**
@@ -1019,15 +1432,26 @@ public class PluginStart extends JavaPlugin {
      */
     private void setupCitizensNpcWaypointRange() {
         try {
-            org.bukkit.plugin.Plugin citizens = getServer().getPluginManager().getPlugin("Citizens");
+            org.bukkit.plugin.Plugin citizens = getServer()
+                .getPluginManager()
+                .getPlugin("Citizens");
             if (citizens == null) {
-                Text.sendDebugLog(INFO, "Citizens not found, skipping NPC waypoint range setup");
+                Text.sendDebugLog(
+                    INFO,
+                    "Citizens not found, skipping NPC waypoint range setup"
+                );
                 return;
             }
 
             ClassLoader cl = citizens.getClass().getClassLoader();
-            Class<?> citizensApiClass = Class.forName("net.citizensnpcs.api.CitizensAPI", true, cl);
-            java.lang.reflect.Method getRegistry = citizensApiClass.getMethod("getNPCRegistry");
+            Class<?> citizensApiClass = Class.forName(
+                "net.citizensnpcs.api.CitizensAPI",
+                true,
+                cl
+            );
+            java.lang.reflect.Method getRegistry = citizensApiClass.getMethod(
+                "getNPCRegistry"
+            );
             Object registry = getRegistry.invoke(null);
 
             java.lang.reflect.Method getEntity = null;
@@ -1038,25 +1462,38 @@ public class PluginStart extends JavaPlugin {
                     getEntity = obj.getClass().getMethod("getEntity");
                 }
                 Object entity = getEntity.invoke(obj);
-                if (!(entity instanceof org.bukkit.entity.LivingEntity living)) continue;
+                if (
+                    !(entity instanceof org.bukkit.entity.LivingEntity living)
+                ) continue;
 
                 citizensNpcUuids.add(living.getUniqueId());
 
                 // Citizens already sets WAYPOINT_TRANSMIT_RANGE=0 on Player-type NPCs at spawn
                 // (see CitizensNPC.java:403). Set as a fallback for any NPCs that missed it.
                 try {
-                    org.bukkit.attribute.AttributeInstance attr = living.getAttribute(org.bukkit.attribute.Attribute.WAYPOINT_TRANSMIT_RANGE);
+                    org.bukkit.attribute.AttributeInstance attr =
+                        living.getAttribute(
+                            org.bukkit.attribute.Attribute.WAYPOINT_TRANSMIT_RANGE
+                        );
                     if (attr != null && attr.getBaseValue() != 0) {
                         attr.setBaseValue(0);
                         count++;
                     }
-                } catch (Exception ignored) {
-                }
+                } catch (Exception ignored) {}
             }
 
-            Text.sendDebugLog(INFO, "Tracked " + citizensNpcUuids.size() + " Citizens NPC UUIDs, ensured WAYPOINT_TRANSMIT_RANGE=0 on " + count);
+            Text.sendDebugLog(
+                INFO,
+                "Tracked " +
+                    citizensNpcUuids.size() +
+                    " Citizens NPC UUIDs, ensured WAYPOINT_TRANSMIT_RANGE=0 on " +
+                    count
+            );
         } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Failed to setup Citizens NPC waypoint range: " + e.getMessage());
+            Text.sendDebugLog(
+                WARN,
+                "Failed to setup Citizens NPC waypoint range: " + e.getMessage()
+            );
         }
     }
 
@@ -1077,16 +1514,32 @@ public class PluginStart extends JavaPlugin {
 
     private void initializePacketEvents() {
         try {
-            this.chatPacketTracker = PacketEventsLoader.createChatPacketTracker(this, chatMessageManager);
+            this.chatPacketTracker = PacketEventsLoader.createChatPacketTracker(
+                this,
+                chatMessageManager
+            );
             if (chatPacketTracker.supportsResend()) {
-                Text.sendDebugLog(INFO, "PacketEvents chat tracking enabled (clear+resend on /delmsg)");
+                Text.sendDebugLog(
+                    INFO,
+                    "PacketEvents chat tracking enabled (clear+resend on /delmsg)"
+                );
             } else {
-                Text.sendDebugLog(WARN, "PacketEvents not available. Chat deletion will only send header (no clear/resend).");
-                SchedulerAdapter.runLater(this::retryChatPacketTrackerInit, 40L);
+                Text.sendDebugLog(
+                    WARN,
+                    "PacketEvents not available. Chat deletion will only send header (no clear/resend)."
+                );
+                SchedulerAdapter.runLater(
+                    this::retryChatPacketTrackerInit,
+                    40L
+                );
             }
         } catch (Throwable e) {
-            Text.sendDebugLog(WARN, "Failed to initialize chat packet tracker: " + e.getMessage());
-            this.chatPacketTracker = new codes.castled.allium.packetevents.ChatPacketTrackerNoOp();
+            Text.sendDebugLog(
+                WARN,
+                "Failed to initialize chat packet tracker: " + e.getMessage()
+            );
+            this.chatPacketTracker =
+                new codes.castled.allium.packetevents.ChatPacketTrackerNoOp();
             SchedulerAdapter.runLater(this::retryChatPacketTrackerInit, 40L);
         }
     }
@@ -1103,29 +1556,49 @@ public class PluginStart extends JavaPlugin {
      * Retry ChatPacketTracker init (e.g. when PacketEvents loads after Allium at startup).
      */
     private void retryChatPacketTrackerInit() {
-        if (chatPacketTracker != null && chatPacketTracker.supportsResend()) return;
+        if (
+            chatPacketTracker != null && chatPacketTracker.supportsResend()
+        ) return;
         try {
-            ChatPacketTracker next = PacketEventsLoader.createChatPacketTracker(this, chatMessageManager);
+            ChatPacketTracker next = PacketEventsLoader.createChatPacketTracker(
+                this,
+                chatMessageManager
+            );
             if (next.supportsResend()) {
                 if (chatPacketTracker != null) chatPacketTracker.shutdown();
                 chatPacketTracker = next;
-                Text.sendDebugLog(INFO, "PacketEvents chat tracking enabled (delayed init) - clear+resend on /delmsg");
+                Text.sendDebugLog(
+                    INFO,
+                    "PacketEvents chat tracking enabled (delayed init) - clear+resend on /delmsg"
+                );
             }
         } catch (Throwable e) {
-            Text.sendDebugLog(WARN, "ChatPacketTracker retry failed: " + e.getMessage());
+            Text.sendDebugLog(
+                WARN,
+                "ChatPacketTracker retry failed: " + e.getMessage()
+            );
         }
     }
-    
+
     private void initializePlaceholderAPI() {
-        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") == null) {
-            Text.sendDebugLog(WARN, "PlaceholderAPI not found. Expansion will not be available.");
+        if (
+            getServer().getPluginManager().getPlugin("PlaceholderAPI") == null
+        ) {
+            Text.sendDebugLog(
+                WARN,
+                "PlaceholderAPI not found. Expansion will not be available."
+            );
             return;
         }
-        getServer().getPluginManager().registerEvents(new PlaceholderAPIRegistrationListener(this), this);
+        getServer()
+            .getPluginManager()
+            .registerEvents(new PlaceholderAPIRegistrationListener(this), this);
         SchedulerAdapter.runLater(() -> {
             if (placeholder == null || !placeholder.isRegistered()) {
                 if (registerPlaceholderExpansion()) {
-                    getLogger().info("PlaceholderAPI expansion 'allium' registered.");
+                    getLogger().info(
+                        "PlaceholderAPI expansion 'allium' registered."
+                    );
                 }
             }
         }, 20L);
@@ -1140,7 +1613,9 @@ public class PluginStart extends JavaPlugin {
     }
 
     private boolean registerPlaceholderExpansion() {
-        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") == null) {
+        if (
+            getServer().getPluginManager().getPlugin("PlaceholderAPI") == null
+        ) {
             return false;
         }
         if (placeholder != null && placeholder.isRegistered()) {
@@ -1150,11 +1625,15 @@ public class PluginStart extends JavaPlugin {
             placeholder = new AlliumPlaceholder(this);
             boolean ok = placeholder.register();
             if (!ok && isDebugMode()) {
-                getLogger().info("AlliumPlaceholder.register() returned false - expansion may already exist or validation failed.");
+                getLogger().info(
+                    "AlliumPlaceholder.register() returned false - expansion may already exist or validation failed."
+                );
             }
             return ok;
         } catch (Throwable t) {
-            getLogger().warning("PlaceholderAPI expansion registration threw: " + t.getMessage());
+            getLogger().warning(
+                "PlaceholderAPI expansion registration threw: " + t.getMessage()
+            );
             if (isDebugMode()) {
                 t.printStackTrace();
             }
@@ -1166,28 +1645,57 @@ public class PluginStart extends JavaPlugin {
         // Support both Vault and VaultUnlocked (same API, different plugin names)
         Plugin vaultPlugin = getServer().getPluginManager().getPlugin("Vault");
         if (vaultPlugin == null) {
-            vaultPlugin = getServer().getPluginManager().getPlugin("VaultUnlocked");
+            vaultPlugin = getServer()
+                .getPluginManager()
+                .getPlugin("VaultUnlocked");
         }
         if (vaultPlugin != null) {
-            Text.sendDebugLog(INFO, "Vault plugin found. Attempting to initialize Vault services.");
+            Text.sendDebugLog(
+                INFO,
+                "Vault plugin found. Attempting to initialize Vault services."
+            );
 
             // Load the Vault service classes using Vault's class loader
-            ClassLoader vaultClassLoader = vaultPlugin.getClass().getClassLoader();
+            ClassLoader vaultClassLoader = vaultPlugin
+                .getClass()
+                .getClassLoader();
             Class<?> permissionClass = null;
             Class<?> chatClass = null;
             try {
-                permissionClass = Class.forName("net.milkbowl.vault.permission.Permission", true, vaultClassLoader);
-                chatClass = Class.forName("net.milkbowl.vault.chat.Chat", true, vaultClassLoader);
-                Class.forName("net.milkbowl.vault.economy.Economy", true, vaultClassLoader);
+                permissionClass = Class.forName(
+                    "net.milkbowl.vault.permission.Permission",
+                    true,
+                    vaultClassLoader
+                );
+                chatClass = Class.forName(
+                    "net.milkbowl.vault.chat.Chat",
+                    true,
+                    vaultClassLoader
+                );
+                Class.forName(
+                    "net.milkbowl.vault.economy.Economy",
+                    true,
+                    vaultClassLoader
+                );
             } catch (ClassNotFoundException e) {
-                Text.sendDebugLog(ERROR, "Failed to load Vault service class: " + e.getMessage());
+                Text.sendDebugLog(
+                    ERROR,
+                    "Failed to load Vault service class: " + e.getMessage()
+                );
                 return false;
             }
 
             // Initialize services
-            RegisteredServiceProvider<?> permissionProvider = getServer().getServicesManager().getRegistration(permissionClass);
-            RegisteredServiceProvider<?> chatProvider = getServer().getServicesManager().getRegistration(chatClass);
-            RegisteredServiceProvider<net.milkbowl.vault.economy.Economy> economyProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
+            RegisteredServiceProvider<?> permissionProvider = getServer()
+                .getServicesManager()
+                .getRegistration(permissionClass);
+            RegisteredServiceProvider<?> chatProvider = getServer()
+                .getServicesManager()
+                .getRegistration(chatClass);
+            RegisteredServiceProvider<net.milkbowl.vault.economy.Economy> economyProvider =
+                getServer()
+                    .getServicesManager()
+                    .getRegistration(net.milkbowl.vault.economy.Economy.class);
 
             boolean coreServicesReady = false; // Track readiness of permission/chat/economy
 
@@ -1195,53 +1703,111 @@ public class PluginStart extends JavaPlugin {
             if (permissionProvider != null) {
                 try {
                     Object permProvider = permissionProvider.getProvider();
-                    vaultPerms = new codes.castled.allium.managers.vault.VaultPermissionDelegate(permProvider);
-                    Text.sendDebugLog(INFO, "Vault Permission service initialized: " + ((net.milkbowl.vault.permission.Permission) vaultPerms).getName());
+                    vaultPerms =
+                        new codes.castled.allium.managers.vault.VaultPermissionDelegate(
+                            permProvider
+                        );
+                    Text.sendDebugLog(
+                        INFO,
+                        "Vault Permission service initialized: " +
+                            (
+                                (net.milkbowl.vault.permission.Permission) vaultPerms
+                            ).getName()
+                    );
                     coreServicesReady = true;
                 } catch (Throwable t) {
-                    Text.sendDebugLog(WARN, "Failed to initialize Vault Permission (LuckPerms classloader?): " + t.getMessage());
+                    Text.sendDebugLog(
+                        WARN,
+                        "Failed to initialize Vault Permission (LuckPerms classloader?): " +
+                            t.getMessage()
+                    );
                 }
             } else {
-                Text.sendDebugLog(WARN, "Vault Permission service not found. Permission checks will not work correctly.");
+                Text.sendDebugLog(
+                    WARN,
+                    "Vault Permission service not found. Permission checks will not work correctly."
+                );
             }
 
             if (chatProvider != null) {
                 try {
                     Object chatProviderObj = chatProvider.getProvider();
-                    vaultChat = createVaultChatProxy(chatProviderObj, chatClass);
-                    Text.sendDebugLog(INFO, "Vault Chat service initialized: " + ((net.milkbowl.vault.chat.Chat) vaultChat).getName());
+                    vaultChat = createVaultChatProxy(
+                        chatProviderObj,
+                        chatClass
+                    );
+                    Text.sendDebugLog(
+                        INFO,
+                        "Vault Chat service initialized: " +
+                            ((net.milkbowl.vault.chat.Chat) vaultChat).getName()
+                    );
                     coreServicesReady = true;
                 } catch (Throwable t) {
-                    Text.sendDebugLog(WARN, "Failed to initialize Vault Chat (LuckPerms classloader?): " + t.getMessage());
+                    Text.sendDebugLog(
+                        WARN,
+                        "Failed to initialize Vault Chat (LuckPerms classloader?): " +
+                            t.getMessage()
+                    );
                 }
             } else {
-                Text.sendDebugLog(WARN, "Vault Chat service not found. Chat formatting and group-specific features may not work.");
+                Text.sendDebugLog(
+                    WARN,
+                    "Vault Chat service not found. Chat formatting and group-specific features may not work."
+                );
             }
 
             // Ensure our Economy provider is present and mark core readiness if economy is available
             if (economyProvider != null) {
                 vaultEcon = economyProvider.getProvider();
-                Text.sendDebugLog(INFO, "Vault Economy service initialized: " + ((net.milkbowl.vault.economy.Economy) vaultEcon).getName());
+                Text.sendDebugLog(
+                    INFO,
+                    "Vault Economy service initialized: " +
+                        (
+                            (net.milkbowl.vault.economy.Economy) vaultEcon
+                        ).getName()
+                );
                 coreServicesReady = true; // Economy alone is sufficient for core functionality
             } else {
                 try {
                     // If not present, (re)register our provider without affecting core readiness
-                    getServer().getServicesManager().register(net.milkbowl.vault.economy.Economy.class, new VaultEconomyProvider(this, economyManager), this, ServicePriority.Highest);
-                    RegisteredServiceProvider<net.milkbowl.vault.economy.Economy> reg = getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
+                    getServer()
+                        .getServicesManager()
+                        .register(
+                            net.milkbowl.vault.economy.Economy.class,
+                            new VaultEconomyProvider(this, economyManager),
+                            this,
+                            ServicePriority.Highest
+                        );
+                    RegisteredServiceProvider<net.milkbowl.vault.economy.Economy> reg =
+                        getServer()
+                            .getServicesManager()
+                            .getRegistration(
+                                net.milkbowl.vault.economy.Economy.class
+                            );
                     if (reg != null) {
                         vaultEcon = reg.getProvider();
-                        Text.sendDebugLog(INFO, "Registered Allium's Vault Economy provider");
+                        Text.sendDebugLog(
+                            INFO,
+                            "Registered Allium's Vault Economy provider"
+                        );
                         coreServicesReady = true; // Our economy provider is sufficient
                     }
                 } catch (Throwable t) {
-                    Text.sendDebugLog(WARN, "Failed to register Allium's Vault Economy provider: " + t.getMessage());
+                    Text.sendDebugLog(
+                        WARN,
+                        "Failed to register Allium's Vault Economy provider: " +
+                            t.getMessage()
+                    );
                 }
             }
 
             // Return true if any service is available (permission, chat, or economy)
             return coreServicesReady;
         } else {
-            Text.sendDebugLog(WARN, "Vault plugin not found. Some features may not work correctly.");
+            Text.sendDebugLog(
+                WARN,
+                "Vault plugin not found. Some features may not work correctly."
+            );
             return false;
         }
     }
@@ -1250,13 +1816,23 @@ public class PluginStart extends JavaPlugin {
      * Creates a Chat proxy that delegates to the provider via reflection.
      * Uses the Chat class from Vault's classloader to avoid "not an interface" with bundled API.
      */
-    private Object createVaultChatProxy(Object provider, Class<?> chatInterface) {
+    private Object createVaultChatProxy(
+        Object provider,
+        Class<?> chatInterface
+    ) {
         if (!chatInterface.isInterface()) {
-            Text.sendDebugLog(WARN, "Vault Chat is abstract class, skipping proxy");
+            Text.sendDebugLog(
+                WARN,
+                "Vault Chat is abstract class, skipping proxy"
+            );
             return null;
         }
         InvocationHandler handler = (proxy, method, args) -> {
-            Method m = findMethod(provider.getClass(), method.getName(), method.getParameterTypes());
+            Method m = findMethod(
+                provider.getClass(),
+                method.getName(),
+                method.getParameterTypes()
+            );
             return m.invoke(provider, args);
         };
         return Proxy.newProxyInstance(
@@ -1267,12 +1843,19 @@ public class PluginStart extends JavaPlugin {
     }
 
     /** Find method, trying exact match first then by name and param count for overloads. */
-    private Method findMethod(Class<?> clazz, String name, Class<?>[] paramTypes) throws NoSuchMethodException {
+    private Method findMethod(
+        Class<?> clazz,
+        String name,
+        Class<?>[] paramTypes
+    ) throws NoSuchMethodException {
         try {
             return clazz.getMethod(name, paramTypes);
         } catch (NoSuchMethodException e) {
             for (Method m : clazz.getMethods()) {
-                if (m.getName().equals(name) && m.getParameterCount() == paramTypes.length) {
+                if (
+                    m.getName().equals(name) &&
+                    m.getParameterCount() == paramTypes.length
+                ) {
                     Class<?>[] actual = m.getParameterTypes();
                     boolean compatible = true;
                     for (int i = 0; i < paramTypes.length; i++) {
@@ -1296,10 +1879,13 @@ public class PluginStart extends JavaPlugin {
         // Initialize vanish manager
         vanishManager = new VanishManager(this);
         Text.sendDebugLog(INFO, "VanishManager initialized.");
-    
+
         // Initialize inventory manager
         inventoryManager = new InventoryManager(this);
-        offlineInventoryManager = new OfflineInventoryManager(this, inventoryManager);
+        offlineInventoryManager = new OfflineInventoryManager(
+            this,
+            inventoryManager
+        );
         permissionCache = new PermissionCache(this);
 
         // Initialize economy manager
@@ -1310,8 +1896,18 @@ public class PluginStart extends JavaPlugin {
         try {
             Class.forName("net.milkbowl.vault.economy.Economy");
             vaultEcon = new VaultEconomyProvider(this, economyManager);
-            getServer().getServicesManager().register(net.milkbowl.vault.economy.Economy.class, (net.milkbowl.vault.economy.Economy) vaultEcon, this, ServicePriority.Normal);
-            Text.sendDebugLog(INFO, "Registered Allium economy with Vault API.");
+            getServer()
+                .getServicesManager()
+                .register(
+                    net.milkbowl.vault.economy.Economy.class,
+                    (net.milkbowl.vault.economy.Economy) vaultEcon,
+                    this,
+                    ServicePriority.Normal
+                );
+            Text.sendDebugLog(
+                INFO,
+                "Registered Allium economy with Vault API."
+            );
         } catch (ClassNotFoundException ignored) {
             // Vault/VaultUnlocked not on classpath; delayed initializeVault() may still run when plugin loads
         }
@@ -1321,7 +1917,9 @@ public class PluginStart extends JavaPlugin {
             langManager = new Lang(getDataFolder(), this, getConfig());
             Text.sendDebugLog(INFO, "LangManager initialized.");
         } catch (Exception e) {
-            getLogger().severe("Failed to initialize LangManager: " + e.getMessage());
+            getLogger().severe(
+                "Failed to initialize LangManager: " + e.getMessage()
+            );
             e.printStackTrace();
             getServer().getPluginManager().disablePlugin(this);
             return;
@@ -1343,7 +1941,9 @@ public class PluginStart extends JavaPlugin {
             Alias.initialize(this);
             Text.sendDebugLog(INFO, "Alias system initialized.");
         } catch (Exception e) {
-            getLogger().severe("Failed to initialize Alias system: " + e.getMessage());
+            getLogger().severe(
+                "Failed to initialize Alias system: " + e.getMessage()
+            );
             e.printStackTrace();
         }
 
@@ -1351,7 +1951,9 @@ public class PluginStart extends JavaPlugin {
             LegacyID.initialize(this);
             Text.sendDebugLog(INFO, "LegacyID system initialized.");
         } catch (Exception e) {
-            getLogger().severe("Failed to initialize LegacyID system: " + e.getMessage());
+            getLogger().severe(
+                "Failed to initialize LegacyID system: " + e.getMessage()
+            );
             e.printStackTrace();
         }
 
@@ -1409,7 +2011,10 @@ public class PluginStart extends JavaPlugin {
             ItemDBManager itemDBManager = new ItemDBManager(this);
             itemDBManager.checkAndUpdateItemDB();
         } else {
-            Text.sendDebugLog(WARN, "Database not ready for ItemDB initialization, skipping...");
+            Text.sendDebugLog(
+                WARN,
+                "Database not ready for ItemDB initialization, skipping..."
+            );
         }
 
         // Initialize TFly manager (temporary fly)
@@ -1426,7 +2031,9 @@ public class PluginStart extends JavaPlugin {
             handcuffsListener = new HandcuffsListener(this);
             Text.sendDebugLog(INFO, "HandcuffsListener initialized.");
         } catch (Exception e) {
-            getLogger().severe("Failed to initialize HandcuffsListener: " + e.getMessage());
+            getLogger().severe(
+                "Failed to initialize HandcuffsListener: " + e.getMessage()
+            );
             e.printStackTrace();
         }
 
@@ -1434,31 +2041,56 @@ public class PluginStart extends JavaPlugin {
         // Entity hide/show (radius) uses Bukkit API and works without PacketEvents.
         // Only tab list re-add requires PacketEvents; don't disable locator bar when PE unavailable.
         try {
-            boolean locatorBarEnabled = getServer().getWorlds().stream()
-                    .findFirst()
-                    .map(world -> world.getGameRuleValue(org.bukkit.GameRule.LOCATOR_BAR))
-                    .orElse(Boolean.TRUE);
+            boolean locatorBarEnabled = getServer()
+                .getWorlds()
+                .stream()
+                .findFirst()
+                .map(world ->
+                    world.getGameRuleValue(org.bukkit.GameRule.LOCATOR_BAR)
+                )
+                .orElse(Boolean.TRUE);
 
             if (!locatorBarEnabled) {
-                Text.sendDebugLog(INFO, "Locator bar gamerule disabled; TabListManager using no-op");
-                this.tabListManager = new codes.castled.allium.packetevents.TabListManagerNoOp();
+                Text.sendDebugLog(
+                    INFO,
+                    "Locator bar gamerule disabled; TabListManager using no-op"
+                );
+                this.tabListManager =
+                    new codes.castled.allium.packetevents.TabListManagerNoOp();
                 partyManager.setTabListManager(this.tabListManager);
                 partyManager.setPartyLocatorBarEnabled(false);
             } else {
-                this.tabListManager = PacketEventsLoader.createTabListManager(this, partyManager, vanishManager);
+                this.tabListManager = PacketEventsLoader.createTabListManager(
+                    this,
+                    partyManager,
+                    vanishManager
+                );
                 partyManager.setTabListManager(this.tabListManager);
 
                 if (tabListManager.supportsTabListUpdates()) {
-                    Text.sendDebugLog(INFO, "Tab list management enabled - party-locator-bar active");
+                    Text.sendDebugLog(
+                        INFO,
+                        "Tab list management enabled - party-locator-bar active"
+                    );
                 } else {
-                    Text.sendDebugLog(WARN, "PacketEvents not ready at startup; entity hide/show active. Will retry TabListManager in 2s.");
+                    Text.sendDebugLog(
+                        WARN,
+                        "PacketEvents not ready at startup; entity hide/show active. Will retry TabListManager in 2s."
+                    );
                     // Retry in case PacketEvents loads after us
-                    SchedulerAdapter.runLater(() -> retryTabListManagerInit(), 40L);
+                    SchedulerAdapter.runLater(
+                        () -> retryTabListManagerInit(),
+                        40L
+                    );
                 }
             }
         } catch (Throwable e) {
-            Text.sendDebugLog(WARN, "Failed to initialize TabListManager: " + e.getMessage());
-            this.tabListManager = new codes.castled.allium.packetevents.TabListManagerNoOp();
+            Text.sendDebugLog(
+                WARN,
+                "Failed to initialize TabListManager: " + e.getMessage()
+            );
+            this.tabListManager =
+                new codes.castled.allium.packetevents.TabListManagerNoOp();
             partyManager.setTabListManager(this.tabListManager);
             SchedulerAdapter.runLater(() -> retryTabListManagerInit(), 40L);
         }
@@ -1468,22 +2100,36 @@ public class PluginStart extends JavaPlugin {
      * Retry TabListManager init (e.g. when PacketEvents loads after Allium at startup).
      */
     private void retryTabListManagerInit() {
-        if (tabListManager != null && tabListManager.supportsTabListUpdates()) return;
-        boolean locatorBarEnabled = getServer().getWorlds().stream()
-                .findFirst()
-                .map(w -> w.getGameRuleValue(org.bukkit.GameRule.LOCATOR_BAR))
-                .orElse(Boolean.TRUE);
+        if (
+            tabListManager != null && tabListManager.supportsTabListUpdates()
+        ) return;
+        boolean locatorBarEnabled = getServer()
+            .getWorlds()
+            .stream()
+            .findFirst()
+            .map(w -> w.getGameRuleValue(org.bukkit.GameRule.LOCATOR_BAR))
+            .orElse(Boolean.TRUE);
         if (!locatorBarEnabled) return;
         try {
-            TabListManager next = PacketEventsLoader.createTabListManager(this, partyManager, vanishManager);
+            TabListManager next = PacketEventsLoader.createTabListManager(
+                this,
+                partyManager,
+                vanishManager
+            );
             if (next.supportsTabListUpdates()) {
                 if (tabListManager != null) tabListManager.shutdown();
                 tabListManager = next;
                 partyManager.setTabListManager(tabListManager);
-                Text.sendDebugLog(INFO, "Tab list management enabled (delayed init) - party-locator-bar active");
+                Text.sendDebugLog(
+                    INFO,
+                    "Tab list management enabled (delayed init) - party-locator-bar active"
+                );
             }
         } catch (Throwable e) {
-            Text.sendDebugLog(WARN, "TabListManager retry failed: " + e.getMessage());
+            Text.sendDebugLog(
+                WARN,
+                "TabListManager retry failed: " + e.getMessage()
+            );
         }
     }
 
@@ -1496,13 +2142,22 @@ public class PluginStart extends JavaPlugin {
             commandManager = new CommandManager(this);
             securityAlertManager = new SecurityAlertManager(this);
             creativeManager = new CreativeManager(this);
-            
+
             // Link the managers together
             commandManager.setCreativeManager(creativeManager);
-            
-            Core coreCommand = new Core(new WorldDefaults(this), this, getConfig(), commandManager, creativeManager, inventoryManager);
+
+            Core coreCommand = new Core(
+                new WorldDefaults(this),
+                this,
+                getConfig(),
+                commandManager,
+                creativeManager,
+                inventoryManager
+            );
             Objects.requireNonNull(getCommand("core")).setExecutor(coreCommand);
-            Objects.requireNonNull(getCommand("core")).setTabCompleter(coreCommand);
+            Objects.requireNonNull(getCommand("core")).setTabCompleter(
+                coreCommand
+            );
             registerCommand("maintenance", new Maintenance(this));
             tabCompleter = new Tab(this); // Create single Tab instance for all commands
             registerCommand("gamemode", new Gamemode(this), tabCompleter);
@@ -1510,11 +2165,31 @@ public class PluginStart extends JavaPlugin {
             registerCommand("ping", new Ping(this), tabCompleter);
             Fly flyCommand = new Fly(this);
             registerCommand("fly", flyCommand, flyCommand);
-            registerCommand("xpbottle", new XpBottleCommand(this), new XpBottleCommand(this));
-            registerCommand("cheque", new ChequeCommand(this), new ChequeCommand(this));
-            registerCommand("voucher", new VoucherCommand(this), new VoucherCommand(this));
-            registerCommand("heal", new Heal(langManager, getConfig(), this), tabCompleter);
-            registerCommand("feed", new Feed(langManager, getConfig(), this), tabCompleter);
+            registerCommand(
+                "xpbottle",
+                new XpBottleCommand(this),
+                new XpBottleCommand(this)
+            );
+            registerCommand(
+                "cheque",
+                new ChequeCommand(this),
+                new ChequeCommand(this)
+            );
+            registerCommand(
+                "voucher",
+                new VoucherCommand(this),
+                new VoucherCommand(this)
+            );
+            registerCommand(
+                "heal",
+                new Heal(langManager, getConfig(), this),
+                tabCompleter
+            );
+            registerCommand(
+                "feed",
+                new Feed(langManager, getConfig(), this),
+                tabCompleter
+            );
             registerCommand("god", new God(this), tabCompleter);
             PvpCommand pvpCommand = new PvpCommand(this);
             registerCommand("pvp", pvpCommand, pvpCommand);
@@ -1523,9 +2198,11 @@ public class PluginStart extends JavaPlugin {
             // Glow command (requires PacketEvents)
             if (isPacketEventsAvailable()) {
                 this.glowCommand = new Glow(this);
-                registerCommand("glow",
-                        (org.bukkit.command.CommandExecutor) this.glowCommand,
-                        (org.bukkit.command.TabCompleter) this.glowCommand);
+                registerCommand(
+                    "glow",
+                    (org.bukkit.command.CommandExecutor) this.glowCommand,
+                    (org.bukkit.command.TabCompleter) this.glowCommand
+                );
             }
 
             // Vanish commands
@@ -1558,15 +2235,22 @@ public class PluginStart extends JavaPlugin {
             registerCommand("give", new Give(this), tabCompleter);
             Invsee invseeCommand = new Invsee(this);
             registerCommand("invsee", invseeCommand);
-            registerListenerSafely(getServer().getPluginManager(), "Invsee", invseeCommand);
+            registerListenerSafely(
+                getServer().getPluginManager(),
+                "Invsee",
+                invseeCommand
+            );
             registerCommand("enderchest", new EnderChestCommand(this));
             registerCommand("itemdb", new ItemDB(this));
             registerCommand("lore", new Lore(this), tabCompleter);
             registerCommand("more", new More(this));
             registerCommand("rename", new Rename(this), tabCompleter);
             registerCommand("skull", new Skull(this));
-            registerCommand("trash", new TrashCommand(this), new TrashCommand(this));
-            
+            registerCommand(
+                "trash",
+                new TrashCommand(this),
+                new TrashCommand(this)
+            );
 
             // Fun commands
             explodeCommand = new Explode(this);
@@ -1575,9 +2259,27 @@ public class PluginStart extends JavaPlugin {
             // Teleportation commands
             tpCommand = new TP(this);
             String[] tpCommands = {
-                    "tp", "back", "tphere", "tpahere", "tpa", "tpcancel", "tpacancel",
-                    "tpaccept", "tpdeny", "tppet", "tpmob", "tppos", "tphere", "tpahere", "tptoggle", "top",
-                    "bottom", "tpall", "tpauto", "tpo", "otp"
+                "tp",
+                "back",
+                "tphere",
+                "tpahere",
+                "tpa",
+                "tpcancel",
+                "tpacancel",
+                "tpaccept",
+                "tpdeny",
+                "tppet",
+                "tpmob",
+                "tppos",
+                "tphere",
+                "tpahere",
+                "tptoggle",
+                "top",
+                "bottom",
+                "tpall",
+                "tpauto",
+                "tpo",
+                "otp",
             };
             for (String cmd : tpCommands) {
                 registerCommand(cmd, tpCommand, tpCommand);
@@ -1620,53 +2322,77 @@ public class PluginStart extends JavaPlugin {
             registerCommand("warpinfo", warpInfoCommand, warpInfoCommand);
 
             // Delete message command
-            DeleteMsg deleteMessageCommand = new DeleteMsg(this, chatMessageManager);
+            DeleteMsg deleteMessageCommand = new DeleteMsg(
+                this,
+                chatMessageManager
+            );
             registerCommand("deletemsg", deleteMessageCommand);
 
             // Enchant command
             Enchant enchantCommand = new Enchant(this);
             registerCommand("enchant", enchantCommand, tabCompleter);
-            
+
             // Restore command
             Restore restoreCommand = new Restore(this, inventoryManager);
             registerCommand("restore", restoreCommand);
-            
+
             // Party command - take over from mcMMO when present (loadafter + force ownership)
-            registerCommand("party", new PartyCommand(this, partyManager), new PartyCommand(this, partyManager));
+            registerCommand(
+                "party",
+                new PartyCommand(this, partyManager),
+                new PartyCommand(this, partyManager)
+            );
             if (getServer().getPluginManager().getPlugin("mcMMO") != null) {
                 try {
                     forceCommandOwnership("party");
                 } catch (Throwable t) {
                     if (isDebugMode()) {
-                        Text.sendDebugLog(WARN, "Could not take over /party from mcMMO: " + t.getMessage());
+                        Text.sendDebugLog(
+                            WARN,
+                            "Could not take over /party from mcMMO: " +
+                                t.getMessage()
+                        );
                     }
                 }
             }
 
             // Locator bar command
-            LocatorBarCommand locatorBarCommand = new LocatorBarCommand(this, partyManager);
+            LocatorBarCommand locatorBarCommand = new LocatorBarCommand(
+                this,
+                partyManager
+            );
             registerCommand("locatorbar", locatorBarCommand, locatorBarCommand);
 
             // Time commands
             registerCommand("time", timeCycle, timeCycle);
             registerCommand("day", timeCycle, timeCycle);
             registerCommand("night", timeCycle, timeCycle);
-            
+
             // Auto Restart command
             try {
                 this.autoRestartCommand = new AutoRestartCommand(this);
-                registerCommand("autorestart", autoRestartCommand, autoRestartCommand);
+                registerCommand(
+                    "autorestart",
+                    autoRestartCommand,
+                    autoRestartCommand
+                );
                 registerCommand("ar", autoRestartCommand, autoRestartCommand);
                 if (isDebugMode()) {
-                    getLogger().info("Auto-restart command registered successfully");
+                    getLogger().info(
+                        "Auto-restart command registered successfully"
+                    );
                 }
             } catch (Exception e) {
-                getLogger().severe("Failed to initialize AutoRestart: " + e.getMessage());
+                getLogger().severe(
+                    "Failed to initialize AutoRestart: " + e.getMessage()
+                );
                 e.printStackTrace();
             }
 
             // Register the /voterestart command
-            VoterRestartCommand voterRestartCommand = new VoterRestartCommand(this);
+            VoterRestartCommand voterRestartCommand = new VoterRestartCommand(
+                this
+            );
             registerCommand("voterestart", voterRestartCommand);
 
             // Register handcuffs command (always available)
@@ -1679,7 +2405,10 @@ public class PluginStart extends JavaPlugin {
             registerCommand("unrestrain", unrestrainCommand);
             Text.sendDebugLog(INFO, "Unrestrain command registered");
 
-            ChannelCommand channelCommand = new ChannelCommand(this, channelManager);
+            ChannelCommand channelCommand = new ChannelCommand(
+                this,
+                channelManager
+            );
             registerCommand("channel", channelCommand, channelCommand);
             registerCommand("a", channelCommand, channelCommand);
             registerCommand("staffchat", channelCommand, channelCommand);
@@ -1690,31 +2419,81 @@ public class PluginStart extends JavaPlugin {
             try {
                 forceCommandOwnership("a");
             } catch (Throwable t) {
-                Text.sendDebugLog(WARN, "Could not override /a (mcMMO may own it): " + t.getMessage());
+                Text.sendDebugLog(
+                    WARN,
+                    "Could not override /a (mcMMO may own it): " +
+                        t.getMessage()
+                );
             }
             Text.sendDebugLog(INFO, "Channel commands registered");
 
             // Initialize Custom Items system
             CustomItemsConfig.initialize(this);
-            CustomItemRegistry customItemRegistry = new CustomItemRegistry(this);
-            SpawnerChangerManager spawnerChangerManager = new SpawnerChangerManager(this, customItemRegistry);
-            ItemRenamerManager itemRenamerManager = new ItemRenamerManager(this, customItemRegistry);
+            CustomItemRegistry customItemRegistry = new CustomItemRegistry(
+                this
+            );
+            SpawnerChangerManager spawnerChangerManager =
+                new SpawnerChangerManager(this, customItemRegistry);
+            ItemRenamerManager itemRenamerManager = new ItemRenamerManager(
+                this,
+                customItemRegistry
+            );
             customItemRegistry.register(new TreeAxeItem(this));
-            customItemRegistry.register(new SpawnerChangerItem(this, spawnerChangerManager));
+            customItemRegistry.register(
+                new SpawnerChangerItem(this, spawnerChangerManager)
+            );
             customItemRegistry.register(new ItemRenamerItem(this));
-            Text.sendDebugLog(INFO, "Registered " + customItemRegistry.getItemCount() + " custom items");
+            Text.sendDebugLog(
+                INFO,
+                "Registered " +
+                    customItemRegistry.getItemCount() +
+                    " custom items"
+            );
 
             // Register custom item listeners
-            getServer().getPluginManager().registerEvents(new TreeAxeListener(this, customItemRegistry), this);
-            getServer().getPluginManager().registerEvents(spawnerChangerManager, this);
-            getServer().getPluginManager().registerEvents(new SpawnerChangerListener(this, customItemRegistry, spawnerChangerManager), this);
-            getServer().getPluginManager().registerEvents(itemRenamerManager, this);
-            getServer().getPluginManager().registerEvents(new OraxenSmeltingListener(), this);
+            getServer()
+                .getPluginManager()
+                .registerEvents(
+                    new TreeAxeListener(this, customItemRegistry),
+                    this
+                );
+            getServer()
+                .getPluginManager()
+                .registerEvents(spawnerChangerManager, this);
+            getServer()
+                .getPluginManager()
+                .registerEvents(
+                    new SpawnerChangerListener(
+                        this,
+                        customItemRegistry,
+                        spawnerChangerManager
+                    ),
+                    this
+                );
+            getServer()
+                .getPluginManager()
+                .registerEvents(itemRenamerManager, this);
+            getServer()
+                .getPluginManager()
+                .registerEvents(new OraxenSmeltingListener(), this);
             spawnerCoreManager = new SpawnerCoreManager(this);
-            getServer().getPluginManager().registerEvents(new MobHeadDropListener(this), this);
-            getServer().getPluginManager().registerEvents(new SpawnerCraftListener(this, spawnerCoreManager), this);
-            SpawnerCoreCommand spawnerCoreCommand = new SpawnerCoreCommand(this);
-            registerCommand("spawnercore", spawnerCoreCommand, spawnerCoreCommand);
+            getServer()
+                .getPluginManager()
+                .registerEvents(new MobHeadDropListener(this), this);
+            getServer()
+                .getPluginManager()
+                .registerEvents(
+                    new SpawnerCraftListener(this, spawnerCoreManager),
+                    this
+                );
+            SpawnerCoreCommand spawnerCoreCommand = new SpawnerCoreCommand(
+                this
+            );
+            registerCommand(
+                "spawnercore",
+                spawnerCoreCommand,
+                spawnerCoreCommand
+            );
             Text.sendDebugLog(INFO, "Custom item listeners registered");
 
             // Register /core item command
@@ -1723,14 +2502,16 @@ public class PluginStart extends JavaPlugin {
             Text.sendDebugLog(INFO, "Core item command registered");
 
             // Initialize Resource Pack Manager
-            ResourcePackManager resourcePackManager = new ResourcePackManager(this);
+            ResourcePackManager resourcePackManager = new ResourcePackManager(
+                this
+            );
             Text.sendDebugLog(INFO, "Resource pack manager initialized");
-            
+
             // Register nickname commands
             Nick nicknameCommand = new Nick(this);
             registerCommand("nickname", nicknameCommand);
             Text.sendDebugLog(INFO, "Nickname command registered");
-            
+
             EditNick editNickCommand = new EditNick(this);
             registerCommand("editnick", editNickCommand);
             Text.sendDebugLog(INFO, "EditNick command registered");
@@ -1738,11 +2519,20 @@ public class PluginStart extends JavaPlugin {
             if (witherSpawnBlocker == null) {
                 witherSpawnBlocker = new WitherSpawnBlocker(this);
             }
-            WitherToggle witherToggleCommand = new WitherToggle(this, witherSpawnBlocker);
-            registerCommand("withertoggle", witherToggleCommand, witherToggleCommand);
-
+            WitherToggle witherToggleCommand = new WitherToggle(
+                this,
+                witherSpawnBlocker
+            );
+            registerCommand(
+                "withertoggle",
+                witherToggleCommand,
+                witherToggleCommand
+            );
         } catch (Exception e) {
-            Text.sendDebugLog(ERROR, "Failed to register commands: " + e.getMessage());
+            Text.sendDebugLog(
+                ERROR,
+                "Failed to register commands: " + e.getMessage()
+            );
             getServer().getPluginManager().disablePlugin(this);
         }
     }
@@ -1754,7 +2544,11 @@ public class PluginStart extends JavaPlugin {
      * @param executor The command executor.
      * @param completer The tab completer, or null if none.
      */
-    private void registerCommand(String name, org.bukkit.command.CommandExecutor executor, org.bukkit.command.TabCompleter completer) {
+    private void registerCommand(
+        String name,
+        org.bukkit.command.CommandExecutor executor,
+        org.bukkit.command.TabCompleter completer
+    ) {
         PluginCommand command = getCommand(name);
         if (command != null) {
             command.setExecutor(executor);
@@ -1762,7 +2556,12 @@ public class PluginStart extends JavaPlugin {
                 command.setTabCompleter(completer);
             }
         } else {
-            Text.sendDebugLog(WARN, "Could not register command '" + name + "' - not found in plugin.yml?");
+            Text.sendDebugLog(
+                WARN,
+                "Could not register command '" +
+                    name +
+                    "' - not found in plugin.yml?"
+            );
         }
     }
 
@@ -1772,7 +2571,10 @@ public class PluginStart extends JavaPlugin {
      * @param name     The command name.
      * @param executor The command executor.
      */
-    private void registerCommand(String name, org.bukkit.command.CommandExecutor executor) {
+    private void registerCommand(
+        String name,
+        org.bukkit.command.CommandExecutor executor
+    ) {
         registerCommand(name, executor, null);
     }
 
@@ -1781,18 +2583,29 @@ public class PluginStart extends JavaPlugin {
      */
     private void registerNonVaultListeners() {
         PluginManager pm = getServer().getPluginManager();
-        
+
         // Initialize ore generation manager
-        getLogger().severe("[OreGen-INIT] Initializing OreGenerationManager...");
+        getLogger().severe(
+            "[OreGen-INIT] Initializing OreGenerationManager..."
+        );
         try {
             oreGenerationManager = new OreGenerationManager(this);
-            getLogger().severe("[OreGen-INIT] OreGenerationManager initialized SUCCESSFULLY");
+            getLogger().severe(
+                "[OreGen-INIT] OreGenerationManager initialized SUCCESSFULLY"
+            );
             if (isDebugMode()) {
-                getLogger().info("Successfully initialized OreGenerationManager");
+                getLogger().info(
+                    "Successfully initialized OreGenerationManager"
+                );
             }
         } catch (Throwable t) {
-            getLogger().severe("[OreGen-INIT] FAILED to initialize OreGenerationManager: " + t.getMessage());
-            getLogger().warning("Failed to initialize OreGenerationManager: " + t.getMessage());
+            getLogger().severe(
+                "[OreGen-INIT] FAILED to initialize OreGenerationManager: " +
+                    t.getMessage()
+            );
+            getLogger().warning(
+                "Failed to initialize OreGenerationManager: " + t.getMessage()
+            );
             if (isDebugMode()) {
                 t.printStackTrace();
             }
@@ -1803,14 +2616,25 @@ public class PluginStart extends JavaPlugin {
         if (spectatorTeleport == null) {
             try {
                 // Load NV class using the plugin's class loader
-                Class<?> nvClass = getClass().getClassLoader().loadClass("net.survivalfun.core.commands.NV");
-                Object nvInstance = nvClass.getConstructor(PluginStart.class).newInstance(this);
-                spectatorTeleport = new SpectatorTeleport(this, (NV) nvInstance);
+                Class<?> nvClass = getClass()
+                    .getClassLoader()
+                    .loadClass("net.survivalfun.core.commands.NV");
+                Object nvInstance = nvClass
+                    .getConstructor(PluginStart.class)
+                    .newInstance(this);
+                spectatorTeleport = new SpectatorTeleport(
+                    this,
+                    (NV) nvInstance
+                );
                 if (isDebugMode()) {
-                    getLogger().info("Successfully initialized SpectatorTeleport");
+                    getLogger().info(
+                        "Successfully initialized SpectatorTeleport"
+                    );
                 }
             } catch (Throwable t) {
-                getLogger().severe("Failed to initialize SpectatorTeleport. This feature will be disabled.");
+                getLogger().severe(
+                    "Failed to initialize SpectatorTeleport. This feature will be disabled."
+                );
                 if (isDebugMode()) {
                     t.printStackTrace();
                 }
@@ -1823,10 +2647,14 @@ public class PluginStart extends JavaPlugin {
             try {
                 flyOnRejoinListener = new FlightRestoration(this);
                 if (isDebugMode()) {
-                    getLogger().info("Successfully initialized FlightRestoration");
+                    getLogger().info(
+                        "Successfully initialized FlightRestoration"
+                    );
                 }
             } catch (Throwable t) {
-                getLogger().warning("Failed to initialize FlightRestoration: " + t.getMessage());
+                getLogger().warning(
+                    "Failed to initialize FlightRestoration: " + t.getMessage()
+                );
                 if (isDebugMode()) {
                     t.printStackTrace();
                 }
@@ -1839,10 +2667,14 @@ public class PluginStart extends JavaPlugin {
             try {
                 witherSpawnBlocker = new WitherSpawnBlocker(this);
                 if (isDebugMode()) {
-                    getLogger().info("Successfully initialized WitherSpawnBlocker");
+                    getLogger().info(
+                        "Successfully initialized WitherSpawnBlocker"
+                    );
                 }
             } catch (Throwable t) {
-                getLogger().warning("Failed to initialize WitherSpawnBlocker: " + t.getMessage());
+                getLogger().warning(
+                    "Failed to initialize WitherSpawnBlocker: " + t.getMessage()
+                );
                 if (isDebugMode()) {
                     t.printStackTrace();
                 }
@@ -1854,143 +2686,302 @@ public class PluginStart extends JavaPlugin {
         // Using direct class loading instead of lambdas to avoid class loading issues
         try {
             // Register core listeners
-            registerListenerSafely(pm, "ConnectionManager", new ConnectionManager(this));
-            registerListenerSafely(pm, "AltProtectionListener", new AltProtectionListener(this));
-            registerListenerSafely(pm, "UpdateCheckerListener", new codes.castled.allium.listeners.UpdateCheckerListener());
-            registerListenerSafely(pm, "DialogApplyListener", new codes.castled.allium.listeners.DialogApplyListener(this));
-            registerListenerSafely(pm, "XpBottleRedeemListener", new XpBottleRedeemListener(this));
-            registerListenerSafely(pm, "ChequeRedeemListener", new ChequeRedeemListener(this));
-            registerListenerSafely(pm, "VoucherRedeemListener", new VoucherRedeemListener(this));
-            
+            registerListenerSafely(
+                pm,
+                "ConnectionManager",
+                new ConnectionManager(this)
+            );
+            registerListenerSafely(
+                pm,
+                "AltProtectionListener",
+                new AltProtectionListener(this)
+            );
+            registerListenerSafely(
+                pm,
+                "UpdateCheckerListener",
+                new codes.castled.allium.listeners.UpdateCheckerListener()
+            );
+            registerListenerSafely(
+                pm,
+                "DialogApplyListener",
+                new codes.castled.allium.listeners.DialogApplyListener(this)
+            );
+            registerListenerSafely(
+                pm,
+                "XpBottleRedeemListener",
+                new XpBottleRedeemListener(this)
+            );
+            registerListenerSafely(
+                pm,
+                "ChequeRedeemListener",
+                new ChequeRedeemListener(this)
+            );
+            registerListenerSafely(
+                pm,
+                "VoucherRedeemListener",
+                new VoucherRedeemListener(this)
+            );
+
             if (creativeManager != null) {
                 registerListenerSafely(pm, "CreativeManager", creativeManager);
             }
-            
+
             if (spectatorTeleport != null) {
-                registerListenerSafely(pm, "SpectatorTeleport", spectatorTeleport);
+                registerListenerSafely(
+                    pm,
+                    "SpectatorTeleport",
+                    spectatorTeleport
+                );
             }
-            
+
             if (flyOnRejoinListener != null) {
-                registerListenerSafely(pm, "FlightRestoration", flyOnRejoinListener);
+                registerListenerSafely(
+                    pm,
+                    "FlightRestoration",
+                    flyOnRejoinListener
+                );
             }
-            
+
             // Register other listeners with null checks and error handling
             try {
-                registerListenerSafely(pm, "MaintenanceManager", new MaintenanceManager(this, getVaultPermission()));
+                registerListenerSafely(
+                    pm,
+                    "MaintenanceManager",
+                    new MaintenanceManager(this, getVaultPermission())
+                );
             } catch (Throwable t) {
-                getLogger().warning("Failed to register MaintenanceManager: " + t.toString());
+                getLogger().warning(
+                    "Failed to register MaintenanceManager: " + t.toString()
+                );
             }
-            
+
             try {
-                registerListenerSafely(pm, "InventorySnapshotListener", new InventorySnapshotListener(this, inventoryManager));
+                registerListenerSafely(
+                    pm,
+                    "InventorySnapshotListener",
+                    new InventorySnapshotListener(this, inventoryManager)
+                );
             } catch (Throwable t) {
-                getLogger().warning("Failed to register InventorySnapshotListener: " + t.toString());
+                getLogger().warning(
+                    "Failed to register InventorySnapshotListener: " +
+                        t.toString()
+                );
             }
 
             if (offlineInventoryManager != null) {
-                registerListenerSafely(pm, "OfflineInventoryManager", offlineInventoryManager);
+                registerListenerSafely(
+                    pm,
+                    "OfflineInventoryManager",
+                    offlineInventoryManager
+                );
             }
-            
+
             if (handcuffsListener != null) {
-                registerListenerSafely(pm, "HandcuffsListener", handcuffsListener);
+                registerListenerSafely(
+                    pm,
+                    "HandcuffsListener",
+                    handcuffsListener
+                );
             }
 
             if (channelManager != null) {
-                registerListenerSafely(pm, "AlliumChannelManager", channelManager);
+                registerListenerSafely(
+                    pm,
+                    "AlliumChannelManager",
+                    channelManager
+                );
             }
-            
+
             if (witherSpawnBlocker != null) {
-                registerListenerSafely(pm, "WitherSpawnBlocker", witherSpawnBlocker);
+                registerListenerSafely(
+                    pm,
+                    "WitherSpawnBlocker",
+                    witherSpawnBlocker
+                );
             }
-            
+
             // Register other listeners with proper error handling
-            registerListenerWithErrorHandling(pm, "GUIListener", () -> new codes.castled.allium.listeners.gui.GUIListener());
-            registerListenerWithErrorHandling(pm, "CreeperExplosion", () -> new CreeperExplosion(this));
-            registerListenerWithErrorHandling(pm, "FireballExplosion", () -> new FireballExplosion(this));
-            registerListenerWithErrorHandling(pm, "SlimeJump", () -> new SlimeJump(this, 2.0, 0.5, 0.2, 2.0, true, "&aThe slime cushioned your fall!", true));
-            registerListenerWithErrorHandling(pm, "Death", () -> new Death(this));
-            registerListenerWithErrorHandling(pm, "WolfBehaviorListener", WolfBehaviorListener::new);
-            registerListenerWithErrorHandling(pm, "LootTableListener", () -> new LootTableListener(this));
-            
+            registerListenerWithErrorHandling(pm, "GUIListener", () ->
+                new codes.castled.allium.listeners.gui.GUIListener()
+            );
+            registerListenerWithErrorHandling(pm, "CreeperExplosion", () ->
+                new CreeperExplosion(this)
+            );
+            registerListenerWithErrorHandling(pm, "FireballExplosion", () ->
+                new FireballExplosion(this)
+            );
+            registerListenerWithErrorHandling(pm, "SlimeJump", () ->
+                new SlimeJump(
+                    this,
+                    2.0,
+                    0.5,
+                    0.2,
+                    2.0,
+                    true,
+                    "&aThe slime cushioned your fall!",
+                    true
+                )
+            );
+            registerListenerWithErrorHandling(pm, "Death", () ->
+                new Death(this)
+            );
+            registerListenerWithErrorHandling(
+                pm,
+                "WolfBehaviorListener",
+                WolfBehaviorListener::new
+            );
+            registerListenerWithErrorHandling(pm, "LootTableListener", () ->
+                new LootTableListener(this)
+            );
+
             // Ore generation listener
-            getLogger().severe("[OreGen-REGISTER] Attempting to register OreGenerationListener...");
-            getLogger().severe("[OreGen-REGISTER] oreGenerationManager is " + (oreGenerationManager != null ? "NOT null" : "NULL"));
+            getLogger().severe(
+                "[OreGen-REGISTER] Attempting to register OreGenerationListener..."
+            );
+            getLogger().severe(
+                "[OreGen-REGISTER] oreGenerationManager is " +
+                    (oreGenerationManager != null ? "NOT null" : "NULL")
+            );
             try {
                 if (oreGenerationManager != null) {
-                    getLogger().severe("[OreGen-REGISTER] Calling registerListenerSafely for OreGenerationListener");
-                    registerListenerSafely(pm, "OreGenerationListener", 
-                        new codes.castled.allium.listeners.world.OreGenerationListener(this, oreGenerationManager));
-                    getLogger().severe("[OreGen-REGISTER] OreGenerationListener registration completed!");
+                    getLogger().severe(
+                        "[OreGen-REGISTER] Calling registerListenerSafely for OreGenerationListener"
+                    );
+                    registerListenerSafely(
+                        pm,
+                        "OreGenerationListener",
+                        new codes.castled.allium.listeners.world.OreGenerationListener(
+                            this,
+                            oreGenerationManager
+                        )
+                    );
+                    getLogger().severe(
+                        "[OreGen-REGISTER] OreGenerationListener registration completed!"
+                    );
                 } else {
-                    getLogger().severe("[OreGen-REGISTER] SKIPPING registration - oreGenerationManager is null!");
+                    getLogger().severe(
+                        "[OreGen-REGISTER] SKIPPING registration - oreGenerationManager is null!"
+                    );
                 }
             } catch (Throwable t) {
-                getLogger().severe("[OreGen-REGISTER] FAILED to register OreGenerationListener: " + t.toString());
+                getLogger().severe(
+                    "[OreGen-REGISTER] FAILED to register OreGenerationListener: " +
+                        t.toString()
+                );
                 t.printStackTrace();
             }
-            
+
             // Register NoteBlockPhysicsListener for Resource world ore protection
             try {
-                registerListenerSafely(pm, "NoteBlockPhysicsListener", 
-                    new codes.castled.allium.listeners.world.NoteBlockPhysicsListener());
-                getLogger().info("[OreGen] NoteBlockPhysicsListener registered for 'Resource' world");
+                registerListenerSafely(
+                    pm,
+                    "NoteBlockPhysicsListener",
+                    new codes.castled.allium.listeners.world.NoteBlockPhysicsListener()
+                );
+                getLogger().info(
+                    "[OreGen] NoteBlockPhysicsListener registered for 'Resource' world"
+                );
             } catch (Throwable t) {
-                getLogger().warning("[OreGen] Failed to register NoteBlockPhysicsListener: " + t.toString());
+                getLogger().warning(
+                    "[OreGen] Failed to register NoteBlockPhysicsListener: " +
+                        t.toString()
+                );
             }
 
             // Register EndGatewayListener for safe End Gateway teleports near main island
             try {
-                registerListenerSafely(pm, "EndGatewayListener", 
-                    new codes.castled.allium.listeners.world.EndGatewayListener(this));
+                registerListenerSafely(
+                    pm,
+                    "EndGatewayListener",
+                    new codes.castled.allium.listeners.world.EndGatewayListener(
+                        this
+                    )
+                );
                 getLogger().info("[EndGateway] EndGatewayListener registered");
             } catch (Throwable t) {
-                getLogger().warning("[EndGateway] Failed to register EndGatewayListener: " + t.toString());
+                getLogger().warning(
+                    "[EndGateway] Failed to register EndGatewayListener: " +
+                        t.toString()
+                );
             }
 
             // Message listeners
             if (msgCommand != null) {
                 registerListenerSafely(pm, "MsgCommand", msgCommand);
                 try {
-                    registerListenerSafely(pm, "MailManager", new MailManager(msgCommand));
+                    registerListenerSafely(
+                        pm,
+                        "MailManager",
+                        new MailManager(msgCommand)
+                    );
                 } catch (Throwable t) {
-                    getLogger().warning("Failed to register MailManager: " + t.toString());
+                    getLogger().warning(
+                        "Failed to register MailManager: " + t.toString()
+                    );
                 }
             }
 
             // Teleport listener
-            registerListenerSafely(pm, "TeleportBackListener", 
-                () -> new codes.castled.allium.listeners.jobs.TeleportBackListener(this));
+            registerListenerSafely(pm, "TeleportBackListener", () ->
+                new codes.castled.allium.listeners.jobs.TeleportBackListener(
+                    this
+                )
+            );
 
             // Party visibility management
             if (partyManager != null && tabListManager != null) {
-                registerListenerSafely(pm, "PartyListener", 
-                    () -> new PartyListener(this, partyManager, tabListManager));
+                registerListenerSafely(pm, "PartyListener", () ->
+                    new PartyListener(this, partyManager, tabListManager)
+                );
             }
 
             // Join & Quit messages
-            registerListenerSafely(pm, "JoinQuitMessages",
-                    new JoinQuitMessages(this, vanishManager));
+            registerListenerSafely(
+                pm,
+                "JoinQuitMessages",
+                new JoinQuitMessages(this, vanishManager)
+            );
 
             // Glow listener — cleans up teams on quit (requires PacketEvents)
             if (isPacketEventsAvailable()) {
-                registerListenerSafely(pm, "GlowListener",
-                        new codes.castled.allium.listeners.GlowListener(this, (codes.castled.allium.commands.Glow) glowCommand));
+                registerListenerSafely(
+                    pm,
+                    "GlowListener",
+                    new codes.castled.allium.listeners.GlowListener(
+                        this,
+                        (codes.castled.allium.commands.Glow) glowCommand
+                    )
+                );
             }
 
             // ModGuard - Client Mod Detection (replaces PacketEvents-based detection)
             // Uses Bukkit PluginMessageListener - no PacketEvents required
             try {
-                registerListenerSafely(pm, "ModGuardManager", 
-                    new codes.castled.allium.managers.security.ModGuardManager(this));
-                getLogger().info("[ModGuard] Mod detection registered successfully");
+                registerListenerSafely(
+                    pm,
+                    "ModGuardManager",
+                    new codes.castled.allium.managers.security.ModGuardManager(
+                        this
+                    )
+                );
+                getLogger().info(
+                    "[ModGuard] Mod detection registered successfully"
+                );
             } catch (Throwable t) {
-                getLogger().warning("[ModGuard] Failed to register: " + t.getMessage());
+                getLogger().warning(
+                    "[ModGuard] Failed to register: " + t.getMessage()
+                );
             }
-
         } catch (Exception e) {
-            getLogger().severe("Unexpected error in registerNonVaultListeners: " + e.getMessage());
+            getLogger().severe(
+                "Unexpected error in registerNonVaultListeners: " +
+                    e.getMessage()
+            );
             e.printStackTrace();
-            throw new IllegalStateException("Failed to initialize non-Vault listeners", e);
+            throw new IllegalStateException(
+                "Failed to initialize non-Vault listeners",
+                e
+            );
         }
     }
 
@@ -2000,10 +2991,14 @@ public class PluginStart extends JavaPlugin {
      * @param listenerName Name of the listener for logging purposes
      * @param listenerSupplier Supplier that provides the Listener instance
      */
-    private void registerListenerWithErrorHandling(PluginManager pm, String listenerName, Supplier<Listener> listenerSupplier) {
+    private void registerListenerWithErrorHandling(
+        PluginManager pm,
+        String listenerName,
+        Supplier<Listener> listenerSupplier
+    ) {
         int maxAttempts = 3;
         int attempt = 0;
-        
+
         while (attempt < maxAttempts) {
             try {
                 attempt++;
@@ -2015,14 +3010,30 @@ public class PluginStart extends JavaPlugin {
             } catch (Throwable t) {
                 if (attempt >= maxAttempts) {
                     // Only log error on final attempt
-                    getLogger().warning("Failed to register listener " + listenerName + " after " + maxAttempts + " attempts: " + t.toString());
+                    getLogger().warning(
+                        "Failed to register listener " +
+                            listenerName +
+                            " after " +
+                            maxAttempts +
+                            " attempts: " +
+                            t.toString()
+                    );
                     if (isDebugMode()) {
                         t.printStackTrace();
                     }
                 } else {
                     // Log debug info for retries
                     if (isDebugMode()) {
-                        getLogger().info("Retrying registration of " + listenerName + " (attempt " + (attempt + 1) + " of " + maxAttempts + "): " + t.getMessage());
+                        getLogger().info(
+                            "Retrying registration of " +
+                                listenerName +
+                                " (attempt " +
+                                (attempt + 1) +
+                                " of " +
+                                maxAttempts +
+                                "): " +
+                                t.getMessage()
+                        );
                     }
                     // Add a small delay before retry
                     try {
@@ -2035,7 +3046,7 @@ public class PluginStart extends JavaPlugin {
             }
         }
     }
-    
+
     /**
      * Helper method to safely register a single listener with error handling
      * @param pm The PluginManager instance
@@ -2048,30 +3059,52 @@ public class PluginStart extends JavaPlugin {
      * @param listenerName Name of the listener for logging purposes
      * @param listener The Listener instance to register
      */
-    private void registerListenerSafely(PluginManager pm, String listenerName, Listener listener) {
+    private void registerListenerSafely(
+        PluginManager pm,
+        String listenerName,
+        Listener listener
+    ) {
         if (listener == null) {
-            getLogger().warning("Cannot register null listener: " + listenerName);
+            getLogger().warning(
+                "Cannot register null listener: " + listenerName
+            );
             return;
         }
-        
+
         try {
             // Check if the plugin is still enabled before proceeding
             if (!isEnabled()) {
-                getLogger().warning("Skipping registration of " + listenerName + " - plugin is disabled");
+                getLogger().warning(
+                    "Skipping registration of " +
+                        listenerName +
+                        " - plugin is disabled"
+                );
                 return;
             }
-            
+
             pm.registerEvents(listener, this);
             if (isDebugMode()) {
-                getLogger().info("Successfully registered listener: " + listenerName);
+                getLogger().info(
+                    "Successfully registered listener: " + listenerName
+                );
             }
         } catch (IllegalStateException e) {
             // Handle cases where the plugin is being disabled
             if (isEnabled()) {
-                getLogger().warning("Failed to register listener " + listenerName + ": " + e.getMessage());
+                getLogger().warning(
+                    "Failed to register listener " +
+                        listenerName +
+                        ": " +
+                        e.getMessage()
+                );
             }
         } catch (Exception e) {
-            getLogger().warning("Failed to register listener " + listenerName + ": " + e.toString());
+            getLogger().warning(
+                "Failed to register listener " +
+                    listenerName +
+                    ": " +
+                    e.toString()
+            );
             if (e.getCause() != null) {
                 getLogger().warning("Caused by: " + e.getCause().toString());
             }
@@ -2080,21 +3113,29 @@ public class PluginStart extends JavaPlugin {
             }
         }
     }
-    
+
     /**
      * Helper method to safely register a single listener with error handling using a Supplier
      * @param pm The PluginManager instance
      * @param listenerName Name of the listener for logging purposes
      * @param listenerSupplier Supplier that provides the Listener instance
      */
-    private void registerListenerSafely(PluginManager pm, String listenerName, Supplier<Listener> listenerSupplier) {
+    private void registerListenerSafely(
+        PluginManager pm,
+        String listenerName,
+        Supplier<Listener> listenerSupplier
+    ) {
         try {
             // Check if the plugin is still enabled before proceeding
             if (!isEnabled()) {
-                getLogger().warning("Skipping registration of " + listenerName + " - plugin is disabled");
+                getLogger().warning(
+                    "Skipping registration of " +
+                        listenerName +
+                        " - plugin is disabled"
+                );
                 return;
             }
-            
+
             // Try to get the listener
             Listener listener = null;
             try {
@@ -2103,16 +3144,28 @@ public class PluginStart extends JavaPlugin {
                     // Use the direct registration method
                     registerListenerSafely(pm, listenerName, listener);
                 } else {
-                    getLogger().warning("Skipping null listener from supplier: " + listenerName);
+                    getLogger().warning(
+                        "Skipping null listener from supplier: " + listenerName
+                    );
                 }
             } catch (ExceptionInInitializerError | NoClassDefFoundError e) {
                 // Handle class loading errors specifically
-                getLogger().severe("Failed to load listener class " + listenerName + ": " + e.toString());
+                getLogger().severe(
+                    "Failed to load listener class " +
+                        listenerName +
+                        ": " +
+                        e.toString()
+                );
                 if (e.getCause() != null) {
                     getLogger().severe("Caused by: " + e.getCause().toString());
                 }
             } catch (Throwable t) {
-                getLogger().severe("Failed to initialize listener " + listenerName + ": " + t.toString());
+                getLogger().severe(
+                    "Failed to initialize listener " +
+                        listenerName +
+                        ": " +
+                        t.toString()
+                );
                 if (t.getCause() != null) {
                     getLogger().severe("Caused by: " + t.getCause().toString());
                 }
@@ -2121,7 +3174,12 @@ public class PluginStart extends JavaPlugin {
                 }
             }
         } catch (Throwable t) {
-            getLogger().severe("Unexpected error registering listener " + listenerName + ": " + t.toString());
+            getLogger().severe(
+                "Unexpected error registering listener " +
+                    listenerName +
+                    ": " +
+                    t.toString()
+            );
             if (isDebugMode()) {
                 t.printStackTrace();
             }
@@ -2134,11 +3192,13 @@ public class PluginStart extends JavaPlugin {
     private void registerVaultDependentListeners() {
         // Chat formatter
         reloadChatFormatter();
-        
+
         // Sign color listener
-        getServer().getPluginManager().registerEvents(new SignColorListener(), this);
+        getServer()
+            .getPluginManager()
+            .registerEvents(new SignColorListener(), this);
     }
-    
+
     /**
      * Tries several times after startup to ensure Allium's commands own key labels like '/core'.
      * This handles plugins that register conflicting commands (e.g., CoreProtect registering 'core').
@@ -2146,44 +3206,90 @@ public class PluginStart extends JavaPlugin {
     private void forcePreferredCommandsWithRetry() {
         final int maxAttempts = 8;
         final long retryDelay = 40L; // 2 seconds
-        final int[] attempts = {0};
-        final SchedulerAdapter.TaskHandle[] handle = new SchedulerAdapter.TaskHandle[1];
+        final int[] attempts = { 0 };
+        final SchedulerAdapter.TaskHandle[] handle =
+            new SchedulerAdapter.TaskHandle[1];
         final String[] commandsToEnforce = {
-            "core", "restore", "god", "heal", "gamemode", "pvp",
-            "seen", "alts",
-            "msg", "reply", "mail",
-            "tp", "tpa", "tpcancel", "tpaccept", "tpdeny", "tppet", "tpmob", "tppos",
-            "tphere", "tpahere", "tptoggle", "back", "otp", "top", "bottom"
+            "core",
+            "restore",
+            "god",
+            "heal",
+            "gamemode",
+            "pvp",
+            "seen",
+            "alts",
+            "msg",
+            "reply",
+            "mail",
+            "tp",
+            "tpa",
+            "tpcancel",
+            "tpaccept",
+            "tpdeny",
+            "tppet",
+            "tpmob",
+            "tppos",
+            "tphere",
+            "tpahere",
+            "tptoggle",
+            "back",
+            "otp",
+            "top",
+            "bottom",
         };
-        handle[0] = SchedulerAdapter.runTimer(() -> {
-            attempts[0]++;
-            boolean allOk = true;
-            for (String cmd : commandsToEnforce) {
-                try {
-                    if (!forceCommandOwnership(cmd)) {
+        handle[0] = SchedulerAdapter.runTimer(
+            () -> {
+                attempts[0]++;
+                boolean allOk = true;
+                for (String cmd : commandsToEnforce) {
+                    try {
+                        if (!forceCommandOwnership(cmd)) {
+                            allOk = false;
+                        }
+                    } catch (Throwable t) {
+                        if (isDebugMode()) {
+                            Text.sendDebugLog(
+                                WARN,
+                                "forceCommandOwnership(" +
+                                    cmd +
+                                    ") error: " +
+                                    t.getMessage()
+                            );
+                        }
                         allOk = false;
                     }
-                } catch (Throwable t) {
-                    if (isDebugMode()) {
-                        Text.sendDebugLog(WARN, "forceCommandOwnership(" + cmd + ") error: " + t.getMessage());
-                    }
-                    allOk = false;
                 }
-            }
 
-            boolean ok = allOk;
-            // Stop retrying if success, ran out of attempts, or enforcement unsupported on this server
-            if (ok || attempts[0] >= maxAttempts || commandMapEnforceUnsupportedWarned) {
-                if (ok) {
-                    if (isDebugMode()) {
-                        Text.sendDebugLog(INFO, "Confirmed Allium owns preferred commands (including /allium:tp, /allium:tpa, etc.) after " + attempts[0] + " attempt(s).");
+                boolean ok = allOk;
+                // Stop retrying if success, ran out of attempts, or enforcement unsupported on this server
+                if (
+                    ok ||
+                    attempts[0] >= maxAttempts ||
+                    commandMapEnforceUnsupportedWarned
+                ) {
+                    if (ok) {
+                        if (isDebugMode()) {
+                            Text.sendDebugLog(
+                                INFO,
+                                "Confirmed Allium owns preferred commands (including /allium:tp, /allium:tpa, etc.) after " +
+                                    attempts[0] +
+                                    " attempt(s)."
+                            );
+                        }
+                    } else {
+                        Text.sendDebugLog(
+                            WARN,
+                            "Could not ensure Allium owns all preferred commands after " +
+                                attempts[0] +
+                                " attempt(s)."
+                        );
                     }
-                } else {
-                    Text.sendDebugLog(WARN, "Could not ensure Allium owns all preferred commands after " + attempts[0] + " attempt(s).");
+                    handle[0].cancel();
                 }
-                handle[0].cancel();
-            }
-        }, 60L, retryDelay);
+            },
+            60L,
+            retryDelay
+        );
     }
 
     /**
@@ -2194,14 +3300,21 @@ public class PluginStart extends JavaPlugin {
     private boolean forceCommandOwnership(String command) {
         PluginCommand our = getCommand(command);
         if (our == null) {
-            Text.sendDebugLog(WARN, "Our '" + command + "' command is not defined in plugin.yml; cannot enforce ownership.");
+            Text.sendDebugLog(
+                WARN,
+                "Our '" +
+                    command +
+                    "' command is not defined in plugin.yml; cannot enforce ownership."
+            );
             return false;
         }
 
         try {
             // Obtain CommandMap via reflection to avoid CraftBukkit imports
             Object server = getServer();
-            java.lang.reflect.Method getCommandMap = server.getClass().getMethod("getCommandMap");
+            java.lang.reflect.Method getCommandMap = server
+                .getClass()
+                .getMethod("getCommandMap");
             CommandMap map = (CommandMap) getCommandMap.invoke(server);
 
             // Access underlying known commands map robustly across implementations
@@ -2209,7 +3322,12 @@ public class PluginStart extends JavaPlugin {
             if (known == null) {
                 if (!commandMapEnforceUnsupportedWarned) {
                     commandMapEnforceUnsupportedWarned = true;
-                    Text.sendDebugLog(WARN, "CommandMap implementation changed; cannot enforce '/" + command + "' cleanly: no accessible known-commands map");
+                    Text.sendDebugLog(
+                        WARN,
+                        "CommandMap implementation changed; cannot enforce '/" +
+                            command +
+                            "' cleanly: no accessible known-commands map"
+                    );
                 }
                 return false;
             }
@@ -2218,7 +3336,10 @@ public class PluginStart extends JavaPlugin {
             String namespace = getName().toLowerCase(Locale.ROOT);
 
             // Normalize label entries we care about
-            String[] labels = new String[] { lowerCommand, namespace + ":" + lowerCommand };
+            String[] labels = new String[] {
+                lowerCommand,
+                namespace + ":" + lowerCommand,
+            };
             for (String label : labels) {
                 Command existing = known.get(label);
                 if (existing != our) {
@@ -2229,24 +3350,49 @@ public class PluginStart extends JavaPlugin {
             // Optionally log competing namespaced alias if present
             Command competing = known.get("coreprotect:" + lowerCommand);
             if (competing != null && competing != our && isDebugMode()) {
-                Text.sendDebugLog(WARN, "Detected competing namespaced command owning '/" + lowerCommand + "': " + competing);
+                Text.sendDebugLog(
+                    WARN,
+                    "Detected competing namespaced command owning '/" +
+                        lowerCommand +
+                        "': " +
+                        competing
+                );
             }
 
             // Validate
             Command current = known.get(lowerCommand);
-            boolean owned = (current == our);
+            boolean owned = current == our;
             if (!owned && isDebugMode()) {
-                Text.sendDebugLog(WARN, "Another plugin still owns '/" + lowerCommand + "': " + current);
+                Text.sendDebugLog(
+                    WARN,
+                    "Another plugin still owns '/" +
+                        lowerCommand +
+                        "': " +
+                        current
+                );
             }
             return owned;
-        } catch (NoSuchMethodException | IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
-            Text.sendDebugLog(WARN, "Failed to access CommandMap to enforce '/" + command + "': " + e.getMessage());
+        } catch (
+            NoSuchMethodException
+            | IllegalAccessException
+            | java.lang.reflect.InvocationTargetException e
+        ) {
+            Text.sendDebugLog(
+                WARN,
+                "Failed to access CommandMap to enforce '/" +
+                    command +
+                    "': " +
+                    e.getMessage()
+            );
             return false;
         }
     }
-    private java.util.Map<String, Command> reflectKnownCommands(CommandMap map) {
+
+    private java.util.Map<String, Command> reflectKnownCommands(
+        CommandMap map
+    ) {
         // Try common field names up the class hierarchy
-        String[] fieldNames = {"knownCommands", "known"};
+        String[] fieldNames = { "knownCommands", "known" };
         Class<?> cls = map.getClass();
         while (cls != null) {
             for (String name : fieldNames) {
@@ -2258,7 +3404,10 @@ public class PluginStart extends JavaPlugin {
                     if (typed != null) {
                         return typed;
                     }
-                } catch (NoSuchFieldException | IllegalAccessException ignored) {}
+                } catch (
+                    NoSuchFieldException
+                    | IllegalAccessException ignored
+                ) {}
             }
             cls = cls.getSuperclass();
         }
@@ -2267,14 +3416,23 @@ public class PluginStart extends JavaPlugin {
         cls = map.getClass();
         while (cls != null) {
             for (java.lang.reflect.Field f : cls.getDeclaredFields()) {
-                if (!java.util.Map.class.isAssignableFrom(f.getType())) continue;
+                if (
+                    !java.util.Map.class.isAssignableFrom(f.getType())
+                ) continue;
                 try {
                     f.setAccessible(true);
                     Object val = f.get(map);
                     Map<String, Command> typed = tryCastCommandMap(val);
                     if (typed != null) {
                         // Heuristic: if it contains a 'help' or 'version' key, assume it's the command map
-                        if (typed.containsKey("help") || typed.containsKey("version") || typed.values().stream().anyMatch(Command.class::isInstance)) {
+                        if (
+                            typed.containsKey("help") ||
+                            typed.containsKey("version") ||
+                            typed
+                                .values()
+                                .stream()
+                                .anyMatch(Command.class::isInstance)
+                        ) {
                             return typed;
                         }
                     }
@@ -2302,7 +3460,7 @@ public class PluginStart extends JavaPlugin {
         }
         return (Map<String, Command>) rawMap;
     }
-    
+
     /**
      * Periodically logs the presence/owner of the native '/dialog' command shortly after enable.
      * This does not modify the command map; it is diagnostics-only.
@@ -2319,31 +3477,114 @@ public class PluginStart extends JavaPlugin {
         // Dialog features removed
         return null;
     }
-    
+
     /**
      * Inner class to handle player permission migration on join.
      */
     private class PlayerPermissionMigrationListener implements Listener {
+
         private final String[] permissionsToMigrate = {
-            "explode", "gc", "give", "itemdb", "heal", "feed", "admin", "rename", "lore",
-            "god", "more", "fly", "gamemode", "nv", "skull", "home", "homes", "sethome",
-            "delhome", "balance", "pay", "baltop", "tp", "tpa", "tpcancel", "tpaccept",
-            "tpdeny", "tppet", "tpmob", "tppos", "tphere", "tpahere", "tptoggle", "tp.offline",
-            "top", "bottom", "whois", "invsee", "enchant", "staff", "note", "notes", "unnote",
-            "time", "time.set", "time.add",
-            "escalate", "spy", "spy.others", "gamemode.others", "gamemode.spectator",
-            "gamemode.survival", "gamemode.survival.nv", "gamemode.creative",
-            "gamemode.creative.inventory", "gamemode.creative.container", "gamemode.creative.pickup",
-            "gamemode.creative.drop", "gamemode.creative.break", "gamemode.creative.place",
-            "gamemode.creative.interact", "gamemode.creative.use", "gamemode.creative.spawn",
-            "gamemode.creative.blacklist", "gamemode.creative.nv", "gamemode.adventure",
-            "gamemode.adventure.nv", "gamemode.spectator", "nv.others", "nv.adventure",
-            "nv.creative", "nv.spectator", "nv.survival", "tp.others", "tp.override",
-            "tpa.nodelay", "tpa.nocooldown", "voucher.give", "lockdown.bypass", "tpall",
-            "tptoggle.others", "tpauto", "spawn", "setspawn", "help", "sethome.unlimited",
-            "home.others", "home.nocooldown", "hide.group", "hide.bypass", "hide.default",
-            "fly.others", "explode.others", "explode.exempt", "heal.others", "heal.nocooldown",
-            "feed.others", "feed.nocooldown", "speed", "speed.others", "*"
+            "explode",
+            "gc",
+            "give",
+            "itemdb",
+            "heal",
+            "feed",
+            "admin",
+            "rename",
+            "lore",
+            "god",
+            "more",
+            "fly",
+            "gamemode",
+            "nv",
+            "skull",
+            "home",
+            "homes",
+            "sethome",
+            "delhome",
+            "balance",
+            "pay",
+            "baltop",
+            "tp",
+            "tpa",
+            "tpcancel",
+            "tpaccept",
+            "tpdeny",
+            "tppet",
+            "tpmob",
+            "tppos",
+            "tphere",
+            "tpahere",
+            "tptoggle",
+            "tp.offline",
+            "top",
+            "bottom",
+            "whois",
+            "invsee",
+            "enchant",
+            "staff",
+            "note",
+            "notes",
+            "unnote",
+            "time",
+            "time.set",
+            "time.add",
+            "escalate",
+            "spy",
+            "spy.others",
+            "gamemode.others",
+            "gamemode.spectator",
+            "gamemode.survival",
+            "gamemode.survival.nv",
+            "gamemode.creative",
+            "gamemode.creative.inventory",
+            "gamemode.creative.container",
+            "gamemode.creative.pickup",
+            "gamemode.creative.drop",
+            "gamemode.creative.break",
+            "gamemode.creative.place",
+            "gamemode.creative.interact",
+            "gamemode.creative.use",
+            "gamemode.creative.spawn",
+            "gamemode.creative.blacklist",
+            "gamemode.creative.nv",
+            "gamemode.adventure",
+            "gamemode.adventure.nv",
+            "gamemode.spectator",
+            "nv.others",
+            "nv.adventure",
+            "nv.creative",
+            "nv.spectator",
+            "nv.survival",
+            "tp.others",
+            "tp.override",
+            "tpa.nodelay",
+            "tpa.nocooldown",
+            "voucher.give",
+            "lockdown.bypass",
+            "tpall",
+            "tptoggle.others",
+            "tpauto",
+            "spawn",
+            "setspawn",
+            "help",
+            "sethome.unlimited",
+            "home.others",
+            "home.nocooldown",
+            "hide.group",
+            "hide.bypass",
+            "hide.default",
+            "fly.others",
+            "explode.others",
+            "explode.exempt",
+            "heal.others",
+            "heal.nocooldown",
+            "feed.others",
+            "feed.nocooldown",
+            "speed",
+            "speed.others",
+            "*",
         };
 
         @EventHandler
@@ -2354,42 +3595,83 @@ public class PluginStart extends JavaPlugin {
             }
 
             if (vaultPerms == null) {
-                Text.sendDebugLog(ERROR, "Cannot migrate permissions for player " + event.getPlayer().getName() + ": Vault permission provider not found!");
+                Text.sendDebugLog(
+                    ERROR,
+                    "Cannot migrate permissions for player " +
+                        event.getPlayer().getName() +
+                        ": Vault permission provider not found!"
+                );
                 return;
             }
 
             org.bukkit.entity.Player player = event.getPlayer();
             String uuid = player.getUniqueId().toString();
 
-            try (Connection conn = database.getConnection()) { // Use Database.getConnection()
+            try (Connection conn = database.getConnection()) {
+                // Use Database.getConnection()
                 // Check if player exists in player_data and get migrated_perms status
-                try (PreparedStatement stmt = conn.prepareStatement("SELECT migrated_perms FROM player_data WHERE uuid = ?")) {
+                try (
+                    PreparedStatement stmt = conn.prepareStatement(
+                        "SELECT migrated_perms FROM player_data WHERE uuid = ?"
+                    )
+                ) {
                     stmt.setString(1, uuid);
                     ResultSet rs = stmt.executeQuery();
                     if (rs.next()) {
                         boolean migratedPerms = rs.getBoolean("migrated_perms");
                         if (migratedPerms) {
-                            Text.sendDebugLog(INFO, "Skipping permission migration for " + player.getName() + " (UUID: " + uuid + "): Already migrated.");
+                            Text.sendDebugLog(
+                                INFO,
+                                "Skipping permission migration for " +
+                                    player.getName() +
+                                    " (UUID: " +
+                                    uuid +
+                                    "): Already migrated."
+                            );
                             return;
                         }
                     } else {
                         // Player not in player_data, insert and skip migration
-                        try (PreparedStatement insertStmt = conn.prepareStatement(
-                                "INSERT INTO player_data (uuid, name, is_flying, allow_flight, last_updated) VALUES (?, ?, FALSE, FALSE, CURRENT_TIMESTAMP)")) {
+                        try (
+                            PreparedStatement insertStmt =
+                                conn.prepareStatement(
+                                    "INSERT INTO player_data (uuid, name, is_flying, allow_flight, last_updated) VALUES (?, ?, FALSE, FALSE, CURRENT_TIMESTAMP)"
+                                )
+                        ) {
                             insertStmt.setString(1, uuid);
                             insertStmt.setString(2, player.getName());
                             insertStmt.executeUpdate();
-                            Text.sendDebugLog(INFO, "Added player " + player.getName() + " (UUID: " + uuid + ") to player_data. Skipping permission migration.");
+                            Text.sendDebugLog(
+                                INFO,
+                                "Added player " +
+                                    player.getName() +
+                                    " (UUID: " +
+                                    uuid +
+                                    ") to player_data. Skipping permission migration."
+                            );
                             return;
                         }
                     }
 
                     // Check and migrate core.* wildcard permission first
                     boolean migrated = false;
-                    if (((net.milkbowl.vault.permission.Permission) vaultPerms).playerHas((String) null, player, "core.*")) {
-                        ((net.milkbowl.vault.permission.Permission) vaultPerms).playerRemove((String) null, player, "core.*");
-                        ((net.milkbowl.vault.permission.Permission) vaultPerms).playerAdd((String) null, player, "allium.*");
-                        Text.sendDebugLog(INFO, "Migrated player " + player.getName() + ": core.* -> allium.*");
+                    if (
+                        (
+                            (net.milkbowl.vault.permission.Permission) vaultPerms
+                        ).playerHas((String) null, player, "core.*")
+                    ) {
+                        (
+                            (net.milkbowl.vault.permission.Permission) vaultPerms
+                        ).playerRemove((String) null, player, "core.*");
+                        (
+                            (net.milkbowl.vault.permission.Permission) vaultPerms
+                        ).playerAdd((String) null, player, "allium.*");
+                        Text.sendDebugLog(
+                            INFO,
+                            "Migrated player " +
+                                player.getName() +
+                                ": core.* -> allium.*"
+                        );
                         migrated = true;
                     }
 
@@ -2397,39 +3679,89 @@ public class PluginStart extends JavaPlugin {
                     for (String perm : permissionsToMigrate) {
                         String oldPerm = "core." + perm;
                         String newPerm = "allium." + perm;
-                        if (((net.milkbowl.vault.permission.Permission) vaultPerms).playerHas((String) null, player, oldPerm)) {
-                            ((net.milkbowl.vault.permission.Permission) vaultPerms).playerRemove((String) null, player, oldPerm);
-                            ((net.milkbowl.vault.permission.Permission) vaultPerms).playerAdd((String) null, player, newPerm);
-                            Text.sendDebugLog(INFO, "Migrated player " + player.getName() + ": " + oldPerm + " -> " + newPerm);
+                        if (
+                            (
+                                (net.milkbowl.vault.permission.Permission) vaultPerms
+                            ).playerHas((String) null, player, oldPerm)
+                        ) {
+                            (
+                                (net.milkbowl.vault.permission.Permission) vaultPerms
+                            ).playerRemove((String) null, player, oldPerm);
+                            (
+                                (net.milkbowl.vault.permission.Permission) vaultPerms
+                            ).playerAdd((String) null, player, newPerm);
+                            Text.sendDebugLog(
+                                INFO,
+                                "Migrated player " +
+                                    player.getName() +
+                                    ": " +
+                                    oldPerm +
+                                    " -> " +
+                                    newPerm
+                            );
                             migrated = true;
                         }
                     }
 
                     // Update migrated_perms if migration occurred
                     if (migrated) {
-                        try (PreparedStatement updateStmt = conn.prepareStatement("UPDATE player_data SET migrated_perms = TRUE WHERE uuid = ?")) {
+                        try (
+                            PreparedStatement updateStmt =
+                                conn.prepareStatement(
+                                    "UPDATE player_data SET migrated_perms = TRUE WHERE uuid = ?"
+                                )
+                        ) {
                             updateStmt.setString(1, uuid);
                             updateStmt.executeUpdate();
-                            Text.sendDebugLog(INFO, "Marked player " + player.getName() + " (UUID: " + uuid + ") as migrated in player_data.");
+                            Text.sendDebugLog(
+                                INFO,
+                                "Marked player " +
+                                    player.getName() +
+                                    " (UUID: " +
+                                    uuid +
+                                    ") as migrated in player_data."
+                            );
                         }
                     }
 
                     // Count players with unmigrated permissions
-                    try (PreparedStatement countStmt = conn.prepareStatement("SELECT COUNT(*) AS unmigrated FROM player_data WHERE migrated_perms = FALSE OR migrated_perms IS NULL")) {
+                    try (
+                        PreparedStatement countStmt = conn.prepareStatement(
+                            "SELECT COUNT(*) AS unmigrated FROM player_data WHERE migrated_perms = FALSE OR migrated_perms IS NULL"
+                        )
+                    ) {
                         ResultSet countRs = countStmt.executeQuery();
                         if (countRs.next()) {
                             int unmigratedCount = countRs.getInt("unmigrated");
-                            Text.sendDebugLog(INFO, "Players remaining with unmigrated permissions in player_data: " + unmigratedCount);
+                            Text.sendDebugLog(
+                                INFO,
+                                "Players remaining with unmigrated permissions in player_data: " +
+                                    unmigratedCount
+                            );
                             if (unmigratedCount == 0) {
-                                getConfig().set("player_migration_completed", true);
+                                getConfig().set(
+                                    "player_migration_completed",
+                                    true
+                                );
                                 saveConfig();
-                                Text.sendDebugLog(INFO, "All player permissions migrated. Set player_migration_completed to true in config.");
+                                Text.sendDebugLog(
+                                    INFO,
+                                    "All player permissions migrated. Set player_migration_completed to true in config."
+                                );
                             }
                         }
                     }
                 }
             } catch (SQLException e) {
-                Text.sendDebugLog(ERROR, "Failed to process permission migration for player " + player.getName() + " (UUID: " + uuid + ")", e);
+                Text.sendDebugLog(
+                    ERROR,
+                    "Failed to process permission migration for player " +
+                        player.getName() +
+                        " (UUID: " +
+                        uuid +
+                        ")",
+                    e
+                );
             }
         }
     }

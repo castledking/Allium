@@ -289,12 +289,11 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             sender.sendMessage(ChatColor.RED + " • [Plugin] " + ChatColor.YELLOW + pluginName);
         } else {
             // Player: Adventure API with hover and click events
-            Component hoverTooltip = Component.text()
+            Component hoverTooltip = Component.empty()
                     .append(Component.text("Plugin: ", NamedTextColor.YELLOW)
                             .append(Component.text(pluginName, NamedTextColor.WHITE))
                             .append(Component.newline()))
-                    .append(Component.text("Click to view commands for this plugin", NamedTextColor.GRAY))
-                    .build();
+                    .append(Component.text("Click to view commands for this plugin", NamedTextColor.GRAY));
 
             Component pluginComponent = Component.text(" • [Plugin] ")
                     .color(NamedTextColor.RED)

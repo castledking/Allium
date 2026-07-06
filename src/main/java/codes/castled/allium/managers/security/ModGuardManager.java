@@ -29,6 +29,8 @@ import java.util.regex.Pattern;
  */
 public class ModGuardManager implements PluginMessageListener, Listener {
 
+    private static ModGuardManager instance;
+
     private final PluginStart plugin;
     private FileConfiguration config;
     private ModGuardTranslationProbe translationProbe;
@@ -38,6 +40,7 @@ public class ModGuardManager implements PluginMessageListener, Listener {
     private final Set<UUID> processedPlayers;
 
     public ModGuardManager(PluginStart plugin) {
+        instance = this;
         this.plugin = plugin;
         this.playerDetectedMods = new HashMap<>();
         this.playerBrands = new HashMap<>();
@@ -58,7 +61,7 @@ public class ModGuardManager implements PluginMessageListener, Listener {
     }
 
     private void registerTranslationProbe() {
-        if (!config.getBoolean("translation-probe.enabled", false)) {
+        if (!config.getBoolean("translation-probe.enabled", config.getBoolean("enabled", false))) {
             return;
         }
         if (!codes.castled.allium.packetevents.PacketEventsLoader.isPacketEventsAvailable()) {
@@ -87,6 +90,134 @@ public class ModGuardManager implements PluginMessageListener, Listener {
 
         config = YamlConfiguration.loadConfiguration(configFile);
         applyBundledDefaults(configFile);
+        seedMissingProbeConfig(configFile);
+    }
+
+    private void seedMissingProbeConfig(File configFile) {
+        // Check only the file content, ignoring in-memory defaults that may be set
+        // by applyBundledDefaults() from a new bundled resource.
+        if (config.contains("translation-probe", true)) return;
+
+        config.set("translation-probe.enabled", true);
+        config.set("translation-probe.default-action", "alert");
+        config.set("translation-probe.delay-ticks", 10);
+        config.set("translation-probe.timeout-ticks", 30);
+        config.set("translation-probe.fallback-prefix", "allium_probe_");
+        config.set("translation-probe.alert-message", "&7[&cModGuard&7] &e{player} &7hit translation probe &c{check} &8(&f{key}&8) &7resolved=&f{resolved} &7confidence=&e{confidence}&7 action=&e{action}");
+
+        ConfigurationSection checks = config.createSection("translation-probe.checks");
+
+        ConfigurationSection meteor = checks.createSection("meteor-client");
+        meteor.set("enabled", true);
+        meteor.set("key", "key.meteor-client.open-gui");
+        meteor.set("display-name", "Meteor Client");
+        meteor.set("action", "kick");
+        meteor.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnSort = checks.createSection("ipn-sort-inventory");
+        ipnSort.set("enabled", true);
+        ipnSort.set("key", "key.ipn.sort-inventory");
+        ipnSort.set("display-name", "Inventory Profiles Next");
+        ipnSort.set("action", "kick");
+        ipnSort.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnSortCursor = checks.createSection("ipn-sort-cursor");
+        ipnSortCursor.set("enabled", true);
+        ipnSortCursor.set("key", "key.ipn.sort-cursor");
+        ipnSortCursor.set("display-name", "Inventory Profiles Next");
+        ipnSortCursor.set("action", "kick");
+        ipnSortCursor.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnQuickSwap = checks.createSection("ipn-quick-swap");
+        ipnQuickSwap.set("enabled", true);
+        ipnQuickSwap.set("key", "key.ipn.quick-swap");
+        ipnQuickSwap.set("display-name", "Inventory Profiles Next");
+        ipnQuickSwap.set("action", "kick");
+        ipnQuickSwap.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnDepositAll = checks.createSection("ipn-deposit-all");
+        ipnDepositAll.set("enabled", true);
+        ipnDepositAll.set("key", "key.ipn.deposit-all");
+        ipnDepositAll.set("display-name", "Inventory Profiles Next");
+        ipnDepositAll.set("action", "kick");
+        ipnDepositAll.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnRestockCursor = checks.createSection("ipn-restock-cursor");
+        ipnRestockCursor.set("enabled", true);
+        ipnRestockCursor.set("key", "key.ipn.restock-cursor");
+        ipnRestockCursor.set("display-name", "Inventory Profiles Next");
+        ipnRestockCursor.set("action", "kick");
+        ipnRestockCursor.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnSortPlayer = checks.createSection("ipn-sort-player");
+        ipnSortPlayer.set("enabled", true);
+        ipnSortPlayer.set("key", "key.ipn.sort-player");
+        ipnSortPlayer.set("display-name", "Inventory Profiles Next");
+        ipnSortPlayer.set("action", "kick");
+        ipnSortPlayer.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnSortHotbar = checks.createSection("ipn-sort-hotbar");
+        ipnSortHotbar.set("enabled", true);
+        ipnSortHotbar.set("key", "key.ipn.sort-hotbar");
+        ipnSortHotbar.set("display-name", "Inventory Profiles Next");
+        ipnSortHotbar.set("action", "kick");
+        ipnSortHotbar.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnQuickDeposit = checks.createSection("ipn-quick-deposit");
+        ipnQuickDeposit.set("enabled", true);
+        ipnQuickDeposit.set("key", "key.ipn.quick-deposit");
+        ipnQuickDeposit.set("display-name", "Inventory Profiles Next");
+        ipnQuickDeposit.set("action", "kick");
+        ipnQuickDeposit.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnSortChest = checks.createSection("ipn-sort-chest");
+        ipnSortChest.set("enabled", true);
+        ipnSortChest.set("key", "key.ipn.sort-chest");
+        ipnSortChest.set("display-name", "Inventory Profiles Next");
+        ipnSortChest.set("action", "kick");
+        ipnSortChest.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnShowButtons = checks.createSection("ipn-show-buttons");
+        ipnShowButtons.set("enabled", true);
+        ipnShowButtons.set("key", "key.ipn.show-buttons");
+        ipnShowButtons.set("display-name", "Inventory Profiles Next");
+        ipnShowButtons.set("action", "kick");
+        ipnShowButtons.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnToggleBundled = checks.createSection("ipn-toggle-bundled-items");
+        ipnToggleBundled.set("enabled", true);
+        ipnToggleBundled.set("key", "key.ipn.toggle-bundled-items");
+        ipnToggleBundled.set("display-name", "Inventory Profiles Next");
+        ipnToggleBundled.set("action", "kick");
+        ipnToggleBundled.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection ipnToggleInv = checks.createSection("ipn-toggle-inventory");
+        ipnToggleInv.set("enabled", true);
+        ipnToggleInv.set("key", "key.ipn.toggle-inventory-visibility");
+        ipnToggleInv.set("display-name", "Inventory Profiles Next");
+        ipnToggleInv.set("action", "kick");
+        ipnToggleInv.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection libIpn1 = checks.createSection("libipn-sort-inventory");
+        libIpn1.set("enabled", true);
+        libIpn1.set("key", "key.libipn.sort-inventory");
+        libIpn1.set("display-name", "Inventory Profiles Next");
+        libIpn1.set("action", "kick");
+        libIpn1.set("require-corroboration-for-kick", false);
+
+        ConfigurationSection libIpn2 = checks.createSection("libipn-sort-cursor");
+        libIpn2.set("enabled", true);
+        libIpn2.set("key", "key.libipn.sort-cursor");
+        libIpn2.set("display-name", "Inventory Profiles Next");
+        libIpn2.set("action", "kick");
+        libIpn2.set("require-corroboration-for-kick", false);
+
+        try {
+            config.save(configFile);
+            plugin.getLogger().info("[ModGuard] Added translation-probe section to config.");
+        } catch (IOException e) {
+            plugin.getLogger().warning("[ModGuard] Failed to save probe config: " + e.getMessage());
+        }
     }
 
     private void migrateOrCreateConfig(File configFile) {
@@ -129,8 +260,6 @@ public class ModGuardManager implements PluginMessageListener, Listener {
             YamlConfiguration defaults = YamlConfiguration.loadConfiguration(
                     new java.io.InputStreamReader(stream, StandardCharsets.UTF_8));
             config.setDefaults(defaults);
-            config.options().copyDefaults(true);
-            config.save(configFile);
         } catch (IOException e) {
             plugin.getLogger().warning("[ModGuard] Failed to apply default config values: " + e.getMessage());
         }
@@ -189,6 +318,18 @@ public class ModGuardManager implements PluginMessageListener, Listener {
         playerBrands.clear();
         playerLogSessions.clear();
         processedPlayers.clear();
+    }
+
+    public static void reload() {
+        ModGuardManager mg = instance;
+        if (mg == null) return;
+        if (mg.translationProbe != null) {
+            mg.translationProbe.unregister();
+            mg.translationProbe = null;
+        }
+        mg.loadConfig();
+        mg.registerTranslationProbe();
+        mg.plugin.getLogger().info("[ModGuard] Config reloaded.");
     }
 
     @Override

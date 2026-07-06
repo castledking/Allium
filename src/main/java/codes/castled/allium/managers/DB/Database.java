@@ -28,6 +28,7 @@ import java.util.logging.Level;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.h2.Driver;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.inventory.InventorySnapshot;
@@ -96,7 +97,7 @@ public class Database {
         config.setJdbcUrl(jdbcUrl);
         config.setUsername("sa");
         config.setPassword("");
-        config.setDriverClassName("org.h2.Driver");
+        config.setDriverClassName(org.h2.Driver.class.getName());
         // Connection pool configuration
         config.setMaximumPoolSize(MAX_POOL_SIZE);
         config.setMinimumIdle(MIN_IDLE);

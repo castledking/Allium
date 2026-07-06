@@ -8,6 +8,7 @@ import com.github.retrooper.packetevents.protocol.nbt.NBTByte;
 import com.github.retrooper.packetevents.protocol.nbt.NBTCompound;
 import com.github.retrooper.packetevents.protocol.nbt.NBTList;
 import com.github.retrooper.packetevents.protocol.nbt.NBTString;
+import com.github.retrooper.packetevents.protocol.nbt.NBTType;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.world.blockentity.BlockEntityTypes;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
@@ -25,14 +26,17 @@ import codes.castled.allium.util.SchedulerAdapter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.json.JSONObject;
 
+
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -62,6 +66,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
     void register() {
         PacketEvents.getAPI().getEventManager().registerListener(this);
         Bukkit.getPluginManager().registerEvents(this, plugin);
+        plugin.getLogger().info("[ModGuard] Translation probe registered, " + loadChecks().size() + " checks loaded.");
     }
 
     void unregister() {
@@ -120,7 +125,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
             }
 
             if (!resolved.equals(session.fallback) && check.matchesExpected(resolved)) {
-                modGuard.handleTranslationProbeHit(player, check.id, check.key, resolved, session.fallback, check.action, check.requireCorroborationForKick);
+                modGuard.handleTranslationProbeHit(player, check.displayName, check.key, resolved, session.fallback, check.action, check.requireCorroborationForKick);
             } else if (isDebug()) {
                 plugin.getLogger().info("[ModGuard] Translation probe miss for " + player.getName()
                         + ": " + check.id + " key=" + check.key + " resolved=\"" + resolved + "\"");
@@ -146,7 +151,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
 
         Location base = player.getLocation();
         int minY = player.getWorld().getMinHeight() + 1;
-        Vector3i position = new Vector3i(base.getBlockX(), Math.max(minY, base.getBlockY() - 4), base.getBlockZ());
+        Vector3i position = new Vector3i(base.getBlockX(), Math.max(minY, base.getBlockY() - 30), base.getBlockZ());
         ProbeSession session = new ProbeSession(position, new ArrayDeque<>(checks), createFallback());
         sessions.put(player.getUniqueId(), session);
         sendNextProbe(player, session);
@@ -185,12 +190,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
             playerPacket(player, new WrapperPlayServerBlockChange(session.position, signState));
             playerPacket(player, new WrapperPlayServerBlockEntityData(session.position, BlockEntityTypes.SIGN, createSignNbt(check.key, session.fallback)));
             playerPacket(player, new WrapperPlayServerOpenSignEditor(session.position, true));
-
-            SchedulerAdapter.runLater(() -> {
-                if (player.isOnline()) {
-                    playerPacket(player, new WrapperPlayServerCloseWindow());
-                }
-            }, 2L);
+            playerPacket(player, new WrapperPlayServerCloseWindow());
         } catch (Throwable t) {
             plugin.getLogger().warning("[ModGuard] Failed to send translation probe to " + player.getName() + ": " + t.getMessage());
             sessions.remove(player.getUniqueId());
@@ -209,38 +209,40 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
 
     private NBTCompound createSignNbt(String key, String fallback) {
         NBTCompound root = new NBTCompound();
-        NBTCompound frontText = createTextNbt(key, fallback);
-        NBTCompound backText = createTextNbt("", "");
-        root.setTag("front_text", frontText);
-        root.setTag("back_text", backText);
-        root.setTag("is_waxed", new NBTByte(false));
+        root.setTag("front_text", createTextNbt(key, fallback));
+        root.setTag("back_text", createTextNbt(key, fallback));
+        root.setTag("is_waxed", new NBTByte((byte) 0));
         return root;
     }
 
     private NBTCompound createTextNbt(String key, String fallback) {
+        NBTCompound translationMessage = new NBTCompound();
+        translationMessage.setTag("translate", new NBTString(key));
+        translationMessage.setTag("fallback", new NBTString(fallback));
+
+        NBTCompound emptyMessage = new NBTCompound();
+        emptyMessage.setTag("", new NBTString(""));
+
+        NBTList<NBTCompound> messages = new NBTList<>(NBTType.COMPOUND);
+        messages.addTag(translationMessage);
+        messages.addTag(emptyMessage);
+        messages.addTag(emptyMessage);
+        messages.addTag(emptyMessage);
+
         NBTCompound text = new NBTCompound();
-        NBTList<NBTString> messages = NBTList.createStringList();
-        messages.addTag(new NBTString(key.isEmpty() ? "{\"text\":\"\"}" : translatableJson(key, fallback)));
-        messages.addTag(new NBTString("{\"text\":\"\"}"));
-        messages.addTag(new NBTString("{\"text\":\"\"}"));
-        messages.addTag(new NBTString("{\"text\":\"\"}"));
         text.setTag("messages", messages);
         text.setTag("color", new NBTString("black"));
-        text.setTag("has_glowing_text", new NBTByte(false));
+        text.setTag("has_glowing_text", new NBTByte((byte) 0));
         return text;
-    }
-
-    private String translatableJson(String key, String fallback) {
-        return new JSONObject()
-                .put("translate", key)
-                .put("fallback", fallback)
-                .toString();
     }
 
     private List<ProbeCheck> loadChecks() {
         ConfigurationSection checksSection = config().getConfigurationSection("translation-probe.checks");
         if (checksSection == null) {
-            return Collections.emptyList();
+            checksSection = loadBundledChecks();
+        }
+        if (checksSection == null) {
+            return createDefaultChecks();
         }
 
         List<ProbeCheck> checks = new ArrayList<>();
@@ -260,6 +262,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
             }
             checks.add(new ProbeCheck(
                     id,
+                    section.getString("display-name", id),
                     key,
                     new HashSet<>(expected),
                     section.getString("action", defaultAction),
@@ -269,12 +272,48 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         return checks;
     }
 
+    private ConfigurationSection loadBundledChecks() {
+        try (var stream = plugin.getResource("modguard/config.yml")) {
+            if (stream == null) return null;
+            YamlConfiguration bundled = YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8));
+            ConfigurationSection section = bundled.getConfigurationSection("translation-probe.checks");
+            if (section == null) return null;
+            config().set("translation-probe.checks", section);
+            return config().getConfigurationSection("translation-probe.checks");
+        } catch (Exception e) {
+            plugin.getLogger().warning("[ModGuard] Failed to load bundled probe checks: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private List<ProbeCheck> createDefaultChecks() {
+        List<ProbeCheck> checks = new ArrayList<>();
+        checks.add(new ProbeCheck("meteor-client", "Meteor Client", "key.meteor-client.open-gui", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-sort-inventory", "Inventory Profiles Next", "inventoryprofiles.config.name.sort_inventory", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-sort-columns", "Inventory Profiles Next", "inventoryprofiles.config.name.sort_inventory_in_columns", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-sort-rows", "Inventory Profiles Next", "inventoryprofiles.config.name.sort_inventory_in_rows", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-move-all", "Inventory Profiles Next", "inventoryprofiles.config.name.move_all_items", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-throw-all", "Inventory Profiles Next", "inventoryprofiles.config.name.throw_all_items", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-config-menu", "Inventory Profiles Next", "inventoryprofiles.config.name.open_config_menu", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-lock-slots", "Inventory Profiles Next", "inventoryprofiles.config.name.enable_lock_slots", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-auto-refill", "Inventory Profiles Next", "inventoryprofiles.config.name.enable_auto_refill", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-profiles", "Inventory Profiles Next", "inventoryprofiles.config.name.enable_profiles", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-tweaks", "Inventory Profiles Next", "inventoryprofiles.gui.config.Tweaks", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-tooltip-sort", "Inventory Profiles Next", "inventoryprofiles.tooltip.sort_button", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-tooltip-settings", "Inventory Profiles Next", "inventoryprofiles.tooltip.settings_open", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("ipn-title", "Inventory Profiles Next", "inventoryprofiles.gui.config.title", Collections.emptySet(), "kick", false));
+        checks.add(new ProbeCheck("libipn-advanced-keys", "libIPN", "libipn.common.gui.config.advanced_keybind_settings", Collections.emptySet(), "alert", true));
+        checks.add(new ProbeCheck("libipn-keybind-tips", "libIPN", "libipn.common.gui.config.keybind_settings_tips", Collections.emptySet(), "alert", true));
+        return checks;
+    }
+
     private String createFallback() {
         return config().getString("translation-probe.fallback-prefix", "allium_probe_") + Long.toHexString(random.nextLong());
     }
 
     private boolean isEnabled() {
-        return config().getBoolean("translation-probe.enabled", false);
+        return config().getBoolean("translation-probe.enabled", config().getBoolean("enabled", false));
     }
 
     private boolean isDebug() {
@@ -304,13 +343,15 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
 
     private static final class ProbeCheck {
         private final String id;
+        private final String displayName;
         private final String key;
         private final Set<String> expected;
         private final String action;
         private final boolean requireCorroborationForKick;
 
-        private ProbeCheck(String id, String key, Set<String> expected, String action, boolean requireCorroborationForKick) {
+        private ProbeCheck(String id, String displayName, String key, Set<String> expected, String action, boolean requireCorroborationForKick) {
             this.id = id;
+            this.displayName = displayName;
             this.key = key;
             this.expected = expected;
             this.action = action;
@@ -318,8 +359,11 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         }
 
         private boolean matchesExpected(String resolved) {
-            if (expected.isEmpty()) {
+            if (resolved == null || resolved.isEmpty()) {
                 return false;
+            }
+            if (expected.isEmpty()) {
+                return true;
             }
             String normalized = resolved.toLowerCase(Locale.ROOT);
             for (String value : expected) {

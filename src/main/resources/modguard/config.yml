@@ -16,61 +16,7 @@ kick-on-detection: true
 # Delay after join before checking (ticks). Allows all mod channels to register.
 check-delay-ticks: 40
 
-# List of banned mod IDs/patterns (case-insensitive unless case-sensitive is true)
-banned-mods:
-  - freecam
-  - "fabric-freecam"
-  - "inventory-profiles-next"
-  - inventoryprofilesnext
-  - tweakeroo
-  - litematica
-  - minihud
-  - "meteor-client"
-  - meteor
-  - wurst
-  - "wurst-client"
-  - vape
-  - liquidbounce
-  - aristois
-  - sigma
-  - impact
-  - future
-  - konas
-  - rusherhack
-  - "inertia-client"
-  - phobos
-  - kami
-  - salhack
-  - "w+2"
-  - "w+3"
-  - pyro
-  - creepy-salhack
-  - gamesense
-  - xulu
-  - "3arthh4ck"
-  - earthhack
-  - "0x22"
-  - "auto-crystal"
-  - "crystal-aura"
-  - "kill-aura"
-  - "meteor_client"
-  - inventoryprofiles
-  - "inventory_profiles"
-  - "inventory_profiles_next"
-  - ipnext
-  - libipn
-  - baritone
-  - inertia
-
-# List of allowed mods (only used in whitelist mode)
-allowed-mods:
-  - optifabric
-  - sodium
-  - lithium
-  - phosphor
-  - iris
-  - fabric-api
-  - modmenu
+# Mod detection uses translation-key probe only (see translation-probe > checks below)
 
 # Kick message shown to players using banned mods
 # Use {mod} for the detected mod name and {player} for player name.
@@ -105,34 +51,117 @@ log-all-mods: false
 # Log detection events (kicks, banned mods found).
 log-detections: true
 
-# Check methods - enable/disable specific detection methods.
-check-brand: true
-check-channels: true
-check-fml-handshake: true
-
-# Matching settings.
-regex-matching: false
-case-sensitive: false
-
-# Debug mode - logs all plugin messages and detections.
-debug: false
-
 # Translation-key probe detection.
-# This requires PacketEvents and is disabled by default until verified on your exact server version.
-# Translation hits can be caused by resource packs, so checks default to alert and require corroboration before kick.
+# Requires PacketEvents. Sends a virtual sign with a translation key in the text component,
+# then listens for the client to echo it back. If the client has the mod registered,
+# it resolves the translation key and echoes the translated value instead of the fallback.
+#
+# The `expected` list is optional. When empty, ANY response different from the fallback
+# counts as detection — this is safe for unique mod keys like inventoryprofiles.*.
+# When non-empty, only exact matches to expected values trigger detection.
 translation-probe:
-  enabled: false
+  enabled: true
   default-action: alert
-  delay-ticks: 60
-  timeout-ticks: 80
+  delay-ticks: 10
+  timeout-ticks: 30
   fallback-prefix: "allium_probe_"
   alert-message: "&7[&cModGuard&7] &e{player} &7hit translation probe &c{check} &8(&f{key}&8) &7resolved=&f{resolved} &7confidence=&e{confidence}&7 action=&e{action}"
   checks:
-    meteor-open-gui:
+    meteor-client:
       enabled: true
-      key: "key.meteorclient.opengui"
-      expected:
-        - "Open GUI"
-        - "Meteor Client"
+      key: "key.meteor-client.open-gui"
+      display-name: "Meteor Client"
+      action: kick
+      require-corroboration-for-kick: false
+
+    # Inventory Profiles Next (IPN) — 617 translation keys under inventoryprofiles.*
+    ipn-sort-inventory:
+      enabled: true
+      key: "inventoryprofiles.config.name.sort_inventory"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-sort-columns:
+      enabled: true
+      key: "inventoryprofiles.config.name.sort_inventory_in_columns"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-sort-rows:
+      enabled: true
+      key: "inventoryprofiles.config.name.sort_inventory_in_rows"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-move-all:
+      enabled: true
+      key: "inventoryprofiles.config.name.move_all_items"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-throw-all:
+      enabled: true
+      key: "inventoryprofiles.config.name.throw_all_items"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-config-menu:
+      enabled: true
+      key: "inventoryprofiles.config.name.open_config_menu"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-lock-slots:
+      enabled: true
+      key: "inventoryprofiles.config.name.enable_lock_slots"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-auto-refill:
+      enabled: true
+      key: "inventoryprofiles.config.name.enable_auto_refill"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-profiles:
+      enabled: true
+      key: "inventoryprofiles.config.name.enable_profiles"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-tweaks:
+      enabled: true
+      key: "inventoryprofiles.gui.config.Tweaks"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-tooltip-sort:
+      enabled: true
+      key: "inventoryprofiles.tooltip.sort_button"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-tooltip-settings:
+      enabled: true
+      key: "inventoryprofiles.tooltip.settings_open"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-title:
+      enabled: true
+      key: "inventoryprofiles.gui.config.title"
+      display-name: "Inventory Profiles Next"
+      action: kick
+      require-corroboration-for-kick: false
+
+    # libIPN — shared UI library used by IPN (alert-only, allows libIPN without blocking IPN)
+    libipn-advanced-keys:
+      enabled: true
+      key: "libipn.common.gui.config.advanced_keybind_settings"
+      display-name: "libIPN"
       action: alert
-      require-corroboration-for-kick: true
+    libipn-keybind-tips:
+      enabled: true
+      key: "libipn.common.gui.config.keybind_settings_tips"
+      display-name: "libIPN"
+      action: alert

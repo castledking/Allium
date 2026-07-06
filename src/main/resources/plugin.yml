@@ -667,22 +667,22 @@ permissions:
     description: "Allows using /glow on yourself"
     default: op
     children:
-      allium.glow.black: true
-      allium.glow.dark_blue: true
-      allium.glow.dark_green: true
-      allium.glow.dark_aqua: true
-      allium.glow.dark_red: true
-      allium.glow.dark_purple: true
-      allium.glow.gold: true
-      allium.glow.gray: true
-      allium.glow.dark_gray: true
-      allium.glow.blue: true
-      allium.glow.green: true
-      allium.glow.aqua: true
-      allium.glow.red: true
-      allium.glow.light_purple: true
-      allium.glow.yellow: true
-      allium.glow.white: true
+      allium.glow.black: false
+      allium.glow.dark_blue: false
+      allium.glow.dark_green: false
+      allium.glow.dark_aqua: false
+      allium.glow.dark_red: false
+      allium.glow.dark_purple: false
+      allium.glow.gold: false
+      allium.glow.gray: false
+      allium.glow.dark_gray: false
+      allium.glow.blue: false
+      allium.glow.green: false
+      allium.glow.aqua: false
+      allium.glow.red: false
+      allium.glow.light_purple: false
+      allium.glow.yellow: false
+      allium.glow.white: false
   allium.glow.rainbow:
     description: "Allows using /glow rainbow"
     default: op

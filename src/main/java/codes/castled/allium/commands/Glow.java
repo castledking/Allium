@@ -305,7 +305,7 @@ public class Glow implements CommandExecutor, TabCompleter {
 
         ScoreBoardTeamInfo info = new ScoreBoardTeamInfo(
                 Component.empty(), Component.empty(), Component.empty(),
-                NameTagVisibility.ALWAYS, CollisionRule.NEVER, color, OptionData.NONE);
+                NameTagVisibility.NEVER, CollisionRule.NEVER, color, OptionData.NONE);
 
         // CREATE packet — includes both team info (color) and player entries
         WrapperPlayServerTeams createPacket = new WrapperPlayServerTeams(
@@ -324,7 +324,7 @@ public class Glow implements CommandExecutor, TabCompleter {
 
         ScoreBoardTeamInfo info = new ScoreBoardTeamInfo(
                 Component.empty(), Component.empty(), Component.empty(),
-                NameTagVisibility.ALWAYS, CollisionRule.NEVER, color,
+                NameTagVisibility.NEVER, CollisionRule.NEVER, color,
                 OptionData.NONE);
 
         WrapperPlayServerTeams updatePacket = new WrapperPlayServerTeams(
@@ -389,7 +389,7 @@ public class Glow implements CommandExecutor, TabCompleter {
 
         ScoreBoardTeamInfo info = new ScoreBoardTeamInfo(
                 Component.empty(), Component.empty(), Component.empty(),
-                NameTagVisibility.ALWAYS, CollisionRule.NEVER, color, OptionData.NONE);
+                NameTagVisibility.NEVER, CollisionRule.NEVER, color, OptionData.NONE);
 
         // CREATE packet — includes both team info (color) and player entries
         WrapperPlayServerTeams createPacket = new WrapperPlayServerTeams(

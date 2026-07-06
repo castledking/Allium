@@ -11,7 +11,7 @@
 
     <groupId>codes.castled</groupId>
     <artifactId>Allium</artifactId>
-    <version>0.2.4a</version>
+    <version>0.2.5a</version>
     <name>Allium</name>
     <description>A secure, modern Essentials solution.</description>
 
@@ -425,6 +425,16 @@
                                     <resource>META-INF/services/org.bukkit.plugin.Plugin</resource>
                                 </transformer>
                             </transformers>
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.zaxxer.hikari</pattern>
+                                    <shadedPattern>codes.castled.allium.libs.hikari</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.h2</pattern>
+                                    <shadedPattern>codes.castled.allium.libs.h2</shadedPattern>
+                                </relocation>
+                            </relocations>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>

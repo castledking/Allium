@@ -119,6 +119,10 @@ public class Core implements CommandExecutor, TabCompleter {
                 handleReloadCommand(sender, null);
                 break;
 
+            case "modguard":
+                handleModGuardCommand(sender, args);
+                break;
+
             case "rp":
                 handleReloadResourcePackCommand(sender, args);
                 break;
@@ -721,6 +725,19 @@ public class Core implements CommandExecutor, TabCompleter {
 
         // Log the change
         Text.sendDebugLog(INFO, "Debug mode " + (newDebugMode ? "enabled" : "disabled") + " by " + sender.getName());
+    }
+
+    private void handleModGuardCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("allium.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
+            return;
+        }
+        if (args.length < 2 || !"reload".equalsIgnoreCase(args[1])) {
+            sender.sendMessage("§cUsage: /allium modguard reload");
+            return;
+        }
+        codes.castled.allium.managers.security.ModGuardManager.reload();
+        sender.sendMessage("§aModGuard config reloaded.");
     }
 
     private void handleReloadCommand(CommandSender sender, Boolean isDebug) {

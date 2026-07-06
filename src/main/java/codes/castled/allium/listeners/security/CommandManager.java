@@ -482,7 +482,7 @@ public class CommandManager implements Listener {
         return lowerCommand;
     }
 
-    private String getPluginForCommand(Command command, String commandName) {
+    private @Nullable String getPluginForCommand(Command command, String commandName) {
         if (command instanceof PluginIdentifiableCommand identifiableCommand) {
             Plugin owningPlugin = identifiableCommand.getPlugin();
             if (owningPlugin != null) {
@@ -512,7 +512,7 @@ public class CommandManager implements Listener {
             return commandName.substring(0, colonIndex).toLowerCase(Locale.ROOT);
         }
 
-        return commandName.toLowerCase(Locale.ROOT);
+        return null;
     }
 
     private Map<String, Command> getKnownCommands() {
@@ -850,41 +850,64 @@ public class CommandManager implements Listener {
     }
 
     private boolean hasPermissionForCommand(Player player, Command command, String commandName) {
+        String className = command.getClass().getName();
+
+        // VanillaCommandWrapper — Paper wraps Brigadier-registered commands (including
+        // AbyssalLib CommandBus) in this class. Its testPermissionSilent can false-negative
+        // because it doesn't properly evaluate the Brigadier requires() predicates.
+        // The server's native dispatch handles the actual permission check at execution time.
+        if (className.contains("VanillaCommandWrapper")) {
+            return true;
+        }
+
         boolean testSilent = command.testPermissionSilent(player);
         if (!testSilent) {
             return false;
         }
 
-        String pluginPermission = getDerivedPluginCommandPermission(command, commandName);
-        
-        // Check Allium-specific permissions for commands Allium owns, regardless of which plugin's command object resolved
+        // Not a PluginCommand (native Brigadier wrapper, custom command bus, etc.)
+        if (!(command instanceof PluginCommand)) {
+            return true;
+        }
+
+        // PluginCommand with an explicit permission: testPermissionSilent already checked it.
+        if (command.getPermission() != null && !command.getPermission().isBlank()) {
+            return true;
+        }
+
+        // Safety net for any Paper internals that happen to extend PluginCommand
+        if (className.toLowerCase(Locale.ROOT).contains("wrapper") || className.contains("paper")) {
+            return true;
+        }
+
         String baseCommand = commandName.toLowerCase(Locale.ROOT);
         if (baseCommand.contains(":")) {
             baseCommand = baseCommand.substring(baseCommand.indexOf(':') + 1);
         }
-        
-        if (baseCommand.equals("fly")) {
-            boolean hasFly = player.hasPermission("allium.fly");
-            boolean hasTFly = player.hasPermission("allium.tfly");
-            if (hasFly || hasTFly) {
-                return true;
+
+        if (baseCommand.equals("fly") && (player.hasPermission("allium.fly") || player.hasPermission("allium.tfly"))) {
+            return true;
+        }
+
+        if (baseCommand.equals("ping") && player.hasPermission("allium.ping")) {
+            return true;
+        }
+
+        // Allium-owned PluginCommand without explicit permission → derive
+        if (command instanceof PluginIdentifiableCommand identifiable) {
+            Plugin owner = identifiable.getPlugin();
+            if (owner != null && "Allium".equals(owner.getName())) {
+                String pluginPermission = "allium." + baseCommand;
+                return Bukkit.getPluginManager().getPermission(pluginPermission) == null
+                        || player.hasPermission(pluginPermission);
             }
         }
 
-        if (baseCommand.equals("ping")) {
-            if (player.hasPermission("allium.ping")) {
-                return true;
-            }
-        }
-
-        boolean hasPerm = pluginPermission == null
-                || Bukkit.getPluginManager().getPermission(pluginPermission) == null
-                || player.hasPermission(pluginPermission);
-        
-        return hasPerm;
+        // Non-Allium PluginCommand without explicit permission: trust testPermissionSilent
+        return true;
     }
 
-    private String getDerivedPluginCommandPermission(Command command, String commandName) {
+    private @Nullable String getDerivedPluginCommandPermission(Command command, String commandName) {
         String baseCommand = commandName == null ? "" : commandName.toLowerCase(Locale.ROOT);
         if (baseCommand.contains(":")) {
             baseCommand = baseCommand.substring(baseCommand.indexOf(':') + 1);
@@ -893,13 +916,12 @@ public class CommandManager implements Listener {
             baseCommand = command.getName().toLowerCase(Locale.ROOT);
         }
 
-        String pluginName = getPluginForCommand(command, commandName == null ? baseCommand : commandName)
-                .toLowerCase(Locale.ROOT);
-        if (pluginName.isBlank()) {
+        String pluginName = getPluginForCommand(command, commandName == null ? baseCommand : commandName);
+        if (pluginName == null || pluginName.isBlank()) {
             return null;
         }
 
-        return pluginName + "." + baseCommand;
+        return pluginName.toLowerCase(Locale.ROOT) + "." + baseCommand;
     }
 
 

@@ -23,7 +23,7 @@ items:
       - "§7A magical netherite axe that"
       - "§7chops down entire trees with one hit!"
     texture-type: item_model
-    item_model: "oraxen:tree_axe"
+    item_model: "nexo:tree_axe"
     custommodeldata: 1001
 
   # Built-in Spawner Type Changer - change spawner types using eggs
@@ -37,6 +37,6 @@ items:
       - ""
       - "§cWarning: This item only has one use!"
     texture-type: item_model
-    item_model: "oraxen:spawner_changer"
+    item_model: "nexo:spawner_changer"
     custommodeldata: 1002
     single-use: true

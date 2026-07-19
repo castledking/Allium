@@ -39,7 +39,7 @@ public class TreeAxeItem extends CustomItem {
 
     @Override
     public Object getItemModel() {
-        return "oraxen:tree_axe";
+        return "nexo:tree_axe";
     }
 
     @Override

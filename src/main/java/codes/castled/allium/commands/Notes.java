@@ -97,7 +97,7 @@ public class Notes implements CommandExecutor {
             .append(Component.text("=== ", NamedTextColor.GOLD))
             .append(Component.text(playerName == null ? "All Notes" : "Notes for " + playerName, NamedTextColor.WHITE))
             .append(Component.text(" ===", NamedTextColor.GOLD))
-            .build();
+            .asComponent();
         sender.sendMessage(header);
 
         for (NoteEntry note : notes) {
@@ -121,7 +121,7 @@ public class Notes implements CommandExecutor {
                 );
             }
             
-            sender.sendMessage(noteLine.build());
+            sender.sendMessage(noteLine.asComponent());
         }
     }
 }

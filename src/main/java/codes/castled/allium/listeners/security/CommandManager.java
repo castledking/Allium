@@ -23,7 +23,6 @@ import org.bukkit.event.player.PlayerCommandSendEvent;
 import org.bukkit.event.server.TabCompleteEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
-import net.milkbowl.vault.permission.Permission;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -31,6 +30,9 @@ import org.jetbrains.annotations.Nullable;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.permissions.command.CommandPermissionResolver;
+import codes.castled.allium.permissions.command.DefaultCommandPermissionResolver;
+import codes.castled.allium.permissions.command.PermissionResult;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
@@ -56,6 +58,7 @@ public class CommandManager implements Listener {
     private final Lang lang;
     private final Map<String, CommandGroup> commandGroups = new HashMap<>();
     private final Object vaultPermission;
+    private final CommandPermissionResolver commandPermissionResolver;
     private CreativeManager creativeManager;
     private Map<String, Command> knownCommandsCache;
     private long knownCommandsCacheTime;
@@ -65,12 +68,17 @@ public class CommandManager implements Listener {
         this.plugin = plugin;
         this.lang = plugin.getLangManager();
         this.vaultPermission = setupVaultPermission();
+        this.commandPermissionResolver = new DefaultCommandPermissionResolver();
         loadConfig();
         registerEvents();
     }
     
     public void setCreativeManager(CreativeManager creativeManager) {
         this.creativeManager = creativeManager;
+    }
+
+    public CommandPermissionResolver getCommandPermissionResolver() {
+        return commandPermissionResolver;
     }
 
     private Object setupVaultPermission() {
@@ -727,21 +735,21 @@ public class CommandManager implements Listener {
             return;
         }
 
-        Map<String, Command> knownCommands = getKnownCommands();
-        Command resolvedCommand = resolveCommandForPermissionCheck(knownCommands, fullCommand);
-
-        if (resolvedCommand == null && isNamespacedCommand) {
-            String baseCommandName = fullCommand.substring(fullCommand.indexOf(':') + 1);
-            resolvedCommand = resolveCommandForPermissionCheck(knownCommands, baseCommandName);
-        }
-
-        if (resolvedCommand == null) {
+        PermissionResult permissionResult = commandPermissionResolver.resolve(player, message);
+        if (permissionResult.command() == null) {
             event.setCancelled(true);
             sendUnknownCommandMessage(player, playerGroups, fullCommand, isNamespacedCommand);
             return;
         }
 
-        if (!hasPermissionForCommand(player, resolvedCommand, fullCommand)) {
+        if (plugin.getConfig().getBoolean("debug-mode")) {
+            Text.sendDebugLog(INFO, "Permission resolution for /" + message
+                    + ": allowed=" + permissionResult.allowed()
+                    + ", type=" + permissionResult.type()
+                    + ", matched=" + Objects.toString(permissionResult.matchedPermission(), "none"));
+        }
+
+        if (!permissionResult.allowed() && !hasLegacyCommandPermissionAlias(player, fullCommand)) {
             event.setCancelled(true);
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", fullCommand);
         }
@@ -816,112 +824,15 @@ public class CommandManager implements Listener {
         }
     }
 
-    private Command resolveCommandForPermissionCheck(Map<String, Command> knownCommands, String commandName) {
-        if (commandName == null || commandName.isEmpty()) {
-            return null;
-        }
-
-        Command command = knownCommands.get(commandName);
-        if (command != null) {
-            return command;
-        }
-
-        if (!commandName.contains(":")) {
-            String lowerCommand = commandName.toLowerCase(Locale.ROOT);
-            for (Map.Entry<String, Command> entry : knownCommands.entrySet()) {
-                String key = entry.getKey();
-                if (key == null) {
-                    continue;
-                }
-
-                int colonIndex = key.indexOf(':');
-                if (colonIndex == -1) {
-                    continue;
-                }
-
-                String baseCommand = key.substring(colonIndex + 1);
-                if (baseCommand.equals(lowerCommand)) {
-                    return entry.getValue();
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private boolean hasPermissionForCommand(Player player, Command command, String commandName) {
-        String className = command.getClass().getName();
-
-        // VanillaCommandWrapper — Paper wraps Brigadier-registered commands (including
-        // AbyssalLib CommandBus) in this class. Its testPermissionSilent can false-negative
-        // because it doesn't properly evaluate the Brigadier requires() predicates.
-        // The server's native dispatch handles the actual permission check at execution time.
-        if (className.contains("VanillaCommandWrapper")) {
-            return true;
-        }
-
-        boolean testSilent = command.testPermissionSilent(player);
-        if (!testSilent) {
-            return false;
-        }
-
-        // Not a PluginCommand (native Brigadier wrapper, custom command bus, etc.)
-        if (!(command instanceof PluginCommand)) {
-            return true;
-        }
-
-        // PluginCommand with an explicit permission: testPermissionSilent already checked it.
-        if (command.getPermission() != null && !command.getPermission().isBlank()) {
-            return true;
-        }
-
-        // Safety net for any Paper internals that happen to extend PluginCommand
-        if (className.toLowerCase(Locale.ROOT).contains("wrapper") || className.contains("paper")) {
-            return true;
-        }
-
+    private boolean hasLegacyCommandPermissionAlias(Player player, String commandName) {
         String baseCommand = commandName.toLowerCase(Locale.ROOT);
-        if (baseCommand.contains(":")) {
-            baseCommand = baseCommand.substring(baseCommand.indexOf(':') + 1);
+        int colonIndex = baseCommand.indexOf(':');
+        if (colonIndex != -1) {
+            baseCommand = baseCommand.substring(colonIndex + 1);
         }
-
-        if (baseCommand.equals("fly") && (player.hasPermission("allium.fly") || player.hasPermission("allium.tfly"))) {
-            return true;
-        }
-
-        if (baseCommand.equals("ping") && player.hasPermission("allium.ping")) {
-            return true;
-        }
-
-        // Allium-owned PluginCommand without explicit permission → derive
-        if (command instanceof PluginIdentifiableCommand identifiable) {
-            Plugin owner = identifiable.getPlugin();
-            if (owner != null && "Allium".equals(owner.getName())) {
-                String pluginPermission = "allium." + baseCommand;
-                return Bukkit.getPluginManager().getPermission(pluginPermission) == null
-                        || player.hasPermission(pluginPermission);
-            }
-        }
-
-        // Non-Allium PluginCommand without explicit permission: trust testPermissionSilent
-        return true;
-    }
-
-    private @Nullable String getDerivedPluginCommandPermission(Command command, String commandName) {
-        String baseCommand = commandName == null ? "" : commandName.toLowerCase(Locale.ROOT);
-        if (baseCommand.contains(":")) {
-            baseCommand = baseCommand.substring(baseCommand.indexOf(':') + 1);
-        }
-        if (baseCommand.isBlank()) {
-            baseCommand = command.getName().toLowerCase(Locale.ROOT);
-        }
-
-        String pluginName = getPluginForCommand(command, commandName == null ? baseCommand : commandName);
-        if (pluginName == null || pluginName.isBlank()) {
-            return null;
-        }
-
-        return pluginName.toLowerCase(Locale.ROOT) + "." + baseCommand;
+        return (baseCommand.equals("fly")
+                && (player.hasPermission("allium.fly") || player.hasPermission("allium.tfly")))
+                || (baseCommand.equals("ping") && player.hasPermission("allium.ping"));
     }
 
 

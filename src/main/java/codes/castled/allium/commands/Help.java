@@ -468,7 +468,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
                             .append(usageComponent)
                             .append(Component.newline()))
                     .append(Component.text("Click to use this command", NamedTextColor.GRAY))
-                    .build();
+                    .asComponent();
 
             Component commandComponent = Component.text(" • ")
                     .color(NamedTextColor.GOLD)
@@ -530,7 +530,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             } else {
                 navigationBar.append(Component.text("Next »").color(NamedTextColor.DARK_GRAY));
             }
-            sender.sendMessage(navigationBar.build());
+            sender.sendMessage(navigationBar.asComponent());
         }
     }
 
@@ -735,7 +735,7 @@ public class Help implements CommandExecutor, Listener, TabCompleter {
             } else {
                 navigationBar.append(Component.text("Next »").color(NamedTextColor.DARK_GRAY));
             }
-            sender.sendMessage(navigationBar.build());
+            sender.sendMessage(navigationBar.asComponent());
         }
     }
 

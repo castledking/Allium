@@ -2191,6 +2191,9 @@ public class TP implements CommandExecutor, TabCompleter {
                 return;
             }
             
+            // Invalidate cached back location so next /back re-evaluates from lastLocation/DB
+            locationCache.remove(targetPlayer.getUniqueId());
+            
             // Check if this is a death location
             boolean isDeathLocation = Death.getDeathLocation(targetPlayer) != null;
             

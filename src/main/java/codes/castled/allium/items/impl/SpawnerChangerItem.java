@@ -65,7 +65,7 @@ public class SpawnerChangerItem extends CustomItem {
 
     @Override
     public Object getItemModel() {
-        return "oraxen:spawner_changer";
+        return "nexo:spawner_changer";
     }
 
     @Override

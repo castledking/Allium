@@ -1405,8 +1405,10 @@ public class PluginStart extends JavaPlugin {
         // Only create chat formatter when Vault Chat is available
         if (vaultChat == null) {
             Text.sendDebugLog(
-                INFO,
-                "Vault Chat not available — skipping chat formatter.",
+                WARN,
+                "Vault Chat not available — skipping chat formatter. " +
+                "Permissions plugins like LuckPerms need 'chat: true' in their config to provide chat services. " +
+                "Vault alone does not provide chat formatting.",
                 true
             );
             return;
@@ -1822,10 +1824,10 @@ public class PluginStart extends JavaPlugin {
     ) {
         if (!chatInterface.isInterface()) {
             Text.sendDebugLog(
-                WARN,
-                "Vault Chat is abstract class, skipping proxy"
+                INFO,
+                "Vault Chat is an abstract class — assigning provider directly."
             );
-            return null;
+            return provider;
         }
         InvocationHandler handler = (proxy, method, args) -> {
             Method m = findMethod(

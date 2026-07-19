@@ -814,6 +814,7 @@ public final class AlliumChannelManager implements Listener {
                 .replace("<player>", "{PLAYER_COMPONENT}")
                 .replace("<display_name>", "{PLAYER_COMPONENT}")
                 .replace("<name>", "{PLAYER_COMPONENT}")
+                .replace("%allium_nickname%", "{PLAYER_COMPONENT}")
                 .replace("<message>", "{MESSAGE_COMPONENT}")
                 .replace("{local-channel}", channel.isLocal() ? "&eLocal" : "&bGlobal");
 
@@ -1287,7 +1288,11 @@ public final class AlliumChannelManager implements Listener {
         if (manager == null) {
             return player.getName();
         }
-        return manager.getStoredNickname(player);
+        String stored = manager.getStoredNickname(player);
+        if (stored == null || stored.isEmpty()) {
+            return player.getName();
+        }
+        return manager.getFormattedNickname(player, stored);
     }
 
     private String applyPlaceholders(Player player, String text) {

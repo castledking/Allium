@@ -392,7 +392,7 @@ public class Warp implements CommandExecutor, TabCompleter {
             } else {
                 navigationBar.append(Component.text("Next »").color(NamedTextColor.DARK_GRAY));
             }
-            sender.sendMessage(navigationBar.build());
+            sender.sendMessage(navigationBar.asComponent());
         }
     }
 }

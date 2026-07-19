@@ -736,7 +736,7 @@ public class FormatChatListener implements Listener {
         }
 
         if (hoverComponent != Component.empty()) {
-            component = component.hoverEvent(hoverComponent);
+            component = component.hoverEvent(HoverEvent.showText(hoverComponent));
         }
         if (clickEvent != null) {
             component = component.clickEvent(clickEvent);
@@ -1156,6 +1156,7 @@ public class FormatChatListener implements Listener {
         String processedFormat = formatBase
             .replace("<prefix>", "{PREFIX_COMPONENT}")
             .replace("<player>", "{PLAYER_COMPONENT}")
+            .replace("%allium_nickname%", "{PLAYER_COMPONENT}")
             .replace("<message>", "{MESSAGE_COMPONENT}")
             .replace("<suffix>", "{SUFFIX_COMPONENT}");
 
@@ -1201,25 +1202,15 @@ public class FormatChatListener implements Listener {
                     tempMessage
                 );
         }
-
-        // Track this message for per-player chat history (for packet-based deletion)
-        ChatMessageManager.ChatMessage chatMessage =
-            new ChatMessageManager.ChatMessage(
-                messageId,
-                player.getUniqueId(),
-                player.getName(),
-                tempMessage
-            );
-
-        // Track this message for all online players (since chat is broadcast to everyone)
-        for (Player onlinePlayer : plugin.getServer().getOnlinePlayers()) {
-            chatMessageManager.trackMessageForPlayer(
-                onlinePlayer.getUniqueId(),
-                chatMessage
-            );
-        }
-
         // Create the final message with base player component (no extra hover/suggest delete text)
+
+        // Note: We DO NOT call trackMessageForPlayer here — per-player history is
+        // managed by PacketChatTrackerImpl (packet capture) which produces entries
+        // that correctly match AlliumChannelManager's stored components by content.
+        // Duplicate tracking from this listener would produce entries with different
+        // plain text (different format template → different plain text → content
+        // matching in deleteMessage fails → entries stay undeleted → deleted message
+        // reappears on resend).
         Component finalMessage = baseMessage
             .replaceText(builder ->
                 builder

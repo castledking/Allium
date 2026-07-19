@@ -42,7 +42,7 @@ public class ChatMessageManager {
         private final String senderName;
         private final Component originalMessage;
         private final long timestamp;
-        private boolean deleted;
+        private volatile boolean deleted;
 
         public ChatMessage(
             long messageId,
@@ -132,6 +132,43 @@ public class ChatMessageManager {
         }
 
         return messageId;
+    }
+
+    /**
+     * Stores a chat message and returns the actual stored instance so callers
+     * share the same reference across collections (playerMessages + playerChatHistory).
+     * This avoids the bug where a separate ChatMessage object for the same logical
+     * message gets a different {@code deleted} flag.
+     */
+    public ChatMessage storeMessageObject(
+        UUID senderId,
+        String senderName,
+        Component message
+    ) {
+        long messageId = messageIdCounter.incrementAndGet();
+
+        ChatMessage chatMessage = new ChatMessage(
+            messageId,
+            senderId,
+            senderName,
+            message
+        );
+
+        Deque<ChatMessage> messages = playerMessages.computeIfAbsent(
+            senderId,
+            k -> new ConcurrentLinkedDeque<>()
+        );
+
+        messages.addLast(chatMessage);
+
+        while (
+            messages.size() > MAX_MESSAGES_PER_PLAYER &&
+            messages.pollFirst() != null
+        ) {
+            // Trim oldest entries until within limit
+        }
+
+        return chatMessage;
     }
 
     /** Time window (ms) to treat as same logical message when deleting duplicates (e.g. formatted vs packet raw). */

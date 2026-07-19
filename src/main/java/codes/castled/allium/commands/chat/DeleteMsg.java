@@ -20,7 +20,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Handles the deletion of chat messages by staff members
@@ -183,7 +182,10 @@ public class DeleteMsg implements CommandExecutor {
                     }
                 }
             } finally {
-                resendInProgress.set(false);
+                // Delay release so successive /delmsg commands within 1 tick
+                // don't schedule overlapping resends while PacketEvents is still
+                // processing the outgoing packets from the current resend.
+                SchedulerAdapter.runLater(() -> resendInProgress.set(false), 1L);
             }
         }, 1L);
     }
@@ -202,16 +204,21 @@ public class DeleteMsg implements CommandExecutor {
      */
     private void clearChatFallback() {
         try {
+            int configured = Math.max(0, plugin.getConfig().getInt("chat.deletion_resend.clear_lines", 500));
+            int clearLines = Math.min(configured, 120);
+            int batchSize = 20;
             for (Player p : plugin.getServer().getOnlinePlayers()) {
                 if (p == null || !p.isOnline()) {
                     continue;
                 }
-
-                int configured = Math.max(0, plugin.getConfig().getInt("chat.deletion_resend.clear_lines", 500));
-                int clearLines = Math.min(configured, 120);
-                for (int i = 0; i < clearLines; i++) {
-                    char c = CLEAR_CHARS[ThreadLocalRandom.current().nextInt(CLEAR_CHARS.length)];
-                    p.sendMessage(Component.text(String.valueOf(c)));
+                for (int batch = 0; batch < clearLines; batch += batchSize) {
+                    int end = Math.min(batch + batchSize, clearLines);
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = batch; i < end; i++) {
+                        if (sb.length() > 0) sb.append('\n');
+                        sb.append(CLEAR_CHARS[i % CLEAR_CHARS.length]);
+                    }
+                    p.sendMessage(Component.text(sb.toString()));
                 }
             }
         } catch (Exception e) {

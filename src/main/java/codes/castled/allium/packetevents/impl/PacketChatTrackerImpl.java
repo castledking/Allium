@@ -17,12 +17,10 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerCh
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDisguisedChat;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSystemChatMessage;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -41,9 +39,17 @@ public class PacketChatTrackerImpl
 
     private final PluginStart plugin;
     private final ChatMessageManager chatMessageManager;
-    private final Set<UUID> playersBeingResent = new HashSet<>();
+    private final Set<UUID> playersBeingResent = ConcurrentHashMap.newKeySet();
     /** Guard so clear+resend runs only once even if scheduler fires twice (e.g. Purpur with Folia APIs). */
     private final AtomicBoolean resendAllInProgress = new AtomicBoolean(false);
+    /** Global suppression of packet tracking during resend broadcast. */
+    private final AtomicBoolean suppressPacketTracking = new AtomicBoolean(false);
+
+    private boolean shouldIgnoreTracking(Player player) {
+        return suppressPacketTracking.get()
+            || player == null
+            || playersBeingResent.contains(player.getUniqueId());
+    }
 
     /**
      * Invisible Unicode characters for clearing chat. Each resend uses a random permutation
@@ -125,19 +131,11 @@ public class PacketChatTrackerImpl
             if (messageComponent == null) return;
 
             Player player = event.getPlayer();
-            if (player == null) return;
-
-            if (playersBeingResent.contains(player.getUniqueId())) return;
+            if (shouldIgnoreTracking(player)) return;
 
             UUID systemUUID = new UUID(0, 0);
-            long messageId = chatMessageManager.storeMessage(
-                systemUUID,
-                "SYSTEM",
-                messageComponent
-            );
             ChatMessageManager.ChatMessage chatMessage =
-                new ChatMessageManager.ChatMessage(
-                    messageId,
+                chatMessageManager.storeMessageObject(
                     systemUUID,
                     "SYSTEM",
                     messageComponent
@@ -169,19 +167,11 @@ public class PacketChatTrackerImpl
             if (messageComponent == null) return;
 
             Player player = event.getPlayer();
-            if (player == null) return;
-
-            if (playersBeingResent.contains(player.getUniqueId())) return;
+            if (shouldIgnoreTracking(player)) return;
 
             UUID systemUUID = new UUID(0, 0);
-            long messageId = chatMessageManager.storeMessage(
-                systemUUID,
-                "SYSTEM",
-                messageComponent
-            );
             ChatMessageManager.ChatMessage chatMessage =
-                new ChatMessageManager.ChatMessage(
-                    messageId,
+                chatMessageManager.storeMessageObject(
                     systemUUID,
                     "SYSTEM",
                     messageComponent
@@ -216,22 +206,14 @@ public class PacketChatTrackerImpl
             if (messageComponent == null) return;
 
             Player player = event.getPlayer();
-            if (player == null) return;
-
-            if (playersBeingResent.contains(player.getUniqueId())) return;
+            if (shouldIgnoreTracking(player)) return;
 
             // Skip overlay (action bar / title) messages — these are not chat.
             if (systemChatPacket.isOverlay()) return;
 
             UUID systemUUID = new UUID(0, 0);
-            long messageId = chatMessageManager.storeMessage(
-                systemUUID,
-                "SYSTEM",
-                messageComponent
-            );
             ChatMessageManager.ChatMessage chatMessage =
-                new ChatMessageManager.ChatMessage(
-                    messageId,
+                chatMessageManager.storeMessageObject(
                     systemUUID,
                     "SYSTEM",
                     messageComponent
@@ -265,8 +247,9 @@ public class PacketChatTrackerImpl
 
     @Override
     public void resendChatHistoryToPlayer(Player player) {
+        UUID playerId = player.getUniqueId();
+        playersBeingResent.add(playerId);
         try {
-            playersBeingResent.add(player.getUniqueId());
 
             int configuredClearLines = Math.max(
                 0,
@@ -275,13 +258,18 @@ public class PacketChatTrackerImpl
                     .getInt("chat.deletion_resend.clear_lines", 500)
             );
             int clearLines = Math.min(configuredClearLines, 180);
-            int poolSize = INVISIBLE_UNICODE.length;
-            List<Integer> indices = new ArrayList<>(poolSize);
-            for (int i = 0; i < poolSize; i++) indices.add(i);
-            Collections.shuffle(indices, ThreadLocalRandom.current());
-            for (int i = 0; i < clearLines; i++) {
-                char c = INVISIBLE_UNICODE[indices.get(i % poolSize)];
-                player.sendMessage(Component.text(String.valueOf(c)));
+
+            // Batch clear: pack multiple invisible chars per message to minimize
+            // packets.  180 single-char msgs → ~9 batched msgs.
+            int batchSize = 20;
+            for (int batch = 0; batch < clearLines; batch += batchSize) {
+                int end = Math.min(batch + batchSize, clearLines);
+                StringBuilder sb = new StringBuilder();
+                for (int i = batch; i < end; i++) {
+                    if (sb.length() > 0) sb.append('\n');
+                    sb.append(INVISIBLE_UNICODE[i % INVISIBLE_UNICODE.length]);
+                }
+                player.sendMessage(Component.text(sb.toString()));
             }
 
             if (
@@ -393,7 +381,12 @@ public class PacketChatTrackerImpl
                     e.getMessage()
             );
         } finally {
-            playersBeingResent.remove(player.getUniqueId());
+            // Delay removal so PacketEvents has time to process the outgoing
+            // resend packets before we stop suppressing their tracking.
+            SchedulerAdapter.runLater(
+                () -> playersBeingResent.remove(playerId),
+                1L
+            );
         }
     }
 
@@ -746,12 +739,18 @@ public class PacketChatTrackerImpl
         if (!resendAllInProgress.compareAndSet(false, true)) {
             return;
         }
+        suppressPacketTracking.set(true);
         try {
             for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
                 resendChatHistoryToPlayer(onlinePlayer);
             }
         } finally {
-            resendAllInProgress.set(false);
+            // Delay releasing both guards so PacketEvents has time to process
+            // the outgoing resend packets before we resume tracking.
+            SchedulerAdapter.runLater(() -> {
+                suppressPacketTracking.set(false);
+                resendAllInProgress.set(false);
+            }, 1L);
         }
     }
 

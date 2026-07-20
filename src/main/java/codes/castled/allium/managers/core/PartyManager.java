@@ -621,7 +621,7 @@ public class PartyManager {
         boolean sameParty = viewerParty != null && targetParty != null && viewerParty.equals(targetParty);
 
         // Only skip when locator bar is explicitly disabled (null/absent = assume enabled)
-        if (Boolean.FALSE.equals(viewer.getWorld().getGameRuleValue(GameRule.LOCATOR_BAR))) {
+        if (!codes.castled.allium.util.ApiCompat.isLocatorBarEnabled(viewer.getWorld())) {
             return;
         }
 

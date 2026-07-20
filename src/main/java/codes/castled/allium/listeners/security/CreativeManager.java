@@ -361,12 +361,16 @@ public class CreativeManager implements Listener {
                 sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw eggs");
                 createFizzleEffect(player.getLocation());
             }
-            if (event.getEntityType() == EntityType.SPLASH_POTION)  {
+            // 1.21.5 split the thrown-potion entity into SPLASH_POTION and LINGERING_POTION.
+            // Older servers only have POTION and deliver both kinds as it. Compare by name so the
+            // class loads regardless; on older servers both arrive as POTION (treated as splash).
+            String thrownType = event.getEntityType().name();
+            if (thrownType.equals("SPLASH_POTION") || thrownType.equals("POTION")) {
                 event.setCancelled(true);
                 sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw splash potions");
                 createFizzleEffect(player.getLocation());
             }
-            if (event.getEntityType() == EntityType.LINGERING_POTION) {
+            if (thrownType.equals("LINGERING_POTION")) {
                 event.setCancelled(true);
                 sendErrorMessageWithCooldown(player, "creative-manager.restrict", plugin.getLangManager(), "{action}", "throw lingering potions");
                 createFizzleEffect(player.getLocation());

@@ -212,7 +212,7 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
         }
         partyManager.forceVisibilityRefresh();
         player.sendMessage(Text.colorize("&aVisibility refresh forced. Config: party-locator-bar=" + partyManager.isPartyLocatorBarEnabled()
-                + ", radius=" + partyManager.getShowNonPartyMembersRadius() + ", locator-bar-enabled=" + Boolean.TRUE.equals(player.getWorld().getGameRuleValue(org.bukkit.GameRule.LOCATOR_BAR))));
+                + ", radius=" + partyManager.getShowNonPartyMembersRadius() + ", locator-bar-enabled=" + codes.castled.allium.util.ApiCompat.isLocatorBarEnabled(player.getWorld())));
     }
 
     private void handleLeave(Player player) {

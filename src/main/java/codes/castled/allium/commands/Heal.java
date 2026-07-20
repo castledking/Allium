@@ -281,7 +281,10 @@ public class Heal implements CommandExecutor {
                 
                 // Get max health attribute if available
                 try {
-                    AttributeInstance maxHealthAttr = livingEntity.getAttribute(Attribute.MAX_HEALTH);
+                    Attribute maxHealthAttribute = codes.castled.allium.util.ApiCompat.MAX_HEALTH;
+                    AttributeInstance maxHealthAttr = maxHealthAttribute == null
+                        ? null
+                        : livingEntity.getAttribute(maxHealthAttribute);
                     if (maxHealthAttr != null) {
                         maxHealth = maxHealthAttr.getValue();
                     }

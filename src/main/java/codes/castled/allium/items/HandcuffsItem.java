@@ -94,7 +94,10 @@ public class HandcuffsItem {
         
         // Get the item meta and add the attribute modifier
         ItemMeta itemMeta = item.getItemMeta();
-        itemMeta.addAttributeModifier(Attribute.MOVEMENT_SPEED, modifier);
+        Attribute movementSpeed = codes.castled.allium.util.ApiCompat.MOVEMENT_SPEED;
+        if (movementSpeed != null) {
+            itemMeta.addAttributeModifier(movementSpeed, modifier);
+        }
         item.setItemMeta(itemMeta);
 
         return item;

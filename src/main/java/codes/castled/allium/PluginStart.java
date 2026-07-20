@@ -1518,10 +1518,11 @@ public class PluginStart extends JavaPlugin {
                 // Citizens already sets WAYPOINT_TRANSMIT_RANGE=0 on Player-type NPCs at spawn
                 // (see CitizensNPC.java:403). Set as a fallback for any NPCs that missed it.
                 try {
-                    org.bukkit.attribute.AttributeInstance attr =
-                        living.getAttribute(
-                            org.bukkit.attribute.Attribute.WAYPOINT_TRANSMIT_RANGE
-                        );
+                    org.bukkit.attribute.Attribute waypointRange =
+                        codes.castled.allium.util.ApiCompat.WAYPOINT_TRANSMIT_RANGE;
+                    org.bukkit.attribute.AttributeInstance attr = waypointRange == null
+                        ? null
+                        : living.getAttribute(waypointRange);
                     if (attr != null && attr.getBaseValue() != 0) {
                         attr.setBaseValue(0);
                         count++;
@@ -2092,9 +2093,7 @@ public class PluginStart extends JavaPlugin {
                 .getWorlds()
                 .stream()
                 .findFirst()
-                .map(world ->
-                    world.getGameRuleValue(org.bukkit.GameRule.LOCATOR_BAR)
-                )
+                .map(codes.castled.allium.util.ApiCompat::isLocatorBarEnabled)
                 .orElse(Boolean.TRUE);
 
             if (!locatorBarEnabled) {
@@ -2154,7 +2153,7 @@ public class PluginStart extends JavaPlugin {
             .getWorlds()
             .stream()
             .findFirst()
-            .map(w -> w.getGameRuleValue(org.bukkit.GameRule.LOCATOR_BAR))
+            .map(codes.castled.allium.util.ApiCompat::isLocatorBarEnabled)
             .orElse(Boolean.TRUE);
         if (!locatorBarEnabled) return;
         try {

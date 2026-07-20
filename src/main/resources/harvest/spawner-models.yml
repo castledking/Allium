@@ -1,0 +1,51 @@
+# ============================================================
+#  Spawner models
+# ============================================================
+# Per-entity-type visual overlays for vanilla spawner blocks.
+# The real spawner is NEVER replaced or hidden server-side — the
+# model is one ItemDisplay per spawner, designed to cover the cage
+# naturally. Breaking the spawner removes the visual; changing its
+# type swaps the model; restarts recreate missing visuals without
+# duplicating existing ones.
+#
+# Stack-size variants (for stacked-spawner plugins registering a
+# SpawnerProvider service) select exactly one matching entry — the
+# highest qualifying minimum-stack wins.
+
+spawner-models:
+  enabled: true
+
+  defaults:
+    scale: 1.0
+    translation: [0.5, 0.0, 0.5]
+    rotation-y: 0.0
+    view-range: 48
+    glow: false
+
+  types:
+    IRON_GOLEM:
+      item: nexo:iron_golem_spawner_model
+      variants:
+        - minimum-stack: 64
+          item: nexo:iron_golem_spawner_model_64
+        - minimum-stack: 16
+          item: nexo:iron_golem_spawner_model_16
+        - minimum-stack: 1
+          item: nexo:iron_golem_spawner_model
+
+    ZOMBIE:
+      item: nexo:zombie_spawner_model
+
+    SKELETON:
+      item: nexo:skeleton_spawner_model
+
+    BLAZE:
+      item: nexo:blaze_spawner_model
+
+    CREEPER:
+      item: nexo:creeper_spawner_model
+
+    # Fallback for every type without its own entry. Remove this key
+    # to render no model for unlisted types.
+    default:
+      item: nexo:generic_spawner_model

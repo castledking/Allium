@@ -155,6 +155,30 @@ class CommandPermissionAdaptersTest {
     }
 
     @Test
+    void vanillaBukkitPermissionBeatsOpLevelBrigadierRequirement() {
+        CommandNode<Object> node = LiteralArgumentBuilder.<Object>literal("kill")
+                .requires(source -> false) // vanilla source.hasPermission(2)
+                .build();
+        Command command = new TestVanillaCommandWrapper(node, "minecraft");
+        command.setPermission("minecraft.command.kill");
+        CommandPermissionContext context = new CommandPermissionContext(
+                playerWith(Map.of("minecraft.command.kill", true)),
+                "minecraft:kill ggpots",
+                "kill",
+                List.of("ggpots"),
+                command,
+                "minecraft",
+                Set.of("minecraft.command.kill")
+        );
+
+        PermissionResult result = new BrigadierCommandPermissionAdapter().resolve(context).orElseThrow();
+
+        assertTrue(result.allowed());
+        assertEquals(ResolutionType.VANILLA, result.type());
+        assertEquals("minecraft.command.kill", result.matchedPermission());
+    }
+
+    @Test
     void reportsUnknownWhenBrigadierWrapperCannotBeInspected() {
         Command command = new BrokenVanillaCommandWrapper();
 

@@ -1,3 +1,22 @@
+# ============================================================
+#  Startup
+# ============================================================
+# Load every Allium class during startup instead of on demand.
+#
+# A plugin jar is read lazily, so replacing Allium.jar while the
+# server is running leaves classes that had not been used yet
+# unreadable, and they fail with NoClassDefFoundError the moment
+# something needs them — often inside the very restart command
+# being used to apply the update.
+#
+# Preloading takes roughly 150ms at startup and removes that
+# failure mode for Allium's own code.
+#
+# This is damage control, NOT a supported way to update the plugin.
+# To update safely, put the new jar in plugins/update/ and restart:
+# the server swaps it while nothing is using it.
+preload-classes: true
+
 # World generation settings
 ore-generation:
   # Silver ore configuration

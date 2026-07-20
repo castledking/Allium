@@ -240,6 +240,7 @@ public class PluginStart extends JavaPlugin {
     private Tab tabCompleter;
     private OreGenerationManager oreGenerationManager;
     private SpawnerCoreManager spawnerCoreManager;
+    private codes.castled.allium.harvest.HarvestModule harvestModule;
     private TFlyManager tflyManager;
     private VouchersConfig vouchersConfig;
     private SecurityAlertManager securityAlertManager;
@@ -269,6 +270,14 @@ public class PluginStart extends JavaPlugin {
      *
      * @return The SpawnerCoreManager instance, or null if not initialized.
      */
+    /**
+     * @return the harvest module (custom crops + spawner models), or null if
+     *         it failed to initialize
+     */
+    public codes.castled.allium.harvest.HarvestModule getHarvestModule() {
+        return harvestModule;
+    }
+
     public SpawnerCoreManager getSpawnerCoreManager() {
         return spawnerCoreManager;
     }
@@ -534,6 +543,16 @@ public class PluginStart extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        // Before anything else, while the jar on disk is still the jar we were
+        // loaded from: pull every Allium class into the classloader. If the jar
+        // is later replaced under a running server, code that has not run yet
+        // would otherwise fail with NoClassDefFoundError — frequently inside
+        // the restart command being used to apply the update.
+        // See ClassPreloader for the full explanation and its limits.
+        if (getConfig().getBoolean("preload-classes", true)) {
+            codes.castled.allium.managers.core.ClassPreloader.preloadAll(this);
+        }
+
         // Initialize database first (required by NicknameManager and other managers)
         database = new Database(this);
 
@@ -783,6 +802,20 @@ public class PluginStart extends JavaPlugin {
         // every 5 ticks. Handles NPCs that spawn after the initial scan or whose attribute
         // was reset by another plugin.
         SchedulerAdapter.runTimer(this::setupCitizensNpcWaypointRange, 5L, 5L);
+
+        // Harvest module (custom crops + spawner models)
+        try {
+            harvestModule = new codes.castled.allium.harvest.HarvestModule(this);
+            harvestModule.enable();
+            codes.castled.allium.harvest.command.HarvestCommand harvestCommand =
+                new codes.castled.allium.harvest.command.HarvestCommand(harvestModule);
+            registerCommand("harvest", harvestCommand, harvestCommand);
+        } catch (Throwable t) {
+            Text.sendDebugLog(
+                ERROR,
+                "Failed to enable harvest module: " + t.getMessage()
+            );
+        }
     }
 
     @Override
@@ -981,6 +1014,18 @@ public class PluginStart extends JavaPlugin {
      */
     @Override
     public void onDisable() {
+        // Shut down the harvest module first: it persists crop state and
+        // flushes its own database pool.
+        if (harvestModule != null) {
+            try {
+                harvestModule.disable();
+            } catch (Throwable t) {
+                getLogger().warning(
+                    "Error disabling harvest module: " + t.getMessage()
+                );
+            }
+        }
+
         // Save pending messages
         if (msgCommand != null) {
             msgCommand.savePendingMessages();

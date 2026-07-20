@@ -5,7 +5,7 @@ api-version: 1.21
 folia-supported: true
 author: castledking
 description: "A secure, modern Essentials solution."
-softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens]
+softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens, Nexo, Oraxen]
 
 commands:
   nickname:
@@ -463,6 +463,11 @@ commands:
     description: "Display information about a warp"
     usage: "/warpinfo <n>"
     permission: allium.warpinfo
+
+  harvest:
+    description: "Allium Harvest — custom crops and spawner models"
+    usage: "/harvest <reload|give|crop|spawner|debug>"
+    aliases: [hf]
 
 permissions:
   allium.player:
@@ -1616,4 +1621,48 @@ permissions:
     default: op
   modguard.notify:
     description: "Receives notifications when players are kicked for banned mods"
+    default: op
+
+  # Harvest module permissions
+  allium.harvest.admin:
+    description: "Full access to every /harvest subcommand"
+    default: op
+  allium.harvest.reload:
+    description: "Allows /harvest reload"
+    default: op
+  allium.harvest.give:
+    description: "Allows /harvest give"
+    default: op
+  allium.harvest.crop.plant:
+    description: "Allows planting custom crops with seeds"
+    default: true
+  allium.harvest.crop.harvest:
+    description: "Allows harvesting custom crops"
+    default: true
+  allium.harvest.crop.plant.command:
+    description: "Allows /harvest crop plant"
+    default: op
+  allium.harvest.crop.inspect:
+    description: "Allows /harvest crop inspect and nearby"
+    default: op
+  allium.harvest.crop.debug:
+    description: "Allows /harvest debug, crop grow and crop remove"
+    default: op
+  allium.harvest.spawner.inspect:
+    description: "Allows /harvest spawner inspect"
+    default: op
+  allium.harvest.spawner.refresh:
+    description: "Allows /harvest spawner refresh and removevisual"
+    default: op
+  allium.harvest.spawner.rescan:
+    description: "Allows /harvest spawner rescan"
+    default: op
+  allium.harvest.sprinkler.place:
+    description: "Allows placing tracked sprinklers"
+    default: true
+  allium.harvest.soil.inspect:
+    description: "Allows /harvest soil inspect"
+    default: op
+  allium.harvest.soil.modify:
+    description: "Allows /harvest soil restore and forget"
     default: op

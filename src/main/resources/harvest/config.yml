@@ -1,0 +1,148 @@
+# ============================================================
+#  Allium Harvest — custom crops & spawner models
+# ============================================================
+# Crop definitions live in harvest/crops/*.yml (one crop per file).
+# Fertilizers live in harvest/fertilizers.yml.
+# Spawner models live in harvest/spawner-models.yml.
+#
+# Reload everything with /harvest reload — an invalid configuration
+# is reported and never replaces the running one.
+
+enabled: true
+
+# ------------------------------------------------------------
+# Storage backend for crops, soil, sprinklers and tracked spawners.
+#
+#   H2      - local file database. BUNDLED: works out of the box with
+#             no setup and no downloads. Recommended for most servers.
+#   SQLITE  - local SQLite file.      driver NOT bundled
+#   MYSQL   - MySQL / MariaDB server. driver NOT bundled
+#
+# Only the H2 driver ships inside Allium. Bundling SQLite and MySQL
+# added ~14 MB to the jar (mostly SQLite native binaries for every CPU
+# architecture), so they were left out.
+#
+# To use SQLITE or MYSQL, put the driver jar in your server's
+# libraries/ folder and restart:
+#   SQLite - org.xerial:sqlite-jdbc
+#   MySQL  - com.mysql:mysql-connector-j
+# If the driver is missing, Allium says so explicitly on startup rather
+# than failing with a confusing connection error.
+#
+# Switching backends does not migrate existing data automatically.
+# ------------------------------------------------------------
+storage:
+  type: H2
+  # Only used for MYSQL:
+  host: localhost
+  port: 3306
+  database: allium_harvest
+  username: allium
+  password: change-me
+  table-prefix: ""
+
+# ------------------------------------------------------------
+# Growth engine pacing. There is never a task per crop: one
+# repeating scan finds due crops in loaded chunks and dispatches
+# region-safe stage advances, bounded per pass.
+# ------------------------------------------------------------
+growth-engine:
+  check-interval-ticks: 20
+  checks-per-tick: 100
+  flush-interval-ticks: 100
+
+# ------------------------------------------------------------
+# Crop display entity defaults.
+#
+# display-transform decides ORIENTATION and BASE SIZE. An item model
+# is authored with a different transform for each context it can
+# appear in, and the display picks one of them:
+#
+#   GROUND  - how a dropped item looks. Upright, half scale.
+#             Correct for almost every Nexo/Oraxen crop model.  [default]
+#   FIXED   - how an item looks in an ITEM FRAME. Item frames lay
+#             their contents FLAT, so an upright crop model renders
+#             on its side at full size. This is the usual cause of
+#             "my crop is lying down and too big".
+#   NONE    - raw model geometry, no transform applied.
+#   HEAD    - as worn on a head. Often used for block-like models.
+#   GUI, FIRSTPERSON_LEFTHAND, FIRSTPERSON_RIGHTHAND,
+#   THIRDPERSON_LEFTHAND, THIRDPERSON_RIGHTHAND - also accepted.
+#
+# If a model still looks wrong, try HEAD or NONE before reaching for
+# `scale` — the transform is usually the real problem, and scale only
+# papers over it. An unrecognised value falls back to GROUND.
+#
+# `scale` multiplies ON TOP of the transform's own scale, so leave it
+# at 1.0 unless you specifically want to deviate from the model.
+# ------------------------------------------------------------
+crop-visuals:
+  view-range: 48
+  scale: 1.0
+  y-offset: 0.0
+  display-transform: GROUND
+
+  # Crops render as display entities, which have NO hitbox of their own —
+  # a click aimed at one passes straight through. `clickable` pairs each
+  # crop with an invisible Interaction hitbox so the plant itself can be
+  # right-clicked (fertilize / harvest) and punched (break), with no real
+  # block needed to stand in for it.
+  #
+  # Size the hitbox to the model. Too large and it eats clicks meant for
+  # neighbouring blocks; too small and the crop is fiddly to hit.
+  clickable: true
+  interaction-width: 0.7
+  interaction-height: 1.0
+
+# ------------------------------------------------------------
+# Soil lifecycle (OFF by default).
+#
+# When enabled, soil wears out. A block starts its clock the first time
+# something is planted on it and, once `lifetime` has elapsed, refuses
+# new plantings until a soil retainer fertilizer feeds it. Crops already
+# growing are never destroyed by soil wearing out — only new plantings
+# are blocked.
+#
+# Breaking the farmland and placing fresh farmland does NOT reset the
+# clock: the record outlives the block for `forget-exhausted-after`,
+# which should comfortably exceed how long a player would be willing to
+# wait it out. Only after that window does the spot count as new ground.
+#
+# Farmland that is never planted on is never tracked, so turning this on
+# does not suddenly write a row for every farm block on the server.
+#
+# Set `lifetime: never` to track soil without it ever wearing out.
+# ------------------------------------------------------------
+soil:
+  enabled: false
+  lifetime: 7d
+  forget-exhausted-after: 14d
+  exhausted-message: "This soil is exhausted — use a soil retainer to restore it."
+
+# ------------------------------------------------------------
+# Sprinklers. Tiers are configured in harvest/sprinklers.yml.
+#
+# The per-chunk cap bounds how much work a coverage lookup can do, so a
+# player cannot degrade performance by carpeting a chunk in sprinklers.
+# ------------------------------------------------------------
+sprinklers:
+  enabled: true
+  maximum-per-chunk: 64
+
+# ------------------------------------------------------------
+# Spawner model overlays. The real spawner block always stays in
+# place and keeps its vanilla (or stacked-spawner plugin) behavior;
+# the model is a pure visual overlay on top of it.
+# ------------------------------------------------------------
+spawner-models:
+  enabled: true
+  view-range: 48
+  # See crop-visuals.display-transform above for what these mean.
+  # Spawner models are usually block-shaped rather than flat, so HEAD
+  # is often the better fit for them than GROUND.
+  display-transform: GROUND
+  reconciliation:
+    # Discover untracked spawners through the chunk's block-entity
+    # list when a chunk loads (never a full block scan).
+    scan-spawner-blocks-on-chunk-load: true
+    maximum-block-entities-per-tick: 50

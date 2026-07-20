@@ -1,0 +1,188 @@
+# ============================================================
+#  Fertilizers
+# ============================================================
+# A fertilizer can carry any combination of five effects:
+#
+#   quality   - shifts the odds between harvest quality tiers
+#   yield     - changes how many items a harvest drops
+#   growth    - changes how long each growth stage takes
+#   variation - shifts the odds between GROWTH PATHS (golden, gigantic, …)
+#   soil      - restores soil life (only matters when soil.enabled is on)
+#
+# WHEN TO APPLY
+# -------------
+# Right-click SOIL before planting, or right-click a GROWING CROP.
+#
+# The growth path is decided by a single weighted roll the moment the
+# seed goes in, so a `variation` fertilizer only does something when it
+# is already in the ground BEFORE you plant. The same is true for
+# `soil`. Those default to soil-only; the rest can go either way.
+# Override with `apply-to-soil` / `apply-to-crop` if you want.
+#
+# There is no built-in idea of "levels". A tier 3 fertilizer is just a
+# separate entry with stronger numbers, so every tier is tuned on its
+# own instead of being derived from a formula.
+
+fertilizers:
+
+  # ---------- QUALITY: shifts the mutually exclusive quality roll ----------
+  # Multipliers are applied to the primary table's weights BEFORE the
+  # single selection roll, so exactly one quality still comes out.
+  # Base tomato weights are regular 65 / silver 25 / golden-star 10.
+
+  quality_fertilizer_1:
+    item: nexo:quality_fertilizer_1
+    display-name: "Basic Quality Fertilizer"
+    quality:
+      regular: 0.80        # 52.0
+      silver: 1.30         # 32.5
+      golden-star: 1.40    # 14.0  -> ~52% / 33% / 14%
+
+  quality_fertilizer_2:
+    item: nexo:quality_fertilizer_2
+    display-name: "Refined Quality Fertilizer"
+    quality:
+      regular: 0.60        # 39.0
+      silver: 1.50         # 37.5
+      golden-star: 2.00    # 20.0  -> ~40% / 38% / 21%
+
+  quality_fertilizer_3:
+    item: nexo:quality_fertilizer_3
+    display-name: "Deluxe Quality Fertilizer"
+    quality:
+      regular: 0.35        # 22.75
+      silver: 1.60         # 40.0
+      golden-star: 3.20    # 32.0  -> ~24% / 42% / 34%
+
+  # ---------- YIELD: more items per harvest ----------
+  # Final amount = round(rolled amount * multiply) + bonus, capped by
+  # `maximum` when set (0 = uncapped). Yield never touches the seed /
+  # bonus tables, only the primary crop drop.
+
+  yield_fertilizer_1:
+    item: nexo:yield_fertilizer_1
+    display-name: "Basic Yield Fertilizer"
+    yield:
+      multiply: 1.25
+      bonus: 0
+      maximum: 0
+
+  yield_fertilizer_2:
+    item: nexo:yield_fertilizer_2
+    display-name: "Refined Yield Fertilizer"
+    yield:
+      multiply: 1.50
+      bonus: 1
+      maximum: 12
+
+  yield_fertilizer_3:
+    item: nexo:yield_fertilizer_3
+    display-name: "Deluxe Yield Fertilizer"
+    yield:
+      multiply: 2.00
+      bonus: 2
+      maximum: 16
+
+  # ---------- SPEED: faster growth ----------
+  # speed-multiplier scales every stage duration.
+  #   1.0 = unchanged, 0.75 = 25% faster, 2.0 = twice as slow.
+  # Stacks multiplicatively with sprinkler coverage.
+
+  speed_fertilizer_1:
+    item: nexo:speed_fertilizer_1
+    display-name: "Basic Growth Fertilizer"
+    growth:
+      speed-multiplier: 0.85   # 15% faster
+
+  speed_fertilizer_2:
+    item: nexo:speed_fertilizer_2
+    display-name: "Refined Growth Fertilizer"
+    growth:
+      speed-multiplier: 0.65   # 35% faster
+
+  speed_fertilizer_3:
+    item: nexo:speed_fertilizer_3
+    display-name: "Deluxe Growth Fertilizer"
+    growth:
+      speed-multiplier: 0.45   # 55% faster
+
+  # ---------- VARIATION: better odds of special growth paths ----------
+  # MUST be worked into the soil BEFORE planting — see the note at the
+  # top of this file.
+  #
+  # `special-path-multiplier` scales every path except the heaviest one
+  # (for tomato, that is `normal`), which is the usual intent: make the
+  # rare outcomes likelier without naming each of them.
+  #
+  # `paths` targets specific paths by id and is applied after it, so you
+  # can boost golden harder than gigantic.
+  #
+  # Base tomato paths: normal 85 / golden 5 / gigantic 10.
+
+  variation_fertilizer_1:
+    item: nexo:variation_fertilizer_1
+    display-name: "Basic Variation Fertilizer"
+    variation:
+      special-path-multiplier: 1.75   # -> ~76% / 8% / 16%
+
+  variation_fertilizer_2:
+    item: nexo:variation_fertilizer_2
+    display-name: "Refined Variation Fertilizer"
+    variation:
+      special-path-multiplier: 3.00   # -> ~65% / 11% / 24%
+
+  variation_fertilizer_3:
+    item: nexo:variation_fertilizer_3
+    display-name: "Deluxe Variation Fertilizer"
+    variation:
+      special-path-multiplier: 4.00
+      paths:
+        golden: 2.00                  # golden boosted on top of the 4x
+                                      # -> ~52% / 24% / 24%
+
+  # ---------- SOIL RETAINERS: restore worn-out soil ----------
+  # Only meaningful when `soil.enabled: true` in config.yml.
+  #
+  # `retain-for` is added to the soil's remaining life. Feeding healthy
+  # soil banks the time; feeding dead soil revives it for the full
+  # duration. Tiers differ only in how much time they grant.
+
+  soil_retainer_1:
+    item: nexo:soil_retainer_1
+    display-name: "Basic Soil Retainer"
+    soil:
+      retain-for: 2d
+
+  soil_retainer_2:
+    item: nexo:soil_retainer_2
+    display-name: "Refined Soil Retainer"
+    soil:
+      retain-for: 5d
+
+  soil_retainer_3:
+    item: nexo:soil_retainer_3
+    display-name: "Deluxe Soil Retainer"
+    soil:
+      retain-for: 14d
+
+  # ---------- COMBINED EXAMPLE ----------
+  # Nothing stops one item from doing several things at once.
+
+  master_compost:
+    item: nexo:master_compost
+    display-name: "Master Compost"
+    apply-to-soil: true
+    apply-to-crop: false
+    quality:
+      regular: 0.50
+      silver: 1.50
+      golden-star: 2.50
+    yield:
+      multiply: 1.50
+      bonus: 1
+    growth:
+      speed-multiplier: 0.70
+    variation:
+      special-path-multiplier: 2.50
+    soil:
+      retain-for: 7d

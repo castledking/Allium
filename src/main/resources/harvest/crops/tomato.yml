@@ -1,0 +1,257 @@
+# ============================================================
+#  Example crop: tomato
+# ============================================================
+# Demonstrates every core mechanic:
+#   - mutually exclusive growth paths (normal / golden / gigantic)
+#     chosen by ONE weighted roll at plant time
+#   - Stardew-style quality tiers as a mutually exclusive
+#     WEIGHTED_ONE primary harvest table
+#   - independent bonus drops (seeds)
+#   - regrowth on the normal path
+#   - a multi-block gigantic final stage
+#
+# Item references support nexo:, oraxen:, minecraft: (vanilla: is an
+# alias). The nexo: items below require those items to exist in your
+# Nexo pack — validation tells you exactly which are missing. To try
+# the system without Nexo, replace them with vanilla items, e.g.
+# "minecraft:wheat_seeds".
+
+id: tomato
+display-name: "<red>Tomato"
+
+seed:
+  item: nexo:tomato_seeds
+
+placement:
+  valid-soils:
+    - FARMLAND
+  requires-water: true
+  minimum-light: 9
+  # biomes: []          # empty = all biomes
+  # worlds:
+  #   allow: []
+  #   deny: []
+  # permission: ""
+
+growth:
+  clock: REAL_TIME          # REAL_TIME or LOADED_TIME
+  grow-while-unloaded: true
+  maximum-catch-up-stages: 10
+
+paths:
+  selection:
+    mode: WEIGHTED_ONE      # single roll — paths are mutually exclusive
+    timing: ON_PLANT
+    # fallback: normal      # used if every weight is zero
+
+  entries:
+    # ~85% — the ordinary tomato
+    normal:
+      weight: 85
+      stages:
+        # Any stage may override how it renders. Anything you leave out
+        # falls back to crop-visuals in config.yml, so a stage only
+        # states what it needs to differ on.
+        #
+        #   transform - NONE | FIXED | GROUND | HEAD | GUI | ...
+        #               decides orientation and base size. Sprouts drawn
+        #               as flat crosses and mature plants drawn as small
+        #               blocks often want different values.
+        #   scale     - multiplies the transform's own scale
+        #   y-offset  - raises/lowers the model, in blocks
+        #
+        # If a model looks wrong, change `transform` before `scale` —
+        # scaling a badly-oriented model just makes it bigger.
+        - model: nexo:tomato_stage_1
+          duration: 30m
+          # visual:
+          #   transform: GROUND
+          #   scale: 0.8
+          #   y-offset: 0.0
+        - model: nexo:tomato_stage_2
+          duration: 45m
+        - model: nexo:tomato_stage_3
+          duration: 60m
+        - model: nexo:tomato_stage_4
+
+      mature-harvest:
+        delivery: DROP_AT_CROP   # DROP_AT_CROP | PLAYER_INVENTORY | INVENTORY_THEN_DROP | COMMANDS_ONLY
+        primary:
+          # Exactly ONE quality fires per harvest — never two.
+          mode: WEIGHTED_ONE
+          entries:
+            regular:
+              weight: 65
+              drops:
+                - item: nexo:tomato
+                  amount: 1
+            silver:
+              weight: 25
+              drops:
+                - item: nexo:tomato_silver_star
+                  amount: 1
+            golden-star:
+              weight: 10
+              drops:
+                - item: nexo:tomato_golden_star
+                  amount: 1
+        additional:
+          # Independent of the quality roll — may occur alongside it.
+          mode: INDEPENDENT
+          entries:
+            seeds:
+              chance: 0.75
+              drops:
+                - item: nexo:tomato_seeds
+                  amount:
+                    min: 1
+                    max: 2
+
+
+      # Dropped when the crop is DESTROYED rather than harvested — punch the
+      # plant, or break the block under it. Harvesting a mature crop uses
+      # mature-harvest above instead; this is the "I changed my mind" return.
+      #
+      # Each side is a normal loot table, so every mode is available:
+      # GUARANTEED_ALL for a fixed return, INDEPENDENT for a chance-based
+      # one, WEIGHTED_ONE to pick exactly one of several.
+      break-drops:
+        immature:                  # broken before the final stage
+          mode: GUARANTEED_ALL
+          entries:
+            seeds:
+              drops:
+                - item: nexo:tomato_seeds
+                  amount: 1
+        mature:                    # broken on the final stage
+          mode: GUARANTEED_ALL
+          entries:
+            seeds:
+              drops:
+                - item: nexo:tomato_seeds
+                  amount: 2
+      regrowth:
+        enabled: true
+        stage: 2
+
+    # ~5% — looks like a normal tomato while growing (same early
+    # models), but the hidden path id is 'golden' and harvest always
+    # yields the entirely golden tomato. Never runs the quality table.
+    golden:
+      weight: 5
+      stages:
+        - model: nexo:tomato_stage_1
+          duration: 45m
+        - model: nexo:tomato_stage_2
+          duration: 60m
+        - model: nexo:tomato_stage_3
+          duration: 90m
+        - model: nexo:tomato_stage_4
+
+      mature-harvest:
+        primary:
+          mode: GUARANTEED_ALL
+          entries:
+            golden:
+              drops:
+                - item: nexo:golden_tomato
+                  amount: 1
+
+      # Dropped when the crop is DESTROYED rather than harvested — punch the
+      # plant, or break the block under it. Harvesting a mature crop uses
+      # mature-harvest above instead; this is the "I changed my mind" return.
+      #
+      # Each side is a normal loot table, so every mode is available:
+      # GUARANTEED_ALL for a fixed return, INDEPENDENT for a chance-based
+      # one, WEIGHTED_ONE to pick exactly one of several.
+      break-drops:
+        immature:                  # broken before the final stage
+          mode: GUARANTEED_ALL
+          entries:
+            seeds:
+              drops:
+                - item: nexo:tomato_seeds
+                  amount: 1
+        mature:                    # broken on the final stage
+          mode: GUARANTEED_ALL
+          entries:
+            seeds:
+              drops:
+                - item: nexo:tomato_seeds
+                  amount: 2
+      regrowth:
+        enabled: false
+
+    # ~10% — grows much longer and ends as a large 2x2 model.
+    # All four cells are reserved transactionally; if the footprint is
+    # obstructed when the final stage is due, the crop matures at the
+    # previous single-block stage instead of overwriting blocks.
+    gigantic:
+      weight: 10
+      stages:
+        - model: nexo:tomato_stage_1
+          duration: 60m
+        - model: nexo:tomato_stage_2
+          duration: 90m
+        - model: nexo:tomato_stage_3
+          duration: 120m
+        - model: nexo:tomato_stage_4
+          duration: 180m
+        - model: nexo:gigantic_tomato
+          footprint:
+            cells:
+              - [0, 0, 0]
+              - [1, 0, 0]
+              - [0, 0, 1]
+              - [1, 0, 1]
+
+      mature-harvest:
+        primary:
+          mode: GUARANTEED_ALL
+          entries:
+            gigantic:
+              drops:
+                - item: nexo:gigantic_tomato
+                  amount: 1
+        additional:
+          mode: INDEPENDENT
+          entries:
+            tomatoes:
+              chance: 1.0
+              drops:
+                - item: nexo:tomato
+                  amount:
+                    min: 4
+                    max: 8
+            seeds:
+              chance: 0.85
+              drops:
+                - item: nexo:tomato_seeds
+                  amount:
+                    min: 2
+                    max: 4
+
+      # Dropped when the crop is DESTROYED rather than harvested — punch the
+      # plant, or break the block under it. Harvesting a mature crop uses
+      # mature-harvest above instead; this is the "I changed my mind" return.
+      #
+      # Each side is a normal loot table, so every mode is available:
+      # GUARANTEED_ALL for a fixed return, INDEPENDENT for a chance-based
+      # one, WEIGHTED_ONE to pick exactly one of several.
+      break-drops:
+        immature:                  # broken before the final stage
+          mode: GUARANTEED_ALL
+          entries:
+            seeds:
+              drops:
+                - item: nexo:tomato_seeds
+                  amount: 1
+        mature:                    # broken on the final stage
+          mode: GUARANTEED_ALL
+          entries:
+            seeds:
+              drops:
+                - item: nexo:tomato_seeds
+                  amount: 2
+      regrowth:
+        enabled: false

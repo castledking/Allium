@@ -11,7 +11,7 @@
 
     <groupId>codes.castled</groupId>
     <artifactId>Allium</artifactId>
-    <version>0.2.8a</version>
+    <version>0.2.9a</version>
     <name>Allium</name>
     <description>A secure, modern Essentials solution.</description>
 
@@ -98,6 +98,12 @@
         <repository>
             <id>oraxen</id>
             <url>https://repo.oraxen.com/releases/</url>
+        </repository>
+
+        <!-- Nexo Repository -->
+        <repository>
+            <id>nexomc-releases</id>
+            <url>https://repo.nexomc.com/releases/</url>
         </repository>
 
         <!-- PaperMC Repository -->
@@ -202,6 +208,16 @@
             <scope>provided</scope>
         </dependency>
 
+        <!--
+            H2 is the only bundled JDBC driver. It backs both the core plugin
+            database and the default harvest storage, so it ships shaded and
+            relocated and the jar works with no downloads at all.
+
+            SQLite and MySQL are deliberately NOT bundled: together they cost
+            roughly 14 MB, most of it sqlite native binaries for architectures
+            a given server will never run. Those backends still work if an
+            admin supplies the driver themselves — see harvest/config.yml.
+        -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -232,6 +248,19 @@
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
             <version>2.11.6</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--
+            DiscordSRV ships a shaded fat jar that bundles an ancient snakeyaml
+            (pre-LoaderOptions#setMaxAliasesForCollections). Declaring the modern
+            snakeyaml explicitly, ahead of DiscordSRV, keeps Bukkit's
+            YamlConfiguration working on the compile/test classpath.
+        -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.3</version>
             <scope>provided</scope>
         </dependency>
 
@@ -368,6 +397,20 @@
             </exclusions>
         </dependency>
 
+        <!-- Nexo API (optional integration for Allium Harvest custom items/models) -->
+        <dependency>
+            <groupId>com.nexomc</groupId>
+            <artifactId>nexo</artifactId>
+            <version>1.1.0</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- JSpecify for null annotations -->
         <dependency>
             <groupId>org.jspecify</groupId>
@@ -439,6 +482,11 @@
                                 </transformer>
                             </transformers>
                             <relocations>
+                                <!--
+                                    Hikari and H2 are the only bundled
+                                    libraries, both relocated so they cannot
+                                    clash with another plugin's copy.
+                                -->
                                 <relocation>
                                     <pattern>com.zaxxer.hikari</pattern>
                                     <shadedPattern>codes.castled.allium.libs.hikari</shadedPattern>

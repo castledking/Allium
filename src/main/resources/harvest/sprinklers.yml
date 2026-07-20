@@ -1,0 +1,55 @@
+# ============================================================
+#  Sprinklers
+# ============================================================
+# A sprinkler is an ordinary placed block that Allium remembers. Place
+# the configured item and the block at that position starts covering the
+# area around it; break it and the coverage goes away.
+#
+# WHAT A SPRINKLER DOES
+#   speed-multiplier - scales stage durations for covered crops
+#   keeps-soil-moist - satisfies a crop's water requirement, so you can
+#                      farm away from water (or in a dry biome)
+#   soil-retain      - tops up soil life for covered soil, so a farm can
+#                      keep itself alive without manual retainers
+#
+# COVERAGE
+# `radius` is a square radius in blocks around the sprinkler's column:
+#   radius 1 -> 3x3      radius 2 -> 5x5      radius 3 -> 7x7
+# Soil upkeep looks one block BELOW the sprinkler's level, so place
+# sprinklers at the same height as your crops, not on top of them.
+#
+# STACKING
+# Overlapping sprinklers stack multiplicatively, and stack with any
+# speed fertilizer on the crop. Two 0.8 sprinklers give 0.64, not 0.6.
+# There is a floor: nothing can drive a stage below 5% of its configured
+# duration, so no amount of stacking makes crops instant.
+#
+# Each tier is a separate entry with its own numbers — there is no
+# formula deriving tier 2 from tier 1. Tune them independently.
+
+sprinklers:
+
+  sprinkler_1:
+    item: nexo:sprinkler_1
+    display-name: "Basic Sprinkler"
+    radius: 1                  # 3x3
+    speed-multiplier: 0.90     # 10% faster
+    keeps-soil-moist: true
+    # No soil upkeep at this tier — retainers still have to be applied
+    # by hand on a basic farm.
+
+  sprinkler_2:
+    item: nexo:sprinkler_2
+    display-name: "Quality Sprinkler"
+    radius: 2                  # 5x5
+    speed-multiplier: 0.78     # 22% faster
+    keeps-soil-moist: true
+    soil-retain: 6h            # granted on each upkeep pass (every minute)
+
+  sprinkler_3:
+    item: nexo:sprinkler_3
+    display-name: "Iridium Sprinkler"
+    radius: 3                  # 7x7
+    speed-multiplier: 0.65     # 35% faster
+    keeps-soil-moist: true
+    soil-retain: 1d

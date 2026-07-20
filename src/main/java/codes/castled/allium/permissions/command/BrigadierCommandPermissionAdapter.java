@@ -20,7 +20,19 @@ final class BrigadierCommandPermissionAdapter implements CommandPermissionAdapte
     public Optional<PermissionResult> resolve(CommandPermissionContext context) {
         Command command = context.command();
         Field nodeField = findNodeField(command.getClass());
-        boolean vanillaWrapper = command.getClass().getName().contains("VanillaCommandWrapper");
+        boolean vanillaWrapper = isVanilla(context);
+
+        // Vanilla brigadier requirements are op-level checks (source.hasPermission(2)) that know
+        // nothing about the minecraft.command.<name> node CraftBukkit registers for the same
+        // command. Testing them here denies non-op players who were legitimately granted that
+        // node, so the Bukkit permission wins for vanilla commands.
+        if (vanillaWrapper) {
+            String permission = command.getPermission();
+            if (permission != null && !permission.isBlank() && command.testPermissionSilent(context.player())) {
+                return Optional.of(new PermissionResult(true, ResolutionType.VANILLA, permission, command));
+            }
+        }
+
         if (nodeField == null && !vanillaWrapper) {
             return Optional.empty();
         }
@@ -55,6 +67,18 @@ final class BrigadierCommandPermissionAdapter implements CommandPermissionAdapte
                     ? Optional.of(PermissionResult.unknown(true, command))
                     : Optional.empty();
         }
+    }
+
+    /**
+     * Vanilla commands reach us as a CraftBukkit/Paper wrapper, as a command whose help namespace
+     * is {@code minecraft}, or simply as a {@code minecraft:} invocation resolved by the pipeline.
+     */
+    private boolean isVanilla(CommandPermissionContext context) {
+        Command command = context.command();
+        String className = command.getClass().getName().toLowerCase(Locale.ROOT);
+        return className.contains("vanillacommandwrapper")
+                || resolutionType(command) == ResolutionType.VANILLA
+                || "minecraft".equals(context.pluginName());
     }
 
     private Field findNodeField(Class<?> commandClass) {

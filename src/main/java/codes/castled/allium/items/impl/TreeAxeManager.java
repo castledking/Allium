@@ -32,70 +32,86 @@ public class TreeAxeManager {
     /** Max blocks to scan up/down when breaking a root to find the trunk (tree-feller ROOT_DISTANCE). */
     private static final int ROOT_SCAN_DISTANCE = 5;
 
-    private static final Set<Material> LOG_MATERIALS = new HashSet<>(Arrays.asList(
-        Material.OAK_LOG, Material.SPRUCE_LOG, Material.BIRCH_LOG, Material.JUNGLE_LOG,
-        Material.ACACIA_LOG, Material.DARK_OAK_LOG, Material.CHERRY_LOG, Material.PALE_OAK_LOG,
-        Material.MANGROVE_LOG,
-        Material.STRIPPED_OAK_LOG, Material.STRIPPED_SPRUCE_LOG, Material.STRIPPED_BIRCH_LOG,
-        Material.STRIPPED_JUNGLE_LOG, Material.STRIPPED_ACACIA_LOG, Material.STRIPPED_DARK_OAK_LOG,
-        Material.STRIPPED_CHERRY_LOG, Material.STRIPPED_PALE_OAK_LOG, Material.STRIPPED_MANGROVE_LOG,
-        Material.BAMBOO_BLOCK, Material.STRIPPED_BAMBOO_BLOCK,
-        Material.CRIMSON_STEM, Material.WARPED_STEM,
-        Material.STRIPPED_CRIMSON_STEM, Material.STRIPPED_WARPED_STEM
-    ));
+    /**
+     * Resolve material names against the running server, skipping any it doesn't know.
+     * Allium compiles against a newer API than the oldest server it supports, so naming
+     * constants like {@code Material.PALE_OAK_LOG} directly throws {@link NoSuchFieldError}
+     * during class init on older servers (PALE_OAK_* is 1.21.4+, BUSH/LEAF_LITTER/
+     * WILDFLOWERS/FIREFLY_BUSH/SHORT_DRY_GRASS are 1.21.5+).
+     */
+    private static Set<Material> materials(String... names) {
+        Set<Material> resolved = EnumSet.noneOf(Material.class);
+        for (String name : names) {
+            Material material = Material.matchMaterial(name);
+            if (material != null) resolved.add(material);
+        }
+        return resolved;
+    }
 
-    private static final Set<Material> LEAF_MATERIALS = new HashSet<>(Arrays.asList(
-        Material.OAK_LEAVES, Material.SPRUCE_LEAVES, Material.BIRCH_LEAVES, Material.JUNGLE_LEAVES,
-        Material.ACACIA_LEAVES, Material.DARK_OAK_LEAVES, Material.CHERRY_LEAVES, Material.PALE_OAK_LEAVES,
-        Material.MANGROVE_LEAVES,
-        Material.AZALEA_LEAVES, Material.FLOWERING_AZALEA_LEAVES
-    ));
+    private static final Set<Material> LOG_MATERIALS = materials(
+        "OAK_LOG", "SPRUCE_LOG", "BIRCH_LOG", "JUNGLE_LOG",
+        "ACACIA_LOG", "DARK_OAK_LOG", "CHERRY_LOG", "PALE_OAK_LOG",
+        "MANGROVE_LOG",
+        "STRIPPED_OAK_LOG", "STRIPPED_SPRUCE_LOG", "STRIPPED_BIRCH_LOG",
+        "STRIPPED_JUNGLE_LOG", "STRIPPED_ACACIA_LOG", "STRIPPED_DARK_OAK_LOG",
+        "STRIPPED_CHERRY_LOG", "STRIPPED_PALE_OAK_LOG", "STRIPPED_MANGROVE_LOG",
+        "BAMBOO_BLOCK", "STRIPPED_BAMBOO_BLOCK",
+        "CRIMSON_STEM", "WARPED_STEM",
+        "STRIPPED_CRIMSON_STEM", "STRIPPED_WARPED_STEM"
+    );
+
+    private static final Set<Material> LEAF_MATERIALS = materials(
+        "OAK_LEAVES", "SPRUCE_LEAVES", "BIRCH_LEAVES", "JUNGLE_LEAVES",
+        "ACACIA_LEAVES", "DARK_OAK_LEAVES", "CHERRY_LEAVES", "PALE_OAK_LEAVES",
+        "MANGROVE_LEAVES",
+        "AZALEA_LEAVES", "FLOWERING_AZALEA_LEAVES"
+    );
 
     /** Root blocks that count as part of a tree (tree-feller ROOTS); breaking them finds nearest trunk. */
-    private static final Set<Material> ROOT_MATERIALS = new HashSet<>(Arrays.asList(
-        Material.MANGROVE_ROOTS, Material.MUDDY_MANGROVE_ROOTS
-    ));
+    private static final Set<Material> ROOT_MATERIALS = materials(
+        "MANGROVE_ROOTS", "MUDDY_MANGROVE_ROOTS"
+    );
 
     /** Natural blocks near trees; do not treat as player structure (dirt/grass so bottom log chops). */
-    private static final Set<Material> NATURAL_EXCLUSIONS = new HashSet<>(Arrays.asList(
-        Material.GRASS_BLOCK, Material.DIRT, Material.COARSE_DIRT, Material.PODZOL, Material.ROOTED_DIRT,
-        Material.MYCELIUM, Material.MUD, Material.MANGROVE_ROOTS, Material.MUDDY_MANGROVE_ROOTS,
-        Material.CRIMSON_NYLIUM, Material.WARPED_NYLIUM, Material.NETHERRACK,
-        Material.SNOW_BLOCK, Material.SNOW, Material.POWDER_SNOW,
-        Material.MOSS_BLOCK, Material.SHORT_GRASS, Material.SHORT_DRY_GRASS, Material.TALL_GRASS,
-        Material.FERN, Material.LARGE_FERN, Material.FIREFLY_BUSH, Material.BUSH, Material.DEAD_BUSH,
-        Material.VINE, Material.GLOW_LICHEN, Material.MOSS_CARPET, Material.LEAF_LITTER, Material.WILDFLOWERS, Material.PINK_PETALS,
-        Material.DANDELION, Material.POPPY, Material.BLUE_ORCHID, Material.ALLIUM, Material.AZURE_BLUET,
-        Material.RED_TULIP, Material.ORANGE_TULIP, Material.WHITE_TULIP, Material.PINK_TULIP, Material.OXEYE_DAISY,
-        Material.CORNFLOWER, Material.LILY_OF_THE_VALLEY, Material.WITHER_ROSE, Material.SUNFLOWER, Material.LILAC,
-        Material.ROSE_BUSH, Material.PEONY, Material.TORCHFLOWER, Material.PITCHER_PLANT, Material.LILY_PAD,
-        Material.SEAGRASS, Material.TALL_SEAGRASS, Material.SEA_PICKLE,
+    private static final Set<Material> NATURAL_EXCLUSIONS = materials(
+        "GRASS_BLOCK", "DIRT", "COARSE_DIRT", "PODZOL", "ROOTED_DIRT",
+        "MYCELIUM", "MUD", "MANGROVE_ROOTS", "MUDDY_MANGROVE_ROOTS",
+        "CRIMSON_NYLIUM", "WARPED_NYLIUM", "NETHERRACK",
+        "SNOW_BLOCK", "SNOW", "POWDER_SNOW",
+        "MOSS_BLOCK", "SHORT_GRASS", "SHORT_DRY_GRASS", "TALL_GRASS",
+        "FERN", "LARGE_FERN", "FIREFLY_BUSH", "BUSH", "DEAD_BUSH",
+        "VINE", "GLOW_LICHEN", "MOSS_CARPET", "LEAF_LITTER", "WILDFLOWERS", "PINK_PETALS",
+        "DANDELION", "POPPY", "BLUE_ORCHID", "ALLIUM", "AZURE_BLUET",
+        "RED_TULIP", "ORANGE_TULIP", "WHITE_TULIP", "PINK_TULIP", "OXEYE_DAISY",
+        "CORNFLOWER", "LILY_OF_THE_VALLEY", "WITHER_ROSE", "SUNFLOWER", "LILAC",
+        "ROSE_BUSH", "PEONY", "TORCHFLOWER", "PITCHER_PLANT", "LILY_PAD",
+        "SEAGRASS", "TALL_SEAGRASS", "SEA_PICKLE",
         // Natural underground/terrain blocks
-        Material.STONE, Material.ANDESITE, Material.GRANITE, Material.DIORITE,
-        Material.DEEPSLATE, Material.TUFF, Material.CALCITE, Material.DRIPSTONE_BLOCK,
-        Material.SMOOTH_BASALT, Material.BASALT, Material.CLAY, Material.GRAVEL, Material.SAND,
-        Material.RED_SAND, Material.SANDSTONE, Material.RED_SANDSTONE, Material.SOUL_SAND, Material.SOUL_SOIL,
-        Material.BEDROCK, Material.AMETHYST_BLOCK, Material.BUDDING_AMETHYST,
-        Material.COPPER_ORE, Material.IRON_ORE, Material.GOLD_ORE, Material.COAL_ORE,
-        Material.LAPIS_ORE, Material.DIAMOND_ORE, Material.EMERALD_ORE, Material.REDSTONE_ORE,
-        Material.DEEPSLATE_COPPER_ORE, Material.DEEPSLATE_IRON_ORE, Material.DEEPSLATE_GOLD_ORE,
-        Material.DEEPSLATE_COAL_ORE, Material.DEEPSLATE_LAPIS_ORE, Material.DEEPSLATE_DIAMOND_ORE,
-        Material.DEEPSLATE_EMERALD_ORE, Material.DEEPSLATE_REDSTONE_ORE,
-        Material.WATER, Material.LAVA, Material.ICE, Material.PACKED_ICE, Material.BLUE_ICE
-    ));
+        "STONE", "ANDESITE", "GRANITE", "DIORITE",
+        "DEEPSLATE", "TUFF", "CALCITE", "DRIPSTONE_BLOCK",
+        "SMOOTH_BASALT", "BASALT", "CLAY", "GRAVEL", "SAND",
+        "RED_SAND", "SANDSTONE", "RED_SANDSTONE", "SOUL_SAND", "SOUL_SOIL",
+        "BEDROCK", "AMETHYST_BLOCK", "BUDDING_AMETHYST",
+        "COPPER_ORE", "IRON_ORE", "GOLD_ORE", "COAL_ORE",
+        "LAPIS_ORE", "DIAMOND_ORE", "EMERALD_ORE", "REDSTONE_ORE",
+        "DEEPSLATE_COPPER_ORE", "DEEPSLATE_IRON_ORE", "DEEPSLATE_GOLD_ORE",
+        "DEEPSLATE_COAL_ORE", "DEEPSLATE_LAPIS_ORE", "DEEPSLATE_DIAMOND_ORE",
+        "DEEPSLATE_EMERALD_ORE", "DEEPSLATE_REDSTONE_ORE",
+        "WATER", "LAVA", "ICE", "PACKED_ICE", "BLUE_ICE"
+    );
 
-    private static final Set<Material> STRUCTURE_MATERIALS = new HashSet<>(Arrays.asList(
-        Material.COBBLESTONE, Material.STONE_BRICKS, Material.BRICKS,
-        Material.WHITE_TERRACOTTA, Material.ORANGE_TERRACOTTA, Material.MAGENTA_TERRACOTTA,
-        Material.LIGHT_BLUE_TERRACOTTA, Material.YELLOW_TERRACOTTA, Material.LIME_TERRACOTTA,
-        Material.PINK_TERRACOTTA, Material.GRAY_TERRACOTTA, Material.LIGHT_GRAY_TERRACOTTA,
-        Material.CYAN_TERRACOTTA, Material.PURPLE_TERRACOTTA, Material.BLUE_TERRACOTTA,
-        Material.BROWN_TERRACOTTA, Material.GREEN_TERRACOTTA, Material.RED_TERRACOTTA,
-        Material.BLACK_TERRACOTTA, Material.TERRACOTTA, Material.POLISHED_BLACKSTONE_BRICKS,
-        Material.POLISHED_BLACKSTONE, Material.BLACKSTONE, Material.END_STONE_BRICKS,
-        Material.IRON_BLOCK, Material.GOLD_BLOCK, Material.DIAMOND_BLOCK, Material.EMERALD_BLOCK,
-        Material.LAPIS_BLOCK, Material.REDSTONE_BLOCK, Material.COAL_BLOCK, Material.NETHER_BRICKS
-    ));
+    private static final Set<Material> STRUCTURE_MATERIALS = materials(
+        "COBBLESTONE", "STONE_BRICKS", "BRICKS",
+        "WHITE_TERRACOTTA", "ORANGE_TERRACOTTA", "MAGENTA_TERRACOTTA",
+        "LIGHT_BLUE_TERRACOTTA", "YELLOW_TERRACOTTA", "LIME_TERRACOTTA",
+        "PINK_TERRACOTTA", "GRAY_TERRACOTTA", "LIGHT_GRAY_TERRACOTTA",
+        "CYAN_TERRACOTTA", "PURPLE_TERRACOTTA", "BLUE_TERRACOTTA",
+        "BROWN_TERRACOTTA", "GREEN_TERRACOTTA", "RED_TERRACOTTA",
+        "BLACK_TERRACOTTA", "TERRACOTTA", "POLISHED_BLACKSTONE_BRICKS",
+        "POLISHED_BLACKSTONE", "BLACKSTONE", "END_STONE_BRICKS",
+        "IRON_BLOCK", "GOLD_BLOCK", "DIAMOND_BLOCK", "EMERALD_BLOCK",
+        "LAPIS_BLOCK", "REDSTONE_BLOCK", "COAL_BLOCK", "NETHER_BRICKS"
+    );
 
     private static final BlockFace[] SIX_FACES = {
         BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST, BlockFace.UP, BlockFace.DOWN

@@ -23,6 +23,8 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerOp
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.util.SchedulerAdapter;
 
+import org.geysermc.floodgate.api.FloodgateApi;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
@@ -81,6 +83,12 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         }
         Player player = event.getPlayer();
         if (player.hasPermission(getBypassPermission())) {
+            return;
+        }
+        if (isFloodgatePlayer(player)) {
+            if (isDebug()) {
+                plugin.getLogger().info("[ModGuard] Skipping translation probe for Floodgate player: " + player.getName());
+            }
             return;
         }
 
@@ -326,6 +334,17 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
 
     private org.bukkit.configuration.file.FileConfiguration config() {
         return modGuard.getModGuardConfig();
+    }
+
+    private boolean isFloodgatePlayer(Player player) {
+        if (Bukkit.getPluginManager().getPlugin("floodgate") == null) {
+            return false;
+        }
+        try {
+            return FloodgateApi.getInstance().isFloodgatePlayer(player.getUniqueId());
+        } catch (Throwable t) {
+            return player.getUniqueId().version() == 2;
+        }
     }
 
     private static final class ProbeSession {

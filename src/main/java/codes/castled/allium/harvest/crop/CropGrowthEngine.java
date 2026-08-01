@@ -111,8 +111,9 @@ public final class CropGrowthEngine {
             crop.instanceId(), crop.cropId(), crop.pathId(), location, fromStage, toStage);
         Bukkit.getPluginManager().callEvent(event);
         if (event.isCancelled()) {
-            crop.setNextGrowthAt(now
-                + GrowthSpeed.apply(path.stage(fromStage).durationMs(), crop.speedMultiplier()));
+            crop.setNextGrowthAt(now + StageDuration.forStage(
+                crop.instanceId(), fromStage, path.stage(fromStage).durationMs(),
+                crop.speedMultiplier(), definition.get().growth().randomness()));
             storage.saveLater(crop);
             return;
         }
@@ -134,8 +135,9 @@ public final class CropGrowthEngine {
             crop.setState(CropState.MATURE);
             crop.setNextGrowthAt(0L);
         } else {
-            crop.setNextGrowthAt(crop.stageStartedAt()
-                + GrowthSpeed.apply(next.durationMs(), crop.speedMultiplier()));
+            crop.setNextGrowthAt(crop.stageStartedAt() + StageDuration.forStage(
+                crop.instanceId(), toStage, next.durationMs(),
+                crop.speedMultiplier(), definition.get().growth().randomness()));
         }
         visuals.ensureVisual(world, crop);
         storage.saveLater(crop);

@@ -11,7 +11,27 @@ public class CropRemoveEvent extends Event {
 
     private static final HandlerList HANDLERS = new HandlerList();
 
-    public enum Reason { BROKEN, HARVESTED, ADMIN, DEFINITION_REMOVED, OBSTRUCTED }
+    public enum Reason {
+        /** Destroyed by a player. */
+        BROKEN,
+        HARVESTED,
+        ADMIN,
+        DEFINITION_REMOVED,
+        OBSTRUCTED,
+        /**
+         * A piston pushed or pulled something through the crop's cell. A ripe
+         * plant pays its produce, exactly as breaking it by hand would; an
+         * unfinished one pays {@code break-drops.immature}. Neither runs the
+         * table's commands — there is no player here for a reward to belong to.
+         */
+        PISTON,
+        /**
+         * Water or lava reached the crop's cell. Whether anything dropped
+         * depends on which fluid it was and how {@code liquids:} is configured,
+         * so this reason alone does not tell you the crop paid out.
+         */
+        LIQUID
+    }
 
     private final UUID instanceId;
     private final String cropId;

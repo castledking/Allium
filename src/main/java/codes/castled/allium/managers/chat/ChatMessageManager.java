@@ -19,6 +19,9 @@ public class ChatMessageManager {
     private static final int MAX_MESSAGES_PER_PLAYER = 100; // Limit to prevent memory issues
     private static final int MAX_GLOBAL_MESSAGES = 200; // Global chat history limit
 
+    /** Sender id used for packet-captured copies (see PacketChatTrackerImpl). */
+    private static final UUID SYSTEM_SENDER_ID = new UUID(0, 0);
+
     // Thread-safe storage for chat messages
     private final Map<UUID, Deque<ChatMessage>> playerMessages =
         new ConcurrentHashMap<>();
@@ -27,6 +30,21 @@ public class ChatMessageManager {
     // Per-player chat history for packet-based deletion
     private final Map<UUID, Deque<ChatMessage>> playerChatHistory =
         new ConcurrentHashMap<>();
+
+    /**
+     * Plain text -> id of the logical message that text belongs to, so the per-viewer
+     * copies the packet tracker captures can be given the same id as the message that
+     * produced them. Deletion then works by id alone instead of relying on the
+     * content+timestamp heuristic, which silently misses copies whose timestamps have
+     * drifted apart.
+     */
+    private final Map<String, LogicalMessageRef> logicalIdsByPlainText =
+        new ConcurrentHashMap<>();
+
+    /** How long a rendered message stays claimable by its per-viewer packet copies. */
+    private static final long LOGICAL_LINK_TTL_MS = 10_000;
+
+    private record LogicalMessageRef(long messageId, long registeredAt) {}
 
     // Global chat history (ordered by timestamp)
     private final Deque<ChatMessage> globalChatHistory =
@@ -145,7 +163,12 @@ public class ChatMessageManager {
         String senderName,
         Component message
     ) {
-        long messageId = messageIdCounter.incrementAndGet();
+        // If this is a per-viewer copy of a message we already stored, reuse that
+        // message's id so a single /delmsg removes every copy of it.
+        long messageId = claimLogicalId(message);
+        if (messageId == 0) {
+            messageId = messageIdCounter.incrementAndGet();
+        }
 
         ChatMessage chatMessage = new ChatMessage(
             messageId,
@@ -169,6 +192,50 @@ public class ChatMessageManager {
         }
 
         return chatMessage;
+    }
+
+    /**
+     * Announces that {@code rendered} was just sent out under {@code messageId}, so the
+     * per-viewer copies the packet tracker is about to capture adopt the same id.
+     */
+    public void registerLogicalMessage(long messageId, Component rendered) {
+        if (rendered == null) {
+            return;
+        }
+        String plain = PlainTextComponentSerializer.plainText()
+            .serialize(rendered)
+            .trim();
+        if (plain.isEmpty()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        logicalIdsByPlainText.values()
+            .removeIf(ref -> now - ref.registeredAt() > LOGICAL_LINK_TTL_MS);
+        logicalIdsByPlainText.put(plain, new LogicalMessageRef(messageId, now));
+    }
+
+    /** Returns the logical id registered for this text, or 0 if there is none. */
+    private long claimLogicalId(Component message) {
+        if (message == null || logicalIdsByPlainText.isEmpty()) {
+            return 0;
+        }
+        String plain = PlainTextComponentSerializer.plainText()
+            .serialize(message)
+            .trim();
+        if (plain.isEmpty()) {
+            return 0;
+        }
+
+        LogicalMessageRef ref = logicalIdsByPlainText.get(plain);
+        if (ref == null) {
+            return 0;
+        }
+        if (System.currentTimeMillis() - ref.registeredAt() > LOGICAL_LINK_TTL_MS) {
+            logicalIdsByPlainText.remove(plain, ref);
+            return 0;
+        }
+        return ref.messageId();
     }
 
     /** Time window (ms) to treat as same logical message when deleting duplicates (e.g. formatted vs packet raw). */
@@ -360,14 +427,23 @@ public class ChatMessageManager {
      * Get a specific message by ID
      */
     public ChatMessage getMessage(long messageId) {
+        ChatMessage fallback = null;
         for (Deque<ChatMessage> messages : playerMessages.values()) {
             for (ChatMessage message : messages) {
-                if (message.getMessageId() == messageId) {
+                if (message.getMessageId() != messageId) {
+                    continue;
+                }
+                // Per-viewer packet copies share the id of the message they came from;
+                // prefer the original so the sender name and timestamp are the real ones.
+                if (!SYSTEM_SENDER_ID.equals(message.getSenderId())) {
                     return message;
+                }
+                if (fallback == null) {
+                    fallback = message;
                 }
             }
         }
-        return null;
+        return fallback;
     }
 
     /**

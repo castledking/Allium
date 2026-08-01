@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -26,6 +27,9 @@ import org.json.JSONObject;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.inventory.InventoryManager;
 import codes.castled.allium.items.CustomItemRegistry;
+import codes.castled.allium.items.integration.ItemTagBridge;
+import codes.castled.allium.items.stored.StoredItem;
+import codes.castled.allium.items.stored.StoredItemRegistry;
 import codes.castled.allium.items.HandcuffsItem;
 import codes.castled.allium.listeners.security.CommandManager;
 import codes.castled.allium.listeners.security.CreativeManager;
@@ -175,33 +179,82 @@ public class Core implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private void handleItemCommand(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("allium.admin")) {
-            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core item");
-            return;
-        }
+    /** Ids the old hardcoded give switch accepted that are not registry ids. */
+    private static final Map<String, String> ITEM_ALIASES = Map.of("lazy_axe", "tree_axe");
 
+    private void handleItemCommand(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage("§eUsage: /core item <give|list>");
+            showItemUsage(sender);
             return;
         }
 
         switch (args[1].toLowerCase()) {
             case "give":
-                handleItemGiveCommand(sender, args);
+                if (requireItemPermission(sender, "allium.item.give")) {
+                    handleItemGiveCommand(sender, args);
+                }
                 break;
             case "list":
-                handleItemListCommand(sender);
+                if (requireItemPermission(sender, "allium.item.list")) {
+                    handleItemListCommand(sender);
+                }
+                break;
+            case "add":
+            case "update":
+                if (requireItemPermission(sender, "allium.item.admin")) {
+                    handleItemCaptureCommand(sender, args, args[1].equalsIgnoreCase("update"));
+                }
+                break;
+            case "remove":
+            case "delete":
+                if (requireItemPermission(sender, "allium.item.admin")) {
+                    handleItemRemoveCommand(sender, args);
+                }
+                break;
+            case "reload":
+                if (requireItemPermission(sender, "allium.item.admin")) {
+                    handleItemReloadCommand(sender);
+                }
                 break;
             default:
-                sender.sendMessage("§cUnknown item subcommand. Use /core item <give|list>");
+                sender.sendMessage("§cUnknown item subcommand.");
+                showItemUsage(sender);
                 break;
         }
     }
 
+    private void showItemUsage(CommandSender sender) {
+        sender.sendMessage("§6§lCore Item Commands");
+        if (sender.hasPermission("allium.item.give") || sender.hasPermission("allium.admin")) {
+            sender.sendMessage("§e/core item give <player> <item> [amount] §7- give a stored item");
+        }
+        if (sender.hasPermission("allium.item.list") || sender.hasPermission("allium.admin")) {
+            sender.sendMessage("§e/core item list §7- list every available item");
+        }
+        if (sender.hasPermission("allium.item.admin") || sender.hasPermission("allium.admin")) {
+            sender.sendMessage("§e/core item add <name> §7- store the item in your hand");
+            sender.sendMessage("§e/core item update <name> §7- re-capture a stored item from your hand");
+            sender.sendMessage("§e/core item remove <name> §7- delete a stored item");
+            sender.sendMessage("§e/core item reload §7- reload stored items from disk");
+        }
+        sender.sendMessage("§7Stored items also work as §fci:<name>§7 in /give and /i.");
+    }
+
+    /**
+     * {@code allium.admin} keeps blanket access so existing setups do not lose the command when the
+     * finer-grained nodes are introduced.
+     */
+    private boolean requireItemPermission(CommandSender sender, String node) {
+        if (sender.hasPermission(node) || sender.hasPermission("allium.admin")) {
+            return true;
+        }
+        Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core item");
+        return false;
+    }
+
     private void handleItemGiveCommand(CommandSender sender, String[] args) {
         if (args.length < 4) {
-            sender.sendMessage("§eUsage: /core item give <player> <item>");
+            sender.sendMessage("§eUsage: /core item give <player> <item> [amount]");
             return;
         }
 
@@ -212,44 +265,160 @@ public class Core implements CommandExecutor, TabCompleter {
         }
 
         String itemName = args[3].toLowerCase();
+        itemName = ITEM_ALIASES.getOrDefault(itemName, itemName);
 
-        switch (itemName) {
-            case "handcuffs":
-                target.getInventory().addItem(HandcuffsItem.createHandcuffs());
-                sender.sendMessage("§aGave handcuffs to " + target.getName());
-                break;
-            case "lazy_axe":
-            case "tree_axe": {
-                codes.castled.allium.items.CustomItem item = CustomItemRegistry.getInstance() != null ? CustomItemRegistry.getInstance().getItem("tree_axe") : null;
-                if (item != null) {
-                    target.getInventory().addItem(item.createItemStack(1));
-                    sender.sendMessage("§aGave Lazy Axe to " + target.getName());
-                } else {
-                    sender.sendMessage("§cCustom item system not available.");
-                }
-                break;
+        // Handcuffs predate the registry and are still built by a static factory.
+        if (itemName.equals("handcuffs")) {
+            giveOrDrop(target, HandcuffsItem.createHandcuffs());
+            sender.sendMessage("§aGave handcuffs to " + target.getName());
+            return;
+        }
+
+        CustomItemRegistry registry = CustomItemRegistry.getInstance();
+        codes.castled.allium.items.CustomItem item = registry == null ? null : registry.getItem(itemName);
+        if (item == null) {
+            sender.sendMessage("§cUnknown item: " + itemName);
+            sender.sendMessage("§7Use §f/core item list§7 to see what is available.");
+            return;
+        }
+
+        StoredItemRegistry stored = StoredItemRegistry.getInstance();
+        StoredItem definition = stored == null ? null : stored.get(itemName);
+
+        int amount = definition != null ? definition.getAmount() : 1;
+        if (args.length >= 5) {
+            try {
+                amount = Integer.parseInt(args[4]);
+            } catch (NumberFormatException e) {
+                Text.sendErrorMessage(sender, "invalid", lang, "{arg}", args[4]);
+                return;
             }
-            case "spawner_changer": {
-                codes.castled.allium.items.CustomItem item = CustomItemRegistry.getInstance() != null ? CustomItemRegistry.getInstance().getItem("spawner_changer") : null;
-                if (item != null) {
-                    target.getInventory().addItem(item.createItemStack(1));
-                    sender.sendMessage("§aGave Spawner Changer to " + target.getName());
-                } else {
-                    sender.sendMessage("§cCustom item system not available.");
-                }
-                break;
+        }
+        if (amount < 1) {
+            Text.sendErrorMessage(sender, "invalid", lang, "{arg}", String.valueOf(amount));
+            return;
+        }
+        if (definition != null) {
+            if (definition.getPermission() != null && !target.hasPermission(definition.getPermission())) {
+                sender.sendMessage("§c" + target.getName() + " lacks the permission for that item.");
+                return;
             }
-            default:
-                sender.sendMessage("§cUnknown item: " + itemName);
-                break;
+            amount = Math.min(amount, definition.getMaxGive());
+        }
+
+        // TODO(step 5): route through Give's pipeline so this inherits its overflow budget,
+        // armour equipping, -e handling and ItemGiveEvent instead of the simple drop below.
+        giveOrDrop(target, item.createItemStack(amount));
+
+        String displayName = item.getDisplayName();
+        sender.sendMessage("§aGave §e" + amount + "x §6" + displayName + " §ato " + target.getName());
+        boolean notify = definition == null || definition.isNotifyReceivers();
+        if (notify && !target.equals(sender)) {
+            target.sendMessage("§aYou received §e" + amount + "x §6" + displayName);
         }
     }
 
+    /** Adds to the inventory, dropping at the player's feet whatever does not fit. */
+    private void giveOrDrop(Player target, org.bukkit.inventory.ItemStack stack) {
+        for (org.bukkit.inventory.ItemStack leftover : target.getInventory().addItem(stack).values()) {
+            target.getWorld().dropItemNaturally(target.getLocation(), leftover);
+        }
+    }
+
+    private void handleItemCaptureCommand(CommandSender sender, String[] args, boolean update) {
+        if (!(sender instanceof Player player)) {
+            Text.sendErrorMessage(sender, "contact-admin", lang);
+            return;
+        }
+        if (args.length < 3) {
+            sender.sendMessage("§eUsage: /core item " + (update ? "update" : "add") + " <name>");
+            return;
+        }
+
+        StoredItemRegistry stored = StoredItemRegistry.getInstance();
+        if (stored == null) {
+            sender.sendMessage("§cStored item system is not initialised.");
+            return;
+        }
+
+        org.bukkit.inventory.ItemStack held = player.getInventory().getItemInMainHand();
+        if (held.getType() == Material.AIR) {
+            Text.sendErrorMessage(sender, "hold-item", lang, "{modify}", update ? "update" : "store");
+            return;
+        }
+
+        String name = args[2];
+        boolean force = args.length >= 4 && ("-force".equalsIgnoreCase(args[3]) || "-f".equalsIgnoreCase(args[3]));
+        if (update && !stored.has(name)) {
+            sender.sendMessage("§cNo stored item named §e" + name.toLowerCase());
+            sender.sendMessage("§7Create it with §f/core item add " + name.toLowerCase());
+            return;
+        }
+        if (!update && stored.has(name) && !force) {
+            sender.sendMessage("§cAn item named §e" + name + "§c already exists.");
+            sender.sendMessage("§7Use §f/core item update " + name + "§7 to re-capture it and keep its "
+                + "options, or add §f-force§7 to overwrite it from scratch.");
+            return;
+        }
+
+        try {
+            StoredItem item = update ? stored.update(name, held) : stored.add(name, held);
+            sender.sendMessage("§aStored §6" + item.getId() + "§a (" + item.getMaterial().name().toLowerCase() + ")");
+            sender.sendMessage("§7Give it with §f/core item give <player> " + item.getId()
+                + "§7 or §f/i ci:" + item.getId());
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage("§cCould not store that item: " + e.getMessage());
+        } catch (Exception e) {
+            Text.sendDebugLog(ERROR, "Failed to store custom item '" + name + "'", e);
+            Text.sendErrorMessage(sender, "contact-admin", lang);
+        }
+    }
+
+    private void handleItemRemoveCommand(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage("§eUsage: /core item remove <name>");
+            return;
+        }
+        StoredItemRegistry stored = StoredItemRegistry.getInstance();
+        if (stored == null) {
+            sender.sendMessage("§cStored item system is not initialised.");
+            return;
+        }
+        if (stored.remove(args[2])) {
+            sender.sendMessage("§aRemoved stored item §e" + args[2].toLowerCase());
+        } else {
+            sender.sendMessage("§cNo stored item named §e" + args[2].toLowerCase());
+        }
+    }
+
+    private void handleItemReloadCommand(CommandSender sender) {
+        StoredItemRegistry stored = StoredItemRegistry.getInstance();
+        if (stored == null) {
+            sender.sendMessage("§cStored item system is not initialised.");
+            return;
+        }
+        stored.loadAll();
+        sender.sendMessage("§aReloaded §e" + stored.size() + "§a stored item(s).");
+    }
+
     private void handleItemListCommand(CommandSender sender) {
-        sender.sendMessage("§aAvailable items:");
-        sender.sendMessage("§ehandcuffs §7- Handcuffs item for restraining players");
-        sender.sendMessage("§elazy_axe §7- Lazy Axe (chops entire trees)");
+        StoredItemRegistry stored = StoredItemRegistry.getInstance();
+
+        sender.sendMessage("§6§lBuilt-in items");
+        sender.sendMessage("§ehandcuffs §7- restrain players");
+        sender.sendMessage("§etree_axe §7- Lazy Axe (chops entire trees)");
         sender.sendMessage("§espawner_changer §7- Spawner Type Changer (right-click spawners)");
+        sender.sendMessage("§eitem_renamer §7- rename the next item you hold");
+
+        if (stored == null || stored.size() == 0) {
+            sender.sendMessage("§6§lStored items §7(none yet — store one with /core item add <name>)");
+            return;
+        }
+        sender.sendMessage("§6§lStored items §7(" + stored.size() + ")");
+        for (StoredItem item : stored.getAll()) {
+            sender.sendMessage("§e" + item.getId() + " §7- " + item.getMaterial().name().toLowerCase()
+                + (item.hasSnapshot() ? "" : " §c(no snapshot)"));
+        }
     }
 
     private void handleDialogSubcommand(CommandSender sender, String[] args) {
@@ -795,6 +964,13 @@ public class Core implements CommandExecutor, TabCompleter {
                 Text.sendDebugLog(INFO, "Successfully reloaded item aliases and legacy IDs from itemdb.yml");
             } catch (Exception e) {
                 Text.sendDebugLog(WARN, "Failed to reload itemdb.yml data: " + e.getMessage());
+            }
+
+            // Re-probe ItemTag: it may have been installed, removed, or reloaded since last check.
+            ItemTagBridge.invalidate();
+
+            if (StoredItemRegistry.getInstance() != null) {
+                StoredItemRegistry.getInstance().loadAll();
             }
 
             // Reload and regenerate dialog datapacks
@@ -2096,15 +2272,24 @@ public class Core implements CommandExecutor, TabCompleter {
                 suggestions.addAll(List.of("1", "3", "5", "10", "-1"));
             }
         } else if (args.length > 1 && args[0].equalsIgnoreCase("item")) {
+            StoredItemRegistry stored = StoredItemRegistry.getInstance();
             if (args.length == 2) {
-                suggestions.add("give");
-                suggestions.add("list");
+                suggestions.addAll(List.of("give", "list", "add", "update", "remove", "reload"));
             } else if (args.length == 3 && args[1].equalsIgnoreCase("give")) {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     suggestions.add(player.getName());
                 }
+            } else if (args.length == 3
+                    && (args[1].equalsIgnoreCase("update") || args[1].equalsIgnoreCase("remove")
+                        || args[1].equalsIgnoreCase("delete"))) {
+                if (stored != null) {
+                    suggestions.addAll(stored.getIds());
+                }
             } else if (args.length == 4 && args[1].equalsIgnoreCase("give")) {
-                suggestions.addAll(List.of("handcuffs", "lazy_axe", "spawner_changer"));
+                suggestions.addAll(List.of("handcuffs", "tree_axe", "spawner_changer", "item_renamer"));
+                if (stored != null) {
+                    suggestions.addAll(stored.getIds());
+                }
             }
         }
         // Filter final list of completions by currentArg. This handles cases where completions were added without pre-filtering.

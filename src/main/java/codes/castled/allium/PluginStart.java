@@ -70,6 +70,7 @@ import codes.castled.allium.commands.chat.DeleteMsg;
 import codes.castled.allium.inventory.InventoryManager;
 import codes.castled.allium.inventory.OfflineInventoryManager;
 import codes.castled.allium.items.CustomItemRegistry;
+import codes.castled.allium.items.stored.StoredItemRegistry;
 import codes.castled.allium.items.commands.Handcuffs;
 import codes.castled.allium.items.impl.ItemRenamerItem;
 import codes.castled.allium.items.impl.ItemRenamerManager;
@@ -245,6 +246,9 @@ public class PluginStart extends JavaPlugin {
     private VouchersConfig vouchersConfig;
     private SecurityAlertManager securityAlertManager;
     private final Set<UUID> citizensNpcUuids = ConcurrentHashMap.newKeySet();
+    // The NPC re-scan runs every 5 ticks, so its debug output is reported on change only.
+    private int lastCitizensNpcCount = -1;
+    private String lastCitizensNpcFailure = "";
     private Object glowCommand;
 
     /**
@@ -1530,18 +1534,29 @@ public class PluginStart extends JavaPlugin {
                 } catch (Exception ignored) {}
             }
 
-            Text.sendDebugLog(
-                INFO,
-                "Tracked " +
-                    citizensNpcUuids.size() +
-                    " Citizens NPC UUIDs, ensured WAYPOINT_TRANSMIT_RANGE=0 on " +
-                    count
-            );
+            lastCitizensNpcFailure = "";
+            int tracked = citizensNpcUuids.size();
+            // Silent on the steady state: only the NPC set changing, or an attribute actually
+            // needing correction, is worth a line at 4 scans a second.
+            if (count > 0 || tracked != lastCitizensNpcCount) {
+                lastCitizensNpcCount = tracked;
+                Text.sendDebugLog(
+                    INFO,
+                    "Tracked " +
+                        tracked +
+                        " Citizens NPC UUIDs, ensured WAYPOINT_TRANSMIT_RANGE=0 on " +
+                        count
+                );
+            }
         } catch (Exception e) {
-            Text.sendDebugLog(
-                WARN,
-                "Failed to setup Citizens NPC waypoint range: " + e.getMessage()
-            );
+            String failure = String.valueOf(e.getMessage());
+            if (!failure.equals(lastCitizensNpcFailure)) {
+                lastCitizensNpcFailure = failure;
+                Text.sendDebugLog(
+                    WARN,
+                    "Failed to setup Citizens NPC waypoint range: " + failure
+                );
+            }
         }
     }
 
@@ -2200,7 +2215,9 @@ public class PluginStart extends JavaPlugin {
                 creativeManager,
                 inventoryManager
             );
-            Objects.requireNonNull(getCommand("core")).setExecutor(coreCommand);
+            Objects.requireNonNull(getCommand("core")).setExecutor(
+                suppressBukkitUsage(coreCommand)
+            );
             Objects.requireNonNull(getCommand("core")).setTabCompleter(
                 coreCommand
             );
@@ -2317,8 +2334,7 @@ public class PluginStart extends JavaPlugin {
                 "tppet",
                 "tpmob",
                 "tppos",
-                "tphere",
-                "tpahere",
+                "there",
                 "tptoggle",
                 "top",
                 "bottom",
@@ -2489,6 +2505,15 @@ public class PluginStart extends JavaPlugin {
                 new SpawnerChangerItem(this, spawnerChangerManager)
             );
             customItemRegistry.register(new ItemRenamerItem(this));
+
+            // Stored items load after the built-ins so the registry can reject any stored file whose
+            // id collides with one of them, rather than shadowing it.
+            StoredItemRegistry storedItemRegistry = new StoredItemRegistry(
+                this,
+                customItemRegistry
+            );
+            storedItemRegistry.loadAll();
+
             Text.sendDebugLog(
                 INFO,
                 "Registered " +
@@ -2597,7 +2622,7 @@ public class PluginStart extends JavaPlugin {
     ) {
         PluginCommand command = getCommand(name);
         if (command != null) {
-            command.setExecutor(executor);
+            command.setExecutor(suppressBukkitUsage(executor));
             if (completer != null) {
                 command.setTabCompleter(completer);
             }
@@ -2622,6 +2647,24 @@ public class PluginStart extends JavaPlugin {
         org.bukkit.command.CommandExecutor executor
     ) {
         registerCommand(name, executor, null);
+    }
+
+    /**
+     * Wraps an executor so it always reports success to Bukkit.
+     *
+     * <p>Returning false from onCommand makes Bukkit print the raw {@code usage} line from
+     * plugin.yml in plain white, which lands on top of the formatted message the command already
+     * sent — for example "/heal nosuchplayer" showing both "Player was not found" and
+     * "/heal [player]". Every Allium command emits its own usage and error text through Lang, so
+     * that fallback is never wanted.
+     */
+    private org.bukkit.command.CommandExecutor suppressBukkitUsage(
+        org.bukkit.command.CommandExecutor executor
+    ) {
+        return (sender, command, label, args) -> {
+            executor.onCommand(sender, command, label, args);
+            return true;
+        };
     }
 
     /**
@@ -3276,6 +3319,7 @@ public class PluginStart extends JavaPlugin {
             "tpmob",
             "tppos",
             "tphere",
+            "there",
             "tpahere",
             "tptoggle",
             "back",

@@ -6,6 +6,7 @@ import codes.castled.allium.harvest.config.HarvestConfig;
 import codes.castled.allium.harvest.crop.CropGrowthEngine;
 import codes.castled.allium.harvest.crop.CropHarvestService;
 import codes.castled.allium.harvest.crop.CropInstanceService;
+import codes.castled.allium.harvest.crop.CropLiquidListeners;
 import codes.castled.allium.harvest.crop.CropListeners;
 import codes.castled.allium.harvest.crop.CropPlacementService;
 import codes.castled.allium.harvest.crop.CropVisualService;
@@ -135,6 +136,10 @@ public final class HarvestModule {
         Bukkit.getPluginManager().registerEvents(
             new CropListeners(registry, instances, placement, harvests, cropStorage, items,
                 soils, sprinklers), plugin);
+        if (config.liquids().enabled()) {
+            Bukkit.getPluginManager().registerEvents(
+                new CropLiquidListeners(instances, harvests, config.liquids()), plugin);
+        }
         Bukkit.getPluginManager().registerEvents(
             new SprinklerListeners(sprinklerModels, sprinklers, soils, items), plugin);
         // One shared periodic pass covers sprinkler soil upkeep and pruning of
@@ -263,7 +268,16 @@ public final class HarvestModule {
      * the rest of the configuration down with it.
      */
     private List<ValidationIssue> loadDefinitions(File dataFolder) {
-        CropDefinitionLoader loader = new CropDefinitionLoader(items::hasNamespace, items::exists);
+        // Re-read the crop defaults from disk rather than using the cached
+        // config: they are only ever parse-time inputs to the loader, so
+        // picking them up here makes them reloadable without restarting —
+        // unlike storage or visual settings, which live services hold onto.
+        HarvestConfig.CropDefaults defaults = HarvestConfig.from(
+            YamlConfiguration.loadConfiguration(
+                new File(dataFolder, "config.yml"))).cropDefaults();
+        CropDefinitionLoader loader = new CropDefinitionLoader(
+            items::hasNamespace, items::exists,
+            defaults.interaction(), defaults.growthRandomness());
         CropDefinitionLoader.LoadResult result = loader.load(
             new File(dataFolder, "crops"), new File(dataFolder, "fertilizers.yml"));
         registry.swap(result.crops(), result.fertilizers());

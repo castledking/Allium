@@ -370,6 +370,15 @@ public class PacketChatTrackerImpl
                         );
                     }
                 }
+                // Tracking is suppressed for the duration of a resend, but that guard is
+                // released on a timer and the packets leave on the netty thread. Re-claim
+                // the id first so that if a copy does get tracked it belongs to the same
+                // logical message, instead of becoming an untracked twin that survives
+                // the next /delmsg.
+                chatMessageManager.registerLogicalMessage(
+                    message.getMessageId(),
+                    toSend
+                );
                 player.sendMessage(toSend);
             }
         } catch (Exception e) {

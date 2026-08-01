@@ -24,16 +24,30 @@ public class CustomItemRegistry {
         return instance;
     }
 
+    /**
+     * Registers an item, replacing any existing registration under the same id.
+     * <p>
+     * Ids are keyed lowercase to match {@link #getItem(String)}; registering under the raw id left
+     * any id containing a capital permanently unreachable. Replacing rather than throwing is what
+     * makes a reload — which re-runs {@link #loadFromConfig()} — survivable.
+     */
     public void register(final CustomItem item) {
-        if (items.containsKey(item.getId())) {
-            throw new IllegalArgumentException("Custom item with ID '" + item.getId() + "' is already registered");
-        }
-        items.put(item.getId(), item);
-        plugin.getLogger().info("Registered custom item: " + item.getId());
+        final String id = item.getId().toLowerCase();
+        final boolean replaced = items.put(id, item) != null;
+        plugin.getLogger().info((replaced ? "Re-registered" : "Registered") + " custom item: " + id);
+    }
+
+    /** Drops every registration. Call before reloading definitions from disk. */
+    public void unregisterAll() {
+        items.clear();
+    }
+
+    public boolean unregister(final String id) {
+        return id != null && items.remove(id.toLowerCase()) != null;
     }
 
     public CustomItem getItem(final String id) {
-        return items.get(id.toLowerCase());
+        return id == null ? null : items.get(id.toLowerCase());
     }
 
     public CustomItem getItem(final ItemStack itemStack) {
@@ -62,7 +76,7 @@ public class CustomItemRegistry {
     }
 
     public boolean hasItem(final String id) {
-        return items.containsKey(id.toLowerCase());
+        return id != null && items.containsKey(id.toLowerCase());
     }
 
     public int getItemCount() {

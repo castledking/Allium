@@ -179,6 +179,30 @@ class CommandPermissionAdaptersTest {
     }
 
     @Test
+    void pluginBrigadierCommandPermissionBeatsOpLevelRequirement() {
+        CommandNode<Object> node = LiteralArgumentBuilder.<Object>literal("pos1")
+                .requires(source -> false) // simulates op-level 2 check that disagrees with Bukkit node
+                .build();
+        Command command = new TestPluginCommandWrapper(node);
+        command.setPermission("worldedit.selection.pos");
+        CommandPermissionContext context = new CommandPermissionContext(
+                playerWith(Map.of("worldedit.selection.pos", true)),
+                "pos1",
+                "pos1",
+                List.of(),
+                command,
+                "worldedit",
+                Set.of("worldedit.selection.pos")
+        );
+
+        PermissionResult result = new BrigadierCommandPermissionAdapter().resolve(context).orElseThrow();
+
+        assertTrue(result.allowed());
+        assertEquals(ResolutionType.BRIGADIER, result.type());
+        assertEquals("worldedit.selection.pos", result.matchedPermission());
+    }
+
+    @Test
     void reportsUnknownWhenBrigadierWrapperCannotBeInspected() {
         Command command = new BrokenVanillaCommandWrapper();
 
@@ -389,6 +413,20 @@ class CommandPermissionAdaptersTest {
 
         private BrokenVanillaCommandWrapper() {
             super("broken");
+        }
+    }
+
+    private static final class TestPluginCommandWrapper extends StubCommand {
+
+        public final CommandNode<Object> pluginCommand;
+
+        private TestPluginCommandWrapper(CommandNode<Object> pluginCommand) {
+            super("pos1");
+            this.pluginCommand = pluginCommand;
+        }
+
+        public static Object getListener(CommandSender sender) {
+            return sender;
         }
     }
 

@@ -210,14 +210,18 @@ public final class CropInstanceService {
             long remaining = crop.remainingMs() > 0
                 ? crop.remainingMs()
                 : Math.max(0L, crop.nextGrowthAt() - crop.stageStartedAt());
-            crop.setStageStartedAt(now - (path.stage(crop.stage()).durationMs() - remaining));
+            long stageMs = StageDuration.forStage(
+                crop.instanceId(), crop.stage(), path.stage(crop.stage()).durationMs(),
+                crop.speedMultiplier(), definition.growth().randomness());
+            crop.setStageStartedAt(now - (stageMs - remaining));
             crop.setNextGrowthAt(now + remaining);
             crop.setRemainingMs(0L);
             return;
         }
         CatchUp.Result result = CatchUp.advance(
             path, crop.stage(), crop.stageStartedAt(), now,
-            definition.growth().maxCatchUpStages(), crop.speedMultiplier());
+            definition.growth().maxCatchUpStages(), crop.speedMultiplier(),
+            crop.instanceId(), definition.growth().randomness());
         crop.setStage(result.stage());
         crop.setStageStartedAt(result.stageStartedAt());
         crop.setNextGrowthAt(result.nextGrowthAt());

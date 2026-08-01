@@ -89,6 +89,24 @@ public final class DefaultCommandPermissionResolver implements CommandPermission
 
     private @Nullable Command resolveCommand(Map<String, Command> knownCommands, String commandLabel) {
         String lowerLabel = commandLabel.toLowerCase(Locale.ROOT);
+        Command command = lookupCommand(knownCommands, lowerLabel);
+        if (command != null) {
+            return command;
+        }
+
+        // WorldEdit-style commands are registered with a leading slash as part of the
+        // command name (e.g. "/pos1", "worldedit:/pos1") and invoked in chat as "//pos1".
+        // ParsedCommandLine strips every leading slash, so retry with one restored.
+        if (!lowerLabel.startsWith("/")) {
+            command = lookupCommand(knownCommands, "/" + lowerLabel);
+            if (command != null) {
+                return command;
+            }
+        }
+        return null;
+    }
+
+    private @Nullable Command lookupCommand(Map<String, Command> knownCommands, String lowerLabel) {
         Command command = knownCommands.get(lowerLabel);
         if (command != null) {
             return command;

@@ -12,6 +12,8 @@ import java.util.Optional;
  *
  * @param fallbackPath path used when the weighted roll cannot select any path
  *                     (all weights zero), or null
+ * @param interaction how players may take and inspect this crop; defaults come
+ *                    from {@code harvest/config.yml}
  */
 public record CropDefinition(
     String id,
@@ -20,11 +22,23 @@ public record CropDefinition(
     GrowthRequirements requirements,
     GrowthSettings growth,
     Map<String, CropPathDefinition> paths,
-    String fallbackPath
+    String fallbackPath,
+    InteractionSettings interaction
 ) {
 
     public CropDefinition {
         paths = new LinkedHashMap<>(paths);
+        if (interaction == null) {
+            interaction = InteractionSettings.DEFAULT;
+        }
+    }
+
+    /** Convenience for callers that do not care about interaction settings. */
+    public CropDefinition(String id, String displayName, ItemRef seed,
+                          GrowthRequirements requirements, GrowthSettings growth,
+                          Map<String, CropPathDefinition> paths, String fallbackPath) {
+        this(id, displayName, seed, requirements, growth, paths, fallbackPath,
+            InteractionSettings.DEFAULT);
     }
 
     public Optional<CropPathDefinition> path(String pathId) {

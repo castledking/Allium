@@ -142,13 +142,17 @@ public final class CropPlacementService {
         double speed = GrowthSpeed.combine(
             soilFertilizer == null ? 1.0D : soilFertilizer.growthSpeedMultiplier(),
             sprinklers.speedMultiplierAt(position));
+        // The id is what the growth jitter is derived from, so it has to exist
+        // before the first stage's due time can be computed.
+        UUID instanceId = UUID.randomUUID();
         CropInstance instance = new CropInstance(
-            UUID.randomUUID(), crop.id(), pathId, position,
+            instanceId, crop.id(), pathId, position,
             now, player.getUniqueId(),
             0,
             singleStage ? CropState.MATURE : CropState.GROWING,
             now,
-            singleStage ? 0L : now + GrowthSpeed.apply(path.stage(0).durationMs(), speed),
+            singleStage ? 0L : now + StageDuration.forStage(
+                instanceId, 0, path.stage(0).durationMs(), speed, crop.growth().randomness()),
             0L, null,
             soilFertilizer == null ? null : soilFertilizer.id(),
             List.of(position)

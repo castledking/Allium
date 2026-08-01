@@ -35,7 +35,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,11 +55,9 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
     private final boolean tabPluginPresent;
     private final boolean placeholderApiPresent;
     private final Map<String, Long> tabDebugThrottle = new ConcurrentHashMap<>();
-    private final Set<String> animatedTabEntries = ConcurrentHashMap.newKeySet();
     private final File tabGroupsFile;
     private volatile FileConfiguration tabGroupsConfig;
     private volatile long tabGroupsLastModified;
-    private SchedulerAdapter.TaskHandle tabListRefreshTask;
 
     public TabListManagerPacketEventsImpl(PluginStart plugin, PartyManager partyManager, VanishManager vanishManager) {
         super(PacketListenerPriority.LOWEST); // Run FIRST - cancel server's removal before TAB/others process it
@@ -72,7 +69,6 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
         this.placeholderApiPresent = plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI");
         Plugin tabPlugin = plugin.getServer().getPluginManager().getPlugin("TAB");
         this.tabGroupsFile = tabPlugin != null ? new File(tabPlugin.getDataFolder(), "config/groups.yml") : null;
-        this.tabListRefreshTask = SchedulerAdapter.runTimer(this::refreshAnimatedTabEntries, 1L, 1L);
 
         // Brief delay for PacketEvents to be ready
         SchedulerAdapter.runLater(() -> {
@@ -151,13 +147,17 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
         return !partyManager.shouldBeVisible(viewer, target);
     }
 
-    private WrapperPlayServerPlayerInfoUpdate.PlayerInfo createPlayerInfoEntry(Player viewer, Player player) {
+    private WrapperPlayServerPlayerInfoUpdate.PlayerInfo createPlayerInfoEntry(
+            Player viewer,
+            Player player,
+            boolean includeDisplayName
+    ) {
         UserProfile gameProfile = new UserProfile(player.getUniqueId(), player.getName());
         int latency = 0;
         GameMode gameMode = convertBukkitGameModeToPacketEvents(player.getGameMode());
         return new WrapperPlayServerPlayerInfoUpdate.PlayerInfo(
             gameProfile, true, latency, gameMode,
-            resolveDisplayName(viewer, player), null
+            includeDisplayName ? resolveDisplayName(viewer, player) : null, null
         );
     }
 
@@ -353,36 +353,45 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
             return;
         }
 
+        boolean refreshAnimatedName = false;
         for (Player viewer : viewers) {
             if (viewer == null || !viewer.isOnline() || !targetPlayer.isOnline()) {
                 continue;
             }
             if (respectVisibilityRules && !shouldBeVisibleInTabList(viewer, targetPlayer)) {
-                untrackAnimatedTabEntry(viewer, targetPlayer);
                 continue;
             }
 
+            boolean animatedTarget = isAnimatedGradientTarget(targetPlayer);
+            TabListRefreshPolicy.EntryPlan fallbackPlan =
+                    TabListRefreshPolicy.entryPlan(false, animatedTarget);
             boolean added = tabPluginPresent && addEntryViaTab(viewer, targetPlayer);
             if (!added) {
+                EnumSet<WrapperPlayServerPlayerInfoUpdate.Action> actions = EnumSet.of(
+                        WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER,
+                        WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LISTED
+                );
+                if (fallbackPlan.includeDisplayName()) {
+                    actions.add(WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_DISPLAY_NAME);
+                }
                 sendPlayerInfoUpdatePacket(
                         viewer,
                         new WrapperPlayServerPlayerInfoUpdate(
-                                EnumSet.of(
-                                        WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER,
-                                        WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LISTED,
-                                        WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_DISPLAY_NAME
-                                ),
-                                createPlayerInfoEntry(viewer, targetPlayer)
+                                actions,
+                                createPlayerInfoEntry(viewer, targetPlayer, fallbackPlan.includeDisplayName())
                         )
                 );
             }
 
-            if (isAnimatedGradientTarget(targetPlayer)) {
-                trackAnimatedTabEntry(viewer, targetPlayer);
-                updateAnimatedTabEntry(viewer, targetPlayer);
-            } else {
-                untrackAnimatedTabEntry(viewer, targetPlayer);
+            if (animatedTarget) {
+                refreshAnimatedName = true;
             }
+        }
+
+        // GradientNameManager is the single animation writer. Reassert through
+        // that owner after addEntry may have cleared TAB's remembered format.
+        if (refreshAnimatedName && plugin.getGradientNameManager() != null) {
+            plugin.getGradientNameManager().refreshPlayerListName(targetPlayer);
         }
     }
 
@@ -410,19 +419,33 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
             Object viewerTabList = viewerTabPlayer.getClass().getMethod("getTabList").invoke(viewerTabPlayer);
             Object targetTabList = targetTabPlayer.getClass().getMethod("getTabList").invoke(targetTabPlayer);
             Object tablistId = targetTabPlayer.getClass().getMethod("getTablistId").invoke(targetTabPlayer);
+            boolean entryPresent = (boolean) viewerTabList.getClass()
+                    .getMethod("containsEntry", java.util.UUID.class)
+                    .invoke(viewerTabList, tablistId);
+            boolean animatedTarget = isAnimatedGradientTarget(target);
+            TabListRefreshPolicy.EntryPlan plan = TabListRefreshPolicy.entryPlan(entryPresent, animatedTarget);
+
+            if (plan.operation() == TabListRefreshPolicy.EntryOperation.UPDATE_LISTED) {
+                viewerTabList.getClass()
+                        .getMethod("updateListed", java.util.UUID.class, boolean.class)
+                        .invoke(viewerTabList, tablistId, true);
+                return true;
+            }
+
             String nickname = (String) targetTabPlayer.getClass().getMethod("getNickname").invoke(targetTabPlayer);
             Object skin = targetTabList.getClass().getMethod("getSkin").invoke(targetTabList);
             int latency = ((Number) targetTabPlayer.getClass().getMethod("getPing").invoke(targetTabPlayer)).intValue();
             int gamemode = ((Number) targetTabPlayer.getClass().getMethod("getGamemode").invoke(targetTabPlayer)).intValue();
-            Object tabComponent = resolveTabComponent(tab, viewerTabPlayer, targetTabPlayer);
-            boolean animatedTarget = isAnimatedGradientTarget(target);
+            Object tabComponent = plan.includeDisplayName()
+                    ? resolveTabComponent(tab, viewerTabPlayer, targetTabPlayer)
+                    : null;
             boolean groupsFallback = false;
             boolean placeholderFallback = false;
-            if (tabComponent == null) {
+            if (plan.includeDisplayName() && tabComponent == null) {
                 tabComponent = createTabComponentFromGroupsConfig(target, targetTabPlayer);
                 groupsFallback = tabComponent != null;
             }
-            if (tabComponent == null) {
+            if (plan.includeDisplayName() && tabComponent == null) {
                 tabComponent = createTabComponentFromPlaceholders(target);
                 placeholderFallback = true;
             }
@@ -454,10 +477,6 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
 
             Method addEntry = viewerTabList.getClass().getMethod("addEntry", entryClass);
             addEntry.invoke(viewerTabList, entry);
-            if (tabComponent != null) {
-                Method updateDisplayName = viewerTabList.getClass().getMethod("updateDisplayName", targetTabPlayer.getClass().getSuperclass(), tabComponentClass);
-                updateDisplayName.invoke(viewerTabList, targetTabPlayer, tabComponent);
-            }
             logTabDebug(
                 viewer,
                 target,
@@ -552,89 +571,6 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
                 && target.isOnline()
                 && target.hasPermission("allium.gradientname")
                 && plugin.getGradientNameManager() != null;
-    }
-
-    private Component resolveAnimatedGradientDisplayName(Player target) {
-        if (!isAnimatedGradientTarget(target)) {
-            return null;
-        }
-        try {
-            String displayName = resolveAnimatedGradientTabText(target);
-            if (displayName == null || displayName.isBlank() || "%gradientdisplayname%".equals(displayName)) {
-                return null;
-            }
-            return Text.colorize(displayName);
-        } catch (Throwable ignored) {
-            return null;
-        }
-    }
-
-    private String resolveAnimatedGradientTabText(Player target) {
-        return plugin.getGradientNameManager().buildAnimatedTabDisplayName(target);
-    }
-
-    private void trackAnimatedTabEntry(Player viewer, Player target) {
-        animatedTabEntries.add(tabEntryKey(viewer.getUniqueId(), target.getUniqueId()));
-    }
-
-    private void untrackAnimatedTabEntry(Player viewer, Player target) {
-        animatedTabEntries.remove(tabEntryKey(viewer.getUniqueId(), target.getUniqueId()));
-    }
-
-    private String tabEntryKey(UUID viewerId, UUID targetId) {
-        return viewerId + ":" + targetId;
-    }
-
-    private void refreshAnimatedTabEntries() {
-        if (animatedTabEntries.isEmpty()) {
-            return;
-        }
-
-        for (String key : new ArrayList<>(animatedTabEntries)) {
-            String[] parts = key.split(":", 2);
-            if (parts.length != 2) {
-                animatedTabEntries.remove(key);
-                continue;
-            }
-
-            UUID viewerId;
-            UUID targetId;
-            try {
-                viewerId = UUID.fromString(parts[0]);
-                targetId = UUID.fromString(parts[1]);
-            } catch (IllegalArgumentException e) {
-                animatedTabEntries.remove(key);
-                continue;
-            }
-
-            Player viewer = plugin.getServer().getPlayer(viewerId);
-            Player target = plugin.getServer().getPlayer(targetId);
-            if (viewer == null || target == null || !viewer.isOnline() || !target.isOnline()
-                    || !isAnimatedGradientTarget(target)
-                    || !shouldBeVisibleInTabList(viewer, target)) {
-                animatedTabEntries.remove(key);
-                continue;
-            }
-
-            updateAnimatedTabEntry(viewer, target);
-        }
-    }
-
-    private void updateAnimatedTabEntry(Player viewer, Player target) {
-        Component displayName = resolveAnimatedGradientDisplayName(target);
-        if (displayName == null) {
-            return;
-        }
-
-        WrapperPlayServerPlayerInfoUpdate.PlayerInfo entry = createPlayerInfoEntry(viewer, target);
-        entry.setDisplayName(displayName);
-        sendPlayerInfoUpdatePacket(
-                viewer,
-                new WrapperPlayServerPlayerInfoUpdate(
-                        WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_DISPLAY_NAME,
-                        entry
-                )
-        );
     }
 
     private FileConfiguration getTabGroupsConfig() {
@@ -851,10 +787,6 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
     @Override
     public void shutdown() {
         try {
-            if (tabListRefreshTask != null) {
-                tabListRefreshTask.cancel();
-                tabListRefreshTask = null;
-            }
             PacketEvents.getAPI().getEventManager().unregisterListener(this);
         } catch (Exception e) {
             Text.sendDebugLog(WARN, "Error unregistering tablist manager listener: " + e.getMessage());

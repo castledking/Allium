@@ -1263,7 +1263,7 @@ public class Lang {
             char colorChar = rawMessage.charAt(ampersandIndex + 1);
             // Validate if it's a known Minecraft color/format code
             if ("0123456789abcdefklmnor".indexOf(Character.toLowerCase(colorChar)) != -1) {
-                return "§" + colorChar;
+                return "&r§" + colorChar;
             }
         }
         return ""; // No valid color code found at the beginning

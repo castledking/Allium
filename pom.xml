@@ -11,7 +11,7 @@
 
     <groupId>codes.castled</groupId>
     <artifactId>Allium</artifactId>
-    <version>0.2.10a</version>
+    <version>0.2.11a</version>
     <name>Allium</name>
     <description>A secure, modern Essentials solution.</description>
 
@@ -410,6 +410,9 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <!-- ItemTag / ItemEdit are optional and have no public Maven artifacts.
+             ItemTagBridge uses their runtime plugin class loader reflectively. -->
 
         <!-- JSpecify for null annotations -->
         <dependency>

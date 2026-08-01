@@ -9,6 +9,7 @@ import github.scarsz.discordsrv.api.events.GameChatMessagePreProcessEvent;
 import github.scarsz.discordsrv.util.WebhookUtil;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import me.clip.placeholderapi.PlaceholderAPI;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -46,6 +47,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -619,15 +621,20 @@ public final class AlliumChannelManager implements Listener {
         // Cancel staff-chat so Dynmap doesn't see it
         if (currentWrite.equals(staffChannelName)) {
             event.setCancelled(true);
-        } else {
-            // For global-chat: clear recipients to prevent vanilla broadcast duplicate
-            event.getRecipients().clear();
         }
+        // For global-chat we deliberately leave the recipient set alone. Paper builds the
+        // modern AsyncChatEvent's viewer set from these recipients, and onPlayerChat below
+        // uses that set to decide who may receive the message - clearing it here would
+        // discard every trim other plugins made (mutes, ignore lists, range chat). The
+        // vanilla broadcast is already suppressed by clearing viewers in onPlayerChat.
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = false)
     public void onPlayerChat(AsyncChatEvent event) {
-        if (!enabled) {
+        // We broadcast manually below, so a cancelled event must be honoured here
+        // explicitly - otherwise mutes from other plugins (GriefPrevention soft-mute,
+        // etc.) are ignored and the message still reaches every channel reader.
+        if (!enabled || event.isCancelled()) {
             return;
         }
 
@@ -718,15 +725,42 @@ public final class AlliumChannelManager implements Listener {
         // Cancel staff-chat events entirely - prevents them from reaching Dynmap
         // For global-chat: clear viewers to prevent vanilla broadcast duplicate, but don't cancel so Dynmap can process
         boolean isStaffChat = targetChannel.equals(staffChannelName);
+        Set<UUID> allowedViewers = null;
         if (isStaffChat) {
             event.setCancelled(true);
         } else {
+            // Snapshot who the server still considers a viewer before we take delivery
+            // over. Other plugins trim this set (GriefPrevention soft-mute and ignore
+            // lists, range chat, ...) and we must respect those trims rather than
+            // broadcasting to every channel reader.
+            allowedViewers = viewerIds(event.viewers());
             event.viewers().clear();
         }
-        sendPlayerMessage(player, targetChannel, message);
+        sendPlayerMessage(player, targetChannel, message, allowedViewers);
+    }
+
+    /** Collects the UUIDs of the player audiences in a chat event's viewer set. */
+    private Set<UUID> viewerIds(Set<? extends Audience> viewers) {
+        Set<UUID> ids = new HashSet<>();
+        for (Audience viewer : viewers) {
+            if (viewer instanceof Player player) {
+                ids.add(player.getUniqueId());
+            }
+        }
+        return ids;
     }
 
     public void sendPlayerMessage(Player sender, String channelName, String message) {
+        sendPlayerMessage(sender, channelName, message, null);
+    }
+
+    /**
+     * @param allowedViewers when non-null, only these players may receive the message,
+     *                       intersected with the channel's readers. Null means "no
+     *                       restriction" and is used by callers that are not driven by a
+     *                       chat event (commands, Discord inbound, ...).
+     */
+    public void sendPlayerMessage(Player sender, String channelName, String message, Set<UUID> allowedViewers) {
         ChannelDefinition channel = getChannel(channelName);
         if (channel == null) {
             return;
@@ -735,6 +769,10 @@ public final class AlliumChannelManager implements Listener {
         RenderedPlayerMessage rendered = renderPlayerMessage(sender, channel, message);
         Component formatted = rendered.formatted();
         long messageId = plugin.getChatMessageManager().storeMessage(sender, formatted);
+        // Claim this id for the per-viewer copies the packet tracker is about to capture,
+        // so /delmsg removes every copy rather than only those the timestamp heuristic
+        // happens to match.
+        plugin.getChatMessageManager().registerLogicalMessage(messageId, formatted);
         if (plugin.getDiscordSrvMessageBridge() != null) {
             plugin.getDiscordSrvMessageBridge().noteOutgoingPlayerChat(messageId, sender, Component.text(message), formatted);
         }
@@ -744,10 +782,13 @@ public final class AlliumChannelManager implements Listener {
         int radius = isLocalChannel ? channel.radius() : 0;
         
         for (Player recipient : Bukkit.getOnlinePlayers()) {
+            if (allowedViewers != null && !allowedViewers.contains(recipient.getUniqueId())) {
+                continue; // another plugin removed them from the audience
+            }
             if (!isReading(recipient.getUniqueId(), channel.name())) {
                 continue;
             }
-            
+
             // For local channels, check if recipient is within radius
             if (isLocalChannel && radius > 0) {
                 if (!sender.getWorld().equals(recipient.getWorld())) {
@@ -1958,9 +1999,14 @@ public final class AlliumChannelManager implements Listener {
         String roleColor = getDiscordSrvTopRoleColor(member);
         String formattedMessage = formatDiscordSrvMessage(format, username, effectiveName, roleAlias, roleColor, content, discordChannelName, isReply, replySnippet, useAlliumFormat);
         Component formatted = Text.colorize(formattedMessage);
+        // Resolve Nexo glyph placeholders ourselves: Nexo only rewrites them while chat packets are
+        // on the wire, and messages we send directly do not reliably reach that pass, so ":tada:"
+        // and its unicode twin would otherwise arrive at the client as plain text.
+        Component rendered = NexoGlyphSupport.resolvePlaceholders(formatted);
         final String finalUsername = username;
         SchedulerAdapter.run(() -> {
-            long messageId = plugin.getChatMessageManager().storeMessage(DISCORD_SENDER_ID, finalUsername, formatted);
+            long messageId = plugin.getChatMessageManager().storeMessage(DISCORD_SENDER_ID, finalUsername, rendered);
+            plugin.getChatMessageManager().registerLogicalMessage(messageId, rendered);
             int recipientCount = 0;
             for (Player recipient : Bukkit.getOnlinePlayers()) {
                 // Use canonical channel name for reading check
@@ -1972,12 +2018,14 @@ public final class AlliumChannelManager implements Listener {
                     continue;
                 }
                 recipientCount++;
-                recipient.sendMessage(formatted);
+                recipient.sendMessage(rendered);
             }
             // Mirror to console as well. We cancel DiscordSRV's PreProcess/PostProcess events
             // (see onDiscordGuildMessagePreProcess / onDiscordGuildMessagePostProcess) so DiscordSRV
             // no longer logs the inbound message itself - without this line, Discord -> game messages
             // would only appear in-game and never in the server console.
+            // The console gets the pre-glyph component so logs keep the readable emoji instead of
+            // the private-use glyph character.
             Bukkit.getConsoleSender().sendMessage(LegacyComponentSerializer.legacySection().serialize(formatted));
             if (plugin.isDebugMode()) {
                 Text.sendDebugLog(INFO, "[Channels] Discord inbound sent to " + recipientCount + " recipients");

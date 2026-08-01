@@ -246,8 +246,8 @@ public class Give implements CommandExecutor {
                             List<ItemSpec> armorSpecs = new ArrayList<>();
                             List<ItemSpec> otherSpecs = new ArrayList<>();
                             for (ItemSpec spec : specs) {
-                                ItemStack probe = createItemStack(spec.itemString, sender, 1);
-                                if (probe != null && Armor.isArmor(probe.getType())) {
+                                Material probe = probeSpecMaterial(spec.itemString, sender);
+                                if (probe != null && Armor.isArmor(probe)) {
                                     armorSpecs.add(spec);
                                 } else {
                                     otherSpecs.add(spec);
@@ -319,8 +319,8 @@ public class Give implements CommandExecutor {
                 List<ItemSpec> armorSpecs = new ArrayList<>();
                 List<ItemSpec> otherSpecs = new ArrayList<>();
                 for (ItemSpec spec : specs) {
-                    ItemStack probe = createItemStack(spec.itemString, sender, 1);
-                    if (probe != null && Armor.isArmor(probe.getType())) {
+                    Material probe = probeSpecMaterial(spec.itemString, sender);
+                    if (probe != null && Armor.isArmor(probe)) {
                         armorSpecs.add(spec);
                     } else {
                         otherSpecs.add(spec);
@@ -576,8 +576,37 @@ public class Give implements CommandExecutor {
         if (itemName.toLowerCase().startsWith("ci:") || itemName.toLowerCase().startsWith("custom:")) {
             return 64;
         }
-        Material material = getMaterial(itemName, sender);
+        // Probe only: an unknown item is reported once by createItemStack further down the line.
+        Material material = getMaterial(itemName, sender, false);
         return material != null ? material.getMaxStackSize() : 64;
+    }
+
+    /**
+     * Resolves the material an item spec would produce, without creating the item or emitting any
+     * error messages. Used to decide whether a spec is armor before the item is actually built.
+     *
+     * @return the material, or null if it cannot be determined
+     */
+    private Material probeSpecMaterial(String itemString, CommandSender sender) {
+        String itemName = itemString.split(";", -1)[0];
+
+        if (itemName.startsWith("{")) {
+            return null; // legacy NBT format, let createItemStack deal with it
+        }
+        if (itemName.contains("[")) {
+            itemName = itemName.split("\\[", 2)[0];
+            return Material.matchMaterial(itemName);
+        }
+        if (itemName.toLowerCase().startsWith("ci:") || itemName.toLowerCase().startsWith("custom:")) {
+            String prefix = itemName.toLowerCase().startsWith("ci:") ? "ci:" : "custom:";
+            CustomItem customItem = CustomItemRegistry.getInstance().getItem(itemName.substring(prefix.length()));
+            if (customItem == null) {
+                return null;
+            }
+            ItemStack stack = customItem.createItemStack(1);
+            return stack != null ? stack.getType() : null;
+        }
+        return getMaterial(itemName, sender, false);
     }
 
     private void giveItemToPlayer(Player target, ItemStack item, CommandSender sender, String source) {
@@ -1219,6 +1248,17 @@ public class Give implements CommandExecutor {
     }
 
     private Material getMaterial(String itemName, CommandSender sender) {
+        return getMaterial(itemName, sender, true);
+    }
+
+    /**
+     * Resolves a material name.
+     *
+     * @param notify when false, no "invalid item" message is sent on failure. Used by callers that
+     *               only probe the material (stack size, armor detection) and whose failure is
+     *               reported again by the subsequent createItemStack call.
+     */
+    private Material getMaterial(String itemName, CommandSender sender, boolean notify) {
         Material material = null;
         String baseItemName = itemName;
 
@@ -1321,7 +1361,9 @@ public class Give implements CommandExecutor {
         }
 
         // If we get here, the material couldn't be found
-        Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
+        if (notify) {
+            Text.sendErrorMessage(sender, "give.invalid-item", lang, "{item}", itemName);
+        }
         return null;
     }
     

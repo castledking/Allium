@@ -5,7 +5,7 @@ api-version: 1.21
 folia-supported: true
 author: castledking
 description: "A secure, modern Essentials solution."
-softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens, Nexo, Oraxen]
+softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens, Nexo, Oraxen, ItemEdit, ItemTag, TAB]
 
 commands:
   nickname:
@@ -330,11 +330,17 @@ commands:
     permission: allium.tppos
   
   tphere:
-    description: "Bring a player to your location"
-    usage: "/tphere <player>"
-    aliases: [s]
+    description: "Bring players, mobs or your selection to your location"
+    usage: "/tphere [player|@selector ...]"
+    aliases: [s, here]
     permission: allium.tphere
-  
+
+  there:
+    description: "Send your selection, or yourself, to the block you are looking at"
+    usage: "/there [player|@selector ...]"
+    aliases: [tpthere]
+    permission: allium.tpthere
+
   tpahere:
     description: "Request a player to teleport to you"
     usage: "/tpahere <player>"
@@ -499,6 +505,10 @@ permissions:
       allium.tp.override: true
       allium.tptoggle.others: true
       allium.tphere: true
+      allium.tpthere: true
+      allium.selectors: true
+      allium.command.selector.all: true
+      allium.command.selector.entities: true
       allium.tppos: true
       allium.tpa.nocooldown: true
       allium.feed.nocooldown: true
@@ -535,6 +545,9 @@ permissions:
       allium.migrate: true
       allium.sethomes: true
       allium.withertoggle.notify: true
+      allium.item.give: true
+      allium.item.list: true
+      allium.item.admin: true
 
   allium.handcuffs:
     description: "Allows using handcuffs commands"
@@ -718,6 +731,17 @@ permissions:
     default: op
   allium.tphere:
     default: op
+  allium.tpthere:
+    default: op
+  allium.selectors:
+    description: "Allows using @ entity selectors in command arguments"
+    default: op
+  allium.command.selector.all:
+    description: "Allows the @a selector"
+    default: op
+  allium.command.selector.entities:
+    description: "Allows the @e selector"
+    default: op
   allium.tpahere:
     default: op
   allium.tpall:
@@ -868,6 +892,15 @@ permissions:
   allium.give:
     default: op
   allium.itemdb:
+    default: op
+  allium.item.give:
+    description: "Give stored and built-in custom items via /core item give"
+    default: op
+  allium.item.list:
+    description: "List available custom items via /core item list"
+    default: op
+  allium.item.admin:
+    description: "Create, re-capture, delete and reload stored custom items"
     default: op
 
   allium.mail:

@@ -1,7 +1,10 @@
 package codes.castled.allium.harvest.crop;
 
 import codes.castled.allium.harvest.HarvestBranding;
+import codes.castled.allium.harvest.crop.def.CropDefinition;
 import codes.castled.allium.harvest.crop.def.CropRegistry;
+import codes.castled.allium.harvest.crop.def.HarvestSource;
+import codes.castled.allium.harvest.crop.def.InteractionSettings;
 import codes.castled.allium.harvest.event.CropRemoveEvent;
 import codes.castled.allium.harvest.item.ItemRef;
 import codes.castled.allium.harvest.item.ItemResolverChain;
@@ -11,10 +14,15 @@ import codes.castled.allium.harvest.storage.CropStorage;
 import codes.castled.allium.harvest.util.BlockPositionKey;
 import codes.castled.allium.harvest.util.Durations;
 import codes.castled.allium.harvest.visual.VisualTags;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.GameMode;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -95,18 +103,8 @@ public final class CropListeners implements Listener {
                 event.setCancelled(true);
                 return;
             }
-            if (crop.state() == CropState.MATURE) {
-                if (!player.hasPermission(HarvestBranding.PERMISSION_ROOT + ".crop.harvest")) {
-                    return;
-                }
-                CropHarvestService.HarvestResult result = harvests.harvest(player, crop);
-                if (!result.success() && result.denyReason() != null) {
-                    player.sendActionBar(MiniMessage.miniMessage()
-                        .deserialize("<red>" + result.denyReason() + "</red>"));
-                }
+            if (tryRightClickHarvest(player, crop)) {
                 event.setCancelled(true);
-            } else {
-                sendGrowthProgress(player, crop);
             }
             return;
         }
@@ -203,10 +201,105 @@ public final class CropListeners implements Listener {
         }).orElse(false);
     }
 
-    private void sendGrowthProgress(Player player, CropInstance crop) {
-        long remaining = Math.max(0L, crop.nextGrowthAt() - System.currentTimeMillis());
-        player.sendActionBar(MiniMessage.miniMessage().deserialize(
-            "<yellow>Growing — next stage in " + Durations.format(remaining) + "</yellow>"));
+    /**
+     * The shared right-click-on-a-crop behaviour, whether the click landed on
+     * the plant's hitbox or on the block under it.
+     *
+     * @return whether the click was consumed and the event should be cancelled
+     */
+    private boolean tryRightClickHarvest(Player player, CropInstance crop) {
+        InteractionSettings settings = interactionFor(crop);
+        if (crop.state() != CropState.MATURE) {
+            sendGrowthProgress(player, crop, settings);
+            // A click that produced no message still belongs to the crop, so it
+            // must not fall through to placing a block inside the plant.
+            return true;
+        }
+        if (!settings.rightClickHarvest()) {
+            // Right-click is reserved for inspection on this crop: say the crop
+            // is ready rather than leaving the player clicking at nothing.
+            if (settings.progressDisplay() != InteractionSettings.ProgressDisplay.OFF) {
+                player.sendActionBar(MiniMessage.miniMessage().deserialize(
+                    "<green>Ready — break it to harvest.</green>"));
+            }
+            return true;
+        }
+        if (!player.hasPermission(HarvestBranding.PERMISSION_ROOT + ".crop.harvest")) {
+            return false;
+        }
+        CropHarvestService.HarvestResult result =
+            harvests.harvest(player, crop, HarvestSource.RIGHT_CLICK);
+        if (!result.success() && result.denyReason() != null) {
+            player.sendActionBar(MiniMessage.miniMessage()
+                .deserialize("<red>" + result.denyReason() + "</red>"));
+        }
+        return true;
+    }
+
+    /**
+     * Removes a crop the player destroyed, harvesting it first when it was
+     * mature and the crop allows break-harvesting.
+     *
+     * <p>An immature crop is never harvested this way — there is nothing to
+     * take yet, so it falls through to {@code break-drops.immature}.
+     */
+    private void breakCrop(Player player, CropInstance crop) {
+        if (crop.state() == CropState.MATURE
+            && interactionFor(crop).breakHarvest()
+            && player.hasPermission(HarvestBranding.PERMISSION_ROOT + ".crop.harvest")) {
+            CropHarvestService.HarvestResult result =
+                harvests.harvest(player, crop, HarvestSource.BREAK);
+            if (result.success()) {
+                return;
+            }
+        }
+        harvests.removeCrop(crop, CropRemoveEvent.Reason.BROKEN);
+    }
+
+    private InteractionSettings interactionFor(CropInstance crop) {
+        return registry.crop(crop.cropId())
+            .map(CropDefinition::interaction)
+            .orElse(InteractionSettings.DEFAULT);
+    }
+
+    /**
+     * Tells the player how a growing crop is doing.
+     *
+     * <p>{@code VAGUE} reports a share of the whole path rather than the current
+     * stage, because "nearly ready" should mean nearly harvestable — a player
+     * has no idea how many stages are left, so per-stage progress would read as
+     * a promise the crop then breaks.
+     */
+    private void sendGrowthProgress(Player player, CropInstance crop, InteractionSettings settings) {
+        switch (settings.progressDisplay()) {
+            case OFF -> { /* the crop keeps its own counsel */ }
+            case TIME -> {
+                long remaining = Math.max(0L, crop.nextGrowthAt() - System.currentTimeMillis());
+                player.sendActionBar(MiniMessage.miniMessage().deserialize(
+                    "<yellow>Growing — next stage in " + Durations.format(remaining) + "</yellow>"));
+            }
+            case HINT -> player.sendActionBar(MiniMessage.miniMessage()
+                .deserialize(progressHint(crop)));
+        }
+    }
+
+    private String progressHint(CropInstance crop) {
+        double progress = registry.crop(crop.cropId())
+            .flatMap(definition -> definition.path(crop.pathId()))
+            .map(path -> {
+                int matureStage = Math.max(1, path.matureStage());
+                long stageMs = Math.max(1L, crop.nextGrowthAt() - crop.stageStartedAt());
+                double withinStage = Math.max(0.0D, Math.min(1.0D,
+                    (System.currentTimeMillis() - crop.stageStartedAt()) / (double) stageMs));
+                return Math.min(1.0D, (crop.stage() + withinStage) / matureStage);
+            })
+            .orElse(0.0D);
+
+        if (progress < 0.25D) return "<gray>A young seedling.</gray>";
+        if (progress < 0.50D) return "<yellow>Coming along.</yellow>";
+        if (progress < 0.75D) return "<yellow>Growing well.</yellow>";
+        if (progress < 0.95D) return "<green>Nearly ready.</green>";
+        return "<green>Almost ready to harvest.</green>";
     }
 
     // ==================== protection of crop cells ====================
@@ -221,7 +314,7 @@ public final class CropListeners implements Listener {
             .or(() -> instances.at(key.offset(0, 1, 0)))
             .orElse(null);
         if (crop == null) return;
-        harvests.removeCrop(crop, CropRemoveEvent.Reason.BROKEN);
+        breakCrop(event.getPlayer(), crop);
     }
 
     /**
@@ -245,18 +338,7 @@ public final class CropListeners implements Listener {
         if (tryFertilize(player, crop, held)) {
             return;
         }
-        if (crop.state() != CropState.MATURE) {
-            sendGrowthProgress(player, crop);
-            return;
-        }
-        if (!player.hasPermission(HarvestBranding.PERMISSION_ROOT + ".crop.harvest")) {
-            return;
-        }
-        CropHarvestService.HarvestResult result = harvests.harvest(player, crop);
-        if (!result.success() && result.denyReason() != null) {
-            player.sendActionBar(MiniMessage.miniMessage()
-                .deserialize("<red>" + result.denyReason() + "</red>"));
-        }
+        tryRightClickHarvest(player, crop);
     }
 
     /**
@@ -277,7 +359,7 @@ public final class CropListeners implements Listener {
         if (!player.hasPermission(HarvestBranding.PERMISSION_ROOT + ".crop.harvest")) {
             return;
         }
-        harvests.removeCrop(crop, CropRemoveEvent.Reason.BROKEN);
+        breakCrop(player, crop);
         player.getWorld().playSound(player.getLocation(), "block.crop.break", 1.0F, 1.0F);
     }
 
@@ -300,25 +382,67 @@ public final class CropListeners implements Listener {
         }
     }
 
+    /**
+     * A piston shears any crop it reaches, the way vanilla pistons treat wheat
+     * or a flower.
+     *
+     * <p>The extending arm itself counts: pushing into an empty cell moves no
+     * blocks at all, so {@link BlockPistonExtendEvent#getBlocks()} is empty and
+     * the head is the only thing that enters the crop's space.
+     */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPistonExtend(BlockPistonExtendEvent event) {
-        for (Block block : event.getBlocks()) {
-            Block destination = block.getRelative(event.getDirection());
-            if (instances.isOccupied(keyOf(block)) || instances.isOccupied(keyOf(destination))) {
-                event.setCancelled(true);
-                return;
-            }
-        }
+        breakCropsAlong(event.getBlock(), event.getBlocks(), event.getDirection());
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPistonRetract(BlockPistonRetractEvent event) {
-        for (Block block : event.getBlocks()) {
-            Block destination = block.getRelative(event.getDirection());
-            if (instances.isOccupied(keyOf(block)) || instances.isOccupied(keyOf(destination))) {
-                event.setCancelled(true);
-                return;
-            }
+        breakCropsAlong(null, event.getBlocks(), event.getDirection());
+    }
+
+    /**
+     * Destroys every crop standing in a piston's way.
+     *
+     * <p>Both ends of each moving block matter: a crop is broken if a block
+     * lands on it, and also if the block it was anchored to is the one that
+     * moved out from under it.
+     *
+     * @param piston    the piston body, whose head advances one cell on extend;
+     *                  null when retracting, since a retracting head only frees
+     *                  space
+     * @param moved     the blocks the piston is about to shift
+     * @param direction the direction those blocks travel
+     */
+    private void breakCropsAlong(Block piston, List<Block> moved, BlockFace direction) {
+        Set<BlockPositionKey> entered = new HashSet<>();
+        Set<BlockPositionKey> vacated = new HashSet<>();
+
+        if (piston != null) {
+            entered.add(keyOf(piston.getRelative(direction)));
+        }
+        for (Block block : moved) {
+            vacated.add(keyOf(block));
+            entered.add(keyOf(block.getRelative(direction)));
+        }
+
+        // A tall crop occupies several cells, so the same instance can be hit
+        // more than once; collect first, remove once.
+        Set<CropInstance> doomed = new LinkedHashSet<>();
+        for (BlockPositionKey key : entered) {
+            instances.at(key).ifPresent(doomed::add);
+        }
+        // A block sliding out of a cell also takes the crop rooted on top of
+        // it, the same way breaking that block by hand does. Only vacated
+        // cells get this treatment: a block arriving *under* a crop is a new
+        // floor, not a reason to destroy it.
+        for (BlockPositionKey key : vacated) {
+            instances.at(key).ifPresent(doomed::add);
+            instances.at(key.offset(0, 1, 0)).ifPresent(doomed::add);
+        }
+
+        doomed.removeIf(crop -> crop.state() == CropState.REMOVED);
+        for (CropInstance crop : doomed) {
+            harvests.removeCrop(crop, CropRemoveEvent.Reason.PISTON, true);
         }
     }
 

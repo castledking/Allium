@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import codes.castled.allium.harvest.crop.StageDuration;
 import codes.castled.allium.harvest.crop.def.CropDefinition;
 import codes.castled.allium.harvest.crop.def.CropDefinitionLoader;
+import codes.castled.allium.harvest.crop.def.InteractionSettings;
 import codes.castled.allium.harvest.crop.def.LootMode;
 import codes.castled.allium.harvest.crop.def.ValidationIssue;
 import codes.castled.allium.harvest.item.ItemRef;
@@ -104,7 +106,10 @@ class CropDefinitionLoaderTest {
         assertEquals(2, crop.paths().get("normal").stages().size());
         assertEquals(LootMode.WEIGHTED_ONE,
             crop.paths().get("normal").harvest().primary().mode());
-        assertTrue(crop.paths().get("normal").regrowth().enabled());
+        // The flat regrowth form sets picking; uprooting stays off unless an
+        // on-break block asks for it.
+        assertTrue(crop.paths().get("normal").regrowth().onRightClick().enabled());
+        assertFalse(crop.paths().get("normal").regrowth().onBreak().enabled());
         assertEquals(30 * 60_000L, crop.paths().get("normal").stage(0).durationMs());
     }
 
@@ -328,6 +333,182 @@ class CropDefinitionLoaderTest {
         assertEquals(1, immature.drops().get(0).maxAmount());
         assertEquals(2, mature.drops().get(0).minAmount());
         assertEquals(2, mature.drops().get(0).maxAmount());
+    }
+
+    // ==================== interaction & regrowth ====================
+
+    @Test
+    void interactionFallsBackToTheSuppliedDefaults() {
+        List<ValidationIssue> issues = new ArrayList<>();
+        CropDefinition crop = loader().parseCrop(yaml(VALID), "tomato.yml", issues);
+        assertNotNull(crop);
+        assertEquals(InteractionSettings.DEFAULT, crop.interaction());
+    }
+
+    @Test
+    void interactionKeysOverrideDefaultsIndependently() {
+        String yaml = VALID + """
+            interaction:
+              right-click-harvest: false
+            """;
+        List<ValidationIssue> issues = new ArrayList<>();
+        CropDefinition crop = loader().parseCrop(yaml(yaml), "tomato.yml", issues);
+        assertNotNull(crop);
+        assertTrue(issues.stream().noneMatch(ValidationIssue::isError),
+            () -> "unexpected errors: " + issues);
+        // Only the stated key changes; the rest keep the global defaults.
+        assertFalse(crop.interaction().rightClickHarvest());
+        assertEquals(InteractionSettings.DEFAULT.breakHarvest(), crop.interaction().breakHarvest());
+        assertEquals(InteractionSettings.DEFAULT.progressDisplay(), crop.interaction().progressDisplay());
+    }
+
+    /**
+     * YAML 1.1 turns the bare word {@code OFF} into the boolean {@code false}
+     * before the loader ever sees it. Left unhandled that silently falls back
+     * to the default and the crop keeps talking.
+     */
+    @Test
+    void bareOffIsNotSwallowedByYamlBooleanCoercion() {
+        for (String written : new String[] {"OFF", "\"OFF\"", "off", "no"}) {
+            String yaml = VALID + "interaction:\n  progress-check: " + written + "\n";
+            List<ValidationIssue> issues = new ArrayList<>();
+            CropDefinition crop = loader().parseCrop(yaml(yaml), "tomato.yml", issues);
+            assertNotNull(crop);
+            assertTrue(issues.stream().noneMatch(ValidationIssue::isError),
+                () -> "unexpected errors for " + written + ": " + issues);
+            assertEquals(InteractionSettings.ProgressDisplay.OFF, crop.interaction().progressDisplay(),
+                () -> "progress-check: " + written + " should mean OFF");
+        }
+    }
+
+    @Test
+    void remainingProgressCheckModesParse() {
+        for (String written : new String[] {"TIME", "time", "HINT"}) {
+            String yaml = VALID + "interaction:\n  progress-check: " + written + "\n";
+            List<ValidationIssue> issues = new ArrayList<>();
+            CropDefinition crop = loader().parseCrop(yaml(yaml), "tomato.yml", issues);
+            assertNotNull(crop);
+            assertEquals(
+                InteractionSettings.ProgressDisplay.valueOf(written.toUpperCase(java.util.Locale.ROOT)),
+                crop.interaction().progressDisplay());
+        }
+    }
+
+    @Test
+    void unknownProgressCheckIsAnError() {
+        String yaml = VALID + """
+            interaction:
+              progress-check: SOMETIMES
+            """;
+        List<ValidationIssue> issues = new ArrayList<>();
+        loader().parseCrop(yaml(yaml), "tomato.yml", issues);
+        assertTrue(issues.stream().anyMatch(i -> i.isError() && i.path().contains("progress-check")),
+            () -> "expected a progress-check error, got: " + issues);
+    }
+
+    @Test
+    void harvestingDisabledEntirelyIsWarnedAbout() {
+        String yaml = VALID + """
+            interaction:
+              right-click-harvest: false
+              break-harvest: false
+            """;
+        List<ValidationIssue> issues = new ArrayList<>();
+        loader().parseCrop(yaml(yaml), "tomato.yml", issues);
+        assertTrue(issues.stream().anyMatch(i -> !i.isError() && i.path().equals("interaction")),
+            () -> "expected an unharvestable-crop warning, got: " + issues);
+    }
+
+    @Test
+    void perSourceRegrowthOverridesTheFlatForm() {
+        String yaml = VALID.replace(
+            "      regrowth:\n"
+                + "        enabled: true\n"
+                + "        stage: 0",
+            "      regrowth:\n"
+                + "        enabled: true\n"
+                + "        stage: 1\n"
+                + "        on-break:\n"
+                + "          enabled: true\n"
+                + "          stage: 0");
+        List<ValidationIssue> issues = new ArrayList<>();
+        CropDefinition crop = loader().parseCrop(yaml(yaml), "tomato.yml", issues);
+        assertNotNull(crop);
+        assertTrue(issues.stream().noneMatch(ValidationIssue::isError),
+            () -> "unexpected errors: " + issues);
+
+        var regrowth = crop.paths().get("normal").regrowth();
+        // Picking uses the flat form; uprooting drops back further.
+        assertTrue(regrowth.onRightClick().enabled());
+        assertEquals(1, regrowth.onRightClick().stage());
+        assertTrue(regrowth.onBreak().enabled());
+        assertEquals(0, regrowth.onBreak().stage());
+    }
+
+    /**
+     * Toggling a source on must not silently restart the plant from a sprout:
+     * the stage stated above it is the crop's answer to "what survives", and
+     * saying nothing about it means "that one".
+     */
+    @Test
+    void enablingASourceWithoutAStageInheritsTheStatedStage() {
+        String yaml = VALID.replace(
+            "      regrowth:\n        enabled: true\n        stage: 0",
+            "      regrowth:\n"
+                + "        enabled: true\n"
+                + "        stage: 1\n"
+                + "        on-break:\n"
+                + "          enabled: true");
+        List<ValidationIssue> issues = new ArrayList<>();
+        CropDefinition crop = loader().parseCrop(yaml(yaml), "tomato.yml", issues);
+        assertNotNull(crop);
+        assertTrue(issues.stream().noneMatch(ValidationIssue::isError),
+            () -> "unexpected errors: " + issues);
+
+        var regrowth = crop.paths().get("normal").regrowth();
+        assertTrue(regrowth.onBreak().enabled());
+        assertEquals(1, regrowth.onBreak().stage(), "on-break should inherit the stated stage");
+    }
+
+    /** Inheriting the stage must not drag the decision to regrow along with it. */
+    @Test
+    void breakingStillDefaultsToNotRegrowing() {
+        String yaml = VALID.replace(
+            "      regrowth:\n        enabled: true\n        stage: 0",
+            "      regrowth:\n        enabled: true\n        stage: 1");
+        List<ValidationIssue> issues = new ArrayList<>();
+        CropDefinition crop = loader().parseCrop(yaml(yaml), "tomato.yml", issues);
+        assertNotNull(crop);
+        assertFalse(crop.paths().get("normal").regrowth().onBreak().enabled());
+    }
+
+    @Test
+    void outOfRangeRegrowthStageIsAnError() {
+        String yaml = VALID.replace(
+            "      regrowth:\n        enabled: true\n        stage: 0",
+            "      regrowth:\n        enabled: true\n        stage: 9");
+        List<ValidationIssue> issues = new ArrayList<>();
+        CropDefinition crop = loader().parseCrop(yaml(yaml), "tomato.yml", issues);
+        assertTrue(issues.stream().anyMatch(i -> i.isError() && i.path().contains("regrowth.stage")),
+            () -> "expected a regrowth stage error, got: " + issues);
+        assertNotNull(crop);
+        assertFalse(crop.paths().get("normal").regrowth().anyEnabled());
+    }
+
+    @Test
+    void growthRandomnessIsParsedAndClamped() {
+        String yaml = VALID.replace("  clock: REAL_TIME", "  clock: REAL_TIME\n  randomness: 0.4");
+        List<ValidationIssue> issues = new ArrayList<>();
+        CropDefinition crop = loader().parseCrop(yaml(yaml), "tomato.yml", issues);
+        assertNotNull(crop);
+        assertEquals(0.4D, crop.growth().randomness(), 1e-9);
+
+        String tooHigh = VALID.replace("  clock: REAL_TIME", "  clock: REAL_TIME\n  randomness: 5.0");
+        List<ValidationIssue> highIssues = new ArrayList<>();
+        CropDefinition clamped = loader().parseCrop(yaml(tooHigh), "tomato.yml", highIssues);
+        assertNotNull(clamped);
+        assertEquals(StageDuration.MAXIMUM_RANDOMNESS, clamped.growth().randomness(), 1e-9);
+        assertTrue(highIssues.stream().anyMatch(i -> i.path().equals("growth.randomness")));
     }
 
     @Test

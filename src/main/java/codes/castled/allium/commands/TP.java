@@ -7,7 +7,9 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.command.*;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.entity.*;
 import org.bukkit.event.*;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -37,10 +39,14 @@ import java.util.stream.Collectors;
 
 public class TP implements CommandExecutor, TabCompleter {
 
+    /** How far /there will look for a block to stand on. */
+    private static final int LOOK_RANGE = 128;
+
     private final PluginStart plugin;
     private final Lang lang;
     private final codes.castled.allium.managers.config.Config config;
     private final Database database;
+    private final Selectors selectors;
 
     // Command aliases for different functionalities
     private final List<String> teleportCommandAliases;
@@ -48,6 +54,7 @@ public class TP implements CommandExecutor, TabCompleter {
     private final List<String> teleportAcceptAliases;
     private final List<String> teleportDenyAliases;
     private final List<String> teleportHereAliases;
+    private final List<String> teleportThereAliases;
     private final List<String> teleportPositionAliases;
     private final List<String> teleportToggleAliases;
     private final List<String> teleportTopBottomAliases;
@@ -77,80 +84,87 @@ public class TP implements CommandExecutor, TabCompleter {
     }
     
     /**
-     * Teleports a player's selected pets to a target location
-     * This uses the existing pet selection system from the TP command
-     * 
-     * @param player The player whose pets to teleport
-     * @param location The target location
+     * Teleports a player's selected pets and mobs to a destination, then turns both selection
+     * modes off and announces the auto-disable exactly once.
+     *
+     * <p>The selection maps are claimed with an atomic remove before anything else happens, so if
+     * two teleport events fire for the same logical teleport only the first one finds a selection
+     * to act on. Everything downstream — the teleport, the listener cleanup and the auto-disable
+     * message — therefore runs a single time.
+     *
+     * @param player      the owner of the selection
+     * @param destination where the companions should end up
+     * @return true if at least one companion was teleported
      */
-    public void teleportPlayerPets(Player player, Location location) {
-        if (player == null || location == null) {
-            Text.sendDebugLog(WARN, "Cannot teleport pets: player or location is null");
-            return;
+    public boolean teleportCompanions(Player player, Location destination) {
+        if (player == null || destination == null) {
+            return false;
         }
-        
+
         UUID playerId = player.getUniqueId();
-        List<org.bukkit.entity.Entity> pets = selectedPets.get(playerId);
-        
-        if (pets == null || pets.isEmpty()) {
-            Text.sendDebugLog(INFO, "No pets selected for " + player.getName() + " to teleport");
-            return;
+
+        // Atomic claim: a second caller for the same teleport gets null here and bails out below.
+        List<org.bukkit.entity.Entity> claimedPets = selectedPets.remove(playerId);
+        Map<UUID, org.bukkit.entity.Entity> claimedEntities = selectedEntities.remove(playerId);
+
+        List<Entity> pets = livingMembers(claimedPets);
+        List<Entity> entities = livingMembers(claimedEntities == null ? null : claimedEntities.values());
+
+        if (pets.isEmpty() && entities.isEmpty()) {
+            // Nothing was selected, so leave the modes on: the player armed /tppet or /tpmob and
+            // has not picked anything yet.
+            return false;
         }
-        
-        Text.sendDebugLog(INFO, "Teleporting " + pets.size() + " pets for " + player.getName() + " to " + location);
-        
-        // Convert to a list of Entity objects
-        List<Entity> validPets = pets.stream()
-            .filter(Objects::nonNull)
-            .filter(Entity::isValid)
-            .map(entity -> (Entity) entity)
-            .collect(Collectors.toList());
-            
-        if (!validPets.isEmpty()) {
-            // Schedule teleport after player has arrived on the player's entity scheduler (Folia-safe)
-            SchedulerAdapter.runAtEntityLater(player, () -> {
-                teleportPets(playerId, player, validPets);
-            }, 5L); // 5 tick delay (1/4 second)
+
+        // Only tear the selection modes down once we know a teleport is actually happening.
+        if (!pets.isEmpty()) {
+            PetTeleportListener petListener = activePetTeleportListeners.remove(playerId);
+            if (petListener != null) {
+                petListener.unregisterListener();
+            }
         }
+        if (!entities.isEmpty()) {
+            EntityTeleportListener entityListener = activeEntityTeleportListeners.remove(playerId);
+            if (entityListener != null) {
+                entityListener.unregisterListener();
+            }
+        }
+
+        Text.sendDebugLog(INFO, "Teleporting " + pets.size() + " pets and " + entities.size()
+                + " entities for " + player.getName() + " to " + destination);
+
+        for (Entity companion : pets) {
+            moveCompanion(companion, destination);
+        }
+        for (Entity companion : entities) {
+            moveCompanion(companion, destination);
+        }
+
+        notifyAutoDisable(player, !pets.isEmpty(), !entities.isEmpty());
+        return true;
     }
-    
-    /**
-     * Teleports a player's selected entities to a target location
-     * This uses the existing entity selection system from the TP command
-     * 
-     * @param player The player whose entities to teleport
-     * @param location The target location
-     */
-    public void teleportPlayerEntities(Player player, Location location) {
-        if (player == null || location == null) {
-            Text.sendDebugLog(WARN, "Cannot teleport entities: player or location is null");
-            return;
+
+    /** Filters a companion collection down to the entities that still exist in the world. */
+    private List<Entity> livingMembers(Collection<org.bukkit.entity.Entity> companions) {
+        if (companions == null) {
+            return Collections.emptyList();
         }
-        
-        UUID playerId = player.getUniqueId();
-        Map<UUID, org.bukkit.entity.Entity> entities = selectedEntities.get(playerId);
-        
-        if (entities == null || entities.isEmpty()) {
-            Text.sendDebugLog(INFO, "No entities selected for " + player.getName() + " to teleport");
-            return;
-        }
-        
-        List<org.bukkit.entity.Entity> entityList = new ArrayList<>(entities.values());
-        Text.sendDebugLog(INFO, "Teleporting " + entityList.size() + " entities for " + player.getName() + " to " + location);
-        
-        // Convert to a list of Entity objects
-        List<Entity> validEntities = entityList.stream()
+        return companions.stream()
             .filter(Objects::nonNull)
             .filter(Entity::isValid)
             .map(entity -> (Entity) entity)
             .collect(Collectors.toList());
-            
-        if (!validEntities.isEmpty()) {
-            // Schedule teleport after player has arrived on the player's entity scheduler (Folia-safe)
-            SchedulerAdapter.runAtEntityLater(player, () -> {
-                teleportEntities(playerId, player, validEntities);
-            }, 5L); // 5 tick delay (1/4 second)
-        }
+    }
+
+    /** Folia-safe teleport of a single companion, clearing the selection glow as it lands. */
+    private void moveCompanion(Entity companion, Location destination) {
+        SchedulerAdapter.runAtEntity(companion, () -> {
+            companion.teleport(destination);
+            companion.setGlowing(false);
+            if (companion instanceof org.bukkit.entity.Mob mob) {
+                mob.setRemoveWhenFarAway(true);
+            }
+        });
     }
 
     /**
@@ -222,13 +236,15 @@ public class TP implements CommandExecutor, TabCompleter {
         this.lang = plugin.getLangManager();
         this.config = plugin.getConfigManager();
         this.database = plugin.getDatabase();
+        this.selectors = new Selectors(this.lang, plugin);
 
         // Initialize command aliases
         this.teleportCommandAliases = Arrays.asList("tp", "tpo", "teleport", "back");
         this.teleportRequestAliases = Arrays.asList("tpa", "tpahere");
         this.teleportAcceptAliases = Arrays.asList("tpaccept", "tpyes");
         this.teleportDenyAliases = Arrays.asList("tpdeny", "tpno");
-        this.teleportHereAliases = Arrays.asList("tphere", "s");
+        this.teleportHereAliases = Arrays.asList("tphere", "here", "s");
+        this.teleportThereAliases = Arrays.asList("there", "tpthere");
         this.teleportPositionAliases = Collections.singletonList("tppos");
         this.teleportToggleAliases = Arrays.asList("tptoggle");
         this.teleportTopBottomAliases = Arrays.asList("top", "bottom");
@@ -280,6 +296,11 @@ public class TP implements CommandExecutor, TabCompleter {
         // Handle teleport here command
         if (teleportHereAliases.contains(usedCommand)) {
             return handleTeleportHere(sender, args);
+        }
+
+        // Handle teleport there command
+        if (teleportThereAliases.contains(usedCommand)) {
+            return handleTeleportThere(sender, args);
         }
 
         // Handle teleport position command
@@ -1456,102 +1477,13 @@ public class TP implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * Teleport selected pets to a target location
+     * Announces that companion teleport modes were switched off after a successful teleport.
+     * Called only by {@link #teleportCompanions(Player, Location)}, which guarantees it runs once
+     * per teleport and only for the modes that actually had a selection.
      *
-     * @param player The player whose pets to teleport
-     * @param targetLocation The location to teleport pets to
-     * @return true if pets were teleported successfully
+     * @param petsDisabled     whether /tppet mode was active and is now off
+     * @param entitiesDisabled whether /tpmob mode was active and is now off
      */
-    public boolean teleportSelectedPets(Player player, Location targetLocation) {
-        UUID playerUUID = player.getUniqueId();
-        List<org.bukkit.entity.Entity> playerPets = selectedPets.get(playerUUID);
-        if (playerPets == null || playerPets.isEmpty()) {
-            return false;
-        }
-
-        // Teleport each selected pet
-        for (org.bukkit.entity.Entity pet : playerPets) {
-            SchedulerAdapter.runAtEntity(pet, () -> {
-                pet.teleport(targetLocation);
-                removePetGlow(pet);
-            });
-        }
-
-        // Clear selected pets and remove glows
-        playerPets.clear();
-        selectedPets.remove(playerUUID);
-
-        // Disable pet teleport mode
-        PetTeleportListener listener = activePetTeleportListeners.get(playerUUID);
-        if (listener != null) {
-            listener.unregisterListener();
-            activePetTeleportListeners.remove(playerUUID);
-        }
-
-        // Get the first color code and disabled style
-        String firstColorOfPetToggle = lang.getFirstColorCode("tp.tppet-toggle");
-        String disabledStyle = lang.get("styles.state.false");
-        
-        player.sendMessage(lang.get("tp.tppet-toggle")
-                .replace("{state}", disabledStyle + "disabled" + firstColorOfPetToggle)
-                .replace("{name}", "")
-                .replace("{info}", ""));
-        return true;
-    }
-
-    /**
-     * Auto-disable pet teleport mode after successful teleport
-     * This is called by external commands like /spawn to clean up pet teleport state
-     *
-     * @param playerUUID The UUID of the player whose pet teleport mode should be disabled
-     */
-    public void autoDisablePetTeleport(UUID playerUUID) {
-        handleSuccessfulCompanionTeleport(playerUUID, plugin.getServer().getPlayer(playerUUID));
-    }
-
-    public void handleSuccessfulCompanionTeleport(UUID playerUUID, Player directPlayer) {
-        if (playerUUID == null) {
-            return;
-        }
-
-        List<org.bukkit.entity.Entity> playerPets = selectedPets.get(playerUUID);
-        if (playerPets != null) {
-            for (org.bukkit.entity.Entity pet : playerPets) {
-                if (pet != null && pet.isValid()) {
-                    SchedulerAdapter.runAtEntity(pet, () -> removePetGlow(pet));
-                }
-            }
-            playerPets.clear();
-        }
-        selectedPets.remove(playerUUID);
-
-        Map<UUID, org.bukkit.entity.Entity> playerEntities = selectedEntities.get(playerUUID);
-        if (playerEntities != null) {
-            for (org.bukkit.entity.Entity entity : playerEntities.values()) {
-                if (entity != null && entity.isValid()) {
-                    SchedulerAdapter.runAtEntity(entity, () -> removePetGlow(entity));
-                }
-            }
-            playerEntities.clear();
-        }
-        selectedEntities.remove(playerUUID);
-
-        PetTeleportListener petListener = activePetTeleportListeners.remove(playerUUID);
-        if (petListener != null) {
-            petListener.unregisterListener();
-        }
-
-        EntityTeleportListener entityListener = activeEntityTeleportListeners.remove(playerUUID);
-        if (entityListener != null) {
-            entityListener.unregisterListener();
-        }
-
-        Player player = directPlayer != null && directPlayer.isOnline() ? directPlayer : plugin.getServer().getPlayer(playerUUID);
-        if (player != null && player.isOnline()) {
-            notifyAutoDisable(player, true, true);
-        }
-    }
-
     public void notifyAutoDisable(Player player, boolean petsDisabled, boolean entitiesDisabled) {
         if (player == null || !player.isOnline()) {
             return;
@@ -1574,83 +1506,6 @@ public class TP implements CommandExecutor, TabCompleter {
                     .replace("{name}", "")
                     .replace("{info}", "Auto-disabled after successful teleport"));
         }
-    }
-
-    /**
-     * Teleport selected entities to a target location
-     *
-     * @param player The player whose entities to teleport
-     * @param targetLocation The location to teleport entities to
-     * @return true if entities were teleported successfully
-     */
-    public boolean teleportSelectedEntities(Player player, Location targetLocation) {
-        if (player == null || !player.isOnline() || targetLocation == null) {
-            return false;
-        }
-        
-        UUID playerUUID = player.getUniqueId();
-        Map<UUID, org.bukkit.entity.Entity> playerEntities = selectedEntities.get(playerUUID);
-        
-        if (playerEntities == null || playerEntities.isEmpty()) {
-            return false;
-        }
-        
-        // Convert to list for teleportEntities method
-        List<Entity> entitiesToTeleport = new ArrayList<>(playerEntities.values());
-        
-        // Log the entities being teleported
-        Text.sendDebugLog(INFO, "Attempting to teleport " + entitiesToTeleport.size() + " entities for player " + player.getName());
-        for (Entity entity : entitiesToTeleport) {
-            if (entity != null) {
-                Text.sendDebugLog(INFO, "Entity to teleport: " + entity.getType().name() + 
-                                      " (UUID: " + entity.getUniqueId() + ", Valid: " + entity.isValid() + ")");
-            }
-        }
-        
-        // Immediately disable the entity teleport listener to prevent "moved too far" messages
-        // when teleporting
-        EntityTeleportListener listener = activeEntityTeleportListeners.get(playerUUID);
-        if (listener != null) {
-            // Just disable the distance checking but keep the listener registered
-            // so we can still access the entities
-            listener.disableDistanceChecking();
-        }
-        
-        // Use the teleportEntities method to handle the actual teleportation
-        // The teleportEntities method will handle removing glowing effects
-        teleportEntities(playerUUID, player, entitiesToTeleport);
-        
-        // We're using instant auto-disable now, so no delay is needed
-        
-        // Execute cleanup immediately in the next server tick for instant feedback
-        SchedulerAdapter.runAtEntityLater(player, () -> {
-            // Clear selected entities
-            if (playerEntities != null) {
-                playerEntities.clear();
-                selectedEntities.remove(playerUUID);
-            }
-            
-            // Now fully unregister the listener
-            if (listener != null) {
-                listener.unregisterListener();
-                activeEntityTeleportListeners.remove(playerUUID);
-            }
-            
-            // Get the first color code and disabled style
-            String firstColorOfToggle = lang.getFirstColorCode("tp.tpe-toggle");
-            String disabledStyle = lang.get("styles.state.false");
-            
-            if (player.isOnline()) {
-                player.sendMessage(lang.get("tp.tpe-toggle")
-                        .replace("{state}", disabledStyle + "disabled" + firstColorOfToggle)
-                        .replace("{name}", "")
-                        .replace("{info}", "Auto-disabled after teleport"));
-            }
-            
-            Text.sendDebugLog(INFO, "Entity teleport mode auto-disabled instantly for player: " + player.getName());
-        }, 1L); // Run in the next tick for instant feedback
-        
-        return true;
     }
 
     /**
@@ -1924,10 +1779,9 @@ public class TP implements CommandExecutor, TabCompleter {
                     Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", label + " &cwith selectors.");
                     return true;
                 }
-                List<Entity> targetEntities = parseEntitySelector(args[1], sender instanceof Player ? (Player) sender : null);
+                List<Entity> targetEntities = resolveSelector(args[1], sender);
                 if (targetEntities == null) {
-                    Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "&cselector: " + args[1], "{syntax}", "Possible selectors: @p, @r");
-                    return true;
+                    return true; // resolveSelector already explained the failure
                 }
                 targetPlayers = targetEntities.stream()
                     .filter(entity -> entity instanceof Player)
@@ -2227,248 +2081,32 @@ public class TP implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * Parses a Minecraft entity selector and returns matching entities
-     * Supports selectors like @e[type=minecraft:villager,distance=..3], @p[distance=..10], etc.
+     * Resolves a selector into matching entities, reporting the reason on failure.
      *
-     * @param selector The selector string (e.g., "@e[type=minecraft:villager,distance=..3]")
-     * @param executor The player executing the selector (for relative positioning)
-     * @return List of matching entities, or null if selector is invalid
+     * <p>All selector parsing lives in {@link Selectors}; this only adapts the result to the
+     * message style the teleport commands use.
+     *
+     * @return matching entities, or null if the selector was rejected (a message has been sent)
      */
-    private List<Entity> parseEntitySelector(String selector, Player executor) {
-        if (!selector.startsWith("@")) {
-            return null;
-        }
+    private List<Entity> resolveSelector(String selector, CommandSender sender) {
+        Selectors.Result result = selectors.select(selector, sender);
 
-        String baseSelector = selector.substring(1); // Remove @
-        Map<String, String> parameters = new HashMap<>();
-
-        // Parse parameters in brackets
-        int bracketStart = baseSelector.indexOf('[');
-        int bracketEnd = baseSelector.indexOf(']');
-        String selectorType = baseSelector;
-        if (bracketStart != -1 && bracketEnd != -1 && bracketEnd > bracketStart) {
-            selectorType = baseSelector.substring(0, bracketStart);
-            String paramsStr = baseSelector.substring(bracketStart + 1, bracketEnd);
-
-            // Parse parameters like "type=minecraft:villager,distance=..3"
-            String[] paramPairs = paramsStr.split(",");
-            for (String paramPair : paramPairs) {
-                String[] parts = paramPair.split("=", 2);
-                if (parts.length == 2) {
-                    parameters.put(parts[0].trim(), parts[1].trim());
-                }
+        switch (result.failure()) {
+            case MALFORMED -> {
+                Text.sendErrorMessage(sender, "invalid", lang,
+                    "{arg}", "&cselector: " + selector,
+                    "{syntax}", "Possible selectors: @p, @r, @a, @s, @e[type=villager,distance=0..50]");
+                return null;
+            }
+            case NO_PERMISSION -> {
+                Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", selector + " &cwith selectors.");
+                return null;
+            }
+            default -> {
+                return result.entities();
             }
         }
-
-        Location executorLoc = executor.getLocation();
-        World world = executor.getWorld();
-        List<Entity> candidates = new ArrayList<>();
-
-        switch (selectorType) {
-            case "p":
-                // Nearest player
-                double minDistance = Double.MAX_VALUE;
-                Player nearestPlayer = null;
-                for (Player p : world.getPlayers()) {
-                    if (!p.equals(executor)) {
-                        double distance = p.getLocation().distanceSquared(executorLoc);
-                        if (distance < minDistance) {
-                            minDistance = distance;
-                            nearestPlayer = p;
-                        }
-                    }
-                }
-                if (nearestPlayer != null) {
-                    candidates.add(nearestPlayer);
-                }
-                break;
-
-            case "r":
-                // Random player
-                List<Player> players = new ArrayList<>(world.getPlayers());
-                players.remove(executor); // Don't include executor
-                if (!players.isEmpty()) {
-                    candidates.add(players.get(new Random().nextInt(players.size())));
-                }
-                break;
-
-            case "a":
-                // All players
-                for (Player p : world.getPlayers()) {
-                    if (!p.equals(executor)) {
-                        candidates.add(p);
-                    }
-                }
-                break;
-
-            case "s":
-                // Self
-                candidates.add(executor);
-                break;
-
-            case "e":
-                // All entities
-                candidates.addAll(world.getEntities());
-                break;
-
-            default:
-                return null; // Invalid selector type
-        }
-
-        // Apply filters
-        List<Entity> filtered = new ArrayList<>();
-        for (Entity entity : candidates) {
-            if (matchesSelectorParameters(entity, parameters, executorLoc)) {
-                filtered.add(entity);
-            }
-        }
-
-        // Apply sorting (distance by default)
-        if (parameters.containsKey("distance") || selectorType.equals("p")) {
-            filtered.sort(Comparator.comparingDouble(e -> e.getLocation().distanceSquared(executorLoc)));
-        }
-
-        // Apply limit if specified
-        if (parameters.containsKey("limit")) {
-            try {
-                int limit = Integer.parseInt(parameters.get("limit"));
-                if (filtered.size() > limit) {
-                    filtered = filtered.subList(0, limit);
-                }
-            } catch (NumberFormatException ignored) {
-                // Invalid limit, ignore
-            }
-        }
-
-        return filtered;
     }
-
-    /**
-     * Checks if an entity matches the selector parameters
-     */
-    private boolean matchesSelectorParameters(Entity entity, Map<String, String> parameters, Location executorLoc) {
-        for (Map.Entry<String, String> param : parameters.entrySet()) {
-            String key = param.getKey();
-            String value = param.getValue();
-
-            switch (key) {
-                case "type":
-                    if (!matchesEntityType(entity, value)) {
-                        return false;
-                    }
-                    break;
-
-                case "distance":
-                    if (!matchesDistance(entity.getLocation(), executorLoc, value)) {
-                        return false;
-                    }
-                    break;
-
-                case "dx":
-                case "dy":
-                case "dz":
-                    // Volume selection - not implemented yet
-                    break;
-
-                case "x":
-                case "y":
-                case "z":
-                    // Absolute coordinates - not implemented yet
-                    break;
-
-                case "x_rotation":
-                case "y_rotation":
-                    // Rotation - not implemented yet
-                    break;
-
-                case "limit":
-                    // Handled separately
-                    break;
-
-                case "sort":
-                    // Sorting - handled separately
-                    break;
-
-                default:
-                    // Unknown parameter, ignore for now
-                    break;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Checks if entity type matches the selector value
-     */
-    private boolean matchesEntityType(Entity entity, String typeValue) {
-        // Remove minecraft: prefix if present
-        if (typeValue.startsWith("minecraft:")) {
-            typeValue = typeValue.substring(10);
-        }
-
-        // Handle negation with !
-        boolean negated = false;
-        if (typeValue.startsWith("!")) {
-            negated = true;
-            typeValue = typeValue.substring(1);
-        }
-
-        // Check entity type
-        String entityTypeName = entity.getType().name().toLowerCase();
-        boolean matches = entityTypeName.equals(typeValue.toLowerCase()) ||
-                         entityTypeName.equals("minecraft:" + typeValue.toLowerCase());
-
-        return negated ? !matches : matches;
-    }
-
-    /**
-     * Checks if distance matches the selector value
-     * Supports formats like "10", "..10", "5..15", "10.."
-     */
-    private boolean matchesDistance(Location entityLoc, Location executorLoc, String distanceValue) {
-        double distance = entityLoc.distance(executorLoc);
-
-        if (distanceValue.startsWith("..")) {
-            // Maximum distance (e.g., "..10")
-            try {
-                double maxDist = Double.parseDouble(distanceValue.substring(2));
-                return distance <= maxDist;
-            } catch (NumberFormatException e) {
-                return false;
-            }
-        } else if (distanceValue.endsWith("..")) {
-            // Minimum distance (e.g., "5..")
-            try {
-                double minDist = Double.parseDouble(distanceValue.substring(0, distanceValue.length() - 2));
-                return distance >= minDist;
-            } catch (NumberFormatException e) {
-                return false;
-            }
-        } else if (distanceValue.contains("..")) {
-            // Range (e.g., "5..15")
-            String[] parts = distanceValue.split("\\.\\.");
-            if (parts.length == 2) {
-                try {
-                    double minDist = parts[0].isEmpty() ? 0 : Double.parseDouble(parts[0]);
-                    double maxDist = parts[1].isEmpty() ? Double.MAX_VALUE : Double.parseDouble(parts[1]);
-                    return distance >= minDist && distance <= maxDist;
-                } catch (NumberFormatException e) {
-                    return false;
-                }
-            }
-        } else {
-            // Exact distance (e.g., "10")
-            try {
-                double targetDist = Double.parseDouble(distanceValue);
-                return Math.abs(distance - targetDist) < 0.1; // Small tolerance
-            } catch (NumberFormatException e) {
-                return false;
-            }
-        }
-
-        return false;
-    }
-
 
     /**
      * Handles the /tpa command by sending a teleport request
@@ -2935,9 +2573,18 @@ public class TP implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    /**
+     * Handles /tphere and /here — brings targets to the sender's position.
+     *
+     * <p>With no arguments this pulls the sender's /tppet and /tpmob selection to them; if nothing
+     * is selected it re-seats the sender at their own position, which is a harmless no-op teleport
+     * that still refreshes /back.
+     *
+     * @param args zero or more player names and/or selectors
+     */
     private boolean handleTeleportHere(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("not-a-player");
+            Text.sendErrorMessage(sender, "not-a-player", lang);
             return true;
         }
 
@@ -2946,101 +2593,149 @@ public class TP implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length != 1) {
-            String usage = lang.get("command-usage")
-                .replace("{cmd}", "tphere")
-                .replace("{args}", "<player>");
-            lang.sendMessage(player, "command-usage", usage);
+        if (args.length == 0) {
+            Location here = player.getLocation();
+            if (!teleportCompanions(player, here)) {
+                player.teleportAsync(here);
+                lang.sendMessage(player, "tp.here-self");
+            }
             return true;
         }
 
-        if (args[0].startsWith("@")) {
-            if (!sender.hasPermission("allium.admin")) {
-                Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", args[0] + " &cwith selectors.");
-                return true;
-            }
+        return gatherTargets(player, args, player.getLocation(), "to you");
+    }
 
-            // Use the new entity selector parser
-            List<Entity> entities = parseEntitySelector(args[0], player);
-            if (entities == null) {
-                Text.sendErrorMessage(sender, "invalid", lang, "{arg}", "&cselector: " + args[0], "{syntax}", "Possible selectors: @p, @r, @a, @e[type=minecraft:villager,distance=..3]");
-                return true;
-            }
+    /**
+     * Handles /there and /tpthere — sends targets to the block the sender is looking at.
+     *
+     * <p>With no arguments this sends the sender's /tppet and /tpmob selection to that spot; if
+     * nothing is selected the sender goes there themselves.
+     *
+     * @param args zero or more player names and/or selectors
+     */
+    private boolean handleTeleportThere(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            Text.sendErrorMessage(sender, "not-a-player", lang);
+            return true;
+        }
 
-            if (entities.isEmpty()) {
-                Text.sendErrorMessage(sender, "no-entities-found", lang);
-                return true;
-            }
+        if (!player.hasPermission("allium.tpthere")) {
+            Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", "tpthere");
+            return true;
+        }
 
-            // Handle @e selector specially for all entities
-            if (args[0].startsWith("@e")) {
-                // Filter out players for @e selector
-                List<Entity> nonPlayerEntities = entities.stream()
-                    .filter(entity -> !(entity instanceof Player))
-                    .collect(Collectors.toList());
+        Location destination = resolveLookLocation(player);
+        if (destination == null) {
+            Text.sendErrorMessage(player, "tp.no-look-target", lang);
+            return true;
+        }
 
-                if (nonPlayerEntities.isEmpty()) {
-                    Text.sendErrorMessage(sender, "no-entities-found", lang);
-                    return true;
-                }
-
-                teleportEntities(player.getUniqueId(), player, nonPlayerEntities);
-                return true;
-            }
-
-            // For other selectors (@p, @r, @a), handle as players
-            List<Player> targets = entities.stream()
-                .filter(entity -> entity instanceof Player)
-                .map(entity -> (Player) entity)
-                .filter(target -> !target.getUniqueId().equals(player.getUniqueId()))
-                .collect(Collectors.toList());
-
-            if (targets.isEmpty()) {
-                Text.sendErrorMessage(sender, "no-players-found", lang);
-                return true;
-            }
-
-            for (Player target : targets) {
-                Location here = player.getLocation();
-                target.teleportAsync(here).thenAccept(success -> {
+        if (args.length == 0) {
+            if (!teleportCompanions(player, destination)) {
+                player.teleportAsync(destination).thenAccept(success -> {
                     if (success) {
-                        lang.sendMessage(target, "tp.success", "{name}", "to", "{target}", player.getName());
+                        lang.sendMessage(player, "tp.success", "{name}", "you", "{target}", "to where you are looking");
                     } else {
-                        target.sendMessage(Text.colorize("&cTeleport failed."));
+                        Text.sendErrorMessage(player, "teleport-failed", lang);
                     }
                 });
             }
-
-            lang.sendMessage(player, "tp.success", "{name}", targets.size() > 1 ? targets.size() + " players" : targets.get(0).getName(), "{target}", "to you");
             return true;
         }
 
-        Player target = plugin.getServer().getPlayer(args[0]);
-        if (target == null) {
-            if (Bukkit.getOfflinePlayer(args[0]).hasPlayedBefore()) {
-                String targetName = Bukkit.getOfflinePlayer(args[0]).getName();
-                Text.sendErrorMessage(player, "player-not-online", lang, "{name}", targetName);
+        return gatherTargets(player, args, destination, "to where you are looking");
+    }
+
+    /**
+     * Ray-traces the sender's line of sight and returns a standing position on top of the block
+     * face they are aiming at.
+     *
+     * @return the destination, or null if nothing solid is within {@link #LOOK_RANGE} blocks
+     */
+    private Location resolveLookLocation(Player player) {
+        RayTraceResult hit = player.rayTraceBlocks(LOOK_RANGE, FluidCollisionMode.NEVER);
+        if (hit == null || hit.getHitBlock() == null) {
+            return null;
+        }
+
+        BlockFace face = hit.getHitBlockFace() != null ? hit.getHitBlockFace() : BlockFace.UP;
+        Location destination = hit.getHitBlock().getRelative(face).getLocation().add(0.5, 0, 0.5);
+        destination.setYaw(player.getLocation().getYaw());
+        destination.setPitch(player.getLocation().getPitch());
+        return destination;
+    }
+
+    /**
+     * Resolves every argument to a player name or selector and teleports the union to a destination.
+     * The initiator is never included, and duplicates across arguments are collapsed.
+     *
+     * @param description how the destination is phrased in the confirmation message
+     * @return always true; any failure has already been reported to the initiator
+     */
+    private boolean gatherTargets(Player initiator, String[] args, Location destination, String description) {
+        Map<UUID, Entity> targets = new LinkedHashMap<>();
+
+        for (String arg : args) {
+            if (Selectors.isSelector(arg)) {
+                if (!initiator.hasPermission("allium.admin") && !initiator.hasPermission("allium.selectors")) {
+                    Text.sendErrorMessage(initiator, "no-permission", lang, "{cmd}", arg + " &cwith selectors.");
+                    return true;
+                }
+                List<Entity> matched = resolveSelector(arg, initiator);
+                if (matched == null) {
+                    return true; // resolveSelector already explained the failure
+                }
+                matched.forEach(entity -> targets.put(entity.getUniqueId(), entity));
             } else {
-                Text.sendErrorMessage(player, "player-not-found", lang, "{name}", args[0]);
+                Player named = plugin.getServer().getPlayer(arg);
+                if (named == null) {
+                    if (Bukkit.getOfflinePlayer(arg).hasPlayedBefore()) {
+                        Text.sendErrorMessage(initiator, "player-not-online", lang, "{name}", arg);
+                    } else {
+                        Text.sendErrorMessage(initiator, "player-not-found", lang, "{name}", arg);
+                    }
+                    return true;
+                }
+                targets.put(named.getUniqueId(), named);
             }
+        }
+
+        targets.remove(initiator.getUniqueId());
+        if (targets.isEmpty()) {
+            Text.sendErrorMessage(initiator, "no-entities-found", lang);
             return true;
         }
 
-        if (target.getUniqueId().equals(player.getUniqueId())) {
-            Text.sendErrorMessage(player, "cannot-self", lang, "{action}", "teleport to");
-            return true;
-        }
-
-        Location here = player.getLocation();
-        target.teleportAsync(here).thenAccept(success -> {
-            if (success) {
-                lang.sendMessage(target, "tp.success", "{name}", "", "{target}", "to " + player.getName());
-            lang.sendMessage(player, "tp.success", "{name}", target.getName(), "{target}", "to you");
+        for (Entity target : targets.values()) {
+            if (target instanceof Player targetPlayer) {
+                targetPlayer.teleportAsync(destination).thenAccept(success -> {
+                    if (success) {
+                        lang.sendMessage(targetPlayer, "tp.success", "{name}", "", "{target}", "to " + initiator.getName());
+                    }
+                });
             } else {
-                player.sendMessage(Text.colorize("&cTeleport failed."));
+                SchedulerAdapter.runAtEntity(target, () -> target.teleport(destination));
             }
-        });
+        }
+
+        String subject = targets.size() == 1
+            ? describeEntity(targets.values().iterator().next())
+            : targets.size() + " targets";
+        lang.sendMessage(initiator, "tp.success", "{name}", subject, "{target}", description);
         return true;
+    }
+
+    /** Human-readable label for an entity: the player's name, a custom name, or the mob type. */
+    private String describeEntity(Entity entity) {
+        if (entity instanceof Player player) {
+            return player.getName();
+        }
+        String custom = entity.getCustomName();
+        if (custom != null && !custom.isEmpty()) {
+            return custom;
+        }
+        String type = entity.getType().name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        return type.substring(0, 1).toUpperCase(Locale.ROOT) + type.substring(1);
     }
 
     /**
@@ -3597,15 +3292,21 @@ public class TP implements CommandExecutor, TabCompleter {
         // Use the alias actually typed by the user so aliases like "/tpa" resolve correctly
         String commandName = alias.toLowerCase();
 
+        // /here and /there accept a list of targets, so every argument position completes the same
+        // way: online player names plus Minecraft-style selectors.
+        boolean targetListCommand = teleportHereAliases.contains(commandName)
+                || teleportThereAliases.contains(commandName);
+        if (targetListCommand && args.length >= 1) {
+            return completeTarget(player, args[args.length - 1], true);
+        }
+
         // For TPA and similar commands that need player names
         if (args.length == 1) {
             if (teleportRequestAliases.contains(commandName) ||
                     teleportCommandAliases.contains(commandName) ||
-                    teleportHereAliases.contains(commandName) ||
                     "tpo".equals(commandName)) {
 
-                // Return online player names that match the current input
-                return getOnlinePlayerNames(args[0]);
+                return completeTarget(player, args[0], false);
             }
 
             // For TPPOS command, suggest the player's current X coordinate
@@ -3640,6 +3341,26 @@ public class TP implements CommandExecutor, TabCompleter {
      * @param input The beginning of the player name to match
      * @return List of matching player names
      */
+    /**
+     * Completes a teleport target: online player names, or a Minecraft-style selector once the
+     * argument starts with {@code @}.
+     *
+     * @param hintSelectors whether to advertise an example selector on an empty argument; only
+     *                      worth doing for commands that accept entities as well as players
+     */
+    private List<String> completeTarget(Player sender, String input, boolean hintSelectors) {
+        if (Selectors.isSelector(input)) {
+            return Selectors.tabComplete(sender, input);
+        }
+
+        List<String> suggestions = new ArrayList<>(getOnlinePlayerNames(input));
+        if (hintSelectors && input.isEmpty()
+                && (sender.hasPermission("allium.admin") || sender.hasPermission("allium.selectors"))) {
+            suggestions.add("@e[type=villager,distance=0..50]");
+        }
+        return suggestions;
+    }
+
     private List<String> getOnlinePlayerNames(String input) {
         String lowercaseInput = input.toLowerCase();
         return plugin.getServer().getOnlinePlayers().stream()

@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.packetevents.TabListManager;
+import codes.castled.allium.packetevents.impl.TabListRefreshPolicy;
 import codes.castled.allium.util.PlayerVisibilityHelper;
 import codes.castled.allium.util.SchedulerAdapter;
 
@@ -30,6 +31,7 @@ public class PartyManager {
     // IMPROVED: Track visible players like PartyLocator for efficient visibility management
     private final Map<UUID, Set<UUID>> visiblePlayers;
     private final Map<UUID, Set<UUID>> hiddenPlayers;
+    private final VisibilityTransitionTracker visibilityTransitions = new VisibilityTransitionTracker();
     private SchedulerAdapter.TaskHandle distanceCheckTask;
     private TabListManager tabListManager;
     
@@ -697,18 +699,10 @@ public class PartyManager {
         PlayerVisibilityHelper.showPlayer(viewer, target);
         markVisible(viewer, target);
 
-        if (!wasVisible && shouldSendTabPackets()) {
-            Runnable sendAdd = () -> {
-                if (shouldSendTabPackets() && viewer.isOnline() && target.isOnline()) {
-                    tabListManager.forceSendTabListAddPacket(target, List.of(viewer));
-                }
-            };
-            for (long delay : new long[] { 0L, 1L, 3L, 5L }) {
-                if (SchedulerAdapter.isFolia()) {
-                    SchedulerAdapter.runAtEntityLater(viewer, sendAdd, delay);
-                } else {
-                    SchedulerAdapter.runLater(sendAdd, delay);
-                }
+        if (!wasVisible) {
+            long revision = visibilityTransitions.advance(viewer.getUniqueId(), target.getUniqueId());
+            if (shouldSendTabPackets()) {
+                scheduleTabListRefresh(viewer, target, false, revision);
             }
         }
     }
@@ -718,18 +712,44 @@ public class PartyManager {
         PlayerVisibilityHelper.hidePlayer(viewer, target);
         markHidden(viewer, target);
 
-        if (!wasHidden && shouldSendTabPackets() && tabListManager.shouldBeVisibleInTabList(viewer, target)) {
-            Runnable sendAdd = () -> {
-                if (shouldSendTabPackets() && viewer.isOnline() && target.isOnline()) {
-                    tabListManager.forceSendTabListAddPacket(target, List.of(viewer));
-                }
-            };
-            for (long delay : new long[] { 0L, 1L, 2L, 3L, 5L, 8L, 13L, 21L, 34L, 55L }) {
-                if (SchedulerAdapter.isFolia()) {
-                    SchedulerAdapter.runAtEntityLater(viewer, sendAdd, delay);
-                } else {
-                    SchedulerAdapter.runLater(sendAdd, delay);
-                }
+        if (!wasHidden) {
+            long revision = visibilityTransitions.advance(viewer.getUniqueId(), target.getUniqueId());
+            if (shouldSendTabPackets() && tabListManager.shouldBeVisibleInTabList(viewer, target)) {
+                scheduleTabListRefresh(viewer, target, true, revision);
+            }
+        }
+    }
+
+    private void scheduleTabListRefresh(Player viewer, Player target, boolean expectedHidden, long revision) {
+        Runnable refresh = () -> {
+            if (!shouldSendTabPackets() || !viewer.isOnline() || !target.isOnline()) {
+                return;
+            }
+
+            UUID viewerId = viewer.getUniqueId();
+            UUID targetId = target.getUniqueId();
+            if (!visibilityTransitions.isCurrent(viewerId, targetId, revision)) {
+                return;
+            }
+
+            boolean stateMatches = expectedHidden
+                    ? isHiddenFrom(viewer, target)
+                    : isVisibleTo(viewer, target);
+            if (!stateMatches) {
+                return;
+            }
+            if (expectedHidden && !tabListManager.shouldBeVisibleInTabList(viewer, target)) {
+                return;
+            }
+
+            tabListManager.forceSendTabListAddPacket(target, List.of(viewer));
+        };
+
+        for (long delay : TabListRefreshPolicy.retryDelays(expectedHidden)) {
+            if (SchedulerAdapter.isFolia()) {
+                SchedulerAdapter.runAtEntityLater(viewer, refresh, delay);
+            } else {
+                SchedulerAdapter.runLater(refresh, delay);
             }
         }
     }
@@ -854,6 +874,7 @@ public class PartyManager {
         for (Set<UUID> hiddenSet : hiddenPlayers.values()) {
             hiddenSet.remove(playerId);
         }
+        visibilityTransitions.remove(playerId);
 
         // Note: Players now stay in their party when logging out (persistent parties)
         // Party membership only changes via explicit /party leave or /party disband commands

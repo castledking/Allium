@@ -40,6 +40,8 @@ public final class CropDefinitionLoader {
 
     private final Predicate<String> knownNamespace;
     private final Predicate<ItemRef> itemExists;
+    private final InteractionSettings interactionDefaults;
+    private final double randomnessDefault;
 
     /**
      * @param knownNamespace whether a namespace has a resolver available
@@ -47,8 +49,26 @@ public final class CropDefinitionLoader {
      * @param itemExists whether a reference resolves to a real item
      */
     public CropDefinitionLoader(Predicate<String> knownNamespace, Predicate<ItemRef> itemExists) {
+        this(knownNamespace, itemExists, InteractionSettings.DEFAULT,
+            GrowthSettings.DEFAULT.randomness());
+    }
+
+    /**
+     * @param interactionDefaults global {@code harvest/config.yml} defaults a
+     *                            crop file may override key by key
+     * @param randomnessDefault global default growth spread
+     */
+    public CropDefinitionLoader(
+        Predicate<String> knownNamespace,
+        Predicate<ItemRef> itemExists,
+        InteractionSettings interactionDefaults,
+        double randomnessDefault
+    ) {
         this.knownNamespace = knownNamespace;
         this.itemExists = itemExists;
+        this.interactionDefaults = interactionDefaults == null
+            ? InteractionSettings.DEFAULT : interactionDefaults;
+        this.randomnessDefault = randomnessDefault;
     }
 
     public LoadResult load(File cropsDir, File fertilizersFile) {
@@ -148,7 +168,47 @@ public final class CropDefinitionLoader {
         if (seed == null || paths.isEmpty()) {
             return null;
         }
-        return new CropDefinition(id, displayName, seed, requirements, growth, paths, fallbackPath);
+        InteractionSettings interaction = parseInteraction(yaml, file, issues);
+        return new CropDefinition(
+            id, displayName, seed, requirements, growth, paths, fallbackPath, interaction);
+    }
+
+    /**
+     * Parses the optional {@code interaction:} block. Every key falls back to
+     * the global default independently, so a crop that only wants to turn off
+     * right-click harvesting does not have to restate the rest.
+     */
+    private InteractionSettings parseInteraction(
+        ConfigurationSection yaml, String file, List<ValidationIssue> issues
+    ) {
+        ConfigurationSection section = yaml.getConfigurationSection("interaction");
+        if (section == null) {
+            return interactionDefaults;
+        }
+        boolean rightClick = section.getBoolean(
+            "right-click-harvest", interactionDefaults.rightClickHarvest());
+        boolean breakHarvest = section.getBoolean(
+            "break-harvest", interactionDefaults.breakHarvest());
+
+        InteractionSettings.ProgressDisplay progress = interactionDefaults.progressDisplay();
+        String raw = section.getString("progress-check");
+        if (raw != null && !raw.isBlank()) {
+            java.util.Optional<InteractionSettings.ProgressDisplay> parsed =
+                InteractionSettings.ProgressDisplay.parse(raw);
+            if (parsed.isPresent()) {
+                progress = parsed.get();
+            } else {
+                issues.add(ValidationIssue.error(file, "interaction.progress-check",
+                    "Unknown progress-check '" + raw + "' (expected TIME, HINT or OFF)"));
+            }
+        }
+
+        if (!rightClick && !breakHarvest) {
+            issues.add(ValidationIssue.warning(file, "interaction",
+                "Neither right-click nor break harvesting is enabled — this crop can never be "
+                    + "harvested, and breaking it will only return its break-drops"));
+        }
+        return new InteractionSettings(rightClick, breakHarvest, progress);
     }
 
     private GrowthRequirements parseRequirements(ConfigurationSection yaml, String file, List<ValidationIssue> issues) {
@@ -197,7 +257,19 @@ public final class CropDefinitionLoader {
                 "Negative catch-up limit treated as 0"));
             maxCatchUp = 0;
         }
-        return new GrowthSettings(clock, yaml.getBoolean("growth.grow-while-unloaded", true), maxCatchUp);
+        double randomness = yaml.getDouble("growth.randomness", randomnessDefault);
+        if (randomness < 0.0D) {
+            issues.add(ValidationIssue.warning(file, "growth.randomness",
+                "Negative randomness treated as 0 (exact durations)"));
+            randomness = 0.0D;
+        } else if (randomness > codes.castled.allium.harvest.crop.StageDuration.MAXIMUM_RANDOMNESS) {
+            issues.add(ValidationIssue.warning(file, "growth.randomness",
+                "Randomness " + randomness + " is above the maximum of "
+                    + codes.castled.allium.harvest.crop.StageDuration.MAXIMUM_RANDOMNESS
+                    + " and will be clamped"));
+        }
+        return new GrowthSettings(
+            clock, yaml.getBoolean("growth.grow-while-unloaded", true), maxCatchUp, randomness);
     }
 
     private CropPathDefinition parsePath(
@@ -252,18 +324,9 @@ public final class CropDefinitionLoader {
         HarvestDefinition harvest = parseHarvest(
             section.getConfigurationSection("mature-harvest"), file, base + ".mature-harvest", issues);
 
-        RegrowthDefinition regrowth = RegrowthDefinition.DISABLED;
-        ConfigurationSection regrowthSection = section.getConfigurationSection("regrowth");
-        if (regrowthSection != null && regrowthSection.getBoolean("enabled", false)) {
-            int stage = regrowthSection.getInt("stage", 0);
-            if (stage < 0 || stage >= Math.max(1, stages.size())) {
-                issues.add(ValidationIssue.error(file, base + ".regrowth.stage",
-                    "Regrowth stage " + stage + " is outside path '" + pathId
-                        + "' (0.." + Math.max(0, stages.size() - 1) + ")"));
-            } else {
-                regrowth = new RegrowthDefinition(true, stage);
-            }
-        }
+        RegrowthDefinition regrowth = parseRegrowth(
+            section.getConfigurationSection("regrowth"), pathId, stages.size(),
+            file, base + ".regrowth", issues);
 
         if (stages.isEmpty()) {
             return null;
@@ -272,6 +335,65 @@ public final class CropDefinitionLoader {
             section.getConfigurationSection("break-drops"), file, base + ".break-drops", issues);
 
         return new CropPathDefinition(pathId, weight, stages, harvest, regrowth, breakDrops);
+    }
+
+    /**
+     * Parses the {@code regrowth:} block.
+     *
+     * <p>The flat form ({@code enabled} + {@code stage}) sets what happens when
+     * the crop is <em>picked</em>. Breaking defaults to not regrowing at all,
+     * because pulling a plant up and expecting it back is the surprising
+     * reading — a crop that should survive being broken says so explicitly with
+     * an {@code on-break:} block.
+     *
+     * <p>Both sources may be given their own stage, so a plant can drop back
+     * further when uprooted than when picked. A sub-block that only flips
+     * {@code enabled} inherits the stage stated above it: {@code stage} is a
+     * property of the crop ("the vine survives, the fruit regrows"), so having
+     * {@code on-break: {enabled: true}} silently reset it to 0 would restart
+     * the plant from a sprout for no reason the file ever mentions.
+     */
+    private RegrowthDefinition parseRegrowth(
+        ConfigurationSection section, String pathId, int stageCount,
+        String file, String base, List<ValidationIssue> issues
+    ) {
+        if (section == null) {
+            return RegrowthDefinition.DISABLED;
+        }
+        RegrowthDefinition.Rule shared = parseRegrowthRule(
+            section, RegrowthDefinition.Rule.DISABLED, pathId, stageCount, file, base, issues);
+        RegrowthDefinition.Rule rightClick = parseRegrowthRule(
+            section.getConfigurationSection("on-right-click"), shared,
+            pathId, stageCount, file, base + ".on-right-click", issues);
+        // Breaking still defaults to NOT regrowing — only the stage is
+        // inherited, never the decision to regrow.
+        RegrowthDefinition.Rule brokenFallback =
+            new RegrowthDefinition.Rule(false, shared.stage());
+        RegrowthDefinition.Rule broken = parseRegrowthRule(
+            section.getConfigurationSection("on-break"), brokenFallback,
+            pathId, stageCount, file, base + ".on-break", issues);
+        return new RegrowthDefinition(rightClick, broken);
+    }
+
+    private RegrowthDefinition.Rule parseRegrowthRule(
+        ConfigurationSection section, RegrowthDefinition.Rule fallback,
+        String pathId, int stageCount, String file, String base, List<ValidationIssue> issues
+    ) {
+        if (section == null) {
+            return fallback;
+        }
+        if (!section.getBoolean("enabled", fallback.enabled())) {
+            return RegrowthDefinition.Rule.DISABLED;
+        }
+        int stage = section.getInt("stage", fallback.stage());
+        int lastStage = Math.max(0, stageCount - 1);
+        if (stage < 0 || stage >= Math.max(1, stageCount)) {
+            issues.add(ValidationIssue.error(file, base + ".stage",
+                "Regrowth stage " + stage + " is outside path '" + pathId
+                    + "' (0.." + lastStage + ")"));
+            return RegrowthDefinition.Rule.DISABLED;
+        }
+        return new RegrowthDefinition.Rule(true, stage);
     }
 
     private FootprintDefinition parseFootprint(Object raw, String file, String stagePath, List<ValidationIssue> issues) {

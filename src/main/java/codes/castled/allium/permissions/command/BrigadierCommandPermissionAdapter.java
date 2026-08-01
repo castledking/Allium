@@ -22,15 +22,15 @@ final class BrigadierCommandPermissionAdapter implements CommandPermissionAdapte
         Field nodeField = findNodeField(command.getClass());
         boolean vanillaWrapper = isVanilla(context);
 
-        // Vanilla brigadier requirements are op-level checks (source.hasPermission(2)) that know
-        // nothing about the minecraft.command.<name> node CraftBukkit registers for the same
-        // command. Testing them here denies non-op players who were legitimately granted that
-        // node, so the Bukkit permission wins for vanilla commands.
-        if (vanillaWrapper) {
-            String permission = command.getPermission();
-            if (permission != null && !permission.isBlank() && command.testPermissionSilent(context.player())) {
-                return Optional.of(new PermissionResult(true, ResolutionType.VANILLA, permission, command));
-            }
+        // Brigadier requires predicates (e.g. source.hasPermission(2)) are coarse op-level checks
+        // that may disagree with the Bukkit permission node the command actually exposes.  When the
+        // command carries an explicit permission string, test it first so the Bukkit-backed check
+        // takes priority over the Brigadier predicate — for both vanilla and plugin commands.
+        String permission = command.getPermission();
+        boolean hasExplicitPermission = permission != null && !permission.isBlank();
+        if (hasExplicitPermission && command.testPermissionSilent(context.player())) {
+            ResolutionType type = vanillaWrapper ? ResolutionType.VANILLA : ResolutionType.BRIGADIER;
+            return Optional.of(new PermissionResult(true, type, permission, command));
         }
 
         if (nodeField == null && !vanillaWrapper) {

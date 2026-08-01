@@ -52,6 +52,59 @@ growth-engine:
   flush-interval-ticks: 100
 
 # ------------------------------------------------------------
+# Defaults for every crop. Any crop file may override any of these
+# in its own `interaction:` / `growth:` block, so this is a starting
+# point rather than a policy.
+#
+# Changes here apply on /harvest reload.
+# ------------------------------------------------------------
+crop-defaults:
+  interaction:
+    # Right-clicking a mature crop harvests it. Turn this OFF to make
+    # breaking the only way to take a crop, which reserves right-click
+    # for inspecting the plant.
+    right-click-harvest: true
+
+    # Breaking a MATURE crop runs its `mature-harvest` table instead of
+    # `break-drops.mature` — so pulling the plant up returns the produce
+    # and its seeds rather than a consolation prize.
+    #
+    # Immature crops are unaffected: there is nothing to harvest yet, so
+    # they always use `break-drops.immature`.
+    break-harvest: true
+
+    # What right-clicking a crop that is still GROWING tells the player:
+    #
+    #   TIME - "Growing — next stage in 4m 12s"
+    #   HINT - "Coming along." — a bucket, never a number
+    #   OFF  - completely silent: no action bar, no chat, nothing
+    #
+    # TIME only tells the truth when growth.randomness is 0. With jitter
+    # on, an exact countdown is a prediction the crop can't honour, so
+    # HINT is the honest default.
+    #
+    # OFF may be written bare or quoted — both work. (YAML itself reads a
+    # bare `OFF` as the boolean false; Allium understands that and treats
+    # it as this mode rather than ignoring the line.)
+    progress-check: HINT
+
+  growth:
+    # Symmetric spread applied to every stage duration, as a fraction.
+    # A configured `duration` becomes a MEAN rather than a promise:
+    #
+    #   0.0   - exact. Every crop of a kind finishes in lockstep.
+    #   0.25  - a 30m stage takes 22m30s .. 37m30s   [default]
+    #   0.9   - the maximum; beyond this "30 minutes" stops meaning much
+    #
+    # This is what stops a field planted in one pass from ripening in one
+    # pass, the way vanilla random ticks stagger a wheat farm.
+    #
+    # The roll is derived from each crop's own id, not stored, so it
+    # survives restarts and offline growth exactly — and replanting the
+    # same spot rolls fresh, so no plot can be learned as "the fast one".
+    randomness: 0.25
+
+# ------------------------------------------------------------
 # Crop display entity defaults.
 #
 # display-transform decides ORIENTATION and BASE SIZE. An item model
@@ -79,8 +132,26 @@ growth-engine:
 crop-visuals:
   view-range: 48
   scale: 1.0
-  y-offset: 0.0
   display-transform: GROUND
+
+  # Lifts the model clear of the block it stands on.
+  #
+  # GROUND is the dropped-item context, and a dropped item is drawn
+  # CENTRED on its position — so at y-offset 0.0 a crop has roughly its
+  # lower half buried in the soil. 0.43 sits it on the surface.
+  #
+  # This value belongs to the TRANSFORM, not to any one model: it is
+  # right for GROUND and wrong for NONE, which applies no transform of
+  # its own and so needs little or no correction. Change transform and
+  # this number changes with it.
+  #
+  # Nexo's own furniture takes the other route — transform NONE, scale
+  # 1.0, and a per-item translation — which renders the model exactly as
+  # authored in the pack's 16x16x16 block space with no fudge factor. If
+  # your crop models are drawn as full-size block geometry rather than
+  # as dropped items, try `display-transform: NONE` with `y-offset: 0.0`
+  # before reaching for a correction here.
+  y-offset: 0.43
 
   # Crops render as display entities, which have NO hitbox of their own —
   # a click aimed at one passes straight through. `clickable` pairs each
@@ -128,6 +199,54 @@ soil:
 sprinklers:
   enabled: true
   maximum-per-chunk: 64
+
+# ------------------------------------------------------------
+# What water and lava do to a crop they reach.
+#
+# Crops are display entities standing in air, not blocks, so vanilla
+# has nothing to destroy when a fluid arrives — water and lava flow
+# straight through the cell and the plant keeps standing inside them.
+# That reads as a bug rather than as protection, so the vanilla outcome
+# is reproduced deliberately, the same way planting and breaking are
+# done without tying a crop to a real block.
+#
+# The flow itself is never held up (except by PROTECT below): the fluid
+# spreads exactly as it would have, and the crop in its way goes with
+# it. Flowing liquid, a thrown bucket and a dispenser all count.
+#
+#   DROP    - destroyed, returning what BREAKING it would have returned
+#             (see below). This is what water does in vanilla.
+#   BURN    - destroyed with a fizz and nothing to show for it. This is
+#             what lava does in vanilla: the plant is consumed.
+#   DESTROY - destroyed silently: no fizz, no drops, nothing.
+#   PROTECT - the flow is cancelled and the crop stands. NOT vanilla,
+#             and not free: a fluid whose spread is refused retries
+#             every few ticks for as long as it has somewhere to go, so
+#             a crop held under a running stream keeps paying for the
+#             refusal. Fine for a few plots, wrong beside an ocean.
+#
+# What DROP pays is the same thing a player breaking the plant would
+# get, which is what makes water an accident rather than a punishment:
+#
+#   - a crop still growing returns `break-drops.immature`
+#   - a FINISHED crop returns its `mature-harvest` table — the produce
+#     AND the seeds — as long as its `break-harvest` is on. Turn that
+#     off for a crop and water falls back to `break-drops.mature` with
+#     it, so the two stay in step and there is one rule to remember.
+#
+# Loot commands are the one thing a liquid never fires. A command loot
+# table is written to reward whoever took the crop, and nobody took
+# this one — paying a player who was not standing there (or is not
+# online) is worse than paying nobody.
+#
+# Set `enabled: false` to leave crops untouched by liquids entirely.
+# That is the only setting under which a crop can end up standing
+# inside a fluid block.
+# ------------------------------------------------------------
+liquids:
+  enabled: true
+  water: DROP
+  lava: BURN
 
 # ------------------------------------------------------------
 # Spawner model overlays. The real spawner block always stays in

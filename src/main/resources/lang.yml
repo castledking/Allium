@@ -446,6 +446,8 @@ tp:
     &aEntity teleport mode is now {state} {name}
     {info}
   tpe-action: "&aEntity &e{mob} &ahas been {state}."
+  here-self: "&6Teleported you to your current position."
+  no-look-target: "You are not looking at anything within range."
 
 note:
   usage: "Usage: /note <player> <note>"

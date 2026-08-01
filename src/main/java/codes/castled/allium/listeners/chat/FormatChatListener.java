@@ -4,11 +4,11 @@ import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.chat.ChatMessageManager;
+import codes.castled.allium.managers.chat.GradientNameManager;
 import codes.castled.allium.managers.config.Config;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.util.SchedulerAdapter;
 import io.papermc.paper.event.player.AsyncChatEvent;
-import java.awt.Color;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
@@ -415,27 +415,15 @@ public class FormatChatListener implements Listener {
             }
         }
 
-        String first = colors.isEmpty() ? "#FFFFFF" : colors.get(0);
-        String last =
-            colors.size() >= 2 ? colors.get(colors.size() - 1) : first;
-        String midpoint = nearestNamedColor(average(first, last));
         String visibleName = stripFormatting(resolved);
         if (visibleName.isBlank()) {
             visibleName = player.getName();
         }
 
-        return (
-            "<gradient:" +
-            first +
-            ":" +
-            last +
-            ":" +
-            midpoint +
-            ":" +
-            getPhaseValue(false) +
-            ">" +
-            miniMessage.escapeTags(visibleName) +
-            "</gradient>"
+        return GradientNameManager.buildAnimatedGradientText(
+            miniMessage.escapeTags(visibleName),
+            colors,
+            getPhaseValue(false)
         );
     }
 
@@ -565,51 +553,6 @@ public class FormatChatListener implements Listener {
         stripped = stripped.replaceAll("(?i)[&§][0-9A-FK-OR]", "");
         stripped = stripped.replaceAll("<[^>]+>", "");
         return stripped;
-    }
-
-    private Color average(String first, String last) {
-        Color a = Color.decode(first);
-        Color b = Color.decode(last);
-        return new Color(
-            (a.getRed() + b.getRed()) / 2,
-            (a.getGreen() + b.getGreen()) / 2,
-            (a.getBlue() + b.getBlue()) / 2
-        );
-    }
-
-    private String nearestNamedColor(Color color) {
-        Map<String, Color> named = new LinkedHashMap<>();
-        named.put("black", new Color(0x000000));
-        named.put("dark_blue", new Color(0x0000AA));
-        named.put("dark_green", new Color(0x00AA00));
-        named.put("dark_aqua", new Color(0x00AAAA));
-        named.put("dark_red", new Color(0xAA0000));
-        named.put("dark_purple", new Color(0xAA00AA));
-        named.put("gold", new Color(0xFFAA00));
-        named.put("gray", new Color(0xAAAAAA));
-        named.put("dark_gray", new Color(0x555555));
-        named.put("blue", new Color(0x5555FF));
-        named.put("green", new Color(0x55FF55));
-        named.put("aqua", new Color(0x55FFFF));
-        named.put("red", new Color(0xFF5555));
-        named.put("light_purple", new Color(0xFF55FF));
-        named.put("yellow", new Color(0xFFFF55));
-        named.put("white", new Color(0xFFFFFF));
-
-        String best = "white";
-        long bestDistance = Long.MAX_VALUE;
-        for (Map.Entry<String, Color> entry : named.entrySet()) {
-            Color candidate = entry.getValue();
-            long dr = color.getRed() - candidate.getRed();
-            long dg = color.getGreen() - candidate.getGreen();
-            long db = color.getBlue() - candidate.getBlue();
-            long distance = dr * dr + dg * dg + db * db;
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                best = entry.getKey();
-            }
-        }
-        return best;
     }
 
     private String legacyColorToHex(char code) {
@@ -1192,6 +1135,9 @@ public class FormatChatListener implements Listener {
             );
 
         long messageId = chatMessageManager.storeMessage(player, tempMessage);
+        // Claim this id for the per-viewer copies the packet tracker captures, so a
+        // /delmsg on this message removes all of them.
+        chatMessageManager.registerLogicalMessage(messageId, tempMessage);
         if (plugin.getDiscordSrvMessageBridge() != null) {
             plugin
                 .getDiscordSrvMessageBridge()

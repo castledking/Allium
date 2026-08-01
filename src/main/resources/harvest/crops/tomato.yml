@@ -38,6 +38,25 @@ growth:
   grow-while-unloaded: true
   maximum-catch-up-stages: 10
 
+  # Every `duration` below is a MEAN, not a promise: each stage lands
+  # within ±25% of it, so a field planted in one pass does not ripen in
+  # one pass. Set 0.0 for exact durations. Defaults to the value in
+  # config.yml; stated here to show where the knob lives.
+  randomness: 0.25
+
+# How players take and inspect this crop. Anything left out falls back
+# to crop-defaults in config.yml.
+interaction:
+  # Both ways of harvesting are open, and they mean different things —
+  # see the two `regrowth` blocks below. Right-click picks the fruit and
+  # leaves the plant standing; breaking pulls it up for produce + seeds.
+  right-click-harvest: true
+  break-harvest: true
+
+  # TIME | HINT | OFF. With randomness on, an exact countdown would be
+  # a number the crop cannot honour, so this describes progress instead.
+  progress-check: HINT
+
 paths:
   selection:
     mode: WEIGHTED_ONE      # single roll — paths are mutually exclusive
@@ -67,7 +86,7 @@ paths:
           # visual:
           #   transform: GROUND
           #   scale: 0.8
-          #   y-offset: 0.0
+          #   y-offset: 0.43   # see crop-visuals in config.yml
         - model: nexo:tomato_stage_2
           duration: 45m
         - model: nexo:tomato_stage_3
@@ -97,10 +116,15 @@ paths:
                   amount: 1
         additional:
           # Independent of the quality roll — may occur alongside it.
+          #
+          # Guaranteed, because this is what makes the loop close: pull a
+          # mature plant up and you get the tomato to sell plus the seeds
+          # to plant again. A chance here would occasionally strand a
+          # player with no way back into the field.
           mode: INDEPENDENT
           entries:
             seeds:
-              chance: 0.75
+              chance: 1.0
               drops:
                 - item: nexo:tomato_seeds
                   amount:
@@ -130,9 +154,38 @@ paths:
               drops:
                 - item: nexo:tomato_seeds
                   amount: 2
+
+      # What happens to the PLANT after a harvest. Picking and uprooting
+      # are different acts, so they get their own answers.
+      #
+      # `enabled` reads as "does the plant SURVIVE this?":
+      #   true  - the plant stays and regrows from `stage`
+      #   false - the plant is gone; replant it from the seeds it dropped
+      #
+      # The flat form below sets the right-click answer. Breaking never
+      # regrows unless an `on-break:` block says so explicitly — pulling
+      # a plant up and expecting it back is the surprising reading.
+      #
+      # `stage` is ZERO-BASED, so 2 is the third entry in `stages` above
+      # (tomato_stage_3): the vine stays, and only the fruiting stage has
+      # to regrow. A sub-block that sets only `enabled` inherits the
+      # `stage` stated above it — it does not silently restart from 0.
       regrowth:
         enabled: true
         stage: 2
+
+        # Stated explicitly here to show the long form. Either side may
+        # set its own stage, so a plant can fall back further when
+        # uprooted than when picked.
+        on-right-click:
+          enabled: true       # picked: vine survives, fruit regrows
+          stage: 2
+        on-break:
+          enabled: false      # uprooted: gone, replant from the seeds
+
+        # Careful: flipping these two swaps the whole loop. `on-break:
+        # enabled: true` means breaking REGROWS the plant, so a player
+        # never has to replant and the seeds pile up unused.
 
     # ~5% — looks like a normal tomato while growing (same early
     # models), but the hidden path id is 'golden' and harvest always

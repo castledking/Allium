@@ -10,15 +10,17 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.util.SchedulerAdapter;
 
-import java.awt.Color;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,8 +41,10 @@ public class GradientNameManager {
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
     private final DecimalFormat phaseDecimalFormat;
     private final AtomicBoolean paused = new AtomicBoolean(false);
+    private final AnimatedTabNameWriteCoordinator tabNameWriter =
+            new AnimatedTabNameWriteCoordinator(new TabAnimatedNameWriter());
     private SchedulerAdapter.TaskHandle phaseTask;
-    private BigDecimal miniGradientPhase = PHASE_MIN;
+    private volatile BigDecimal miniGradientPhase = PHASE_MIN;
 
     public GradientNameManager(PluginStart plugin) {
         this.plugin = plugin;
@@ -62,6 +66,7 @@ public class GradientNameManager {
             phaseTask.cancel();
             phaseTask = null;
         }
+        tabNameWriter.releaseAll();
     }
 
     public String formatPhases(String text) {
@@ -94,16 +99,32 @@ public class GradientNameManager {
             }
         }
 
-        String first = colors.isEmpty() ? "#FFFFFF" : colors.get(0);
-        String last = colors.size() >= 2 ? colors.get(colors.size() - 1) : first;
-        String midpoint = nearestNamedColor(average(first, last));
         String visibleName = stripFormatting(resolved);
         if (visibleName.isBlank()) {
             visibleName = player.getName();
         }
 
-        return "<gradient:" + first + ":" + last + ":" + midpoint + ":" + getPhaseValue(false) + ">"
-                + miniMessage.escapeTags(visibleName)
+        return buildAnimatedGradientText(
+                miniMessage.escapeTags(visibleName),
+                colors,
+                getPhaseValue(false)
+        );
+    }
+
+    public static String buildAnimatedGradientText(String escapedVisibleName, List<String> colors, String phase) {
+        String first = colors.isEmpty() ? "#FFFFFF" : colors.get(0);
+        String last = colors.size() >= 2 ? colors.get(colors.size() - 1) : first;
+        if (!colors.isEmpty() && colors.stream().allMatch(first::equalsIgnoreCase)) {
+            // GradientPlus emits one color code per character even for solid
+            // presets. Retain the old subtle animation by pairing that solid
+            // color with its closest named color.
+            last = nearestNamedColor(first);
+        }
+        // MiniMessage reverses the stop array for negative phases. With three or
+        // more stops that changes the rendered path at phase zero, producing a
+        // visible mid-cycle rewind. Two endpoint stops remain continuous.
+        return "<gradient:" + first + ":" + last + ":" + phase + ">"
+                + escapedVisibleName
                 + "</gradient>";
     }
 
@@ -120,22 +141,46 @@ public class GradientNameManager {
 
     private void refreshPlayerListNames() {
         if (!Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            tabNameWriter.releaseAll();
             return;
         }
+        Set<UUID> tabOwnedThisFrame = new HashSet<>();
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (!player.hasPermission("allium.gradientname")) {
                 continue;
             }
-            String displayName = buildAnimatedTabDisplayName(player);
-            if (displayName == null || displayName.isBlank() || "%gradientdisplayname%".equals(displayName)) {
-                continue;
+            if (refreshPlayerListName(player)) {
+                tabOwnedThisFrame.add(player.getUniqueId());
             }
-            player.playerListName(Text.colorize(displayName));
         }
+        tabNameWriter.releaseInactive(tabOwnedThisFrame);
+    }
+
+    /** Reasserts the current frame after a tab-list entry has been recreated. */
+    public boolean refreshPlayerListName(Player player) {
+        if (player == null || !player.isOnline() || !player.hasPermission("allium.gradientname")) {
+            return false;
+        }
+
+        String animatedName = buildAnimatedGradientDisplayName(player);
+        if (animatedName == null || animatedName.isBlank() || "%gradientdisplayname%".equals(animatedName)) {
+            return false;
+        }
+
+        return tabNameWriter.write(player.getUniqueId(), animatedName, () -> {
+            String displayName = buildAnimatedTabDisplayName(player, animatedName);
+            if (displayName != null && !displayName.isBlank() && !"%gradientdisplayname%".equals(displayName)) {
+                player.playerListName(Text.colorize(displayName));
+            }
+        });
     }
 
     public String buildAnimatedTabDisplayName(Player player) {
         String animatedName = buildAnimatedGradientDisplayName(player);
+        return buildAnimatedTabDisplayName(player, animatedName);
+    }
+
+    private String buildAnimatedTabDisplayName(Player player, String animatedName) {
         if (animatedName == null || animatedName.isBlank() || "%gradientdisplayname%".equals(animatedName)) {
             return animatedName;
         }
@@ -382,26 +427,30 @@ public class GradientNameManager {
         return trimmed.toUpperCase(Locale.ROOT);
     }
 
-    private Color average(String first, String last) {
-        Color firstColor = Color.decode(first);
-        Color lastColor = Color.decode(last);
-        return new Color(
-                (firstColor.getRed() + lastColor.getRed()) / 2,
-                (firstColor.getGreen() + lastColor.getGreen()) / 2,
-                (firstColor.getBlue() + lastColor.getBlue()) / 2
-        );
-    }
+    private static String nearestNamedColor(String hex) {
+        int rgb;
+        try {
+            rgb = Integer.parseInt(hex.substring(1), 16);
+        } catch (RuntimeException ignored) {
+            return hex;
+        }
 
-    private String nearestNamedColor(Color color) {
+        int red = (rgb >> 16) & 0xFF;
+        int green = (rgb >> 8) & 0xFF;
+        int blue = rgb & 0xFF;
         NamedColor nearest = NamedColor.RED;
-        double nearestDistance = Double.MAX_VALUE;
-        for (NamedColor namedColor : NamedColor.values()) {
-            double distance = Math.pow(color.getRed() - namedColor.color.getRed(), 2)
-                    + Math.pow(color.getGreen() - namedColor.color.getGreen(), 2)
-                    + Math.pow(color.getBlue() - namedColor.color.getBlue(), 2);
+        long nearestDistance = Long.MAX_VALUE;
+        for (NamedColor candidate : NamedColor.values()) {
+            int candidateRed = (candidate.rgb >> 16) & 0xFF;
+            int candidateGreen = (candidate.rgb >> 8) & 0xFF;
+            int candidateBlue = candidate.rgb & 0xFF;
+            long deltaRed = red - candidateRed;
+            long deltaGreen = green - candidateGreen;
+            long deltaBlue = blue - candidateBlue;
+            long distance = deltaRed * deltaRed + deltaGreen * deltaGreen + deltaBlue * deltaBlue;
             if (distance < nearestDistance) {
                 nearestDistance = distance;
-                nearest = namedColor;
+                nearest = candidate;
             }
         }
         return nearest.tag;
@@ -444,27 +493,28 @@ public class GradientNameManager {
     }
 
     private enum NamedColor {
-        YELLOW("yellow", new Color(0xFFFF55)),
-        GREEN("green", new Color(0x55FF55)),
-        BLUE("blue", new Color(0x5555FF)),
-        AQUA("aqua", new Color(0x55FFFF)),
-        RED("red", new Color(0xFF5555)),
-        GOLD("gold", new Color(0xFFAA00)),
-        LIGHT_PURPLE("light_purple", new Color(0xFF55FF)),
-        WHITE("white", new Color(0xFFFFFF)),
-        GRAY("gray", new Color(0xAAAAAA)),
-        DARK_RED("dark_red", new Color(0xAA0000)),
-        DARK_PURPLE("dark_purple", new Color(0xAA00AA)),
-        DARK_BLUE("dark_blue", new Color(0x0000AA)),
-        DARK_GREEN("dark_green", new Color(0x00AA00)),
-        DARK_AQUA("dark_aqua", new Color(0x00AAAA));
+        YELLOW("yellow", 0xFFFF55),
+        GREEN("green", 0x55FF55),
+        BLUE("blue", 0x5555FF),
+        AQUA("aqua", 0x55FFFF),
+        RED("red", 0xFF5555),
+        GOLD("gold", 0xFFAA00),
+        LIGHT_PURPLE("light_purple", 0xFF55FF),
+        WHITE("white", 0xFFFFFF),
+        GRAY("gray", 0xAAAAAA),
+        DARK_RED("dark_red", 0xAA0000),
+        DARK_PURPLE("dark_purple", 0xAA00AA),
+        DARK_BLUE("dark_blue", 0x0000AA),
+        DARK_GREEN("dark_green", 0x00AA00),
+        DARK_AQUA("dark_aqua", 0x00AAAA);
 
         private final String tag;
-        private final Color color;
+        private final int rgb;
 
-        NamedColor(String tag, Color color) {
+        NamedColor(String tag, int rgb) {
             this.tag = tag;
-            this.color = color;
+            this.rgb = rgb;
         }
     }
+
 }

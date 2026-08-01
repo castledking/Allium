@@ -55,13 +55,38 @@ public final class CatchUp {
         int maxStages,
         double speedMultiplier
     ) {
+        return advance(path, currentStage, stageStartedAt, now, maxStages, speedMultiplier, null, 0.0D);
+    }
+
+    /**
+     * Advances a crop along its path, reproducing the per-stage growth jitter
+     * the engine would have applied had the chunk stayed loaded.
+     *
+     * <p>The jitter is derived from the instance id rather than stored, so
+     * replaying stages here lands on exactly the same timings — see
+     * {@link StageDuration}.
+     *
+     * @param instanceId the crop's instance id; {@code null} disables jitter
+     * @param randomness symmetric spread as a fraction of each stage duration
+     */
+    public static Result advance(
+        CropPathDefinition path,
+        int currentStage,
+        long stageStartedAt,
+        long now,
+        int maxStages,
+        double speedMultiplier,
+        java.util.UUID instanceId,
+        double randomness
+    ) {
         int stage = Math.min(currentStage, path.matureStage());
         long startedAt = stageStartedAt;
         int advanced = 0;
 
         while (stage < path.matureStage() && advanced < maxStages) {
             StageDefinition current = path.stage(stage);
-            long dueAt = startedAt + GrowthSpeed.apply(current.durationMs(), speedMultiplier);
+            long dueAt = startedAt
+                + StageDuration.forStage(instanceId, stage, current.durationMs(), speedMultiplier, randomness);
             if (now < dueAt) {
                 break;
             }
@@ -73,7 +98,7 @@ public final class CatchUp {
         boolean mature = stage >= path.matureStage();
         long nextGrowthAt;
         long currentStageMs = mature ? 0L
-            : GrowthSpeed.apply(path.stage(stage).durationMs(), speedMultiplier);
+            : StageDuration.forStage(instanceId, stage, path.stage(stage).durationMs(), speedMultiplier, randomness);
         if (mature) {
             nextGrowthAt = 0L;
         } else if (advanced == maxStages && maxStages > 0 && now >= startedAt + currentStageMs) {

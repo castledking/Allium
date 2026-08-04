@@ -92,16 +92,19 @@ public class GradientNameManager {
 
         resolved = resolved.replaceAll("^([&§]r)+", "");
         List<String> colors = extractColors(resolved);
-        if (colors.isEmpty()) {
-            String prefixColor = extractTrailingColor(getPrefix(player));
-            if (prefixColor != null && !prefixColor.isBlank()) {
-                colors.add(normalizeColor(prefixColor));
-            }
-        }
-
         String visibleName = stripFormatting(resolved);
         if (visibleName.isBlank()) {
             visibleName = player.getName();
+        }
+
+        if (colors.isEmpty() || colors.stream().allMatch("#FFFFFF"::equalsIgnoreCase)) {
+            // GradientPlus injects its default &f/white per character when the
+            // player hasn't picked a gradient/static color via /gradient. That's
+            // indistinguishable from an actual white selection, so treat it as
+            // "unset" and return the name with no color codes/tags at all -
+            // callers prepend their own fallback color (e.g.
+            // "&6%allium_gradientdisplayname%") to control it directly.
+            return miniMessage.escapeTags(visibleName);
         }
 
         return buildAnimatedGradientText(
@@ -344,18 +347,6 @@ public class GradientNameManager {
         }
     }
 
-    private String getPrefix(Player player) {
-        if (plugin.getVaultChat() == null) {
-            return "";
-        }
-        try {
-            String prefix = ((net.milkbowl.vault.chat.Chat) plugin.getVaultChat()).getPlayerPrefix(player);
-            return prefix == null ? "" : prefix;
-        } catch (Throwable ignored) {
-            return "";
-        }
-    }
-
     private List<String> extractColors(String input) {
         if (input == null || input.isEmpty()) {
             return new ArrayList<>();
@@ -409,22 +400,6 @@ public class GradientNameManager {
             }
         }
         return false;
-    }
-
-    private String extractTrailingColor(String input) {
-        List<String> colors = extractColors(input);
-        return colors.isEmpty() ? null : colors.get(colors.size() - 1);
-    }
-
-    private String normalizeColor(String color) {
-        if (color == null || color.isBlank()) {
-            return "#FFFFFF";
-        }
-        String trimmed = color.trim();
-        if (!trimmed.startsWith("#")) {
-            trimmed = "#" + trimmed;
-        }
-        return trimmed.toUpperCase(Locale.ROOT);
     }
 
     private static String nearestNamedColor(String hex) {

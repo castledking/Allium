@@ -42,6 +42,7 @@ import codes.castled.allium.managers.core.SecurityAlertManager;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
 import codes.castled.allium.managers.migration.EssentialsMigration;
+import codes.castled.allium.permissions.command.CommandPermissionOverride;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import org.json.JSONArray;
@@ -1748,7 +1749,11 @@ public class Core implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            sender.sendMessage("§eUsage: /core hide <creategroup|deletegroup|renamegroup|group>");
+            sender.sendMessage("§eUsage: /core hide <creategroup|deletegroup|renamegroup|group|fix>");
+            return;
+        }
+        if (args[1].equalsIgnoreCase("fix")) {
+            handleHideFixSubcommand(sender, args);
             return;
         }
         // Save/load hide.yml from plugins/Allium/hide.yml
@@ -2005,7 +2010,93 @@ public class Core implements CommandExecutor, TabCompleter {
                 break;
             }
             default:
-                sender.sendMessage("§cUnknown hide subcommand. Use /core hide <creategroup|deletegroup|renamegroup|group>.");
+                sender.sendMessage("§cUnknown hide subcommand. Use /core hide <creategroup|deletegroup|renamegroup|group|fix>.");
+        }
+    }
+
+    private void handleHideFixSubcommand(@NotNull CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage("§eUsage: /core hide fix <command> <permission> [-denyalts]");
+            sender.sendMessage("§eUsage: /core hide fix remove <command>");
+            sender.sendMessage("§eUsage: /core hide fix check <command>");
+            sender.sendMessage("§eUsage: /core hide fix list");
+            return;
+        }
+
+        String action = args[2].toLowerCase(Locale.ROOT);
+        switch (action) {
+            case "list": {
+                List<CommandPermissionOverride> overrides = plugin.getDatabase().getAllCommandPermissionOverrides();
+                if (overrides.isEmpty()) {
+                    sender.sendMessage("§eNo command permission overrides are set.");
+                    return;
+                }
+                sender.sendMessage("§6§lCommand permission overrides §7(" + overrides.size() + ")");
+                for (CommandPermissionOverride override : overrides) {
+                    sender.sendMessage("§e/" + override.commandLabel() + " §7-> §f" + override.permission()
+                            + (override.denyAlts() ? " §c(alts denied)" : ""));
+                }
+                return;
+            }
+            case "remove": {
+                if (args.length < 4) {
+                    sender.sendMessage("§cUsage: /core hide fix remove <command>");
+                    return;
+                }
+                String command = args[3].toLowerCase(Locale.ROOT);
+                if (plugin.getDatabase().removeCommandPermissionOverride(command)) {
+                    commandManager.getCommandPermissionOverrideStore().reload(plugin.getDatabase());
+                    sender.sendMessage("§aRemoved permission override for /" + command + ".");
+                } else {
+                    sender.sendMessage("§cNo permission override was set for /" + command + ".");
+                }
+                return;
+            }
+            case "check": {
+                if (args.length < 4) {
+                    sender.sendMessage("§cUsage: /core hide fix check <command>");
+                    return;
+                }
+                String command = args[3].toLowerCase(Locale.ROOT);
+                Optional<CommandPermissionOverride> override = plugin.getDatabase().getCommandPermissionOverride(command);
+                if (override.isEmpty()) {
+                    sender.sendMessage("§eNo permission override is set for /" + command + ".");
+                    return;
+                }
+                CommandPermissionOverride value = override.get();
+                sender.sendMessage("§e/core hide fix check " + command);
+                sender.sendMessage("§7Permission: §f" + value.permission());
+                sender.sendMessage("§7Deny alts: " + (value.denyAlts() ? "§ayes" : "§cno"));
+                sender.sendMessage("§7Source: §f" + value.source());
+                if (value.setBy() != null) {
+                    OfflinePlayer setBy = Bukkit.getOfflinePlayer(value.setBy());
+                    sender.sendMessage("§7Set by: §f" + (setBy.getName() != null ? setBy.getName() : value.setBy().toString()));
+                }
+                return;
+            }
+            default: {
+                // The literal admin-facing form: /core hide fix <command> <permission> [-denyalts]
+                if (args.length < 4) {
+                    sender.sendMessage("§cUsage: /core hide fix <command> <permission> [-denyalts]");
+                    return;
+                }
+                String command = action;
+                String permission = args[3];
+                if (permission.isBlank()) {
+                    sender.sendMessage("§cPermission cannot be blank.");
+                    return;
+                }
+                boolean denyAlts = args.length >= 5 && "-denyalts".equalsIgnoreCase(args[4]);
+                UUID setBy = sender instanceof Player player ? player.getUniqueId() : null;
+                boolean ok = plugin.getDatabase().setCommandPermissionOverride(command, permission, denyAlts, "nightcore", setBy);
+                if (ok) {
+                    commandManager.getCommandPermissionOverrideStore().reload(plugin.getDatabase());
+                    sender.sendMessage("§aSet permission override for /" + command + " §7-> §f" + permission
+                            + (denyAlts ? " §7(alt accounts denied)" : ""));
+                } else {
+                    sender.sendMessage("§cFailed to set permission override (check console).");
+                }
+            }
         }
     }
 

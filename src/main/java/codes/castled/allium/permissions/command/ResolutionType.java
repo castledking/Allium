@@ -12,5 +12,6 @@ public enum ResolutionType {
     LUCKPERMS,
     REGISTERED_PERMISSION,
     HEURISTIC,
+    MANUAL_OVERRIDE,
     UNKNOWN
 }

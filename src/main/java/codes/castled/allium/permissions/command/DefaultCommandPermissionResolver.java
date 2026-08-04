@@ -27,11 +27,12 @@ public final class DefaultCommandPermissionResolver implements CommandPermission
     private static final long PERMISSION_CACHE_TTL_MILLIS = 2_000L;
 
     private final List<CommandPermissionAdapter> adapters;
+    private final @Nullable CommandPermissionOverrideStore overrideStore;
     private volatile Set<String> registeredPermissionsCache;
     private volatile long registeredPermissionsCacheTime;
 
     public DefaultCommandPermissionResolver() {
-        this(List.of());
+        this(List.of(), null);
     }
 
     /**
@@ -39,6 +40,15 @@ public final class DefaultCommandPermissionResolver implements CommandPermission
      * This is the extension point for CommandAPI, ACF, cloud, or another command framework.
      */
     public DefaultCommandPermissionResolver(Collection<? extends CommandPermissionAdapter> additionalAdapters) {
+        this(additionalAdapters, null);
+    }
+
+    /**
+     * Creates the resolver with an override store consulted only when every adapter declines
+     * to resolve a command (i.e. the pipeline would otherwise fall back to {@link ResolutionType#UNKNOWN}).
+     */
+    public DefaultCommandPermissionResolver(Collection<? extends CommandPermissionAdapter> additionalAdapters,
+                                             @Nullable CommandPermissionOverrideStore overrideStore) {
         ArrayList<CommandPermissionAdapter> pipeline = new ArrayList<>(additionalAdapters);
         pipeline.add(new PaperBasicCommandPermissionAdapter());
         pipeline.add(new BrigadierCommandPermissionAdapter());
@@ -47,6 +57,7 @@ public final class DefaultCommandPermissionResolver implements CommandPermission
         pipeline.add(new LuckPermsCommandPermissionAdapter());
         pipeline.add(new RegisteredCommandPermissionAdapter());
         this.adapters = List.copyOf(pipeline);
+        this.overrideStore = overrideStore;
     }
 
     @Override
@@ -80,6 +91,14 @@ public final class DefaultCommandPermissionResolver implements CommandPermission
                 }
             } catch (Throwable ignored) {
                 // A third-party adapter must not prevent native command dispatch.
+            }
+        }
+
+        if (overrideStore != null) {
+            CommandPermissionOverride override = overrideStore.get(context.label());
+            if (override != null) {
+                return new PermissionResult(player.hasPermission(override.permission()),
+                        ResolutionType.MANUAL_OVERRIDE, override.permission(), command);
             }
         }
 

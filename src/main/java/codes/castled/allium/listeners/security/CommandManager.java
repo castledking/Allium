@@ -30,9 +30,12 @@ import org.jetbrains.annotations.Nullable;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.permissions.command.CommandPermissionOverride;
+import codes.castled.allium.permissions.command.CommandPermissionOverrideStore;
 import codes.castled.allium.permissions.command.CommandPermissionResolver;
 import codes.castled.allium.permissions.command.DefaultCommandPermissionResolver;
 import codes.castled.allium.permissions.command.PermissionResult;
+import codes.castled.allium.permissions.command.ResolutionType;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
@@ -58,7 +61,9 @@ public class CommandManager implements Listener {
     private final Lang lang;
     private final Map<String, CommandGroup> commandGroups = new HashMap<>();
     private final Object vaultPermission;
+    private final CommandPermissionOverrideStore commandPermissionOverrideStore;
     private final CommandPermissionResolver commandPermissionResolver;
+    private final Set<String> unresolvedPermissionWarned = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private CreativeManager creativeManager;
     private Map<String, Command> knownCommandsCache;
     private long knownCommandsCacheTime;
@@ -68,17 +73,23 @@ public class CommandManager implements Listener {
         this.plugin = plugin;
         this.lang = plugin.getLangManager();
         this.vaultPermission = setupVaultPermission();
-        this.commandPermissionResolver = new DefaultCommandPermissionResolver();
+        this.commandPermissionOverrideStore = new CommandPermissionOverrideStore();
+        this.commandPermissionOverrideStore.reload(plugin.getDatabase());
+        this.commandPermissionResolver = new DefaultCommandPermissionResolver(List.of(), commandPermissionOverrideStore);
         loadConfig();
         registerEvents();
     }
-    
+
     public void setCreativeManager(CreativeManager creativeManager) {
         this.creativeManager = creativeManager;
     }
 
     public CommandPermissionResolver getCommandPermissionResolver() {
         return commandPermissionResolver;
+    }
+
+    public CommandPermissionOverrideStore getCommandPermissionOverrideStore() {
+        return commandPermissionOverrideStore;
     }
 
     private Object setupVaultPermission() {
@@ -143,6 +154,8 @@ public class CommandManager implements Listener {
         blockNamespacedCommands = config.getBoolean("settings.block-namespaced-commands-for-ops", blockNamespacedCommands);
         enabled = config.getBoolean("settings.enabled", enabled);
         loadGroups();
+        commandPermissionOverrideStore.reload(plugin.getDatabase());
+        unresolvedPermissionWarned.clear();
         
         // Force refresh command state for all online players (Folia-safe)
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -749,7 +762,27 @@ public class CommandManager implements Listener {
                     + ", matched=" + Objects.toString(permissionResult.matchedPermission(), "none"));
         }
 
-        if (!permissionResult.allowed() && !hasLegacyCommandPermissionAlias(player, fullCommand)) {
+        String overrideLabel = isNamespacedCommand ? fullCommand.substring(fullCommand.indexOf(':') + 1) : fullCommand;
+
+        // Surface unresolved commands on console even without debug-mode so admins notice
+        // and can register a fix via /core hide fix <command> <permission>.
+        if (permissionResult.type() == ResolutionType.UNKNOWN && unresolvedPermissionWarned.add(overrideLabel)) {
+            Text.sendDebugLog(ERROR, "Could not resolve a permission for /" + overrideLabel
+                    + " - allowing by default. Use /core hide fix " + overrideLabel + " <permission> to set one.", true);
+        }
+
+        boolean denied = !permissionResult.allowed();
+
+        if (!denied && isAltRestricted) {
+            CommandPermissionOverride override = commandPermissionOverrideStore.get(overrideLabel);
+            if (override != null && override.denyAlts()) {
+                event.setCancelled(true);
+                Text.sendErrorMessage(player, "alt-account-restricted", lang, "{cmd}", fullCommand);
+                return;
+            }
+        }
+
+        if (denied && !hasLegacyCommandPermissionAlias(player, fullCommand)) {
             event.setCancelled(true);
             Text.sendErrorMessage(player, "no-permission", lang, "{cmd}", fullCommand);
         }

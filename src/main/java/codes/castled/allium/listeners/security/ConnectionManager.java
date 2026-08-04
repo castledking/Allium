@@ -228,11 +228,18 @@ public class ConnectionManager implements Listener {
 
             if (luckPerms != null) {
                 Object userManager = luckPerms.getClass().getMethod("getUserManager").invoke(luckPerms);
-                Object userFuture = userManager.getClass().getMethod("loadUser", java.util.UUID.class).invoke(userManager, player.getUniqueId());
 
-                // Wait for the user to load (it's a CompletableFuture)
-                Class<?> cfClass = Class.forName("java.util.concurrent.CompletableFuture");
-                Object user = cfClass.getMethod("join").invoke(userFuture);
+                // Use the live in-memory user (the same instance LuckPerms commands mutate) rather
+                // than loading a fresh copy from storage. Saving a stale storage snapshot can
+                // resurrect groups that were just removed by other commands, and it bypasses the
+                // command log entirely. getUser returns null for offline/not-yet-loaded users.
+                Object user = userManager.getClass().getMethod("getUser", java.util.UUID.class).invoke(userManager, player.getUniqueId());
+                if (user == null) {
+                    // Fall back to loading the user if they aren't currently loaded in memory.
+                    Object userFuture = userManager.getClass().getMethod("loadUser", java.util.UUID.class).invoke(userManager, player.getUniqueId());
+                    Class<?> cfClass = Class.forName("java.util.concurrent.CompletableFuture");
+                    user = cfClass.getMethod("join").invoke(userFuture);
+                }
 
                 // Get the user's nodes
                 Class<?> nodeClass = Class.forName("net.luckperms.api.node.Node");

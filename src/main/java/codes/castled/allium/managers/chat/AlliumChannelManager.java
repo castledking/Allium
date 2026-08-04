@@ -579,7 +579,7 @@ public final class AlliumChannelManager implements Listener {
                 targetChannel = defaultChannelName;
                 message = oneShot;
             }
-        } else if (!currentWrite.equals(staffChannelName) && rawMessage.startsWith("#") && player.hasPermission("allium.staffchat")) {
+        } else if (!currentWrite.equals(staffChannelName) && rawMessage.startsWith("#") && canWrite(player, staffChannelName)) {
             String oneShot = rawMessage.substring(1).trim();
             if (!oneShot.isEmpty()) {
                 targetChannel = staffChannelName;
@@ -696,7 +696,9 @@ public final class AlliumChannelManager implements Listener {
             }
         }
 
-        if (!currentWrite.equals(staffChannelName) && rawMessage.startsWith("#")) {
+        // The permission gate must match onPlayerChatEarly's, otherwise the early pass
+        // tracks the message as global while this one routes it into staff-chat.
+        if (!currentWrite.equals(staffChannelName) && rawMessage.startsWith("#") && canWrite(player, staffChannelName)) {
             String oneShot = rawMessage.substring(1).trim();
             if (!oneShot.isEmpty()) {
                 targetChannel = staffChannelName;

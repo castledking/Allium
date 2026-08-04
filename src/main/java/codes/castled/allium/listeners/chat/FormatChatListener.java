@@ -408,16 +408,16 @@ public class FormatChatListener implements Listener {
 
         resolved = resolved.replaceAll("^([&§]r)+", "");
         List<String> colors = extractColors(resolved);
-        if (colors.isEmpty()) {
-            String prefixColor = extractTrailingColor(getPrefix(player));
-            if (prefixColor != null && !prefixColor.isBlank()) {
-                colors.add(normalizeColor(prefixColor));
-            }
-        }
-
         String visibleName = stripFormatting(resolved);
         if (visibleName.isBlank()) {
             visibleName = player.getName();
+        }
+
+        if (colors.isEmpty() || colors.stream().allMatch("#FFFFFF"::equalsIgnoreCase)) {
+            // Mirrors GradientNameManager.buildAnimatedGradientDisplayName: GradientPlus
+            // injects its default white per character when no gradient/static color is
+            // selected, so return the plain name and let callers style their own fallback.
+            return miniMessage.escapeTags(visibleName);
         }
 
         return GradientNameManager.buildAnimatedGradientText(
@@ -520,28 +520,6 @@ public class FormatChatListener implements Listener {
             }
         }
         return false;
-    }
-
-    private String normalizeColor(String color) {
-        if (color == null || color.isBlank()) {
-            return "#FFFFFF";
-        }
-        if (color.startsWith("&#") || color.startsWith("§#")) {
-            return "#" + color.substring(2).toUpperCase(Locale.ROOT);
-        }
-        if (color.startsWith("#") && color.length() == 7) {
-            return color.toUpperCase(Locale.ROOT);
-        }
-        if (
-            color.length() >= 2 &&
-            (color.charAt(0) == '&' || color.charAt(0) == '§')
-        ) {
-            String hex = legacyColorToHex(color.charAt(1));
-            if (hex != null) {
-                return hex;
-            }
-        }
-        return "#FFFFFF";
     }
 
     private String stripFormatting(String input) {
@@ -1478,60 +1456,6 @@ public class FormatChatListener implements Listener {
         }
 
         return text;
-    }
-
-    /**
-     * Extracts the last color/formatting code from a legacy-formatted string.
-     * Returns it in & format (e.g. "&#ECC97D", "&a"). Returns empty string if none found.
-     */
-    private String extractTrailingColor(String text) {
-        if (text == null || text.isEmpty()) return "";
-        // Normalise § -> & so we work in a single format
-        String s = text.replace('§', '&');
-        String last = "";
-        int i = 0;
-        while (i < s.length()) {
-            if (s.charAt(i) == '&' && i + 1 < s.length()) {
-                char next = s.charAt(i + 1);
-                if (
-                    next == '#' &&
-                    i + 7 < s.length() &&
-                    s.substring(i + 2, i + 8).matches("[0-9a-fA-F]{6}")
-                ) {
-                    // &#rrggbb
-                    last = s.substring(i, i + 8);
-                    i += 8;
-                } else if (next == 'x' && i + 13 < s.length()) {
-                    // &x&r&r&g&g&b&b Minecraft internal hex format
-                    String candidate = s.substring(i, i + 14);
-                    if (candidate.matches("&x(&[0-9a-fA-F]){6}")) {
-                        String hex = candidate.replaceAll(
-                            "&x(&([0-9a-fA-F])){6}",
-                            "$2"
-                        );
-                        // Rebuild &#rrggbb from the six nibbles
-                        StringBuilder hexColor = new StringBuilder("&#");
-                        for (int j = 2; j < 14; j += 2) hexColor.append(
-                            candidate.charAt(j + 1)
-                        );
-                        last = hexColor.toString();
-                        i += 14;
-                    } else {
-                        i += 2;
-                    }
-                } else if (
-                    "0123456789abcdefABCDEFklmnorKLMNOR".indexOf(next) >= 0
-                ) {
-                    last = "&" + next;
-                    i += 2;
-                } else {
-                    i++;
-                }
-            } else {
-                i++;
-            }
-        }
-        return last;
     }
 
     private String getPrefix(Player player) {

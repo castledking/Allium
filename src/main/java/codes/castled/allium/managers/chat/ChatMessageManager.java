@@ -238,13 +238,14 @@ public class ChatMessageManager {
         return ref.messageId();
     }
 
-    /** Time window (ms) to treat as same logical message when deleting duplicates (e.g. formatted vs packet raw). */
+    /** Time window (ms) in which an orphaned packet copy may be matched by content. */
     private static final long DUPLICATE_TIME_MS = 3000;
 
     /**
      * Mark a message as deleted by message ID in all collections.
-     * Also marks any "duplicate" messages (same content, within a short time) so that
-     * both the formatted copy (from FormatChatListener) and the raw copy (from PacketEvents) are removed.
+     * Per-viewer packet copies adopt the id of the message they were rendered from
+     * (see {@link #storeMessageObject}), so id matching removes them too. Only copies that
+     * failed to adopt an id fall back to content matching - see {@link #isOrphanedCopy}.
      */
     public boolean deleteMessage(long messageId) {
         ChatMessage target = getMessage(messageId);
@@ -256,58 +257,88 @@ public class ChatMessageManager {
         long targetTime = target.getTimestamp();
         if (targetPlain.isEmpty()) targetPlain = null;
 
+        Set<Long> adoptedIds = collectSenderOwnedIds();
         boolean found = false;
 
-        // Mark by ID and by content+time in playerMessages
-        for (Deque<ChatMessage> messages : playerMessages.values()) {
-            for (ChatMessage message : messages) {
-                if (
-                    message.getMessageId() == messageId ||
-                    isDuplicateContent(message, targetPlain, targetTime)
-                ) {
-                    message.setDeleted(true);
-                    found = true;
-                }
-            }
-        }
-
-        // Mark in per-player chat histories (used for resend)
-        for (Deque<ChatMessage> history : playerChatHistory.values()) {
-            for (ChatMessage message : history) {
-                if (
-                    message.getMessageId() == messageId ||
-                    isDuplicateContent(message, targetPlain, targetTime)
-                ) {
-                    message.setDeleted(true);
-                    found = true;
-                }
-            }
-        }
-
-        // Mark in global chat history (used for resend)
-        for (ChatMessage message : globalChatHistory) {
-            if (
-                message.getMessageId() == messageId ||
-                isDuplicateContent(message, targetPlain, targetTime)
-            ) {
-                message.setDeleted(true);
-                found = true;
-            }
-        }
+        found |= markMatching(
+            playerMessages.values(),
+            messageId,
+            targetPlain,
+            targetTime,
+            adoptedIds
+        );
+        // Per-player chat histories and the global history (both used for resend) hold the
+        // same ChatMessage instances, but sweep them anyway so nothing is missed if a copy
+        // was trimmed out of playerMessages already.
+        found |= markMatching(
+            playerChatHistory.values(),
+            messageId,
+            targetPlain,
+            targetTime,
+            adoptedIds
+        );
+        found |= markMatching(
+            List.of(globalChatHistory),
+            messageId,
+            targetPlain,
+            targetTime,
+            adoptedIds
+        );
 
         return found;
     }
 
+    private boolean markMatching(
+        Collection<? extends Collection<ChatMessage>> collections,
+        long messageId,
+        String targetPlain,
+        long targetTime,
+        Set<Long> adoptedIds
+    ) {
+        boolean found = false;
+        for (Collection<ChatMessage> messages : collections) {
+            for (ChatMessage message : messages) {
+                if (
+                    message.getMessageId() == messageId ||
+                    isOrphanedCopy(message, targetPlain, targetTime, adoptedIds)
+                ) {
+                    message.setDeleted(true);
+                    found = true;
+                }
+            }
+        }
+        return found;
+    }
+
+    /** Ids of messages stored under a real sender, i.e. ids a packet copy can adopt. */
+    private Set<Long> collectSenderOwnedIds() {
+        Set<Long> ids = new HashSet<>();
+        for (Deque<ChatMessage> messages : playerMessages.values()) {
+            for (ChatMessage message : messages) {
+                if (!SYSTEM_SENDER_ID.equals(message.getSenderId())) {
+                    ids.add(message.getMessageId());
+                }
+            }
+        }
+        return ids;
+    }
+
     /**
-     * True if this message is a duplicate of the target (same content within time window).
-     * Catches packet-tracked "raw" copy when staff deletes the formatted copy.
+     * True for a packet-captured copy that never adopted the id of the message it was
+     * rendered from and whose content and timing line up with the message being deleted.
+     * Those orphans are the only copies id matching cannot reach, so they are the only ones
+     * content matching may touch - widening it any further makes deleting one message also
+     * delete an identical message sent moments later.
      */
-    private boolean isDuplicateContent(
+    private boolean isOrphanedCopy(
         ChatMessage message,
         String targetPlain,
-        long targetTime
+        long targetTime,
+        Set<Long> adoptedIds
     ) {
         if (targetPlain == null) return false;
+        if (!SYSTEM_SENDER_ID.equals(message.getSenderId())) return false;
+        if (adoptedIds.contains(message.getMessageId())) return false;
         String plain = PlainTextComponentSerializer.plainText()
             .serialize(message.getOriginalMessage())
             .trim();

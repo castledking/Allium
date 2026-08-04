@@ -37,6 +37,7 @@ import codes.castled.allium.managers.core.Item;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.economy.BalanceEntry;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.permissions.command.CommandPermissionOverride;
 
 public class Database {
     private final PluginStart plugin;
@@ -788,6 +789,21 @@ public class Database {
                     ")");
                 Text.sendDebugLog(INFO, "Successfully created player_max_homes table");
             }
+
+            // Staff-set permission mappings for commands the resolver pipeline can't classify on its own
+            if (!tableExists(connection, "command_permission_overrides")) {
+                Text.sendDebugLog(INFO, "Creating command_permission_overrides table...");
+                statement.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS command_permission_overrides (" +
+                    "command_label VARCHAR(64) PRIMARY KEY, " +
+                    "permission VARCHAR(255) NOT NULL, " +
+                    "deny_alts BOOLEAN NOT NULL DEFAULT FALSE, " +
+                    "source VARCHAR(32) NOT NULL DEFAULT 'nightcore', " +
+                    "set_by VARCHAR(36), " +
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                    ")");
+                Text.sendDebugLog(INFO, "Successfully created command_permission_overrides table");
+            }
         }
     }
 
@@ -1434,6 +1450,104 @@ public class Database {
             Text.sendDebugLog(WARN, "Failed to set max homes for " + playerUUID, e);
             return false;
         }
+    }
+
+    /**
+     * Gets the staff-set permission override for a command, if one exists.
+     */
+    public Optional<CommandPermissionOverride> getCommandPermissionOverride(String commandLabel) {
+        if (!tableExists(null, "command_permission_overrides")) {
+            return Optional.empty();
+        }
+        String sql = "SELECT command_label, permission, deny_alts, source, set_by, updated_at " +
+                "FROM command_permission_overrides WHERE command_label = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, commandLabel.toLowerCase(Locale.ROOT));
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() ? Optional.of(readCommandPermissionOverride(rs)) : Optional.empty();
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to get command permission override for " + commandLabel, e);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Gets every staff-set command permission override currently stored.
+     */
+    public List<CommandPermissionOverride> getAllCommandPermissionOverrides() {
+        if (!tableExists(null, "command_permission_overrides")) {
+            return List.of();
+        }
+        String sql = "SELECT command_label, permission, deny_alts, source, set_by, updated_at " +
+                "FROM command_permission_overrides ORDER BY command_label";
+        List<CommandPermissionOverride> overrides = new ArrayList<>();
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet rs = statement.executeQuery()) {
+            while (rs.next()) {
+                overrides.add(readCommandPermissionOverride(rs));
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to list command permission overrides", e);
+        }
+        return overrides;
+    }
+
+    /**
+     * Sets (creates or updates) the permission override for a command.
+     */
+    public boolean setCommandPermissionOverride(String commandLabel, String permission, boolean denyAlts,
+                                                 String source, UUID setBy) {
+        if (!tableExists(null, "command_permission_overrides")) {
+            return false;
+        }
+        String sql = "MERGE INTO command_permission_overrides (command_label, permission, deny_alts, source, set_by, updated_at) " +
+                "KEY(command_label) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, commandLabel.toLowerCase(Locale.ROOT));
+            statement.setString(2, permission);
+            statement.setBoolean(3, denyAlts);
+            statement.setString(4, source);
+            statement.setString(5, setBy == null ? null : setBy.toString());
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to set command permission override for " + commandLabel, e);
+            return false;
+        }
+    }
+
+    /**
+     * Removes the permission override for a command. Returns false if none existed.
+     */
+    public boolean removeCommandPermissionOverride(String commandLabel) {
+        if (!tableExists(null, "command_permission_overrides")) {
+            return false;
+        }
+        String sql = "DELETE FROM command_permission_overrides WHERE command_label = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, commandLabel.toLowerCase(Locale.ROOT));
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to remove command permission override for " + commandLabel, e);
+            return false;
+        }
+    }
+
+    private CommandPermissionOverride readCommandPermissionOverride(ResultSet rs) throws SQLException {
+        String setByRaw = rs.getString("set_by");
+        Timestamp updatedAt = rs.getTimestamp("updated_at");
+        return new CommandPermissionOverride(
+                rs.getString("command_label"),
+                rs.getString("permission"),
+                rs.getBoolean("deny_alts"),
+                rs.getString("source"),
+                setByRaw == null ? null : UUID.fromString(setByRaw),
+                updatedAt == null ? null : updatedAt.toInstant()
+        );
     }
 
     public Location getPlayerLocation(UUID playerUUID, LocationType locationType) {

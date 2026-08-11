@@ -64,6 +64,11 @@ import java.util.function.Function;
 public final class AlliumChannelManager implements Listener {
 
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+    /** Renders a chat component back to '&' codes so typed colours survive the round trip. */
+    private static final LegacyComponentSerializer LEGACY_AMPERSAND = LegacyComponentSerializer.builder()
+            .character('&')
+            .hexColors()
+            .build();
     private static final UUID DISCORD_SENDER_ID = UUID.nameUUIDFromBytes("allium-discord-channel".getBytes(StandardCharsets.UTF_8));
     private static final long SUPPRESSED_EVENT_WINDOW_MS = 15_000L;
     private static final long HANDLED_DISCORD_MESSAGE_WINDOW_MS = 30_000L;
@@ -651,6 +656,11 @@ public final class AlliumChannelManager implements Listener {
             return;
         }
 
+        // Routing, spam tracking and the Discord relay keep working on the plain text, but
+        // rendering needs the colours: serializing back to '&' codes preserves both what the
+        // player typed and any styling an earlier listener already applied.
+        String displayMessage = LEGACY_AMPERSAND.serialize(event.message()).trim();
+
         String targetChannel = currentWrite;
         String message = rawMessage;
 
@@ -676,6 +686,7 @@ public final class AlliumChannelManager implements Listener {
                 if (!oneShot.isEmpty()) {
                     targetChannel = defaultChannelName;
                     message = oneShot;
+                    displayMessage = stripShortcutMarker(displayMessage, '>');
                     isShortcutMessage = true;
                     // Remove from staffChatActive since we're sending to global, not staff-chat
                     staffChatActive.remove(player.getUniqueId());
@@ -703,13 +714,19 @@ public final class AlliumChannelManager implements Listener {
             if (!oneShot.isEmpty()) {
                 targetChannel = staffChannelName;
                 message = oneShot;
+                displayMessage = stripShortcutMarker(displayMessage, '#');
                 isShortcutMessage = true;
                 // Add target channel to read channels so player sees the message
                 addReadChannel(player.getUniqueId(), targetChannel);
             }
         }
 
-        message = normalizeOutgoingMessage(player, message);
+        String normalized = normalizeOutgoingMessage(player, message);
+        if (!normalized.equals(message)) {
+            // The spam blocker rewrote the message, so its plain form is what gets rendered.
+            displayMessage = normalized;
+        }
+        message = normalized;
 
         // Track recent outbound chats for suppression logic (including staff-chat)
         // Note: This is already populated in onPlayerChatEarly, but update timestamp
@@ -738,7 +755,28 @@ public final class AlliumChannelManager implements Listener {
             allowedViewers = viewerIds(event.viewers());
             event.viewers().clear();
         }
-        sendPlayerMessage(player, targetChannel, message, allowedViewers);
+        sendPlayerMessage(player, targetChannel, message, displayMessage, allowedViewers);
+    }
+
+    /**
+     * Removes a one-shot channel marker from a message that still carries its colour codes.
+     * The marker is the first visible character, so leading colours are stepped over rather
+     * than searched through - {@code &a>hi} must not lose the {@code >} inside a colour tag.
+     */
+    private static String stripShortcutMarker(String formatted, char marker) {
+        int index = 0;
+        while (index < formatted.length()) {
+            int tokenLength = ChatColorParser.formattingTokenLength(formatted, index);
+            if (tokenLength > 0) {
+                index += tokenLength;
+                continue;
+            }
+            if (formatted.charAt(index) != marker) {
+                return formatted;
+            }
+            return (formatted.substring(0, index) + formatted.substring(index + 1)).trim();
+        }
+        return formatted;
     }
 
     /** Collects the UUIDs of the player audiences in a chat event's viewer set. */
@@ -763,12 +801,23 @@ public final class AlliumChannelManager implements Listener {
      *                       chat event (commands, Discord inbound, ...).
      */
     public void sendPlayerMessage(Player sender, String channelName, String message, Set<UUID> allowedViewers) {
+        sendPlayerMessage(sender, channelName, message, message, allowedViewers);
+    }
+
+    /**
+     * @param message        plain form used for the Discord relay, the console line and the
+     *                       duplicate-suppression bookkeeping.
+     * @param displayMessage same message with the sender's colour codes still attached; this
+     *                       is what gets parsed and shown in game.
+     */
+    public void sendPlayerMessage(Player sender, String channelName, String message, String displayMessage,
+                                  Set<UUID> allowedViewers) {
         ChannelDefinition channel = getChannel(channelName);
         if (channel == null) {
             return;
         }
 
-        RenderedPlayerMessage rendered = renderPlayerMessage(sender, channel, message);
+        RenderedPlayerMessage rendered = renderPlayerMessage(sender, channel, displayMessage);
         Component formatted = rendered.formatted();
         long messageId = plugin.getChatMessageManager().storeMessage(sender, formatted);
         // Claim this id for the per-viewer copies the packet tracker is about to capture,
@@ -836,7 +885,7 @@ public final class AlliumChannelManager implements Listener {
         return reads != null && reads.contains(channel);
     }
 
-    private RenderedPlayerMessage renderPlayerMessage(Player sender, ChannelDefinition channel, String plainMessage) {
+    private RenderedPlayerMessage renderPlayerMessage(Player sender, ChannelDefinition channel, String rawMessage) {
         String template = channel.format();
         String prefix = getPrefix(sender);
         String suffix = getSuffix(sender);
@@ -869,7 +918,9 @@ public final class AlliumChannelManager implements Listener {
                 ? applyConfiguredHoverClick(sender, Component.text(sender.getName()), "name")
                 : applyConfiguredHoverClick(sender, Text.colorize(nickname), "name");
         Component suffixComponent = suffix.isBlank() ? Component.empty() : applyConfiguredHoverClick(sender, Text.colorize(suffix), "suffix");
-        Component messageComponent = Component.text(plainMessage);
+        // Legacy codes and MiniMessage tags the sender typed are both honoured here, each
+        // behind its own permission set.
+        Component messageComponent = ChatColorParser.parse(sender, rawMessage);
 
         Component formatted = applyRenderedComponents(templateComponent, prefixComponent, nameComponent, suffixComponent, messageComponent);
         return new RenderedPlayerMessage(templateComponent, prefixComponent, nameComponent, suffixComponent, messageComponent, formatted);
@@ -1074,7 +1125,13 @@ public final class AlliumChannelManager implements Listener {
     }
 
     private String applyConfigPlaceholders(Player player, String text) {
-        String result = text.replace("%allium_nickname%", getNickname(player));
+        String result = text;
+        // Allium's own placeholders parse natively (no PlaceholderAPI or Essentials required)
+        if (plugin.getNicknameManager() != null) {
+            result = plugin.getNicknameManager().applyAlliumPlaceholders(result, player);
+        } else {
+            result = result.replace("%allium_nickname%", getNickname(player));
+        }
         try {
             if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
                 result = PlaceholderAPI.setPlaceholders(player, result);

@@ -3,8 +3,8 @@ package codes.castled.allium.listeners.chat;
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.managers.chat.ChatColorParser;
 import codes.castled.allium.managers.chat.ChatMessageManager;
-import codes.castled.allium.managers.chat.GradientNameManager;
 import codes.castled.allium.managers.config.Config;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.util.SchedulerAdapter;
@@ -38,18 +38,6 @@ import org.jetbrains.annotations.NotNull;
 
 public class FormatChatListener implements Listener {
 
-    private static final Pattern LEGACY_HEX_PATTERN = Pattern.compile(
-        "(?i)[&§]#([A-F0-9]{6})"
-    );
-    private static final Pattern SECTION_HEX_PATTERN = Pattern.compile(
-        "(?i)[&§]x([&§][A-F0-9]){6}"
-    );
-    private static final Pattern MINI_HEX_PATTERN = Pattern.compile(
-        "(?i)(?<![&§])#([A-F0-9]{6})"
-    );
-    private static final Pattern LEGACY_COLOR_PATTERN = Pattern.compile(
-        "(?i)[&§]([0-9A-F])"
-    );
     private static final BigDecimal PHASE_STEP = new BigDecimal("0.1");
     private static final BigDecimal PHASE_MAX = new BigDecimal("1.0");
     private static final BigDecimal PHASE_MIN = new BigDecimal("-1.0");
@@ -290,15 +278,8 @@ public class FormatChatListener implements Listener {
             return text;
         }
 
-        if (text.contains("%gradientdisplayname%")) {
-            if (player.hasPermission("allium.gradientname")) {
-                text = text.replace(
-                    "%gradientdisplayname%",
-                    buildAnimatedGradientDisplayName(player)
-                );
-            }
-        }
-
+        // %gradientdisplayname% belongs to GradientPlus and is left to it. Allium's animated
+        // take on it lives behind %allium_gradientdisplayname% instead.
         text = PlaceholderAPI.setPlaceholders(player, text);
 
         Matcher matcher = placeholderBracketPattern.matcher(text);
@@ -357,23 +338,19 @@ public class FormatChatListener implements Listener {
         if (text == null || player == null) return text;
         if (!text.contains("%allium_")) return text;
 
+        codes.castled.allium.managers.NicknameManager nm =
+            plugin.getNicknameManager();
+        if (nm != null) {
+            return nm.applyAlliumPlaceholders(text, player);
+        }
+
         String defaultName = player.getName();
         if (defaultName == null || defaultName.isEmpty()) defaultName = player
             .getUniqueId()
             .toString();
-
-        codes.castled.allium.managers.NicknameManager nm =
-            plugin.getNicknameManager();
-        String raw = (nm != null) ? nm.getStoredNickname(player) : defaultName;
-        if (raw == null || raw.isEmpty()) raw = defaultName;
-        String formatted = (nm != null)
-            ? nm.getFormattedNickname(player, raw)
-            : defaultName;
-        if (formatted == null || formatted.isEmpty()) formatted = defaultName;
-
         return text
-            .replace("%allium_nickname%", formatted)
-            .replace("%allium_nickname_raw%", raw);
+            .replace("%allium_nickname%", defaultName)
+            .replace("%allium_nickname_raw%", defaultName);
     }
 
     private String getFormattedPrefix(Player player) {
@@ -385,46 +362,6 @@ public class FormatChatListener implements Listener {
             return legacyComponentSerializer.serialize(prefixComponent);
         }
         return "";
-    }
-
-    private String buildAnimatedGradientDisplayName(Player player) {
-        if (plugin.getGradientNameManager() != null) {
-            return plugin
-                .getGradientNameManager()
-                .buildAnimatedGradientDisplayName(player);
-        }
-
-        String resolved = PlaceholderAPI.setPlaceholders(
-            player,
-            "%gradientdisplayname%"
-        );
-        if (
-            resolved == null ||
-            resolved.isBlank() ||
-            "%gradientdisplayname%".equals(resolved)
-        ) {
-            return miniMessage.escapeTags(player.getName());
-        }
-
-        resolved = resolved.replaceAll("^([&§]r)+", "");
-        List<String> colors = extractColors(resolved);
-        String visibleName = stripFormatting(resolved);
-        if (visibleName.isBlank()) {
-            visibleName = player.getName();
-        }
-
-        if (colors.isEmpty() || colors.stream().allMatch("#FFFFFF"::equalsIgnoreCase)) {
-            // Mirrors GradientNameManager.buildAnimatedGradientDisplayName: GradientPlus
-            // injects its default white per character when no gradient/static color is
-            // selected, so return the plain name and let callers style their own fallback.
-            return miniMessage.escapeTags(visibleName);
-        }
-
-        return GradientNameManager.buildAnimatedGradientText(
-            miniMessage.escapeTags(visibleName),
-            colors,
-            getPhaseValue(false)
-        );
     }
 
     private String formatPhases(String text) {
@@ -448,114 +385,6 @@ public class FormatChatListener implements Listener {
         }
     }
 
-    private List<String> extractColors(String input) {
-        if (input == null || input.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        List<ColorToken> tokens = new ArrayList<>();
-
-        List<int[]> hexRanges = new ArrayList<>();
-
-        Matcher hexMatcher = LEGACY_HEX_PATTERN.matcher(input);
-        while (hexMatcher.find()) {
-            tokens.add(
-                new ColorToken(
-                    hexMatcher.start(),
-                    "#" + hexMatcher.group(1).toUpperCase(Locale.ROOT)
-                )
-            );
-            hexRanges.add(new int[] { hexMatcher.start(), hexMatcher.end() });
-        }
-
-        Matcher sectionHexMatcher = SECTION_HEX_PATTERN.matcher(input);
-        while (sectionHexMatcher.find()) {
-            String raw = sectionHexMatcher.group();
-            String hex = raw.substring(2).replace("§", "").replace("&", "");
-            tokens.add(
-                new ColorToken(
-                    sectionHexMatcher.start(),
-                    "#" + hex.toUpperCase(Locale.ROOT)
-                )
-            );
-            hexRanges.add(new int[] {
-                sectionHexMatcher.start(),
-                sectionHexMatcher.end(),
-            });
-        }
-
-        Matcher miniHexMatcher = MINI_HEX_PATTERN.matcher(input);
-        while (miniHexMatcher.find()) {
-            tokens.add(
-                new ColorToken(
-                    miniHexMatcher.start(),
-                    "#" + miniHexMatcher.group(1).toUpperCase(Locale.ROOT)
-                )
-            );
-        }
-
-        Matcher legacyMatcher = LEGACY_COLOR_PATTERN.matcher(input);
-        while (legacyMatcher.find()) {
-            if (isInsideRange(legacyMatcher.start(), hexRanges)) {
-                continue;
-            }
-            String hex = legacyColorToHex(legacyMatcher.group(1).charAt(0));
-            if (hex != null) {
-                tokens.add(new ColorToken(legacyMatcher.start(), hex));
-            }
-        }
-
-        tokens.sort(Comparator.comparingInt(ColorToken::index));
-        List<String> colors = new ArrayList<>();
-        for (ColorToken token : tokens) {
-            colors.add(token.hex());
-        }
-        return colors;
-    }
-
-    private boolean isInsideRange(int index, List<int[]> ranges) {
-        for (int[] range : ranges) {
-            if (index >= range[0] && index < range[1]) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private String stripFormatting(String input) {
-        if (input == null) {
-            return "";
-        }
-        String stripped = SECTION_HEX_PATTERN.matcher(input).replaceAll("");
-        stripped = LEGACY_HEX_PATTERN.matcher(stripped).replaceAll("");
-        stripped = stripped.replaceAll("(?i)[&§][0-9A-FK-OR]", "");
-        stripped = stripped.replaceAll("<[^>]+>", "");
-        return stripped;
-    }
-
-    private String legacyColorToHex(char code) {
-        return switch (Character.toLowerCase(code)) {
-            case '0' -> "#000000";
-            case '1' -> "#0000AA";
-            case '2' -> "#00AA00";
-            case '3' -> "#00AAAA";
-            case '4' -> "#AA0000";
-            case '5' -> "#AA00AA";
-            case '6' -> "#FFAA00";
-            case '7' -> "#AAAAAA";
-            case '8' -> "#555555";
-            case '9' -> "#5555FF";
-            case 'a' -> "#55FF55";
-            case 'b' -> "#55FFFF";
-            case 'c' -> "#FF5555";
-            case 'd' -> "#FF55FF";
-            case 'e' -> "#FFFF55";
-            case 'f' -> "#FFFFFF";
-            default -> null;
-        };
-    }
-
-    private record ColorToken(int index, String hex) {}
 
     private Component applyHoverClick(
         Player player,
@@ -795,88 +624,14 @@ public class FormatChatListener implements Listener {
         return hasRawContent ? result.toString() : message;
     }
 
-    private boolean hasMiniMessagePermission(Player player, String tagType) {
-        if (player == null) return false;
-        String permission = "chat.minimessage." + tagType.toLowerCase();
-        return (
-            player.hasPermission(permission) ||
-            player.hasPermission("chat.minimessage.*") ||
-            player.hasPermission(permission + ".*")
-        );
-    }
-
-    private boolean validateMiniMessage(Player player, String message) {
-        if (
-            message.matches(
-                "(?i).*<(black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|dark_gray|blue|green|aqua|red|light_purple|yellow|white)>.*"
-            )
-        ) {
-            if (!hasMiniMessagePermission(player, "color")) {
-                String color = message.replaceAll(
-                    "(?i).*<(black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|dark_gray|blue|green|aqua|red|light_purple|yellow|white)>.*",
-                    "$1"
-                );
-                if (
-                    !hasMiniMessagePermission(
-                        player,
-                        "color." + color.toLowerCase()
-                    )
-                ) {
-                    return false;
-                }
-            }
-        }
-
-        if (message.matches("(?i).*<gradient[:#].*?>.*")) {
-            // Check for animated gradient (with phase parameter)
-            if (message.matches("(?i).*<gradient[^>]*:phase-.*?>.*")) {
-                if (!hasMiniMessagePermission(player, "gradient.animation")) {
-                    return false;
-                }
-            } else {
-                // Static gradient
-                if (!hasMiniMessagePermission(player, "gradient")) {
-                    return false;
-                }
-            }
-        }
-
-        if (message.matches("(?i).*<rainbow[:#].*?>.*")) {
-            if (!hasMiniMessagePermission(player, "rainbow")) {
-                return false;
-            }
-        }
-
-        if (message.matches("(?i).*<click:.*?>.*")) {
-            if (!hasMiniMessagePermission(player, "click")) {
-                return false;
-            }
-        }
-
-        if (message.matches("(?i).*<hover:.*?>.*")) {
-            if (!hasMiniMessagePermission(player, "hover")) {
-                return false;
-            }
-        }
-
-        if (
-            message.matches(
-                "(?i).*<(b|bold|i|italic|u|underlined|st|strikethrough|obf|obfuscated|reset)>.*"
-            )
-        ) {
-            if (!hasMiniMessagePermission(player, "format")) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
+    /**
+     * Whether the text needs the MiniMessage parser. Legacy hex ({@code &#RRGGBB}) is
+     * deliberately not counted: it is handled by the legacy serializer, and treating it as
+     * MiniMessage used to push prefixes like {@code &#8C8F9B&lVIP} through a parser that
+     * prints the codes instead of applying them.
+     */
     private boolean containsMiniMessageTags(String message) {
-        Pattern miniMessagePattern = Pattern.compile(
-            "<[^>]+>|</[^>]+>|&#[0-9a-fA-F]{6}"
-        );
-        return miniMessagePattern.matcher(message).find();
+        return ChatColorParser.containsMiniMessageTags(message);
     }
 
     private Component processMessageContent(String content) {
@@ -909,8 +664,10 @@ public class FormatChatListener implements Listener {
         // Unicode check and cleanup
         if (blockUnicode && !player.hasPermission("chat.unicode")) {
             if (containsUnicode(originalMessage)) {
+                // Drop non-ASCII only. This class used to read [^-<DEL>], which erased
+                // the whole message instead of just its unicode.
                 String cleanedMessage = originalMessage.replaceAll(
-                    "[^-\u007F]+",
+                    "[^\\x00-\\x7F]+",
                     ""
                 );
                 if (debugMode) {
@@ -934,60 +691,26 @@ public class FormatChatListener implements Listener {
         // Process raw text in brackets FIRST, before any formatting processing
         String messageContent = editMessageWithRawText(rawMessage, player);
 
-        // Strip unauthorized formatting and track if we have legacy codes
-        boolean hasLegacyCodes = false;
-        if (vaultPermission != null) {
-            hasLegacyCodes = rawMessage.matches(".*[&§][0-9a-fA-Fk-oK-OrR].*");
-            messageContent = stripUnauthorizedFormatting(
-                messageContent,
-                player
+        // Filter both colour systems against their own permissions and fold what survives
+        // into a single MiniMessage string, so one message may freely mix &-codes, &#hex
+        // and tags.
+        messageContent = ChatColorParser.toMiniMessage(player, messageContent);
+        if (debugMode && ChatColorParser.containsFormatting(rawMessage)) {
+            Text.sendDebugLog(
+                INFO,
+                "Parsed chat colours for " +
+                    player.getName() +
+                    ": " +
+                    rawMessage +
+                    " -> " +
+                    messageContent
             );
-            messageContent = convertLegacyToMiniMessage(messageContent);
-        } else {
-            messageContent = Text.stripColor(messageContent, null);
         }
 
-        // Check MiniMessage permissions
-        boolean useMiniMessage = false;
-        boolean hasMiniMessageTags = containsMiniMessageTags(messageContent);
-        boolean hasOriginalMiniMessageTags = containsMiniMessageTags(
-            rawMessage
-        );
-
-        if (hasMiniMessageTags) {
-            if (hasLegacyCodes && !hasOriginalMiniMessageTags) {
-                useMiniMessage = true;
-                if (debugMode) {
-                    Text.sendDebugLog(
-                        INFO,
-                        "Allowing legacy-converted MiniMessage tags for " +
-                            player.getName()
-                    );
-                }
-            } else if (player.hasPermission("chat.minimessage")) {
-                if (!validateMiniMessage(player, messageContent)) {
-                    messageContent = miniMessage.stripTags(messageContent);
-                    if (debugMode) {
-                        Text.sendDebugLog(
-                            INFO,
-                            "Stripped unauthorized MiniMessage tags from message by " +
-                                player.getName()
-                        );
-                    }
-                } else {
-                    useMiniMessage = true;
-                }
-            } else {
-                messageContent = miniMessage.stripTags(messageContent);
-                if (debugMode) {
-                    Text.sendDebugLog(
-                        INFO,
-                        "Stripped MiniMessage tags from message by " +
-                            player.getName() +
-                            " (no permission)"
-                    );
-                }
-            }
+        // Always replace Allium's own placeholders (%allium_nickname%, etc.) so they parse
+        // without PlaceholderAPI, Essentials, or the chat.placeholderapi permission.
+        if (messageContent.contains("%allium_")) {
+            messageContent = replaceAlliumPlaceholders(messageContent, player);
         }
 
         // Process PlaceholderAPI placeholders if player has permission
@@ -1557,176 +1280,6 @@ public class FormatChatListener implements Listener {
         }
 
         return suffix;
-    }
-
-    private String stripUnauthorizedFormatting(String message, Player player) {
-        if (message == null || message.isEmpty()) {
-            return message;
-        }
-
-        boolean allowAnyColor =
-            player.hasPermission("chat.color") ||
-            player.hasPermission("chat.color.*");
-        boolean allowAnyFormat =
-            player.hasPermission("chat.format") ||
-            player.hasPermission("chat.format.*");
-        boolean allowHex =
-            allowAnyColor || player.hasPermission("chat.color.hex");
-
-        StringBuilder filteredMessage = new StringBuilder();
-        int i = 0;
-
-        while (i < message.length()) {
-            if (
-                i + 1 < message.length() &&
-                (message.charAt(i) == '&' || message.charAt(i) == '\u00a7')
-            ) {
-                char colorChar = Character.toLowerCase(message.charAt(i + 1));
-                boolean keepCode = false;
-
-                switch (colorChar) {
-                    case '0':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.black");
-                        break;
-                    case '1':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.dark_blue");
-                        break;
-                    case '2':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.dark_green");
-                        break;
-                    case '3':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.dark_aqua");
-                        break;
-                    case '4':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.dark_red");
-                        break;
-                    case '5':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.dark_purple");
-                        break;
-                    case '6':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.gold");
-                        break;
-                    case '7':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.gray");
-                        break;
-                    case '8':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.dark_gray");
-                        break;
-                    case '9':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.blue");
-                        break;
-                    case 'a':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.green");
-                        break;
-                    case 'b':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.aqua");
-                        break;
-                    case 'c':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.red");
-                        break;
-                    case 'd':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.light_purple");
-                        break;
-                    case 'e':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.yellow");
-                        break;
-                    case 'f':
-                        keepCode =
-                            allowAnyColor ||
-                            player.hasPermission("chat.color.white");
-                        break;
-                    case 'l':
-                        keepCode =
-                            allowAnyFormat ||
-                            player.hasPermission("chat.format.bold");
-                        break;
-                    case 'o':
-                        keepCode =
-                            allowAnyFormat ||
-                            player.hasPermission("chat.format.italic");
-                        break;
-                    case 'n':
-                        keepCode =
-                            allowAnyFormat ||
-                            player.hasPermission("chat.format.underline");
-                        break;
-                    case 'm':
-                        keepCode =
-                            allowAnyFormat ||
-                            player.hasPermission("chat.format.strikethrough");
-                        break;
-                    case 'k':
-                        keepCode =
-                            allowAnyFormat ||
-                            player.hasPermission("chat.format.magic");
-                        break;
-                    case 'r':
-                        keepCode =
-                            allowAnyFormat ||
-                            player.hasPermission("chat.format.reset");
-                        break;
-                    default:
-                        keepCode = false;
-                        break;
-                }
-
-                if (keepCode) {
-                    filteredMessage
-                        .append(message.charAt(i))
-                        .append(message.charAt(i + 1));
-                    i += 2;
-                } else {
-                    i += 2;
-                }
-            } else if (
-                i + 7 < message.length() &&
-                message.charAt(i) == '&' &&
-                message.charAt(i + 1) == '#' &&
-                message.substring(i + 2, i + 8).matches("[0-9a-fA-F]{6}")
-            ) {
-                if (allowHex) {
-                    filteredMessage.append(message, i, i + 8);
-                    i += 8;
-                } else {
-                    i += 8;
-                }
-            } else {
-                filteredMessage.append(message.charAt(i));
-                i++;
-            }
-        }
-
-        return filteredMessage.toString();
     }
 
     /**

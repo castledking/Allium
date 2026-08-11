@@ -123,6 +123,8 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
             "back_location",
             "home_max",
             "home_set",
+            "homes_max",
+            "homes_set",
             "baltop_balance_1",
             "baltop_balance_commas_1",
             "baltop_balance_formatted_1",
@@ -300,12 +302,14 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
 
         /*
           Placeholders:
-          %allium_home_max% - Returns the maximum number of homes the player can have.
-          %allium_home_<#>_<w|x|y|z>% - Returns the world, x, y, or z coordinate of the specified player.
-          %allium_home_<homename>_<w|x|y|z>% - Returns the world, x, y, or z coordinate of the specified player.
+          %allium_homes_max% - Returns the maximum number of homes the player can have, which is the
+                               higher of their allium.sethome.<n> permission and their /core sethomes
+                               override, or "unlimited". %allium_home_max% is accepted too.
+          %allium_homes_set% - Returns the number of homes the player has set (also %allium_home_set%).
+          %allium_home_<#>_<w|x|y|z|yaw|pitch>% - Returns that coordinate of the player's Nth home.
+          %allium_home_<homename>_<w|x|y|z|yaw|pitch>% - Returns that coordinate of the named home.
           %allium_home_<#>_location% - Returns the exact home location of the specified player.
           %allium_home_<homename>_location% - Returns the exact home location of the specified player.
-          %allium_home_set% - Returns the number of homes the player has set.
         */
         // Home placeholders use OfflinePlayer-based onRequest()
         result = homePlaceholder.onRequest(player, params);

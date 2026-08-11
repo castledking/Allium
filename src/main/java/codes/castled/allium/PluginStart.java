@@ -74,6 +74,8 @@ import codes.castled.allium.items.stored.StoredItemRegistry;
 import codes.castled.allium.items.commands.Handcuffs;
 import codes.castled.allium.items.impl.ItemRenamerItem;
 import codes.castled.allium.items.impl.ItemRenamerManager;
+import codes.castled.allium.items.impl.MobDisarmerItem;
+import codes.castled.allium.items.impl.PhantomObliteratorItem;
 import codes.castled.allium.items.impl.SpawnerChangerItem;
 import codes.castled.allium.items.impl.SpawnerChangerManager;
 import codes.castled.allium.items.impl.TreeAxeItem;
@@ -86,6 +88,9 @@ import codes.castled.allium.listeners.XpBottleRedeemListener;
 import codes.castled.allium.listeners.chat.FormatChatListener;
 import codes.castled.allium.listeners.chat.SignColorListener;
 import codes.castled.allium.listeners.items.OraxenSmeltingListener;
+import codes.castled.allium.listeners.items.MobDisarmerListener;
+import codes.castled.allium.listeners.items.PhantomObliteratorListener;
+import codes.castled.allium.listeners.items.SwordToolDurabilityListener;
 import codes.castled.allium.listeners.items.SpawnerChangerListener;
 import codes.castled.allium.listeners.items.TreeAxeListener;
 import codes.castled.allium.listeners.jobs.CreeperExplosion;
@@ -972,6 +977,39 @@ public class PluginStart extends JavaPlugin {
         for (String group : (
             (net.milkbowl.vault.permission.Permission) vaultPerms
         ).getGroups()) {
+            // Same wildcard trap as the per-player migration: a group holding
+            // '*' answers true to every core.<node> check, which would stamp the
+            // entire permission list onto it.
+            if (groupResolvesEveryPermission(group)) {
+                Text.sendDebugLog(
+                    INFO,
+                    "Skipping permission migration for group " +
+                        group +
+                        ": holds a wildcard grant that resolves every permission."
+                );
+                continue;
+            }
+
+            // A real core.* node covers everything below it, so migrate it alone.
+            if (
+                (
+                    (net.milkbowl.vault.permission.Permission) vaultPerms
+                ).groupHas((String) null, group, "core.*")
+            ) {
+                (
+                    (net.milkbowl.vault.permission.Permission) vaultPerms
+                ).groupRemove((String) null, group, "core.*");
+                (
+                    (net.milkbowl.vault.permission.Permission) vaultPerms
+                ).groupAdd((String) null, group, "allium.*");
+                Text.sendDebugLog(
+                    INFO,
+                    "Migrated group " + group + ": core.* -> allium.*"
+                );
+                migrated = true;
+                continue;
+            }
+
             for (String perm : permissionsToMigrate) {
                 String oldPerm = "core." + perm;
                 String newPerm = "allium." + perm;
@@ -1011,6 +1049,40 @@ public class PluginStart extends JavaPlugin {
         } else {
             Text.sendDebugLog(INFO, "No group permissions needed migration.");
         }
+    }
+
+    /**
+     * Builds a permission node that cannot legitimately be granted to anyone.
+     */
+    private static String migrationProbeNode() {
+        return "allium.migrationprobe." + java.util.UUID.randomUUID();
+    }
+
+    /**
+     * Vault permission checks are resolved checks, not lookups of explicitly
+     * set nodes: a blanket '*' grant (or operator status) answers true to every
+     * "core.<node>" question even though none of those nodes are actually set.
+     * Migrating on that answer writes the whole permission list onto the player
+     * or group, which is exactly what happens when staff hand out '*' to help
+     * someone out.
+     *
+     * Asking about a node that cannot exist tells us whether the answers can be
+     * trusted at all - if that comes back true, everything resolves true and
+     * migration has nothing meaningful to read.
+     */
+    private boolean resolvesEveryPermission(org.bukkit.OfflinePlayer player) {
+        if (player.isOp()) {
+            return true;
+        }
+        return (
+            (net.milkbowl.vault.permission.Permission) vaultPerms
+        ).playerHas((String) null, player, migrationProbeNode());
+    }
+
+    private boolean groupResolvesEveryPermission(String group) {
+        return (
+            (net.milkbowl.vault.permission.Permission) vaultPerms
+        ).groupHas((String) null, group, migrationProbeNode());
     }
 
     /**
@@ -2505,6 +2577,8 @@ public class PluginStart extends JavaPlugin {
                 new SpawnerChangerItem(this, spawnerChangerManager)
             );
             customItemRegistry.register(new ItemRenamerItem(this));
+            customItemRegistry.register(new MobDisarmerItem(this));
+            customItemRegistry.register(new PhantomObliteratorItem(this));
 
             // Stored items load after the built-ins so the registry can reject any stored file whose
             // id collides with one of them, rather than shadowing it.
@@ -2544,6 +2618,24 @@ public class PluginStart extends JavaPlugin {
             getServer()
                 .getPluginManager()
                 .registerEvents(itemRenamerManager, this);
+            getServer()
+                .getPluginManager()
+                .registerEvents(
+                    new MobDisarmerListener(customItemRegistry),
+                    this
+                );
+            getServer()
+                .getPluginManager()
+                .registerEvents(
+                    new PhantomObliteratorListener(customItemRegistry),
+                    this
+                );
+            getServer()
+                .getPluginManager()
+                .registerEvents(
+                    new SwordToolDurabilityListener(this, customItemRegistry),
+                    this
+                );
             getServer()
                 .getPluginManager()
                 .registerEvents(new OraxenSmeltingListener(), this);
@@ -3743,6 +3835,22 @@ public class PluginStart extends JavaPlugin {
                         }
                     }
 
+                    // A blanket '*' grant or op status makes every core.<node>
+                    // check answer true, so there is nothing real to read here.
+                    // Leave the player unmigrated: once the wildcard is gone,
+                    // their actual nodes migrate on a later join.
+                    if (resolvesEveryPermission(player)) {
+                        Text.sendDebugLog(
+                            INFO,
+                            "Skipping permission migration for " +
+                                player.getName() +
+                                " (UUID: " +
+                                uuid +
+                                "): holds a wildcard/op grant that resolves every permission."
+                        );
+                        return;
+                    }
+
                     // Check and migrate core.* wildcard permission first
                     boolean migrated = false;
                     if (
@@ -3763,33 +3871,34 @@ public class PluginStart extends JavaPlugin {
                                 ": core.* -> allium.*"
                         );
                         migrated = true;
-                    }
-
-                    // Migrate individual player permissions
-                    for (String perm : permissionsToMigrate) {
-                        String oldPerm = "core." + perm;
-                        String newPerm = "allium." + perm;
-                        if (
-                            (
-                                (net.milkbowl.vault.permission.Permission) vaultPerms
-                            ).playerHas((String) null, player, oldPerm)
-                        ) {
-                            (
-                                (net.milkbowl.vault.permission.Permission) vaultPerms
-                            ).playerRemove((String) null, player, oldPerm);
-                            (
-                                (net.milkbowl.vault.permission.Permission) vaultPerms
-                            ).playerAdd((String) null, player, newPerm);
-                            Text.sendDebugLog(
-                                INFO,
-                                "Migrated player " +
-                                    player.getName() +
-                                    ": " +
-                                    oldPerm +
-                                    " -> " +
-                                    newPerm
-                            );
-                            migrated = true;
+                    } else {
+                        // Only reachable without a core.* wildcard, so every hit
+                        // below is a node the player really holds.
+                        for (String perm : permissionsToMigrate) {
+                            String oldPerm = "core." + perm;
+                            String newPerm = "allium." + perm;
+                            if (
+                                (
+                                    (net.milkbowl.vault.permission.Permission) vaultPerms
+                                ).playerHas((String) null, player, oldPerm)
+                            ) {
+                                (
+                                    (net.milkbowl.vault.permission.Permission) vaultPerms
+                                ).playerRemove((String) null, player, oldPerm);
+                                (
+                                    (net.milkbowl.vault.permission.Permission) vaultPerms
+                                ).playerAdd((String) null, player, newPerm);
+                                Text.sendDebugLog(
+                                    INFO,
+                                    "Migrated player " +
+                                        player.getName() +
+                                        ": " +
+                                        oldPerm +
+                                        " -> " +
+                                        newPerm
+                                );
+                                migrated = true;
+                            }
                         }
                     }
 

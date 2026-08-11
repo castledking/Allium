@@ -132,7 +132,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
                 return;
             }
 
-            if (!resolved.equals(session.fallback) && check.matchesExpected(resolved)) {
+            if (check.isDetection(resolved, session.fallback)) {
                 modGuard.handleTranslationProbeHit(player, check.displayName, check.key, resolved, session.fallback, check.action, check.requireCorroborationForKick);
             } else if (isDebug()) {
                 plugin.getLogger().info("[ModGuard] Translation probe miss for " + player.getName()
@@ -377,8 +377,11 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
             this.requireCorroborationForKick = requireCorroborationForKick;
         }
 
-        private boolean matchesExpected(String resolved) {
+        private boolean isDetection(String resolved, String fallback) {
             if (resolved == null || resolved.isEmpty()) {
+                return false;
+            }
+            if (resolved.equals(fallback) || resolved.equals(key)) {
                 return false;
             }
             if (expected.isEmpty()) {

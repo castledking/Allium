@@ -2343,6 +2343,73 @@ public class Database {
         return names;
     }
 
+    /**
+     * Returns every other account that has ever shared any IP with the given player.
+     * <p>
+     * Unlike {@link #getPlayersSeenOnIp(String, UUID)} this walks the player's full IP
+     * history rather than only their most recent address, so the result is symmetric:
+     * if A appears in B's list, B always appears in A's, even after either account has
+     * since moved to a different IP.
+     *
+     * @param playerUUID the account to find shared-IP accounts for
+     * @return current names of the matching accounts, sorted case-insensitively
+     */
+    public List<String> getSharedIpAccountNames(UUID playerUUID) {
+        if (playerUUID == null) {
+            return Collections.emptyList();
+        }
+
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(SHARED_IP_ACCOUNTS_SQL)) {
+            statement.setString(1, playerUUID.toString());
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return collectSharedIpAccountNames(resultSet);
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to get shared IP accounts for player UUID: " + playerUUID, e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Self-join over the full IP history. Names resolve via player_data so renamed accounts
+     * are reported under their current name rather than whatever name was current when each
+     * history row was written.
+     */
+    static final String SHARED_IP_ACCOUNTS_SQL =
+        "SELECT h_other.player_uuid AS other_uuid, h_other.name AS history_name, pd.name AS resolved_name " +
+        "FROM player_ip_history h_self " +
+        "JOIN player_ip_history h_other ON h_other.ip_address = h_self.ip_address " +
+        "AND h_other.player_uuid <> h_self.player_uuid " +
+        "LEFT JOIN player_data pd ON pd.uuid = h_other.player_uuid " +
+        "WHERE h_self.player_uuid = ?";
+
+    /**
+     * Collapses the {@link #SHARED_IP_ACCOUNTS_SQL} rows to one entry per account. An account
+     * that shares several IPs with the target produces several rows; keying by UUID means it
+     * is listed once even if those rows carry different historical names.
+     */
+    static List<String> collectSharedIpAccountNames(ResultSet resultSet) throws SQLException {
+        Map<String, String> namesByUuid = new LinkedHashMap<>();
+
+        while (resultSet.next()) {
+            String otherUuid = resultSet.getString("other_uuid");
+            String resolvedName = resultSet.getString("resolved_name");
+            String name = resolvedName != null && !resolvedName.isBlank()
+                ? resolvedName
+                : resultSet.getString("history_name");
+
+            if (otherUuid != null && name != null && !name.isBlank()) {
+                namesByUuid.put(otherUuid, name);
+            }
+        }
+
+        List<String> names = new ArrayList<>(namesByUuid.values());
+        names.sort(String.CASE_INSENSITIVE_ORDER);
+        return names;
+    }
+
     public boolean isPlayerAltOnIp(UUID playerUUID, String ipAddress) {
         if (ipAddress == null || ipAddress.isBlank()) {
             return false;

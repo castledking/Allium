@@ -257,6 +257,7 @@ home:
     - "&6Home &e{home} &6has been removed."
     - "[sound] block.note_block.bass 1 0.5"
   already-set: "Home {home} is already set."
+  invalid-name: "{home} is not a valid home name. Use letters, numbers, underscores or hyphens, and not a single digit on its own."
   max: "You cant set more than {max} homes."
   not-found: "Home {home} not found."
   bed-other:

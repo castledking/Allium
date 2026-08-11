@@ -68,19 +68,15 @@ public class Spy implements CommandExecutor, TabCompleter {
 
         UUID playerUUID = player.getUniqueId();
 
-        // Case 1: /spy - Toggle spying status (either global or all targeted)
+        // Case 1: /spy - Toggle spying status (either global or all targeted).
+        // This is the only entry point that can turn global spying on.
         if (args.length == 0) {
             boolean isGloballySpying = spyingPlayers.contains(playerUUID);
             boolean hasTargetedSpy = targetedSpying.containsKey(playerUUID) && !targetedSpying.get(playerUUID).isEmpty();
 
-            if (isGloballySpying) {
-                // Turn off global spying
+            if (isGloballySpying || hasTargetedSpy) {
+                // Turn off whatever is currently active (global and/or targeted)
                 spyingPlayers.remove(playerUUID);
-                String stateValue = lang.get("styles.state.false") + "disabled" + firstColorOfSpyToggle;
-                lang.sendMessage(sender, "spy.toggle", "state", stateValue, "name", "");
-                return true;
-            } else if (hasTargetedSpy) {
-                // Turn off all targeted spying
                 targetedSpying.remove(playerUUID);
                 String stateValue = lang.get("styles.state.false") + "disabled" + firstColorOfSpyToggle;
                 lang.sendMessage(sender, "spy.toggle", "state", stateValue, "name", "");
@@ -117,33 +113,36 @@ public class Spy implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // Remove from global spying if currently active
-        boolean wasGloballySpying = spyingPlayers.remove(playerUUID);
+        boolean hasOthersPermission = player.hasPermission("allium.spy.others");
 
-        // Get existing targeted spying, if any
+        // /spy <player> can never leave global spying on, regardless of permission
+        boolean wasGloballySpying = spyingPlayers.contains(playerUUID);
+        if (wasGloballySpying) {
+            spyingPlayers.remove(playerUUID);
+        }
+
         Set<UUID> currentTargets = targetedSpying.get(playerUUID);
         boolean wasTargetingPlayer = currentTargets != null && currentTargets.contains(targetUUID);
 
-        // Clear any existing targets and create a new set with just this player
-        Set<UUID> newTargets = new HashSet<>();
-        newTargets.add(targetUUID);
-        targetedSpying.put(playerUUID, newTargets);
-
-        // Send appropriate message
         String trueStyle = lang.get("styles.state.true");
         String falseStyle = lang.get("styles.state.false");
         String message;
+
         if (wasGloballySpying) {
+            // Coming out of global spy: switch to isolated targeted spying on this player
+            setTarget(playerUUID, targetUUID);
             message = lang.get("spy.toggle")
                     .replace("{state}", trueStyle + "switched" + firstColorOfSpyToggle + " to")
                     .replace("{name}", targetPlayerName);
-        } else if (wasTargetingPlayer) {
-            // If already targeting this player, toggle off
-            targetedSpying.remove(playerUUID);
+        } else if (hasOthersPermission && wasTargetingPlayer) {
+            // Already targeting this player outside global spy: toggle targeted spying off
+            clearTarget(playerUUID, targetUUID);
             message = lang.get("spy.toggle")
                     .replace("{state}", falseStyle + "disabled" + firstColorOfSpyToggle)
                     .replace("{name}", firstColorOfSpyToggle + "for " + targetPlayerName);
         } else {
+            // Enable (or re-affirm) isolated targeted spying on this player
+            setTarget(playerUUID, targetUUID);
             message = lang.get("spy.toggle")
                     .replace("{state}", trueStyle + "enabled" + firstColorOfSpyToggle)
                     .replace("{name}", firstColorOfSpyToggle + "for " + targetPlayerName);
@@ -153,6 +152,35 @@ public class Spy implements CommandExecutor, TabCompleter {
 
         return true;
 
+    }
+
+    /**
+     * Replaces the spy's targets with a single target, keeping targeted spying isolated.
+     *
+     * @param spyUUID The UUID of the spy
+     * @param targetUUID The UUID of the player to spy on
+     */
+    private void setTarget(UUID spyUUID, UUID targetUUID) {
+        Set<UUID> newTargets = new HashSet<>();
+        newTargets.add(targetUUID);
+        targetedSpying.put(spyUUID, newTargets);
+    }
+
+    /**
+     * Removes a single target from the spy's targets, dropping the entry once it is empty.
+     *
+     * @param spyUUID The UUID of the spy
+     * @param targetUUID The UUID of the player to stop spying on
+     */
+    private void clearTarget(UUID spyUUID, UUID targetUUID) {
+        Set<UUID> targets = targetedSpying.get(spyUUID);
+        if (targets == null) {
+            return;
+        }
+        targets.remove(targetUUID);
+        if (targets.isEmpty()) {
+            targetedSpying.remove(spyUUID);
+        }
     }
 
     @Override
@@ -165,8 +193,11 @@ public class Spy implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             String partialName = args[0].toLowerCase();
 
-            // Return player names that match the partial input
+            // Return player names that match the partial input, excluding the sender
+            // and anyone who cannot be spied on
             return Bukkit.getOnlinePlayers().stream()
+                    .filter(online -> !online.equals(sender))
+                    .filter(online -> !online.hasPermission("allium.spy.exempt"))
                     .map(Player::getName)
                     .filter(name -> name.toLowerCase().startsWith(partialName))
                     .collect(Collectors.toList());

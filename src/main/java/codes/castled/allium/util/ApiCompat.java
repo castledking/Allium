@@ -45,6 +45,9 @@ public final class ApiCompat {
     /** Renamed from {@code GENERIC_MOVEMENT_SPEED} in 1.21.3. */
     public static final Attribute MOVEMENT_SPEED = attribute("MOVEMENT_SPEED", "GENERIC_MOVEMENT_SPEED");
 
+    /** Renamed from {@code GENERIC_ATTACK_DAMAGE} in 1.21.3. */
+    public static final Attribute ATTACK_DAMAGE = attribute("ATTACK_DAMAGE", "GENERIC_ATTACK_DAMAGE");
+
     /** Added in 1.21.6; {@code null} on older servers, where callers should skip the work. */
     public static final Attribute WAYPOINT_TRANSMIT_RANGE = attribute("WAYPOINT_TRANSMIT_RANGE");
 

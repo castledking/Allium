@@ -399,6 +399,8 @@ heal:
   # Time in seconds players without allium.heal.nocooldown
 
 home:
+  delay: 3
+  # Time in seconds players without allium.home.nodelay
   cooldown: 60
   # Time in seconds players without allium.home.nocooldown
   show-location: false

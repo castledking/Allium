@@ -39,6 +39,28 @@ class GradientNameManagerTest {
     }
 
     @Test
+    void staticGradientKeepsTheStopsButDropsThePhase() {
+        assertEquals(
+                "<gradient:#CB2D3E:#EF473A>Player</gradient>",
+                GradientNameManager.buildStaticGradientText(
+                        "Player",
+                        List.of("#CB2D3E", "#D8373D", "#E5413B", "#EF473A")
+                )
+        );
+    }
+
+    @Test
+    void staticSolidColorStillPicksUpItsNearestAccent() {
+        assertEquals(
+                "<gradient:#965CEA:blue>ze_flash</gradient>",
+                GradientNameManager.buildStaticGradientText(
+                        "ze_flash",
+                        List.of("#965CEA", "#965CEA")
+                )
+        );
+    }
+
+    @Test
     void twoStopGradientMovesSmoothlyAcrossTheMiddleOfThePhaseCycle() {
         List<String> sourceColors = List.of("#CB2D3E", "#D8373D", "#E5413B", "#EF473A");
         List<Integer> before = renderedColors(sourceColors, "-0.1");

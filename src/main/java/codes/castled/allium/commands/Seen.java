@@ -219,7 +219,7 @@ public class Seen implements CommandExecutor {
             sender.sendMessage(Text.colorize(lang.get("seen.ip-address").replace("{ip}", ip)));
         }
 
-        appendSameIpAccounts(sender, targetPlayer.getUniqueId(), getPlayerIpAddress(targetPlayer));
+        appendSameIpAccounts(sender, targetPlayer.getUniqueId());
     }
 
     private void showOfflinePlayerInfo(CommandSender sender, OfflinePlayer targetPlayer) {
@@ -319,7 +319,7 @@ public class Seen implements CommandExecutor {
             sender.sendMessage(Text.colorize(lang.get("seen.ip-address").replace("{ip}", lastIp != null ? lastIp : "Not available")));
         }
 
-        appendSameIpAccounts(sender, targetPlayer.getUniqueId(), lastIp);
+        appendSameIpAccounts(sender, targetPlayer.getUniqueId());
     }
 
     /**
@@ -340,8 +340,10 @@ public class Seen implements CommandExecutor {
         return username.matches("^[a-zA-Z0-9_]{3,16}$");
     }
 
-    private void appendSameIpAccounts(CommandSender sender, UUID targetUuid, String ipAddress) {
-        List<String> sameIpAccounts = plugin.getDatabase().getPlayersSeenOnIp(ipAddress, targetUuid);
+    private void appendSameIpAccounts(CommandSender sender, UUID targetUuid) {
+        // Matches against the player's whole IP history, not just their current/last address,
+        // so a shared IP keeps showing on both accounts after either one changes IP.
+        List<String> sameIpAccounts = plugin.getDatabase().getSharedIpAccountNames(targetUuid);
         String players = sameIpAccounts.isEmpty()
             ? lang.getRaw("seen.same-ip-none")
             : String.join(", ", sameIpAccounts);

@@ -355,11 +355,8 @@ public class NicknameManager {
         }
         
         // Check if Essentials is present
-        org.bukkit.plugin.Plugin essentials = plugin.getServer().getPluginManager().getPlugin("Essentials");
+        org.bukkit.plugin.Plugin essentials = findEssentials();
         if (essentials == null) {
-            essentials = plugin.getServer().getPluginManager().getPlugin("EssentialsX");
-        }
-        if (essentials == null || !essentials.isEnabled()) {
             plugin.getLogger().warning("[Nick] Essentials not found or not enabled");
             return;
         }
@@ -521,6 +518,101 @@ public class NicknameManager {
         }
         // Final safety: never return blank when we have a valid player
         return (formatted != null && !formatted.trim().isEmpty()) ? formatted : fallback;
+    }
+
+    /**
+     * Replaces Allium's own nickname placeholders (%allium_nickname%, %allium_nickname_raw%)
+     * natively, so they parse without PlaceholderAPI or Essentials installed.
+     * Defaults to the player's real in-game name when no nickname is set.
+     */
+    public String applyAlliumPlaceholders(String text, Player player) {
+        if (text == null || player == null) return text;
+        if (!text.contains("%allium_")) return text;
+
+        String defaultName = player.getName();
+        if (defaultName == null || defaultName.isEmpty()) {
+            defaultName = player.getUniqueId().toString();
+        }
+
+        String raw = getStoredNickname(player);
+        if (raw == null || raw.isEmpty()) raw = defaultName;
+        String formatted = getFormattedNickname(player, raw);
+        if (formatted == null || formatted.isEmpty()) formatted = defaultName;
+
+        return text
+            .replace("%allium_nickname%", formatted)
+            .replace("%allium_nickname_raw%", raw);
+    }
+
+    /**
+     * Locates the enabled Essentials/EssentialsX plugin, honoring the sync-to-essentials config.
+     * @return the Essentials plugin instance, or null if absent/disabled/config-off
+     */
+    private org.bukkit.plugin.Plugin findEssentials() {
+        if (!plugin.getConfig().getBoolean("nickname.sync-to-essentials", true)) {
+            return null;
+        }
+        org.bukkit.plugin.Plugin essentials = plugin.getServer().getPluginManager().getPlugin("Essentials");
+        if (essentials == null) {
+            essentials = plugin.getServer().getPluginManager().getPlugin("EssentialsX");
+        }
+        if (essentials == null || !essentials.isEnabled()) {
+            return null;
+        }
+        return essentials;
+    }
+
+    /**
+     * Reads the nickname Essentials currently has for the player (mirror of syncNicknameToEssentials).
+     * @param player The player to read from
+     * @return the Essentials nickname (raw, may include color codes), or null if none / Essentials unavailable
+     */
+    private String getEssentialsNickname(Player player) {
+        if (player == null) return null;
+        org.bukkit.plugin.Plugin essentials = findEssentials();
+        if (essentials == null) return null;
+        try {
+            // Get Essentials User instance - Essentials uses getUser(Player) on the plugin
+            Object user = essentials.getClass().getMethod("getUser", org.bukkit.entity.Player.class).invoke(essentials, player);
+            if (user == null) return null;
+            java.lang.reflect.Method getNickMethod = user.getClass().getMethod("getNickname");
+            Object nick = getNickMethod.invoke(user);
+            return (nick instanceof String && !((String) nick).isEmpty()) ? (String) nick : null;
+        } catch (NoSuchMethodException e) {
+            return null;
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "[Nick] Error reading nickname from Essentials for " + player.getName() + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Imports a player's Essentials nickname into Allium when Allium has none stored.
+     * Mirrors syncNicknameToEssentials in reverse so nicknames stay consistent in both directions
+     * (Essentials-only nicknames are picked up by %allium_nickname% without PlaceholderAPI).
+     */
+    public void importNicknameFromEssentialsIfAbsent(Player player) {
+        if (player == null) return;
+        String stored = getStoredNickname(player);
+        boolean hasOwn = stored != null && !stored.isEmpty() && !stored.equals(player.getName());
+        if (hasOwn) return;
+
+        String essNick = getEssentialsNickname(player);
+        if (essNick == null || essNick.trim().isEmpty()) return;
+
+        try {
+            inMemoryNicknames.put(player.getUniqueId(), essNick);
+            if (database != null) {
+                database.setStoredPlayerDisplayname(player.getUniqueId(), player.getName(), essNick);
+            }
+            String formatted = formatNickname(player, essNick);
+            if (formatted == null || formatted.isEmpty()) formatted = essNick;
+            Component displayComponent = DISPLAY_NAME_SERIALIZER.deserialize(formatted.replace('&', '§'));
+            applyDisplayIdentity(player, displayComponent);
+            Text.sendDebugLog(INFO, "[Nick] Imported Essentials nickname for " + player.getName() + ": " + essNick);
+        } catch (Exception e) {
+            Text.sendDebugLog(WARN, "[Nick] Error importing Essentials nickname for " + player.getName() + ": " + e.getMessage());
+        }
     }
 
     public int getMaxNickLength() {

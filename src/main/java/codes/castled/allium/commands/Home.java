@@ -18,6 +18,7 @@ import org.jetbrains.annotations.NotNull;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.listeners.jobs.CancelTeleportation;
 import codes.castled.allium.managers.DB.Database;
+import codes.castled.allium.managers.core.HomeLimits;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
 
@@ -49,7 +50,7 @@ public class Home implements CommandExecutor, TabCompleter {
 
     private void loadConfig() {
         homeCooldown = plugin.getConfig().getInt("home.cooldown", 30);
-        teleportDelay = plugin.getConfig().getInt("teleport.delay", 3);
+        teleportDelay = plugin.getConfig().getInt("home.delay", 3);
         showLocation = plugin.getConfig().getBoolean("home.show-location", false);
     }
 
@@ -87,7 +88,7 @@ public class Home implements CommandExecutor, TabCompleter {
         
         // Check if home name is valid
         if (!isValidHomeName(homeName)) {
-            Text.sendErrorMessage(player, "home.invalid-name", lang);
+            Text.sendErrorMessage(player, "home.invalid-name", lang, "{home}", homeName);
             return true;
         }
         
@@ -102,7 +103,7 @@ public class Home implements CommandExecutor, TabCompleter {
         int currentHomes = database.getPlayerHomeCount(player.getUniqueId());
 
         if (currentHomes >= maxHomes && !database.getPlayerHomes(player.getUniqueId()).contains(homeName)) {
-            Text.sendErrorMessage(player, "home.max", lang, "{max}", String.valueOf(maxHomes));
+            Text.sendErrorMessage(player, "home.max", lang, "{max}", HomeLimits.format(maxHomes));
             return true;
         }
 
@@ -221,7 +222,7 @@ public class Home implements CommandExecutor, TabCompleter {
                 }
                 
                 // Teleport to the target's bed
-                if (player.hasPermission("allium.tpa.nodelay") || teleportDelay <= 0) {
+                if (player.hasPermission("allium.home.nodelay") || teleportDelay <= 0) {
                     player.teleportAsync(bedLocation).thenAccept(success -> {
                         if (success) {
                             if (!player.hasPermission("allium.home.nocooldown")) {
@@ -289,7 +290,7 @@ public class Home implements CommandExecutor, TabCompleter {
                     Text.sendErrorMessage(player, "home.no-bed", lang);
                     return true;
                 }
-                if (player.hasPermission("allium.tpa.nodelay") || teleportDelay <= 0) {
+                if (player.hasPermission("allium.home.nodelay") || teleportDelay <= 0) {
                     player.teleportAsync(bedLocation).thenAccept(success -> {
                         if (success) {
                             if (!player.hasPermission("allium.home.nocooldown")) {
@@ -507,7 +508,7 @@ public class Home implements CommandExecutor, TabCompleter {
         Location finalHome = home;
         String finalHomeName = actualHomeName;
         
-        if (player.hasPermission("allium.tpa.nodelay") || teleportDelay <= 0) {
+        if (player.hasPermission("allium.home.nodelay") || teleportDelay <= 0) {
             player.teleportAsync(finalHome).thenAccept(success -> {
                 if (success) {
                     if (!player.hasPermission("allium.home.nocooldown")) {
@@ -699,16 +700,7 @@ public class Home implements CommandExecutor, TabCompleter {
     }
 
     private int getMaxHomes(Player player) {
-        int dbMax = database.getPlayerMaxHomes(player.getUniqueId());
-        if (dbMax >= 0) {
-            return dbMax;
-        }
-        for (int i = 100; i >= 0; i--) {
-            if (player.hasPermission("allium.sethome." + i)) {
-                return i;
-            }
-        }
-        return player.hasPermission("allium.sethome") ? 1 : 0;
+        return HomeLimits.getMaxHomes(database, player);
     }
 
     private UUID getPlayerUUID(String playerName) {

@@ -1,148 +1,194 @@
 package codes.castled.allium.items;
 
-import net.kyori.adventure.key.Key;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
-import codes.castled.allium.managers.core.Text;
-import io.papermc.paper.datacomponent.DataComponentTypes;   // <-- NEW
+import codes.castled.allium.util.ApiCompat;
 
-import static codes.castled.allium.managers.core.Text.DebugSeverity.INFO;
+/** Persistent Nexo-backed states for staff and claim handcuffs. */
+public final class HandcuffsItem {
+    public static final String HANDCUFFS_ID = "handcuffs";
+    public static final String HANDCUFFS_RESTRAINED_ID = "handcuffs_restrained";
+    public static final String CLAIM_HANDCUFFS_ID = "claim_handcuffs";
+    public static final String CLAIM_HANDCUFFS_RESTRAINED_ID = "claim_handcuffs_restrained";
 
-import java.util.UUID;
+    private static final NamespacedKey LEGACY_KEY = new NamespacedKey("allium", "handcuffs_item");
+    private static final NamespacedKey ALLIUM_ID_KEY = new NamespacedKey("allium", "custom_item_id");
+    private static final NamespacedKey NEXO_ID_KEY = new NamespacedKey("nexo", "id");
+    private static final UUID LEGACY_SPEED_MODIFIER =
+            UUID.fromString("00000000-0000-0000-0000-000000000000");
 
-public class HandcuffsItem {
+    private HandcuffsItem() {}
 
-    private static final String HANDCUFFS_KEY = "handcuffs_item";
-    private static final NamespacedKey PDC_KEY = new NamespacedKey("allium", HANDCUFFS_KEY);
+    public enum Family { STAFF, CLAIM }
 
-    /* --------------------------------------------------------------
-       Helper – set a custom model with the DataComponent API
-       -------------------------------------------------------------- */
-    private static ItemStack setItemModel(ItemStack item, String modelName) {
-        if (item == null || item.getType() == Material.AIR) return item;
+    public enum Type {
+        STAFF(HANDCUFFS_ID, Family.STAFF, false, 1012),
+        STAFF_RESTRAINED(HANDCUFFS_RESTRAINED_ID, Family.STAFF, true, 1013),
+        CLAIM(CLAIM_HANDCUFFS_ID, Family.CLAIM, false, 1014),
+        CLAIM_RESTRAINED(CLAIM_HANDCUFFS_RESTRAINED_ID, Family.CLAIM, true, 1015);
 
-        if (modelName == null || !modelName.contains(":")) {
-            Text.sendDebugLog(INFO, "Invalid model name format: " + modelName);
-            return item;
+        private final String id;
+        private final Family family;
+        private final boolean restrained;
+        private final int modelData;
+
+        Type(final String id, final Family family, final boolean restrained, final int modelData) {
+            this.id = id;
+            this.family = family;
+            this.restrained = restrained;
+            this.modelData = modelData;
         }
 
-        String[] parts = modelName.split(":");
-        if (parts.length != 2 || parts[0].isEmpty() || parts[1].isEmpty()) {
-            Text.sendDebugLog(INFO, "Invalid model name format: " + modelName);
-            return item;
-        }
-
-        try {
-            Key modelKey = Key.key(parts[0], parts[1]);
-            item.setData(DataComponentTypes.ITEM_MODEL, modelKey);
-            return item;
-        } catch (Exception e) {
-            Text.sendDebugLog(INFO, "Failed to set item model: " + e.getMessage());
-            e.printStackTrace();
-            return item;
-        }
+        public String id() { return id; }
+        public Family family() { return family; }
+        public boolean restrained() { return restrained; }
+        public int modelData() { return modelData; }
     }
 
-    /* --------------------------------------------------------------
-       Creation – now uses DataComponent API for everything
-       -------------------------------------------------------------- */
     public static ItemStack createHandcuffs() {
-        ItemStack item = new ItemStack(Material.FISHING_ROD);
+        return create(Type.STAFF);
+    }
 
-        // ---- 1. Unbreakable (old meta) ---------------------------------
-        ItemMeta meta = item.getItemMeta();
-        meta.setUnbreakable(true);
-        // ---- 2. PDC identifier (still needed for isHandcuffs()) -------
-        meta.getPersistentDataContainer().set(PDC_KEY, PersistentDataType.BYTE, (byte) 1);
-        item.setItemMeta(meta);
+    public static ItemStack createClaimHandcuffs() {
+        return create(Type.CLAIM);
+    }
 
-        // ---- 3. Custom model -------------------------------------------
-        item = setItemModel(item, "template:fishing_rod_handcuffs");
-
-        // ---- 4. Optional: make it look like a “halo” (name, slot, etc.) -
-        // (you can delete any line you don’t need)
-        item.setData(DataComponentTypes.ITEM_NAME,
-                Component.text("Handcuffs", NamedTextColor.GOLD));
-
-        // If you ever want the item to be equippable on the head:
-        // item.setData(DataComponentTypes.EQUIPPABLE,
-        //         Equippable.equippable(EquipmentSlot.HEAD).build());
-
-        // ---- 5. Max stack size = 1 --------------------------------------
-        item.setData(DataComponentTypes.MAX_STACK_SIZE, 1);
-
-        // ---- 6. Add speed reduction attribute -----------------------
-        AttributeModifier modifier = new AttributeModifier(
-            UUID.fromString("00000000-0000-0000-0000-000000000000"),
-            "handcuffs_speed_reduction",
-            -0.5,
-            AttributeModifier.Operation.ADD_SCALAR,
-            EquipmentSlot.HAND
-        );
-        
-        // Get the item meta and add the attribute modifier
-        ItemMeta itemMeta = item.getItemMeta();
-        Attribute movementSpeed = codes.castled.allium.util.ApiCompat.MOVEMENT_SPEED;
-        if (movementSpeed != null) {
-            itemMeta.addAttributeModifier(movementSpeed, modifier);
-        }
-        item.setItemMeta(itemMeta);
-
+    private static ItemStack create(final Type type) {
+        final ItemStack item = new ItemStack(Material.FISHING_ROD);
+        writeType(item, type);
         return item;
     }
 
-    /* --------------------------------------------------------------
-       Identification – still uses PDC (fast & reliable)
-       -------------------------------------------------------------- */
-    public static boolean isHandcuffs(ItemStack item) {
-        if (item == null || item.getType() != Material.FISHING_ROD) return false;
-        ItemMeta meta = item.getItemMeta();
-        return meta != null && meta.getPersistentDataContainer().has(PDC_KEY, PersistentDataType.BYTE);
+    public static boolean isHandcuffs(final ItemStack item) {
+        return getType(item) != null;
     }
 
-    /* --------------------------------------------------------------
-       Model-update helper – now works on any slot (including off-hand)
-       -------------------------------------------------------------- */
-    public static void updateHandcuffsModelData(Player player, String modelName) {
-        PlayerInventory inv = player.getInventory();
-        boolean changed = false;
+    public static boolean isClaimHandcuffs(final ItemStack item) {
+        final Type type = getType(item);
+        return type != null && type.family() == Family.CLAIM;
+    }
 
-        // Main inventory
-        for (int i = 0; i < inv.getSize(); i++) {
-            ItemStack slot = inv.getItem(i);
-            if (isHandcuffs(slot)) {
-                ItemStack updated = setItemModel(new ItemStack(slot), modelName);
-                if (!slot.isSimilar(updated)) {
-                    inv.setItem(i, updated);
-                    changed = true;
-                }
+    /** Rewrites Nexo-issued cuffs with Allium's persistent ID, model and unbreakable metadata. */
+    public static void normalize(final ItemStack item) {
+        final Type type = getType(item);
+        if (type != null) writeType(item, type);
+    }
+
+    public static Type getType(final ItemStack item) {
+        if (item == null || item.getType() != Material.FISHING_ROD || !item.hasItemMeta()) {
+            return null;
+        }
+        final ItemMeta meta = item.getItemMeta();
+        final PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        final String alliumId = pdc.get(ALLIUM_ID_KEY, PersistentDataType.STRING);
+        final String nexoId = pdc.get(NEXO_ID_KEY, PersistentDataType.STRING);
+        final Type alliumType = byId(alliumId);
+        if (alliumType != null) return alliumType;
+        final Type nexoType = byId(nexoId);
+        if (nexoType != null) return nexoType;
+        if (meta.hasCustomModelData()) {
+            final int modelData = meta.getCustomModelData();
+            for (final Type type : Type.values()) {
+                if (type.modelData() == modelData) return type;
             }
         }
+        // Handcuffs issued by older Allium builds become ordinary staff cuffs on first rewrite.
+        return pdc.has(LEGACY_KEY, PersistentDataType.BYTE) ? Type.STAFF : null;
+    }
 
-        // Off-hand
-        ItemStack off = inv.getItemInOffHand();
-        if (isHandcuffs(off)) {
-            ItemStack updated = setItemModel(new ItemStack(off), modelName);
-            if (!off.isSimilar(updated)) {
-                inv.setItemInOffHand(updated);
-                changed = true;
+    private static Type byId(final String id) {
+        if (id == null) return null;
+        for (final Type type : Type.values()) {
+            if (type.id().equals(id)) return type;
+        }
+        return null;
+    }
+
+    public static void updateFamilyState(final org.bukkit.entity.Player player,
+                                         final Family family,
+                                         final boolean restrained) {
+        final PlayerInventory inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            final ItemStack item = inventory.getItem(slot);
+            final Type current = getType(item);
+            if (current == null || current.family() != family) continue;
+            writeType(item, type(family, restrained));
+            inventory.setItem(slot, item);
+        }
+    }
+
+    /** Compatibility entry point retained for older callers. */
+    public static void updateHandcuffsModelData(final org.bukkit.entity.Player player,
+                                                final String modelName) {
+        final boolean restrained = modelName != null
+                && !modelName.endsWith("fishing_rod_handcuffs");
+        updateFamilyState(player, Family.STAFF, restrained);
+    }
+
+    private static Type type(final Family family, final boolean restrained) {
+        if (family == Family.CLAIM) return restrained ? Type.CLAIM_RESTRAINED : Type.CLAIM;
+        return restrained ? Type.STAFF_RESTRAINED : Type.STAFF;
+    }
+
+    private static void writeType(final ItemStack item, final Type type) {
+        final ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        final PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        pdc.set(LEGACY_KEY, PersistentDataType.BYTE, (byte) 1);
+        pdc.set(ALLIUM_ID_KEY, PersistentDataType.STRING, type.id());
+        pdc.set(NEXO_ID_KEY, PersistentDataType.STRING, type.id());
+        meta.setItemModel(new NamespacedKey("nexo", type.id()));
+        meta.setCustomModelData(type.modelData());
+        meta.setDisplayName(displayName(type));
+        meta.setLore(lore(type));
+        meta.setUnbreakable(true);
+        meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+        meta.setMaxStackSize(1);
+        removeLegacySpeedPenalty(meta);
+        item.setItemMeta(meta);
+    }
+
+    private static void removeLegacySpeedPenalty(final ItemMeta meta) {
+        if (ApiCompat.MOVEMENT_SPEED == null) return;
+        final Collection<AttributeModifier> modifiers = meta.getAttributeModifiers(ApiCompat.MOVEMENT_SPEED);
+        if (modifiers == null) return;
+        for (final AttributeModifier modifier : new ArrayList<>(modifiers)) {
+            if (LEGACY_SPEED_MODIFIER.equals(modifier.getUniqueId())) {
+                meta.removeAttributeModifier(ApiCompat.MOVEMENT_SPEED, modifier);
             }
         }
+    }
 
-        if (changed) {
-            Text.sendDebugLog(INFO, "Updated handcuffs model to " + modelName + " for " + player.getName());
-        }
+    private static String displayName(final Type type) {
+        return switch (type) {
+            case STAFF -> ChatColor.GOLD + "Handcuffs";
+            case STAFF_RESTRAINED -> ChatColor.RED + "Handcuffs (Restraining Player)";
+            case CLAIM -> ChatColor.GOLD + "Claim Handcuffs";
+            case CLAIM_RESTRAINED -> ChatColor.RED + "Claim Handcuffs (Ban Pending)";
+        };
+    }
+
+    private static List<String> lore(final Type type) {
+        return switch (type) {
+            case STAFF -> List.of(ChatColor.GRAY + "Right-click to cuff someone.");
+            case STAFF_RESTRAINED -> List.of(ChatColor.GRAY + "Press Q to unrestrain player.");
+            case CLAIM -> List.of(ChatColor.GRAY + "Right-click to cuff an untrusted player",
+                    ChatColor.GRAY + "inside a claim you manage.");
+            case CLAIM_RESTRAINED -> List.of(ChatColor.GRAY + "Drop this item to cancel the claim ban.");
+        };
     }
 }

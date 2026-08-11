@@ -62,6 +62,14 @@ public class ConnectionManager implements Listener {
                         plugin.getNicknameManager().restoreDisplayNameFromStored(player, storedNick);
                     }
                 }, 20L); // 1 second delay to ensure Essentials runs first
+            } else if (plugin.getNicknameManager() != null) {
+                // No Allium nickname stored: mirror the sync-to-essentials path in reverse, so
+                // %allium_nickname% picks up Essentials-only nicknames without PlaceholderAPI.
+                SchedulerAdapter.runLater(() -> {
+                    if (player.isOnline()) {
+                        plugin.getNicknameManager().importNicknameFromEssentialsIfAbsent(player);
+                    }
+                }, 20L);
             }
         });
         

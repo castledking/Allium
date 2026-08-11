@@ -51,26 +51,33 @@ public class TimePlaceholder extends PlaceholderExpansion {
         return true;
     }
 
+    /**
+     * Resolves the world time placeholders.
+     *
+     * <p>Returns null for anything else: this runs as one delegate of the master %allium_%
+     * expansion, and a non-null answer stops it from trying the delegates that come after it.
+     */
     @Override
     public String onRequest(OfflinePlayer player, @NotNull String params) {
-        World world = player != null && player.isOnline() ? 
-            player.getPlayer().getWorld() : 
+        String key = params.toLowerCase();
+        if (!key.equals("world_date") && !key.equals("world_time")
+                && !key.equals("world_time_24") && !key.equals("world_time_24h")) {
+            return null;
+        }
+
+        World world = player != null && player.isOnline() ?
+            player.getPlayer().getWorld() :
             Bukkit.getWorlds().get(0); // Fallback to default world
-            
+
         if (world == null) {
             return "";
         }
 
-        switch (params.toLowerCase()) {
-            case "world_date":
-                return formatWorldDate(world);
-            case "world_time":
-                return formatWorldTime12(world);
-            case "world_time_24":
-                return formatWorldTime24(world);
-            default:
-                return "";
-        }
+        return switch (key) {
+            case "world_date" -> formatWorldDate(world);
+            case "world_time" -> formatWorldTime12(world);
+            default -> formatWorldTime24(world);
+        };
     }
 
     private String formatWorldDate(World world) {

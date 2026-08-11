@@ -1,21 +1,29 @@
 package codes.castled.allium.managers.core.placeholderapi;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.DB.Database;
+import codes.castled.allium.managers.core.HomeLimits;
 import codes.castled.allium.managers.core.Text;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public class HomePlaceholder extends PlaceholderExpansion {
+    /** Optional prefix on the documented spellings, e.g. %allium_home_1_x%. */
+    private static final String HOME_PREFIX = "home_";
+
+    /** Suffixes that mark a parameter as a home lookup rather than some other expansion's. */
+    private static final Set<String> HOME_FIELDS =
+            Set.of("w", "world", "x", "y", "z", "yaw", "pitch", "location");
+
     private final PluginStart plugin;
     private final Database database;
 
@@ -44,63 +52,76 @@ public class HomePlaceholder extends PlaceholderExpansion {
         return true;
     }
 
+    /**
+     * Resolves the home placeholders.
+     *
+     * <p>Returns null for anything that is not a home placeholder: this runs as one delegate of the
+     * master %allium_% expansion, and a non-null answer stops it from trying the delegates that
+     * come after this one.
+     */
     @Override
     public String onRequest(OfflinePlayer player, @NotNull String params) {
         if (player == null) {
-            return "";
+            return null;
         }
 
         UUID playerUUID = player.getUniqueId();
-        String[] args = params.split("_");
 
         try {
-            // Handle numeric index home placeholders: %allium_home_1_x%, %allium_home_2_y%, etc.
-            if (args.length >= 2 && isNumeric(args[0])) {
-                int homeIndex = Integer.parseInt(args[0]) - 1; // Convert to 0-based index
-                String coordinate = args[1].toLowerCase();
-                return getHomeCoordinateByIndex(playerUUID, homeIndex, coordinate);
+            // Both spellings are in circulation, and neither is worth breaking.
+            if (params.equalsIgnoreCase("homes_max") || params.equalsIgnoreCase("home_max")) {
+                return HomeLimits.format(HomeLimits.getMaxHomes(database, player));
             }
-            // Handle named home placeholders: %allium_home_home_x%, %allium_home_myhome_y%, etc.
-            else if (args.length >= 2) {
-                // Reconstruct the home name by joining with underscores
-                String homeName = args[0];
-                String coordinate = args[1].toLowerCase();
-                
-                // If there are more parts, it's part of the home name (e.g., "my_home")
-                if (args.length > 2) {
-                    homeName = String.join("_", args).replace("_" + coordinate, "");
-                }
-                
-                return getHomeCoordinateByName(playerUUID, homeName, coordinate);
-            }
-            // Handle max homes and homes set
-            else if (params.equalsIgnoreCase("homes_max")) {
-                return String.valueOf(getMaxHomes(player));
-            } else if (params.equalsIgnoreCase("homes_set")) {
+            if (params.equalsIgnoreCase("homes_set") || params.equalsIgnoreCase("home_set")) {
                 return String.valueOf(database.getPlayerHomeCount(playerUUID));
             }
+
+            // %allium_<home>_<field>% and %allium_home_<home>_<field>%, where <home> is either a
+            // 1-based index or a home name.
+            int split = params.lastIndexOf('_');
+            if (split <= 0 || split == params.length() - 1) {
+                return null;
+            }
+            String field = params.substring(split + 1).toLowerCase();
+            if (!HOME_FIELDS.contains(field)) {
+                return null;
+            }
+
+            String target = params.substring(0, split);
+            String value = resolveHomeField(playerUUID, target, field);
+            if (value.isEmpty() && target.regionMatches(true, 0, HOME_PREFIX, 0, HOME_PREFIX.length())) {
+                value = resolveHomeField(playerUUID, target.substring(HOME_PREFIX.length()), field);
+            }
+            return value;
         } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Error processing home placeholder: " + e.getMessage());
-        }
-
-        return "";
-    }
-
-    private String getHomeCoordinateByIndex(UUID playerUUID, int index, String coordinate) {
-        List<String> homes = database.getPlayerHomes(playerUUID);
-        if (index < 0 || index >= homes.size()) {
+            Text.sendDebugLog(WARN, "Error processing home placeholder '" + params + "': " + e.getMessage());
             return "";
         }
-        String homeName = homes.get(index);
-        return getHomeCoordinate(playerUUID, homeName, coordinate);
     }
 
-    private String getHomeCoordinateByName(UUID playerUUID, String homeName, String coordinate) {
-        // Check if this is a location request (e.g., %allium_home_1_location%)
-        if (coordinate.equals("location")) {
-            return getFormattedLocation(playerUUID, homeName);
+    private String resolveHomeField(UUID playerUUID, String target, String field) {
+        if (target.isEmpty()) {
+            return "";
         }
-        return getHomeCoordinate(playerUUID, homeName, coordinate);
+
+        String homeName = isNumeric(target)
+                ? getHomeNameByIndex(playerUUID, Integer.parseInt(target) - 1)
+                : target;
+        if (homeName == null) {
+            return "";
+        }
+
+        return field.equals("location")
+                ? getFormattedLocation(playerUUID, homeName)
+                : getHomeCoordinate(playerUUID, homeName, field);
+    }
+
+    private String getHomeNameByIndex(UUID playerUUID, int index) {
+        List<String> homes = database.getPlayerHomes(playerUUID);
+        if (homes == null || index < 0 || index >= homes.size()) {
+            return null;
+        }
+        return homes.get(index);
     }
 
     private String getHomeCoordinate(UUID playerUUID, String homeName, String coordinate) {
@@ -110,7 +131,7 @@ public class HomePlaceholder extends PlaceholderExpansion {
         }
 
         return switch (coordinate.toLowerCase()) {
-            case "w" -> location.getWorld() != null ? location.getWorld().getName() : "";
+            case "w", "world" -> location.getWorld() != null ? location.getWorld().getName() : "";
             case "x" -> String.format("%.2f", location.getX());
             case "y" -> String.format("%.2f", location.getY());
             case "z" -> String.format("%.2f", location.getZ());
@@ -125,7 +146,7 @@ public class HomePlaceholder extends PlaceholderExpansion {
         if (location == null) {
             return "";
         }
-        
+
         String worldName = location.getWorld() != null ? location.getWorld().getName() : "unknown";
         return String.format("%s, %.1f, %.1f, %.1f, %.1f, %.1f",
                 worldName,
@@ -134,22 +155,6 @@ public class HomePlaceholder extends PlaceholderExpansion {
                 location.getZ(),
                 location.getYaw(),
                 location.getPitch());
-    }
-
-    private int getMaxHomes(OfflinePlayer player) {
-        if (!player.isOnline()) {
-            return 0; // Offline players can't have homes
-        }
-        
-        // Check for specific home permissions (allium.sethome.1, allium.sethome.2, etc.)
-        for (int i = 100; i > 0; i--) {
-            if (player.getPlayer() != null && player.getPlayer().hasPermission("allium.sethome." + i)) {
-                return i;
-            }
-        }
-        
-        // Default to 1 if no specific permission is found
-        return 1;
     }
 
     private boolean isNumeric(String str) {

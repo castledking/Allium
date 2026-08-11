@@ -260,7 +260,13 @@ public class JoinQuitMessages implements Listener {
         if (suffix == null) suffix = "";
         result = result.replace("%suffix%", suffix);
 
-        // Expand PlaceholderAPI expansions (includes %allium_nickname%, %allium_gradientdisplayname%, etc.)
+        // %allium_nickname% / %allium_nickname_raw% - Allium's own placeholders parse natively
+        // (no PlaceholderAPI or Essentials required)
+        if (plugin.getNicknameManager() != null) {
+            result = plugin.getNicknameManager().applyAlliumPlaceholders(result, player);
+        }
+
+        // Expand PlaceholderAPI expansions (includes %allium_gradientdisplayname%, etc.)
         try {
             if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
                 result = PlaceholderAPI.setPlaceholders(player, result);

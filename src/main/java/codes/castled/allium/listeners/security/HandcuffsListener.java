@@ -13,6 +13,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.FishHook;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -23,20 +26,32 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
+import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.items.HandcuffsItem;
+import codes.castled.allium.items.HandcuffsItem.Family;
+import codes.castled.allium.items.HandcuffsItem.Type;
+import codes.castled.allium.items.integration.ClaimHandcuffBridge;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.util.SchedulerAdapter;
 
 public class HandcuffsListener implements Listener {
+    private static final int CLAIM_BAN_COUNTDOWN_SECONDS = 5;
+    private static final int CLAIM_BAN_EFFECT_TICKS = (CLAIM_BAN_COUNTDOWN_SECONDS + 1) * 20;
+
     private final PluginStart plugin;
     private final Map<UUID, UUID> restrainedPlayers; // handcuffee -> handcuffer mapping (for quick lookup)
     private final Map<UUID, List<UUID>> handcufferToHandcuffees; // handcuffer -> ordered list of handcuffees
-    private final Map<Integer, UUID> handcuffBobbers; // bobber entity ID -> handcuffer UUID
+    private final Map<Integer, HandcuffCast> handcuffBobbers;
+    private final Map<UUID, Family> restraintFamilies;
+    private final Map<UUID, PendingClaimBan> pendingClaimBans;
+    private final ClaimHandcuffBridge claimBridge;
     private final Set<UUID> playersInTeleport; // Track players currently being handled for teleport
     private final Map<UUID, Location> lastKnownPositions; // Track last known positions for async teleport detection
     private final Map<UUID, Long> dismountMessageCooldowns; // Rate limit dismount messages
@@ -47,6 +62,9 @@ public class HandcuffsListener implements Listener {
         this.restrainedPlayers = new ConcurrentHashMap<>();
         this.handcufferToHandcuffees = new ConcurrentHashMap<>();
         this.handcuffBobbers = new HashMap<>();
+        this.restraintFamilies = new ConcurrentHashMap<>();
+        this.pendingClaimBans = new ConcurrentHashMap<>();
+        this.claimBridge = new ClaimHandcuffBridge();
         this.playersInTeleport = ConcurrentHashMap.newKeySet();
         this.dismountMessageCooldowns = new HashMap<>();
         this.lastKnownPositions = new ConcurrentHashMap<>(); // Initialize lastKnownPositions here
@@ -55,6 +73,17 @@ public class HandcuffsListener implements Listener {
         // Start periodic position monitoring for async teleport detection
         startPositionMonitoring();
     }
+
+    private record HandcuffCast(UUID handcufferId, Family family) {}
+
+    private record PendingClaimBan(
+            UUID handcufferId,
+            String claimId,
+            PotionEffect handcufferBlindness,
+            PotionEffect handcufferSlowness,
+            PotionEffect targetBlindness,
+            PotionEffect targetSlowness
+    ) {}
 
     @EventHandler
     public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
@@ -148,20 +177,42 @@ public class HandcuffsListener implements Listener {
 
         // Handle FISHING state: player first casts the line
         if (state == PlayerFishEvent.State.FISHING) {
-            ItemStack item = player.getInventory().getItemInMainHand();
+            ItemStack item = player.getInventory().getItem(event.getHand());
+            Type handcuffType = HandcuffsItem.getType(item);
 
-            // Check if player is holding handcuffs and casting the rod
-            if (isHandcuffs(item)) {
-                // Track this bobber as a handcuff bobber
-                handcuffBobbers.put(hook.getEntityId(), player.getUniqueId());
-                Text.sendDebugLog(INFO, player.getName() + " cast handcuffs fishing rod, tracking bobber " + hook.getEntityId());
-            }
-
-            // If player is restrained (mounted), cancel the cast immediately
+            // A restrained player may not start another cast, even if holding cuffs.
             if (isPlayerRestrained(player)) {
                 event.setCancelled(true);
+                hook.remove();
                 Text.sendDebugLog(INFO, player.getName() + " attempted to cast while restrained, cancelled");
                 return;
+            }
+
+            // Check if player is holding handcuffs and casting the rod
+            if (handcuffType != null) {
+                HandcuffsItem.normalize(item);
+                if (hasPendingClaimBanFor(player.getUniqueId())) {
+                    event.setCancelled(true);
+                    hook.remove();
+                    player.sendMessage(Text.colorize("&eFinish or cancel the pending claim ban first."));
+                    return;
+                }
+                if (handcuffType == Type.CLAIM_RESTRAINED) {
+                    event.setCancelled(true);
+                    hook.remove();
+                    player.sendMessage(Text.colorize("&eFinish or cancel the pending claim ban first."));
+                    return;
+                }
+                if (handcuffType.family() == Family.STAFF && !canUseStaffHandcuffs(player)) {
+                    event.setCancelled(true);
+                    hook.remove();
+                    player.sendMessage(Text.colorize("&cYou need allium.restrain to use staff handcuffs."));
+                    return;
+                }
+                // Track this bobber as a handcuff bobber
+                handcuffBobbers.put(hook.getEntityId(),
+                        new HandcuffCast(player.getUniqueId(), handcuffType.family()));
+                Text.sendDebugLog(INFO, player.getName() + " cast handcuffs fishing rod, tracking bobber " + hook.getEntityId());
             }
         }
 
@@ -191,8 +242,8 @@ public class HandcuffsListener implements Listener {
                 return;
             }
 
-            UUID handcufferId = handcuffBobbers.get(bobberId);
-            Player handcuffer = Bukkit.getPlayer(handcufferId);
+            HandcuffCast cast = handcuffBobbers.get(bobberId);
+            Player handcuffer = cast == null ? null : Bukkit.getPlayer(cast.handcufferId());
 
             // Remove the bobber from tracking since we're processing it
             handcuffBobbers.remove(bobberId);
@@ -210,20 +261,28 @@ public class HandcuffsListener implements Listener {
                     return;
                 }
 
-                // Check if player has permission to use handcuffs
-                if (!handcuffer.hasPermission("allium.handcuffs.use")) {
-                    handcuffer.sendMessage(Text.colorize("&cYou don't have permission to use handcuffs!"));
-                    return;
-                }
-
                 // Check if target has permission to resist handcuffs
                 if (target.hasPermission("allium.handcuffs.resist")) {
                     handcuffer.sendMessage(Text.colorize("&cThis player cannot be restrained!"));
                     return;
                 }
 
-                // Apply handcuffs effect - force target to ride on player's head
-                applyHandcuffs(target, handcuffer, false); // Don't consume item for fishing rod method
+                if (cast.family() == Family.CLAIM) {
+                    ClaimHandcuffBridge.Check check = claimBridge.check(handcuffer, target);
+                    if (!check.allowed()) {
+                        handcuffer.sendMessage(Text.colorize("&c" + check.error()));
+                        return;
+                    }
+                    if (applyHandcuffs(target, handcuffer, false, Family.CLAIM)) {
+                        startClaimBanCountdown(target, handcuffer, check.claimId());
+                    }
+                } else {
+                    if (!canUseStaffHandcuffs(handcuffer)) {
+                        handcuffer.sendMessage(Text.colorize("&cYou need allium.restrain to use staff handcuffs."));
+                        return;
+                    }
+                    applyHandcuffs(target, handcuffer, false, Family.STAFF);
+                }
 
                 // Remove the fishing line/bobber to allow recasting for multiple players
                 hook.remove();
@@ -245,7 +304,7 @@ public class HandcuffsListener implements Listener {
 
         // Handle REEL_IN state: player retracts the line
         if (state == PlayerFishEvent.State.REEL_IN) {
-            ItemStack item = player.getInventory().getItemInMainHand();
+            ItemStack item = player.getInventory().getItem(event.getHand());
 
             if (isHandcuffs(item)) {
                 Integer bobberId = hook.getEntityId();
@@ -266,42 +325,43 @@ public class HandcuffsListener implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onHandcuffsDamage(PlayerItemDamageEvent event) {
+        if (!HandcuffsItem.isHandcuffs(event.getItem())) return;
+        event.setCancelled(true);
+        HandcuffsItem.normalize(event.getItem());
+    }
+
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        // If this player was restraining someone, release them
-        if (restrainedPlayers.containsValue(playerId)) {
-            restrainedPlayers.entrySet().removeIf(entry -> entry.getValue().equals(playerId));
+        // Release everyone this player was restraining. This also cancels pending claim bans and
+        // restores the countdown effects instead of leaving either player in a half-restrained state.
+        List<UUID> ledPlayers = new ArrayList<>(
+                handcufferToHandcuffees.getOrDefault(playerId, List.of()));
+        for (int index = ledPlayers.size() - 1; index >= 0; index--) {
+            Player target = Bukkit.getPlayer(ledPlayers.get(index));
+            if (target != null) releasePlayer(target);
         }
 
-        // If this player was restrained, execute commands-on-quit and remove them from the map
+        // If this player was restrained, retain the configured logout consequence, then cleanly
+        // tear down their mount, restrictions, effects and item state.
         if (restrainedPlayers.containsKey(playerId)) {
-            // Execute commands from configuration
             executeCommandsOnQuit(player);
-
             Player handcuffer = Bukkit.getPlayer(restrainedPlayers.get(playerId));
             if (handcuffer != null && handcuffer.isOnline()) {
                 handcuffer.sendMessage(Text.colorize("&e" + player.getName() + " has logged out while restrained."));
             }
-
-            // Clean up handcufferToHandcuffees relationship before removing from restrainedPlayers
-            UUID handcufferId = restrainedPlayers.get(playerId);
-            if (handcufferId != null) {
-                List<UUID> handcuffees = handcufferToHandcuffees.get(handcufferId);
-                if (handcuffees != null) {
-                    handcuffees.remove(playerId);
-                    // If handcuffer has no more handcuffees, remove the entry entirely for cleanliness
-                    if (handcuffees.isEmpty()) {
-                        handcufferToHandcuffees.remove(handcufferId);
-                    }
-                }
-            }
-
-            restrainedPlayers.remove(playerId);
+            releasePlayer(player);
         }
+
+        handcuffBobbers.entrySet().removeIf(entry -> entry.getValue().handcufferId().equals(playerId));
+        pendingClaimBans.remove(playerId);
+        restraintFamilies.remove(playerId);
+        handcufferToHandcuffees.remove(playerId);
 
         // Clean up position tracking
         lastKnownPositions.remove(playerId);
@@ -312,16 +372,20 @@ public class HandcuffsListener implements Listener {
     public void onPlayerDropItem(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
         ItemStack droppedItem = event.getItemDrop().getItemStack();
+        Type droppedType = HandcuffsItem.getType(droppedItem);
 
         // Check if the dropped item is handcuffs
-        if (!isHandcuffs(droppedItem)) {
+        if (droppedType == null) {
             return;
         }
 
         UUID handcufferId = player.getUniqueId();
 
         // Find all restrained players for this handcuffer
-        List<UUID> handcuffees = handcufferToHandcuffees.get(handcufferId);
+        List<UUID> allHandcuffees = handcufferToHandcuffees.get(handcufferId);
+        List<UUID> handcuffees = allHandcuffees == null ? null : allHandcuffees.stream()
+                .filter(id -> droppedType.family() == restraintFamilies.get(id))
+                .toList();
 
         if (handcuffees == null || handcuffees.isEmpty()) {
             // No one is restrained by this player, just send a message
@@ -341,8 +405,8 @@ public class HandcuffsListener implements Listener {
 
                 // Schedule explicit visual state update to ensure it happens after all other updates
                 SchedulerAdapter.runTaskLater(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
-                    HandcuffsItem.updateHandcuffsModelData(player, "template:fishing_rod_handcuffs");
-                    Text.sendDebugLog(INFO, player.getName() + " scheduled visual state update to fishing_rod_handcuffs after drop release");
+                    updateHandcufferVisualState(player);
+                    Text.sendDebugLog(INFO, player.getName() + " restored handcuff item state after drop release");
                 }, 1L); // Run on next tick to ensure all other updates complete first
             }
         } else {
@@ -351,8 +415,8 @@ public class HandcuffsListener implements Listener {
 
             // Schedule visual state update to ensure it happens properly on main thread
             SchedulerAdapter.runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
-                HandcuffsItem.updateHandcuffsModelData(player, "template:fishing_rod_unlock");
-                Text.sendDebugLog(INFO, player.getName() + " dropped handcuffs with multiple players - set visual state to fishing_rod_unlock (unlock/chat prompt) on main thread");
+                HandcuffsItem.updateFamilyState(player, droppedType.family(), true);
+                Text.sendDebugLog(INFO, player.getName() + " kept the restrained handcuff state during release selection");
             });
 
             // Show list of restrained players
@@ -379,6 +443,15 @@ public class HandcuffsListener implements Listener {
     }
     private boolean isHandcuffs(ItemStack item) {
         return HandcuffsItem.isHandcuffs(item);
+    }
+
+    private boolean canUseStaffHandcuffs(Player player) {
+        return player.hasPermission("allium.restrain") || player.hasPermission("allium.admin");
+    }
+
+    private boolean hasPendingClaimBanFor(UUID handcufferId) {
+        return pendingClaimBans.values().stream()
+                .anyMatch(pending -> pending.handcufferId().equals(handcufferId));
     }
 
     @EventHandler
@@ -492,24 +565,36 @@ public class HandcuffsListener implements Listener {
         return null;
     }
 
+    /** Compatibility signature used by the persisted-restraint restore path in PluginStart. */
     private void applyHandcuffs(Player target, Player handcuffer, boolean consumeItem) {
+        applyHandcuffs(target, handcuffer, consumeItem, Family.STAFF);
+    }
+
+    private boolean applyHandcuffs(Player target, Player handcuffer, boolean consumeItem,
+                                   Family family) {
         UUID targetId = target.getUniqueId();
         UUID handcufferId = handcuffer.getUniqueId();
 
         // Check if target is already restrained by this handcuffer
         if (restrainedPlayers.containsKey(targetId) && restrainedPlayers.get(targetId).equals(handcufferId)) {
             handcuffer.sendMessage(Text.colorize("&e" + target.getName() + " is already restrained by you!"));
-            return;
+            return false;
         }
 
         // Check if handcuffer already has too many restrained players (optional limit)
         List<UUID> currentHandcuffees = handcufferToHandcuffees.get(handcufferId);
         if (currentHandcuffees != null && currentHandcuffees.size() >= 5) { // Optional limit of 5
             handcuffer.sendMessage(Text.colorize("&cYou can only restrain up to 5 players at once!"));
-            return;
+            return false;
         }
 
-        // Eject target from any current mount
+        if (family == Family.CLAIM && currentHandcuffees != null && !currentHandcuffees.isEmpty()) {
+            handcuffer.sendMessage(Text.colorize("&cRelease your currently restrained player first."));
+            return false;
+        }
+
+        // Detach the target from both sides of any existing vehicle stack before mounting them.
+        target.leaveVehicle();
         target.eject();
 
         // Find the bottom-most player to mount the new target on
@@ -526,7 +611,7 @@ public class HandcuffsListener implements Listener {
         // Safety check: ensure mountTarget is not the same as target to prevent "Entity cannot ride itself" error
         if (mountTarget.getUniqueId().equals(targetId)) {
             Text.sendDebugLog(ERROR, "CRITICAL: Attempted to mount player " + target.getName() + " on themselves! Skipping handcuff application.");
-            return;
+            return false;
         }
 
         // Check if target is already a passenger of mountTarget
@@ -541,6 +626,7 @@ public class HandcuffsListener implements Listener {
         // Update data structures
         restrainedPlayers.put(targetId, handcufferId);
         handcufferToHandcuffees.computeIfAbsent(handcufferId, k -> new ArrayList<>()).add(targetId);
+        restraintFamilies.put(targetId, family);
 
         // Update handcuffer's handcuffs visual state based on number of restrained players
         updateHandcufferVisualState(handcuffer);
@@ -551,9 +637,14 @@ public class HandcuffsListener implements Listener {
         // Send messages
         target.sendMessage(Text.colorize("&cYou have been restrained by " + handcuffer.getName() + "!"));
         handcuffer.sendMessage(Text.colorize("&aYou have restrained " + target.getName() + "!"));
+        target.sendTitle("§c§lRESTRAINED",
+                "§7Restrained by §f" + handcuffer.getName(), 5, 45, 10);
+        playRestraintEffects(target, handcuffer);
 
         // Log the action
-        Text.sendDebugLog(INFO, handcuffer.getName() + " restrained " + target.getName() + " with handcuffs (stacked)");
+        Text.sendDebugLog(INFO, handcuffer.getName() + " restrained " + target.getName()
+                + " with " + family.name().toLowerCase() + " handcuffs (stacked)");
+        return true;
     }
 
     /**
@@ -561,28 +652,163 @@ public class HandcuffsListener implements Listener {
      * @param handcuffer The player whose handcuffs visual state should be updated
      */
     private void updateHandcufferVisualState(Player handcuffer) {
-        // If player is waiting for unrestrain input (chat prompt), don't change visual state
-        if (playersWaitingForUnrestrainInput.contains(handcuffer.getUniqueId())) {
-            Text.sendDebugLog(INFO, handcuffer.getName() + " is waiting for unrestrain input - skipping visual state update to preserve fishing_rod_unlock");
+        List<UUID> handcuffees = handcufferToHandcuffees.get(handcuffer.getUniqueId());
+        boolean staffActive = handcuffees != null && handcuffees.stream()
+                .anyMatch(id -> restraintFamilies.get(id) == Family.STAFF);
+        boolean claimActive = handcuffees != null && handcuffees.stream()
+                .anyMatch(id -> restraintFamilies.get(id) == Family.CLAIM);
+
+        HandcuffsItem.updateFamilyState(handcuffer, Family.STAFF, staffActive);
+        HandcuffsItem.updateFamilyState(handcuffer, Family.CLAIM, claimActive);
+        Text.sendDebugLog(INFO, handcuffer.getName() + " handcuff item states updated (staff="
+                + staffActive + ", claim=" + claimActive + ")");
+    }
+
+    private void playRestraintEffects(Player target, Player handcuffer) {
+        Location targetEffect = target.getLocation().add(0.0, 1.0, 0.0);
+        target.getWorld().spawnParticle(Particle.ENCHANT, targetEffect,
+                35, 0.55, 0.75, 0.55, 0.08);
+        target.getWorld().spawnParticle(Particle.SMOKE, targetEffect,
+                14, 0.35, 0.5, 0.35, 0.02);
+        target.getWorld().playSound(target.getLocation(), Sound.BLOCK_CHAIN_PLACE, 1.0f, 0.7f);
+        handcuffer.getWorld().spawnParticle(Particle.ENCHANT,
+                handcuffer.getLocation().add(0.0, 1.0, 0.0),
+                18, 0.4, 0.55, 0.4, 0.05);
+    }
+
+    private void startClaimBanCountdown(Player target, Player handcuffer, String claimId) {
+        UUID targetId = target.getUniqueId();
+        if (pendingClaimBans.containsKey(targetId)) return;
+
+        PendingClaimBan pending = new PendingClaimBan(
+                handcuffer.getUniqueId(),
+                claimId,
+                handcuffer.getPotionEffect(PotionEffectType.BLINDNESS),
+                handcuffer.getPotionEffect(PotionEffectType.SLOWNESS),
+                target.getPotionEffect(PotionEffectType.BLINDNESS),
+                target.getPotionEffect(PotionEffectType.SLOWNESS));
+        pendingClaimBans.put(targetId, pending);
+
+        applyCountdownEffects(handcuffer);
+        applyCountdownEffects(target);
+        handcuffer.sendMessage(Text.colorize("&eDrop the claim handcuffs within 5 seconds to cancel."));
+        target.sendMessage(Text.colorize("&cA claim ban is being prepared. The restrainer can cancel it."));
+        runClaimBanCountdown(targetId, CLAIM_BAN_COUNTDOWN_SECONDS);
+    }
+
+    private void runClaimBanCountdown(UUID targetId, int secondsRemaining) {
+        PendingClaimBan pending = pendingClaimBans.get(targetId);
+        if (pending == null) return;
+
+        Player target = Bukkit.getPlayer(targetId);
+        Player handcuffer = Bukkit.getPlayer(pending.handcufferId());
+        if (target == null || !target.isOnline() || handcuffer == null || !handcuffer.isOnline()
+                || !pending.handcufferId().equals(restrainedPlayers.get(targetId))
+                || restraintFamilies.get(targetId) != Family.CLAIM) {
+            cancelClaimBan(targetId, "The claim ban was cancelled because the restraint ended.");
             return;
         }
 
-        List<UUID> handcuffees = handcufferToHandcuffees.get(handcuffer.getUniqueId());
-        int count = handcuffees != null ? handcuffees.size() : 0;
-
-        String modelName;
-        if (count == 0) {
-            modelName = "template:fishing_rod_handcuffs"; // No players restrained
-        } else if (count >= 5) {
-            modelName = "template:fishing_rod_max"; // Max players (5) restrained
-        } else if (count == 1) {
-            modelName = "template:fishing_rod_locked"; // First player restrained (first catch)
-        } else {
-            modelName = "template:fishing_rod_locked"; // Multiple players (2-4) restrained (active state)
+        if (!claimBridge.isStillInside(target, pending.claimId())) {
+            cancelClaimBan(targetId, "The claim ban was cancelled because the player left the claim.");
+            releasePlayer(target);
+            return;
         }
 
-        HandcuffsItem.updateHandcuffsModelData(handcuffer, modelName);
-        Text.sendDebugLog(INFO, handcuffer.getName() + " visual state updated to " + modelName + " (count: " + count + ")");
+        if (secondsRemaining <= 0) {
+            completeClaimBan(target, handcuffer, pending);
+            return;
+        }
+
+        String countdown = secondsRemaining + (secondsRemaining == 1 ? " second" : " seconds");
+        handcuffer.sendTitle("§c§lDrop item to cancel ban",
+                "§6Claim ban in §e" + countdown, 0, 25, 5);
+        target.sendTitle("§4§lCLAIM RESTRAINED",
+                "§6Claim ban in §e" + countdown, 0, 25, 5);
+        spawnCountdownPulse(handcuffer, target, secondsRemaining);
+
+        SchedulerAdapter.runAtEntityLater(target,
+                () -> runClaimBanCountdown(targetId, secondsRemaining - 1), 20L);
+    }
+
+    private void completeClaimBan(Player target, Player handcuffer, PendingClaimBan pending) {
+        UUID targetId = target.getUniqueId();
+        if (!pendingClaimBans.remove(targetId, pending)) return;
+
+        ClaimHandcuffBridge.Check finalCheck = claimBridge.check(handcuffer, target);
+        if (!finalCheck.allowed() || !pending.claimId().equals(finalCheck.claimId())) {
+            restoreCountdownEffects(target, handcuffer, pending);
+            releasePlayer(target);
+            handcuffer.sendMessage(Text.colorize("&cClaim ban cancelled: "
+                    + (finalCheck.error() == null ? "claim state changed." : finalCheck.error())));
+            return;
+        }
+
+        restoreCountdownEffects(target, handcuffer, pending);
+
+        // releasePlayer removes the tracked restraint and fully detaches the target from the
+        // vehicle stack. The GPExpansion mutation intentionally happens only after this completes.
+        releasePlayer(target);
+        boolean banned = claimBridge.ban(pending.claimId(), target, handcuffer);
+        if (banned) {
+            handcuffer.sendTitle("§6§lCLAIM BAN COMPLETE",
+                    "§e" + target.getName() + " was banned from the claim", 5, 45, 10);
+            target.sendTitle("§c§lBANNED FROM CLAIM",
+                    "§7You may no longer enter this claim", 5, 45, 10);
+            handcuffer.getWorld().playSound(handcuffer.getLocation(),
+                    Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 0.75f);
+        } else {
+            handcuffer.sendMessage(Text.colorize("&cThe restraint ended, but GPExpansion could not save the claim ban."));
+            target.sendMessage(Text.colorize("&eThe claim ban failed and you were released."));
+        }
+    }
+
+    private void cancelClaimBan(UUID targetId, String message) {
+        PendingClaimBan pending = pendingClaimBans.remove(targetId);
+        if (pending == null) return;
+        Player target = Bukkit.getPlayer(targetId);
+        Player handcuffer = Bukkit.getPlayer(pending.handcufferId());
+        restoreCountdownEffects(target, handcuffer, pending);
+        if (target != null) target.resetTitle();
+        if (handcuffer != null) {
+            handcuffer.resetTitle();
+            if (message != null) handcuffer.sendMessage(Text.colorize("&e" + message));
+        }
+    }
+
+    private void applyCountdownEffects(Player player) {
+        player.removePotionEffect(PotionEffectType.BLINDNESS);
+        player.removePotionEffect(PotionEffectType.SLOWNESS);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS,
+                CLAIM_BAN_EFFECT_TICKS, 0, false, false, true));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS,
+                CLAIM_BAN_EFFECT_TICKS, 6, false, false, true));
+    }
+
+    private void restoreCountdownEffects(Player target, Player handcuffer, PendingClaimBan pending) {
+        restorePotionEffects(handcuffer, pending.handcufferBlindness(), pending.handcufferSlowness());
+        restorePotionEffects(target, pending.targetBlindness(), pending.targetSlowness());
+    }
+
+    private void restorePotionEffects(Player player, PotionEffect blindness, PotionEffect slowness) {
+        if (player == null) return;
+        player.removePotionEffect(PotionEffectType.BLINDNESS);
+        player.removePotionEffect(PotionEffectType.SLOWNESS);
+        if (blindness != null) player.addPotionEffect(blindness);
+        if (slowness != null) player.addPotionEffect(slowness);
+    }
+
+    private void spawnCountdownPulse(Player handcuffer, Player target, int secondsRemaining) {
+        for (Player player : List.of(handcuffer, target)) {
+            Location effect = player.getLocation().add(0.0, 1.0, 0.0);
+            player.getWorld().spawnParticle(Particle.ENCHANT, effect,
+                    12 + (CLAIM_BAN_COUNTDOWN_SECONDS - secondsRemaining) * 4,
+                    0.5, 0.7, 0.5, 0.06);
+            player.getWorld().spawnParticle(Particle.SMOKE, effect,
+                    6, 0.3, 0.45, 0.3, 0.01);
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT,
+                    0.8f, 0.7f + (CLAIM_BAN_COUNTDOWN_SECONDS - secondsRemaining) * 0.12f);
+        }
     }
 
     /**
@@ -758,8 +984,11 @@ public class HandcuffsListener implements Listener {
         UUID handcufferId = restrainedPlayers.get(targetId);
         Player handcuffer = Bukkit.getPlayer(handcufferId);
 
+        cancelClaimBan(targetId, "The pending claim ban was cancelled by an admin.");
+
         // Remove from tracking FIRST to prevent other event handlers from remounting
         restrainedPlayers.remove(targetId);
+        restraintFamilies.remove(targetId);
 
         // Clean up handcufferToHandcuffees relationship
         List<UUID> handcuffees = handcufferToHandcuffees.get(handcufferId);
@@ -771,13 +1000,13 @@ public class HandcuffsListener implements Listener {
             }
         }
 
+        dismountPlayer(target);
+
         // Unmount the player from their handcuffer (this properly unmounts them)
         if (handcuffer != null && handcuffer.isOnline()) {
             // Schedule on main thread to avoid IllegalStateException
             SchedulerAdapter.runTask(Bukkit.getPluginManager().getPlugin("Allium"), () -> {
-                if (handcuffer.getPassengers().contains(target)) {
-                    handcuffer.removePassenger(target);
-                }
+                rebuildPassengerStack(handcuffer);
                 handcuffer.sendMessage(Text.colorize("&aYou have released " + target.getName() + " via admin command!"));
 
                 // Update handcuffer's handcuffs visual state after releasing player
@@ -802,8 +1031,11 @@ public class HandcuffsListener implements Listener {
         if (handcufferId != null) {
             Player handcuffer = Bukkit.getPlayer(handcufferId);
 
+            cancelClaimBan(playerId, "The pending claim ban was cancelled.");
+
             // IMPORTANT: Remove from tracking FIRST to prevent other event handlers from remounting
             restrainedPlayers.remove(playerId);
+            restraintFamilies.remove(playerId);
 
             // Clean up handcufferToHandcuffees relationship
             List<UUID> handcuffees = handcufferToHandcuffees.get(handcufferId);
@@ -815,9 +1047,10 @@ public class HandcuffsListener implements Listener {
                 }
             }
 
+            dismountPlayer(player);
+
             if (handcuffer != null && handcuffer.isOnline()) {
-                // Remove player as passenger from handcuffer (this properly unmounts them)
-                handcuffer.removePassenger(player);
+                rebuildPassengerStack(handcuffer);
                 handcuffer.sendMessage(Text.colorize("&aYou have released " + player.getName() + "!"));
 
                 // Update handcuffer's handcuffs visual state after releasing player
@@ -828,12 +1061,56 @@ public class HandcuffsListener implements Listener {
             // Remove handcuff restrictions from the player
             removeHandcuffRestrictions(player);
 
+            player.resetTitle();
             player.sendMessage(Text.colorize("&aYou have been released from restraints!"));
             Text.sendDebugLog(INFO, "Released " + player.getName() + " from handcuffs");
         } else {
             // Player isn't in the restrained map, but let's make sure they're not mounted anywhere
-            player.eject();
+            dismountPlayer(player);
             Text.sendDebugLog(WARN, "Attempted to release " + player.getName() + " but they weren't in restrained players map");
+        }
+    }
+
+    private void dismountPlayer(Player player) {
+        UUID playerId = player.getUniqueId();
+        playersInTeleport.add(playerId);
+        try {
+            Entity vehicle = player.getVehicle();
+            if (vehicle != null) vehicle.removePassenger(player);
+            player.leaveVehicle();
+            player.eject();
+        } finally {
+            playersInTeleport.remove(playerId);
+        }
+    }
+
+    /** Rebuilds the configured order after removing a player from the middle of a restraint stack. */
+    private void rebuildPassengerStack(Player handcuffer) {
+        List<UUID> ids = handcufferToHandcuffees.get(handcuffer.getUniqueId());
+        if (ids == null || ids.isEmpty()) return;
+
+        List<Player> online = ids.stream()
+                .map(Bukkit::getPlayer)
+                .filter(player -> player != null && player.isOnline())
+                .toList();
+        for (Player restrained : online) playersInTeleport.add(restrained.getUniqueId());
+        try {
+            for (int index = online.size() - 1; index >= 0; index--) {
+                Player restrained = online.get(index);
+                Entity vehicle = restrained.getVehicle();
+                if (vehicle != null) vehicle.removePassenger(restrained);
+                restrained.leaveVehicle();
+                restrained.eject();
+            }
+            Player mount = handcuffer;
+            for (Player restrained : online) {
+                if (!mount.getUniqueId().equals(restrained.getUniqueId())) {
+                    mount.addPassenger(restrained);
+                    mount = restrained;
+                }
+            }
+        } finally {
+            for (Player restrained : online) playersInTeleport.remove(restrained.getUniqueId());
         }
     }
 

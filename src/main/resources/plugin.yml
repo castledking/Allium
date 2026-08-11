@@ -5,7 +5,7 @@ api-version: 1.21
 folia-supported: true
 author: castledking
 description: "A secure, modern Essentials solution."
-softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens, Nexo, Oraxen, ItemEdit, ItemTag, TAB]
+softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens, Nexo, Oraxen, ItemEdit, ItemTag, TAB, GPExpansion, GriefPrevention]
 
 commands:
   nickname:
@@ -553,6 +553,10 @@ permissions:
     description: "Allows using handcuffs commands"
     default: op
 
+  allium.restrain:
+    description: "Allows using staff handcuffs to restrain players"
+    default: op
+
   allium.channel:
     description: "Allows using /channel help and status"
     default: op
@@ -617,7 +621,7 @@ permissions:
     default: op
 
   allium.gradientname:
-    description: "Allows animated MiniMessage gradient formatting for %gradientdisplayname% in chat"
+    description: "Animates the player's GradientPlus colour in %allium_gradientdisplayname%; without it the gradient is shown static"
     default: op
 
   allium.gamemode.others:

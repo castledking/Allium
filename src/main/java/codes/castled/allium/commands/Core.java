@@ -12,6 +12,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
@@ -37,6 +38,7 @@ import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.managers.chat.ChatFilterManager;
 import codes.castled.allium.managers.config.WorldDefaults;
 import codes.castled.allium.managers.core.Alias;
+import codes.castled.allium.managers.core.HomeLimits;
 import codes.castled.allium.managers.core.LegacyID;
 import codes.castled.allium.managers.core.SecurityAlertManager;
 import codes.castled.allium.managers.core.Text;
@@ -269,9 +271,12 @@ public class Core implements CommandExecutor, TabCompleter {
         itemName = ITEM_ALIASES.getOrDefault(itemName, itemName);
 
         // Handcuffs predate the registry and are still built by a static factory.
-        if (itemName.equals("handcuffs")) {
-            giveOrDrop(target, HandcuffsItem.createHandcuffs());
-            sender.sendMessage("§aGave handcuffs to " + target.getName());
+        if (itemName.equals("handcuffs") || itemName.equals("claim_handcuffs")) {
+            ItemStack handcuffs = itemName.equals("claim_handcuffs")
+                    ? HandcuffsItem.createClaimHandcuffs()
+                    : HandcuffsItem.createHandcuffs();
+            giveOrDrop(target, handcuffs);
+            sender.sendMessage("§aGave " + itemName + " to " + target.getName());
             return;
         }
 
@@ -407,9 +412,12 @@ public class Core implements CommandExecutor, TabCompleter {
 
         sender.sendMessage("§6§lBuilt-in items");
         sender.sendMessage("§ehandcuffs §7- restrain players");
+        sender.sendMessage("§eclaim_handcuffs §7- restrain and claim-ban untrusted players");
         sender.sendMessage("§etree_axe §7- Lazy Axe (chops entire trees)");
         sender.sendMessage("§espawner_changer §7- Spawner Type Changer (right-click spawners)");
         sender.sendMessage("§eitem_renamer §7- rename the next item you hold");
+        sender.sendMessage("§emob_disarmer §7- strip a mob's gear (3 uses, 2m recharge)");
+        sender.sendMessage("§ephantom_obliterator §7- kill unnamed phantoms in 64 blocks (3 uses, 2m recharge)");
 
         if (stored == null || stored.size() == 0) {
             sender.sendMessage("§6§lStored items §7(none yet — store one with /core item add <name>)");
@@ -604,7 +612,7 @@ public class Core implements CommandExecutor, TabCompleter {
             sender.sendMessage("§ehideupdate §7- Refresh tab completion for player.");
             sender.sendMessage("§eescalate §7- Escalate an issue to staff.");
             sender.sendMessage("§emigrate §7- Migrate Essentials userdata (homes, economy, warps).");
-            sender.sendMessage("§esethomes §7- Set a player's max homes (staff override).");
+            sender.sendMessage("§esethomes §7- Show or set a player's max homes (staff override).");
         }
         if (canRestore) {
             sender.sendMessage("§erestore §7- Open inventory restoration GUI.");
@@ -810,14 +818,15 @@ public class Core implements CommandExecutor, TabCompleter {
     }
 
     private void handleSethomesCommand(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("allium.admin")) {
+        if (!sender.hasPermission("allium.sethomes") && !sender.hasPermission("allium.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core sethomes");
             return;
         }
-        if (args.length < 3) {
-            sender.sendMessage(Component.text("§eUsage: /core sethomes <player> <number>"));
+        if (args.length < 2) {
+            sender.sendMessage(Component.text("§eUsage: /core sethomes <player> [number]"));
+            sender.sendMessage(Component.text("§7Without a number, shows how the player's limit is made up."));
             sender.sendMessage(Component.text("§7Set a player's max homes. Use -1 to clear (use permissions again)."));
-            sender.sendMessage(Component.text("§7Use +N or -N to add/subtract from current value (e.g., +1, -2)."));
+            sender.sendMessage(Component.text("§7Use +N or -N to add/subtract from their current limit (e.g., +1, -2)."));
             return;
         }
         OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(args[1]);
@@ -833,6 +842,22 @@ public class Core implements CommandExecutor, TabCompleter {
             Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[1]);
             return;
         }
+
+        String targetName = target.getName() != null ? target.getName() : target.getUniqueId().toString();
+        int effective = HomeLimits.getMaxHomes(plugin.getDatabase(), target);
+
+        if (args.length < 3) {
+            Player online = target.getPlayer();
+            int override = HomeLimits.getOverride(plugin.getDatabase(), target.getUniqueId());
+            sender.sendMessage(Component.text("§6Max homes for §e" + targetName + "§6: §e" + HomeLimits.format(effective)));
+            sender.sendMessage(Component.text("§7  Permissions: §f"
+                    + (online != null ? HomeLimits.format(HomeLimits.getPermissionMaxHomes(online)) : "unknown (offline)")));
+            sender.sendMessage(Component.text("§7  Override: §f"
+                    + (override < 0 ? "none" : String.valueOf(override))));
+            sender.sendMessage(Component.text("§7  Homes set: §f" + plugin.getDatabase().getPlayerHomeCount(target.getUniqueId())));
+            return;
+        }
+
         String input = args[2].trim();
         int maxHomes;
 
@@ -840,13 +865,13 @@ public class Core implements CommandExecutor, TabCompleter {
         if (input.startsWith("+") || (input.startsWith("-") && input.length() > 1)) {
             try {
                 int relativeAmount = Integer.parseInt(input.substring(1));
-                int current = plugin.getDatabase().getPlayerMaxHomes(target.getUniqueId());
-                if (current < 0) {
-                    sender.sendMessage(Component.text("§cCannot use relative operation: player has no override set (using permissions)."));
-                    sender.sendMessage(Component.text("§7Set an absolute value first, or clear permissions."));
+                if (effective == HomeLimits.UNLIMITED) {
+                    sender.sendMessage(Component.text("§cCannot use relative operation: " + targetName + " already has unlimited homes."));
                     return;
                 }
-                maxHomes = current + relativeAmount * (input.startsWith("+") ? 1 : -1);
+                // Relative changes work off the limit the player actually has, so +1 means "one
+                // more than they get today" whether that came from a rank or a previous override.
+                maxHomes = effective + relativeAmount * (input.startsWith("+") ? 1 : -1);
                 if (maxHomes < -1) {
                     sender.sendMessage(Component.text("§cResult would be below -1. Minimum is -1 (use permissions)."));
                     return;
@@ -868,14 +893,23 @@ public class Core implements CommandExecutor, TabCompleter {
             return;
         }
         boolean ok = plugin.getDatabase().setPlayerMaxHomes(target.getUniqueId(), maxHomes);
-        if (ok) {
-            if (maxHomes < 0) {
-                sender.sendMessage(Component.text("§aCleared max homes override for " + (target.getName() != null ? target.getName() : target.getUniqueId()) + ". They now use permissions."));
-            } else {
-                sender.sendMessage(Component.text("§aSet max homes for " + (target.getName() != null ? target.getName() : target.getUniqueId()) + " to " + maxHomes + "."));
-            }
-        } else {
+        if (!ok) {
             sender.sendMessage(Component.text("§cFailed to set max homes (check console)."));
+            return;
+        }
+
+        HomeLimits.invalidate(target.getUniqueId());
+        int newEffective = HomeLimits.getMaxHomes(plugin.getDatabase(), target);
+        if (maxHomes < 0) {
+            sender.sendMessage(Component.text("§aCleared max homes override for " + targetName + ". They now use permissions."));
+        } else {
+            sender.sendMessage(Component.text("§aSet max homes for " + targetName + " to " + maxHomes + "."));
+        }
+        if (newEffective != maxHomes) {
+            // The effective limit is the higher of the two systems, so an override below what the
+            // player's rank grants does nothing until that permission is taken away.
+            sender.sendMessage(Component.text("§7Effective limit is §f" + HomeLimits.format(newEffective)
+                    + "§7 - permissions grant that much on their own."));
         }
     }
 
@@ -2360,7 +2394,7 @@ public class Core implements CommandExecutor, TabCompleter {
                     }
                 }
             } else if (args.length == 3) {
-                suggestions.addAll(List.of("1", "3", "5", "10", "-1"));
+                suggestions.addAll(List.of("1", "3", "5", "10", "-1", "+1", "-2"));
             }
         } else if (args.length > 1 && args[0].equalsIgnoreCase("item")) {
             StoredItemRegistry stored = StoredItemRegistry.getInstance();
@@ -2377,7 +2411,8 @@ public class Core implements CommandExecutor, TabCompleter {
                     suggestions.addAll(stored.getIds());
                 }
             } else if (args.length == 4 && args[1].equalsIgnoreCase("give")) {
-                suggestions.addAll(List.of("handcuffs", "tree_axe", "spawner_changer", "item_renamer"));
+                suggestions.addAll(List.of("handcuffs", "claim_handcuffs", "tree_axe", "spawner_changer", "item_renamer",
+                        "mob_disarmer", "phantom_obliterator"));
                 if (stored != null) {
                     suggestions.addAll(stored.getIds());
                 }

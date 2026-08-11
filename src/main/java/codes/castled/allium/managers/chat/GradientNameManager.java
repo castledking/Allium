@@ -19,8 +19,10 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,12 +39,26 @@ public class GradientNameManager {
     private static final BigDecimal PHASE_MIN = new BigDecimal("-1.0");
     private static final BigDecimal PHASE_NEGATE = new BigDecimal("-1.0");
 
+    /**
+     * GradientPlus owns {@code %gradientdisplayname%} and {@code %gradient_...%}; we only ever
+     * read them. {@code %gradient_<text>%} paints arbitrary text in the player's colour and so
+     * works regardless of GradientPlus' {@code name_source_placeholder}, which is why it is the
+     * first source we ask. The token deliberately carries no underscore: GradientPlus reads
+     * {@code %gradient_<color>_<text>%} as well and would otherwise split it.
+     */
+    private static final String GRADIENT_PROBE = "%gradient_AlliumGradientProbe%";
+    private static final String GRADIENT_DISPLAY_NAME = "%gradient_displayname%";
+    /** Colours change only when a player runs /gradient; the phase changes every tick. */
+    private static final long COLOR_CACHE_TTL_MS = 1_000L;
+
     private final PluginStart plugin;
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
     private final DecimalFormat phaseDecimalFormat;
     private final AtomicBoolean paused = new AtomicBoolean(false);
     private final AnimatedTabNameWriteCoordinator tabNameWriter =
             new AnimatedTabNameWriteCoordinator(new TabAnimatedNameWriter());
+    private final Map<UUID, CachedColors> colorCache = new ConcurrentHashMap<>();
+    private final ThreadLocal<Boolean> resolvingColors = ThreadLocal.withInitial(() -> Boolean.FALSE);
     private SchedulerAdapter.TaskHandle phaseTask;
     private volatile BigDecimal miniGradientPhase = PHASE_MIN;
 
@@ -78,43 +94,133 @@ public class GradientNameManager {
     }
 
     public String buildAnimatedGradientDisplayName(Player player) {
+        return resolveDisplayName(player).text();
+    }
+
+    /**
+     * Builds {@code %allium_gradientdisplayname%}: the player's name wearing the gradient they
+     * picked in GradientPlus.
+     *
+     * <p>When they have not picked one the name comes back bare - no colour codes, no tags - so
+     * that the config holds the reins and {@code "&6%allium_gradientdisplayname%"} renders gold.
+     * The colour itself is everyone's; {@code allium.gradientname} is what buys the phase
+     * animation, and without it the same gradient is simply held still.
+     */
+    public DisplayName resolveDisplayName(Player player) {
         if (player == null) {
-            return "";
+            return new DisplayName("", false);
+        }
+
+        String escapedName = miniMessage.escapeTags(visibleName(player));
+        List<String> colors = resolveGradientColors(player);
+        if (colors.isEmpty()) {
+            return new DisplayName(escapedName, false);
         }
         if (!player.hasPermission("allium.gradientname")) {
-            return "%gradientdisplayname%";
+            return new DisplayName(buildStaticGradientText(escapedName, colors), true);
+        }
+        return new DisplayName(buildAnimatedGradientText(escapedName, colors, getPhaseValue(false)), true);
+    }
+
+    /**
+     * The colour stops GradientPlus holds for a player, empty when they have not picked one.
+     * Cached briefly because the tab list rebuilds every tick while a selection only changes
+     * when someone runs /gradient.
+     */
+    public List<String> resolveGradientColors(Player player) {
+        if (player == null || !Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            return List.of();
         }
 
-        String resolved = PlaceholderAPI.setPlaceholders(player, "%gradientdisplayname%");
-        if (resolved == null || resolved.isBlank() || "%gradientdisplayname%".equals(resolved)) {
-            return miniMessage.escapeTags(player.getName());
+        long now = System.currentTimeMillis();
+        CachedColors cached = colorCache.get(player.getUniqueId());
+        if (cached != null && now - cached.timestamp() < COLOR_CACHE_TTL_MS) {
+            return cached.colors();
         }
 
-        resolved = resolved.replaceAll("^([&§]r)+", "");
-        List<String> colors = extractColors(resolved);
-        String visibleName = stripFormatting(resolved);
-        if (visibleName.isBlank()) {
-            visibleName = player.getName();
+        ColorLookup lookup = queryGradientColors(player);
+        if (plugin.isDebugMode() && (cached == null || !cached.colors().equals(lookup.colors()))) {
+            // Only on a change, so a per-tick tab refresh cannot flood the log.
+            Text.sendDebugLog(
+                    Text.DebugSeverity.INFO,
+                    "[Gradient] " + player.getName() + " -> " + lookup.source()
+                            + (lookup.colors().isEmpty() ? " (no colour picked)" : " " + lookup.colors())
+            );
+        }
+        colorCache.put(player.getUniqueId(), new CachedColors(lookup.colors(), now));
+        return lookup.colors();
+    }
+
+    private ColorLookup queryGradientColors(Player player) {
+        if (Boolean.TRUE.equals(resolvingColors.get())) {
+            // A GradientPlus name_source_placeholder pointing back at this placeholder would
+            // otherwise recurse until the stack gives out.
+            return new ColorLookup(List.of(), "reentrant");
         }
 
+        resolvingColors.set(Boolean.TRUE);
+        try {
+            List<String> colors = colorsFrom(player, GRADIENT_PROBE);
+            if (!colors.isEmpty()) {
+                return new ColorLookup(colors, GRADIENT_PROBE);
+            }
+            colors = colorsFrom(player, GRADIENT_DISPLAY_NAME);
+            return new ColorLookup(colors, colors.isEmpty() ? "neither placeholder" : GRADIENT_DISPLAY_NAME);
+        } finally {
+            resolvingColors.set(Boolean.FALSE);
+        }
+    }
+
+    /** Reads one GradientPlus placeholder and keeps whatever colour stops it painted. */
+    private List<String> colorsFrom(Player player, String placeholder) {
+        String resolved;
+        try {
+            resolved = PlaceholderAPI.setPlaceholders(player, placeholder);
+        } catch (Throwable ignored) {
+            return List.of();
+        }
+        if (resolved == null || resolved.isBlank() || placeholder.equals(resolved)) {
+            // PlaceholderAPI hands back the placeholder verbatim when an expansion returns
+            // null, so an unchanged string means GradientPlus had nothing to say.
+            return List.of();
+        }
+
+        List<String> colors = extractColors(resolved.replaceAll("^([&§]r)+", ""));
         if (colors.isEmpty() || colors.stream().allMatch("#FFFFFF"::equalsIgnoreCase)) {
-            // GradientPlus injects its default &f/white per character when the
-            // player hasn't picked a gradient/static color via /gradient. That's
-            // indistinguishable from an actual white selection, so treat it as
-            // "unset" and return the name with no color codes/tags at all -
-            // callers prepend their own fallback color (e.g.
-            // "&6%allium_gradientdisplayname%") to control it directly.
-            return miniMessage.escapeTags(visibleName);
+            // GradientPlus paints its default &f white per character until a colour is picked
+            // via /gradient, which is indistinguishable from choosing white. Treat it as unset
+            // and let the config colour the bare name instead.
+            return List.of();
+        }
+        return colors;
+    }
+
+    /** The name the gradient is painted onto: the player's Allium nickname, else their name. */
+    private String visibleName(Player player) {
+        String name = player.getName();
+        if (plugin.getNicknameManager() == null) {
+            return name;
         }
 
-        return buildAnimatedGradientText(
-                miniMessage.escapeTags(visibleName),
-                colors,
-                getPhaseValue(false)
-        );
+        String stored = plugin.getNicknameManager().getStoredNickname(player);
+        if (stored == null || stored.isBlank()) {
+            return name;
+        }
+        // A gradient has to own every colour in the text it wraps, so the nickname's own
+        // formatting is stripped rather than nested.
+        String stripped = stripFormatting(stored).trim();
+        return stripped.isBlank() ? name : stripped;
     }
 
     public static String buildAnimatedGradientText(String escapedVisibleName, List<String> colors, String phase) {
+        return gradientTag(colors, phase) + escapedVisibleName + "</gradient>";
+    }
+
+    public static String buildStaticGradientText(String escapedVisibleName, List<String> colors) {
+        return gradientTag(colors, null) + escapedVisibleName + "</gradient>";
+    }
+
+    private static String gradientTag(List<String> colors, String phase) {
         String first = colors.isEmpty() ? "#FFFFFF" : colors.get(0);
         String last = colors.size() >= 2 ? colors.get(colors.size() - 1) : first;
         if (!colors.isEmpty() && colors.stream().allMatch(first::equalsIgnoreCase)) {
@@ -126,9 +232,18 @@ public class GradientNameManager {
         // MiniMessage reverses the stop array for negative phases. With three or
         // more stops that changes the rendered path at phase zero, producing a
         // visible mid-cycle rewind. Two endpoint stops remain continuous.
-        return "<gradient:" + first + ":" + last + ":" + phase + ">"
-                + escapedVisibleName
-                + "</gradient>";
+        return "<gradient:" + first + ":" + last + (phase == null ? "" : ":" + phase) + ">";
+    }
+
+    /** @param gradient false when GradientPlus had no colour and {@code text} is the bare name. */
+    public record DisplayName(String text, boolean gradient) {
+    }
+
+    private record CachedColors(List<String> colors, long timestamp) {
+    }
+
+    /** @param source which GradientPlus placeholder answered, for the debug log. */
+    private record ColorLookup(List<String> colors, String source) {
     }
 
     private void advancePhase() {
@@ -157,6 +272,9 @@ public class GradientNameManager {
             }
         }
         tabNameWriter.releaseInactive(tabOwnedThisFrame);
+        if (colorCache.size() > Bukkit.getOnlinePlayers().size()) {
+            colorCache.keySet().removeIf(uuid -> Bukkit.getPlayer(uuid) == null);
+        }
     }
 
     /** Reasserts the current frame after a tab-list entry has been recreated. */
@@ -165,14 +283,17 @@ public class GradientNameManager {
             return false;
         }
 
-        String animatedName = buildAnimatedGradientDisplayName(player);
-        if (animatedName == null || animatedName.isBlank() || "%gradientdisplayname%".equals(animatedName)) {
+        DisplayName resolved = resolveDisplayName(player);
+        if (!resolved.gradient() || resolved.text().isBlank()) {
+            // Nothing to animate without a GradientPlus colour, and writing the bare name here
+            // would wrestle the tab list away from whoever owns it (TAB, ...).
             return false;
         }
 
+        String animatedName = resolved.text();
         return tabNameWriter.write(player.getUniqueId(), animatedName, () -> {
             String displayName = buildAnimatedTabDisplayName(player, animatedName);
-            if (displayName != null && !displayName.isBlank() && !"%gradientdisplayname%".equals(displayName)) {
+            if (displayName != null && !displayName.isBlank()) {
                 player.playerListName(Text.colorize(displayName));
             }
         });
@@ -184,7 +305,7 @@ public class GradientNameManager {
     }
 
     private String buildAnimatedTabDisplayName(Player player, String animatedName) {
-        if (animatedName == null || animatedName.isBlank() || "%gradientdisplayname%".equals(animatedName)) {
+        if (animatedName == null || animatedName.isBlank()) {
             return animatedName;
         }
 

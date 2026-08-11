@@ -17,6 +17,7 @@ import codes.castled.allium.util.SchedulerAdapter;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
@@ -97,6 +98,10 @@ public class ModGuardManager implements PluginMessageListener, Listener {
         // Check only the file content, ignoring in-memory defaults that may be set
         // by applyBundledDefaults() from a new bundled resource.
         if (config.contains("translation-probe", true)) return;
+
+        if (seedBundledProbeConfig(configFile)) {
+            return;
+        }
 
         config.set("translation-probe.enabled", true);
         config.set("translation-probe.default-action", "alert");
@@ -217,6 +222,28 @@ public class ModGuardManager implements PluginMessageListener, Listener {
             plugin.getLogger().info("[ModGuard] Added translation-probe section to config.");
         } catch (IOException e) {
             plugin.getLogger().warning("[ModGuard] Failed to save probe config: " + e.getMessage());
+        }
+    }
+
+    private boolean seedBundledProbeConfig(File configFile) {
+        try (var stream = plugin.getResource("modguard/config.yml")) {
+            if (stream == null) {
+                return false;
+            }
+            YamlConfiguration bundled = YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8));
+            ConfigurationSection bundledProbe = bundled.getConfigurationSection("translation-probe");
+            if (bundledProbe == null) {
+                return false;
+            }
+            ConfigurationSection targetProbe = config.createSection("translation-probe");
+            copySection(bundledProbe, targetProbe);
+            config.save(configFile);
+            plugin.getLogger().info("[ModGuard] Added bundled translation-probe section to config.");
+            return true;
+        } catch (IOException e) {
+            plugin.getLogger().warning("[ModGuard] Failed to seed bundled probe config: " + e.getMessage());
+            return false;
         }
     }
 

@@ -388,9 +388,9 @@ public class HandcuffsListener implements Listener {
                 .toList();
 
         if (handcuffees == null || handcuffees.isEmpty()) {
-            // No one is restrained by this player, just send a message
-            player.sendMessage(Text.colorize("&eNo one is currently restrained by you."));
-            event.setCancelled(true); // Cancel drop even if no one is restrained
+            // This cuff family is idle, so preserve normal vanilla Q/drop behaviour. A player may
+            // still be restraining someone with the other cuff family; only the active tool is
+            // intercepted as the release/cancel control.
             return;
         }
 

@@ -26,7 +26,6 @@ public class SlimeJump implements Listener {
     private final double checkRadius;
     private final boolean showMessage;
     private final String cushionMessage;
-    private final double damageReductionFactor;
     private final double bounceMultiplier;
     private final double maxBounceVelocity;
     private final boolean playSound;
@@ -35,23 +34,21 @@ public class SlimeJump implements Listener {
     private final Set<Player> messagedPlayers = new HashSet<>();
 
     /**
-     * Creates a listener that reduces fall damage when landing near slimes.
+     * Creates a listener that bounces players off slimes instead of taking fall damage.
      *
      * @param plugin The plugin instance
      * @param checkRadius The radius to check for slimes near the player
-     * @param damageReductionFactor How much to reduce damage by (0.0 = no damage, 1.0 = full damage)
      * @param bounceMultiplier How much to multiply the damage for the bounce height
      * @param maxBounceVelocity Maximum upward velocity for the bounce
      * @param showMessage Whether to show a message when cushioning fall
      * @param cushionMessage The message to show (can be null if showMessage is false)
      * @param playSound Whether to play a bounce sound
      */
-    public SlimeJump(JavaPlugin plugin, double checkRadius, double damageReductionFactor,
-                                double bounceMultiplier, double maxBounceVelocity,
+    public SlimeJump(JavaPlugin plugin, double checkRadius, double bounceMultiplier,
+                                double maxBounceVelocity,
                                 boolean showMessage, String cushionMessage, boolean playSound) {
         this.plugin = plugin;
         this.checkRadius = checkRadius;
-        this.damageReductionFactor = Math.max(0.0, Math.min(1.0, damageReductionFactor)); // Clamp between 0 and 1
         this.bounceMultiplier = bounceMultiplier;
         this.maxBounceVelocity = maxBounceVelocity;
         this.showMessage = showMessage;
@@ -67,7 +64,7 @@ public class SlimeJump implements Listener {
      * @param plugin The plugin instance
      */
     public SlimeJump(JavaPlugin plugin) {
-        this(plugin, 2.0, 0.5, 0.1, 1.5, true, "&aThe slime cushioned your fall!", true);
+        this(plugin, 2.0, 0.1, 1.5, true, "&aThe slime cushioned your fall!", true);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -81,20 +78,14 @@ public class SlimeJump implements Listener {
 
         // Check if there's a slime within the specified radius
         if (isNearSlime(player)) {
-            // Get the original damage before reduction
+            // Get the original damage to compute the bounce height
             double originalDamage = event.getDamage();
-            double newDamage = originalDamage * damageReductionFactor;
 
-            // Apply bounce effect based on original damage
+            // Bounce the player off the slime before they take any damage
             applyBounceEffect(player, originalDamage);
 
-            // Reduce the damage
-            event.setDamage(newDamage);
-
-            // If damage is very small, just cancel the event
-            if (newDamage < 0.5) {
-                event.setCancelled(true);
-            }
+            // Cancel the fall damage entirely since the slime bounced the player
+            event.setCancelled(true);
 
             // Show message if enabled and the player hasn't already received it
             if (showMessage && cushionMessage != null && !cushionMessage.isEmpty() && !messagedPlayers.contains(player)) {
@@ -109,15 +100,16 @@ public class SlimeJump implements Listener {
 
             // Debug info
             if (plugin.getConfig().getBoolean("debug-mode", false)) {
-                Text.sendDebugLog(INFO, "Player " + player.getName() + " cushioned fall. Original damage: " +
-                        originalDamage + ", New damage: " + newDamage);
+                Text.sendDebugLog(INFO, "Player " + player.getName() + " bounced off a slime. Original damage: " +
+                        originalDamage + ", no damage taken.");
             }
         }
     }
 
     /**
      * Applies a bounce effect to the player based on the fall damage.
-     * Must run in the same tick as the damage event so velocity is not zeroed by the server before we apply it.
+     * The velocity must be applied on the next tick because the server zeroes any
+     * velocity set inside the damage event itself.
      *
      * @param player The player to bounce
      * @param fallDamage The original fall damage amount
@@ -127,14 +119,14 @@ public class SlimeJump implements Listener {
         // Higher damage = higher bounce
         double bounceVelocity = Math.min(fallDamage * bounceMultiplier, maxBounceVelocity);
 
-        // Apply the upward velocity immediately so it takes effect before the server finishes the event
+        // Apply the upward velocity on the next tick so the server does not wipe it
         Vector currentVelocity = player.getVelocity();
         Vector newVelocity = new Vector(
                 currentVelocity.getX() * 0.8, // Preserve some horizontal momentum
                 bounceVelocity,               // Set upward velocity based on damage
                 currentVelocity.getZ() * 0.8  // Preserve some horizontal momentum
         );
-        player.setVelocity(newVelocity);
+        plugin.getServer().getScheduler().runTask(plugin, () -> player.setVelocity(newVelocity));
 
         // Play bounce sound
         if (playSound) {

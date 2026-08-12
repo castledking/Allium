@@ -920,8 +920,10 @@ public class CommandManager implements Listener {
     }
 
     private boolean shouldAllowTabComplete(Player player, String commandName) {
-        List<CommandGroup> groups = getPlayerGroups(player);
+        return shouldAllowTabComplete(getPlayerGroups(player), commandName);
+    }
 
+    static boolean shouldAllowTabComplete(List<CommandGroup> groups, String commandName) {
         if (groups.isEmpty()) {
             return true;
         }
@@ -967,10 +969,20 @@ public class CommandManager implements Listener {
             return;
         }
 
-        boolean hasWhitelistGroup = groups.stream().anyMatch(CommandGroup::whitelist);
+        Set<String> filteredCommands = filterRootCommands(
+                event.getCommands(), groups, player.isOp(), hideNamespacedCommandsForBypass);
 
+        event.getCommands().clear();
+        event.getCommands().addAll(filteredCommands);
+    }
+
+    /** Pure root-command filter used by PlayerCommandSendEvent and its regression tests. */
+    static Set<String> filterRootCommands(Collection<String> commands,
+                                          List<CommandGroup> groups,
+                                          boolean playerIsOp,
+                                          boolean hideNamespacedForOps) {
         Set<String> filteredCommands = new LinkedHashSet<>();
-        for (String command : event.getCommands()) {
+        for (String command : commands) {
             if (command == null) {
                 continue;
             }
@@ -978,8 +990,8 @@ public class CommandManager implements Listener {
             String lowerCommand = command.toLowerCase(Locale.ROOT);
 
             if (lowerCommand.contains(":")) {
-                if (player.isOp()) {
-                    if (hideNamespacedCommandsForBypass) {
+                if (playerIsOp) {
+                    if (hideNamespacedForOps) {
                         continue;
                     }
                 } else {
@@ -987,36 +999,11 @@ public class CommandManager implements Listener {
                 }
             }
 
-            boolean allowed;
-            // First check if any blacklist group denies the command
-            boolean blacklisted = false;
-            for (CommandGroup group : groups) {
-                if (!group.whitelist() && !group.isCommandAllowed(lowerCommand)) {
-                    blacklisted = true;
-                    break;
-                }
-            }
-            if (blacklisted) {
-                allowed = false;
-            } else if (hasWhitelistGroup) {
-                allowed = false;
-                for (CommandGroup group : groups) {
-                    if (group.whitelist() && group.isCommandAllowed(lowerCommand)) {
-                        allowed = true;
-                        break;
-                    }
-                }
-            } else {
-                allowed = true;
-            }
-
-            if (allowed) {
+            if (shouldAllowTabComplete(groups, lowerCommand)) {
                 filteredCommands.add(command);
             }
         }
-
-        event.getCommands().clear();
-        event.getCommands().addAll(filteredCommands);
+        return filteredCommands;
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -1086,11 +1073,11 @@ public class CommandManager implements Listener {
         }
     }
 
-    private record CommandGroup(String name, boolean whitelist, List<String> commands,
+    record CommandGroup(String name, boolean whitelist, List<String> commands,
                            List<String> inheritedAllowedCommands,
                            List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
 
-        private CommandGroup(String name, boolean whitelist, List<String> commands, List<String> inheritedAllowedCommands, List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
+        CommandGroup(String name, boolean whitelist, List<String> commands, List<String> inheritedAllowedCommands, List<String> tabCompletes, boolean hideNamespacedCommandsForBypass) {
             this.name = name;
             this.whitelist = whitelist;
             this.commands = commands.stream()

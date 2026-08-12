@@ -2995,7 +2995,6 @@ public class PluginStart extends JavaPlugin {
                 new SlimeJump(
                     this,
                     2.0,
-                    0.5,
                     0.2,
                     2.0,
                     true,

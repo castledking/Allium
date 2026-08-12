@@ -7,8 +7,10 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -45,6 +47,14 @@ public class MobDisarmerListener implements Listener {
         if (disarmer != null) {
             disarmer.forget(event.getPlayer());
         }
+    }
+
+    /** Prevent a recently disarmed mob from immediately picking its own equipment back up. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onEntityPickupItem(final EntityPickupItemEvent event) {
+        if (event.getEntity() instanceof Player) return;
+        final MobDisarmerItem disarmer = disarmer();
+        if (disarmer != null) disarmer.cancelPickupIfSuppressed(event);
     }
 
     private MobDisarmerItem disarmer() {

@@ -6,9 +6,13 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.entity.Enderman;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.SulfurCube;
 import org.bukkit.entity.Villager;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -50,9 +54,9 @@ public class MobDisarmerItem extends CustomItem {
     public static final long RECHARGE_MS = 120_000L; // 2 minutes
     private static final long STATUS_MESSAGE_COOLDOWN_MS = 1_000L;
     /** First and second uses can break too, but are deliberately much safer than the last use. */
-    private static final double EARLY_USE_BREAK_CHANCE = 0.05D;
+    private static final double EARLY_USE_BREAK_CHANCE = 0.03D;
     /** The final use is the risky one, preventing players from safely resetting every two uses. */
-    private static final double LAST_USE_BREAK_CHANCE = 0.25D;
+    private static final double LAST_USE_BREAK_CHANCE = 0.05D;
     public static final String BYPASS_PERMISSION = "allium.admin";
 
     /**
@@ -85,6 +89,7 @@ public class MobDisarmerItem extends CustomItem {
     private final NamespacedKey brokenKey;
     private final NamespacedKey usesKey;
     private final NamespacedKey nexoKey;
+    private final MobPickupSuppression pickupSuppression;
 
     /** Player -> epoch millis a refresh task is already booked for, so joins do not stack tasks. */
     private final Map<UUID, Long> pendingRefresh = new ConcurrentHashMap<>();
@@ -97,6 +102,7 @@ public class MobDisarmerItem extends CustomItem {
         this.brokenKey = new NamespacedKey(plugin, "mob_disarmer_broken");
         this.usesKey = new NamespacedKey(plugin, "mob_disarmer_uses");
         this.nexoKey = new NamespacedKey("nexo", "id");
+        this.pickupSuppression = new MobPickupSuppression(plugin);
     }
 
     @Override
@@ -179,7 +185,12 @@ public class MobDisarmerItem extends CustomItem {
      */
     public boolean disarm(final Player player, final LivingEntity target, final ItemStack tool) {
         final EntityEquipment equipment = target.getEquipment();
-        if (equipment == null || !hasEquipment(equipment)) {
+        final boolean hasEquipment = equipment != null && hasEquipment(equipment);
+        final boolean hasCarriedBlock = target instanceof Enderman enderman
+                && enderman.getCarriedBlock() != null;
+        final boolean hasShearableContent = target instanceof SulfurCube sulfurCube
+                && sulfurCube.readyToBeSheared();
+        if (!hasEquipment && !hasCarriedBlock && !hasShearableContent) {
             return false;
         }
 
@@ -204,12 +215,30 @@ public class MobDisarmerItem extends CustomItem {
             readyAt = 0L;
         }
 
-        final List<StrippedPiece> stripped = stripEquipment(equipment, target instanceof Villager);
-        if (stripped.isEmpty()) {
+        final List<StrippedPiece> stripped = equipment == null
+                ? new ArrayList<>()
+                : stripEquipment(equipment, target instanceof Villager);
+        if (target instanceof Enderman enderman) {
+            final Material carriedBlock = stripCarriedBlock(enderman);
+            if (carriedBlock != null) {
+                stripped.add(new StrippedPiece(new ItemStack(carriedBlock), 1.0F));
+            }
+        }
+        // Paper's shear contract performs the complete vanilla sulfur-cube ejection behavior,
+        // including the 100% content drop and sound/effects. Readiness means the cube currently
+        // contains something that natural shears could eject; empty cubes are left untouched.
+        final boolean shearedSulfur = target instanceof SulfurCube sulfurCube
+                && shearSulfurCube(sulfurCube);
+        if (stripped.isEmpty() && !shearedSulfur) {
             return false; // lost a race with something else clearing the mob; no charge spent
         }
 
-        int dropped = 0;
+        // The mob's vanilla CanPickUpLoot flag varies by type and spawn path. Persistently blocking
+        // its pickup event prevents zombies, skeletons and other mobs from immediately re-equipping
+        // the same drops, without permanently rewriting that vanilla flag.
+        pickupSuppression.block(target);
+
+        int dropped = shearedSulfur ? 1 : 0;
         for (final StrippedPiece piece : stripped) {
             // The vanilla chance already sits on the mob: 8.5% for naturally spawned gear, 2.0 for
             // anything the mob picked up itself, and whatever a spawn command asked for otherwise.
@@ -221,8 +250,9 @@ public class MobDisarmerItem extends CustomItem {
 
         playDisarmEffect(target);
         incrementUses(tool);
+        final int removed = stripped.size() + (shearedSulfur ? 1 : 0);
         player.sendMessage(ChatColor.GREEN + "Disarmed " + ChatColor.YELLOW + describe(target)
-                + ChatColor.GREEN + " — " + ChatColor.YELLOW + stripped.size() + ChatColor.GREEN
+                + ChatColor.GREEN + " — " + ChatColor.YELLOW + removed + ChatColor.GREEN
                 + " piece(s) removed, " + ChatColor.YELLOW + dropped + ChatColor.GREEN + " dropped.");
 
         if (bypass) {
@@ -254,6 +284,11 @@ public class MobDisarmerItem extends CustomItem {
                     + ChatColor.GRAY + "/" + MAX_CHARGES);
         }
         return true;
+    }
+
+    /** Called by the listener for every non-player living-entity pickup attempt. */
+    public boolean cancelPickupIfSuppressed(final EntityPickupItemEvent event) {
+        return pickupSuppression.cancelIfBlocked(event);
     }
 
     /** Green sparkle around the mob, sized to it so it reads on a spider as well as on a zombie. */
@@ -447,6 +482,25 @@ public class MobDisarmerItem extends CustomItem {
             stripped.add(new StrippedPiece(piece, guaranteedDrops ? 1.0F : dropChance));
         }
         return stripped;
+    }
+
+    /** Endermen carry blocks outside EntityEquipment, so expose that state as a guaranteed drop. */
+    static Material stripCarriedBlock(final Enderman enderman) {
+        final BlockData carriedBlock = enderman.getCarriedBlock();
+        if (carriedBlock == null) return null;
+        final Material material = carriedBlock.getMaterial();
+        if (material == Material.AIR || material == Material.CAVE_AIR || material == Material.VOID_AIR) {
+            return null;
+        }
+        enderman.setCarriedBlock(null);
+        return material;
+    }
+
+    /** Uses Paper's vanilla shearing path, but only when natural shears would currently work. */
+    static boolean shearSulfurCube(final SulfurCube sulfurCube) {
+        if (!sulfurCube.readyToBeSheared()) return false;
+        sulfurCube.shear();
+        return true;
     }
 
     private String describe(final LivingEntity target) {

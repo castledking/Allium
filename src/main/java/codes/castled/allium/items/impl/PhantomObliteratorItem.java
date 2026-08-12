@@ -40,9 +40,9 @@ public class PhantomObliteratorItem extends CustomItem {
     public static final String BYPASS_PERMISSION = "allium.admin";
     private static final long STATUS_MESSAGE_COOLDOWN_MS = 1_000L;
     /** First and second uses can break too, but are deliberately much safer than the last use. */
-    private static final double EARLY_USE_BREAK_CHANCE = 0.05D;
+    private static final double EARLY_USE_BREAK_CHANCE = 0.03D;
     /** The final use is the risky one, preventing players from safely resetting every two uses. */
-    private static final double LAST_USE_BREAK_CHANCE = 0.25D;
+    private static final double LAST_USE_BREAK_CHANCE = 0.05D;
     private static final double RADIUS = 64.0D;
     private static final double RADIUS_SQUARED = RADIUS * RADIUS;
 

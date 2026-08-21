@@ -16,6 +16,81 @@ settings:
   enabled: true
   block-namespaced-commands-for-ops: false
   hide-namespaced-commands-for-ops: false
+  # Remove unsafe commands from the DECLARE_COMMANDS packet sent to clients on join.
+  # This prevents hacked clients/mods from enumerating commands like /version, /plugins, /pl, etc.
+  remove-unsafe-commands: true
+  unsafe-commands-list:
+    - "bukkit:plugins"
+    - "bukkit:version"
+    - "version"
+    - "plugins"
+    - "bukkit:help"
+    - "bukkit:pl"
+    - "pl"
+    - "bukkit:?"
+    - "?"
+    - "bukkit:me"
+    - "me"
+    - "bukkit:tell"
+    - "tell"
+    - "bukkit:msg"
+    - "msg"
+    - "bukkit:w"
+    - "w"
+    - "bukkit:r"
+    - "r"
+  # Filter plugin-prefixed commands from the tab-completion suggestion protocol.
+  # This prevents hacked clients/mods (like LiquidBounce) from enumerating plugins
+  # by requesting tab completions for "/" and parsing "pluginname:command" patterns.
+  #
+  # Behavior mirrors Pl-Hide-Pro:
+  #   - Responses to a bare "/" request are cancelled entirely (the hack-client
+  #     probe then times out instead of receiving a command list).
+  #   - EVERY namespaced suggestion ("plugin:command") is stripped unless listed
+  #     in allow-namespaced-suggestions below - unknown namespaces such as
+  #     "jbt:*" can never leak regardless of this blocklist.
+  #   - Plain suggestions additionally respect command-suggestion-filters and
+  #     the group visibility rules below (groups -> tabcompletes).
+  #   - If filtering removes every suggestion, the empty response is cancelled
+  #     instead of being sent.
+  filter-command-suggestions: true
+  cancel-bare-slash-request: true
+  cancel-unknown-suggestion-responses: true
+  allow-namespaced-suggestions: []
+  command-suggestion-filters:
+    - "essentials:"
+    - "worldedit:"
+    - "worldguard:"
+    - "luckperms:"
+    - "vault:"
+    - "griefprevention:"
+    - "coreprotect:"
+    - "dynmap:"
+    - "dynmap-"
+    - "placeholderapi:"
+    - "multiverse-"
+    - "multiverse:"
+    - "citizens:"
+    - "mythicmobs:"
+    - "mythicdungeons:"
+    - "job"
+    - "shop"
+    - "auction"
+    - "economy"
+    - "vault:"
+    - "permission"
+    - "perm"
+    - "luckperms"
+    - "groupmanager"
+    - "pex:"
+    - "bungee:"
+    - "velocity:"
+    - "bungeecord:"
+    - "via:"
+    - "viaversion:"
+    - "viabackwards:"
+    - "viadown:"
+    - "protocol"
 groups:
   op: # (allium.hide.bypass permission)
     whitelist: true

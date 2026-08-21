@@ -156,7 +156,17 @@ public class CommandManager implements Listener {
         loadGroups();
         commandPermissionOverrideStore.reload(plugin.getDatabase());
         unresolvedPermissionWarned.clear();
-        
+
+        // Reload DeclareCommandsListener if available
+        if (plugin.getDeclareCommandsListener() != null) {
+            plugin.getDeclareCommandsListener().reload();
+        }
+
+        // Reload CommandSuggestionsListener if available
+        if (plugin.getCommandSuggestionsListener() != null) {
+            plugin.getCommandSuggestionsListener().reload();
+        }
+
         // Force refresh command state for all online players (Folia-safe)
         for (Player player : Bukkit.getOnlinePlayers()) {
             boolean scheduled = false;
@@ -919,7 +929,7 @@ public class CommandManager implements Listener {
         return false;
     }
 
-    private boolean shouldAllowTabComplete(Player player, String commandName) {
+    public boolean shouldAllowTabComplete(Player player, String commandName) {
         return shouldAllowTabComplete(getPlayerGroups(player), commandName);
     }
 

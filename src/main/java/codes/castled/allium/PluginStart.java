@@ -145,7 +145,9 @@ import codes.castled.allium.managers.permissions.DynamicPermissionManager;
 import codes.castled.allium.managers.warp.WarpManager;
 import codes.castled.allium.managers.world.OreGenerationManager;
 import codes.castled.allium.packetevents.ChatPacketTracker;
+import codes.castled.allium.packetevents.CommandSuggestionsListener;
 import codes.castled.allium.packetevents.CrowBarDataSender;
+import codes.castled.allium.packetevents.DeclareCommandsListener;
 import codes.castled.allium.packetevents.PacketEventsLoader;
 import codes.castled.allium.packetevents.TabListManager;
 import codes.castled.allium.spawnercraft.MobHeadDropListener;
@@ -233,6 +235,8 @@ public class PluginStart extends JavaPlugin {
     private DiscordSrvMessageBridge discordSrvMessageBridge;
     private ChatPacketTracker chatPacketTracker =
         new codes.castled.allium.packetevents.ChatPacketTrackerNoOp();
+    private DeclareCommandsListener declareCommandsListener;
+    private CommandSuggestionsListener commandSuggestionsListener;
     private TabListManager tabListManager;
     private CrowBarDataSender crowBarDataSender;
     private InventoryManager inventoryManager;
@@ -436,6 +440,24 @@ public class PluginStart extends JavaPlugin {
      */
     public ChatPacketTracker getChatPacketTracker() {
         return chatPacketTracker;
+    }
+
+    /**
+     * Gets the DeclareCommandsListener for removing unsafe commands from DECLARE_COMMANDS packet.
+     *
+     * @return the DeclareCommandsListener instance, or null if not initialized
+     */
+    public DeclareCommandsListener getDeclareCommandsListener() {
+        return declareCommandsListener;
+    }
+
+    /**
+     * Gets the CommandSuggestionsListener for filtering plugin command suggestions.
+     *
+     * @return the CommandSuggestionsListener instance, or null if not initialized
+     */
+    public CommandSuggestionsListener getCommandSuggestionsListener() {
+        return commandSuggestionsListener;
     }
 
     public DiscordSrvMessageBridge getDiscordSrvMessageBridge() {
@@ -1166,6 +1188,12 @@ public class PluginStart extends JavaPlugin {
             if (tabListManager != null) {
                 tabListManager.shutdown();
             }
+            if (declareCommandsListener != null) {
+                declareCommandsListener.shutdown();
+            }
+            if (commandSuggestionsListener != null) {
+                commandSuggestionsListener.shutdown();
+            }
             if (discordSrvMessageBridge != null) {
                 discordSrvMessageBridge.shutdown();
             }
@@ -1676,6 +1704,32 @@ public class PluginStart extends JavaPlugin {
             this.chatPacketTracker =
                 new codes.castled.allium.packetevents.ChatPacketTrackerNoOp();
             SchedulerAdapter.runLater(this::retryChatPacketTrackerInit, 40L);
+        }
+
+        // Initialize DeclareCommandsListener for removing unsafe commands from DECLARE_COMMANDS packet
+        try {
+            if (PacketEventsLoader.isPacketEventsAvailable()) {
+                this.declareCommandsListener = new DeclareCommandsListener(this);
+                com.github.retrooper.packetevents.PacketEvents.getAPI().getEventManager().registerListener(this.declareCommandsListener);
+                Text.sendDebugLog(INFO, "DeclareCommandsListener registered for unsafe command removal");
+            } else {
+                Text.sendDebugLog(WARN, "PacketEvents not available, DeclareCommandsListener not registered");
+            }
+        } catch (Throwable e) {
+            Text.sendDebugLog(WARN, "Failed to initialize DeclareCommandsListener: " + e.getMessage());
+        }
+
+        // Initialize CommandSuggestionsListener for filtering plugin command suggestions
+        try {
+            if (PacketEventsLoader.isPacketEventsAvailable()) {
+                this.commandSuggestionsListener = new CommandSuggestionsListener(this);
+                com.github.retrooper.packetevents.PacketEvents.getAPI().getEventManager().registerListener(this.commandSuggestionsListener);
+                Text.sendDebugLog(INFO, "CommandSuggestionsListener registered for plugin command suggestion filtering");
+            } else {
+                Text.sendDebugLog(WARN, "PacketEvents not available, CommandSuggestionsListener not registered");
+            }
+        } catch (Throwable e) {
+            Text.sendDebugLog(WARN, "Failed to initialize CommandSuggestionsListener: " + e.getMessage());
         }
     }
 

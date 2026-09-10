@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.listeners.security.HandcuffsListener;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.PlayerMatcher;
 
 public class Unrestrain implements CommandExecutor {
 
@@ -33,7 +34,7 @@ public class Unrestrain implements CommandExecutor {
         }
 
         // Get the target player
-        Player target = Bukkit.getPlayer(args[0]);
+        Player target = PlayerMatcher.match(sender, args[0]);
         if (target == null) {
             sender.sendMessage(Text.colorize("&cPlayer '" + args[0] + "' not found or not online!"));
             return true;

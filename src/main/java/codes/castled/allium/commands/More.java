@@ -9,6 +9,7 @@ import org.bukkit.inventory.ItemStack;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
@@ -43,7 +44,7 @@ public class More implements CommandExecutor {
             target = (Player) sender;
         } else {
             // Target specified, find the player
-            target = org.bukkit.Bukkit.getPlayer(args[0]);
+            target = PlayerMatcher.match(sender, args[0]);
             if (target == null || !target.isOnline()) {
                 Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", args[0]);
                 return true;

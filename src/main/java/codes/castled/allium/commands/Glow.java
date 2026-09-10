@@ -20,6 +20,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.ArrayList;
@@ -176,7 +177,7 @@ public class Glow implements CommandExecutor, TabCompleter {
             return null;
         }
 
-        Player target = Bukkit.getPlayer(args[targetIndex]);
+        Player target = PlayerMatcher.match(sender, args[targetIndex]);
         if (target == null) {
             sender.sendMessage("§cPlayer §7" + args[targetIndex] + " §cnot found.");
             return null;
@@ -417,12 +418,7 @@ public class Glow implements CommandExecutor, TabCompleter {
                 }
             }
         } else if (args.length == 2 && sender.hasPermission("allium.glow.others")) {
-            String partial = args[1].toLowerCase();
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                if (p.getName().toLowerCase().startsWith(partial)) {
-                    suggestions.add(p.getName());
-                }
-            }
+            suggestions.addAll(PlayerMatcher.tabComplete(sender, args[1]));
         }
         return suggestions;
     }

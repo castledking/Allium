@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.managers.time.TimePauseManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,10 +26,12 @@ import java.util.stream.Collectors;
  */
 public class Time implements CommandExecutor, TabCompleter {
     private final PluginStart plugin;
+    private final TimePauseManager pauseManager;
 
     protected String viewPermission = "allium.time";
     protected String setPermission = "allium.time.set";
     protected String addPermission = "allium.time.add";
+    protected String pausePermission = "allium.time.pause";
     protected int day = 0;
     protected int noon = 6000;
     protected int afternoon = 9000;
@@ -39,7 +42,12 @@ public class Time implements CommandExecutor, TabCompleter {
     protected int midnight = 18000;
 
     public Time(PluginStart plugin) {
+        this(plugin, plugin.getTimePauseManager());
+    }
+
+    public Time(PluginStart plugin, TimePauseManager pauseManager) {
         this.plugin = plugin;
+        this.pauseManager = pauseManager;
     }
 
     @Override
@@ -74,10 +82,46 @@ public class Time implements CommandExecutor, TabCompleter {
             return handleTimeSet(sender, args);
         } else if (args[0].equalsIgnoreCase("add")) {
             return handleTimeAdd(sender, args);
+        } else if (args[0].equalsIgnoreCase("pause")) {
+            return handleTimePause(sender, args);
         }
 
         sender.sendMessage(plugin.getLangManager().get("command-usage").replace("{cmd}", "time")
-                .replace("{args}", "set <value> [world] | add <value> [world]"));
+                .replace("{args}", "set <value> [world] | add <value> [world] | pause"));
+        return true;
+    }
+
+    /**
+     * Toggles the pause state for the sender's current world. The DB row holds
+     * the captured tick; the manager re-asserts it on every server tick until
+     * the operator unpauses.
+     */
+    private boolean handleTimePause(CommandSender sender, String[] args) {
+        if (!sender.hasPermission(pausePermission)) {
+            Text.sendErrorMessage(sender, "no-permission", plugin.getLangManager(), "use /time pause", "pause the time", true);
+            return true;
+        }
+        World targetWorld;
+        if (args.length >= 2) {
+            targetWorld = Bukkit.getWorld(args[1]);
+            if (targetWorld == null) {
+                Text.sendErrorMessage(sender, "world-not-found", plugin.getLangManager(), "{world}", args[1]);
+                return true;
+            }
+        } else if (sender instanceof Player player) {
+            targetWorld = player.getWorld();
+        } else {
+            List<World> worlds = Bukkit.getWorlds();
+            if (worlds.isEmpty()) {
+                sender.sendMessage("§cNo worlds loaded.");
+                return true;
+            }
+            targetWorld = worlds.get(0);
+        }
+
+        boolean nowPaused = pauseManager.toggle(targetWorld, sender);
+        String key = nowPaused ? "time.pause.enabled" : "time.pause.disabled";
+        sender.sendMessage(plugin.getLangManager().get(key).replace("{world}", targetWorld.getName()));
         return true;
     }
 
@@ -250,10 +294,12 @@ public class Time implements CommandExecutor, TabCompleter {
             return handleTimeSet(sender, args);
         } else if (args[0].equalsIgnoreCase("add")) {
             return handleTimeAdd(sender, args);
+        } else if (args[0].equalsIgnoreCase("pause")) {
+            return handleTimePause(sender, new String[0]);
         }
 
         sender.sendMessage(plugin.getLangManager().get("command-usage").replace("{cmd}", "day")
-                .replace("{args}", "set <value> [world] | add <value> [world]"));
+                .replace("{args}", "set <value> [world] | add <value> [world] | pause"));
         return true;
     }
 
@@ -409,7 +455,19 @@ public class Time implements CommandExecutor, TabCompleter {
                 if (sender.hasPermission(addPermission)) {
                     completions.add("add");
                 }
+                if (sender.hasPermission(pausePermission)) {
+                    completions.add("pause");
+                }
                 return completions;
+            } else if (args.length == 2 && args[0].equalsIgnoreCase("pause") && sender.hasPermission(pausePermission)) {
+                String input = args[1].toLowerCase();
+                List<String> names = new ArrayList<>();
+                for (World world : Bukkit.getWorlds()) {
+                    if (world.getName().toLowerCase().startsWith(input)) {
+                        names.add(world.getName());
+                    }
+                }
+                return names;
             } else if (args.length == 2 && args[0].equalsIgnoreCase("set") && sender.hasPermission(setPermission)) {
                 return List.of("day", "noon", "afternoon", "night", "sunrise", "sunset", "morning", "midnight");
             } else if (args.length == 2 && args[0].equalsIgnoreCase("add") && sender.hasPermission(addPermission)) {

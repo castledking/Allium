@@ -1,11 +1,26 @@
 # ModGuard - Client Mod Detection
 # Runtime path: plugins/Allium/modguard/config.yml
+#
+# Two independent detection layers:
+#  1. banned-mods / allowed-mods : mod ids + brand strings revealed by the client
+#     over plugin channels (minecraft:brand, FML handshake). Catches Fabric/Forge
+#     mods that announce themselves (baritone, meteor-client, liquidbounce, wurst,
+#     autism-client, IPN, ...).
+#  2. translation-probe : ghost-sign translation/keybind probing (MC-265322).
+#     Catches clients that do NOT announce themselves (Wurst, Freecam, KillAura,
+#     XRay, ChestESP, LiquidBounce, BleachHack, Aristois, Coffee, ...) by the
+#     translation keys and keybinds they register.
 
 # Enable mod detection
 enabled: true
 
 # Detection mode: 'blacklist' (ban specific mods) or 'whitelist' (allow only specific mods)
 mode: blacklist
+
+# Check the client's brand and plugin channels for unwanted mods
+check-brand: true
+check-channels: true
+check-fml-handshake: true
 
 # Check for mods when player joins (delayed by check-delay-ticks)
 check-on-join: true
@@ -16,7 +31,117 @@ kick-on-detection: true
 # Delay after join before checking (ticks). Allows all mod channels to register.
 check-delay-ticks: 40
 
-# Mod detection uses translation-key probe only (see translation-probe > checks below)
+# --- Layer 1: banned mod ids / brands ------------------------------------
+# Matched case-insensitively (substring or exact, see regex-matching) against the
+# mod ids / names a client reports. Covers every client in hackops plus the
+# Fabric/Forge mods in the CheckHacks detection list.
+banned-mods:
+  # --- hackops clients (exact fabric.mod.json ids) ---
+  - autism
+  - autism-client
+  - autism_client
+  - baritone
+  - liquidbounce
+  - liquid-bounce
+  - liquidbounce-fabric
+  - meteor-client
+  - meteor_client
+  - meteorclient
+  - meteor
+  - wurst
+  - wurst-client
+  - wurstclient
+  # --- CheckHacks detected clients / mods ---
+  - bleachhack
+  - bleach-hack
+  - aristois
+  - emc
+  - coffee
+  - coffee-client
+  - freecam
+  - fabric-freecam
+  - fears-xray
+  - xray
+  - xray-fabric
+  - chestesp
+  - killaura
+  - kill-aura
+  - aura
+  - autofish
+  - lumina
+  - autoswitch
+  - autoclicker
+  - autoclicker-fabric
+  - antiafk
+  - itemscroller
+  - xaerominimap
+  - xaeros-minimap
+  - xaeros
+  - world-downloader
+  - simple-world-downloader
+  - swd
+  - seedcracker
+  - seedcrackerx
+  - glazed
+  - trouser-streak
+  - newernewchunks
+  - ui-utils
+  - uiutils
+  # --- inventory mods (IPN family) ---
+  - inventory-profiles-next
+  - inventoryprofilesnext
+  - inventoryprofiles
+  - inventory_profiles
+  - inventory_profiles_next
+  - ipnext
+  - libipn
+  # --- other utility mods ---
+  - tweakeroo
+  - litematica
+  - minihud
+  # --- more clients / cheats ---
+  - vape
+  - sigma
+  - impact
+  - future
+  - konas
+  - rusherhack
+  - inertia-client
+  - inertia
+  - phobos
+  - kami
+  - salhack
+  - creepy-salhack
+  - gamesense
+  - xulu
+  - w+2
+  - w+3
+  - pyro
+  - 3arthh4ck
+  - earthhack
+  - '0x22'
+  - auto-crystal
+  - crystal-aura
+  - waylandcraft
+  - waylandcraftplusplus
+  - waylandcraft-plus-plus
+  - waylandcraft_plus_plus
+
+# Only used when mode is whitelist. Any client that announces a mod NOT on this
+# list is kicked.
+allowed-mods:
+  - optifabric
+  - sodium
+  - lithium
+  - phosphor
+  - iris
+  - fabric-api
+  - fabric-language-kotlin
+  - modmenu
+  - cloth-config
+  - owo-lib
+  - reeses-sodium-options
+  - yet-another-config-lib
 
 # Kick message shown to players using banned mods
 # Use {mod} for the detected mod name and {player} for player name.
@@ -51,117 +176,397 @@ log-all-mods: false
 # Log detection events (kicks, banned mods found).
 log-detections: true
 
-# Translation-key probe detection.
-# Requires PacketEvents. Sends a virtual sign with a translation key in the text component,
-# then listens for the client to echo it back. If the client has the mod registered,
-# it resolves the translation key and echoes the translated value instead of the fallback.
+# Match banned-mods entries as regex instead of plain substring.
+regex-matching: false
+
+# Match banned-mods case-sensitively.
+case-sensitive: false
+
+# --- Layer 2: translation probe ------------------------------------------
+# Requires PacketEvents. Sends a virtual (ghost) sign whose lines carry
+# translation / keybind components, then opens the sign editor for a split
+# second. A client with the mod registered resolves the key and echoes the
+# translated text back; a vanilla client echoes the fallback or raw key.
 #
-# The `expected` list is optional. When empty, ANY response different from the fallback
-# counts as detection — this is safe for unique mod keys like inventoryprofiles.*.
-# When non-empty, only exact matches to expected values trigger detection.
+# Multi-probe: up to 3 checks are packed onto a single sign (one per line)
+# plus a control line carrying a vanilla keybind (key.forward). If the control
+# line comes back as the raw "key.forward", a sign-spoofing / exploit-preventer
+# mod is hijacking the probe and it is flagged - and coincident hit confidence
+# is lowered.
+#
+# Modes:
+#   translate - component resolves via {key} (fallback echoes when unknown).
+#               Hit = resolved != fallback. Exact key echo = protected.
+#   keybind   - component resolves via the client's keybinding for {key}.
+#               Hit = resolved a bound-key name (mod controls defined).
+#   meteor    - exact key echo = hit (meteor special), fallback echo = clean.
+#
+# 'expected' is optional. When non-empty, only exact (case-insensitive) matches
+# to those resolved values trigger a hit.
 translation-probe:
   enabled: true
-  default-action: alert
+  # Default action for checks that don't declare one: none / alert / kick
+  default-action: kick
   delay-ticks: 10
-  timeout-ticks: 30
+  timeout-ticks: 60
+  # Ticks between signs when a client is clean for all checks on the current sign.
+  between-sign-ticks: 5
   fallback-prefix: "allium_probe_"
   alert-message: "&7[&cModGuard&7] &e{player} &7hit translation probe &c{check} &8(&f{key}&8) &7resolved=&f{resolved} &7confidence=&e{confidence}&7 action=&e{action}"
   checks:
+    # ---------------- Meteor Client (hackops, addon base) ----------------
     meteor-client:
       enabled: true
+      mode: meteor
       key: "key.meteor-client.open-gui"
       display-name: "Meteor Client"
       action: kick
       require-corroboration-for-kick: false
+    meteor-client-commands:
+      enabled: true
+      mode: meteor
+      key: "key.meteor-client.open-commands"
+      display-name: "Meteor Client"
+      action: kick
+      require-corroboration-for-kick: false
+    meteor-client-category:
+      enabled: true
+      mode: meteor
+      key: "key.category.meteor-client.meteor-client"
+      display-name: "Meteor Client"
+      action: kick
+      require-corroboration-for-kick: false
 
-    # Inventory Profiles Next (IPN) — 617 translation keys under inventoryprofiles.*
+    # ---------------- hackops other clients -------------------------------
+    wurst:
+      enabled: true
+      mode: keybind
+      key: "key.wurst.zoom"
+      display-name: "Wurst Client"
+      action: kick
+      require-corroboration-for-kick: false
+    # LiquidBounce is IMPOSSIBLE to detect via the sign probe on current builds.
+    # It loads its lang files as classpath resources (/resources/liquidbounce/lang/)
+    # into its OWN ClientLanguage and only swaps it in for its own LanguageText
+    # components (MixinTranslatableContents). Vanilla Language.getInstance() - which
+    # resolves sign components - never sees a single liquidbounce.* key, so every
+    # probe echoes the fallback (CLEAN). Its module names are also raw strings (no
+    # .name keys) and it ships a ClientSpoofer (vanilla/geyser/lunar/CB/custom brand).
+    # Kept here disabled so the reasoning stays on record:
+    liquidbounce-killaura:
+      enabled: false
+      mode: translate
+      key: "liquidbounce.module.killAura.description"
+      display-name: "LiquidBounce"
+      action: kick
+      require-corroboration-for-kick: false
+    baritone:
+      enabled: true
+      mode: translate
+      key: "baritone.command.help.title"
+      display-name: "Baritone"
+      action: alert
+      require-corroboration-for-kick: true
+
+    # ---------------- CheckHacks detection list ---------------------------
+    freecam:
+      enabled: true
+      mode: keybind
+      key: "key.freecam.toggle"
+      display-name: "Freecam"
+      action: kick
+      require-corroboration-for-kick: false
+    xray-fabric:
+      enabled: true
+      mode: keybind
+      key: "xray.config.toggle"
+      display-name: "XRay (Fabric)"
+      action: kick
+      require-corroboration-for-kick: false
+    chestesp:
+      enabled: true
+      mode: keybind
+      key: "key.chestesp.toggle"
+      display-name: "ChestESP"
+      action: kick
+      require-corroboration-for-kick: false
+    killaura-fabric:
+      enabled: true
+      mode: keybind
+      key: "key.killaura"
+      display-name: "KillAura (Fabric)"
+      action: kick
+      require-corroboration-for-kick: false
+    autofish:
+      enabled: true
+      mode: keybind
+      key: "key.autofish.open_gui"
+      display-name: "AutoFish"
+      action: kick
+      require-corroboration-for-kick: false
+    lumina:
+      enabled: true
+      mode: keybind
+      key: "key.lumina.open_click_gui"
+      display-name: "Lumina"
+      action: kick
+      require-corroboration-for-kick: false
+    autoswitch:
+      enabled: true
+      mode: keybind
+      key: "key.autoswitch.toggle"
+      display-name: "AutoSwitch"
+      action: kick
+      require-corroboration-for-kick: false
+    auto-clicker-mc:
+      enabled: true
+      mode: keybind
+      key: "key.auto-clicker_.toggle"
+      display-name: "Auto Clicker (p1k0chu)"
+      action: kick
+      require-corroboration-for-kick: false
+    bleachhack:
+      enabled: true
+      mode: translate
+      key: "bleachhack.module.killaura"
+      display-name: "BleachHack"
+      action: kick
+      require-corroboration-for-kick: false
+    aristois:
+      enabled: true
+      mode: translate
+      key: "emc.module.killaura.name"
+      display-name: "Aristois"
+      action: kick
+      require-corroboration-for-kick: false
+    coffee:
+      enabled: true
+      mode: translate
+      key: "coffee.module.killaura.name"
+      display-name: "Coffee Client"
+      action: kick
+      require-corroboration-for-kick: false
+    world-downloader:
+      enabled: true
+      mode: translate
+      key: "key.wdl.startStop"
+      display-name: "World Downloader"
+      action: kick
+      require-corroboration-for-kick: false
+    autoclicker-fabric:
+      enabled: true
+      mode: translate
+      key: "autoclicker-fabric.hud.holding"
+      display-name: "AutoClicker (Fabric)"
+      action: kick
+      require-corroboration-for-kick: false
+    antiafk:
+      enabled: true
+      mode: translate
+      key: "key.antiafk.toggle"
+      display-name: "AntiAFK"
+      action: kick
+      require-corroboration-for-kick: false
+    trouser-streak:
+      enabled: true
+      mode: translate
+      key: "addon.trouser-streak.name"
+      display-name: "Trouser Streak"
+      action: kick
+      require-corroboration-for-kick: false
+    trouser-streak-newchunks:
+      enabled: true
+      mode: translate
+      key: "module.trouser-streak.NewerNewChunks.description"
+      display-name: "Trouser Streak (NewerNewChunks)"
+      action: kick
+      require-corroboration-for-kick: false
+    trouser-streak-anhero:
+      enabled: true
+      mode: translate
+      key: "module.trouser-streak.AnHero.description"
+      display-name: "Trouser Streak (AnHero)"
+      action: kick
+      require-corroboration-for-kick: false
+    ui-utils:
+      enabled: true
+      mode: translate
+      key: "key.ui-utils.restore_screen"
+      display-name: "Ui Utils"
+      action: kick
+      require-corroboration-for-kick: false
+    seedcrackerx:
+      enabled: true
+      mode: translate
+      key: "cracker.already"
+      display-name: "SeedCrackerX"
+      action: kick
+      require-corroboration-for-kick: false
+    simple-world-downloader:
+      enabled: true
+      mode: translate
+      key: "swd.screen.config.title"
+      display-name: "Simple World Downloader"
+      action: kick
+      require-corroboration-for-kick: false
+    glazed:
+      enabled: true
+      mode: translate
+      key: "addon.glazed.name"
+      display-name: "Glazed"
+      action: kick
+      require-corroboration-for-kick: false
+    litematica:
+      enabled: true
+      mode: translate
+      key: "litematica.hotkey.name.openmainmenuscreen"
+      display-name: "Litematica"
+      action: kick
+      require-corroboration-for-kick: false
+    itemscroller:
+      enabled: true
+      mode: translate
+      key: "itemscroller.hotkey.name.openconfigscreen"
+      display-name: "Item Scroller"
+      action: kick
+      require-corroboration-for-kick: false
+    xaeros-minimap:
+      enabled: true
+      mode: translate
+      key: "gui.xaero_minimap"
+      display-name: "Xaero's Minimap"
+      action: kick
+      require-corroboration-for-kick: false
+
+    # ---------------- Inventory Profiles Next (QOL, commonly banned) ------
     ipn-sort-inventory:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.config.name.sort_inventory"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-sort-columns:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.config.name.sort_inventory_in_columns"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-sort-rows:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.config.name.sort_inventory_in_rows"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-move-all:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.config.name.move_all_items"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-throw-all:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.config.name.throw_all_items"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-config-menu:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.config.name.open_config_menu"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-lock-slots:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.config.name.enable_lock_slots"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-auto-refill:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.config.name.enable_auto_refill"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-profiles:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.config.name.enable_profiles"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-tweaks:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.gui.config.Tweaks"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-tooltip-sort:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.tooltip.sort_button"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-tooltip-settings:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.tooltip.settings_open"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
     ipn-title:
       enabled: true
+      mode: translate
       key: "inventoryprofiles.gui.config.title"
       display-name: "Inventory Profiles Next"
       action: kick
       require-corroboration-for-kick: false
 
-    # libIPN — shared UI library used by IPN (alert-only, allows libIPN without blocking IPN)
+    # ---------------- WaylandCraft / WaylandCraft++ ---------------------------
+    waylandcraft-window-manager:
+      enabled: true
+      mode: keybind
+      key: "waylandcraft.key.windowManager"
+      display-name: "WaylandCraft"
+      action: kick
+      require-corroboration-for-kick: false
+    waylandcraft-app-launcher:
+      enabled: true
+      mode: keybind
+      key: "waylandcraft.key.appLauncher"
+      display-name: "WaylandCraft"
+      action: kick
+      require-corroboration-for-kick: false
+    waylandcraft-capture-keyboard:
+      enabled: true
+      mode: keybind
+      key: "waylandcraft.key.captureKeyboard"
+      display-name: "WaylandCraft"
+      action: kick
+      require-corroboration-for-kick: false
+
+    # libIPN - shared UI library used by IPN (alert-only, allows libIPN without blocking IPN)
     libipn-advanced-keys:
       enabled: true
+      mode: translate
       key: "libipn.common.gui.config.advanced_keybind_settings"
       display-name: "libIPN"
       action: alert
     libipn-keybind-tips:
       enabled: true
+      mode: translate
       key: "libipn.common.gui.config.keybind_settings_tips"
       display-name: "libIPN"
       action: alert
+
+# Log debug info about mod checks.
+debug: false

@@ -17,6 +17,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.util.SetExpFix;
 
 import java.util.ArrayList;
@@ -74,7 +75,7 @@ public class XpBottleCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§cYou don't have permission to give XP bottles to others.");
                 return true;
             }
-            target = Bukkit.getPlayer(args[1]);
+            target = PlayerMatcher.match(sender, args[1]);
             if (target == null) {
                 sender.sendMessage("§cPlayer not found: " + args[1]);
                 return true;
@@ -193,8 +194,7 @@ public class XpBottleCommand implements CommandExecutor, TabCompleter {
             return out.stream().filter(s -> s.toLowerCase(Locale.ENGLISH).startsWith(a)).collect(Collectors.toList());
         }
         if (args.length == 2 && sender.hasPermission("allium.xpbottle.other")) {
-            String a = args[1].toLowerCase(Locale.ENGLISH);
-            return Bukkit.getOnlinePlayers().stream().map(Player::getName).filter(n -> n.toLowerCase(Locale.ENGLISH).startsWith(a)).collect(Collectors.toList());
+            return PlayerMatcher.tabComplete(sender, args[1]);
         }
         return Collections.emptyList();
     }

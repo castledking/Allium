@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.spawnercraft.SpawnerCoreManager;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -108,7 +109,7 @@ public class SpawnerCoreCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        Player target = Bukkit.getPlayer(args[1]);
+        Player target = PlayerMatcher.match(sender, args[1]);
         if (target == null || !target.isOnline()) {
             sender.sendMessage("§cPlayer not found or not online: " + args[1]);
             return true;

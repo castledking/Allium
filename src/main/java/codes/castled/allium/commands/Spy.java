@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
@@ -92,7 +93,7 @@ public class Spy implements CommandExecutor, TabCompleter {
 
         // Case 2: /spy <player> - Spy on a specific player only
         String targetPlayerName = args[0];
-        Player targetPlayer = plugin.getServer().getPlayer(targetPlayerName);
+        Player targetPlayer = PlayerMatcher.match(sender, targetPlayerName);
 
         if (targetPlayer == null) {
             Text.sendErrorMessage(player, "player-not-found", lang, "{name}", targetPlayerName);

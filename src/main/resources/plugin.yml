@@ -29,6 +29,7 @@ commands:
     description: "Displays server details"
     usage: "/gc"
     permission: allium.gc
+    aliases: [uptime]
   give:
     description: "Give items to players"
     usage: "/give <player> <item> <amount>"
@@ -1584,6 +1585,9 @@ permissions:
     default: op
   allium.time.set:
     description: "Allows the player to set the time"
+    default: op
+  allium.time.pause:
+    description: "Allows the player to pause the day-night cycle via /time pause"
     default: op
 
   # Warp System Permissions

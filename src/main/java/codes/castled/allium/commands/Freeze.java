@@ -12,6 +12,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.inventory.InventorySnapshot;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.util.*;
 
@@ -76,7 +77,7 @@ public class Freeze implements CommandExecutor, TabCompleter {
         }
 
         // Handle individual player freeze
-        Player target = Bukkit.getPlayer(args[0]);
+        Player target = PlayerMatcher.match(sender, args[0]);
         if (target == null) {
             Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
             return true;
@@ -112,7 +113,7 @@ public class Freeze implements CommandExecutor, TabCompleter {
         }
 
         // Handle specific player unfreeze
-        Player target = Bukkit.getPlayer(args[0]);
+        Player target = PlayerMatcher.match(sender, args[0]);
         if (target == null) {
             Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
             return true;
@@ -319,15 +320,10 @@ public class Freeze implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            // Suggest players and special targets
+            // Suggest players (nickname-aware) and special targets
             String input = args[0].toLowerCase();
 
-            // Add online players
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                if (player.getName().toLowerCase().startsWith(input)) {
-                    suggestions.add(player.getName());
-                }
-            }
+            suggestions.addAll(PlayerMatcher.tabComplete(sender, input));
 
             // Add special targets
             if ("all".startsWith(input)) suggestions.add("all");

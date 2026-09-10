@@ -21,6 +21,7 @@ import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.managers.DB.Database.LocationType;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -43,24 +44,23 @@ public class Seen implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
-        if (!(sender instanceof Player player)) {
-            Text.sendErrorMessage(sender, "player-only-command", lang, "use /{cmd}", "execute this command.", true);
-            return true;
-        }
-
-        if (!player.hasPermission("allium.seen")) {
-            Text.sendErrorMessage(player, "no-permission", lang, "use /{cmd}", "see player information.", true);
+        if (!sender.hasPermission("allium.seen")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "use /{cmd}", "see player information.", true);
             return true;
         }
 
         if (args.length == 0) {
-            player.sendMessage(Text.colorize("&cUsage: /" + label + " <player>"));
-            // Play sound effect
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            sender.sendMessage(Text.colorize("&cUsage: /" + label + " <player>"));
             return true;
         }
 
         String targetName = args[0];
+
+        // Essentials-style matching first: resolves prefixes and nicknames to the real online player
+        Player matchedOnline = PlayerMatcher.match(sender, targetName);
+        if (matchedOnline != null) {
+            targetName = matchedOnline.getName();
+        }
 
         // Validate the username format first
         if (!isValidMinecraftUsername(targetName)) {
@@ -125,20 +125,22 @@ public class Seen implements CommandExecutor {
     }
 
     private void showOnlinePlayerInfo(CommandSender sender, Player targetPlayer) {
-        Player player = (Player) sender;
-        
+        Player player = sender instanceof Player ? (Player) sender : null;
+
         // Play sound effect
-        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-        
-        // Show particle effect
-        if (player.hasPermission("allium.particles")) {
-            try {
-                player.spawnParticle(Particle.HAPPY_VILLAGER, 
-                    player.getEyeLocation().add(0, 0.5, 0), 
-                    10, 0.5, 0.5, 0.5, 0.1);
-            } catch (Exception e) {
-                // Particle effect failed, but we'll continue
-                Text.sendDebugLog(Text.DebugSeverity.WARN, "Failed to spawn particles: " + e.getMessage());
+        if (player != null) {
+            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+
+            // Show particle effect
+            if (player.hasPermission("allium.particles")) {
+                try {
+                    player.spawnParticle(Particle.HAPPY_VILLAGER,
+                        player.getEyeLocation().add(0, 0.5, 0),
+                        10, 0.5, 0.5, 0.5, 0.1);
+                } catch (Exception e) {
+                    // Particle effect failed, but we'll continue
+                    Text.sendDebugLog(Text.DebugSeverity.WARN, "Failed to spawn particles: " + e.getMessage());
+                }
             }
         }
         
@@ -147,7 +149,7 @@ public class Seen implements CommandExecutor {
         String header = headerTemplate
             .replace("&", "§")
             .replace("{player}", targetPlayer.getName());
-        player.sendMessage(Text.colorize(header));
+        sender.sendMessage(Text.colorize(header));
 
         // Show online status with duration
         Map<UUID, Long> loginTimes = plugin.getPlayerLoginTimes();
@@ -177,7 +179,7 @@ public class Seen implements CommandExecutor {
                 .replace("{y}", String.format("%.2f", loc.getY()))
                 .replace("{z}", String.format("%.2f", loc.getZ()));
 
-        if (sender instanceof Player && sender.hasPermission("allium.tp")) {
+            if (player != null && player.hasPermission("allium.tp")) {
             Component locationMsg = Text.colorize(locationRaw)
                     .clickEvent(ClickEvent.runCommand("/tppos " + loc.getX() + " " + loc.getY() + " " + loc.getZ() + " " + loc.getWorld().getName()))
                     .hoverEvent(HoverEvent.showText(Component.text("Click to teleport to this location")));
@@ -223,20 +225,22 @@ public class Seen implements CommandExecutor {
     }
 
     private void showOfflinePlayerInfo(CommandSender sender, OfflinePlayer targetPlayer) {
-        Player player = (Player) sender;
-        
+        Player player = sender instanceof Player ? (Player) sender : null;
+
         // Play a different sound for offline players
-        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.8f);
-        
-        // Show different particle effect for offline players
-        if (player.hasPermission("allium.particles")) {
-            try {
-                player.spawnParticle(Particle.CLOUD, 
-                    player.getEyeLocation().add(0, 0.5, 0), 
-                    5, 0.3, 0.3, 0.3, 0.1);
-            } catch (Exception e) {
-                // Particle effect failed, but we'll continue
-                Text.sendDebugLog(Text.DebugSeverity.WARN, "Failed to spawn particles: " + e.getMessage());
+        if (player != null) {
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.8f);
+
+            // Show different particle effect for offline players
+            if (player.hasPermission("allium.particles")) {
+                try {
+                    player.spawnParticle(Particle.CLOUD,
+                        player.getEyeLocation().add(0, 0.5, 0),
+                        5, 0.3, 0.3, 0.3, 0.1);
+                } catch (Exception e) {
+                    // Particle effect failed, but we'll continue
+                    Text.sendDebugLog(Text.DebugSeverity.WARN, "Failed to spawn particles: " + e.getMessage());
+                }
             }
         }
         
@@ -245,7 +249,7 @@ public class Seen implements CommandExecutor {
         String header = headerTemplate
             .replace("&", "§")
             .replace("{player}", targetPlayer.getName());
-        player.sendMessage(Text.colorize(header));
+        sender.sendMessage(Text.colorize(header));
 
         // Show offline status
         Database.PlayerLastSeenData lastSeenData = plugin.getDatabase().getPlayerLastSeen(targetPlayer.getUniqueId());
@@ -291,7 +295,7 @@ public class Seen implements CommandExecutor {
                     .replace("{y}", String.format("%.2f", lastLogoutLocation.getY()))
                     .replace("{z}", String.format("%.2f", lastLogoutLocation.getZ()));
 
-            if (sender instanceof Player && sender.hasPermission("allium.tp")) {
+        if (player != null && player.hasPermission("allium.tp")) {
                 Component locationMsg = Text.colorize(locationRaw)
                         .clickEvent(ClickEvent.runCommand("/tppos " + lastLogoutLocation.getX() + " " + lastLogoutLocation.getY() + " " + lastLogoutLocation.getZ() + " " + lastLogoutLocation.getWorld().getName()))
                         .hoverEvent(HoverEvent.showText(Component.text("Click to teleport to this location")));

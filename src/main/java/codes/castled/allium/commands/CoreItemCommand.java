@@ -13,6 +13,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.items.CustomItem;
 import codes.castled.allium.items.CustomItemRegistry;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.PlayerMatcher;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
@@ -71,7 +72,7 @@ public class CoreItemCommand implements CommandExecutor, TabCompleter {
         String itemName;
         int amount = 1;
 
-        Player potentialPlayer = Bukkit.getPlayer(args[1]);
+        Player potentialPlayer = PlayerMatcher.match(sender, args[1]);
         
         if (potentialPlayer != null && args.length >= 3) {
             targetPlayer = potentialPlayer;
@@ -149,7 +150,7 @@ public class CoreItemCommand implements CommandExecutor, TabCompleter {
                 completions.addAll(registry.getAllItemIds());
             }
         } else if (args.length == 3) {
-            Player potentialPlayer = Bukkit.getPlayer(args[1]);
+            Player potentialPlayer = PlayerMatcher.match(sender, args[1]);
             if (potentialPlayer != null) {
                 CustomItemRegistry registry = CustomItemRegistry.getInstance();
                 if (registry != null) {

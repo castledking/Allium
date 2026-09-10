@@ -18,6 +18,7 @@ import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.managers.DB.NoteEntry;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
@@ -48,8 +49,8 @@ public class Notes implements CommandExecutor {
         String playerName = null;
         
         if (args.length > 0) {
-            // Try to find player by name (online or offline)
-            Player target = Bukkit.getPlayer(args[0]);
+            // Try to find player by name or nickname (online), then offline by name
+            Player target = PlayerMatcher.match(sender, args[0]);
             if (target != null) {
                 playerUuid = target.getUniqueId();
                 playerName = target.getName();

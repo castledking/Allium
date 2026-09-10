@@ -15,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -205,7 +206,7 @@ public class Heal implements CommandExecutor {
             return true;
         } else {
             // Handle single player name
-            Player target = Bukkit.getPlayer(args[0]);
+            Player target = PlayerMatcher.match(sender, args[0]);
             if (target == null) {
                 if (Bukkit.getOfflinePlayer(args[0]).hasPlayedBefore()) {
                     String targetName = Bukkit.getOfflinePlayer(args[0]).getName();
@@ -241,7 +242,7 @@ public class Heal implements CommandExecutor {
         }
 
         // Try to find the target player
-        Player target = Bukkit.getPlayer(targetName);
+        Player target = PlayerMatcher.match(healer, targetName);
         if (target != null) {
             // Target is online - heal and notify
             if (healEntity(target)) {

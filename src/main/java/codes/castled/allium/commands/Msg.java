@@ -33,6 +33,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import java.sql.ResultSet;
@@ -172,7 +173,7 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
         String targetPlayerName = args[0];
         String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
-        Player targetPlayer = plugin.getServer().getPlayer(targetPlayerName);
+        Player targetPlayer = PlayerMatcher.match(sender, targetPlayerName);
 
         // If player is online, send direct message
         if (targetPlayer != null && targetPlayer.isOnline()) {
@@ -859,23 +860,19 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
      * @return List of matching online player names
      */
     private List<String> getOnlinePlayerNames(String input, CommandSender sender, boolean requirePermission) {
-        List<String> names = new ArrayList<>();
-        String lowercaseInput = input.toLowerCase();
-
-        for (Player player : plugin.getServer().getOnlinePlayers()) {
-            // Skip vanished players or those the sender can't see
-            if (requirePermission && sender instanceof Player &&
-                    !((Player) sender).canSee(player)) {
-                continue;
+        // Nickname-aware completion (Essentials-style); falls back to plain name matching
+        List<String> matched = PlayerMatcher.tabComplete(sender, input);
+        if (requirePermission && sender instanceof Player viewer && !matched.isEmpty()) {
+            List<String> visible = new ArrayList<>();
+            for (String name : matched) {
+                Player target = plugin.getServer().getPlayer(name);
+                if (target != null && viewer.canSee(target)) {
+                    visible.add(name);
+                }
             }
-
-            String playerName = player.getName();
-            if (playerName.toLowerCase().startsWith(lowercaseInput)) {
-                names.add(playerName);
-            }
+            return visible;
         }
-
-        return names;
+        return matched;
     }
 
     /**
@@ -1285,8 +1282,8 @@ public class Msg implements CommandExecutor, TabCompleter, Listener {
             }
         } else {
             // Single recipient mail
-            // Check if player is online
-            Player onlinePlayer = plugin.getServer().getPlayer(recipient);
+            // Check if player is online (Essentials-style matching: real name, prefix, nickname)
+            Player onlinePlayer = PlayerMatcher.match(sender, recipient);
             if (onlinePlayer != null && onlinePlayer.isOnline()) {
                 // Player is online, use direct message instead of mail
                 return sendDirectMessage(sender, onlinePlayer, filteredMessage);

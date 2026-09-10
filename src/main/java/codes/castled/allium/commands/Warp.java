@@ -15,6 +15,7 @@ import codes.castled.allium.listeners.jobs.CancelTeleportation;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
 import codes.castled.allium.managers.warp.WarpManager;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.util.SchedulerAdapter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -198,7 +199,7 @@ public class Warp implements CommandExecutor, TabCompleter {
         }
 
         // Find target player
-        Player targetPlayer = Bukkit.getPlayer(targetPlayerName);
+        Player targetPlayer = PlayerMatcher.match(sender, targetPlayerName);
         if (targetPlayer == null) {
             if (Bukkit.getOfflinePlayer(targetPlayerName).hasPlayedBefore()) {
                 Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", targetPlayerName);

@@ -507,6 +507,11 @@ public class FormatChatListener implements Listener {
         if (message == null || message.isEmpty()) return message;
 
         message = message.replaceAll("&#([A-Fa-f0-9]{6})", "<#$1>");
+        // Minecraft legacy hex: §x§R§R§G§G§B§B → <#RRGGBB>
+        message = message.replaceAll(
+            "(?i)§x§([0-9a-f])§([0-9a-f])§([0-9a-f])§([0-9a-f])§([0-9a-f])§([0-9a-f])",
+            "<#$1$2$3$4$5$6>"
+        );
         message = message.replace("&l", "<bold>");
         message = message.replace("&0", "<black>");
         message = message.replace("&1", "<dark_blue>");

@@ -129,6 +129,7 @@ import codes.castled.allium.managers.config.Config;
 import codes.castled.allium.managers.config.CustomItemsConfig;
 import codes.castled.allium.managers.config.WorldDefaults;
 import codes.castled.allium.managers.core.Alias;
+import codes.castled.allium.managers.core.AlliumVisibilityApi;
 import codes.castled.allium.managers.core.Item;
 import codes.castled.allium.managers.core.ItemDBManager;
 import codes.castled.allium.managers.core.LegacyID;
@@ -142,6 +143,7 @@ import codes.castled.allium.managers.economy.VaultEconomyProvider;
 import codes.castled.allium.managers.lang.Lang;
 import codes.castled.allium.managers.migration.MigrationManager;
 import codes.castled.allium.managers.permissions.DynamicPermissionManager;
+import codes.castled.allium.managers.time.TimePauseManager;
 import codes.castled.allium.managers.warp.WarpManager;
 import codes.castled.allium.managers.world.OreGenerationManager;
 import codes.castled.allium.packetevents.ChatPacketTracker;
@@ -154,6 +156,7 @@ import codes.castled.allium.spawnercraft.MobHeadDropListener;
 import codes.castled.allium.spawnercraft.SpawnerCoreManager;
 import codes.castled.allium.spawnercraft.SpawnerCraftListener;
 import codes.castled.allium.tfly.TFlyManager;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.util.PlayerVisibilityHelper;
 import codes.castled.allium.util.SchedulerAdapter;
 import codes.castled.allium.voucher.VouchersConfig;
@@ -225,6 +228,7 @@ public class PluginStart extends JavaPlugin {
     private MigrationManager migrationManager;
     private EconomyManager economyManager;
     private Time timeCycle;
+    private TimePauseManager timePauseManager;
     private DynamicPermissionManager dynamicPermissionManager;
     private WarpManager warpManager;
     private ChatMessageManager chatMessageManager;
@@ -245,6 +249,7 @@ public class PluginStart extends JavaPlugin {
     private PartyManager partyManager;
     private HandcuffsListener handcuffsListener;
     private VanishManager vanishManager;
+    private AlliumVisibilityApi alliumVisibilityApi;
     private Freeze freezeCommand;
     private AutoRestartCommand autoRestartCommand;
     private Tab tabCompleter;
@@ -368,6 +373,14 @@ public class PluginStart extends JavaPlugin {
     }
 
     /**
+     * Gets the time-pause manager (handles {@code /time pause}). May be null
+     * very early in the load order before {@code initializeManagers} runs.
+     */
+    public TimePauseManager getTimePauseManager() {
+        return timePauseManager;
+    }
+
+    /**
      * Gets the explode command instance.
      *
      * @return The Explode command instance.
@@ -430,6 +443,17 @@ public class PluginStart extends JavaPlugin {
      */
     public VanishManager getVanishManager() {
         return vanishManager;
+    }
+
+    /**
+     * Bridge API consulted by EssentialsX's {@code AlliumVisibilityBridge}.
+     * Essentials calls {@code getVisibilityApi()} via reflection; returning a
+     * non-null object here stops the "Essentials could not query
+     * AlliumVisibilityApi" warning and lets Allium's vanish/party logic drive
+     * Essentials' {@code canSee} decisions.
+     */
+    public AlliumVisibilityApi getVisibilityApi() {
+        return alliumVisibilityApi;
     }
 
     /**
@@ -600,6 +624,7 @@ public class PluginStart extends JavaPlugin {
         Text.setPlugin(this);
         SchedulerAdapter.init(this);
         PlayerVisibilityHelper.initialize(this);
+        PlayerMatcher.initialize(this);
         migrationManager = new MigrationManager(getLogger(), getDataFolder());
 
         // Perform migration if needed
@@ -1112,6 +1137,12 @@ public class PluginStart extends JavaPlugin {
      */
     @Override
     public void onDisable() {
+        // Stop the time-pause re-assertion task first so it does not try to
+        // touch a world that is being unloaded alongside the plugin shutdown.
+        if (timePauseManager != null) {
+            timePauseManager.shutdown();
+        }
+
         // Shut down the harvest module first: it persists crop state and
         // flushes its own database pool.
         if (harvestModule != null) {
@@ -2121,6 +2152,12 @@ public class PluginStart extends JavaPlugin {
         partyManager = new PartyManager(this);
         Text.sendDebugLog(INFO, "PartyManager initialized.");
 
+        // Initialize the visibility bridge that EssentialsX calls via reflection.
+        // Must come after both vanishManager and partyManager so the api can
+        // delegate to them.
+        alliumVisibilityApi = new AlliumVisibilityApi(this);
+        Text.sendDebugLog(INFO, "AlliumVisibilityApi initialized.");
+
         // Initialize warp manager
         warpManager = new WarpManager(this);
         Text.sendDebugLog(INFO, "WarpManager initialized.");
@@ -2149,7 +2186,8 @@ public class PluginStart extends JavaPlugin {
         Item.initialize(this);
         new Skull(this);
         new WorldDefaults(this);
-        timeCycle = new Time(this);
+        timePauseManager = new TimePauseManager(this);
+        timeCycle = new Time(this, timePauseManager);
 
         // Initialize ChatMessageManager for chat deletion features
         chatMessageManager = new ChatMessageManager();
@@ -2555,6 +2593,10 @@ public class PluginStart extends JavaPlugin {
             registerCommand("time", timeCycle, timeCycle);
             registerCommand("day", timeCycle, timeCycle);
             registerCommand("night", timeCycle, timeCycle);
+            // Time pause manager is a listener (WorldLoadEvent) and must be
+            // registered after the manager is created above.
+            getServer().getPluginManager().registerEvents(timePauseManager, this);
+            timePauseManager.restorePersisted();
 
             // Auto Restart command
             try {
@@ -2930,6 +2972,11 @@ public class PluginStart extends JavaPlugin {
                 pm,
                 "AltProtectionListener",
                 new AltProtectionListener(this)
+            );
+            registerListenerSafely(
+                pm,
+                "AntiBotListener",
+                new codes.castled.allium.listeners.security.AntiBotListener(this)
             );
             registerListenerSafely(
                 pm,

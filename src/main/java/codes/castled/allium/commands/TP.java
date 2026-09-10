@@ -28,6 +28,7 @@ import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.managers.DB.Database.LocationType;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
@@ -361,7 +362,7 @@ public class TP implements CommandExecutor, TabCompleter {
                 return true;
             }
 
-            targetPlayer = plugin.getServer().getPlayer(args[0]);
+            targetPlayer = PlayerMatcher.match(sender, args[0]);
             if (targetPlayer == null) {
                 Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                 return true;
@@ -478,7 +479,7 @@ public class TP implements CommandExecutor, TabCompleter {
                 return true;
             }
 
-            targetPlayer = plugin.getServer().getPlayer(args[0]);
+            targetPlayer = PlayerMatcher.match(sender, args[0]);
             if (targetPlayer == null) {
                 Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                 return true;
@@ -1604,7 +1605,7 @@ public class TP implements CommandExecutor, TabCompleter {
                         Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "tp others");
                         return true;
                     }
-                    targetPlayer = plugin.getServer().getPlayer(args[0]);
+                    targetPlayer = PlayerMatcher.match(sender, args[0]);
                     if (targetPlayer == null) {
                         Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                         return true;
@@ -1684,7 +1685,7 @@ public class TP implements CommandExecutor, TabCompleter {
                     return true;
                 }
 
-                Player targetPlayer = plugin.getServer().getPlayer(args[0]);
+                Player targetPlayer = PlayerMatcher.match(sender, args[0]);
                 if (targetPlayer == null) {
                     Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                     return true;
@@ -1715,12 +1716,12 @@ public class TP implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 
-                Player targetPlayer = plugin.getServer().getPlayer(args[0]);
+                Player targetPlayer = PlayerMatcher.match(sender, args[0]);
                 if (targetPlayer == null) {
                     Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                     return true;
                 }
-                
+
                 final Player finalTarget = targetPlayer;
                 selfPlayer.teleportAsync(targetPlayer.getLocation()).thenAccept(success -> {
                     if (success) {
@@ -1753,7 +1754,7 @@ public class TP implements CommandExecutor, TabCompleter {
                 args = newArgs;
             } else {
                 // /tp <player> <target> - teleport player to target
-                Player player1 = plugin.getServer().getPlayer(args[0]);
+                Player player1 = PlayerMatcher.match(sender, args[0]);
                 if (player1 == null) {
                     Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                     return true;
@@ -1795,7 +1796,7 @@ public class TP implements CommandExecutor, TabCompleter {
                 resolvedTargetName = targetPlayers.get(0).getName();
             } else {
                 // Prefer online lookup for target first
-                Player online2 = plugin.getServer().getPlayer(args[1]);
+                Player online2 = PlayerMatcher.match(sender, args[1]);
                 if (online2 != null) {
                     targetPlayers = Collections.singletonList(online2);
                     targetLocation = online2.getLocation();
@@ -2138,7 +2139,7 @@ public class TP implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Player target = plugin.getServer().getPlayer(args[0]);
+        Player target = PlayerMatcher.match(player, args[0]);
         if (target == null) {
             Text.sendErrorMessage(player, "player-not-found", lang, "{name}", args[0]);
             return true;
@@ -2264,7 +2265,7 @@ public class TP implements CommandExecutor, TabCompleter {
 
         // If player specified who to accept
         if (args.length == 1) {
-            Player requester = plugin.getServer().getPlayer(args[0]);
+            Player requester = PlayerMatcher.match(player, args[0]);
             if (requester == null) {
                 Text.sendErrorMessage(player, "player-not-found", lang, "{name}", args[0]);
                 return true;
@@ -2505,7 +2506,7 @@ public class TP implements CommandExecutor, TabCompleter {
 
         // If player specified who to deny
         if (args.length == 1) {
-            Player requester = plugin.getServer().getPlayer(args[0]);
+            Player requester = PlayerMatcher.match(player, args[0]);
             if (requester == null) {
                 Text.sendErrorMessage(player, "player-not-found", lang, "{name}", args[0]);
                 return true;
@@ -2687,7 +2688,7 @@ public class TP implements CommandExecutor, TabCompleter {
                 }
                 matched.forEach(entity -> targets.put(entity.getUniqueId(), entity));
             } else {
-                Player named = plugin.getServer().getPlayer(arg);
+                Player named = PlayerMatcher.match(initiator, arg);
                 if (named == null) {
                     if (Bukkit.getOfflinePlayer(arg).hasPlayedBefore()) {
                         Text.sendErrorMessage(initiator, "player-not-online", lang, "{name}", arg);
@@ -2868,7 +2869,7 @@ public class TP implements CommandExecutor, TabCompleter {
             }
 
             // Get target player
-            Player targetPlayer = plugin.getServer().getPlayer(args[0]);
+            Player targetPlayer = PlayerMatcher.match(sender, args[0]);
             if (targetPlayer == null) {
                 Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                 return true;
@@ -3117,7 +3118,7 @@ public class TP implements CommandExecutor, TabCompleter {
         String resolvedName = targetPlayerName;
 
         // First, check if the player is online
-        Player onlinePlayer = plugin.getServer().getPlayer(targetPlayerName);
+        Player onlinePlayer = PlayerMatcher.match(player, targetPlayerName);
         if (onlinePlayer != null) {
             // If player is online, forward to regular teleport handler
             return handleTeleport(player, args, "tp");
@@ -3198,7 +3199,7 @@ public class TP implements CommandExecutor, TabCompleter {
         // Optional: cancel request with a specific target only
         UUID targetUUID = null;
         if (args.length >= 1) {
-            Player targetPlayer = plugin.getServer().getPlayer(args[0]);
+            Player targetPlayer = PlayerMatcher.match(player, args[0]);
             if (targetPlayer != null) {
                 targetUUID = targetPlayer.getUniqueId();
             }
@@ -3315,7 +3316,7 @@ public class TP implements CommandExecutor, TabCompleter {
             }
             if (teleportToggleAliases.contains(commandName)) {
                 if (sender.hasPermission("allium.tptoggle.others")) {
-                    return getOnlinePlayerNames(args[0]);
+                    return getOnlinePlayerNames(sender, args[0]);
                 }
             }
 
@@ -3353,7 +3354,7 @@ public class TP implements CommandExecutor, TabCompleter {
             return Selectors.tabComplete(sender, input);
         }
 
-        List<String> suggestions = new ArrayList<>(getOnlinePlayerNames(input));
+        List<String> suggestions = new ArrayList<>(getOnlinePlayerNames(sender, input));
         if (hintSelectors && input.isEmpty()
                 && (sender.hasPermission("allium.admin") || sender.hasPermission("allium.selectors"))) {
             suggestions.add("@e[type=villager,distance=0..50]");
@@ -3361,12 +3362,8 @@ public class TP implements CommandExecutor, TabCompleter {
         return suggestions;
     }
 
-    private List<String> getOnlinePlayerNames(String input) {
-        String lowercaseInput = input.toLowerCase();
-        return plugin.getServer().getOnlinePlayers().stream()
-                .map(Player::getName)
-                .filter(name -> name.toLowerCase().startsWith(lowercaseInput))
-                .collect(Collectors.toList());
+    private List<String> getOnlinePlayerNames(CommandSender sender, String input) {
+        return PlayerMatcher.tabComplete(sender, input);
     }
 
     private CompletableFuture<Void> saveCurrentLocation(Player player) {

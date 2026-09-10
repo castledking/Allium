@@ -43,6 +43,7 @@ import codes.castled.allium.managers.core.LegacyID;
 import codes.castled.allium.managers.core.SecurityAlertManager;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.managers.migration.EssentialsMigration;
 import codes.castled.allium.permissions.command.CommandPermissionOverride;
 import codes.castled.allium.util.SchedulerAdapter;
@@ -261,7 +262,7 @@ public class Core implements CommandExecutor, TabCompleter {
             return;
         }
 
-        Player target = Bukkit.getPlayer(args[2]);
+        Player target = PlayerMatcher.match(sender, args[2]);
         if (target == null) {
             Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[2]);
             return;
@@ -447,7 +448,7 @@ public class Core implements CommandExecutor, TabCompleter {
                     sender.sendMessage("§eUsage: /core dialog show <player> <dialog>");
                     return;
                 }
-                Player target = Bukkit.getPlayer(args[2]);
+                Player target = PlayerMatcher.match(sender, args[2]);
                 if (target == null) {
                     Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[2]);
                     return;
@@ -536,7 +537,7 @@ public class Core implements CommandExecutor, TabCompleter {
         UUID targetId = player.getUniqueId();
 
         if (args.length > 1 && player.hasPermission("allium.restore.others")) {
-            Player target = Bukkit.getPlayer(args[1]);
+            Player target = PlayerMatcher.match(player, args[1]);
             if (target != null) {
                 targetId = target.getUniqueId();
             } else {
@@ -570,7 +571,7 @@ public class Core implements CommandExecutor, TabCompleter {
         if(args.length == 2) {
             
             // Handle specific player
-            Player target = Bukkit.getPlayer(args[1]);
+            Player target = PlayerMatcher.match(sender, args[1]);
             if (target == null) {
                 Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[1]);
                 return;
@@ -847,11 +848,11 @@ public class Core implements CommandExecutor, TabCompleter {
         int effective = HomeLimits.getMaxHomes(plugin.getDatabase(), target);
 
         if (args.length < 3) {
-            Player online = target.getPlayer();
             int override = HomeLimits.getOverride(plugin.getDatabase(), target.getUniqueId());
+            HomeLimits.OfflinePermissionResult permissions = HomeLimits.getOfflinePermissionMaxHomes(target);
             sender.sendMessage(Component.text("§6Max homes for §e" + targetName + "§6: §e" + HomeLimits.format(effective)));
             sender.sendMessage(Component.text("§7  Permissions: §f"
-                    + (online != null ? HomeLimits.format(HomeLimits.getPermissionMaxHomes(online)) : "unknown (offline)")));
+                    + (permissions.resolved() ? HomeLimits.format(permissions.maxHomes()) : "unknown (offline)")));
             sender.sendMessage(Component.text("§7  Override: §f"
                     + (override < 0 ? "none" : String.valueOf(override))));
             sender.sendMessage(Component.text("§7  Homes set: §f" + plugin.getDatabase().getPlayerHomeCount(target.getUniqueId())));

@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
@@ -150,7 +151,7 @@ public class Gamemode implements CommandExecutor {
             }
 
             // Attempt to find target player
-            target = Bukkit.getPlayer(args[1]);
+            target = PlayerMatcher.match(sender, args[1]);
             if (target == null) {
                 Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[1]);
                 return true;
@@ -191,7 +192,7 @@ public class Gamemode implements CommandExecutor {
                 return true;
             }
 
-            target = Bukkit.getPlayer(args[0]);
+            target = PlayerMatcher.match(sender, args[0]);
             if (target == null) {
                 if (Bukkit.getOfflinePlayer(args[0]).hasPlayedBefore()) {
                     Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", Bukkit.getOfflinePlayer(args[0]).getName());

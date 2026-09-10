@@ -13,6 +13,7 @@ import org.jetbrains.annotations.NotNull;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
@@ -63,7 +64,7 @@ public class God implements CommandExecutor {
                     return true;
                 }
 
-                Player target = Bukkit.getPlayer(args[0]);
+                Player target = PlayerMatcher.match(sender, args[0]);
                 if (target == null) {
                     if (Bukkit.getOfflinePlayer(args[0]).hasPlayedBefore()) {
                         String targetName = Bukkit.getOfflinePlayer(args[0]).getName();

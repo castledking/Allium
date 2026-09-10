@@ -21,6 +21,7 @@ import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.managers.core.HomeLimits;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -704,6 +705,11 @@ public class Home implements CommandExecutor, TabCompleter {
     }
 
     private UUID getPlayerUUID(String playerName) {
+        // Essentials-style online matching first (real name, prefix, nickname)
+        Player matched = PlayerMatcher.match(null, playerName);
+        if (matched != null) {
+            return matched.getUniqueId();
+        }
         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerName);
         return offlinePlayer.hasPlayedBefore() || offlinePlayer.isOnline() ? offlinePlayer.getUniqueId() : null;
     }

@@ -13,6 +13,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.economy.EconomyManager;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -63,6 +64,21 @@ public class Balance implements CommandExecutor, TabCompleter {
             }
             
             String targetName = args[0];
+            
+            // Essentials-style online matching first (real name, prefix, nickname)
+            Player onlineTarget = PlayerMatcher.match(sender, targetName);
+            if (onlineTarget != null) {
+                BigDecimal balance = economy.getBalance(onlineTarget);
+                String otherBalanceMsg = plugin.getLangManager().get("economy.balance-other");
+                if (otherBalanceMsg.isEmpty()) {
+                    otherBalanceMsg = "&a{player}'s balance: &6{balance}";
+                }
+                sender.sendMessage((otherBalanceMsg
+                        .replace("{player}", onlineTarget.getName())
+                        .replace("{balance}", economy.formatBalance(balance))));
+                return true;
+            }
+
             OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(targetName);
             
             if (target == null) {

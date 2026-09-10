@@ -25,6 +25,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.inventory.OfflineInventoryData;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.Objects;
@@ -68,7 +69,7 @@ public class Invsee implements CommandExecutor, Listener {
         }
 
         boolean canEdit = player.hasPermission("allium.invsee.edit");
-        Player onlineTarget = Bukkit.getPlayer(args[0]);
+        Player onlineTarget = PlayerMatcher.match(player, args[0]);
         if (onlineTarget != null) {
             openInvsee(
                 player,

@@ -15,6 +15,7 @@ import codes.castled.allium.listeners.jobs.CancelTeleportation;
 import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
@@ -79,7 +80,7 @@ public class Spawn implements CommandExecutor {
                 }
             }
 
-            Player target = Bukkit.getPlayer(targetName);
+            Player target = PlayerMatcher.match(sender, targetName);
             if (target == null) {
                 if (Bukkit.getOfflinePlayer(targetName).hasPlayedBefore()) {
                     Text.sendErrorMessage(sender, "player-not-online", lang, "{player}", Bukkit.getOfflinePlayer(targetName).getName());

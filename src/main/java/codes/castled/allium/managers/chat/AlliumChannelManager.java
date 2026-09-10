@@ -619,13 +619,23 @@ public final class AlliumChannelManager implements Listener {
         if (!enabled) {
             return;
         }
-        
+
         Player player = event.getPlayer();
         String currentWrite = writeChannels.computeIfAbsent(player.getUniqueId(), ignored -> defaultChannelName);
-        
-        // Cancel staff-chat so Dynmap doesn't see it
+
+        // Suppress staff-chat from the legacy broadcast (and Dynmap, which still
+        // listens to this event) by clearing the recipient set rather than
+        // cancelling the event. Cancelling would have InteractiveChat's
+        // PaperChatEvents#applyBukkitChatEvent propagate the cancellation back
+        // onto the Paper AsyncChatEvent, which would then make our own
+        // onPlayerChat handler at LOW priority bail out before broadcasting.
+        //
+        // The `>` shortcut is handled in onPlayerChat (LOW): it rebuilds the
+        // viewer set on the Paper AsyncChatEvent from the Bukkit server's
+        // online players, so the cleared recipients here do not break the
+        // global broadcast for that one-shot case.
         if (currentWrite.equals(staffChannelName)) {
-            event.setCancelled(true);
+            event.getRecipients().clear();
         }
         // For global-chat we deliberately leave the recipient set alone. Paper builds the
         // modern AsyncChatEvent's viewer set from these recipients, and onPlayerChat below
@@ -744,9 +754,26 @@ public final class AlliumChannelManager implements Listener {
         // Cancel staff-chat events entirely - prevents them from reaching Dynmap
         // For global-chat: clear viewers to prevent vanilla broadcast duplicate, but don't cancel so Dynmap can process
         boolean isStaffChat = targetChannel.equals(staffChannelName);
+        // The `>` shortcut routes a one-shot staff-chat message to the default
+        // channel. onPlayerChatLegacy already cleared the legacy recipients for
+        // staff-chat writers, so AsyncChatEvent.viewers() is empty here even
+        // though we now want to broadcast globally. Re-derive the allowed set
+        // from the actual online players for that specific case.
+        boolean isStaffToGlobalShortcut = isShortcutMessage
+                && currentWrite.equals(staffChannelName)
+                && targetChannel.equals(defaultChannelName);
         Set<UUID> allowedViewers = null;
         if (isStaffChat) {
             event.setCancelled(true);
+        } else if (isStaffToGlobalShortcut) {
+            // Build a fresh allowed set from the live player list. GriefPrevention
+            // and similar plugins only listen to AsyncPlayerChatEvent for mute
+            // /ignore (no recipient trimming), so the live list is sufficient.
+            allowedViewers = new HashSet<>();
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                allowedViewers.add(online.getUniqueId());
+            }
+            event.viewers().clear();
         } else {
             // Snapshot who the server still considers a viewer before we take delivery
             // over. Other plugins trim this set (GriefPrevention soft-mute and ignore
@@ -831,7 +858,7 @@ public final class AlliumChannelManager implements Listener {
         // Handle local channel radius-based broadcasting
         boolean isLocalChannel = channel.isLocal();
         int radius = isLocalChannel ? channel.radius() : 0;
-        
+
         for (Player recipient : Bukkit.getOnlinePlayers()) {
             if (allowedViewers != null && !allowedViewers.contains(recipient.getUniqueId())) {
                 continue; // another plugin removed them from the audience
@@ -850,7 +877,7 @@ public final class AlliumChannelManager implements Listener {
                     continue; // Too far away - can't hear local chat
                 }
             }
-            
+
             recipient.sendMessage(applyStaffHoverForViewer(recipient, sender, messageId, rendered));
         }
         
@@ -1513,13 +1540,11 @@ public final class AlliumChannelManager implements Listener {
             // For staff-chat, use webhook delivery if configured, otherwise send directly via JDA
             if (isStaffChat) {
                 // Check if webhook delivery is enabled for this channel
-                if (channel.webhookDelivery()) {
+                if (channel.webhookDelivery() && textChannelObj != null) {
                     try {
                         // Use DiscordSRV's webhook delivery for proper profile/avatar display
-                        if (textChannelObj != null) {
-                            WebhookUtil.deliverMessage((github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel) textChannelObj, 
-                                    finalSender, formatDiscordOutMessage(finalSender, channel, finalMessage));
-                        }
+                        WebhookUtil.deliverMessage((github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel) textChannelObj,
+                                finalSender, formatDiscordOutMessage(finalSender, channel, finalMessage));
                     } catch (Throwable t) {
                         if (plugin.isDebugMode()) {
                             Text.sendDebugLog(WARN, "[Channels] Webhook delivery failed for staff-chat: " + t.getMessage());
@@ -1528,7 +1553,14 @@ public final class AlliumChannelManager implements Listener {
                         fallbackToJdaSend(target, finalSender, finalChannelName, finalMessage, channel);
                     }
                 } else {
-                    // Direct JDA send (original behavior)
+                    // Direct JDA send - either webhook delivery is disabled, or the
+                    // DiscordSRV game-channel mapping for "staff-chat" is missing.
+                    // The previous code only fell through to JDA on a webhook
+                    // exception, so a missing mapping silently dropped the message.
+                    if (channel.webhookDelivery() && textChannelObj == null && plugin.isDebugMode()) {
+                        Text.sendDebugLog(WARN, "[Channels] Staff-chat has webhook-delivery but no DiscordSRV mapping for '"
+                                + finalChannelName + "' - falling back to direct JDA send");
+                    }
                     fallbackToJdaSend(target, finalSender, finalChannelName, finalMessage, channel);
                 }
             } else {

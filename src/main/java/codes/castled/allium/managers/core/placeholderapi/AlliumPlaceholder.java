@@ -36,6 +36,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
     private final CommandPlaceholder commandPlaceholder;
     private final TeamPlaceholder teamPlaceholder;
     private final NicknamePlaceholder nicknamePlaceholder;
+    private final RestartPlaceholder restartPlaceholder;
 
     public AlliumPlaceholder(PluginStart plugin) {
         this.plugin = plugin;
@@ -61,6 +62,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
         this.commandPlaceholder = new CommandPlaceholder(plugin);
         this.teamPlaceholder = new TeamPlaceholder(plugin);
         this.nicknamePlaceholder = new NicknamePlaceholder(plugin);
+        this.restartPlaceholder = new RestartPlaceholder(plugin);
     }
 
     @Override
@@ -130,7 +132,10 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
             "baltop_balance_formatted_1",
             "baltop_balance_fixed_1",
             "baltop_player_1",
-            "baltop_player_stripped_1"
+            "baltop_player_stripped_1",
+            "restart_time",
+            "restart_seconds",
+            "restart_scheduled"
         );
     }
 
@@ -333,6 +338,17 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
           %allium_nickname_raw% - Returns the player's raw nickname without formatting.
         */
         result = nicknamePlaceholder.onPlaceholderRequest(player, params);
+        if (result != null) {
+            return result;
+        }
+
+        /*
+          Placeholders:
+          %allium_restart_time% - Returns human-readable time until next restart.
+          %allium_restart_seconds% - Returns seconds until next restart.
+          %allium_restart_scheduled% - Returns "true" if a restart is scheduled.
+        */
+        result = restartPlaceholder.onPlaceholderRequest(player, params);
         if (result != null) {
             return result;
         }

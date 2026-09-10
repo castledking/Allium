@@ -13,6 +13,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.economy.EconomyManager;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -63,8 +64,15 @@ public class Money implements CommandExecutor, TabCompleter {
             return true;
         }
         
-        // Find target player
-        OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(targetName);
+        // Find target player (Essentials-style online matching first: real name, prefix, nickname)
+        OfflinePlayer target = null;
+        Player onlineTarget = PlayerMatcher.match(sender, targetName);
+        if (onlineTarget != null) {
+            target = onlineTarget;
+        }
+        if (target == null) {
+            target = Bukkit.getOfflinePlayerIfCached(targetName);
+        }
         if (target == null) {
             // Try to find player by exact name
             for (OfflinePlayer offlinePlayer : Bukkit.getOfflinePlayers()) {

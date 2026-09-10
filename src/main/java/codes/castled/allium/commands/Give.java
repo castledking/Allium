@@ -35,6 +35,7 @@ import codes.castled.allium.managers.core.Potion;
 import codes.castled.allium.managers.core.Spawner;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 // Using local isGiveable method
 
@@ -302,7 +303,7 @@ public class Give implements CommandExecutor {
         }
         
         // Handle regular player name
-        Player target = Bukkit.getPlayer(targetSelector);
+        Player target = PlayerMatcher.match(sender, targetSelector);
         if (target == null) {
             if (Bukkit.getOfflinePlayer(targetSelector).hasPlayedBefore()) {
                 String targetName = Bukkit.getOfflinePlayer(targetSelector).getName();

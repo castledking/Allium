@@ -27,6 +27,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.inventory.OfflineInventoryData;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.util.SchedulerAdapter;
 
 public class EnderChestCommand implements CommandExecutor, TabCompleter, Listener {
@@ -61,7 +62,7 @@ public class EnderChestCommand implements CommandExecutor, TabCompleter, Listene
             return true;
         }
 
-        Player target = Bukkit.getPlayer(args[0]);
+        Player target = PlayerMatcher.match(viewer, args[0]);
         if (target != null) {
             openOnlineEnderChest(viewer, target, false);
             return true;
@@ -177,12 +178,7 @@ public class EnderChestCommand implements CommandExecutor, TabCompleter, Listene
         }
 
         if (args.length == 1 && player.hasPermission("allium.enderchest.other")) {
-            String partial = args[0].toLowerCase(Locale.ROOT);
-            return Bukkit.getOnlinePlayers().stream()
-                .map(Player::getName)
-                .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(partial))
-                .sorted()
-                .collect(Collectors.toCollection(ArrayList::new));
+            return new ArrayList<>(PlayerMatcher.tabComplete(player, args[0]));
         }
 
         return Collections.emptyList();

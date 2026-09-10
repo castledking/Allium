@@ -13,6 +13,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.economy.EconomyManager;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -51,8 +52,9 @@ public class Pay implements CommandExecutor, TabCompleter {
         String targetName = args[0];
         String amountStr = args[1];
 
-        // Find target player
-        if (Bukkit.getPlayer(targetName) == null) {
+        // Find target player (Essentials-style: real name, prefix, then nickname)
+        Player targetPlayer = PlayerMatcher.match(player, targetName);
+        if (targetPlayer == null) {
             if (Bukkit.getOfflinePlayer(targetName).hasPlayedBefore()) {
                 Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", Bukkit.getOfflinePlayer( targetName).getName());
                 return true;
@@ -63,7 +65,7 @@ public class Pay implements CommandExecutor, TabCompleter {
         }
 
         // Check if player is trying to pay themselves
-        if (player.getUniqueId().equals(Bukkit.getPlayer(targetName).getUniqueId())) {
+        if (player.getUniqueId().equals(targetPlayer.getUniqueId())) {
             Text.sendErrorMessage(sender, "cannot-self", lang, "{action}", "pay");
             return true;
         }
@@ -110,17 +112,16 @@ public class Pay implements CommandExecutor, TabCompleter {
         }
 
         // Transfer money
-        if (economy.transfer(player, Bukkit.getPlayer(targetName), amount)) {
+        if (economy.transfer(player, targetPlayer, amount)) {
             String message = lang.get("economy.pay-success-sender");
             if (message.isEmpty()) {
                 message = "&aYou paid &6{amount} &ato &f{player}&a.";
             }
             sender.sendMessage((message
                     .replace("{amount}", economy.formatBalance(amount))
-                    .replace("{player}", Bukkit.getPlayer(targetName).getName())));
-            
+                    .replace("{player}", targetPlayer.getName())));
+
             // Notify target if they're online
-            Player targetPlayer = Bukkit.getPlayer(targetName);
             if (targetPlayer != null && targetPlayer.isOnline()) {
                 String receiveMsg = lang.get("economy.pay-success-receiver");
                 if (receiveMsg.isEmpty()) {
@@ -147,10 +148,10 @@ public class Pay implements CommandExecutor, TabCompleter {
         
         if (args.length == 1) {
             String partialName = args[0].toLowerCase();
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                if (player.getName().toLowerCase().startsWith(partialName) && 
-                        !player.getName().equalsIgnoreCase(sender.getName())) {
-                    completions.add(player.getName());
+            List<String> matched = PlayerMatcher.tabComplete(sender, partialName);
+            for (String name : matched) {
+                if (!name.equalsIgnoreCase(sender.getName())) {
+                    completions.add(name);
                 }
             }
         } else if (args.length == 2) {

@@ -10,6 +10,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.inventory.InventoryManager;
 import codes.castled.allium.inventory.gui.RestoreGUI;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.util.UUID;
 
@@ -39,7 +40,7 @@ public class Restore implements CommandExecutor {
         UUID targetId = player.getUniqueId();
         
         if (args.length > 0 && player.hasPermission("allium.restore.others")) {
-            Player target = Bukkit.getPlayer(args[0]);
+            Player target = PlayerMatcher.match(player, args[0]);
             if (target != null) {
                 targetId = target.getUniqueId();
             } else {

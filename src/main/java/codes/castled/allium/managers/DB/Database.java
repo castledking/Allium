@@ -250,7 +250,7 @@ public class Database {
         return -1; // Return -1 if no generated key was returned
     }
 
-    private static final int CURRENT_DB_VERSION = 8;
+    private static final int CURRENT_DB_VERSION = 9;
 
     private void createTables(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
@@ -682,6 +682,25 @@ public class Database {
             }
 
             Text.sendDebugLog(INFO, "Applied migration to version 8");
+        }
+
+        if (currentVersion < 9) {
+            try (Connection connection = getConnection()) {
+                if (!tableExists(connection, "paused_worlds")) {
+                    Text.sendDebugLog(INFO, "Creating paused_worlds table...");
+                    statement.executeUpdate(
+                        "CREATE TABLE IF NOT EXISTS paused_worlds (" +
+                        "world VARCHAR(255) NOT NULL PRIMARY KEY, " +
+                        "paused_tick BIGINT NOT NULL, " +
+                        "paused_by VARCHAR(36), " +
+                        "paused_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                        ")"
+                    );
+                    Text.sendDebugLog(INFO, "Successfully created paused_worlds table");
+                }
+            }
+
+            Text.sendDebugLog(INFO, "Applied migration to version 9");
         }
     }
 
@@ -1251,6 +1270,97 @@ public class Database {
             return false;
         }
         return Boolean.parseBoolean(value);
+    }
+
+    /**
+     * Persist a paused-time state for a world. The {@code pausedTick} is the
+     * world-time value captured at the moment of pausing and is replayed on
+     * every scheduler tick until the world is unpaused.
+     *
+     * @return true on successful insert/update.
+     */
+    public boolean pauseWorldTime(String world, long pausedTick, String pausedByUuid) {
+        String query = "INSERT INTO paused_worlds (world, paused_tick, paused_by) " +
+                "VALUES (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE " +
+                "paused_tick = VALUES(paused_tick), " +
+                "paused_by = VALUES(paused_by), " +
+                "paused_at = CURRENT_TIMESTAMP";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, world);
+            stmt.setLong(2, pausedTick);
+            stmt.setString(3, pausedByUuid);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to pause world time for " + world + ": " + e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Remove a paused-time entry for a world. Returns true if a row was
+     * deleted, false if the world wasn't paused (or on DB error).
+     */
+    public boolean unpauseWorldTime(String world) {
+        String query = "DELETE FROM paused_worlds WHERE world = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, world);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to unpause world time for " + world + ": " + e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /** Returns true if the world has a paused_time row. */
+    public boolean isWorldTimePaused(String world) {
+        String query = "SELECT 1 FROM paused_worlds WHERE world = ? LIMIT 1";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, world);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to check paused state for " + world + ": " + e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /** Returns the tick value the world was paused at, or -1 if not paused / on error. */
+    public long getPausedTick(String world) {
+        String query = "SELECT paused_tick FROM paused_worlds WHERE world = ? LIMIT 1";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, world);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong("paused_tick");
+                }
+            }
+            return -1L;
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to read paused tick for " + world + ": " + e.getMessage(), e);
+            return -1L;
+        }
+    }
+
+    /** All worlds currently persisted as paused. Used at startup to re-apply the pin. */
+    public java.util.Set<String> listPausedWorlds() {
+        java.util.Set<String> worlds = new java.util.HashSet<>();
+        String query = "SELECT world FROM paused_worlds";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                worlds.add(rs.getString("world"));
+            }
+        } catch (SQLException e) {
+            Text.sendDebugLog(WARN, "Failed to list paused worlds: " + e.getMessage(), e);
+        }
+        return worlds;
     }
 
     public enum LocationType {
@@ -3638,6 +3748,37 @@ public class Database {
         }
         
         return null;
+    }
+
+    /**
+     * Saves (upserts) the per-gamemode inventories for a player.
+     * @param playerUUID The UUID of the player
+     * @param playerName The name of the player
+     * @param inventories The PlayerInventories object containing both gamemode inventories
+     * @return true if the save was successful, false otherwise
+     */
+    public boolean savePlayerInventories(UUID playerUUID, String playerName, PlayerInventories inventories) {
+        String sql = "MERGE INTO player_inventories (uuid, name, survival_inventory, survival_armor, survival_offhand, " +
+                "creative_inventory, creative_armor, creative_offhand, last_updated) " +
+                "KEY (uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, playerUUID.toString());
+            stmt.setString(2, playerName != null ? playerName : playerUUID.toString());
+            setNullableBlob(stmt, 3, serializeItemStacks(inventories.getSurvivalInventory()));
+            setNullableBlob(stmt, 4, serializeItemStacks(inventories.getSurvivalArmor()));
+            setNullableBlob(stmt, 5, serializeNullableItemStack(inventories.getSurvivalOffhand()));
+            setNullableBlob(stmt, 6, serializeItemStacks(inventories.getCreativeInventory()));
+            setNullableBlob(stmt, 7, serializeItemStacks(inventories.getCreativeArmor()));
+            setNullableBlob(stmt, 8, serializeNullableItemStack(inventories.getCreativeOffhand()));
+
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException | IOException e) {
+            Text.sendDebugLog(ERROR, "Failed to save player inventories for " + playerUUID, e);
+            return false;
+        }
     }
 
     public boolean saveOfflineInventoryState(UUID playerUUID, String playerName, OfflineInventoryData data) {

@@ -670,7 +670,6 @@ public class CreativeManager implements Listener {
                 Text.sendDebugLog(ERROR, "Failed to save inventory snapshot for " + player.getName());
             }
             
-            // Keep the PlayerInventories object for any other necessary operations
             PlayerInventories updated = new PlayerInventories(
                 survivalInventory,
                 survivalArmor,
@@ -679,6 +678,13 @@ public class CreativeManager implements Listener {
                 creativeArmor,
                 creativeOffhand
             );
+            boolean saved = database.savePlayerInventories(playerUUID, playerName, updated);
+            if (saved) {
+                Text.sendDebugLog(INFO, "Successfully saved per-gamemode inventory for " + playerName +
+                        " (mode: " + gameMode.name() + ")");
+            } else {
+                Text.sendDebugLog(ERROR, "Failed to save per-gamemode inventory for " + playerName);
+            }
         } catch (Exception e) {
             Text.sendDebugLog(ERROR, "Failed to save inventory for " + playerName, e);
         }

@@ -49,6 +49,14 @@ public class Config {
                 "############################################################",
                 ""
         ));
+        headers.put("anti-bot:", Arrays.asList(
+                "############################################################",
+                "# +------------------------------------------------------+ #",
+                "# |                 Anti-Bot Settings                    | #",
+                "# +------------------------------------------------------+ #",
+                "############################################################",
+                ""
+        ));
         headers.put("dialog:", Arrays.asList(
                 "############################################################",
                 "# +------------------------------------------------------+ #",
@@ -590,6 +598,14 @@ public class Config {
             config.set("auto-restart.countdown-times", Arrays.asList(60, 30, 15, 10, 5, 4, 3, 2, 1));
             config.set("auto-restart.restart-on-crash", true);
             config.set("auto-restart.save-before-restart", true);
+            changed = true;
+        }
+        if (!config.contains("auto-restart.relay-to-discord")) {
+            config.set("auto-restart.relay-to-discord", true);
+            changed = true;
+        }
+        if (!config.contains("auto-restart.send-final-server-stopped-message")) {
+            config.set("auto-restart.send-final-server-stopped-message", true);
             changed = true;
         }
 

@@ -10,6 +10,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.core.VanishManager;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import org.bukkit.command.TabCompleter;
 import java.util.ArrayList;
@@ -78,7 +79,7 @@ public class Vanish implements CommandExecutor, TabCompleter {
                         return true;
                     }
 
-                    Player target = Bukkit.getPlayer(targetArg);
+                    Player target = PlayerMatcher.match(sender, targetArg);
                     if (target == null) {
                         Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", targetArg);
                         return true;
@@ -94,7 +95,7 @@ public class Vanish implements CommandExecutor, TabCompleter {
                 }
 
                 String playerName = args[0];
-                Player target = Bukkit.getPlayer(playerName);
+                Player target = PlayerMatcher.match(sender, playerName);
                 if (target == null) {
                     Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", playerName);
                     return true;

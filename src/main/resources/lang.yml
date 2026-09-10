@@ -103,6 +103,7 @@ world-not-allowed: "You don't have permission to use /{cmd} in {world}."
 invalid: "Invalid syntax: {syntax}"
 invalid-time-format: "&cInvalid time format. Use: 1 (seconds), 30s, 5m, 1h, etc."
 no-permission: "You don't have permission to use /{cmd}"
+player-only-command: "This command can only be used by a player. use /{cmd}"
 alt-account-restricted: "You are not allowed to use /{cmd} as an alt account. See /wiki alt-accounts for more information."
 hold-item: "You must be holding an item to {modify} it."
 can-not-stack: "This item cannot be stacked."
@@ -394,6 +395,9 @@ time:
   set: "&aThe time was set to &e{time} &ain: &e{worlds}&a."
   add: "&aThe time moved forward by &e{time} &ain: &e{worlds}&a."
   check: "&e{24h} &6or &e{12h} &6or &e{ticks}"
+  pause:
+    enabled: "&aTime is now paused in &e{world}&a. The day-night cycle is held at this tick until you run &7/time pause &aagain."
+    disabled: "&aTime is no longer paused in &e{world}&a. The day-night cycle has resumed."
 
 tp:
   success: 
@@ -533,6 +537,10 @@ autorestart:
   # Kick and restart messages
   warning: "&c[!] Server restarting! Saving and disconnecting..."
   kick-message: "&cServer is restarting. Please reconnect in a moment."
+  server-stopped-message: "&cServer is Restarting..."
+  
+  # Discord embed color for restart messages (hex code without #)
+  discord-stopped-message-embed-color: "#F5E642"
   
   # Error messages
   no-permission: "&cYou don't have permission to use this command."

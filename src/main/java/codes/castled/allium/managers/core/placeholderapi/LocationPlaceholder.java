@@ -46,7 +46,7 @@ public class LocationPlaceholder extends PlaceholderExpansion {
         // Get the database instance from the plugin
         Database database = plugin.getDatabase();
         if (database == null) {
-            return "Database not available";
+            return null;
         }
 
         if (params.equalsIgnoreCase("spawn_location")) {

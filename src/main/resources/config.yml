@@ -68,6 +68,27 @@ maintenance: # A list of player UUIDs that bypass maintenance mode.
 
 ############################################################
 # +------------------------------------------------------+ #
+# |                 Anti-Bot Settings                    | #
+# +------------------------------------------------------+ #
+############################################################
+
+anti-bot:
+  # When a brand-new player joins for the first time and their very
+  # first command matches one of these, the punishment commands below
+  # are run as console and the command is cancelled.
+  # Bot clients probe with /plugins, /pl, /version etc. right after joining.
+  commands-to-punish:
+    - plugins
+    - pl
+    - version
+  # Commands executed from console when triggered.
+  # Placeholder: %player% - The player's name.
+  punishment-command:
+    - "ban %player% -s [SC] Bots aren't allowed on this server"
+
+
+############################################################
+# +------------------------------------------------------+ #
 # |                 Dialog Settings                      | #
 # +------------------------------------------------------+ #
 ############################################################
@@ -257,6 +278,12 @@ auto-restart:
   
   # Whether to save the world before restarting
   save-before-restart: true
+  
+  # Relay restart countdown messages to the Discord chat channel via DiscordSRV
+  relay-to-discord: true
+  
+  # Send a "server stopped" broadcast message to players right before shutdown
+  send-final-server-stopped-message: true
 
 # Nickname sync settings
 nickname:

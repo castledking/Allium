@@ -16,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
@@ -264,7 +265,7 @@ public class Explode implements CommandExecutor {
                     explosionPower = Integer.parseInt(args[0]);
                 } catch (NumberFormatException e) {
                     // First argument is not a number, try to find a player with that name
-                    targetPlayer = plugin.getServer().getPlayer(args[0]);
+                    targetPlayer = PlayerMatcher.match(sender, args[0]);
                     if (targetPlayer == null) {
                         // Player not found
                         Text.sendErrorMessage(playerSender, "player-not-found", lang, "{name}", args[0]);
@@ -332,7 +333,7 @@ public class Explode implements CommandExecutor {
             }
 
             // First argument must be a player name when console is the sender
-            targetPlayer = plugin.getServer().getPlayer(args[0]);
+            targetPlayer = PlayerMatcher.match(sender, args[0]);
             if (targetPlayer == null) {
                 if (Bukkit.getOfflinePlayer(args[0]).hasPlayedBefore()) {
                     Text.sendErrorMessage(sender, "player-not-online", lang, "{name}", Bukkit.getOfflinePlayer(args[0]).getName());

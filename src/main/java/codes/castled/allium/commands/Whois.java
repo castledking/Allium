@@ -22,6 +22,7 @@ import codes.castled.allium.managers.DB.Database.LocationType;
 import codes.castled.allium.managers.DB.Database.PlayerFlightData;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
@@ -57,13 +58,20 @@ public class Whois implements CommandExecutor {
         }
 
         String targetName = args[0];
-        
+
+        // Try Essentials-style matching first (real name, prefix, nickname) against online players;
+        // a match rewrites the lookup to the player's real in-game name.
+        Player matchedOnline = PlayerMatcher.match(sender, targetName);
+        if (matchedOnline != null) {
+            targetName = matchedOnline.getName();
+        }
+
         // Validate the username format first
         if (!isValidMinecraftUsername(targetName)) {
             Text.sendErrorMessage(sender, "player-not-found", lang, "name", targetName);
             return true;
         }
-        
+
         Player targetOnlinePlayer = Bukkit.getPlayerExact(targetName);
         
         // First check if player is online, which is the most reliable method

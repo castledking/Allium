@@ -16,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.util.PlayerMatcher;
 import codes.castled.allium.voucher.Voucher;
 import codes.castled.allium.voucher.VouchersConfig;
 
@@ -85,7 +86,7 @@ public class VoucherCommand implements CommandExecutor, TabCompleter {
     }
 
     private void giveVoucher(CommandSender sender, String playerName, String voucherId) {
-        org.bukkit.entity.Player target = Bukkit.getPlayer(playerName);
+        org.bukkit.entity.Player target = PlayerMatcher.match(sender, playerName);
         if (target == null) {
             sender.sendMessage("§cPlayer not found: " + playerName);
             return;

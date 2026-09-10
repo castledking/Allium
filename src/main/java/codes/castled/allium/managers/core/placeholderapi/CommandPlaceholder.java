@@ -52,7 +52,7 @@ public class CommandPlaceholder extends PlaceholderExpansion {
         // <command>_cansee
         String[] parts = params.split("_", 2);
         if (parts.length != 2) {
-            return "";
+            return null;
         }
 
         String command = parts[0].toLowerCase();
@@ -60,7 +60,7 @@ public class CommandPlaceholder extends PlaceholderExpansion {
 
         return switch (action) {
             case "canuse", "cansee" -> commandManager.shouldShowCommand(player, command) ? "yes" : "no";
-            default -> "";
+            default -> null;
         };
     }
 }

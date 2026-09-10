@@ -17,6 +17,8 @@ import codes.castled.allium.listeners.security.FlightRestoration;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
 import codes.castled.allium.tfly.TFlyManager;
+import codes.castled.allium.util.PlayerMatcher;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -67,7 +69,7 @@ public class Fly implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            Player target = Bukkit.getPlayer(args[0]);
+            Player target = PlayerMatcher.match(sender, args[0]);
             if (target == null) {
                 Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[0]);
                 return true;
@@ -103,7 +105,7 @@ public class Fly implements CommandExecutor, TabCompleter {
             sender.sendMessage("§cYou don't have permission.");
             return true;
         }
-        Player target = Bukkit.getPlayer(args[0]);
+        Player target = PlayerMatcher.match(sender, args[0]);
         if (target == null) {
             sender.sendMessage("§cPlayer not found: " + args[0]);
             return true;
@@ -292,11 +294,9 @@ public class Fly implements CommandExecutor, TabCompleter {
         if (!command.getName().equalsIgnoreCase("fly")) return Collections.emptyList();
         TFlyManager tflyManager = plugin.getTFlyManager();
         if (args.length == 1) {
-            List<String> names = Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList());
             boolean canOthers = sender.hasPermission("allium.fly.others") || sender.hasPermission("allium.tfly.others");
             if (!canOthers) return Collections.emptyList();
-            String a = args[0].toLowerCase(Locale.ENGLISH);
-            return names.stream().filter(n -> n.toLowerCase(Locale.ENGLISH).startsWith(a)).collect(Collectors.toList());
+            return PlayerMatcher.tabComplete(sender, args[0]);
         }
         if (args.length == 2 && tflyManager != null && (sender.hasPermission("allium.tfly.set") || sender.hasPermission("allium.tfly.add") || sender.hasPermission("allium.tfly.take") || sender.hasPermission("allium.tfly.reset"))) {
             return TFLY_ACTIONS.stream().filter(ac -> ac.startsWith(args[1].toLowerCase(Locale.ENGLISH))).collect(Collectors.toList());

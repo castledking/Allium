@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import org.bukkit.GameMode;
 import java.util.ArrayList;
@@ -82,7 +83,7 @@ public class Speed implements CommandExecutor {
                     return true;
                 }
 
-                Player target = Bukkit.getPlayer(args[1]);
+                Player target = PlayerMatcher.match(sender, args[1]);
                 if (target == null) {
                     Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[1]);
                     return true;
@@ -119,7 +120,7 @@ public class Speed implements CommandExecutor {
                     return true;
                 }
 
-                Player target = Bukkit.getPlayer(args[2]);
+                Player target = PlayerMatcher.match(sender, args[2]);
                 if (target == null) {
                     Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[2]);
                     return true;

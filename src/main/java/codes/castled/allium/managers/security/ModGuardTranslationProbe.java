@@ -42,6 +42,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -52,7 +53,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Sign Translation Vulnerability (MC-265322) based client-mod probing.
+ *
+ * Uses the same trick as CheckHacks: a ghost sign whose lines are translation
+ * (or keybind) components is shoved at the client, the sign editor is popped
+ * open for a split second, and the resolved text the client echoes back is
+ * compared against the fallback/keys to fingerprint installed mods.
+ *
+ * Multi-probe: up to {@link #CHECKS_PER_SIGN} checks are packed onto one sign,
+ * one per line, plus a control line carrying a vanilla keybind (key.forward)
+ * used to detect sign-spoofing/exploit-preventer mods.
+ */
 final class ModGuardTranslationProbe extends PacketListenerAbstract implements Listener {
+
+    private static final int    CHECKS_PER_SIGN = 3;
+    private static final String CTRL_KEYBIND    = "key.forward";
 
     private final PluginStart plugin;
     private final ModGuardManager modGuard;
@@ -109,7 +125,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
 
         UUID uuid = event.getUser().getUUID();
         ProbeSession session = sessions.get(uuid);
-        if (session == null || session.current == null) {
+        if (session == null || session.current.isEmpty()) {
             return;
         }
 
@@ -122,8 +138,23 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         event.setCancelled(true);
 
         String[] lines = packet.getTextLines();
-        String resolved = lines.length == 0 || lines[0] == null ? "" : lines[0];
-        ProbeCheck check = session.current;
+        String ctrlResp = lines.length > 3 && lines[3] != null ? lines[3].strip() : "";
+        boolean exploitPreventer = ctrlResp.equalsIgnoreCase(CTRL_KEYBIND);
+
+        List<ProbeCheck> batch = new ArrayList<>(session.current);
+        session.current = Collections.emptyList();
+
+        Map<ProbeCheck, String> hits = new HashMap<>();
+        for (int i = 0; i < batch.size(); i++) {
+            String resolved = i < lines.length && lines[i] != null ? lines[i].strip() : "";
+            if (batch.get(i).evaluate(resolved, session.fallback, exploitPreventer) == ProbeResult.DETECTED) {
+                hits.put(batch.get(i), resolved);
+            } else if (isDebug()) {
+                plugin.getLogger().info("[ModGuard] Translation probe miss for " + uuid
+                        + ": " + batch.get(i).id + " key=" + batch.get(i).key + " resolved=\"" + resolved + "\"");
+            }
+        }
+        final Map<ProbeCheck, String> finalHits = hits;
 
         SchedulerAdapter.run(() -> {
             Player player = Bukkit.getPlayer(uuid);
@@ -132,15 +163,18 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
                 return;
             }
 
-            if (check.isDetection(resolved, session.fallback)) {
-                modGuard.handleTranslationProbeHit(player, check.displayName, check.key, resolved, session.fallback, check.action, check.requireCorroborationForKick);
-            } else if (isDebug()) {
-                plugin.getLogger().info("[ModGuard] Translation probe miss for " + player.getName()
-                        + ": " + check.id + " key=" + check.key + " resolved=\"" + resolved + "\"");
+            restoreFakeBlock(player, session);
+
+            for (Map.Entry<ProbeCheck, String> hit : finalHits.entrySet()) {
+                if (!player.isOnline()) {
+                    break;
+                }
+                ProbeCheck check = hit.getKey();
+                modGuard.handleTranslationProbeHit(player, check.displayName, check.key,
+                        hit.getValue(), session.fallback, check.action, check.requireCorroborationForKick);
             }
 
-            restoreFakeBlock(player, session);
-            sendNextProbe(player, session);
+            sendNextBatch(player, session);
         });
     }
 
@@ -162,41 +196,44 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         Vector3i position = new Vector3i(base.getBlockX(), Math.max(minY, base.getBlockY() - 30), base.getBlockZ());
         ProbeSession session = new ProbeSession(position, new ArrayDeque<>(checks), createFallback());
         sessions.put(player.getUniqueId(), session);
-        sendNextProbe(player, session);
+        sendNextBatch(player, session);
     }
 
-    private void sendNextProbe(Player player, ProbeSession session) {
+    private void sendNextBatch(Player player, ProbeSession session) {
         if (!player.isOnline()) {
             sessions.remove(player.getUniqueId());
             return;
         }
 
-        ProbeCheck next = session.remaining.pollFirst();
-        if (next == null) {
+        List<ProbeCheck> batch = new ArrayList<>();
+        while (batch.size() < CHECKS_PER_SIGN && !session.remaining.isEmpty()) {
+            batch.add(session.remaining.pollFirst());
+        }
+        if (batch.isEmpty()) {
             sessions.remove(player.getUniqueId());
             restoreFakeBlock(player, session);
             return;
         }
 
-        session.current = next;
+        session.current = batch;
         sendProbePackets(player, session);
 
         long timeoutTicks = config().getLong("translation-probe.timeout-ticks", 80L);
         SchedulerAdapter.runLater(() -> {
             ProbeSession active = sessions.get(player.getUniqueId());
-            if (active == session && active.current == next) {
+            if (active == session && active.current == batch) {
+                active.current = Collections.emptyList();
                 restoreFakeBlock(player, active);
-                sendNextProbe(player, active);
+                sendNextBatch(player, active);
             }
         }, timeoutTicks);
     }
 
     private void sendProbePackets(Player player, ProbeSession session) {
-        ProbeCheck check = session.current;
         try {
             WrappedBlockState signState = WrappedBlockState.getDefaultState(StateTypes.OAK_SIGN);
             playerPacket(player, new WrapperPlayServerBlockChange(session.position, signState));
-            playerPacket(player, new WrapperPlayServerBlockEntityData(session.position, BlockEntityTypes.SIGN, createSignNbt(check.key, session.fallback)));
+            playerPacket(player, new WrapperPlayServerBlockEntityData(session.position, BlockEntityTypes.SIGN, createSignNbt(session.current, session.fallback)));
             playerPacket(player, new WrapperPlayServerOpenSignEditor(session.position, true));
             playerPacket(player, new WrapperPlayServerCloseWindow());
         } catch (Throwable t) {
@@ -215,27 +252,38 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         PacketEvents.getAPI().getPlayerManager().sendPacket(player, packet);
     }
 
-    private NBTCompound createSignNbt(String key, String fallback) {
+    private NBTCompound createSignNbt(List<ProbeCheck> batch, String fallback) {
         NBTCompound root = new NBTCompound();
-        root.setTag("front_text", createTextNbt(key, fallback));
-        root.setTag("back_text", createTextNbt(key, fallback));
+        root.setTag("front_text", createTextNbt(batch, fallback, true));
+        root.setTag("back_text", createTextNbt(batch, fallback, false));
         root.setTag("is_waxed", new NBTByte((byte) 0));
         return root;
     }
 
-    private NBTCompound createTextNbt(String key, String fallback) {
-        NBTCompound translationMessage = new NBTCompound();
-        translationMessage.setTag("translate", new NBTString(key));
-        translationMessage.setTag("fallback", new NBTString(fallback));
-
-        NBTCompound emptyMessage = new NBTCompound();
-        emptyMessage.setTag("", new NBTString(""));
-
+    private NBTCompound createTextNbt(List<ProbeCheck> batch, String fallback, boolean front) {
         NBTList<NBTCompound> messages = new NBTList<>(NBTType.COMPOUND);
-        messages.addTag(translationMessage);
-        messages.addTag(emptyMessage);
-        messages.addTag(emptyMessage);
-        messages.addTag(emptyMessage);
+
+        for (int i = 0; i < 4; i++) {
+            if (i < batch.size()) {
+                NBTCompound component = new NBTCompound();
+                ProbeCheck check = batch.get(i);
+                if (check.mode == ProbeMode.KEYBIND) {
+                    component.setTag("keybind", new NBTString(check.key));
+                } else {
+                    component.setTag("translate", new NBTString(check.key));
+                    component.setTag("fallback", new NBTString(fallback));
+                }
+                messages.addTag(component);
+            } else if (front && i == 3) {
+                NBTCompound control = new NBTCompound();
+                control.setTag("keybind", new NBTString(CTRL_KEYBIND));
+                messages.addTag(control);
+            } else {
+                NBTCompound emptyMessage = new NBTCompound();
+                emptyMessage.setTag("", new NBTString(""));
+                messages.addTag(emptyMessage);
+            }
+        }
 
         NBTCompound text = new NBTCompound();
         text.setTag("messages", messages);
@@ -274,7 +322,8 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
                     key,
                     new HashSet<>(expected),
                     section.getString("action", defaultAction),
-                    section.getBoolean("require-corroboration-for-kick", true)
+                    section.getBoolean("require-corroboration-for-kick", true),
+                    ProbeMode.parse(section.getString("mode", "translate"))
             ));
         }
         return checks;
@@ -297,22 +346,40 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
 
     private List<ProbeCheck> createDefaultChecks() {
         List<ProbeCheck> checks = new ArrayList<>();
-        checks.add(new ProbeCheck("meteor-client", "Meteor Client", "key.meteor-client.open-gui", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-sort-inventory", "Inventory Profiles Next", "inventoryprofiles.config.name.sort_inventory", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-sort-columns", "Inventory Profiles Next", "inventoryprofiles.config.name.sort_inventory_in_columns", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-sort-rows", "Inventory Profiles Next", "inventoryprofiles.config.name.sort_inventory_in_rows", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-move-all", "Inventory Profiles Next", "inventoryprofiles.config.name.move_all_items", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-throw-all", "Inventory Profiles Next", "inventoryprofiles.config.name.throw_all_items", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-config-menu", "Inventory Profiles Next", "inventoryprofiles.config.name.open_config_menu", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-lock-slots", "Inventory Profiles Next", "inventoryprofiles.config.name.enable_lock_slots", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-auto-refill", "Inventory Profiles Next", "inventoryprofiles.config.name.enable_auto_refill", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-profiles", "Inventory Profiles Next", "inventoryprofiles.config.name.enable_profiles", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-tweaks", "Inventory Profiles Next", "inventoryprofiles.gui.config.Tweaks", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-tooltip-sort", "Inventory Profiles Next", "inventoryprofiles.tooltip.sort_button", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-tooltip-settings", "Inventory Profiles Next", "inventoryprofiles.tooltip.settings_open", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("ipn-title", "Inventory Profiles Next", "inventoryprofiles.gui.config.title", Collections.emptySet(), "kick", false));
-        checks.add(new ProbeCheck("libipn-advanced-keys", "libIPN", "libipn.common.gui.config.advanced_keybind_settings", Collections.emptySet(), "alert", true));
-        checks.add(new ProbeCheck("libipn-keybind-tips", "libIPN", "libipn.common.gui.config.keybind_settings_tips", Collections.emptySet(), "alert", true));
+        checks.add(new ProbeCheck("meteor-client", "Meteor Client", "key.meteor-client.open-gui", Collections.emptySet(), "kick", false, ProbeMode.METEOR));
+        checks.add(new ProbeCheck("wurst", "Wurst Client", "key.wurst.zoom", Collections.emptySet(), "kick", false, ProbeMode.KEYBIND));
+        checks.add(new ProbeCheck("liquidbounce-killaura", "LiquidBounce", "liquidbounce.module.killAura.description", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("liquidbounce-aimbot", "LiquidBounce", "liquidbounce.module.aimbot.description", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("liquidbounce-esp", "LiquidBounce", "liquidbounce.module.ESP.description", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("freecam", "Freecam", "key.freecam.toggle", Collections.emptySet(), "kick", false, ProbeMode.KEYBIND));
+        checks.add(new ProbeCheck("xray-fabric", "XRay (Fabric)", "xray.config.toggle", Collections.emptySet(), "kick", false, ProbeMode.KEYBIND));
+        checks.add(new ProbeCheck("chestesp", "ChestESP", "key.chestesp.toggle", Collections.emptySet(), "kick", false, ProbeMode.KEYBIND));
+        checks.add(new ProbeCheck("killaura-fabric", "KillAura (Fabric)", "key.killaura", Collections.emptySet(), "kick", false, ProbeMode.KEYBIND));
+        checks.add(new ProbeCheck("autofish", "AutoFish", "key.autofish.open_gui", Collections.emptySet(), "kick", false, ProbeMode.KEYBIND));
+        checks.add(new ProbeCheck("lumina", "Lumina", "key.lumina.open_click_gui", Collections.emptySet(), "kick", false, ProbeMode.KEYBIND));
+        checks.add(new ProbeCheck("autoswitch", "AutoSwitch", "key.autoswitch.toggle", Collections.emptySet(), "kick", false, ProbeMode.KEYBIND));
+        checks.add(new ProbeCheck("bleachhack", "BleachHack", "bleachhack.module.killaura", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("aristois", "Aristois", "emc.module.killaura.name", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("coffee", "Coffee Client", "coffee.module.killaura.name", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("world-downloader", "World Downloader", "key.wdl.startStop", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("autoclicker-fabric", "AutoClicker (Fabric)", "autoclicker-fabric.hud.holding", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("antiafk", "AntiAFK", "key.antiafk.toggle", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("auto-clicker-mc", "Auto Clicker (p1k0chu)", "key.auto-clicker_.toggle", Collections.emptySet(), "kick", false, ProbeMode.KEYBIND));
+        checks.add(new ProbeCheck("ipn-sort-inventory", "Inventory Profiles Next", "inventoryprofiles.config.name.sort_inventory", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-sort-columns", "Inventory Profiles Next", "inventoryprofiles.config.name.sort_inventory_in_columns", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-sort-rows", "Inventory Profiles Next", "inventoryprofiles.config.name.sort_inventory_in_rows", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-move-all", "Inventory Profiles Next", "inventoryprofiles.config.name.move_all_items", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-throw-all", "Inventory Profiles Next", "inventoryprofiles.config.name.throw_all_items", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-config-menu", "Inventory Profiles Next", "inventoryprofiles.config.name.open_config_menu", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-lock-slots", "Inventory Profiles Next", "inventoryprofiles.config.name.enable_lock_slots", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-auto-refill", "Inventory Profiles Next", "inventoryprofiles.config.name.enable_auto_refill", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-profiles", "Inventory Profiles Next", "inventoryprofiles.config.name.enable_profiles", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-tweaks", "Inventory Profiles Next", "inventoryprofiles.gui.config.Tweaks", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-tooltip-sort", "Inventory Profiles Next", "inventoryprofiles.tooltip.sort_button", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-tooltip-settings", "Inventory Profiles Next", "inventoryprofiles.tooltip.settings_open", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("ipn-title", "Inventory Profiles Next", "inventoryprofiles.gui.config.title", Collections.emptySet(), "kick", false, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("libipn-advanced-keys", "libIPN", "libipn.common.gui.config.advanced_keybind_settings", Collections.emptySet(), "alert", true, ProbeMode.TRANSLATE));
+        checks.add(new ProbeCheck("libipn-keybind-tips", "libIPN", "libipn.common.gui.config.keybind_settings_tips", Collections.emptySet(), "alert", true, ProbeMode.TRANSLATE));
         return checks;
     }
 
@@ -351,13 +418,33 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         private final Vector3i position;
         private final Deque<ProbeCheck> remaining;
         private final String fallback;
-        private ProbeCheck current;
+        private List<ProbeCheck> current;
 
         private ProbeSession(Vector3i position, Deque<ProbeCheck> remaining, String fallback) {
             this.position = position;
             this.remaining = remaining;
             this.fallback = fallback;
+            this.current = Collections.emptyList();
         }
+    }
+
+    private enum ProbeMode {
+        TRANSLATE, KEYBIND, METEOR;
+
+        static ProbeMode parse(String value) {
+            if (value == null) {
+                return TRANSLATE;
+            }
+            return switch (value.trim().toUpperCase(Locale.ROOT)) {
+                case "KEYBIND" -> KEYBIND;
+                case "METEOR"  -> METEOR;
+                default        -> TRANSLATE;
+            };
+        }
+    }
+
+    private enum ProbeResult {
+        DETECTED, CLEAN, PROTECTED
     }
 
     private static final class ProbeCheck {
@@ -367,33 +454,78 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         private final Set<String> expected;
         private final String action;
         private final boolean requireCorroborationForKick;
+        private final ProbeMode mode;
 
-        private ProbeCheck(String id, String displayName, String key, Set<String> expected, String action, boolean requireCorroborationForKick) {
+        private ProbeCheck(String id, String displayName, String key, Set<String> expected, String action, boolean requireCorroborationForKick, ProbeMode mode) {
             this.id = id;
             this.displayName = displayName;
             this.key = key;
             this.expected = expected;
             this.action = action;
             this.requireCorroborationForKick = requireCorroborationForKick;
+            this.mode = mode;
         }
 
-        private boolean isDetection(String resolved, String fallback) {
+        private ProbeResult evaluate(String resolved, String fallback, boolean exploitPreventer) {
             if (resolved == null || resolved.isEmpty()) {
-                return false;
+                return ProbeResult.CLEAN;
             }
-            if (resolved.equals(fallback) || resolved.equals(key)) {
-                return false;
+            if (isKeyPlusLetter(resolved)) {
+                return ProbeResult.CLEAN;
             }
-            if (expected.isEmpty()) {
-                return true;
-            }
-            String normalized = resolved.toLowerCase(Locale.ROOT);
-            for (String value : expected) {
-                if (normalized.equals(value.toLowerCase(Locale.ROOT))) {
-                    return true;
+            return switch (mode) {
+                case KEYBIND -> {
+                    if (exploitPreventer && resolved.equalsIgnoreCase(key)) {
+                        yield ProbeResult.PROTECTED;
+                    }
+                    if (resolved.equalsIgnoreCase(key)) {
+                        yield ProbeResult.CLEAN;
+                    }
+                    if (resolved.toLowerCase(Locale.ROOT).contains(key.toLowerCase(Locale.ROOT))) {
+                        yield ProbeResult.CLEAN;
+                    }
+                    yield ProbeResult.DETECTED;
                 }
-            }
-            return false;
+                case METEOR -> {
+                    if (resolved.equalsIgnoreCase(key)) {
+                        yield ProbeResult.DETECTED;
+                    }
+                    if (regionStartsWith(resolved, fallback)) {
+                        yield ProbeResult.CLEAN;
+                    }
+                    yield ProbeResult.DETECTED;
+                }
+                default -> {
+                    if (regionStartsWith(resolved, fallback)) {
+                        yield ProbeResult.CLEAN;
+                    }
+                    if (resolved.equalsIgnoreCase(key)) {
+                        yield ProbeResult.PROTECTED;
+                    }
+                    if (!expected.isEmpty()) {
+                        String normalized = resolved.toLowerCase(Locale.ROOT);
+                        for (String value : expected) {
+                            if (normalized.equals(value.toLowerCase(Locale.ROOT))) {
+                                yield ProbeResult.DETECTED;
+                            }
+                        }
+                        yield ProbeResult.CLEAN;
+                    }
+                    yield ProbeResult.DETECTED;
+                }
+            };
+        }
+
+        private boolean isKeyPlusLetter(String resolved) {
+            int keyLen = key.length();
+            return resolved.length() == keyLen + 1
+                    && resolved.regionMatches(true, 0, key, 0, keyLen)
+                    && Character.isLetter(resolved.charAt(keyLen));
+        }
+
+        private static boolean regionStartsWith(String value, String prefix) {
+            return prefix != null && prefix.length() <= value.length()
+                    && value.regionMatches(true, 0, prefix, 0, prefix.length());
         }
     }
 }

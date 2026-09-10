@@ -12,9 +12,11 @@ import org.jetbrains.annotations.NotNull;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.managers.DiscordRestartRelay;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.*;
+import java.awt.Color;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -47,9 +49,13 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
     private String voteInitiatorName = "";
     private static final long VOTE_DURATION_SECONDS = 60;
 
+    // Discord relay for restart announcements
+    private DiscordRestartRelay discordRelay;
+
     public AutoRestartCommand(PluginStart plugin) {
         this.plugin = Objects.requireNonNull(plugin, "PluginStart cannot be null");
         this.lang = plugin.getLangManager();
+        this.discordRelay = new DiscordRestartRelay(plugin);
         try {
             loadConfig();
         } catch (Exception e) {
@@ -153,10 +159,22 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
                     long delay = TimeUnit.SECONDS.toMillis(delaySeconds);
                     scheduleRestart(delay, true, dryRunFlag);
                     String displayTime = formatScheduledDelay(delaySeconds, timeArg);
-                    String msg = dryRunFlag
-                        ? "Dry run: restart scheduled in " + displayTime + " (server will NOT restart)"
-                        : lang.get("autorestart.scheduled").replace("{time}", displayTime);
-                    Text.broadcast(msg);
+                    if (delaySeconds > 0) {
+                        // Skip the "scheduled" announcement for instant restarts (/ar now) — the
+                        // restart embeds from the countdown/execution already announce it.
+                        String msg = dryRunFlag
+                            ? "Dry run: restart scheduled in " + displayTime + " (server will NOT restart)"
+                            : lang.get("autorestart.scheduled").replace("{time}", displayTime);
+                        Text.broadcast(msg);
+                        if (plugin.getConfig().getBoolean("auto-restart.relay-to-discord", true)) {
+                            Color embedColor = DiscordRestartRelay.parseHexColor(
+                                    lang.getRaw("autorestart.discord-stopped-message-embed-color"));
+                            discordRelay.sendRestartEmbed(
+                                    "Server Restart Scheduled",
+                                    "Server will restart in **" + displayTime + "**.",
+                                    embedColor);
+                        }
+                    }
                 } catch (IllegalArgumentException e) {
                     String errMsg = lang.getRaw("autorestart.invalid-time-format");
                     if (errMsg != null && !errMsg.contains("Missing translation")) {
@@ -271,6 +289,7 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
         // Folia/Canvas requires initialDelayTicks > 0; use 1 tick minimum
         long initialDelayTicks = 1L;
         long periodTicks = 20L;
+        long initialDelaySeconds = TimeUnit.MILLISECONDS.toSeconds(delay);
         long gen = countdownGeneration.incrementAndGet();
         countdownTask = SchedulerAdapter.runTimer(() -> {
             // Generation guard: if cancel failed to stop a previous timer,
@@ -282,13 +301,23 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
             long timeLeft = millisLeft == 0 ? 0 : (millisLeft + 999L) / 1000L;
             
             // Check for countdown times
-            if (countdownTimes.contains((int) timeLeft)) {
+            // Skip the first tick if timeLeft matches the original delay — the
+            // "scheduled" message already announced that exact interval.
+            if (countdownTimes.contains((int) timeLeft) && timeLeft < initialDelaySeconds) {
                 String plural = (timeLeft == 1) ? "" : lang.get("autorestart.plural");
                 String message = lang.get("autorestart.countdown")
                         .replace("{time}", String.valueOf(timeLeft))
                         .replace("{plural}", plural)
                         .replace("\n", " ");
                 Bukkit.broadcastMessage(codes.castled.allium.managers.core.Text.parseColors(message));
+                if (plugin.getConfig().getBoolean("auto-restart.relay-to-discord", true)) {
+                    Color embedColor = DiscordRestartRelay.parseHexColor(
+                            lang.getRaw("autorestart.discord-stopped-message-embed-color"));
+                    discordRelay.sendRestartEmbed(
+                            "Server Restarting",
+                            "Server will restart in **" + timeLeft + " second" + (timeLeft == 1 ? "" : "s") + "**.",
+                            embedColor);
+                }
             }
             
             // Check for restart time
@@ -361,6 +390,14 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.sendMessage(warningMsg);
             }
+            if (plugin.getConfig().getBoolean("auto-restart.relay-to-discord", true)) {
+                Color embedColor = DiscordRestartRelay.parseHexColor(
+                        lang.getRaw("autorestart.discord-stopped-message-embed-color"));
+                discordRelay.sendRestartEmbed(
+                        "Server Restarting",
+                        "Server is restarting now. Saving world and disconnecting players...",
+                        embedColor);
+            }
             
             // Save all player data and kick players
             Bukkit.getOnlinePlayers().forEach(player -> {
@@ -383,6 +420,12 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
             // Schedule the actual shutdown with a delay to ensure everything is saved
             SchedulerAdapter.runLater(() -> {
                 try {
+                    // Broadcast server-stopped-message to any remaining players
+                    if (plugin.getConfig().getBoolean("auto-restart.send-final-server-stopped-message", true)) {
+                        String stoppedMsg = lang.get("autorestart.server-stopped-message");
+                        Bukkit.broadcastMessage(codes.castled.allium.managers.core.Text.parseColors(stoppedMsg));
+                    }
+                    
                     // Close plugin resources if needed
                     closePluginResources();
                     
@@ -649,6 +692,14 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
             }
             // Broadcast unanimous pass message
             Text.broadcast(lang.get("autorestart.vote-passed-unanimous"));
+            if (plugin.getConfig().getBoolean("auto-restart.relay-to-discord", true)) {
+                Color embedColor = DiscordRestartRelay.parseHexColor(
+                        lang.getRaw("autorestart.discord-stopped-message-embed-color"));
+                discordRelay.sendRestartEmbed(
+                        "Restart Vote Passed",
+                        "All players voted **YES**! Server will restart in 2 minutes.",
+                        embedColor);
+            }
             // Schedule restart in 2 minutes immediately
             voteActive = false;
             voteYesPlayers.clear();
@@ -698,6 +749,14 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
                     .replace("{yes}", String.valueOf(yesCount))
                     .replace("{no}", String.valueOf(noCount));
             Text.broadcast(passedMsg);
+            if (plugin.getConfig().getBoolean("auto-restart.relay-to-discord", true)) {
+                Color embedColor = DiscordRestartRelay.parseHexColor(
+                        lang.getRaw("autorestart.discord-stopped-message-embed-color"));
+                discordRelay.sendRestartEmbed(
+                        "Restart Vote Passed",
+                        yesCount + " yes, " + noCount + " no. Server will restart in 2 minutes.",
+                        embedColor);
+            }
 
             // Schedule restart in 2 minutes
             scheduleRestart(2 * 60 * 1000L, true, false);
@@ -707,6 +766,14 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
                     .replace("{yes}", String.valueOf(yesCount))
                     .replace("{no}", String.valueOf(noCount));
             Text.broadcast(failedMsg);
+            if (plugin.getConfig().getBoolean("auto-restart.relay-to-discord", true)) {
+                Color embedColor = DiscordRestartRelay.parseHexColor(
+                        lang.getRaw("autorestart.discord-stopped-message-embed-color"));
+                discordRelay.sendRestartEmbed(
+                        "Restart Vote Failed",
+                        yesCount + " yes, " + noCount + " no. Server will not restart.",
+                        embedColor);
+            }
         }
 
         voteYesPlayers.clear();

@@ -12,6 +12,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.PartyManager;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -106,7 +107,7 @@ public class LocatorBarCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleShow(Player player, String targetName, String timeString) {
-        Player target = Bukkit.getPlayer(targetName);
+        Player target = PlayerMatcher.match(player, targetName);
         if (target == null) {
             Text.sendErrorMessage(player, "player-not-found", lang, "{name}", targetName);
             return;
@@ -128,7 +129,7 @@ public class LocatorBarCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleHide(Player player, String targetName, String timeString) {
-        Player target = Bukkit.getPlayer(targetName);
+        Player target = PlayerMatcher.match(player, targetName);
         if (target == null) {
             Text.sendErrorMessage(player, "player-not-found", lang, "{name}", targetName);
             return;
@@ -150,7 +151,7 @@ public class LocatorBarCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleReset(Player player, String targetName) {
-        Player target = Bukkit.getPlayer(targetName);
+        Player target = PlayerMatcher.match(player, targetName);
         if (target == null) {
             Text.sendErrorMessage(player, "player-not-found", lang, "{name}", targetName);
             return;
@@ -248,15 +249,8 @@ public class LocatorBarCommand implements CommandExecutor, TabCompleter {
             }
             return completions;
         } else if (args.length == 2 && ("show".equalsIgnoreCase(args[0]) || "hide".equalsIgnoreCase(args[0]) || "reset".equalsIgnoreCase(args[0]))) {
-            // Suggest online players
-            List<String> completions = new ArrayList<>();
-            String partial = args[1].toLowerCase();
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                if (player.getName().toLowerCase().startsWith(partial)) {
-                    completions.add(player.getName());
-                }
-            }
-            return completions;
+            // Suggest online players (nickname-aware)
+            return PlayerMatcher.tabComplete(sender, args[1]);
         } else if (args.length == 3 && ("show".equalsIgnoreCase(args[0]) || "hide".equalsIgnoreCase(args[0]))) {
             // Suggest time formats
             return Arrays.asList("30", "60", "1m", "5m", "1h", "1d");

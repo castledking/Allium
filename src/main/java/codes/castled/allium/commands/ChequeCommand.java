@@ -19,6 +19,8 @@ import org.jetbrains.annotations.Nullable;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.economy.EconomyManager;
 import codes.castled.allium.util.MoneyAmountUtil;
+import codes.castled.allium.util.PlayerMatcher;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -82,7 +84,7 @@ public class ChequeCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§cYou don't have permission to give cheques to others.");
                 return true;
             }
-            target = Bukkit.getPlayer(args[0]);
+            target = PlayerMatcher.match(sender, args[0]);
             if (target == null) {
                 sender.sendMessage("§cPlayer not found: " + args[0]);
                 return true;
@@ -148,7 +150,7 @@ public class ChequeCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             if (sender.hasPermission("allium.cheque.other")) {
                 String a = args[0].toLowerCase(Locale.ENGLISH);
-                List<String> players = Bukkit.getOnlinePlayers().stream().map(Player::getName).filter(n -> n.toLowerCase(Locale.ENGLISH).startsWith(a)).collect(Collectors.toList());
+                List<String> players = PlayerMatcher.tabComplete(sender, a);
                 if (!a.matches("^[0-9.-kmbt]*$")) return players;
                 List<String> amounts = new ArrayList<>();
                 amounts.add("100");

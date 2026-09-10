@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.inventory.gui.NicknameGUI;
 import codes.castled.allium.managers.core.Text;
+import codes.castled.allium.util.PlayerMatcher;
 
 public class EditNick implements CommandExecutor {
     private final PluginStart plugin;
@@ -41,7 +42,7 @@ public class EditNick implements CommandExecutor {
                 return true;
             }
             
-            Player target = Bukkit.getPlayerExact(args[0]);
+            Player target = PlayerMatcher.match(player, args[0]);
             if (target == null) {
                 Text.sendErrorMessage(player, "player-not-found", plugin.getLangManager(), "{name}", args[0]);
                 return true;

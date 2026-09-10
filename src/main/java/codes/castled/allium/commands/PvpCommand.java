@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
+import codes.castled.allium.util.PlayerMatcher;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -99,7 +100,7 @@ public class PvpCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Player target = Bukkit.getPlayer(args[1]);
+        Player target = PlayerMatcher.match(sender, args[1]);
         if (target == null) {
             Text.sendErrorMessage(sender, "player-not-found", lang, "{name}", args[1]);
             return true;
@@ -156,12 +157,7 @@ public class PvpCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 2 && sender.hasPermission("allium.pvp.other")) {
-            String prefix = args[1].toLowerCase(Locale.ENGLISH);
-            return Bukkit.getOnlinePlayers().stream()
-                .map(Player::getName)
-                .filter(name -> name.toLowerCase(Locale.ENGLISH).startsWith(prefix))
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .toList();
+            return PlayerMatcher.tabComplete(sender, args[1]);
         }
 
         return List.of();

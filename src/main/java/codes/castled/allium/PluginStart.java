@@ -122,6 +122,7 @@ import codes.castled.allium.managers.ResourcePackManager;
 import codes.castled.allium.managers.chat.AlliumChannelManager;
 import codes.castled.allium.managers.chat.ChatFilterManager;
 import codes.castled.allium.managers.chat.ChatMessageManager;
+import codes.castled.allium.managers.chat.DiscordBanContextMenu;
 import codes.castled.allium.managers.chat.DiscordSrvMessageBridge;
 import codes.castled.allium.managers.chat.GradientNameManager;
 import codes.castled.allium.managers.chat.SpamBlockerManager;
@@ -153,6 +154,7 @@ import codes.castled.allium.packetevents.DeclareCommandsListener;
 import codes.castled.allium.packetevents.PacketEventsLoader;
 import codes.castled.allium.packetevents.TabListManager;
 import codes.castled.allium.spawnercraft.MobHeadDropListener;
+import codes.castled.allium.spawnercraft.PlushieCraftListener;
 import codes.castled.allium.spawnercraft.SpawnerCoreManager;
 import codes.castled.allium.spawnercraft.SpawnerCraftListener;
 import codes.castled.allium.tfly.TFlyManager;
@@ -237,6 +239,7 @@ public class PluginStart extends JavaPlugin {
     private GradientNameManager gradientNameManager;
     private AlliumChannelManager channelManager;
     private DiscordSrvMessageBridge discordSrvMessageBridge;
+    private DiscordBanContextMenu discordBanContextMenu;
     private ChatPacketTracker chatPacketTracker =
         new codes.castled.allium.packetevents.ChatPacketTrackerNoOp();
     private DeclareCommandsListener declareCommandsListener;
@@ -486,6 +489,10 @@ public class PluginStart extends JavaPlugin {
 
     public DiscordSrvMessageBridge getDiscordSrvMessageBridge() {
         return discordSrvMessageBridge;
+    }
+
+    public DiscordBanContextMenu getDiscordBanContextMenu() {
+        return discordBanContextMenu;
     }
 
     public AlliumChannelManager getChannelManager() {
@@ -1228,6 +1235,9 @@ public class PluginStart extends JavaPlugin {
             if (discordSrvMessageBridge != null) {
                 discordSrvMessageBridge.shutdown();
             }
+            if (discordBanContextMenu != null) {
+                discordBanContextMenu.shutdown();
+            }
             if (crowBarDataSender != null) {
                 crowBarDataSender.stop();
                 getServer()
@@ -1741,7 +1751,7 @@ public class PluginStart extends JavaPlugin {
         try {
             if (PacketEventsLoader.isPacketEventsAvailable()) {
                 this.declareCommandsListener = new DeclareCommandsListener(this);
-                com.github.retrooper.packetevents.PacketEvents.getAPI().getEventManager().registerListener(this.declareCommandsListener);
+                PacketEventsLoader.registerListener(this.declareCommandsListener);
                 Text.sendDebugLog(INFO, "DeclareCommandsListener registered for unsafe command removal");
             } else {
                 Text.sendDebugLog(WARN, "PacketEvents not available, DeclareCommandsListener not registered");
@@ -1754,7 +1764,7 @@ public class PluginStart extends JavaPlugin {
         try {
             if (PacketEventsLoader.isPacketEventsAvailable()) {
                 this.commandSuggestionsListener = new CommandSuggestionsListener(this);
-                com.github.retrooper.packetevents.PacketEvents.getAPI().getEventManager().registerListener(this.commandSuggestionsListener);
+                PacketEventsLoader.registerListener(this.commandSuggestionsListener);
                 Text.sendDebugLog(INFO, "CommandSuggestionsListener registered for plugin command suggestion filtering");
             } else {
                 Text.sendDebugLog(WARN, "PacketEvents not available, CommandSuggestionsListener not registered");
@@ -2227,6 +2237,19 @@ public class PluginStart extends JavaPlugin {
                 discordSrvMessageBridge.retryHook();
             }
         }, 100L);
+
+        if (getServer().getPluginManager().getPlugin("DiscordSRV") != null) {
+            try {
+                discordBanContextMenu = new DiscordBanContextMenu(this);
+                SchedulerAdapter.runLater(() -> {
+                    if (discordBanContextMenu != null) {
+                        discordBanContextMenu.retryHook();
+                    }
+                }, 100L);
+            } catch (Throwable t) {
+                Text.sendDebugLog(WARN, "Discord ban context menu unavailable: " + t.getMessage());
+            }
+        }
 
         // Initialize dynamic permission manager
         dynamicPermissionManager = new DynamicPermissionManager(this);
@@ -2735,6 +2758,7 @@ public class PluginStart extends JavaPlugin {
             getServer()
                 .getPluginManager()
                 .registerEvents(new OraxenSmeltingListener(), this);
+            codes.castled.allium.spawnercraft.SpawnerHeadConfig.reload(this);
             spawnerCoreManager = new SpawnerCoreManager(this);
             getServer()
                 .getPluginManager()
@@ -2745,6 +2769,14 @@ public class PluginStart extends JavaPlugin {
                     new SpawnerCraftListener(this, spawnerCoreManager),
                     this
                 );
+            if (
+                getServer().getPluginManager().isPluginEnabled("Nexo") &&
+                getConfig().getBoolean("spawnercraft.plushies", true)
+            ) {
+                getServer()
+                    .getPluginManager()
+                    .registerEvents(new PlushieCraftListener(), this);
+            }
             SpawnerCoreCommand spawnerCoreCommand = new SpawnerCoreCommand(
                 this
             );
@@ -2892,17 +2924,9 @@ public class PluginStart extends JavaPlugin {
         // Initialize SpectatorTeleport with proper error handling
         if (spectatorTeleport == null) {
             try {
-                // Load NV class using the plugin's class loader
-                Class<?> nvClass = getClass()
-                    .getClassLoader()
-                    .loadClass("net.survivalfun.core.commands.NV");
-                Object nvInstance = nvClass
-                    .getConstructor(PluginStart.class)
-                    .newInstance(this);
-                spectatorTeleport = new SpectatorTeleport(
-                    this,
-                    (NV) nvInstance
-                );
+                // NV lives in this plugin; the old reflective lookup still used the
+                // pre-rename package name and always failed.
+                spectatorTeleport = new SpectatorTeleport(this, new NV(this));
                 if (isDebugMode()) {
                     getLogger().info(
                         "Successfully initialized SpectatorTeleport"

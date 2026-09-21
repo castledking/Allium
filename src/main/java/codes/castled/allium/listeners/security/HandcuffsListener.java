@@ -227,7 +227,6 @@ public class HandcuffsListener implements Listener {
         // Handle CAUGHT_FISH state: successfully reeled in a fish or item
         if (state == PlayerFishEvent.State.CAUGHT_FISH) {
             // Give rewards, track statistics, or modify drops
-            player.sendMessage(Text.colorize("&aYou caught a fish!"));
             Text.sendDebugLog(INFO, player.getName() + " caught a fish");
             // Add reward logic here if needed
         }

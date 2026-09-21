@@ -131,18 +131,6 @@ public final class SpamBlockerManager implements Listener {
         return recent.normalized().equals(normalizeForRelay(message));
     }
 
-    public boolean shouldBlockDiscordInbound(DiscordGuildMessagePreProcessEvent event, String message) {
-        if (!enabled || !settings.applyDiscordToMinecraft()) {
-            return false;
-        }
-        Evaluation evaluation = evaluate(null, message, SpamContext.DISCORD_TO_MINECRAFT, null);
-        if (!evaluation.blocked()) {
-            return false;
-        }
-        event.setCancelled(true);
-        return true;
-    }
-
     public String rewriteForDiscordRelay(String message) {
         if (!enabled || message == null || message.isBlank()) {
             return message;
@@ -735,4 +723,29 @@ public final class SpamBlockerManager implements Listener {
                                         int maxTokenFrequency,
                                         int minimumTokenCount,
                                         int minimumCharacterSample) {}
+
+    /**
+     * Holds the DiscordSRV-typed check. Kept out of the manager itself so Bukkit can
+     * still register this listener on servers without DiscordSRV installed.
+     */
+    public final class DiscordHook {
+
+        public boolean shouldBlockDiscordInbound(DiscordGuildMessagePreProcessEvent event, String message) {
+            if (!enabled || !settings.applyDiscordToMinecraft()) {
+                return false;
+            }
+            Evaluation evaluation = evaluate(null, message, SpamContext.DISCORD_TO_MINECRAFT, null);
+            if (!evaluation.blocked()) {
+                return false;
+            }
+            event.setCancelled(true);
+            return true;
+        }
+
+    }
+
+    /** Discord-side checks; only call when DiscordSRV is installed. */
+    public DiscordHook discord() {
+        return new DiscordHook();
+    }
 }

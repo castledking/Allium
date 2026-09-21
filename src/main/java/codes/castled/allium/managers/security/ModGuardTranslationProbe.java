@@ -32,6 +32,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -74,6 +75,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
     private final ModGuardManager modGuard;
     private final Map<UUID, ProbeSession> sessions = new HashMap<>();
     private final SecureRandom random = new SecureRandom();
+    private volatile boolean closed;
 
     ModGuardTranslationProbe(PluginStart plugin, ModGuardManager modGuard) {
         super(PacketListenerPriority.HIGH);
@@ -88,7 +90,12 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
     }
 
     void unregister() {
+        // A reload builds a fresh probe; the old one must stop completely.
+        // Leaving its join listener alive made it keep sending its own ghost
+        // signs, whose echoes the new probe then scored as detections.
+        closed = true;
         PacketEvents.getAPI().getEventManager().unregisterListener(this);
+        HandlerList.unregisterAll(this);
         sessions.clear();
     }
 
@@ -142,6 +149,17 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         boolean exploitPreventer = ctrlResp.equalsIgnoreCase(CTRL_KEYBIND);
 
         List<ProbeCheck> batch = new ArrayList<>(session.current);
+        List<ProbeMode> modes = new ArrayList<>(batch.size());
+        for (ProbeCheck check : batch) {
+            modes.add(check.mode);
+        }
+        if (isForeignEcho(lines, modes, session.fallback, fallbackPrefix())) {
+            if (isDebug()) {
+                plugin.getLogger().info("[ModGuard] Ignoring stale translation probe echo for " + uuid
+                        + ": " + Arrays.toString(lines) + " (expected fallback " + session.fallback + ")");
+            }
+            return;
+        }
         session.current = Collections.emptyList();
 
         Map<ProbeCheck, String> hits = new HashMap<>();
@@ -157,6 +175,9 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         final Map<ProbeCheck, String> finalHits = hits;
 
         SchedulerAdapter.run(() -> {
+            if (closed) {
+                return;
+            }
             Player player = Bukkit.getPlayer(uuid);
             if (player == null || !player.isOnline()) {
                 sessions.remove(uuid);
@@ -179,7 +200,7 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
     }
 
     private void startSession(Player player) {
-        if (!player.isOnline() || !isEnabled() || player.hasPermission(getBypassPermission())) {
+        if (closed || !player.isOnline() || !isEnabled() || player.hasPermission(getBypassPermission())) {
             return;
         }
 
@@ -194,13 +215,13 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         Location base = player.getLocation();
         int minY = player.getWorld().getMinHeight() + 1;
         Vector3i position = new Vector3i(base.getBlockX(), Math.max(minY, base.getBlockY() - 30), base.getBlockZ());
-        ProbeSession session = new ProbeSession(position, new ArrayDeque<>(checks), createFallback());
+        ProbeSession session = new ProbeSession(position, new ArrayDeque<>(checks));
         sessions.put(player.getUniqueId(), session);
         sendNextBatch(player, session);
     }
 
     private void sendNextBatch(Player player, ProbeSession session) {
-        if (!player.isOnline()) {
+        if (closed || !player.isOnline()) {
             sessions.remove(player.getUniqueId());
             return;
         }
@@ -215,11 +236,16 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
             return;
         }
 
+        // Fresh fallback per sign, so a late echo of an earlier sign can be told apart.
+        session.fallback = createFallback();
         session.current = batch;
         sendProbePackets(player, session);
 
         long timeoutTicks = config().getLong("translation-probe.timeout-ticks", 80L);
         SchedulerAdapter.runLater(() -> {
+            if (closed) {
+                return;
+            }
             ProbeSession active = sessions.get(player.getUniqueId());
             if (active == session && active.current == batch) {
                 active.current = Collections.emptyList();
@@ -384,7 +410,11 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
     }
 
     private String createFallback() {
-        return config().getString("translation-probe.fallback-prefix", "allium_probe_") + Long.toHexString(random.nextLong());
+        return fallbackPrefix() + Long.toHexString(random.nextLong());
+    }
+
+    private String fallbackPrefix() {
+        return config().getString("translation-probe.fallback-prefix", "allium_probe_");
     }
 
     private boolean isEnabled() {
@@ -417,34 +447,101 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
     private static final class ProbeSession {
         private final Vector3i position;
         private final Deque<ProbeCheck> remaining;
-        private final String fallback;
+        private String fallback = "";
         private List<ProbeCheck> current;
 
-        private ProbeSession(Vector3i position, Deque<ProbeCheck> remaining, String fallback) {
+        private ProbeSession(Vector3i position, Deque<ProbeCheck> remaining) {
             this.position = position;
             this.remaining = remaining;
-            this.fallback = fallback;
             this.current = Collections.emptyList();
         }
     }
 
-    private enum ProbeMode {
-        TRANSLATE, KEYBIND, METEOR;
-
-        static ProbeMode parse(String value) {
-            if (value == null) {
-                return TRANSLATE;
-            }
-            return switch (value.trim().toUpperCase(Locale.ROOT)) {
-                case "KEYBIND" -> KEYBIND;
-                case "METEOR"  -> METEOR;
-                default        -> TRANSLATE;
-            };
+    static ProbeResult evaluateProbe(ProbeMode mode, String key, Set<String> expected, String resolved, String fallback, boolean exploitPreventer) {
+        if (resolved == null || resolved.isEmpty()) {
+            return ProbeResult.CLEAN;
         }
+        if (isKeyPlusLetter(key, resolved)) {
+            return ProbeResult.CLEAN;
+        }
+        return switch (mode) {
+            case KEYBIND -> {
+                if (exploitPreventer && resolved.equalsIgnoreCase(key)) {
+                    yield ProbeResult.PROTECTED;
+                }
+                if (resolved.equalsIgnoreCase(key)) {
+                    yield ProbeResult.CLEAN;
+                }
+                if (resolved.toLowerCase(Locale.ROOT).contains(key.toLowerCase(Locale.ROOT))) {
+                    yield ProbeResult.CLEAN;
+                }
+                yield ProbeResult.DETECTED;
+            }
+            case METEOR -> {
+                // Echoing the raw key id proves nothing: a vanilla client that
+                // fails to apply the fallback renders the key itself. Only a
+                // genuinely resolved string is evidence the mod is installed.
+                if (resolved.equalsIgnoreCase(key)) {
+                    yield ProbeResult.CLEAN;
+                }
+                if (regionStartsWith(resolved, fallback)) {
+                    yield ProbeResult.CLEAN;
+                }
+                yield ProbeResult.DETECTED;
+            }
+            default -> {
+                if (regionStartsWith(resolved, fallback)) {
+                    yield ProbeResult.CLEAN;
+                }
+                if (resolved.equalsIgnoreCase(key)) {
+                    yield ProbeResult.PROTECTED;
+                }
+                if (!expected.isEmpty()) {
+                    String normalized = resolved.toLowerCase(Locale.ROOT);
+                    for (String value : expected) {
+                        if (normalized.equals(value.toLowerCase(Locale.ROOT))) {
+                            yield ProbeResult.DETECTED;
+                        }
+                    }
+                    yield ProbeResult.CLEAN;
+                }
+                yield ProbeResult.DETECTED;
+            }
+        };
     }
 
-    private enum ProbeResult {
-        DETECTED, CLEAN, PROTECTED
+    /**
+     * True when the echo belongs to some other sign than the one currently
+     * awaited: a translate line carrying a probe fallback other than ours,
+     * or a keybind line (which never carries a fallback) echoing one. Such an
+     * echo says nothing about the current batch and must not be scored.
+     */
+    static boolean isForeignEcho(String[] lines, List<ProbeMode> modes, String fallback, String prefix) {
+        if (prefix == null || prefix.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < modes.size() && i < lines.length; i++) {
+            String line = lines[i] == null ? "" : lines[i].strip();
+            if (!regionStartsWith(line, prefix)) {
+                continue;
+            }
+            if (modes.get(i) == ProbeMode.KEYBIND || !regionStartsWith(line, fallback)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isKeyPlusLetter(String key, String resolved) {
+        int keyLen = key.length();
+        return resolved.length() == keyLen + 1
+                && resolved.regionMatches(true, 0, key, 0, keyLen)
+                && Character.isLetter(resolved.charAt(keyLen));
+    }
+
+    private static boolean regionStartsWith(String value, String prefix) {
+        return prefix != null && prefix.length() <= value.length()
+                && value.regionMatches(true, 0, prefix, 0, prefix.length());
     }
 
     private static final class ProbeCheck {
@@ -467,65 +564,26 @@ final class ModGuardTranslationProbe extends PacketListenerAbstract implements L
         }
 
         private ProbeResult evaluate(String resolved, String fallback, boolean exploitPreventer) {
-            if (resolved == null || resolved.isEmpty()) {
-                return ProbeResult.CLEAN;
-            }
-            if (isKeyPlusLetter(resolved)) {
-                return ProbeResult.CLEAN;
-            }
-            return switch (mode) {
-                case KEYBIND -> {
-                    if (exploitPreventer && resolved.equalsIgnoreCase(key)) {
-                        yield ProbeResult.PROTECTED;
-                    }
-                    if (resolved.equalsIgnoreCase(key)) {
-                        yield ProbeResult.CLEAN;
-                    }
-                    if (resolved.toLowerCase(Locale.ROOT).contains(key.toLowerCase(Locale.ROOT))) {
-                        yield ProbeResult.CLEAN;
-                    }
-                    yield ProbeResult.DETECTED;
-                }
-                case METEOR -> {
-                    if (resolved.equalsIgnoreCase(key)) {
-                        yield ProbeResult.DETECTED;
-                    }
-                    if (regionStartsWith(resolved, fallback)) {
-                        yield ProbeResult.CLEAN;
-                    }
-                    yield ProbeResult.DETECTED;
-                }
-                default -> {
-                    if (regionStartsWith(resolved, fallback)) {
-                        yield ProbeResult.CLEAN;
-                    }
-                    if (resolved.equalsIgnoreCase(key)) {
-                        yield ProbeResult.PROTECTED;
-                    }
-                    if (!expected.isEmpty()) {
-                        String normalized = resolved.toLowerCase(Locale.ROOT);
-                        for (String value : expected) {
-                            if (normalized.equals(value.toLowerCase(Locale.ROOT))) {
-                                yield ProbeResult.DETECTED;
-                            }
-                        }
-                        yield ProbeResult.CLEAN;
-                    }
-                    yield ProbeResult.DETECTED;
-                }
-            };
-        }
-
-        private boolean isKeyPlusLetter(String resolved) {
-            int keyLen = key.length();
-            return resolved.length() == keyLen + 1
-                    && resolved.regionMatches(true, 0, key, 0, keyLen)
-                    && Character.isLetter(resolved.charAt(keyLen));
-        }
-
-        private static boolean regionStartsWith(String value, String prefix) {
-            return prefix != null && prefix.length() <= value.length()
-                    && value.regionMatches(true, 0, prefix, 0, prefix.length());
+            return evaluateProbe(mode, key, expected, resolved, fallback, exploitPreventer);
         }
     }
+}
+
+enum ProbeMode {
+    TRANSLATE, KEYBIND, METEOR;
+
+    static ProbeMode parse(String value) {
+        if (value == null) {
+            return TRANSLATE;
+        }
+        return switch (value.trim().toUpperCase(Locale.ROOT)) {
+            case "KEYBIND" -> KEYBIND;
+            case "METEOR"  -> METEOR;
+            default        -> TRANSLATE;
+        };
+    }
+}
+
+enum ProbeResult {
+    DETECTED, CLEAN, PROTECTED
 }

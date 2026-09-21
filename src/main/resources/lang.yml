@@ -541,6 +541,15 @@ autorestart:
   
   # Discord embed color for restart messages (hex code without #)
   discord-stopped-message-embed-color: "#F5E642"
+
+  # Discord channel description (topic) shown while a restart is pending.
+  # Placeholders: {online} {max} {time}
+  # This replaces DiscordSRV's own topic for the duration of the restart and is
+  # left in place on shutdown - DiscordSRV takes the topic back over on next boot.
+  # NOTE: Discord rate-limits channel edits to ~2 per 10 minutes, so the countdown
+  # topic refreshes at most once every 5 minutes. The "now" topic is always forced.
+  channel-description: "{online}/{max} players online | Server is restarting in {time}"
+  channel-description-now: "{online}/{max} players online | Server is restarting now..."
   
   # Error messages
   no-permission: "&cYou don't have permission to use this command."

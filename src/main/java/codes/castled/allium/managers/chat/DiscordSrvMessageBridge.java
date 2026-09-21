@@ -119,6 +119,18 @@ public final class DiscordSrvMessageBridge implements Listener {
         }
     }
 
+    /**
+     * The player who sent the relayed chat message with this Discord id, or null if it was never linked.
+     */
+    public UUID findSenderByDiscordMessageId(String discordMessageId) {
+        for (LinkedDiscordMessage linked : linkedMessages.values()) {
+            if (linked.discordMessageId.equals(discordMessageId)) {
+                return linked.senderId;
+            }
+        }
+        return null;
+    }
+
     private void hookIfAvailable() {
         try {
             Plugin discordSrv = Bukkit.getPluginManager().getPlugin("DiscordSRV");
@@ -241,7 +253,7 @@ public final class DiscordSrvMessageBridge implements Listener {
             }
 
             String discordMessageId = message.getId();
-            linkedMessages.put(match.alliumMessageId, new LinkedDiscordMessage(match.alliumMessageId, discordMessageId, message, System.currentTimeMillis()));
+            linkedMessages.put(match.alliumMessageId, new LinkedDiscordMessage(match.alliumMessageId, match.senderId, discordMessageId, message, System.currentTimeMillis()));
             pendingMessages.remove(match);
             Text.sendDebugLog(INFO, "[DiscordBridge] linked via sent-event " + match.alliumMessageId + " -> " + discordMessageId);
 
@@ -340,6 +352,7 @@ public final class DiscordSrvMessageBridge implements Listener {
 
             linkedMessages.put(pendingMessage.alliumMessageId, new LinkedDiscordMessage(
                     pendingMessage.alliumMessageId,
+                    pendingMessage.senderId,
                     discordMessageId,
                     matchedMessage,
                     System.currentTimeMillis()
@@ -463,14 +476,16 @@ public final class DiscordSrvMessageBridge implements Listener {
 
     private static final class LinkedDiscordMessage {
         private final long alliumMessageId;
+        private final UUID senderId;
         private final String discordMessageId;
         private final Message messageObject;
         private final long linkedAt;
 
         private volatile boolean deleted;
 
-        private LinkedDiscordMessage(long alliumMessageId, String discordMessageId, Message messageObject, long linkedAt) {
+        private LinkedDiscordMessage(long alliumMessageId, UUID senderId, String discordMessageId, Message messageObject, long linkedAt) {
             this.alliumMessageId = alliumMessageId;
+            this.senderId = senderId;
             this.discordMessageId = discordMessageId;
             this.messageObject = messageObject;
             this.linkedAt = linkedAt;

@@ -16,6 +16,17 @@ settings:
   enabled: true
   block-namespaced-commands-for-ops: false
   hide-namespaced-commands-for-ops: false
+  # Helper line the client shows above the chat box while typing a command that
+  # does not exist (vanilla: "Unknown or incomplete command. See below for error").
+  # The client draws this itself, so Allium ships it as a resource pack language
+  # override. With ResourcePackManager installed the pack is dropped into its mixer
+  # folder (run /rspm reload after changing this); otherwise it is written to
+  # plugins/Allium/generated/ for you to merge into your server resource pack.
+  # Colors: & codes and MiniMessage. Hex colors are rounded to the nearest of the
+  # 16 standard colors, because language files cannot display hex.
+  # The client appends " at position 1: /<--[HERE]" in the last color used.
+  # Set to "" to keep the vanilla message.
+  unknown-command-completion-help-message: "&c&lERROR &8» &7Unknown command. Type &c/help &7for a list of commands."
   # Remove unsafe commands from the DECLARE_COMMANDS packet sent to clients on join.
   # This prevents hacked clients/mods from enumerating commands like /version, /plugins, /pl, etc.
   remove-unsafe-commands: true

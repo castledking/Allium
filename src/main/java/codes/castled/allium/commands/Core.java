@@ -984,6 +984,14 @@ public class Core implements CommandExecutor, TabCompleter {
                 plugin.getConfigManager().forceCompleteReload(plugin);
             }
 
+            // Reload spawner head drops (spawner_heads.yml)
+            codes.castled.allium.spawnercraft.SpawnerHeadConfig.reload(plugin);
+
+            // Re-register or remove the Discord "Ban Player" message command
+            if (plugin.getDiscordBanContextMenu() != null) {
+                plugin.getDiscordBanContextMenu().sync();
+            }
+
             // Reload language files
             if (lang != null) {
                 lang.reload();

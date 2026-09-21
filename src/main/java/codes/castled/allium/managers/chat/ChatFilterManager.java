@@ -254,22 +254,6 @@ public final class ChatFilterManager implements Listener {
         }
     }
 
-    public boolean shouldBlockDiscordInbound(DiscordGuildMessagePreProcessEvent event, String message) {
-        if (!enabled || !settings.applyDiscordToMinecraft()) {
-            return false;
-        }
-        EvaluationResult result = evaluate(FilterContext.DISCORD_TO_MINECRAFT, message);
-        if (!result.blocked()) {
-            return false;
-        }
-
-        event.setCancelled(true);
-        if (plugin.isDebugMode()) {
-            Text.sendDebugLog(INFO, "[ChatFilter] Blocked Discord inbound from #" + event.getChannel().getName() + " via " + result.summary());
-        }
-        return true;
-    }
-
     private void ensureDefaults() {
         if (!chatFolder.exists()) {
             chatFolder.mkdirs();
@@ -826,4 +810,33 @@ public final class ChatFilterManager implements Listener {
         return out.toString();
     }
 
+
+    /**
+     * Holds the DiscordSRV-typed check. Kept out of the manager itself so Bukkit can
+     * still register this listener on servers without DiscordSRV installed.
+     */
+    public final class DiscordHook {
+
+        public boolean shouldBlockDiscordInbound(DiscordGuildMessagePreProcessEvent event, String message) {
+            if (!enabled || !settings.applyDiscordToMinecraft()) {
+                return false;
+            }
+            EvaluationResult result = evaluate(FilterContext.DISCORD_TO_MINECRAFT, message);
+            if (!result.blocked()) {
+                return false;
+            }
+
+            event.setCancelled(true);
+            if (plugin.isDebugMode()) {
+                Text.sendDebugLog(INFO, "[ChatFilter] Blocked Discord inbound from #" + event.getChannel().getName() + " via " + result.summary());
+            }
+            return true;
+        }
+
+    }
+
+    /** Discord-side checks; only call when DiscordSRV is installed. */
+    public DiscordHook discord() {
+        return new DiscordHook();
+    }
 }

@@ -6,6 +6,8 @@ folia-supported: true
 author: castledking
 description: "A secure, modern Essentials solution."
 softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens, Nexo, Oraxen, ItemEdit, ItemTag, TAB, GPExpansion, GriefPrevention]
+# Write the unknown-command lang pack into ResourcePackManager's mixer before it merges.
+loadbefore: [ResourcePackManager]
 
 commands:
   nickname:

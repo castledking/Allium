@@ -6,6 +6,7 @@ import github.scarsz.discordsrv.api.events.DiscordGuildMessagePostProcessEvent;
 import github.scarsz.discordsrv.api.events.DiscordGuildMessagePreProcessEvent;
 import github.scarsz.discordsrv.api.events.GameChatMessagePostProcessEvent;
 import github.scarsz.discordsrv.api.events.GameChatMessagePreProcessEvent;
+import github.scarsz.discordsrv.dependencies.emoji.EmojiParser;
 import github.scarsz.discordsrv.util.WebhookUtil;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import me.clip.placeholderapi.PlaceholderAPI;
@@ -47,6 +48,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,6 +59,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Allium-owned chat channels with optional DiscordSRV relay.
@@ -110,6 +115,7 @@ public final class AlliumChannelManager implements Listener {
     private volatile boolean enabled;
     private volatile boolean discordAvailable;
     private volatile boolean discordHooked;
+    private DiscordBridge discordBridge;
 
     public AlliumChannelManager(PluginStart plugin) {
         this.plugin = plugin;
@@ -123,7 +129,7 @@ public final class AlliumChannelManager implements Listener {
         HandlerList.unregisterAll(this);
         if (discordHooked) {
             try {
-                DiscordSRV.api.unsubscribe(this);
+                DiscordSRV.api.unsubscribe(discordBridge);
             } catch (Throwable ignored) {
             }
         }
@@ -1176,187 +1182,229 @@ public final class AlliumChannelManager implements Listener {
                                          Component formatted) {}
 
     private static String parseDiscordEmojis(String text) {
+        return parseDiscordEmojis(text, null);
+    }
+
+    /**
+     * Parses Discord emoji syntax to Unicode. When a top-role colour is supplied, each
+     * replacement is wrapped as {@code &r{emoji}{roleColor}} so the emoji glyph renders
+     * in its natural colour while any text following it keeps the role colour.
+     */
+    private static String parseDiscordEmojis(String text, String roleColor) {
         if (text == null || text.isEmpty()) {
             return text;
         }
+        boolean wrap = roleColor != null && !roleColor.isBlank();
+        String prefix = wrap ? "&r" : "";
+        String suffix = wrap ? roleColor : "";
+        // Discord nicknames carry raw Unicode emoji glyphs, not :alias: tokens, so they
+        // never matched the mapping below and stayed tinted by the role colour. Wrap those
+        // first - the alias pass below handles anything written as :alias: syntax.
+        String result = wrapUnicodeEmojis(text, wrap ? roleColor : null);
         // Comprehensive Discord emoji to Unicode mapping
         // Based on common Discord role emojis and frequently used emojis
-        String result = text
+        result = result
                 // Crown and royalty
-                .replace(":crown:", "👑")
-                .replace(":diamond:", "💎")
-                .replace(":gem:", "💎")
+                .replace(":crown:", prefix + "👑" + suffix)
+                .replace(":diamond:", prefix + "💎" + suffix)
+                .replace(":gem:", prefix + "💎" + suffix)
                 
                 // Stars and sparkle
-                .replace(":star:", "⭐")
-                .replace(":sparkles:", "✨")
-                .replace(":star2:", "🌟")
-                .replace(":dizzy:", "💫")
+                .replace(":star:", prefix + "⭐" + suffix)
+                .replace(":sparkles:", prefix + "✨" + suffix)
+                .replace(":star2:", prefix + "🌟" + suffix)
+                .replace(":dizzy:", prefix + "💫" + suffix)
                 
                 // Fire and energy
-                .replace(":fire:", "🔥")
-                .replace(":rocket:", "🚀")
-                .replace(":zap:", "⚡")
-                .replace(":boom:", "�")
+                .replace(":fire:", prefix + "🔥" + suffix)
+                .replace(":rocket:", prefix + "🚀" + suffix)
+                .replace(":zap:", prefix + "⚡" + suffix)
+                .replace(":boom:", prefix + "�" + suffix)
                 
                 // Weapons and shields
-                .replace(":shield:", "🛡️")
-                .replace(":sword:", "⚔️")
-                .replace(":crossed_swords:", "⚔️")
-                .replace(":bow_and_arrow:", "🏹")
-                .replace(":dagger:", "🗡️")
+                .replace(":shield:", prefix + "🛡️" + suffix)
+                .replace(":sword:", prefix + "⚔️" + suffix)
+                .replace(":crossed_swords:", prefix + "⚔️" + suffix)
+                .replace(":bow_and_arrow:", prefix + "🏹" + suffix)
+                .replace(":dagger:", prefix + "🗡️" + suffix)
                 
                 // Hearts and love
-                .replace(":heart:", "❤️")
-                .replace(":yellow_heart:", "💛")
-                .replace(":green_heart:", "💚")
-                .replace(":blue_heart:", "💙")
-                .replace(":purple_heart:", "💜")
-                .replace(":black_heart:", "🖤")
-                .replace(":white_heart:", "🤍")
-                .replace(":broken_heart:", "💔")
-                .replace(":two_hearts:", "💕")
-                .replace(":sparkling_heart:", "💖")
+                .replace(":heart:", prefix + "❤️" + suffix)
+                .replace(":yellow_heart:", prefix + "💛" + suffix)
+                .replace(":green_heart:", prefix + "💚" + suffix)
+                .replace(":blue_heart:", prefix + "💙" + suffix)
+                .replace(":purple_heart:", prefix + "💜" + suffix)
+                .replace(":black_heart:", prefix + "🖤" + suffix)
+                .replace(":white_heart:", prefix + "🤍" + suffix)
+                .replace(":broken_heart:", prefix + "💔" + suffix)
+                .replace(":two_hearts:", prefix + "💕" + suffix)
+                .replace(":sparkling_heart:", prefix + "💖" + suffix)
                 
                 // Awards and trophies
-                .replace(":medal:", "🏅")
-                .replace(":trophy:", "🏆")
-                .replace(":first_place:", "🥇")
-                .replace(":second_place:", "🥈")
-                .replace(":third_place:", "🥉")
-                .replace(":sports_medal:", "🏅")
+                .replace(":medal:", prefix + "🏅" + suffix)
+                .replace(":trophy:", prefix + "🏆" + suffix)
+                .replace(":first_place:", prefix + "🥇" + suffix)
+                .replace(":second_place:", prefix + "🥈" + suffix)
+                .replace(":third_place:", prefix + "🥉" + suffix)
+                .replace(":sports_medal:", prefix + "🏅" + suffix)
                 
                 // Warning and status
-                .replace(":warning:", "⚠️")
-                .replace(":bangbang:", "‼️")
-                .replace(":exclamation:", "❗")
-                .replace(":grey_exclamation:", "❕")
-                .replace(":question:", "❓")
-                .replace(":grey_question:", "❔")
-                .replace(":x:", "❌")
-                .replace(":heavy_check_mark:", "✔️")
-                .replace(":white_check_mark:", "✅")
-                .replace(":ballot_box_with_check:", "☑️")
-                .replace(":o:", "⭕")
-                .replace(":heavy_large_circle:", "⭕")
-                .replace(":no_entry:", "⛔")
-                .replace(":name_badge:", "📛")
-                .replace(":stop_sign:", "🛑")
-                .replace(":prohibited:", "🚫")
+                .replace(":warning:", prefix + "⚠️" + suffix)
+                .replace(":bangbang:", prefix + "‼️" + suffix)
+                .replace(":exclamation:", prefix + "❗" + suffix)
+                .replace(":grey_exclamation:", prefix + "❕" + suffix)
+                .replace(":question:", prefix + "❓" + suffix)
+                .replace(":grey_question:", prefix + "❔" + suffix)
+                .replace(":x:", prefix + "❌" + suffix)
+                .replace(":heavy_check_mark:", prefix + "✔️" + suffix)
+                .replace(":white_check_mark:", prefix + "✅" + suffix)
+                .replace(":ballot_box_with_check:", prefix + "☑️" + suffix)
+                .replace(":o:", prefix + "⭕" + suffix)
+                .replace(":heavy_large_circle:", prefix + "⭕" + suffix)
+                .replace(":no_entry:", prefix + "⛔" + suffix)
+                .replace(":name_badge:", prefix + "📛" + suffix)
+                .replace(":stop_sign:", prefix + "🛑" + suffix)
+                .replace(":prohibited:", prefix + "🚫" + suffix)
                 
                 // Faces and people
-                .replace(":smile:", "😄")
-                .replace(":grin:", "😁")
-                .replace(":joy:", "😂")
-                .replace(":sob:", "😭")
-                .replace(":angry:", "😠")
-                .replace(":rage:", "😡")
-                .replace(":skull:", "💀")
-                .replace(":ghost:", "👻")
-                .replace(":alien:", "👽")
+                .replace(":smile:", prefix + "😄" + suffix)
+                .replace(":grin:", prefix + "😁" + suffix)
+                .replace(":joy:", prefix + "😂" + suffix)
+                .replace(":sob:", prefix + "😭" + suffix)
+                .replace(":angry:", prefix + "😠" + suffix)
+                .replace(":rage:", prefix + "😡" + suffix)
+                .replace(":skull:", prefix + "💀" + suffix)
+                .replace(":ghost:", prefix + "👻" + suffix)
+                .replace(":alien:", prefix + "👽" + suffix)
                 
                 // Animals
-                .replace(":dragon:", "🐉")
-                .replace(":unicorn:", "🦄")
-                .replace(":wolf:", "🐺")
-                .replace(":fox:", "🦊")
-                .replace(":lion:", "🦁")
-                .replace(":tiger:", "🐯")
-                .replace(":cat:", "🐱")
-                .replace(":dog:", "🐶")
+                .replace(":dragon:", prefix + "🐉" + suffix)
+                .replace(":unicorn:", prefix + "🦄" + suffix)
+                .replace(":wolf:", prefix + "🐺" + suffix)
+                .replace(":fox:", prefix + "🦊" + suffix)
+                .replace(":lion:", prefix + "🦁" + suffix)
+                .replace(":tiger:", prefix + "🐯" + suffix)
+                .replace(":cat:", prefix + "🐱" + suffix)
+                .replace(":dog:", prefix + "🐶" + suffix)
                 
                 // Food
-                .replace(":apple:", "🍎")
-                .replace(":pizza:", "🍕")
-                .replace(":cake:", "🎂")
-                .replace(":candy:", "🍬")
-                .replace(":lollipop:", "🍭")
-                .replace(":corn:", "🌽")
-                .replace(":broccoli:", "🥦")
-                .replace(":carrot:", "🥕")
-                .replace(":leafy_green:", "🥬")
-                .replace(":ear_of_rice:", "🌾")
+                .replace(":apple:", prefix + "🍎" + suffix)
+                .replace(":pizza:", prefix + "🍕" + suffix)
+                .replace(":cake:", prefix + "🎂" + suffix)
+                .replace(":candy:", prefix + "🍬" + suffix)
+                .replace(":lollipop:", prefix + "🍭" + suffix)
+                .replace(":corn:", prefix + "🌽" + suffix)
+                .replace(":broccoli:", prefix + "🥦" + suffix)
+                .replace(":carrot:", prefix + "🥕" + suffix)
+                .replace(":leafy_green:", prefix + "🥬" + suffix)
+                .replace(":bell_pepper:", prefix + "🫑" + suffix)
+                .replace(":ear_of_rice:", prefix + "🌾" + suffix)
                 
                 // Nature
-                .replace(":sun:", "☀️")
-                .replace(":moon:", "🌙")
-                .replace(":cloud:", "☁️")
-                .replace(":ocean:", "🌊")
-                .replace(":mountain:", "⛰️")
-                .replace(":volcano:", "🌋")
-                .replace(":evergreen_tree:", "🌲")
+                .replace(":sun:", prefix + "☀️" + suffix)
+                .replace(":moon:", prefix + "🌙" + suffix)
+                .replace(":cloud:", prefix + "☁️" + suffix)
+                .replace(":ocean:", prefix + "🌊" + suffix)
+                .replace(":mountain:", prefix + "⛰️" + suffix)
+                .replace(":volcano:", prefix + "🌋" + suffix)
+                .replace(":evergreen_tree:", prefix + "🌲" + suffix)
                 
                 // Objects
-                .replace(":key:", "🔑")
-                .replace(":lock:", "🔒")
-                .replace(":unlock:", "🔓")
-                .replace(":scroll:", "📜")
-                .replace(":book:", "📖")
-                .replace(":crystal_ball:", "🔮")
-                .replace(":hourglass:", "⏳")
-                .replace(":clock:", "🕐")
+                .replace(":key:", prefix + "🔑" + suffix)
+                .replace(":lock:", prefix + "🔒" + suffix)
+                .replace(":unlock:", prefix + "🔓" + suffix)
+                .replace(":scroll:", prefix + "📜" + suffix)
+                .replace(":book:", prefix + "📖" + suffix)
+                .replace(":crystal_ball:", prefix + "🔮" + suffix)
+                .replace(":hourglass:", prefix + "⏳" + suffix)
+                .replace(":clock:", prefix + "🕐" + suffix)
                 
-                .replace(":candy:", "🍬")
-                .replace(":lollipop:", "🍭")
+                .replace(":candy:", prefix + "🍬" + suffix)
+                .replace(":lollipop:", prefix + "🍭" + suffix)
                 
                 // Activities
-                .replace(":game_die:", "🎲")
-                .replace(":dart:", "🎯")
-                .replace(":tickets:", "🎟️")
-                .replace(":flag:", "🏳️")
-                .replace(":triangular_flag_on_post:", "🚩")
+                .replace(":game_die:", prefix + "🎲" + suffix)
+                .replace(":dart:", prefix + "🎯" + suffix)
+                .replace(":tickets:", prefix + "🎟️" + suffix)
+                .replace(":flag:", prefix + "🏳️" + suffix)
+                .replace(":triangular_flag_on_post:", prefix + "🚩" + suffix)
                 
                 // Symbols
-                .replace(":infinity:", "♾️")
-                .replace(":recycle:", "♻️")
-                .replace(":radioactive:", "☢️")
-                .replace(":biohazard:", "☣️")
-                .replace(":peace:", "☮️")
-                .replace(":yin_yang:", "☯️")
-                .replace(":fleur_de_lis:", "⚜️")
-                .replace(":trident:", "🔱")
-                .replace(":anchor:", "⚓")
-                .replace(":cross:", "✝️")
-                .replace(":star_and_crescent:", "☪️")
-                .replace(":star_of_david:", "✡️")
-                .replace(":wheel_of_dharma:", "☸️")
+                .replace(":infinity:", prefix + "♾️" + suffix)
+                .replace(":recycle:", prefix + "♻️" + suffix)
+                .replace(":radioactive:", prefix + "☢️" + suffix)
+                .replace(":biohazard:", prefix + "☣️" + suffix)
+                .replace(":peace:", prefix + "☮️" + suffix)
+                .replace(":yin_yang:", prefix + "☯️" + suffix)
+                .replace(":fleur_de_lis:", prefix + "⚜️" + suffix)
+                .replace(":trident:", prefix + "🔱" + suffix)
+                .replace(":anchor:", prefix + "⚓" + suffix)
+                .replace(":cross:", prefix + "✝️" + suffix)
+                .replace(":star_and_crescent:", prefix + "☪️" + suffix)
+                .replace(":star_of_david:", prefix + "✡️" + suffix)
+                .replace(":wheel_of_dharma:", prefix + "☸️" + suffix)
                 
                 // Arrows
-                .replace(":arrow_up:", "⬆️")
-                .replace(":arrow_down:", "⬇️")
-                .replace(":arrow_left:", "⬅️")
-                .replace(":arrow_right:", "➡️")
-                .replace(":arrow_forward:", "▶️")
-                .replace(":arrow_backward:", "◀️")
-                .replace(":arrow_double_up:", "⏫")
-                .replace(":arrow_double_down:", "⏬")
+                .replace(":arrow_up:", prefix + "⬆️" + suffix)
+                .replace(":arrow_down:", prefix + "⬇️" + suffix)
+                .replace(":arrow_left:", prefix + "⬅️" + suffix)
+                .replace(":arrow_right:", prefix + "➡️" + suffix)
+                .replace(":arrow_forward:", prefix + "▶️" + suffix)
+                .replace(":arrow_backward:", prefix + "◀️" + suffix)
+                .replace(":arrow_double_up:", prefix + "⏫" + suffix)
+                .replace(":arrow_double_down:", prefix + "⏬" + suffix)
                 
                 // Numbers
-                .replace(":zero:", "0️⃣")
-                .replace(":one:", "1️⃣")
-                .replace(":two:", "2️⃣")
-                .replace(":three:", "3️⃣")
-                .replace(":four:", "4️⃣")
-                .replace(":five:", "5️⃣")
-                .replace(":six:", "6️⃣")
-                .replace(":seven:", "7️⃣")
-                .replace(":eight:", "8️⃣")
-                .replace(":nine:", "9️⃣")
-                .replace(":ten:", "🔟")
+                .replace(":zero:", prefix + "0️⃣" + suffix)
+                .replace(":one:", prefix + "1️⃣" + suffix)
+                .replace(":two:", prefix + "2️⃣" + suffix)
+                .replace(":three:", prefix + "3️⃣" + suffix)
+                .replace(":four:", prefix + "4️⃣" + suffix)
+                .replace(":five:", prefix + "5️⃣" + suffix)
+                .replace(":six:", prefix + "6️⃣" + suffix)
+                .replace(":seven:", prefix + "7️⃣" + suffix)
+                .replace(":eight:", prefix + "8️⃣" + suffix)
+                .replace(":nine:", prefix + "9️⃣" + suffix)
+                .replace(":ten:", prefix + "🔟" + suffix)
                 
                 // Misc
-                .replace(":100:", "💯")
-                .replace(":1234:", "🔢")
-                .replace(":hash:", "#️⃣")
-                .replace(":asterisk:", "*️⃣")
-                .replace(":exclamation_mark:", "❗")
-                .replace(":question_mark:", "❓")
-                .replace(":plus:", "➕")
-                .replace(":minus:", "➖")
-                .replace(":divide:", "➗")
-                .replace(":equals:", "🟰");
+                .replace(":100:", prefix + "💯" + suffix)
+                .replace(":1234:", prefix + "🔢" + suffix)
+                .replace(":hash:", prefix + "#️⃣" + suffix)
+                .replace(":asterisk:", prefix + "*️⃣" + suffix)
+                .replace(":exclamation_mark:", prefix + "❗" + suffix)
+                .replace(":question_mark:", prefix + "❓" + suffix)
+                .replace(":plus:", prefix + "➕" + suffix)
+                .replace(":minus:", prefix + "➖" + suffix)
+                .replace(":divide:", prefix + "➗" + suffix)
+                .replace(":equals:", prefix + "🟰" + suffix);
         
         return result;
+    }
+
+    /**
+     * Wraps every raw Unicode emoji in {@code text} as {@code &r{emoji}{roleColor}},
+     * mirroring the alias-to-Unicode wrapping in parseDiscordEmojis, so emoji glyphs inside
+     * role-coloured names keep their natural colours. Longest sequences are matched first so
+     * combined (ZWJ / variation-selector) emoji are not double-wrapped.
+     */
+    private static String wrapUnicodeEmojis(String text, String roleColor) {
+        if (text == null || text.isEmpty() || roleColor == null || roleColor.isBlank()) {
+            return text;
+        }
+        List<String> found = EmojiParser.extractEmojis(text);
+        if (found.isEmpty()) {
+            return text;
+        }
+        found.sort(Comparator.comparingInt(String::length).reversed());
+        String regex = found.stream().map(Pattern::quote).collect(Collectors.joining("|"));
+        Matcher matcher = Pattern.compile(regex).matcher(text);
+        StringBuffer out = new StringBuffer();
+        while (matcher.find()) {
+            matcher.appendReplacement(out, Matcher.quoteReplacement("&r" + matcher.group() + roleColor));
+        }
+        matcher.appendTail(out);
+        return out.toString();
     }
 
     private String formatDiscordOutMessage(Player player, ChannelDefinition channel, String message) {
@@ -1532,7 +1580,10 @@ public final class AlliumChannelManager implements Listener {
                 }
             }
 
-            final DiscordSRV target = discordSrv;
+            // Captured as Object: a lambda capturing a DiscordSRV-typed local compiles into a
+            // synthetic method carrying that type, which breaks Bukkit listener registration
+            // on servers without DiscordSRV.
+            final Object target = discordSrv;
             final String finalChannelName = discordSrvChannelName;
             final String finalMessage = plainMessage;
             final Player finalSender = sender;
@@ -1566,7 +1617,7 @@ public final class AlliumChannelManager implements Listener {
             } else {
                 SchedulerAdapter.runAsync(() -> {
                     try {
-                        target.processChatMessage(finalSender, finalMessage, finalChannelName, false);
+                        ((DiscordSRV) target).processChatMessage(finalSender, finalMessage, finalChannelName, false);
                         if (plugin.isDebugMode()) {
                             Text.sendDebugLog(INFO, "[Channels] Queued DiscordSRV relay for " + channel.name() + " via channel: " + finalChannelName);
                         }
@@ -1584,7 +1635,8 @@ public final class AlliumChannelManager implements Listener {
         }
     }
 
-    private void fallbackToJdaSend(DiscordSRV target, Player sender, String channelName, String message, ChannelDefinition channel) {
+    private void fallbackToJdaSend(Object discordSrvPlugin, Player sender, String channelName, String message, ChannelDefinition channel) {
+        DiscordSRV target = (DiscordSRV) discordSrvPlugin;
         try {
             Object textChannelObj = target.getDestinationTextChannelForGameChannelName(channelName);
             if (textChannelObj != null) {
@@ -1623,7 +1675,8 @@ public final class AlliumChannelManager implements Listener {
      * Finds the DiscordSRV game channel name that maps to the given Discord channel ID.
      * This allows Allium channels to work with any DiscordSRV channel name mapping.
      */
-    private String findDiscordSrvChannelName(DiscordSRV discordSrv, String discordChannelId) {
+    private String findDiscordSrvChannelName(Object discordSrvPlugin, String discordChannelId) {
+        DiscordSRV discordSrv = (DiscordSRV) discordSrvPlugin;
         if (discordChannelId == null || discordChannelId.isBlank()) {
             return null;
         }
@@ -1654,7 +1707,10 @@ public final class AlliumChannelManager implements Listener {
 
             discordAvailable = true;
             if (!discordHooked) {
-                DiscordSRV.api.subscribe(this);
+                if (discordBridge == null) {
+                    discordBridge = new DiscordBridge();
+                }
+                DiscordSRV.api.subscribe(discordBridge);
                 discordHooked = true;
             }
             if (plugin.isDebugMode()) {
@@ -1672,281 +1728,6 @@ public final class AlliumChannelManager implements Listener {
 
     public void retryDiscordHook() {
         hookDiscordSrvIfAvailable();
-    }
-
-    @Subscribe
-    public void onDiscordGuildMessage(DiscordGuildMessagePreProcessEvent event) {
-        try {
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(INFO, "[Channels] DiscordGuildMessagePreProcessEvent: channel=" + event.getChannel().getId() 
-                        + " author=" + event.getAuthor().getName() + " content=" + event.getMessage().getContentDisplay());
-            }
-            
-            ChannelDefinition channel = findByDiscordChannelId(event.getChannel().getId());
-            if (channel == null) {
-                // Use default channel for unmapped Discord channels (to apply emoji parsing)
-                channel = getChannel(defaultChannelName);
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] No Allium channel found for Discord channel " + event.getChannel().getId() + ", using default");
-                }
-            }
-
-            if (channel == null) {
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] No channel available to handle Discord message");
-                }
-                return;
-            }
-
-            if (event.getAuthor().isBot()) {
-                return;
-            }
-
-            // Get message content
-            String displayContent = event.getMessage().getContentDisplay();
-            String rawContent = event.getMessage().getContentRaw();
-            String content = displayContent != null && !displayContent.isBlank() ? displayContent : rawContent;
-            
-            // If content is blank, don't cancel DiscordSRV - let InteractiveChat handle attachments
-            if (content == null || content.isBlank()) {
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] Skipping Discord inbound - no text content (letting InteractiveChat handle attachments)");
-                }
-                return;
-            }
-
-            if (plugin.getSpamBlockerManager() != null && plugin.getSpamBlockerManager().shouldBlockDiscordInbound(event, content)) {
-                return;
-            }
-
-            if (plugin.getChatFilterManager() != null && plugin.getChatFilterManager().shouldBlockDiscordInbound(event, content)) {
-                return;
-            }
-            
-            // Always handle Discord-to-Minecraft in Allium to apply emoji parsing
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(INFO, "[Channels] Handling Discord inbound for channel: " + channel.name());
-            }
-            
-            // Check if this is a reply and get reply info
-            boolean isReply = false;
-            String replySnippet = "";
-            try {
-                Object referencedMsg = event.getMessage().getClass().getMethod("getReferencedMessage").invoke(event.getMessage());
-                if (referencedMsg != null) {
-                    isReply = true;
-                    // Get author name of replied message
-                    Object replyAuthor = referencedMsg.getClass().getMethod("getAuthor").invoke(referencedMsg);
-                    String replyAuthorName = (String) replyAuthor.getClass().getMethod("getName").invoke(replyAuthor);
-                    // Get DiscordSRV reply format and parse %name%
-                    String replyFormat = getDiscordSrvReplyFormat();
-                    replySnippet = replyFormat.replace("%name%", replyAuthorName);
-                }
-            } catch (Throwable ignored) {
-            }
-            
-            event.setCancelled(true);
-            relayDiscordMessageToChannel(channel, event.getAuthor().getName(),
-                    event.getMember() != null ? event.getMember().getEffectiveName() : "",
-                    event.getMember(),
-                    event.getMessage().getId(),
-                    displayContent,
-                    rawContent,
-                    event.getChannel().getName(),
-                    isReply,
-                    replySnippet);
-        } catch (Throwable t) {
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(WARN, "[Channels] Discord inbound processing failed: " + t.getMessage());
-            }
-        }
-    }
-
-    @Subscribe
-    public void onDiscordGuildMessagePostProcess(DiscordGuildMessagePostProcessEvent event) {
-        try {
-            ChannelDefinition channel = findByDiscordChannelId(event.getChannel().getId());
-            if (channel == null || event.getAuthor().isBot()) {
-                return;
-            }
-
-            // If content is blank, don't cancel - let InteractiveChat handle attachments
-            String content = event.getMessage().getContentDisplay();
-            if (content == null || content.isBlank()) {
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] PostProcess skipping blank message (letting InteractiveChat handle attachments)");
-                }
-                return;
-            }
-
-            // Always handle Discord-to-Minecraft in Allium (PreProcess already handles it)
-            // Cancel PostProcess to prevent double handling
-            event.setCancelled(true);
-        } catch (Throwable t) {
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(WARN, "[Channels] Discord inbound post-process failed: " + t.getMessage());
-            }
-        }
-    }
-
-    @Subscribe
-    public void onGameChatMessagePreProcess(GameChatMessagePreProcessEvent event) {
-        try {
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(INFO, "[Channels] onGameChatMessagePreProcess ENTER: player=" 
-                    + event.getPlayer().getName() + " channel=" + event.getChannel() 
-                    + " staffChatActive=" + staffChatActive.contains(event.getPlayer().getUniqueId()));
-            }
-            purgeExpiredSuppressedEvents();
-
-            if (plugin.getSpamBlockerManager() != null
-                    && plugin.getSpamBlockerManager().shouldSuppressDiscordRelay(event.getPlayer().getUniqueId(), event.getMessage())) {
-                event.setCancelled(true);
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV relay for spam-blocked chat from "
-                            + event.getPlayer().getName());
-                }
-                return;
-            }
-
-            if (plugin.getChatFilterManager() != null
-                    && plugin.getChatFilterManager().shouldSuppressDiscordRelay(event.getPlayer().getUniqueId(), event.getMessage())) {
-                event.setCancelled(true);
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV relay for filtered chat from "
-                            + event.getPlayer().getName());
-                }
-                return;
-            }
-
-            if (plugin.getSpamBlockerManager() != null) {
-                String original = event.getMessage() == null ? "" : event.getMessage().trim();
-                String rewritten = plugin.getSpamBlockerManager().rewriteForDiscordRelay(original);
-                if (rewritten != null && !rewritten.equals(original)) {
-                    event.setMessage(rewritten);
-                    if (plugin.isDebugMode()) {
-                        Text.sendDebugLog(INFO, "[Channels] Rewrote DiscordSRV pre-process message for "
-                                + event.getPlayer().getName() + ": '" + original + "' -> '" + rewritten + "'");
-                    }
-                }
-            }
-            
-            // If player is in staff-chat mode, suppress ALL DiscordSRV events (both staff-chat and global)
-            // to prevent the message from leaking to the wrong Discord channel
-            if (staffChatActive.contains(event.getPlayer().getUniqueId())) {
-                event.setCancelled(true);
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV event for staff-chat player "
-                            + event.getPlayer().getName() + " channel=" + event.getChannel());
-                }
-                return;
-            }
-            
-            // Always suppress staff-chat channel (we handle it manually with explicit channel name)
-            if (event.getChannel().equals(staffChannelName)) {
-                event.setCancelled(true);
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV default relay for staff-chat channel");
-                }
-                return;
-            }
-            
-            // Check if we should suppress this message (e.g., it was handled by Allium via shortcut)
-            if (shouldSuppressOutboundRelay(event.getPlayer().getUniqueId(), event.getTriggeringBukkitEvent(), normalizeMessageForComparison(event.getMessage()))) {
-                event.setCancelled(true);
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV relay for "
-                            + event.getPlayer().getName() + " channel=" + event.getChannel() + " (message already handled)");
-                }
-                return;
-            }
-            
-            // Don't suppress if this channel has discord-channel-id configured (let DiscordSRV/InteractiveChat handle naturally)
-            if (channelHasDiscordIdConfigured(event.getChannel())) {
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] Not suppressing " + event.getChannel() + " - has discord-channel-id configured");
-                }
-                return;
-            }
-            
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(INFO, "[Channels] NOT suppressing " + event.getChannel() + " for " + event.getPlayer().getName());
-            }
-        } catch (Throwable t) {
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(WARN, "[Channels] Exception in onGameChatMessagePreProcess: " + t.getMessage());
-                t.printStackTrace();
-            }
-        }
-    }
-
-    @Subscribe
-    public void onGameChatMessagePostProcess(GameChatMessagePostProcessEvent event) {
-        purgeExpiredSuppressedEvents();
-
-        if (plugin.getSpamBlockerManager() != null
-                && plugin.getSpamBlockerManager().shouldSuppressDiscordRelay(event.getPlayer().getUniqueId(), event.getProcessedMessage())) {
-            event.setCancelled(true);
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV post-process relay for spam-blocked chat from "
-                        + event.getPlayer().getName());
-            }
-            return;
-        }
-
-        if (plugin.getChatFilterManager() != null
-                && plugin.getChatFilterManager().shouldSuppressDiscordRelay(event.getPlayer().getUniqueId(), event.getProcessedMessage())) {
-            event.setCancelled(true);
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV post-process relay for filtered chat from "
-                        + event.getPlayer().getName());
-            }
-            return;
-        }
-
-        if (plugin.getSpamBlockerManager() != null) {
-            String original = event.getProcessedMessage();
-            String rewritten = plugin.getSpamBlockerManager().rewriteForDiscordRelay(original);
-            if (rewritten != null && !rewritten.equals(original)) {
-                event.setProcessedMessage(rewritten);
-                if (plugin.isDebugMode()) {
-                    Text.sendDebugLog(INFO, "[Channels] Rewrote DiscordSRV post-process message for "
-                            + event.getPlayer().getName() + ": '" + original + "' -> '" + rewritten + "'");
-                }
-            }
-        }
-        
-        // If player is in staff-chat mode, suppress ALL DiscordSRV events
-        if (staffChatActive.contains(event.getPlayer().getUniqueId())) {
-            event.setCancelled(true);
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV post-process for staff-chat player "
-                        + event.getPlayer().getName() + " channel=" + event.getChannel());
-            }
-            return;
-        }
-        
-        // Always suppress staff-chat channel (we handle it manually)
-        if (event.getChannel().equals(staffChannelName)) {
-            event.setCancelled(true);
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV post-process relay for staff-chat channel");
-            }
-            return;
-        }
-        
-        // Don't suppress if this channel has discord-channel-id configured (let DiscordSRV/InteractiveChat handle naturally)
-        if (channelHasDiscordIdConfigured(event.getChannel())) {
-            return;
-        }
-        if (shouldSuppressOutboundRelay(event.getPlayer().getUniqueId(), event.getTriggeringBukkitEvent(),
-                normalizeMessageForComparison(event.getProcessedMessage()))) {
-            event.setCancelled(true);
-            if (plugin.isDebugMode()) {
-                Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV post-process relay for "
-                        + event.getPlayer().getName() + " channel=" + event.getChannel());
-            }
-        }
     }
 
     private boolean channelHasDiscordIdConfigured(String channelName) {
@@ -2280,10 +2061,12 @@ public final class AlliumChannelManager implements Listener {
     private String formatDiscordSrvMessage(String format, String username, String effectiveName,
                                            String roleAlias, String roleColor, String message, String channelName,
                                            boolean isReply, String replySnippet, boolean useAlliumFormat) {
-        // Parse Discord emoji syntax (:emoji:) to Unicode in ALL fields
-        String parsedUsername = parseDiscordEmojis(username);
-        String parsedEffectiveName = parseDiscordEmojis(effectiveName);
-        String parsedRoleAlias = parseDiscordEmojis(roleAlias);
+        // Parse Discord emoji syntax (:emoji:) to Unicode in ALL fields. Name-bearing fields
+        // carry the top-role colour so their emoji glyphs are un-tinted (&r) while the text
+        // around them keeps the role colour; the rest stay plain.
+        String parsedUsername = parseDiscordEmojis(username, roleColor);
+        String parsedEffectiveName = parseDiscordEmojis(effectiveName, roleColor);
+        String parsedRoleAlias = parseDiscordEmojis(roleAlias, roleColor);
         String parsedRoleColor = parseDiscordEmojis(roleColor);
         String parsedMessage = parseDiscordEmojis(message);
         String parsedChannelName = parseDiscordEmojis(channelName);
@@ -2427,4 +2210,289 @@ public final class AlliumChannelManager implements Listener {
     }
 
     private record RecentOutboundChat(String message, long timestamp, boolean isStaffChat, boolean isShortcut, boolean isLocal) {}
+
+    /**
+     * DiscordSRV event handlers live in their own class so the manager itself carries no
+     * DiscordSRV types in its method signatures. Bukkit reflects over every method when
+     * registering a listener, and a missing type there makes it skip the whole class,
+     * which would disable channels on servers without DiscordSRV.
+     */
+    private final class DiscordBridge {
+
+        @Subscribe
+        public void onDiscordGuildMessage(DiscordGuildMessagePreProcessEvent event) {
+            try {
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(INFO, "[Channels] DiscordGuildMessagePreProcessEvent: channel=" + event.getChannel().getId() 
+                            + " author=" + event.getAuthor().getName() + " content=" + event.getMessage().getContentDisplay());
+                }
+            
+                ChannelDefinition channel = findByDiscordChannelId(event.getChannel().getId());
+                if (channel == null) {
+                    // Use default channel for unmapped Discord channels (to apply emoji parsing)
+                    channel = getChannel(defaultChannelName);
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] No Allium channel found for Discord channel " + event.getChannel().getId() + ", using default");
+                    }
+                }
+
+                if (channel == null) {
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] No channel available to handle Discord message");
+                    }
+                    return;
+                }
+
+                if (event.getAuthor().isBot()) {
+                    return;
+                }
+
+                // Get message content
+                String displayContent = event.getMessage().getContentDisplay();
+                String rawContent = event.getMessage().getContentRaw();
+                String content = displayContent != null && !displayContent.isBlank() ? displayContent : rawContent;
+            
+                // If content is blank, don't cancel DiscordSRV - let InteractiveChat handle attachments
+                if (content == null || content.isBlank()) {
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] Skipping Discord inbound - no text content (letting InteractiveChat handle attachments)");
+                    }
+                    return;
+                }
+
+                if (plugin.getSpamBlockerManager() != null && plugin.getSpamBlockerManager().discord().shouldBlockDiscordInbound(event, content)) {
+                    return;
+                }
+
+                if (plugin.getChatFilterManager() != null && plugin.getChatFilterManager().discord().shouldBlockDiscordInbound(event, content)) {
+                    return;
+                }
+            
+                // Always handle Discord-to-Minecraft in Allium to apply emoji parsing
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(INFO, "[Channels] Handling Discord inbound for channel: " + channel.name());
+                }
+            
+                // Check if this is a reply and get reply info
+                boolean isReply = false;
+                String replySnippet = "";
+                try {
+                    Object referencedMsg = event.getMessage().getClass().getMethod("getReferencedMessage").invoke(event.getMessage());
+                    if (referencedMsg != null) {
+                        isReply = true;
+                        // Get author name of replied message
+                        Object replyAuthor = referencedMsg.getClass().getMethod("getAuthor").invoke(referencedMsg);
+                        String replyAuthorName = (String) replyAuthor.getClass().getMethod("getName").invoke(replyAuthor);
+                        // Get DiscordSRV reply format and parse %name%
+                        String replyFormat = getDiscordSrvReplyFormat();
+                        replySnippet = replyFormat.replace("%name%", replyAuthorName);
+                    }
+                } catch (Throwable ignored) {
+                }
+            
+                event.setCancelled(true);
+                relayDiscordMessageToChannel(channel, event.getAuthor().getName(),
+                        event.getMember() != null ? event.getMember().getEffectiveName() : "",
+                        event.getMember(),
+                        event.getMessage().getId(),
+                        displayContent,
+                        rawContent,
+                        event.getChannel().getName(),
+                        isReply,
+                        replySnippet);
+            } catch (Throwable t) {
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(WARN, "[Channels] Discord inbound processing failed: " + t.getMessage());
+                }
+            }
+        }
+
+        @Subscribe
+        public void onDiscordGuildMessagePostProcess(DiscordGuildMessagePostProcessEvent event) {
+            try {
+                ChannelDefinition channel = findByDiscordChannelId(event.getChannel().getId());
+                if (channel == null || event.getAuthor().isBot()) {
+                    return;
+                }
+
+                // If content is blank, don't cancel - let InteractiveChat handle attachments
+                String content = event.getMessage().getContentDisplay();
+                if (content == null || content.isBlank()) {
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] PostProcess skipping blank message (letting InteractiveChat handle attachments)");
+                    }
+                    return;
+                }
+
+                // Always handle Discord-to-Minecraft in Allium (PreProcess already handles it)
+                // Cancel PostProcess to prevent double handling
+                event.setCancelled(true);
+            } catch (Throwable t) {
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(WARN, "[Channels] Discord inbound post-process failed: " + t.getMessage());
+                }
+            }
+        }
+
+        @Subscribe
+        public void onGameChatMessagePreProcess(GameChatMessagePreProcessEvent event) {
+            try {
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(INFO, "[Channels] onGameChatMessagePreProcess ENTER: player=" 
+                        + event.getPlayer().getName() + " channel=" + event.getChannel() 
+                        + " staffChatActive=" + staffChatActive.contains(event.getPlayer().getUniqueId()));
+                }
+                purgeExpiredSuppressedEvents();
+
+                if (plugin.getSpamBlockerManager() != null
+                        && plugin.getSpamBlockerManager().shouldSuppressDiscordRelay(event.getPlayer().getUniqueId(), event.getMessage())) {
+                    event.setCancelled(true);
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV relay for spam-blocked chat from "
+                                + event.getPlayer().getName());
+                    }
+                    return;
+                }
+
+                if (plugin.getChatFilterManager() != null
+                        && plugin.getChatFilterManager().shouldSuppressDiscordRelay(event.getPlayer().getUniqueId(), event.getMessage())) {
+                    event.setCancelled(true);
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV relay for filtered chat from "
+                                + event.getPlayer().getName());
+                    }
+                    return;
+                }
+
+                if (plugin.getSpamBlockerManager() != null) {
+                    String original = event.getMessage() == null ? "" : event.getMessage().trim();
+                    String rewritten = plugin.getSpamBlockerManager().rewriteForDiscordRelay(original);
+                    if (rewritten != null && !rewritten.equals(original)) {
+                        event.setMessage(rewritten);
+                        if (plugin.isDebugMode()) {
+                            Text.sendDebugLog(INFO, "[Channels] Rewrote DiscordSRV pre-process message for "
+                                    + event.getPlayer().getName() + ": '" + original + "' -> '" + rewritten + "'");
+                        }
+                    }
+                }
+            
+                // If player is in staff-chat mode, suppress ALL DiscordSRV events (both staff-chat and global)
+                // to prevent the message from leaking to the wrong Discord channel
+                if (staffChatActive.contains(event.getPlayer().getUniqueId())) {
+                    event.setCancelled(true);
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV event for staff-chat player "
+                                + event.getPlayer().getName() + " channel=" + event.getChannel());
+                    }
+                    return;
+                }
+            
+                // Always suppress staff-chat channel (we handle it manually with explicit channel name)
+                if (event.getChannel().equals(staffChannelName)) {
+                    event.setCancelled(true);
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV default relay for staff-chat channel");
+                    }
+                    return;
+                }
+            
+                // Check if we should suppress this message (e.g., it was handled by Allium via shortcut)
+                if (shouldSuppressOutboundRelay(event.getPlayer().getUniqueId(), event.getTriggeringBukkitEvent(), normalizeMessageForComparison(event.getMessage()))) {
+                    event.setCancelled(true);
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV relay for "
+                                + event.getPlayer().getName() + " channel=" + event.getChannel() + " (message already handled)");
+                    }
+                    return;
+                }
+            
+                // Don't suppress if this channel has discord-channel-id configured (let DiscordSRV/InteractiveChat handle naturally)
+                if (channelHasDiscordIdConfigured(event.getChannel())) {
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] Not suppressing " + event.getChannel() + " - has discord-channel-id configured");
+                    }
+                    return;
+                }
+            
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(INFO, "[Channels] NOT suppressing " + event.getChannel() + " for " + event.getPlayer().getName());
+                }
+            } catch (Throwable t) {
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(WARN, "[Channels] Exception in onGameChatMessagePreProcess: " + t.getMessage());
+                    t.printStackTrace();
+                }
+            }
+        }
+
+        @Subscribe
+        public void onGameChatMessagePostProcess(GameChatMessagePostProcessEvent event) {
+            purgeExpiredSuppressedEvents();
+
+            if (plugin.getSpamBlockerManager() != null
+                    && plugin.getSpamBlockerManager().shouldSuppressDiscordRelay(event.getPlayer().getUniqueId(), event.getProcessedMessage())) {
+                event.setCancelled(true);
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV post-process relay for spam-blocked chat from "
+                            + event.getPlayer().getName());
+                }
+                return;
+            }
+
+            if (plugin.getChatFilterManager() != null
+                    && plugin.getChatFilterManager().shouldSuppressDiscordRelay(event.getPlayer().getUniqueId(), event.getProcessedMessage())) {
+                event.setCancelled(true);
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV post-process relay for filtered chat from "
+                            + event.getPlayer().getName());
+                }
+                return;
+            }
+
+            if (plugin.getSpamBlockerManager() != null) {
+                String original = event.getProcessedMessage();
+                String rewritten = plugin.getSpamBlockerManager().rewriteForDiscordRelay(original);
+                if (rewritten != null && !rewritten.equals(original)) {
+                    event.setProcessedMessage(rewritten);
+                    if (plugin.isDebugMode()) {
+                        Text.sendDebugLog(INFO, "[Channels] Rewrote DiscordSRV post-process message for "
+                                + event.getPlayer().getName() + ": '" + original + "' -> '" + rewritten + "'");
+                    }
+                }
+            }
+        
+            // If player is in staff-chat mode, suppress ALL DiscordSRV events
+            if (staffChatActive.contains(event.getPlayer().getUniqueId())) {
+                event.setCancelled(true);
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV post-process for staff-chat player "
+                            + event.getPlayer().getName() + " channel=" + event.getChannel());
+                }
+                return;
+            }
+        
+            // Always suppress staff-chat channel (we handle it manually)
+            if (event.getChannel().equals(staffChannelName)) {
+                event.setCancelled(true);
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV post-process relay for staff-chat channel");
+                }
+                return;
+            }
+        
+            // Don't suppress if this channel has discord-channel-id configured (let DiscordSRV/InteractiveChat handle naturally)
+            if (channelHasDiscordIdConfigured(event.getChannel())) {
+                return;
+            }
+            if (shouldSuppressOutboundRelay(event.getPlayer().getUniqueId(), event.getTriggeringBukkitEvent(),
+                    normalizeMessageForComparison(event.getProcessedMessage()))) {
+                event.setCancelled(true);
+                if (plugin.isDebugMode()) {
+                    Text.sendDebugLog(INFO, "[Channels] Suppressed DiscordSRV post-process relay for "
+                            + event.getPlayer().getName() + " channel=" + event.getChannel());
+                }
+            }
+        }
+
+    }
 }

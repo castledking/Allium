@@ -3,6 +3,7 @@ package codes.castled.allium.managers;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
 import github.scarsz.discordsrv.dependencies.jda.api.EmbedBuilder;
+import github.scarsz.discordsrv.dependencies.jda.api.entities.MessageEmbed;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.lang.Lang;
@@ -27,8 +28,20 @@ import java.util.logging.Level;
  */
 public final class DiscordRestartRelay {
 
+    /**
+     * Discord rate-limits channel edits (topic included) to roughly 2 per 10 minutes
+     * per channel. Anything faster gets queued by JDA and lands late, so non-forced
+     * topic updates are throttled to this interval.
+     */
+    private static final long TOPIC_MIN_INTERVAL_MS = 300_000L;
+
+    /** Discord's hard cap on channel topic length. */
+    private static final int TOPIC_MAX_LENGTH = 1024;
+
     private final PluginStart plugin;
     private TextChannel cachedChannel;
+
+    private volatile long lastTopicUpdate;
 
     public DiscordRestartRelay(PluginStart plugin) {
         this.plugin = plugin;
@@ -133,7 +146,26 @@ public final class DiscordRestartRelay {
     }
 
     /**
-     * Sends a restart embed to the resolved Discord channel.
+     * Builds the restart embed. Shared by the one-shot and edit-in-place paths so
+     * the countdown and the final message look identical.
+     */
+    private MessageEmbed buildEmbed(String title, String description, Color embedColor) {
+        Lang lang = plugin.getLangManager();
+        String stoppedMessage = stripMinecraftFormatting(lang.get("autorestart.server-stopped-message"));
+
+        EmbedBuilder embed = new EmbedBuilder();
+        embed.setTitle(title);
+        embed.setDescription(description);
+        embed.setColor(embedColor);
+        embed.setFooter(stoppedMessage);
+        embed.setTimestamp(Instant.now());
+        return embed.build();
+    }
+
+    /**
+     * Sends a brand new restart embed to the resolved Discord channel.
+     * Used for one-off announcements (vote results) and for the final
+     * "restarting now" notice, which must not overwrite the countdown.
      * Runs asynchronously via {@link SchedulerAdapter#runAsync(Runnable)}.
      */
     public void sendRestartEmbed(String title, String description, Color embedColor) {
@@ -143,24 +175,53 @@ public final class DiscordRestartRelay {
                 if (channel == null) {
                     return;
                 }
-
-                Lang lang = plugin.getLangManager();
-                String stoppedMessage = stripMinecraftFormatting(lang.get("autorestart.server-stopped-message"));
-
-                EmbedBuilder embed = new EmbedBuilder();
-                embed.setTitle(title);
-                embed.setDescription(description);
-                embed.setColor(embedColor);
-                embed.setFooter(stoppedMessage);
-                embed.setTimestamp(Instant.now());
-
-                channel.sendMessageEmbeds(embed.build()).queue(
+                channel.sendMessageEmbeds(buildEmbed(title, description, embedColor)).queue(
                         msg -> {},
                         failure -> plugin.getLogger().log(Level.WARNING,
                                 "[DiscordRestartRelay] Failed to send embed: " + failure.getMessage())
                 );
             } catch (Throwable t) {
                 plugin.getLogger().log(Level.WARNING, "[DiscordRestartRelay] Error sending embed: " + t.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Resets per-restart state so a new cycle starts with a fresh topic-throttle budget.
+     */
+    public void resetForNewCycle() {
+        lastTopicUpdate = 0L;
+    }
+
+    /**
+     * Sets the Discord channel description (topic). Non-forced calls are throttled to
+     * {@link #TOPIC_MIN_INTERVAL_MS} because of Discord's channel-edit rate limit; the
+     * final "restarting now" topic passes {@code force} so it always goes through.
+     * The topic is left as-is on shutdown - DiscordSRV overwrites it again on next boot.
+     */
+    public void updateChannelTopic(String topic, boolean force) {
+        if (topic == null || topic.isBlank()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (!force && now - lastTopicUpdate < TOPIC_MIN_INTERVAL_MS) {
+            return;
+        }
+        lastTopicUpdate = now;
+        String trimmed = topic.length() > TOPIC_MAX_LENGTH ? topic.substring(0, TOPIC_MAX_LENGTH) : topic;
+        SchedulerAdapter.runAsync(() -> {
+            try {
+                TextChannel channel = resolveChannel();
+                if (channel == null) {
+                    return;
+                }
+                channel.getManager().setTopic(trimmed).queue(
+                        ok -> {},
+                        failure -> plugin.getLogger().log(Level.WARNING,
+                                "[DiscordRestartRelay] Failed to set channel topic: " + failure.getMessage())
+                );
+            } catch (Throwable t) {
+                plugin.getLogger().log(Level.WARNING, "[DiscordRestartRelay] Error setting channel topic: " + t.getMessage());
             }
         });
     }
@@ -173,7 +234,7 @@ public final class DiscordRestartRelay {
      * Strips Minecraft formatting codes ({@code §c}, {@code &6}, etc.) from a string
      * so they display as plain text in Discord embeds.
      */
-    private static String stripMinecraftFormatting(String text) {
+    public static String stripMinecraftFormatting(String text) {
         if (text == null) return "";
         return text.replaceAll("[§&][0-9a-fk-orA-FK-OR]", "").trim();
     }

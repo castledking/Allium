@@ -2,28 +2,41 @@ package codes.castled.allium.spawnercraft;
 
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.entity.EntityType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
- * Registry that detects mob heads from the "More Mob Heads" datapack.
- * Uses the note_block_sound component which is unique and hard to fake.
+ * Registry that detects mob heads from the "More Mob Heads" datapack and Allium's own drops.
+ * Datapack heads are identified by their item_name, since several share or borrow note block
+ * sounds (mooshroom uses the cow sound, cave spider the spider step). Allium heads have no
+ * item_name and fall back to the note_block_sound component, which is hard to fake.
  */
 public final class MobHeadRegistry {
 
+    private static final String ITEM_NAMES_RESOURCE = "/spawnercraft/more-mob-heads-names.txt";
+
     private static final Map<String, EntityType> SOUND_TO_ENTITY = new HashMap<>();
     private static final Map<Material, EntityType> VANILLA_SKULL_TO_ENTITY = new HashMap<>();
+    private static final Map<String, String> ITEM_NAME_TO_MOB = loadItemNames();
 
     private MobHeadRegistry() {}
 
     static {
         VANILLA_SKULL_TO_ENTITY.put(Material.SKELETON_SKULL, EntityType.SKELETON);
+        VANILLA_SKULL_TO_ENTITY.put(Material.WITHER_SKELETON_SKULL, EntityType.WITHER_SKELETON);
         VANILLA_SKULL_TO_ENTITY.put(Material.ZOMBIE_HEAD, EntityType.ZOMBIE);
         VANILLA_SKULL_TO_ENTITY.put(Material.CREEPER_HEAD, EntityType.CREEPER);
         VANILLA_SKULL_TO_ENTITY.put(Material.DRAGON_HEAD, EntityType.ENDER_DRAGON);
@@ -113,14 +126,53 @@ public final class MobHeadRegistry {
         SOUND_TO_ENTITY.put(entityName, entityType);
     }
 
-    public static EntityType getEntityType(ItemStack item) {
+    /**
+     * Registers the mob a head sound belongs to. Called for every mob in
+     * spawner_heads.yml so heads for mobs added there are still recognised.
+     */
+    public static void registerSoundMapping(String entityName, EntityType entityType) {
+        if (entityName != null && !entityName.isBlank() && entityType != null) {
+            SOUND_TO_ENTITY.put(entityName, entityType);
+        }
+    }
+
+    private static Map<String, String> loadItemNames() {
+        Map<String, String> names = new HashMap<>();
+        try (InputStream stream = MobHeadRegistry.class.getResourceAsStream(ITEM_NAMES_RESOURCE)) {
+            if (stream == null) return names;
+            BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                int split = line.lastIndexOf('=');
+                if (line.startsWith("#") || split <= 0) continue;
+                names.put(line.substring(0, split), line.substring(split + 1).strip());
+            }
+        } catch (IOException ignored) {
+        }
+        return names;
+    }
+
+    /** Mob id (e.g. "mooshroom") for a datapack head's item_name, or null. */
+    static String mobForItemName(String itemName) {
+        return ITEM_NAME_TO_MOB.get(itemName);
+    }
+
+    /**
+     * Lower-case mob id the head belongs to (e.g. "cave_spider", "ender_dragon"),
+     * or null if the item is not a recognised mob head.
+     */
+    public static String getMobKey(ItemStack item) {
         if (item == null) return null;
         EntityType vanillaType = VANILLA_SKULL_TO_ENTITY.get(item.getType());
-        if (vanillaType != null) return vanillaType;
+        if (vanillaType != null) return vanillaType.name().toLowerCase(Locale.ROOT);
         if (item.getType() != Material.PLAYER_HEAD) return null;
         if (!item.hasItemMeta()) return null;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return null;
+        if (meta.hasItemName()) {
+            String mob = ITEM_NAME_TO_MOB.get(meta.getItemName());
+            if (mob != null) return mob;
+        }
         NamespacedKey sound = getNoteBlockSound(meta);
         if (sound == null) return null;
         String key = sound.getKey();
@@ -129,7 +181,16 @@ public final class MobHeadRegistry {
         String withoutPrefix = entityKey.substring(7);
         int dotIndex = withoutPrefix.indexOf('.');
         String entityName = dotIndex > 0 ? withoutPrefix.substring(0, dotIndex) : withoutPrefix;
-        return SOUND_TO_ENTITY.get(entityName);
+        return SOUND_TO_ENTITY.containsKey(entityName) ? entityName : null;
+    }
+
+    public static EntityType getEntityType(ItemStack item) {
+        String mob = getMobKey(item);
+        if (mob == null) return null;
+        EntityType vanillaType = VANILLA_SKULL_TO_ENTITY.get(item.getType());
+        if (vanillaType != null) return vanillaType;
+        EntityType type = SOUND_TO_ENTITY.get(mob);
+        return type != null ? type : Registry.ENTITY_TYPE.get(NamespacedKey.minecraft(mob));
     }
 
     private static NamespacedKey getNoteBlockSound(ItemMeta meta) {
@@ -157,6 +218,13 @@ public final class MobHeadRegistry {
         } catch (NoSuchMethodException ignored) {
         } catch (Exception ignored) {}
         return null;
+    }
+
+    /** True when this is a datapack head (its item_name names a known mob). */
+    public static boolean isDatapackHead(ItemStack item) {
+        if (item == null || item.getType() != Material.PLAYER_HEAD || !item.hasItemMeta()) return false;
+        ItemMeta meta = item.getItemMeta();
+        return meta != null && meta.hasItemName() && ITEM_NAME_TO_MOB.containsKey(meta.getItemName());
     }
 
     public static boolean isMobHead(ItemStack item) {

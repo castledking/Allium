@@ -74,6 +74,18 @@ public final class PacketEventsLoader {
     }
 
     /**
+     * Registers a PacketEvents listener. Kept here so {@code PluginStart} never
+     * mentions a PacketEvents type: the JVM verifies the main class before any
+     * availability check can run, and an unresolvable type there stops Allium
+     * from loading at all when PacketEvents is not installed.
+     */
+    public static void registerListener(Object listener) {
+        com.github.retrooper.packetevents.PacketEvents.getAPI()
+            .getEventManager()
+            .registerListener((com.github.retrooper.packetevents.event.PacketListenerCommon) listener);
+    }
+
+    /**
      * Create ChatPacketTracker implementation. Returns PacketChatTrackerImpl when
      * PacketEvents is available, otherwise ChatPacketTrackerNoOp.
      */

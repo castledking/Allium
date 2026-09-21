@@ -285,6 +285,30 @@ auto-restart:
   # Send a "server stopped" broadcast message to players right before shutdown
   send-final-server-stopped-message: true
 
+# Discord moderation (requires DiscordSRV)
+discord-moderation:
+  # Adds a "Ban Player" entry under Apps when right-clicking any message in Discord
+  # (relayed chat, joins, leaves, deaths, advancements). It opens a dialog with the
+  # player (filled in from the message when possible), an optional duration and a
+  # reason, then runs a normal console ban.
+  # Members with this role or any role above it can use it (Administrators always can).
+  # Leave empty to disable; the command is then removed from Discord.
+  staff-role-id: ""
+  # Name shown under Apps (max 32 characters).
+  command-name: "Ban Player"
+  # Console commands run for permanent (blank duration) and timed bans.
+  # Placeholders: {player}, {duration}, {reason}, {staff} (Discord username)
+  ban-command: "ban {player} {reason}"
+  tempban-command: "tempban {player} {duration} {reason}"
+  # Used when the reason field is left blank. {staff} works here too.
+  default-reason: "Banned by {staff} via Discord"
+  # Players whose primary permission group contains any of these (case-insensitive)
+  # group names cannot be banned via Discord. The ban is refused with an error reply
+  # and the console command is never run.
+  ban-exempt-groups:
+    - owner
+    - admin
+
 # Nickname sync settings
 nickname:
   # If EssentialsX is installed, sync Allium nicknames to Essentials storage.
@@ -349,8 +373,13 @@ spawnercraft:
   # Controls how crafted spawners are delivered:
   # Vanilla = give a normal vanilla spawner item directly
   # UpgradableSpawners = dispatch the UpgradableSpawners admin give command
-  # SpawnerMeta = dispatch the /sm give command structure
+  # SpawnerMeta = dispatch the /spawnermeta give command structure
   protocol: Vanilla
+  # Plushie crafting (requires Nexo): a mob head in the center of a crafting grid with
+  # any 8 wool around it makes that mob's Nexo plushie, e.g. nexo:axolotl_plushie.
+  # Accepts More Mob Heads datapack heads, Allium spawner heads and vanilla skulls.
+  # Changing this needs a restart.
+  plushies: true
 
 # Creeper explosion regen speed (0 = disabled, 1 = slowest, 10 = fastest)
 creeper-explosion-regen-speed: 5

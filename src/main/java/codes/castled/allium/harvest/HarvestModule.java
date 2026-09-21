@@ -299,7 +299,14 @@ public final class HarvestModule {
     }
 
     private void reportIssues(List<ValidationIssue> issues) {
+        // A missing item-provider plugin (e.g. Nexo) trips every reference in a file.
+        // Report that once per file instead of once per config path.
+        java.util.Set<String> reportedMissingProviders = new java.util.HashSet<>();
         for (ValidationIssue issue : issues) {
+            if (issue.message().contains("has no resolver")
+                    && !reportedMissingProviders.add(issue.file() + "|" + issue.message())) {
+                continue;
+            }
             String line = "[" + HarvestBranding.DISPLAY_NAME + "] " + issue;
             if (issue.isError()) {
                 logger.severe(line);

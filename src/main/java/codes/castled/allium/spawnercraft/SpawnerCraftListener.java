@@ -150,7 +150,7 @@ public class SpawnerCraftListener implements Listener {
         CraftProtocol protocol = getCraftProtocol();
         return switch (protocol) {
             case VANILLA -> giveVanillaSpawner(player, entityType);
-            case SPAWNER_META -> dispatchConsoleGive("sm give " + entityType.name().toLowerCase(Locale.ENGLISH) + " 1 " + player.getName(), player, protocol);
+            case SPAWNER_META -> dispatchConsoleGive("spawnermeta give " + entityType.name().toLowerCase(Locale.ENGLISH) + " 1 " + player.getName(), player, protocol);
             case UPGRADABLE_SPAWNERS -> dispatchConsoleGive("upgradeablespawners admin give " + player.getName() + " " + entityType.name(), player, protocol);
         };
     }

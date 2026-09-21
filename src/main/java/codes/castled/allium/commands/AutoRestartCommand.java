@@ -51,6 +51,8 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
 
     // Discord relay for restart announcements
     private DiscordRestartRelay discordRelay;
+    /** One-shot latch so the Discord restart warning is sent at most once per cycle. */
+    private volatile boolean discordWarningSent = false;
 
     public AutoRestartCommand(PluginStart plugin) {
         this.plugin = Objects.requireNonNull(plugin, "PluginStart cannot be null");
@@ -310,14 +312,24 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
                         .replace("{plural}", plural)
                         .replace("\n", " ");
                 Bukkit.broadcastMessage(codes.castled.allium.managers.core.Text.parseColors(message));
-                if (plugin.getConfig().getBoolean("auto-restart.relay-to-discord", true)) {
-                    Color embedColor = DiscordRestartRelay.parseHexColor(
-                            lang.getRaw("autorestart.discord-stopped-message-embed-color"));
-                    discordRelay.sendRestartEmbed(
-                            "Server Restarting",
-                            "Server will restart in **" + timeLeft + " second" + (timeLeft == 1 ? "" : "s") + "**.",
-                            embedColor);
-                }
+            }
+
+            // Discord gets exactly one warning per restart (default T-60s), then the
+            // final notice from executeRestart - two messages total, no countdown spam.
+            // Deliberately outside the countdownTimes guard so it fires even when the
+            // warning threshold is not one of the configured in-game countdown steps.
+            if (!discordWarningSent
+                    && timeLeft > 0
+                    && timeLeft <= plugin.getConfig().getInt("auto-restart.discord-warning-seconds", 60)
+                    && plugin.getConfig().getBoolean("auto-restart.relay-to-discord", true)) {
+                discordWarningSent = true;
+                Color warnColor = DiscordRestartRelay.parseHexColor(
+                        lang.getRaw("autorestart.discord-stopped-message-embed-color"));
+                discordRelay.sendRestartEmbed(
+                        "Server Restarting",
+                        "Server will restart in **" + timeLeft + " second" + (timeLeft == 1 ? "" : "s") + "**.",
+                        warnColor);
+                discordRelay.updateChannelTopic(buildRestartTopic(timeLeft), true);
             }
             
             // Check for restart time
@@ -334,12 +346,36 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
     }
 
     private void cancelRestart() {
+        // New cycle: re-arm the one-shot Discord warning and the topic budget.
+        discordWarningSent = false;
+        if (discordRelay != null) {
+            discordRelay.resetForNewCycle();
+        }
         if (countdownTask != null) {
             countdownTask.cancel();
             countdownTask = null;
         }
         restartScheduled = false;
         restartTime = -1;
+    }
+
+    /**
+     * Builds the Discord channel description for the current restart state.
+     * {@code secondsLeft <= 0} selects the "restarting now" variant.
+     * Must be called on the main thread - it reads the online player count.
+     */
+    private String buildRestartTopic(long secondsLeft) {
+        String key = secondsLeft > 0 ? "autorestart.channel-description" : "autorestart.channel-description-now";
+        String raw = lang.getRaw(key);
+        if (raw == null || raw.contains("Missing translation")) {
+            raw = secondsLeft > 0
+                    ? "{online}/{max} players online | Server is restarting in {time}"
+                    : "{online}/{max} players online | Server is restarting now...";
+        }
+        return DiscordRestartRelay.stripMinecraftFormatting(raw)
+                .replace("{online}", String.valueOf(Bukkit.getOnlinePlayers().size()))
+                .replace("{max}", String.valueOf(Bukkit.getMaxPlayers()))
+                .replace("{time}", Text.formatTime(secondsLeft));
     }
 
     private void executePreRestartCommands() {
@@ -393,10 +429,12 @@ public class AutoRestartCommand implements CommandExecutor, TabCompleter {
             if (plugin.getConfig().getBoolean("auto-restart.relay-to-discord", true)) {
                 Color embedColor = DiscordRestartRelay.parseHexColor(
                         lang.getRaw("autorestart.discord-stopped-message-embed-color"));
+                // Second and final Discord message of the cycle (the first is the T-60s warning).
                 discordRelay.sendRestartEmbed(
                         "Server Restarting",
                         "Server is restarting now. Saving world and disconnecting players...",
                         embedColor);
+                discordRelay.updateChannelTopic(buildRestartTopic(0L), true);
             }
             
             // Save all player data and kick players

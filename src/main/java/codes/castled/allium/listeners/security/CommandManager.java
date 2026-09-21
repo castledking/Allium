@@ -28,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.managers.UnknownCommandLangPack;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
 import codes.castled.allium.permissions.command.CommandPermissionOverride;
@@ -145,6 +146,12 @@ public class CommandManager implements Listener {
         blockNamespacedCommands = config.getBoolean("settings.block-namespaced-commands-for-ops", false);
         enabled = config.getBoolean("settings.enabled", true);
         loadGroups();
+        applyUnknownCommandHelpMessage();
+    }
+
+    private void applyUnknownCommandHelpMessage() {
+        UnknownCommandLangPack.apply(plugin, config.getString(
+                "settings.unknown-command-completion-help-message", UnknownCommandLangPack.DEFAULT_MESSAGE));
     }
 
     public void reload() {
@@ -154,6 +161,7 @@ public class CommandManager implements Listener {
         blockNamespacedCommands = config.getBoolean("settings.block-namespaced-commands-for-ops", blockNamespacedCommands);
         enabled = config.getBoolean("settings.enabled", enabled);
         loadGroups();
+        applyUnknownCommandHelpMessage();
         commandPermissionOverrideStore.reload(plugin.getDatabase());
         unresolvedPermissionWarned.clear();
 

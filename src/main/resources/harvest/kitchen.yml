@@ -24,9 +24,9 @@ enabled: true
 # A bag holds up to `capacity` of one item. In any inventory:
 #   right-click (empty cursor)   take one out; keep right-clicking to add
 #                                one more to the stack on your cursor
-#   left-click  (empty cursor)   take a full stack (or what's left)
+#   shift-left-click             take a full stack (or what's left)
 #   left-click  (holding item)   put it in
-# An empty bag is picked up like any other item. Bags never stack.
+# A plain left-click picks the bag up and moves it. Bags never stack.
 bags:
   flour_bag:
     item: nexo:flour_bag

@@ -26,12 +26,13 @@ import org.bukkit.persistence.PersistentDataType;
  * <ul>
  *   <li>right-click with an empty cursor takes one item out; right-clicking
  *       again while holding that item adds one more to the cursor</li>
- *   <li>left-click with an empty cursor takes a full stack (or whatever is
- *       left); an empty bag is picked up normally</li>
+ *   <li>shift-left-click takes a full stack (or whatever is left) onto the
+ *       cursor</li>
  *   <li>left-click while holding the stored item puts it in</li>
  * </ul>
  *
- * Everything else falls through to vanilla. Creative mode is left alone:
+ * Everything else falls through to vanilla, so a plain left-click picks the
+ * bag up and moves it like any other item. Creative mode is left alone:
  * creative inventory clicks are client-authoritative and fight any cursor
  * changes made on the server.
  */
@@ -52,7 +53,8 @@ final class BagListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player) || player.getGameMode() == GameMode.CREATIVE) {
             return;
         }
-        if (event.getClick() != ClickType.LEFT && event.getClick() != ClickType.RIGHT) {
+        ClickType click = event.getClick();
+        if (click != ClickType.LEFT && click != ClickType.RIGHT && click != ClickType.SHIFT_LEFT) {
             return;
         }
         ItemStack bagStack = event.getCurrentItem();
@@ -66,7 +68,7 @@ final class BagListener implements Listener {
         boolean cursorStored = !cursorEmpty && items.matches(bag.stores(), cursor);
         int stored = amount(bagStack);
 
-        if (event.getClick() == ClickType.RIGHT) {
+        if (click == ClickType.RIGHT) {
             if (cursorEmpty && stored > 0) {
                 ItemStack one = items.create(bag.stores(), 1).orElse(null);
                 if (one == null) return;
@@ -87,8 +89,10 @@ final class BagListener implements Listener {
             return;
         }
 
-        // LEFT
-        if (cursorEmpty && stored > 0) {
+        if (click == ClickType.SHIFT_LEFT) {
+            if (!cursorEmpty || stored <= 0) {
+                return; // an empty bag shift-clicks across inventories as usual
+            }
             ItemStack taken = items.create(bag.stores(), 1).orElse(null);
             if (taken == null) return;
             int amount = Math.min(stored, taken.getMaxStackSize());
@@ -96,7 +100,11 @@ final class BagListener implements Listener {
             event.setCancelled(true);
             player.setItemOnCursor(taken);
             write(event, bag, bagStack, stored - amount);
-        } else if (cursorStored) {
+            return;
+        }
+
+        // LEFT
+        if (cursorStored) {
             event.setCancelled(true);
             int moved = Math.min(cursor.getAmount(), bag.capacity() - stored);
             if (moved <= 0) {

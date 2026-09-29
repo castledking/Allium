@@ -411,6 +411,16 @@
             </exclusions>
         </dependency>
 
+        <!-- DecentHolograms API (optional: kitchen pie assembly holograms).
+             Not published for 26.x; installed into mavenLocal from the local
+             build in /mnt/storage/devops/DecentHolograms. -->
+        <dependency>
+            <groupId>eu.decentsoftware.holograms</groupId>
+            <artifactId>decentholograms</artifactId>
+            <version>2.10.2-local</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- ItemTag / ItemEdit are optional and have no public Maven artifacts.
              ItemTagBridge uses their runtime plugin class loader reflectively. -->
 

@@ -1,0 +1,147 @@
+# ============================================================
+#  Kitchen
+# ============================================================
+# Storage bags, the kneading space, and pies.
+#
+#   flour  --kneading space-->  dough
+#   crust  --placed, then egg / sugar / filling / dough-->  unbaked pie
+#   unbaked pie  --furnace-->  baked pie  --left out-->  cold pie
+#   pie  --right-click-->  one slice eaten (four slices per pie)
+#
+# The unbaked pie IS the cold pie item: a pie that has gone cold can be put
+# back in the furnace to warm it up again. Baking itself is a normal Nexo
+# furnace recipe (cold pie -> baked pie); nothing here needs to be set up
+# for it.
+#
+# Item references are `nexo:<id>` or vanilla names, exactly as in crops.
+# Every change here is picked up by /harvest reload.
+
+enabled: true
+
+# ------------------------------------------------------------
+#  Storage bags
+# ------------------------------------------------------------
+# A bag holds up to `capacity` of one item. In any inventory:
+#   right-click (empty cursor)   take one out; keep right-clicking to add
+#                                one more to the stack on your cursor
+#   left-click  (empty cursor)   take a full stack (or what's left)
+#   left-click  (holding item)   put it in
+# An empty bag is picked up like any other item. Bags never stack.
+bags:
+  flour_bag:
+    item: nexo:flour_bag
+    stores: nexo:flour
+    capacity: 256
+    lore: "<gray>Flour: <white><amount></white>/<capacity>"
+
+# ------------------------------------------------------------
+#  Kneading space
+# ------------------------------------------------------------
+# Right-click a station with water and flour; once both are in, dough pops
+# out on top. A cauldron keeps its water the vanilla way (fill it with a
+# bucket or bottles, its level is the water count). Any other station counts
+# the buckets and bottles poured into it.
+#
+# Holding a flour bag works too: each click takes one flour out of it.
+# Right-click with an empty hand to see what's in a station.
+kneading:
+  enabled: true
+  stations:
+    blocks: [CAULDRON]
+    nexo: []                  # Nexo furniture or custom block ids
+  water:
+    required: 3               # a cauldron holds at most 3
+    bucket: 3                 # what one bucket counts for (non-cauldron stations)
+    bottle: 1                 # what one bottle counts for (non-cauldron stations)
+  flour:
+    item: nexo:flour
+    required: 3
+  result:
+    item: nexo:dough
+    amount: 1
+  sound: block.mud.place
+
+# ------------------------------------------------------------
+#  Pies
+# ------------------------------------------------------------
+pies:
+  enabled: true
+
+  crust:
+    item: nexo:pie_crust              # right-click the top of a block to put it down
+    model: nexo:pie_crust_placed      # what the empty crust looks like
+
+  # Added in order, one right-click per item. Exactly one step must be
+  # `filling: true`: it takes the filling of any pie type below, and that
+  # decides which pie it becomes. `name:` overrides the item name shown in
+  # the hologram.
+  steps:
+    - item: minecraft:egg
+      amount: 1
+    - item: minecraft:sugar
+      amount: 1
+    - filling: true
+      amount: 1
+    - item: nexo:dough
+      amount: 1
+
+  # Item ids are built from these patterns unless a pie type overrides them.
+  #   {state}  cold | baked
+  #   {type}   the pie type id
+  #   {slice}  "" for a whole pie, _slice1 .. _slice3 after each bite
+  models:
+    item: "nexo:{state}_{type}_pie"                  # the pie you hold
+    placed: "nexo:{state}_{type}_pie_placed{slice}"  # the pie on the ground
+    filled: "nexo:{type}_pie_filled"                 # filling in, no top yet
+
+  # filling: one item or a list. Every quality of a crop can count.
+  # Optional per type: filling-name, cold-item, baked-item, filled-model,
+  # cold-models: [4 ids], baked-models: [4 ids]
+  types:
+    apple:
+      filling: minecraft:apple
+    blackberry:
+      filling: [nexo:blackberries, nexo:blackberries_silver_star, nexo:blackberries_golden_star]
+    blueberry:
+      filling: [nexo:blueberries, nexo:blueberries_silver_star, nexo:blueberries_golden_star]
+    chocolate:
+      filling: minecraft:cocoa_beans
+    cranberry:
+      filling: [nexo:cranberries, nexo:cranberries_silver_star, nexo:cranberries_golden_star]
+    elderberry:
+      filling: [nexo:elderberries, nexo:elderberries_silver_star, nexo:elderberries_golden_star]
+    pumpkin:
+      filling: minecraft:pumpkin
+    raspberry:
+      filling: [nexo:raspberries, nexo:raspberries_silver_star, nexo:raspberries_golden_star]
+    strawberry:
+      filling: [nexo:strawberry, nexo:strawberry_silver_star, nexo:strawberry_golden_star]
+
+  # Right-click a whole pie to eat a slice; the fourth slice finishes it.
+  eating:
+    nutrition: 3                  # hunger points per slice
+    saturation: 0.6               # saturation points per slice
+    require-hunger: true          # can't eat on a full hunger bar (creative can)
+    require-build-permission: true  # eating needs build access where the pie is
+    sound: entity.generic.eat
+
+  # A baked pie left out turns into the cold pie. Pies in inventories keep
+  # their clock running but only change when they're put down or dropped.
+  cooling:
+    time: 10m
+    dropped-items: true           # pies dropped on the ground cool too
+
+  # DecentHolograms instructions above a pie being assembled.
+  #   <required-item>  icon for #ICON (material name, or nexo:<id>)
+  #   <item>           the item's name
+  #   <amount>         how many are still needed
+  hologram:
+    enabled: true
+    height: 1.35                  # blocks above the pie
+    icon-cycle: 2s                # the filling step cycles through every flavour
+    step:
+      - "#ICON: <required-item>"
+      - "&aAdd &7<amount>x &6<item>"
+    done:
+      - "&6Done!"
+      - "&7Pick up the pie and bake it!"

@@ -14,8 +14,10 @@ import codes.castled.allium.harvest.crop.def.CropDefinitionLoader;
 import codes.castled.allium.harvest.crop.def.CropRegistry;
 import codes.castled.allium.harvest.crop.def.ValidationIssue;
 import codes.castled.allium.harvest.integration.NexoItemResolver;
+import codes.castled.allium.harvest.integration.NexoItemsGate;
 import codes.castled.allium.harvest.integration.OraxenItemResolver;
 import codes.castled.allium.harvest.item.ItemResolverChain;
+import codes.castled.allium.harvest.kitchen.KitchenModule;
 import codes.castled.allium.harvest.spawner.SpawnerListeners;
 import codes.castled.allium.harvest.spawner.SpawnerModelRegistry;
 import codes.castled.allium.harvest.spawner.SpawnerProvider;
@@ -71,6 +73,7 @@ public final class HarvestModule {
     private CropGrowthEngine growthEngine;
     private SpawnerModelRegistry spawnerModels;
     private SpawnerTrackingService spawnerTracking;
+    private KitchenModule kitchen;
     private TaskHandle spawnerSweepTask;
     private boolean enabled;
 
@@ -85,13 +88,40 @@ public final class HarvestModule {
 
     // ==================== lifecycle ====================
 
+    /**
+     * Enables the module, or — with Nexo installed — schedules it for when
+     * Nexo has registered its items. See {@link NexoItemsGate} for why loading
+     * any earlier is unsafe.
+     */
     public void enable() {
+        if (Bukkit.getPluginManager().isPluginEnabled("Nexo")) {
+            try {
+                NexoItemsGate.await(plugin, this::enableNow, () -> {
+                    if (enabled) reload();
+                });
+                if (!enabled) {
+                    logger.info("[" + HarvestBranding.DISPLAY_NAME + "] Waiting for Nexo to load its items");
+                }
+                return;
+            } catch (Throwable t) {
+                logger.warning("[" + HarvestBranding.DISPLAY_NAME
+                    + "] Could not wait for Nexo items, loading now: " + t);
+            }
+        }
+        enableNow();
+    }
+
+    private void enableNow() {
+        if (enabled) {
+            return;
+        }
         File dataFolder = new File(plugin.getDataFolder(), HarvestBranding.DATA_FOLDER);
         saveDefault("config.yml");
         saveDefault("fertilizers.yml");
         saveDefault("spawner-models.yml");
         saveDefault("sprinklers.yml");
         saveDefault("crops/tomato.yml");
+        saveDefault("kitchen.yml");
 
         config = HarvestConfig.from(
             YamlConfiguration.loadConfiguration(new File(dataFolder, "config.yml")));
@@ -155,6 +185,9 @@ public final class HarvestModule {
         }
         growthEngine.start();
 
+        kitchen = new KitchenModule(plugin, items, dataFolder);
+        reportIssues(kitchen.enable());
+
         Bukkit.getServicesManager().register(SpawnerProvider.class,
             new VanillaSpawnerProvider(), plugin, ServicePriority.Lowest);
         Bukkit.getServicesManager().register(AlliumHarvestApi.class,
@@ -184,6 +217,9 @@ public final class HarvestModule {
             spawnerTracking.shutdown();
         }
         growthEngine.stop();
+        if (kitchen != null) {
+            kitchen.disable();
+        }
         if (spawnerSweepTask != null) {
             spawnerSweepTask.cancel();
         }
@@ -219,6 +255,7 @@ public final class HarvestModule {
         List<ValidationIssue> issues = loadDefinitions(dataFolder);
         issues.addAll(loadSpawnerModels(dataFolder));
         issues.addAll(loadSprinklers(dataFolder));
+        issues.addAll(kitchen.reload());
         reportIssues(issues);
 
         // Models that previously failed to resolve get another chance: the

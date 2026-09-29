@@ -160,6 +160,23 @@ class KitchenConfigTest {
     }
 
     @Test
+    void chocolateAndPumpkinSkipTheDoughTop() {
+        KitchenConfig.Pies pies = load(shipped(), id -> true).config().pies();
+        assertTrue(pies.type("chocolate").orElseThrow().skips(3));
+        assertTrue(pies.type("pumpkin").orElseThrow().skips(3));
+        assertFalse(pies.type("apple").orElseThrow().skips(3));
+    }
+
+    @Test
+    void stepsBeforeTheFillingCannotBeSkipped() {
+        KitchenConfig.LoadResult result = load(yaml(MINIMAL + """
+                  skip-steps: [1]
+            """), id -> true);
+        assertTrue(result.config().pies().type("blackberry").orElseThrow().skipSteps().isEmpty());
+        assertTrue(result.issues().stream().anyMatch(issue -> issue.path().endsWith(".skip-steps")));
+    }
+
+    @Test
     void disabledFileLoadsNothing() {
         KitchenConfig.LoadResult result = load(yaml("enabled: false"), id -> true);
         assertFalse(result.config().enabled());

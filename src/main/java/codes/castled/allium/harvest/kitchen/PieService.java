@@ -309,6 +309,12 @@ final class PieService {
         if (pie.progress >= step.amount()) {
             pie.step++;
             pie.progress = 0;
+            // Some pies leave out later steps (e.g. no dough top on a
+            // chocolate pie); the type is known once the filling is in.
+            KitchenConfig.PieType type = pies.type(pie.type).orElse(null);
+            while (type != null && pie.step < pies.steps().size() && type.skips(pie.step)) {
+                pie.step++;
+            }
         }
         pie.save();
         refresh(pie);

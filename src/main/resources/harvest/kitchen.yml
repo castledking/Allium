@@ -97,6 +97,8 @@ pies:
   # filling: one item or a list. Every quality of a crop can count.
   # Optional per type: filling-name, cold-item, baked-item, filled-model,
   # cold-models: [4 ids], baked-models: [4 ids]
+  # skip-steps: step numbers (as listed under `steps`) this pie leaves out.
+  #   Only steps after the filling can be skipped.
   types:
     apple:
       filling: minecraft:apple
@@ -106,12 +108,14 @@ pies:
       filling: [nexo:blueberries, nexo:blueberries_silver_star, nexo:blueberries_golden_star]
     chocolate:
       filling: minecraft:cocoa_beans
+      skip-steps: [4]               # no dough top
     cranberry:
       filling: [nexo:cranberries, nexo:cranberries_silver_star, nexo:cranberries_golden_star]
     elderberry:
       filling: [nexo:elderberries, nexo:elderberries_silver_star, nexo:elderberries_golden_star]
     pumpkin:
       filling: minecraft:pumpkin
+      skip-steps: [4]               # no dough top
     raspberry:
       filling: [nexo:raspberries, nexo:raspberries_silver_star, nexo:raspberries_golden_star]
     strawberry:

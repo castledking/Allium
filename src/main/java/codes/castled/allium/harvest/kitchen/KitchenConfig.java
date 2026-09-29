@@ -74,8 +74,14 @@ public record KitchenConfig(
         ItemRef bakedItem,
         ItemRef filledModel,
         List<ItemRef> coldModels,
-        List<ItemRef> bakedModels
+        List<ItemRef> bakedModels,
+        Set<Integer> skipSteps
     ) {
+        /** Whether this pie leaves out the assembly step at the given (0-based) index. */
+        public boolean skips(int step) {
+            return skipSteps.contains(step);
+        }
+
         /** The first filling, used as the hologram icon. */
         public ItemRef filling() {
             return fillings.get(0);
@@ -260,6 +266,7 @@ public record KitchenConfig(
 
             List<Step> steps = new ArrayList<>();
             int fillingSteps = 0;
+            int fillingIndex = -1;
             List<Map<?, ?>> rawSteps = section.getMapList("steps");
             for (int i = 0; i < rawSteps.size(); i++) {
                 Map<?, ?> raw = rawSteps.get(i);
@@ -272,6 +279,7 @@ public record KitchenConfig(
                 String name = raw.get("name") == null ? null : raw.get("name").toString();
                 if (Boolean.TRUE.equals(raw.get("filling"))) {
                     fillingSteps++;
+                    fillingIndex = i;
                     steps.add(new Step(null, amount, name));
                     continue;
                 }
@@ -319,6 +327,18 @@ public record KitchenConfig(
                     ItemRef filled = item(t.getString("filled-model", fill(filledPattern, "cold", id, 0)), base + ".filled-model");
                     List<ItemRef> coldModels = models(t, "cold-models", placedPattern, "cold", id, base);
                     List<ItemRef> bakedModels = models(t, "baked-models", placedPattern, "baked", id, base);
+                    // skip-steps uses the step numbers as listed (1-based). Only
+                    // steps after the filling can be skipped: before it, nothing
+                    // yet says which pie this is.
+                    Set<Integer> skipSteps = new java.util.TreeSet<>();
+                    for (Integer number : t.getIntegerList("skip-steps")) {
+                        if (number <= fillingIndex + 1 || number > steps.size()) {
+                            warning(base + ".skip-steps", "Ignoring step " + number + ": only steps "
+                                + (fillingIndex + 2) + ".." + steps.size() + " come after the filling");
+                        } else {
+                            skipSteps.add(number - 1);
+                        }
+                    }
                     if (errorCount() > before) {
                         continue;
                     }
@@ -332,7 +352,7 @@ public record KitchenConfig(
                     }
                     types.put(id, new PieType(id, List.copyOf(fillings),
                         t.getString("filling-name", displayName(fillings.get(0))),
-                        cold, baked, filled, coldModels, bakedModels));
+                        cold, baked, filled, coldModels, bakedModels, Set.copyOf(skipSteps)));
                 }
             }
             if (types.isEmpty()) {

@@ -149,3 +149,23 @@ pies:
     done:
       - "&6Done!"
       - "&7Pick up the pie and bake it!"
+
+# ------------------------------------------------------------
+#  Furnaces
+# ------------------------------------------------------------
+# Nexo furniture that opens a working furnace when right-clicked (sneak to
+# use the furniture normally). It cooks with the server's own recipes,
+# including custom ones such as the pie-baking recipes, keeps its contents
+# and progress across restarts, and drops them when broken. It only cooks
+# while its chunk is loaded, and hoppers can't reach it.
+#
+#   type   FURNACE | SMOKER | BLAST_FURNACE - which recipe book it uses
+#   speed  cook time multiplier: 0.5 cooks twice as fast, 2.0 half as fast
+#   title  menu title (MiniMessage)
+furnaces:
+  enabled: true
+  stations:
+    kitchen_stove:            # Nexo furniture id
+      title: "Stove"
+      type: FURNACE
+      speed: 1.0

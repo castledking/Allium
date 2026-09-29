@@ -27,6 +27,7 @@ public final class KitchenModule {
 
     private volatile KitchenConfig config = KitchenConfig.disabled();
     private PieHolograms holograms = PieHolograms.NONE;
+    private StoveService stoves;
 
     public KitchenModule(JavaPlugin plugin, ItemResolverChain items, File dataFolder) {
         this.plugin = plugin;
@@ -61,6 +62,15 @@ public final class KitchenModule {
             } catch (Throwable t) {
                 logger.warning("[" + HarvestBranding.DISPLAY_NAME + "] Nexo kneading stations unavailable: " + t);
             }
+            try {
+                stoves = new StoveService(plugin, () -> config);
+                NexoStoveListener stoveListener = new NexoStoveListener(plugin, stoves, permission);
+                manager.registerEvents(stoveListener, plugin);
+                stoveListener.bootstrapLoadedChunks();
+            } catch (Throwable t) {
+                stoves = null;
+                logger.warning("[" + HarvestBranding.DISPLAY_NAME + "] Nexo furnaces unavailable: " + t);
+            }
         }
         manager.registerEvents(pieListener, plugin);
         pieListener.bootstrapLoadedChunks();
@@ -73,6 +83,9 @@ public final class KitchenModule {
 
     public void disable() {
         holograms.removeAll();
+        if (stoves != null) {
+            stoves.shutdown();
+        }
     }
 
     private List<ValidationIssue> load() {
@@ -82,7 +95,8 @@ public final class KitchenModule {
         if (config.enabled()) {
             logger.info("[" + HarvestBranding.DISPLAY_NAME + "] Kitchen: " + config.bags().size() + " bag(s), kneading "
                 + (config.kneading() == null ? "off" : "on") + ", "
-                + (config.pies() == null ? "pies off" : config.pies().types().size() + " pie type(s)"));
+                + (config.pies() == null ? "pies off" : config.pies().types().size() + " pie type(s)") + ", "
+                + config.furnaces().size() + " furnace station(s)");
         }
         return result.issues();
     }

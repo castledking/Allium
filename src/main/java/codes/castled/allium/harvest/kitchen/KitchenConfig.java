@@ -34,10 +34,21 @@ public record KitchenConfig(
     boolean enabled,
     Map<ItemRef, Bag> bags,
     Kneading kneading,
-    Pies pies
+    Pies pies,
+    Map<String, Stove> furnaces
 ) {
 
     public static final String FILE = "kitchen.yml";
+
+    /** Which vanilla recipe book a stove cooks from. */
+    public enum StoveType { FURNACE, SMOKER, BLAST_FURNACE }
+
+    /**
+     * Nexo furniture that works as a furnace when right-clicked.
+     *
+     * @param speed cook time multiplier; 0.5 cooks twice as fast
+     */
+    public record Stove(String furnitureId, String title, StoveType type, double speed) {}
 
     /** A storage bag: one item that holds up to {@code capacity} of another. */
     public record Bag(String id, ItemRef item, ItemRef stores, int capacity, String loreLine) {}
@@ -136,7 +147,7 @@ public record KitchenConfig(
     }
 
     public static KitchenConfig disabled() {
-        return new KitchenConfig(false, Map.of(), null, null);
+        return new KitchenConfig(false, Map.of(), null, null, Map.of());
     }
 
     // ==================== loading ====================
@@ -180,7 +191,38 @@ public record KitchenConfig(
             }
             return new KitchenConfig(true, bags(yaml.getConfigurationSection("bags")),
                 kneading(yaml.getConfigurationSection("kneading")),
-                pies(yaml.getConfigurationSection("pies")));
+                pies(yaml.getConfigurationSection("pies")),
+                furnaces(yaml.getConfigurationSection("furnaces")));
+        }
+
+        private Map<String, Stove> furnaces(ConfigurationSection section) {
+            Map<String, Stove> stoves = new LinkedHashMap<>();
+            if (section == null || !section.getBoolean("enabled", true)) return stoves;
+            ConfigurationSection root = section.getConfigurationSection("stations");
+            if (root == null) return stoves;
+            for (String rawId : root.getKeys(false)) {
+                String base = "furnaces.stations." + rawId;
+                ConfigurationSection s = root.getConfigurationSection(rawId);
+                if (s == null) {
+                    error(base, "Furnace station is not a section");
+                    continue;
+                }
+                StoveType type;
+                try {
+                    type = StoveType.valueOf(s.getString("type", "FURNACE").toUpperCase(Locale.ROOT));
+                } catch (IllegalArgumentException e) {
+                    error(base + ".type", "Type must be FURNACE, SMOKER or BLAST_FURNACE");
+                    continue;
+                }
+                double speed = s.getDouble("speed", 1.0D);
+                if (speed <= 0.0D) {
+                    error(base + ".speed", "Speed must be greater than zero");
+                    continue;
+                }
+                String id = rawId.toLowerCase(Locale.ROOT);
+                stoves.put(id, new Stove(id, s.getString("title", "Furnace"), type, speed));
+            }
+            return Collections.unmodifiableMap(stoves);
         }
 
         private Map<ItemRef, Bag> bags(ConfigurationSection root) {

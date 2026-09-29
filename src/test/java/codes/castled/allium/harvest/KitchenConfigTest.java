@@ -177,6 +177,27 @@ class KitchenConfigTest {
     }
 
     @Test
+    void theKitchenStoveIsAFurnace() {
+        KitchenConfig config = load(shipped(), id -> true).config();
+        KitchenConfig.Stove stove = config.furnaces().get("kitchen_stove");
+        assertEquals(KitchenConfig.StoveType.FURNACE, stove.type());
+        assertEquals(1.0D, stove.speed());
+    }
+
+    @Test
+    void aStoveNeedsAKnownTypeAndAPositiveSpeed() {
+        KitchenConfig.LoadResult result = load(yaml("""
+            furnaces:
+              stations:
+                grill: { type: GRILL }
+                oven: { speed: 0 }
+                smoker: { type: smoker, speed: 0.5 }
+            """), id -> true);
+        assertEquals(Set.of("smoker"), result.config().furnaces().keySet());
+        assertEquals(2, result.issues().size());
+    }
+
+    @Test
     void disabledFileLoadsNothing() {
         KitchenConfig.LoadResult result = load(yaml("enabled: false"), id -> true);
         assertFalse(result.config().enabled());

@@ -91,8 +91,25 @@ quality:
 # ------------------------------------------------------------
 # Trading a card in for its mob's head.
 # ------------------------------------------------------------
+# ------------------------------------------------------------
+# Trading a card in for its mob's head. Right-click a card in your
+# inventory to open the menu.
+#
+# The payout is NOT a percentage of anything — it is the `heads` value
+# of the band the card's quality falls in, looked up as it stands at
+# trade time. So a 92% card pays the `mint` value (7 heads) and a 100%
+# card pays 8. That is deliberately a lookup rather than a formula:
+# rebalancing the ladder above is an edit to the band table, and a
+# card's value can never disagree with the number its own lore shows.
+#
+# Because the band is derived from the stored integer, moving a boundary
+# changes what existing cards pay. That is intended.
+# ------------------------------------------------------------
 trade:
   enabled: true
+  # Refuse cards below the `mint` band, so the trash end of the ladder
+  # cannot be sold. Off by default: a rotten card is still a card, and
+  # one head for one is a fine floor.
   require-mint-or-better: false
   consume-card: true
 

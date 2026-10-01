@@ -10,6 +10,14 @@ import codes.castled.allium.tradingcards.card.CardRegistry;
 import codes.castled.allium.tradingcards.card.CardRoller;
 import codes.castled.allium.tradingcards.config.TradingCardsConfig;
 import codes.castled.allium.tradingcards.config.ValidationIssue;
+import codes.castled.allium.tradingcards.gui.CardMenuListener;
+import codes.castled.allium.tradingcards.item.HeadResolver;
+import codes.castled.allium.tradingcards.item.TradingCardData;
+import codes.castled.allium.tradingcards.trade.TradeQuote;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +51,7 @@ public final class TradingCardsModule {
     private CardRoller roller;
     private CardFactory factory;
     private CardDropListener dropListener;
+    private TradeQuote tradeQuote = new TradeQuote();
 
     private boolean enabled;
 
@@ -112,7 +121,9 @@ public final class TradingCardsModule {
             this::announceDrop);
 
         Bukkit.getPluginManager().registerEvents(dropListener, plugin);
+        Bukkit.getPluginManager().registerEvents(new CardMenuListener(this), plugin);
         reportIssues(issues);
+        applyTradeConfig();
 
         enabled = true;
         logger.info("[" + TradingCardsBranding.DISPLAY_NAME + "] Enabled with "
@@ -169,7 +180,85 @@ public final class TradingCardsModule {
         Bukkit.getPluginManager().registerEvents(dropListener, plugin);
 
         reportIssues(issues);
+        applyTradeConfig();
         return issues;
+    }
+
+    /** Re-points the trade quoter at the freshly loaded band table. */
+    private void applyTradeConfig() {
+        tradeQuote.configure(config::quality, config.trade().enabled(),
+            config.trade().requireMintOrBetter());
+    }
+
+    // ==================== trading ====================
+
+    /**
+     * Trades a card in for {@code heads} mob heads.
+     *
+     * <p>Re-reads the card out of the player's hand rather than trusting the
+     * menu's copy: the player may have moved or dropped it between opening the
+     * menu and clicking, and a trade that consumed the wrong item would be
+     * unrecoverable. Nothing is removed until the card and the head have both
+     * been resolved.
+     *
+     * @param expectedSlot the hand slot the card was opened from
+     * @return true when the trade completed
+     */
+    public boolean tradeCard(Player player, int expectedSlot, ItemStack presented) {
+        if (!config.trade().enabled()) {
+            return false;
+        }
+        var hand = player.getInventory().getItem(expectedSlot);
+        var current = TradingCardData.read(hand);
+        if (current.isEmpty()) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>That slot no longer holds a trading card.</red>"));
+            return false;
+        }
+        TradingCardData card = current.get();
+        TradeQuote.Result quote = tradeQuote.quote(card);
+        if (!quote.isQuoted()) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>That card cannot be traded: "
+                    + quote.denial().message()));
+            return false;
+        }
+        // The menu's figure is a snapshot; the band may have been reloaded
+        // since it opened, so the authoritative quote is the one taken here.
+        int heads = quote.quote().heads();
+
+        EntityType mob;
+        try {
+            mob = EntityType.valueOf(card.mob());
+        } catch (IllegalArgumentException e) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>Unknown mob '" + card.mob() + "' on this card.</red>"));
+            return false;
+        }
+        var configuredHead = registry.byMob(card.mob()).map(d -> d.head()).orElse(null);
+        var head = HeadResolver.resolve(plugin, items, mob, configuredHead);
+        if (head.isEmpty()) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>No head is configured for a "
+                    + card.mob() + " card, so there is nothing to trade for.</red>"));
+            return false;
+        }
+        if (card.bound()) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>This card was crafted and cannot be traded.</red>"));
+            return false;
+        }
+
+        ItemStack payout = head.get().clone();
+        payout.setAmount(Math.max(1, heads));
+        var overflow = player.getInventory().addItem(payout);
+        overflow.values().forEach(rest ->
+            player.getWorld().dropItemNaturally(player.getLocation(), rest));
+
+        if (config.trade().consumeCard()) {
+            player.getInventory().setItem(expectedSlot, null);
+        }
+        return true;
+    }
+
+    /** Values a card without trading it, for the menu. */
+    public TradeQuote.Result quote(TradingCardData card) {
+        return tradeQuote.quote(card);
     }
 
     // ==================== accessors ====================

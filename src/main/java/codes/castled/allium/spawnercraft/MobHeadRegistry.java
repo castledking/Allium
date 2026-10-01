@@ -157,14 +157,29 @@ public final class MobHeadRegistry {
         return ITEM_NAME_TO_MOB.get(itemName);
     }
 
-    /**
-     * Lower-case mob id the head belongs to (e.g. "cave_spider", "ender_dragon"),
-     * or null if the item is not a recognised mob head.
-     */
+/**
+ * Lower-case mob id the head belongs to (e.g. "cave_spider", "ender_dragon"),
+ * or null if the item is not a recognised mob head. Only tagged heads count:
+ * Allium's own drops (note_block_sound) and More Mob Heads datapack heads.
+ */
     public static String getMobKey(ItemStack item) {
+        return getMobKey(item, false);
+    }
+
+    /**
+     * As {@link #getMobKey(ItemStack)}, but an untagged vanilla skull (a plain creeper
+     * head, skeleton skull, zombie head...) counts as its mob too when
+     * {@code includeVanillaHeads} is set. Callers decide that per config, so a vanilla
+     * head can be a plushie ingredient while never being a spawner ingredient.
+     */
+    public static String getMobKey(ItemStack item, boolean includeVanillaHeads) {
         if (item == null) return null;
         EntityType vanillaType = VANILLA_SKULL_TO_ENTITY.get(item.getType());
-        if (vanillaType != null) return vanillaType.name().toLowerCase(Locale.ROOT);
+        if (vanillaType != null) {
+            // A tagged vanilla skull is a real head only if the tag agrees with it.
+            if (!isTaggedFor(item, vanillaType) && !includeVanillaHeads) return null;
+            return vanillaType.name().toLowerCase(Locale.ROOT);
+        }
         if (item.getType() != Material.PLAYER_HEAD) return null;
         if (!item.hasItemMeta()) return null;
         ItemMeta meta = item.getItemMeta();
@@ -173,19 +188,54 @@ public final class MobHeadRegistry {
             String mob = ITEM_NAME_TO_MOB.get(meta.getItemName());
             if (mob != null) return mob;
         }
+        return mobForSound(getNoteBlockSound(meta));
+    }
+
+    /**
+     * True when the head is tagged as belonging to {@code entityType}, either by a
+     * datapack item name or by the mob's note block sound.
+     */
+    private static boolean isTaggedFor(ItemStack item, EntityType entityType) {
+        if (!item.hasItemMeta()) return false;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+        String mob = entityType.name().toLowerCase(Locale.ROOT);
+        if (meta.hasItemName() && mob.equals(ITEM_NAME_TO_MOB.get(meta.getItemName()))) return true;
         NamespacedKey sound = getNoteBlockSound(meta);
+        if (sound == null) return false;
+        // Several sounds can map to one mob type (allay, villager, zombie villager),
+        // so compare the resolved type rather than the sound's mob name.
+        EntityType soundType = SOUND_TO_ENTITY.get(mobFromSound(sound));
+        return soundType != null && soundType == entityType;
+    }
+
+    /**
+     * Lower-case mob id the head belongs to (e.g. "cave_spider"), or null if the
+     * sound isn't a registered mob's or isn't an entity sound at all.
+     */
+    private static String mobForSound(NamespacedKey sound) {
         if (sound == null) return null;
+        String mob = mobFromSound(sound);
+        return SOUND_TO_ENTITY.containsKey(mob) ? mob : null;
+    }
+
+    /** "entity.magma_cube.squish" -> "magma_cube"; null when not an entity sound. */
+    private static String mobFromSound(NamespacedKey sound) {
         String key = sound.getKey();
         String entityKey = key.startsWith("minecraft:") ? key.substring(10) : key;
         if (!entityKey.startsWith("entity.")) return null;
         String withoutPrefix = entityKey.substring(7);
         int dotIndex = withoutPrefix.indexOf('.');
-        String entityName = dotIndex > 0 ? withoutPrefix.substring(0, dotIndex) : withoutPrefix;
-        return SOUND_TO_ENTITY.containsKey(entityName) ? entityName : null;
+        return dotIndex > 0 ? withoutPrefix.substring(0, dotIndex) : withoutPrefix;
     }
 
     public static EntityType getEntityType(ItemStack item) {
-        String mob = getMobKey(item);
+        return getEntityType(item, false);
+    }
+
+    /** @see #getMobKey(ItemStack, boolean) */
+    public static EntityType getEntityType(ItemStack item, boolean includeVanillaHeads) {
+        String mob = getMobKey(item, includeVanillaHeads);
         if (mob == null) return null;
         EntityType vanillaType = VANILLA_SKULL_TO_ENTITY.get(item.getType());
         if (vanillaType != null) return vanillaType;
@@ -241,8 +291,13 @@ public final class MobHeadRegistry {
     }
 
     public static boolean isMobHeadForPlacement(ItemStack item) {
+        return isMobHeadForPlacement(item, false);
+    }
+
+    /** @see #getMobKey(ItemStack, boolean) */
+    public static boolean isMobHeadForPlacement(ItemStack item, boolean includeVanillaHeads) {
         if (item == null) return false;
-        if (VANILLA_SKULL_TO_ENTITY.containsKey(item.getType())) return true;
+        if (VANILLA_SKULL_TO_ENTITY.containsKey(item.getType())) return getMobKey(item, includeVanillaHeads) != null;
         if (item.getType() != Material.PLAYER_HEAD) return false;
         if (!item.hasItemMeta()) return false;
         ItemMeta meta = item.getItemMeta();

@@ -13,6 +13,7 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
 
 import java.util.Map;
 
@@ -33,9 +34,16 @@ public class PlushieCraftListener implements Listener {
             "zombie_nautilus", "zombie_nautilus_temperate"
     );
 
+    private final boolean vanillaHeadsCraftPlushies;
+
+    public PlushieCraftListener(Plugin plugin) {
+        this.vanillaHeadsCraftPlushies = plugin.getConfig()
+                .getBoolean("spawnercraft.vanilla-heads-craft-plushies", true);
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareCraft(PrepareItemCraftEvent event) {
-        String plushieId = plushieFor(event.getInventory().getMatrix());
+        String plushieId = plushieFor(event.getInventory().getMatrix(), vanillaHeadsCraftPlushies);
         if (plushieId == null) return;
         ItemStack plushie = createPlushie(plushieId);
         if (plushie != null) {
@@ -48,7 +56,7 @@ public class PlushieCraftListener implements Listener {
         if (!(event.getInventory() instanceof CraftingInventory inventory)) return;
         if (event.getSlotType() != InventoryType.SlotType.RESULT) return;
         if (!(event.getWhoClicked() instanceof Player player)) return;
-        String plushieId = plushieFor(inventory.getMatrix());
+        String plushieId = plushieFor(inventory.getMatrix(), vanillaHeadsCraftPlushies);
         if (plushieId == null || event.getCurrentItem() == null
                 || !plushieId.equals(NexoItems.idFromItem(event.getCurrentItem()))) return;
 
@@ -67,18 +75,18 @@ public class PlushieCraftListener implements Listener {
             player.getInventory().addItem(plushie).values().forEach(overflow ->
                     player.getWorld().dropItemNaturally(player.getLocation(), overflow));
         }
-        String next = plushieFor(inventory.getMatrix());
+        String next = plushieFor(inventory.getMatrix(), vanillaHeadsCraftPlushies);
         inventory.setResult(next == null ? null : createPlushie(next));
     }
 
-    private static String plushieFor(ItemStack[] matrix) {
+    private static String plushieFor(ItemStack[] matrix, boolean vanillaHeads) {
         if (matrix == null || matrix.length != 9) return null;
         for (int i = 0; i < matrix.length; i++) {
             if (i == CENTER) continue;
             ItemStack item = matrix[i];
             if (item == null || !Tag.WOOL.isTagged(item.getType())) return null;
         }
-        String mob = MobHeadRegistry.getMobKey(matrix[CENTER]);
+        String mob = MobHeadRegistry.getMobKey(matrix[CENTER], vanillaHeads);
         if (mob == null) return null;
         String id = plushieIdForMob(mob);
         return NexoItems.exists(id) ? id : null;

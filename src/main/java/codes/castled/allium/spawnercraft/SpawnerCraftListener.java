@@ -37,12 +37,15 @@ public class SpawnerCraftListener implements Listener {
 
     private final PluginStart plugin;
     private final SpawnerCoreManager coreManager;
+    private final boolean vanillaHeadsCraftSpawners;
     private final NamespacedKey simulatedSpawnerKey;
     private final NamespacedKey spawnerEntityKey;
 
     public SpawnerCraftListener(PluginStart plugin, SpawnerCoreManager coreManager) {
         this.plugin = plugin;
         this.coreManager = coreManager;
+        this.vanillaHeadsCraftSpawners = plugin.getConfig()
+            .getBoolean("spawnercraft.vanilla-heads-craft-spawners", false);
         this.simulatedSpawnerKey = new NamespacedKey(plugin, "simulated_spawner");
         this.spawnerEntityKey = new NamespacedKey(plugin, "spawner_entity");
     }
@@ -56,12 +59,10 @@ public class SpawnerCraftListener implements Listener {
             if (entityType != null) SpawnerCraftGuideGui.open(event.getPlayer(), entityType);
             return;
         }
-        if (MobHeadRegistry.isMobHeadForPlacement(item)) {
-            EntityType headType = MobHeadRegistry.getEntityType(item);
-            if (headType != null && MobHeadDropListener.handlesMobType(headType)) {
-                event.setCancelled(true);
-                SpawnerCraftGuideGui.open(event.getPlayer(), headType);
-            }
+        EntityType headType = guideEntityType(item);
+        if (headType != null) {
+            event.setCancelled(true);
+            SpawnerCraftGuideGui.open(event.getPlayer(), headType);
         }
     }
 
@@ -81,13 +82,22 @@ public class SpawnerCraftListener implements Listener {
             }
             return;
         }
-        if (MobHeadRegistry.isMobHeadForPlacement(item)) {
-            EntityType headType = MobHeadRegistry.getEntityType(item);
-            if (headType != null && MobHeadDropListener.handlesMobType(headType)) {
-                event.setCancelled(true);
-                SpawnerCraftGuideGui.open(event.getPlayer(), headType);
-            }
+        EntityType headType = guideEntityType(item);
+        if (headType != null) {
+            event.setCancelled(true);
+            SpawnerCraftGuideGui.open(event.getPlayer(), headType);
         }
+    }
+
+    /**
+     * The mob a head is worth as a spawner ingredient, or null if it isn't one. A
+     * vanilla skull that can't craft spawners is left alone, so it still places as a
+     * block head instead of opening the guide.
+     */
+    private EntityType guideEntityType(ItemStack item) {
+        if (!MobHeadRegistry.isMobHeadForPlacement(item, vanillaHeadsCraftSpawners)) return null;
+        EntityType headType = MobHeadRegistry.getEntityType(item, vanillaHeadsCraftSpawners);
+        return headType != null && MobHeadDropListener.handlesMobType(headType) ? headType : null;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -230,7 +240,7 @@ public class SpawnerCraftListener implements Listener {
         for (int slot : surroundingSlots) {
             ItemStack item = matrix[slot];
             if (item == null || !MobHeadRegistry.isAnyHeadType(item)) return null;
-            EntityType headType = MobHeadRegistry.getEntityType(item);
+            EntityType headType = MobHeadRegistry.getEntityType(item, vanillaHeadsCraftSpawners);
             if (headType == null || headType != templateType) return null;
         }
         return templateType;

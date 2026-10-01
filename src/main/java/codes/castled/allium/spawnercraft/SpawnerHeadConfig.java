@@ -6,7 +6,9 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -91,6 +93,18 @@ public final class SpawnerHeadConfig {
 
     public static MobHead get(EntityType type) {
         return heads.get(type);
+    }
+
+    /** Mobs that currently drop a head, lower-case and sorted. */
+    public static List<String> mobNames() {
+        return mobNames(heads.keySet());
+    }
+
+    static List<String> mobNames(Collection<EntityType> types) {
+        return types.stream()
+                .map(type -> type.name().toLowerCase(Locale.ROOT))
+                .sorted()
+                .toList();
     }
 
     public static boolean handles(EntityType type) {

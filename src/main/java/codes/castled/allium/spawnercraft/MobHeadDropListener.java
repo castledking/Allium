@@ -1,7 +1,5 @@
 package codes.castled.allium.spawnercraft;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
@@ -17,24 +15,15 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.profile.PlayerProfile;
-import org.bukkit.profile.PlayerTextures;
 
-import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
 
 /**
  * Handles mob head drops for specific mobs. Uses same note_block_sound tag for identification.
@@ -48,7 +37,7 @@ public class MobHeadDropListener implements Listener {
     // EntityDeathEvent fires for any mob but the last one in the stack.
     private static final NamespacedKey SPAWNERMETA_STACK = new NamespacedKey("spawnermeta", "managed_spawned_stack");
     private static final NamespacedKey SPAWNERMETA_STACK_AMOUNT = new NamespacedKey("spawnermeta", "managed_spawned_stack_amount");
-    private static final NamespacedKey SPAWNERMETA_LOOTING = new NamespacedKey("spawnermeta", "looting_multiplier");
+    private static final NamespacedKey SPAWNERMETA_SPAWNED = new NamespacedKey("spawnermeta", "spawned");
 
     private final Plugin plugin;
     private final Map<UUID, Integer> pendingStackKills = new ConcurrentHashMap<>();
@@ -69,7 +58,12 @@ public class MobHeadDropListener implements Listener {
                     MobHeadRegistry.isDatapackHead(drop) && mob.equals(MobHeadRegistry.getMobKey(drop)));
         }
         ItemStack head = rollHead(type, entity.getKiller());
-        if (head != null) {
+        if (head == null) return;
+        if (isSpawnerMetaSpawned(entity)) {
+            // SpawnerMeta multiplies every drop left in the list by the spawner's
+            // looting upgrade. Drop the head directly so it stays a single head.
+            entity.getWorld().dropItemNaturally(entity.getLocation(), head);
+        } else {
             event.getDrops().add(head);
         }
     }
@@ -95,8 +89,8 @@ public class MobHeadDropListener implements Listener {
         if (killer == null) killer = living.getKiller();
         ItemStack head = rollHead(living.getType(), killer);
         if (head == null) return;
-        // Match SpawnerMeta, which multiplies a stacked mob's drops by its looting upgrade.
-        head.setAmount(Math.min(head.getMaxStackSize(), lootingMultiplier(living)));
+        // Always a single head per kill: the spawner's looting upgrade scales a
+        // stacked mob's normal loot, but deliberately does not scale heads.
         living.getWorld().dropItemNaturally(living.getLocation(), head);
     }
 
@@ -104,7 +98,8 @@ public class MobHeadDropListener implements Listener {
         SpawnerHeadConfig.MobHead headData = SpawnerHeadConfig.get(entityType);
         if (headData == null || killer == null) return null;
         if (RANDOM.nextDouble() >= calculateDropChance(headData, killer)) return null;
-        return createMobHead(entityType, headData);
+        // Same builder /spawnerhead uses, so dropped and given heads stack together.
+        return MobHeadFactory.create(plugin, entityType, headData);
     }
 
     private static int stackAmount(LivingEntity entity) {
@@ -113,8 +108,9 @@ public class MobHeadDropListener implements Listener {
         return Math.max(1, pdc.getOrDefault(SPAWNERMETA_STACK_AMOUNT, PersistentDataType.INTEGER, 1));
     }
 
-    private static int lootingMultiplier(LivingEntity entity) {
-        return Math.max(1, entity.getPersistentDataContainer().getOrDefault(SPAWNERMETA_LOOTING, PersistentDataType.INTEGER, 1));
+    private static boolean isSpawnerMetaSpawned(LivingEntity entity) {
+        return entity.getPersistentDataContainer()
+                .getOrDefault(SPAWNERMETA_SPAWNED, PersistentDataType.BYTE, (byte) 0) > 0;
     }
 
     // Same killer resolution SpawnerMeta uses for virtual kills.
@@ -132,68 +128,6 @@ public class MobHeadDropListener implements Listener {
         int lootingLevel = weapon.getEnchantmentLevel(Enchantment.LOOTING);
         if (lootingLevel <= 0) return headData.chance();
         return headData.lootingChance() + (headData.lootingPerLevel() * (lootingLevel - 1));
-    }
-
-    private ItemStack createMobHead(EntityType entityType, SpawnerHeadConfig.MobHead headData) {
-        ItemStack head = new ItemStack(Material.PLAYER_HEAD, 1);
-        SkullMeta meta = (SkullMeta) head.getItemMeta();
-        if (meta == null) return null;
-        String hexColor = SpawnerCoreManager.getMobColor(entityType);
-        String entityName = SpawnerCoreManager.formatEntityName(entityType);
-        meta.setDisplayName(SpawnerCoreManager.hexColor(hexColor) + "§l" + entityName + " Head");
-        List<String> lore = new ArrayList<>();
-        lore.add("§7Used to craft " + entityName + " Spawners");
-        meta.setLore(lore);
-        try {
-            PlayerProfile profile = Bukkit.createPlayerProfile(UUID.randomUUID());
-            PlayerTextures textures = profile.getTextures();
-            String textureUrl = decodeTextureUrl(headData.texture());
-            if (textureUrl != null) {
-                textures.setSkin(new URL(textureUrl));
-                profile.setTextures(textures);
-                meta.setOwnerProfile(profile);
-            }
-        } catch (MalformedURLException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to set mob head texture for " + entityName + " Head", e);
-        }
-        setNoteBlockSound(meta, headData.sound());
-        head.setItemMeta(meta);
-        return head;
-    }
-
-    private String decodeTextureUrl(String base64Texture) {
-        try {
-            String decoded = new String(java.util.Base64.getDecoder().decode(base64Texture));
-            int urlStart = decoded.indexOf("\"url\":\"") + 7;
-            int urlEnd = decoded.indexOf("\"", urlStart);
-            if (urlStart > 6 && urlEnd > urlStart) {
-                return decoded.substring(urlStart, urlEnd);
-            }
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to decode texture", e);
-        }
-        return null;
-    }
-
-    private void setNoteBlockSound(SkullMeta meta, String sound) {
-        NamespacedKey soundKey = NamespacedKey.minecraft(sound);
-        try {
-            Method method = SkullMeta.class.getMethod("setNoteBlockSound", NamespacedKey.class);
-            method.setAccessible(true);
-            method.invoke(meta, soundKey);
-            return;
-        } catch (NoSuchMethodException ignored) {
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to set note_block_sound via SkullMeta", e);
-        }
-        try {
-            Method method = meta.getClass().getMethod("setNoteBlockSound", NamespacedKey.class);
-            method.setAccessible(true);
-            method.invoke(meta, soundKey);
-        } catch (NoSuchMethodException ignored) {
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to set note_block_sound", e);
-        }
     }
 
     public static boolean handlesMobType(EntityType entityType) {

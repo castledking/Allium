@@ -50,6 +50,7 @@ import codes.castled.allium.commands.SetWarp;
 import codes.castled.allium.commands.Skull;
 import codes.castled.allium.commands.Spawn;
 import codes.castled.allium.commands.SpawnerCoreCommand;
+import codes.castled.allium.commands.SpawnerHeadCommand;
 import codes.castled.allium.commands.Speed;
 import codes.castled.allium.commands.Spy;
 import codes.castled.allium.commands.TP;
@@ -240,6 +241,7 @@ public class PluginStart extends JavaPlugin {
     private AlliumChannelManager channelManager;
     private DiscordSrvMessageBridge discordSrvMessageBridge;
     private DiscordBanContextMenu discordBanContextMenu;
+    private codes.castled.allium.packetevents.LocatorVisibility locatorVisibility;
     private ChatPacketTracker chatPacketTracker =
         new codes.castled.allium.packetevents.ChatPacketTrackerNoOp();
     private DeclareCommandsListener declareCommandsListener;
@@ -1225,6 +1227,9 @@ public class PluginStart extends JavaPlugin {
             }
             if (tabListManager != null) {
                 tabListManager.shutdown();
+            }
+            if (locatorVisibility != null) {
+                locatorVisibility.shutdown();
             }
             if (declareCommandsListener != null) {
                 declareCommandsListener.shutdown();
@@ -2314,6 +2319,7 @@ public class PluginStart extends JavaPlugin {
                     vanishManager
                 );
                 partyManager.setTabListManager(this.tabListManager);
+                initLocatorVisibility();
 
                 if (tabListManager.supportsTabListUpdates()) {
                     Text.sendDebugLog(
@@ -2342,6 +2348,34 @@ public class PluginStart extends JavaPlugin {
             partyManager.setTabListManager(this.tabListManager);
             SchedulerAdapter.runLater(() -> retryTabListManagerInit(), 40L);
         }
+    }
+
+    /**
+     * Builds the locator-bar packet filter. When it is active, party radius isolation
+     * hides only the locator dot instead of calling hidePlayer.
+     */
+    private void initLocatorVisibility() {
+        try {
+            if (locatorVisibility != null) {
+                locatorVisibility.shutdown();
+            }
+            locatorVisibility = getConfig().getBoolean("party-manager.locator-packet-filtering", true)
+                ? codes.castled.allium.packetevents.PacketEventsLoader.createLocatorVisibility(this)
+                : new codes.castled.allium.packetevents.LocatorVisibilityNoOp();
+            partyManager.setLocatorVisibility(locatorVisibility);
+            Text.sendDebugLog(
+                INFO,
+                locatorVisibility.isActive()
+                    ? "Locator bar filtering active: radius isolation no longer uses hidePlayer"
+                    : "Locator bar filtering unavailable; falling back to hidePlayer"
+            );
+        } catch (Throwable e) {
+            Text.sendDebugLog(WARN, "Failed to initialize LocatorVisibility: " + e.getMessage());
+        }
+    }
+
+    public codes.castled.allium.packetevents.LocatorVisibility getLocatorVisibility() {
+        return locatorVisibility;
     }
 
     /**
@@ -2775,7 +2809,7 @@ public class PluginStart extends JavaPlugin {
             ) {
                 getServer()
                     .getPluginManager()
-                    .registerEvents(new PlushieCraftListener(), this);
+                    .registerEvents(new PlushieCraftListener(this), this);
             }
             SpawnerCoreCommand spawnerCoreCommand = new SpawnerCoreCommand(
                 this
@@ -2784,6 +2818,12 @@ public class PluginStart extends JavaPlugin {
                 "spawnercore",
                 spawnerCoreCommand,
                 spawnerCoreCommand
+            );
+            SpawnerHeadCommand spawnerHeadCommand = new SpawnerHeadCommand(this);
+            registerCommand(
+                "spawnerhead",
+                spawnerHeadCommand,
+                spawnerHeadCommand
             );
             Text.sendDebugLog(INFO, "Custom item listeners registered");
 

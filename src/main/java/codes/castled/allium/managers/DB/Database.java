@@ -854,6 +854,9 @@ public class Database {
     }
 
     public boolean createDefaultPlayerBalance(UUID playerUUID, BigDecimal defaultBalance) {
+        if (!isReady()) {
+            return false;
+        }
         try {
             String sql = "INSERT INTO player_balances (uuid, balance) VALUES (?, ?)";
             try (Connection conn = getConnection();
@@ -869,6 +872,9 @@ public class Database {
     }
 
     public boolean setPlayerBalance(UUID playerUUID, BigDecimal amount) {
+        if (!isReady()) {
+            return false;
+        }
         if (getPlayerBalance(playerUUID) == null) {
             return createDefaultPlayerBalance(playerUUID, amount);
         }
@@ -877,6 +883,9 @@ public class Database {
     }
 
     public boolean addToPlayerBalance(UUID playerUUID, BigDecimal amount) {
+        if (!isReady()) {
+            return false;
+        }
         BigDecimal currentBalance = getPlayerBalance(playerUUID);
         if (currentBalance == null) {
             return createDefaultPlayerBalance(playerUUID, amount);
@@ -886,6 +895,9 @@ public class Database {
     }
 
     public boolean subtractFromPlayerBalance(UUID playerUUID, BigDecimal amount) {
+        if (!isReady()) {
+            return false;
+        }
         BigDecimal currentBalance = getPlayerBalance(playerUUID);
         if (currentBalance == null) {
             return false;
@@ -895,6 +907,9 @@ public class Database {
     }
 
     public boolean hasEnoughBalance(UUID playerUUID, BigDecimal amount) {
+        if (!isReady()) {
+            return false;
+        }
         BigDecimal currentBalance = getPlayerBalance(playerUUID);
         if (currentBalance == null) {
             return false;
@@ -904,6 +919,9 @@ public class Database {
 
     public List<BalanceEntry> getTopBalances(int limit) {
         List<BalanceEntry> topBalances = new ArrayList<>();
+        if (!isReady()) {
+            return topBalances;
+        }
         try {
             String sql = "SELECT b.uuid, p.name, b.balance FROM player_balances b " +
                     "LEFT JOIN player_data p ON b.uuid = p.uuid " +
@@ -2057,6 +2075,9 @@ public class Database {
     }
 
     public BigDecimal getPlayerBalance(UUID playerUUID) {
+        if (!isReady()) {
+            return BigDecimal.ZERO;
+        }
         String sql = "SELECT balance FROM player_balances WHERE uuid = ?";
         try {
             try (Connection connection = getConnection();
@@ -2077,6 +2098,9 @@ public class Database {
     }
 
     private BigDecimal createDefaultPlayerBalance(UUID playerUUID) {
+        if (!isReady()) {
+            return BigDecimal.ZERO;
+        }
         BigDecimal defaultBalance = new BigDecimal("0.00");
         try {
             String sql = "INSERT INTO player_balances (uuid, balance) VALUES (?, ?)";

@@ -303,7 +303,22 @@ public final class DiscordSrvMessageBridge implements Listener {
                 return;
             }
 
-            Iterable<Message> iterable = pendingMessage.destinationChannelObject.getHistory().retrievePast(WEBHOOK_LOOKUP_HISTORY_LIMIT).complete();
+            // queue() rather than complete(): a blocking wait parks this scheduler thread until
+            // Discord answers, and under rate limits every pending lookup parks another thread.
+            pendingMessage.destinationChannelObject.getHistory().retrievePast(WEBHOOK_LOOKUP_HISTORY_LIMIT).queue(
+                    history -> matchWebhookMessage(pendingMessage, history),
+                    error -> Text.sendDebugLog(WARN, "DiscordSRV webhook lookup failed: " + error.getMessage())
+            );
+        } catch (Throwable t) {
+            Text.sendDebugLog(WARN, "DiscordSRV webhook lookup failed: " + t.getMessage());
+        }
+    }
+
+    private void matchWebhookMessage(PendingChatMessage pendingMessage, Iterable<Message> iterable) {
+        try {
+            if (linkedMessages.containsKey(pendingMessage.alliumMessageId)) {
+                return;
+            }
 
             Message matchedMessage = null;
             long matchedTimestamp = Long.MIN_VALUE;

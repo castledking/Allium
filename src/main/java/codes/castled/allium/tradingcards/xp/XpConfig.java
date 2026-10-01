@@ -47,7 +47,10 @@ public record XpConfig(
         double multiplier,
         long cooldownMillis,
         boolean perMobCooldown,
-        long perMobCooldownMillis
+        long perMobCooldownMillis,
+        int maxSamples,
+        double percentile,
+        int minimumSamples
     ) {
         /**
          * The cooldown a plain claim is gated by: the per-source one, or the
@@ -57,11 +60,11 @@ public record XpConfig(
          * exists to prevent.
          */
         public static Source flat(double xp) {
-            return new Source(true, xp, 0.0, 0L, false, 0L);
+            return new Source(true, xp, 0.0, 0L, false, 0L, 0, 0.0, 0);
         }
 
         public static Source disabled() {
-            return new Source(false, 0.0, 0.0, 0L, false, 0L);
+            return new Source(false, 0.0, 0.0, 0L, false, 0L, 0, 0.0, 0);
         }
 
         public boolean usesMultiplier() {
@@ -72,11 +75,15 @@ public record XpConfig(
     public static XpConfig defaults() {
         Map<String, Source> sources = new LinkedHashMap<>();
         sources.put("kill-mob", Source.flat(4));
-        sources.put("breed-mob", new Source(true, 40, 0.0, 0L, true, 604_800_000L));
+        sources.put("breed-mob", new Source(true, 40, 0.0, 0L, true, 604_800_000L, 0, 0.0, 0));
         sources.put("farm-crop", Source.flat(2));
         sources.put("auraskills-ability", Source.flat(3));
         sources.put("quest-complete", Source.flat(25));
         sources.put("fish-large", Source.flat(12));
+        // EcoJobs pays a multiple of the job's own experience rather than a
+        // flat amount: the event fires per counter, not per action, so counting
+        // events would pay more for a job that merely has more triggers.
+        sources.put("ecojobs-work", new Source(true, 0.0, 1.5, 0L, false, 0L, 0, 0.0, 0));
         sources.put("advancement", Source.flat(20));
         return new XpConfig(sources, defaultCurve());
     }
@@ -212,11 +219,25 @@ public record XpConfig(
                             + "Set an xp amount or a multiplier, or disable it."));
                     enabled = false;
                 }
+                // The three trailing fields are fishing-only and ignored by
+                // every other source, so one record type covers the block
+                // without a fishing-specific class that nothing else uses.
+                int maxSamples = entry.getInt("max-samples", 40);
+                if (maxSamples < 1) maxSamples = 1;
+                double percentile = entry.getDouble("minimum-percentile", 0.75);
+                if (percentile <= 0.0 || percentile > 1.0) {
+                    issues.add(ValidationIssue.warning(FILE, path + ".minimum-percentile",
+                        "Must be in (0,1], got " + percentile + "; using 0.75"));
+                    percentile = 0.75;
+                }
+                int minimumSamples = entry.getInt("minimum-samples", 8);
+                if (minimumSamples < 1) minimumSamples = 1;
                 sources.put(normalised, new Source(
                     enabled, xp, multiplier,
                     parseDuration(entry.getString("cooldown", "0")),
                     entry.getBoolean("per-mob-cooldown", false),
-                    parseDuration(entry.getString("per-mob-cooldown-duration", "0"))));
+                    parseDuration(entry.getString("per-mob-cooldown-duration", "0")),
+                    maxSamples, percentile, minimumSamples));
             }
         }
         // Anything the file did not mention keeps its default, so a partial

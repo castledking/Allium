@@ -15,7 +15,11 @@ import codes.castled.allium.tradingcards.integration.ReliqueIntegration;
 import codes.castled.allium.tradingcards.merge.MergeRules;
 import codes.castled.allium.tradingcards.reroll.RerollPricing;
 import codes.castled.allium.tradingcards.reroll.RerollService;
+import codes.castled.allium.tradingcards.xp.AuraSkillsAbilityListener;
 import codes.castled.allium.tradingcards.xp.CardXpListener;
+import codes.castled.allium.tradingcards.xp.EcoJobsBridge;
+import codes.castled.allium.tradingcards.xp.FishSizeTracker;
+import codes.castled.allium.tradingcards.xp.LiteFishBridge;
 import codes.castled.allium.tradingcards.xp.CardXpService;
 import codes.castled.allium.tradingcards.xp.XpAntiFarmStore;
 import codes.castled.allium.tradingcards.xp.XpConfig;
@@ -79,6 +83,10 @@ public final class TradingCardsModule {
 
     private XpConfig xpConfig;
     private boolean questsLive;
+    private boolean fishingLive;
+    private boolean jobsLive;
+    private boolean abilitiesLive;
+    private FishSizeTracker fishSizes;
     private XpAntiFarmStore antiFarm;
     private CardXpService cardXp;
     private codes.castled.allium.scheduler.TaskHandle antiFarmSave;
@@ -570,6 +578,60 @@ public final class TradingCardsModule {
             }
         }
 
+        // Fishing. LiteFish is premium, so there is no api artifact and no
+        // way to compile against it; the bridge is reflection plus the two PDC
+        // keys LiteFish already writes onto the caught stack.
+        if (xpConfig.isEnabled("fish-large")) {
+            fishSizes = new FishSizeTracker(new FishSizeTracker.Rules(
+                loaded.config().source("fish-large").maxSamples(),
+                xpConfig.source("fish-large").percentile(),
+                xpConfig.source("fish-large").minimumSamples()));
+            LiteFishBridge fishing = new LiteFishBridge(logger);
+            if (fishing.register(plugin, (player, species, weight) -> {
+                if (!fishSizes.record(player.getUniqueId(), species, weight)) {
+                    return;
+                }
+                service.award(player, "fish-large", 1.0, species, null);
+            })) {
+                fishingLive = true;
+            } else if (Bukkit.getPluginManager().isPluginEnabled("LiteFish")) {
+                issues.add(ValidationIssue.warning(TradingCardsConfig.FILE,
+                    "xp.sources.fish-large",
+                    "Enabled, but the LiteFish listener could not register. The "
+                        + "plugin may be a version without dev.nekomadev.liteFish."
+                        + "api.CatchEvent."));
+            }
+        }
+
+        // EcoJobs. Also reflective: its API is Kotlin top-level functions with
+        // no interface, so there is nothing to implement and no artifact to
+        // depend on. Scales the plugin's own amount rather than counting
+        // events, because the event fires per counter and not per action.
+        if (xpConfig.isEnabled("ecojobs-work")) {
+            EcoJobsBridge jobs = new EcoJobsBridge(logger);
+            if (jobs.register(plugin, (player, jobId, amount) -> {
+                service.award(player, "ecojobs-work", amount, jobId, null);
+            })) {
+                jobsLive = true;
+            } else if (Bukkit.getPluginManager().isPluginEnabled("EcoJobs")) {
+                issues.add(ValidationIssue.warning(TradingCardsConfig.FILE,
+                    "xp.sources.ecojobs-work",
+                    "Enabled, but the EcoJobs listener could not register. The "
+                        + "plugin may be a version without "
+                        + "com.willfp.ecojobs.api.event.PlayerJobExpGainEvent."));
+            }
+        }
+
+        // The one source compiled against rather than reflected: Allium already
+        // declares AuraSkills' api artifacts for the stat modifiers, and the
+        // events live in the bukkit half of the same published module.
+        if (xpConfig.isEnabled("auraskills-ability")
+            && Bukkit.getPluginManager().isPluginEnabled("AuraSkills")) {
+            Bukkit.getPluginManager().registerEvents(
+                new AuraSkillsAbilityListener(service, logger), plugin);
+            abilitiesLive = true;
+        }
+
         long enabled = loaded.config().sources().values().stream()
             .filter(codes.castled.allium.tradingcards.xp.XpConfig.Source::enabled)
             .count();
@@ -592,6 +654,26 @@ public final class TradingCardsModule {
     /** True when the quest listener is live, for the command's diagnostics. */
     public boolean isQuestListenerLive() {
         return questsLive;
+    }
+
+    /** True when the LiteFish listener is live. */
+    public boolean isFishingListenerLive() {
+        return fishingLive;
+    }
+
+    /** True when the EcoJobs listener is live. */
+    public boolean isJobsListenerLive() {
+        return jobsLive;
+    }
+
+    /** True when the AuraSkills ability listener is live. */
+    public boolean isAbilitiesListenerLive() {
+        return abilitiesLive;
+    }
+
+    /** The fishing size tracker, for a menu line showing what "large" means. */
+    public FishSizeTracker fishSizes() {
+        return fishSizes;
     }
 
     /** The scale clamp, from the catalogue's own scale entry. */

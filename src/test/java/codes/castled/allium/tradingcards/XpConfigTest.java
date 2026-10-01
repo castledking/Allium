@@ -82,12 +82,65 @@ class XpConfigTest {
     }
 
     @Test
-    void theRemainingPluginSourcesShipDisabled() {
-        // They arrive with the phases that wire them. Shipping one enabled
-        // would mean a source that configures fine and never fires.
+    void everySourceShipsEnabledOnceItsBridgeExists() {
+        // All eight sources are wired now. Each is still independently
+        // switchable, and each reports itself as not-listening when its plugin
+        // is absent, which is different from a source that never fires silently.
         XpConfig config = shipped();
+        for (String id : new String[] {"kill-mob", "breed-mob", "farm-crop", "advancement",
+                                       "quest-complete", "auraskills-ability",
+                                       "ecojobs-work", "fish-large"}) {
+            assertTrue(config.isEnabled(id), id + " ships disabled");
+        }
+    }
+
+    @Test
+    void everySourceCanStillBeSwitchedOffIndependently() throws Exception {
+        // Enabling them all by default must not remove the ability to turn one
+        // off — a job-heavy server may not want job xp at all.
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.loadFromString("""
+            xp:
+              sources:
+                fish-large:
+                  enabled: false
+                ecojobs-work:
+                  enabled: false
+            """);
+        XpConfig config = XpConfig.load(yaml).config();
         assertFalse(config.isEnabled("fish-large"));
-        assertFalse(config.isEnabled("auraskills-ability"));
+        assertFalse(config.isEnabled("ecojobs-work"));
+        assertTrue(config.isEnabled("kill-mob"), "unmentioned sources keep their default");
+    }
+
+    @Test
+    void theFishingSourceCarriesItsOwnCalibrationSettings() throws Exception {
+        // These are fishing-only, carried on the shared record so the config
+        // block stays one flat mapping.
+        XpConfig.Source fish = shipped().source("fish-large");
+        assertEquals(40, fish.maxSamples());
+        assertEquals(0.75, fish.percentile(), 1e-9);
+        assertEquals(8, fish.minimumSamples());
+    }
+
+    @Test
+    void anOutOfRangePercentileFallsBackRatherThanSilentlyInvertingIt() throws Exception {
+        // A percentile above 1 would make nothing ever count as large, and the
+        // source would look broken rather than misconfigured.
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.loadFromString("""
+            xp:
+              sources:
+                fish-large:
+                  enabled: true
+                  xp: 12
+                  minimum-percentile: 1.5
+            """);
+        XpConfig.LoadResult result = XpConfig.load(yaml);
+        assertEquals(0.75, result.config().source("fish-large").percentile(), 1e-9);
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> i.path().contains("minimum-percentile")),
+            () -> "an out-of-range percentile should be reported: " + result.issues());
     }
 
     @Test

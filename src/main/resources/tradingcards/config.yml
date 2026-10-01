@@ -307,19 +307,53 @@ xp:
       enabled: true
       xp: 25
 
-    # The remaining sources arrive with the phases that wire their
-    # plugins. Listed here and disabled so the shape of the file is
-    # already correct when they are switched on.
+    # Fires on ACTIVATION, not on effect, so an ability that misses still
+    # pays. The card is paying for practice with the skill, not for damage
+    # dealt, and a miss-based reward would penalise abilities whose value is
+    # not damage at all.
     auraskills-ability:
-      enabled: false
+      enabled: true
       xp: 3
+      # A short cooldown, because a high-mana build can otherwise level a card
+      # purely by chaining abilities — which would make mana the only xp worth
+      # having.
+      cooldown: 30s
+
+    # EcoJobs pays a MULTIPLE of the job's own experience rather than a flat
+    # amount. The event fires once per counter acceptance, not once per action,
+    # so counting events would pay more for a job that merely has more triggers
+    # configured. Scaling the plugin's own figure means it has already decided
+    # what the work was worth.
+    ecojobs-work:
+      enabled: true
+      multiplier: 1.5
+      # AFK and creative are already filtered by EcoJobs before the event
+      # fires, so they are not re-checked here.
+
+    # LiteFish has no isLarge() — its bands are a percentage within a species'
+    # OWN range, so a 12.4kg cod and a 12.4kg salmon are not the same
+    # achievement, and the boundaries live in a config this plugin would have
+    # to parse. So "large" is measured against the player's own recent catches
+    # for that species instead.
+    #
+    # The trade: "large" means large FOR YOU, not large absolutely. A player
+    # who has only landed 1kg sardines finds 2kg sardines large. That is the
+    # point — the reward is for a player showing progress on their own fishing,
+    # and a fixed table would make the early game unrewarding and the late
+    # game trivial.
     fish-large:
-      enabled: false
+      enabled: true
       xp: 12
-      # LiteFish has no isLarge(); "large" is a percentile of the
-      # weight this drop's own range produced, so it is compared
-      # against a rolling figure rather than a fixed number.
-      minimum-percentile: 75
+      # Recent catches remembered per species. Bounded so a year of fishing
+      # does not grow an unbounded list, and small enough that the sample stays
+      # responsive to a change in what the player is landing.
+      max-samples: 40
+      # The share of the player's own sample a catch must reach. 0.75 is the
+      # top quarter.
+      minimum-percentile: 0.75
+      # Catches needed before anything can count. Below this the first fish of
+      # a species would always look enormous against a sample of one.
+      minimum-samples: 8
 
 # ------------------------------------------------------------
 # Crafting: 8 heads of one mob around a paper.

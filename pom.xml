@@ -195,6 +195,17 @@
             <version>2.3.12</version>
             <scope>provided</scope>
         </dependency>
+        <!--
+            The Bukkit-facing half of the AuraSkills API. The plain api module
+            holds the stat modifiers; the events live here, and are what the
+            ability-xp source listens to.
+        -->
+        <dependency>
+            <groupId>dev.aurelium</groupId>
+            <artifactId>auraskills-api-bukkit</artifactId>
+            <version>2.3.12</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>com.github.darksoulq</groupId>
             <artifactId>Relique</artifactId>

@@ -153,15 +153,32 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         msg(sender, "<gray>Equipped:</gray> <white>" + module.equippedCards() + "</white> <gray>player(s)</gray>");
         msg(sender, "<gray>Relique card slot:</gray> "
             + (module.isReliqueSlotInstalled() ? "<green>installed" : "<red>not installed"));
-        msg(sender, "<gray>Quest completions:</gray> "
-            + (module.isQuestListenerLive() ? "<green>listening"
-                                           : "<red>not listening — needs the patched ExcellentQuests"));
+        msg(sender, "<gray>Quest completions:</gray> " + live(module.isQuestListenerLive(),
+            "needs the patched ExcellentQuests"));
+        msg(sender, "<gray>LiteFish catches:</gray> " + live(module.isFishingListenerLive(),
+            "needs LiteFish 5.10.5 or later"));
+        msg(sender, "<gray>EcoJobs work:</gray> " + live(module.isJobsListenerLive(),
+            "needs EcoJobs"));
+        msg(sender, "<gray>AuraSkills abilities:</gray> " + live(module.isAbilitiesListenerLive(),
+            "needs AuraSkills"));
         if (module.xpConfig() != null) {
             long on = module.xpConfig().sources().values().stream()
                 .filter(codes.castled.allium.tradingcards.xp.XpConfig.Source::enabled).count();
             msg(sender, "<gray>Xp sources:</gray> <white>" + on + "</white><gray>/</gray><white>"
                 + module.xpConfig().sources().size() + "</white> <gray>enabled</gray>");
         }
+    }
+
+    /**
+     * Renders a live-or-not line.
+     *
+     * <p>The failure text names the plugin rather than saying "not listening",
+     * because a source that configures cleanly but never fires is
+     * indistinguishable from a bug in Allium otherwise, and that is the
+     * misdiagnosis most likely to be made.
+     */
+    private static String live(boolean isLive, String requires) {
+        return isLive ? "<green>listening" : "<red>not listening — " + requires;
     }
 
     private void list(CommandSender sender) {

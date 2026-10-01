@@ -351,6 +351,14 @@ party-manager:
   # Amount of blocks to start showing non-party members. (shows up on locator bar)
   show-non-party-members-radius: 128 # 128 is default
 
+  # How non-party members are removed from the locator bar.
+  # true  = filter the locator (waypoint) packets themselves. Hidden players stay in the
+  #         tab list, stay completable in commands, and stay visible to plugins that check
+  #         canSee (EssentialsX /msg, /tp). Needs PacketEvents and MC 1.21.6+.
+  # false = the old behaviour: Bukkit hidePlayer, which also removes them from the tab
+  #         list and makes canSee false.
+  locator-packet-filtering: true
+
   # Sync party commands with mcMMO parties. When true, create/join/leave/disband also update mcMMO
   # so Allium and mcMMO parties stay in sync. Only runs if mcMMO is installed.
   sync-with-mcmmo: true
@@ -380,6 +388,20 @@ spawnercraft:
   # Accepts More Mob Heads datapack heads, Allium spawner heads and vanilla skulls.
   # Changing this needs a restart.
   plushies: true
+
+  # A vanilla skull item (plain creeper head, skeleton skull, zombie head, wither
+  # skeleton skull, piglin head, dragon head) is untagged, so by default it is not a
+  # spawner head - only Allium's rare drop for a mob does that. These two decide
+  # whether an untagged vanilla skull still counts as a mob head elsewhere.
+  # Allium's own heads and More Mob Heads datapack heads always count, for both.
+  # Changing these needs a restart.
+
+  # Craft plushies from vanilla skulls, e.g. creeper head + 8 wool -> creeper plushie.
+  vanilla-heads-craft-plushies: true
+
+  # Craft spawners from vanilla skulls. false means a vanilla skull can never be one of
+  # the 8 heads around a spawner core, so spawners cost the mob's rare drop.
+  vanilla-heads-craft-spawners: false
 
 # Creeper explosion regen speed (0 = disabled, 1 = slowest, 10 = fastest)
 creeper-explosion-regen-speed: 5

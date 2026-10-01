@@ -65,6 +65,10 @@ commands:
     description: "Give spawner cores to players (spawner craft)"
     usage: "/spawnercore give <player> <mob> [amount]"
     permission: allium.spawnercore
+  spawnerhead:
+    description: "Give mob heads to players (mobs from spawner_heads.yml)"
+    usage: "/spawnerhead give <player> <mob> [amount]"
+    permission: allium.spawnerhead
   rename:
     description: "Rename item in main hand"
     usage: "/rename <name>"
@@ -995,6 +999,9 @@ permissions:
     default: op
   allium.spawnercore:
     description: Give spawner cores to players (/spawnercore give)
+    default: op
+  allium.spawnerhead:
+    description: Give mob heads to players (/spawnerhead give)
     default: op
   allium.mail.format.*:
     default: op

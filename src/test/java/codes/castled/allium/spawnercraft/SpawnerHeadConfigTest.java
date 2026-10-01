@@ -5,6 +5,7 @@ import org.bukkit.entity.EntityType;
 import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -68,6 +69,12 @@ class SpawnerHeadConfigTest {
                     chance: 0.01
                     texture: "abc"
                 """).isEmpty());
+    }
+
+    @Test
+    void mobNamesAreLowerCaseAndSorted() {
+        assertEquals(List.of("cow", "iron_golem", "zombie"),
+                SpawnerHeadConfig.mobNames(List.of(EntityType.ZOMBIE, EntityType.COW, EntityType.IRON_GOLEM)));
     }
 
     @Test

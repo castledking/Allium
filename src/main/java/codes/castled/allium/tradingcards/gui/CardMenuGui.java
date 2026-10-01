@@ -2,7 +2,6 @@ package codes.castled.allium.tradingcards.gui;
 
 import codes.castled.allium.inventory.gui.BaseGUI;
 import codes.castled.allium.tradingcards.TradingCardsModule;
-import codes.castled.allium.tradingcards.card.QualityBand;
 import codes.castled.allium.tradingcards.item.TradingCardData;
 import codes.castled.allium.tradingcards.trade.TradeQuote;
 import java.util.ArrayList;
@@ -16,24 +15,21 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 /**
- * The right-click menu for a trading card: the card, what it is worth, and the
- * trade button.
+ * The card menu: the card, the band it falls in, and a trade button.
  *
- * <p>The card is shown whole rather than as a table of every band, so the
- * player sees the number that applies to *this* card. The full ladder is on the
- * next line of the lore for anyone who wants to know what they would need for a
- * better one.
+ * <p>Deliberately does NOT show the card's head value. The payout is not
+ * committed to at this point — the trade button opens a window where the card
+ * is deposited and confirmed, and the heads are only built then. A "worth 7
+ * heads" line here would be a quote that the second click could contradict,
+ * which is worse than making the player press once to find out.
  */
 public final class CardMenuGui extends BaseGUI {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
-    /** Where the card itself sits. */
     public static final int SLOT_CARD = 13;
-    /** Where the trade button sits. */
-    public static final int SLOT_TRADE = 22;
-    /** Where the band ladder is shown. */
     public static final int SLOT_LADDER = 15;
+    public static final int SLOT_TRADE = 22;
 
     private final TradingCardsModule module;
     private final TradingCardData card;
@@ -61,7 +57,7 @@ public final class CardMenuGui extends BaseGUI {
 
     private ItemStack displayCard() {
         ItemStack shown = cardStack.clone();
-        var meta = shown.getItemMeta();
+        ItemMeta meta = shown.getItemMeta();
         if (meta == null) return shown;
         List<Component> lore = new ArrayList<>();
         lore.add(MM.deserialize("<dark_gray>─────────────"));
@@ -69,18 +65,14 @@ public final class CardMenuGui extends BaseGUI {
             + card.tier().pipsWithPosition()));
         lore.add(MM.deserialize("<gray>Level: <green>" + card.level()
             + "</green><gray>/" + module.config().levelling().maximumLevel()));
-        QualityBand band = card.band(module.config().quality());
-        if (band == null) {
-            lore.add(MM.deserialize("<red>Quality: unknown (" + card.quality() + "%)"));
-        } else {
-            lore.add(MM.deserialize(band.colour() + "Quality: "
-                + QualityBand.displayId(band.id()) + " <gray>(" + card.quality() + "%)"));
-        }
+        var band = card.band(module.config().quality());
+        lore.add(MM.deserialize(band == null
+            ? "<red>Quality: unknown (" + card.quality() + "%)"
+            : band.colour() + "Quality: " + codes.castled.allium.tradingcards.card.QualityBand
+                .displayId(band.id()) + " <gray>(" + card.quality() + "%)"));
         lore.add(MM.deserialize("<dark_gray>─────────────"));
-        if (quote.isQuoted()) {
-            lore.add(MM.deserialize("<yellow>Worth: <white>" + quote.quote().heads()
-                + "</white> " + mobName() + " <gray>head(s)"));
-        } else {
+        if (!quote.isQuoted()) {
+            // Only a refusal is worth stating here; a payout is not.
             lore.add(MM.deserialize("<red>" + quote.denial().message()));
         }
         meta.lore(lore);
@@ -90,21 +82,24 @@ public final class CardMenuGui extends BaseGUI {
 
     private ItemStack ladderIcon() {
         ItemStack icon = new ItemStack(Material.PAPER);
-        var meta = icon.getItemMeta();
+        ItemMeta meta = icon.getItemMeta();
         if (meta == null) return icon;
-        meta.displayName(MM.deserialize(
-            "<gold>Quality Ladder <dark_gray>— what each condition is worth"));
+        boolean showWorth = module.config().trade().showWorth();
+        meta.displayName(MM.deserialize(showWorth
+            ? "<gold>Quality Ladder <dark_gray>— what each condition is worth"
+            : "<gold>Quality Ladder <dark_gray>— how each condition is graded"));
         List<Component> lore = new ArrayList<>();
-        for (QualityBand band : module.config().quality()) {
+        for (var band : module.config().quality()) {
             boolean current = band.equals(card.band(module.config().quality()));
             lore.add(MM.deserialize(
                 (current ? "<green>▶ " : "<dark_gray>  ")
-                    + band.colour() + QualityBand.displayId(band.id())
+                    + band.colour() + codes.castled.allium.tradingcards.card.QualityBand
+                        .displayId(band.id())
                     + " <dark_gray>" + band.min() + "-" + band.max() + "%"
-                    + " <white>×" + band.heads()));
+                    + (showWorth ? " <white>×" + band.heads() : "")));
         }
         lore.add(MM.deserialize("<dark_gray>─────────────"));
-        lore.add(MM.deserialize("<gray>A card is worth the heads of the band its quality falls in."));
+        lore.add(MM.deserialize("<gray>Right-click this card to trade it in."));
         meta.lore(lore);
         icon.setItemMeta(meta);
         return icon;
@@ -112,18 +107,14 @@ public final class CardMenuGui extends BaseGUI {
 
     private ItemStack tradeIcon() {
         boolean canTrade = quote.isQuoted();
-        ItemStack icon = canTrade
-            ? codes.castled.allium.tradingcards.item.HeadResolver.iconFor(mobType(), quote.quote().heads())
-            : new ItemStack(Material.BARRIER);
+        ItemStack icon = new ItemStack(canTrade ? Material.HOPPER : Material.BARRIER);
         ItemMeta meta = icon.getItemMeta();
         if (meta == null) return icon;
         if (canTrade) {
-            meta.displayName(MM.deserialize(
-                "<green>Trade for <white>" + quote.quote().heads()
-                + "</white> " + mobName() + " <green>Head(s)"));
+            meta.displayName(MM.deserialize("<green>Trade In"));
             meta.lore(List.of(
-                MM.deserialize("<gray>Consumes this card."),
-                MM.deserialize("<dark_gray>Hand the card in at the trade button.")
+                MM.deserialize("<gray>Opens the trade window."),
+                MM.deserialize("<dark_gray>You confirm there before the card is consumed.")
             ));
         } else {
             meta.displayName(MM.deserialize("<red>Cannot be traded"));
@@ -139,17 +130,11 @@ public final class CardMenuGui extends BaseGUI {
                 "<red>That card cannot be traded: " + quote.denial().message()));
             return;
         }
-        int heads = quote.quote().heads();
-        plugin.getLogger().info("card trade: " + player.getName() + " traded a "
-            + card.tier() + " " + card.mob() + " card for " + heads + " head(s)");
-
-        // The module re-reads the card out of the player's hand and re-quotes
-        // it before touching anything, so a stale menu figure cannot trade at
-        // the wrong rate and a moved card cannot be consumed.
-        boolean traded = module.tradeCard(player, slot, cardStack);
-        if (traded) {
-            player.closeInventory();
-        }
+        // Hand over to the confirm window. The card is NOT consumed here: the
+        // player still holds it, and the trade window is where it is deposited.
+        player.closeInventory();
+        codes.castled.allium.scheduler.SchedulerAdapter.runEntity(plugin, player,
+            () -> new TradeInGui(player, module).open(), null);
     }
 
     private EntityType mobType() {
@@ -160,8 +145,8 @@ public final class CardMenuGui extends BaseGUI {
         }
     }
 
-    private String mobName() {
-        return codes.castled.allium.spawnercraft.SpawnerCoreManager
-            .formatEntityName(mobType());
+    /** The mob this card depicts, for callers outside the menu. */
+    public String mobName() {
+        return card.mob();
     }
 }

@@ -60,6 +60,7 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             case "give" -> give(sender, args);
             case "list" -> list(sender);
             case "inspect" -> inspect(sender, args);
+            case "heads" -> heads(sender);
             default -> sendHelp(sender);
         }
         return true;
@@ -207,6 +208,24 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         }
     }
 
+    /**
+     * Hands over anything owed from a trade window the player closed early.
+     *
+     * <p>Separate from the automatic handover on join so a player who emptied
+     * their inventory to make room has a way to retry without relogging.
+     */
+    private void heads(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            msg(sender, "<red>Only a player can collect waiting heads.</red>");
+            return;
+        }
+        if (module.pending().isEmpty(player.getUniqueId())) {
+            msg(sender, "<gray>You have no heads waiting.</gray>");
+            return;
+        }
+        module.deliverPending(player);
+    }
+
     private static void sendHelp(CommandSender sender) {
         msg(sender, "<gray>Usage:</gray>");
         sender.sendMessage(MM.deserialize(
@@ -217,6 +236,8 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             "  <gray>/tradingcards list</gray>"));
         sender.sendMessage(MM.deserialize(
             "  <gray>/tradingcards inspect</gray> <dark_gray>(card in main hand)</dark_gray>"));
+        sender.sendMessage(MM.deserialize(
+            "  <gray>/tradingcards heads</gray> <dark_gray>(collect heads owed from a closed trade)</dark_gray>"));
     }
 
     private static int parseInt(String raw, int fallback, int min, int max) {
@@ -234,7 +255,7 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
                                       @NotNull String alias, String @NotNull [] args) {
         List<String> options = new ArrayList<>();
         if (args.length == 1) {
-            options.addAll(List.of("reload", "give", "list", "inspect"));
+            options.addAll(List.of("reload", "give", "list", "inspect", "heads"));
         } else if (args.length == 2) {
             switch (args[0].toLowerCase(Locale.ROOT)) {
                 case "give" -> Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));

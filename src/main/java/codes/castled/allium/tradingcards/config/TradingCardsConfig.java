@@ -70,10 +70,47 @@ public record TradingCardsConfig(
         }
     }
 
-    /** Trading a card in for its mob's head. */
-    public record Trade(boolean enabled, boolean requireMintOrBetter, boolean consumeCard) {
+    /**
+     * Trading a card in for its mob's head.
+     *
+     * @param showWorth print each band's head payout on the card menu's
+     *                  quality ladder. Off by default: the payout is only
+     *                  committed to once the trade window confirms, so a
+     *                  figure on the card is a quote the next click can
+     *                  contradict.
+     */
+    public record Trade(
+        boolean enabled,
+        HeadSource headSource,
+        boolean showWorth,
+        boolean requireMintOrBetter,
+        boolean consumeCard
+    ) {
         public static Trade defaults() {
-            return new Trade(true, false, true);
+            return new Trade(true, HeadSource.SPAWNER_HEADS, false, false, true);
+        }
+    }
+
+    /**
+     * Where a traded card's head comes from.
+     *
+     * <p>Spawner heads rather than plain vanilla skulls by default, because
+     * Allium's mob heads already have a purpose — they craft spawner cores and
+     * plushies — so a card feeds that progression instead of introducing a
+     * second currency nobody else accepts.
+     */
+    public enum HeadSource {
+        /** Allium's own mob head from {@code spawner_heads.yml}. */
+        SPAWNER_HEADS,
+        /** Only the card's explicit {@code head:} reference. */
+        CARD_ITEM;
+
+        static HeadSource parse(String raw) {
+            if (raw == null) return SPAWNER_HEADS;
+            for (HeadSource source : values()) {
+                if (source.name().equalsIgnoreCase(raw.trim())) return source;
+            }
+            return SPAWNER_HEADS;
         }
     }
 
@@ -248,7 +285,15 @@ public record TradingCardsConfig(
 
     private static Trade trade(ConfigurationSection section, List<ValidationIssue> issues) {
         if (section == null) return Trade.defaults();
-        return new Trade(section.getBoolean("enabled", true),
+        String headSourceRaw = section.getString("head-source");
+        HeadSource headSource = HeadSource.parse(headSourceRaw);
+        if (headSourceRaw != null && headSource == HeadSource.SPAWNER_HEADS
+            && !HeadSource.SPAWNER_HEADS.name().equalsIgnoreCase(headSourceRaw.trim())) {
+            issues.add(ValidationIssue.warning(FILE, "trade.head-source",
+                "Unknown head source '" + headSourceRaw + "'; using SPAWNER_HEADS"));
+        }
+        return new Trade(section.getBoolean("enabled", true), headSource,
+            section.getBoolean("show-worth", false),
             section.getBoolean("require-mint-or-better", false),
             section.getBoolean("consume-card", true));
     }

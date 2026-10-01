@@ -107,10 +107,38 @@ quality:
 # ------------------------------------------------------------
 trade:
   enabled: true
+
+  # Where the payout comes from. Trading cards are exchanged for the mob's
+  # SPAWNER HEAD — Allium's own head item from spawner_heads.yml, not a plain
+  # vanilla skull. A card can also name its own head item; that wins when set.
+  #
+  #   SPAWNER_HEADS  - Allium's spawner_heads.yml mob head  [default]
+  #   CARD_ITEM      - only the card's own `head:` reference; mobs with no
+  #                   explicit head simply cannot be traded
+  #
+  # SPAWNER_HEADS is the default because those heads already have a use (they
+  # craft spawner cores and plushies), so trading a card in feeds that
+  # progression rather than creating a second currency.
+  head-source: SPAWNER_HEADS
+
+  # Show each band's head payout on the quality ladder in the card menu.
+  #
+  # Off by default. The payout is not committed to when the menu opens — the
+  # trade window is where the card is deposited and confirmed, and the heads
+  # are only built then — so a "worth 7 heads" line on the card would be a
+  # quote the next click could contradict. Turning it on is a deliberate
+  # trade: players get planning information at the cost of a figure that a
+  # reload between the two clicks can change.
+  show-worth: false
+
   # Refuse cards below the `mint` band, so the trash end of the ladder
   # cannot be sold. Off by default: a rotten card is still a card, and
   # one head for one is a fine floor.
   require-mint-or-better: false
+
+  # Consume the card when the trade is confirmed. Turning this off makes the
+  # head a pure bonus with no card cost, so every card becomes infinitely
+  # tradeable for heads — leave it on unless the card is the scarce part.
   consume-card: true
 
 # ------------------------------------------------------------

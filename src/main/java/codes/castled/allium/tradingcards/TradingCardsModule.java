@@ -1,5 +1,6 @@
 package codes.castled.allium.tradingcards;
 
+import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.item.ItemResolverChain;
 import codes.castled.allium.item.ItemResolvers;
 import codes.castled.allium.item.NexoItemsGate;
@@ -11,8 +12,11 @@ import codes.castled.allium.tradingcards.card.CardRoller;
 import codes.castled.allium.tradingcards.config.TradingCardsConfig;
 import codes.castled.allium.tradingcards.config.ValidationIssue;
 import codes.castled.allium.tradingcards.gui.CardMenuListener;
+import codes.castled.allium.tradingcards.gui.TradeInListener;
 import codes.castled.allium.tradingcards.item.HeadResolver;
 import codes.castled.allium.tradingcards.item.TradingCardData;
+import codes.castled.allium.tradingcards.trade.PendingPayoutListener;
+import codes.castled.allium.tradingcards.trade.PendingPayoutStore;
 import codes.castled.allium.tradingcards.trade.TradeQuote;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.EntityType;
@@ -23,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
+import java.util.List;
 import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -52,6 +57,7 @@ public final class TradingCardsModule {
     private CardFactory factory;
     private CardDropListener dropListener;
     private TradeQuote tradeQuote = new TradeQuote();
+    private PendingPayoutStore pending;
 
     private boolean enabled;
 
@@ -105,6 +111,9 @@ public final class TradingCardsModule {
 
         items = ItemResolvers.build(plugin, TradingCardsBranding.DISPLAY_NAME, logger);
         registry = new CardRegistry();
+        if (pending == null) {
+            pending = new PendingPayoutStore(dataFolder);
+        }
 
         List<ValidationIssue> issues = new ArrayList<>();
         CardDefinitionLoader loader = new CardDefinitionLoader(
@@ -122,6 +131,8 @@ public final class TradingCardsModule {
 
         Bukkit.getPluginManager().registerEvents(dropListener, plugin);
         Bukkit.getPluginManager().registerEvents(new CardMenuListener(this), plugin);
+        Bukkit.getPluginManager().registerEvents(new TradeInListener(this), plugin);
+        Bukkit.getPluginManager().registerEvents(new PendingPayoutListener(this), plugin);
         reportIssues(issues);
         applyTradeConfig();
 
@@ -193,72 +204,180 @@ public final class TradingCardsModule {
     // ==================== trading ====================
 
     /**
-     * Trades a card in for {@code heads} mob heads.
+     * Builds the head payout for a card, or null if it cannot be built.
      *
-     * <p>Re-reads the card out of the player's hand rather than trusting the
-     * menu's copy: the player may have moved or dropped it between opening the
-     * menu and clicking, and a trade that consumed the wrong item would be
-     * unrecoverable. Nothing is removed until the card and the head have both
-     * been resolved.
+     * <p>Returns the stack rather than granting it, because the trade window
+     * puts it in a slot for the player to collect. Granting straight to the
+     * inventory would let a player close the window after confirming and never
+     * see what they were owed.
      *
-     * @param expectedSlot the hand slot the card was opened from
-     * @return true when the trade completed
+     * <p>The quote is taken here, not taken from the caller, because the menu's
+     * figure is a snapshot: a reload between the two clicks must not trade at
+     * the old rate.
+     *
+     * <p>Nothing is consumed. The caller decides when the card is spent.
      */
-    public boolean tradeCard(Player player, int expectedSlot, ItemStack presented) {
+    public ItemStack buildPayout(TradingCardData card, int headsHint) {
         if (!config.trade().enabled()) {
-            return false;
+            return null;
         }
-        var hand = player.getInventory().getItem(expectedSlot);
-        var current = TradingCardData.read(hand);
-        if (current.isEmpty()) {
-            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>That slot no longer holds a trading card.</red>"));
-            return false;
-        }
-        TradingCardData card = current.get();
         TradeQuote.Result quote = tradeQuote.quote(card);
         if (!quote.isQuoted()) {
-            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>That card cannot be traded: "
-                    + quote.denial().message()));
-            return false;
+            return null;
         }
-        // The menu's figure is a snapshot; the band may have been reloaded
-        // since it opened, so the authoritative quote is the one taken here.
         int heads = quote.quote().heads();
 
         EntityType mob;
         try {
             mob = EntityType.valueOf(card.mob());
         } catch (IllegalArgumentException e) {
-            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>Unknown mob '" + card.mob() + "' on this card.</red>"));
-            return false;
+            return null;
         }
         var configuredHead = registry.byMob(card.mob()).map(d -> d.head()).orElse(null);
-        var head = HeadResolver.resolve(plugin, items, mob, configuredHead);
-        if (head.isEmpty()) {
-            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>No head is configured for a "
-                    + card.mob() + " card, so there is nothing to trade for.</red>"));
-            return false;
+        ItemStack resolved;
+        if (config.trade().headSource() == TradingCardsConfig.HeadSource.CARD_ITEM) {
+            // Only an explicit head on the card counts. A mob without one has
+            // no payout, which is the point of the mode.
+            if (configuredHead == null) {
+                return null;
+            }
+            var stack = items.create(configuredHead, 1);
+            if (stack.isEmpty()) {
+                return null;
+            }
+            resolved = stack.get();
+        } else {
+            var head = HeadResolver.resolve(plugin, items, mob, configuredHead);
+            if (head.isEmpty()) {
+                return null;
+            }
+            resolved = head.get();
         }
-        if (card.bound()) {
-            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>This card was crafted and cannot be traded.</red>"));
-            return false;
-        }
+        resolved.setAmount(Math.max(1, heads));
+        return resolved;
+    }
 
-        ItemStack payout = head.get().clone();
-        payout.setAmount(Math.max(1, heads));
-        var overflow = player.getInventory().addItem(payout);
-        overflow.values().forEach(rest ->
-            player.getWorld().dropItemNaturally(player.getLocation(), rest));
-
-        if (config.trade().consumeCard()) {
-            player.getInventory().setItem(expectedSlot, null);
-        }
-        return true;
+    /** Explains why a card cannot be traded, for a message. */
+    public String explainDenial(TradingCardData card) {
+        TradeQuote.Result quote = tradeQuote.quote(card);
+        return quote.isQuoted() ? null : quote.denial().message();
     }
 
     /** Values a card without trading it, for the menu. */
     public TradeQuote.Result quote(TradingCardData card) {
         return tradeQuote.quote(card);
+    }
+
+    /** Heads a player is owed from a window they closed early. */
+    public PendingPayoutStore pending() {
+        return pending;
+    }
+
+    /**
+     * Hands over any heads a player left in the trade window, then anything
+     * already owed from an earlier window.
+     *
+     * <p>Collected items go to the inventory; only genuine overflow is dropped
+     * at the player's feet, because a full inventory is the one case where the
+     * item has nowhere else to be.
+     */
+    public void deliverPending(Player player) {
+        var owed = pending.takeAll(player.getUniqueId());
+        if (owed.isEmpty()) return;
+        List<ItemStack> resolved = PendingPayoutStore.resolve(items, owed);
+        if (resolved.isEmpty()) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize(
+                "<red>Your waiting heads could not be built — the item no longer exists. "
+                    + "They have been removed rather than dropped; tell an admin.</red>"));
+            return;
+        }
+        for (ItemStack stack : resolved) {
+            // Only genuine overflow is dropped: a full inventory is the one
+            // case where the item has nowhere else to be.
+            var overflow = player.getInventory().addItem(stack);
+            overflow.values().forEach(rest ->
+                player.getWorld().dropItemNaturally(player.getLocation(), rest));
+        }
+        player.sendMessage(MiniMessage.miniMessage().deserialize(
+            "<green>You had heads waiting from a trade you did not finish — here they are.</green>"));
+    }
+
+    /**
+     * Returns what was left in a trade window when the player closed it.
+     *
+     * <p>A trading card goes straight back to the inventory — it was never
+     * traded, only deposited, so the player is owed the card itself. Anything
+     * else is a heads payout they did not collect, which is recorded as a debt
+     * and paid later rather than dropped.
+     */
+    public void returnLeftovers(Player player, List<ItemStack> leftovers) {
+        for (ItemStack stack : leftovers) {
+            if (TradingCardData.isCard(stack)) {
+                var overflow = player.getInventory().addItem(stack);
+                overflow.values().forEach(rest ->
+                    player.getWorld().dropItemNaturally(player.getLocation(), rest));
+                continue;
+            }
+            // Recorded by reference where possible, so the player is owed the
+            // head as it exists now rather than as it looked when they walked
+            // away from the window.
+            ItemRef ref = referenceFor(stack);
+            if (ref != null) {
+                pending.add(player.getUniqueId(), ref, stack.getAmount());
+            } else {
+                // No reference could be determined for an unexpected item, so
+                // it is delivered directly rather than guessed at.
+                var overflow = player.getInventory().addItem(stack);
+                overflow.values().forEach(rest ->
+                    player.getWorld().dropItemNaturally(player.getLocation(), rest));
+            }
+        }
+        boolean owesHeads = !pending.isEmpty(player.getUniqueId());
+        if (owesHeads) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize(
+                "<gray>You closed the trade window with heads still in it. "
+                    + "<green>They are held for you</green> <gray>— run "
+                    + "<white>/tradingcards heads</white> <gray>any time to collect.</gray>"));
+        }
+    }
+
+    /**
+     * The item reference for a stack, if it can be identified exactly.
+     *
+     * <p>A mob head produced by Allium carries a note_block_sound component
+     * rather than a custom item id, so it is matched back through the head
+     * roster. Anything that does not match a known head returns null and is
+     * delivered directly instead.
+     */
+    private ItemRef referenceFor(ItemStack stack) {
+        if (stack.getType() != org.bukkit.Material.PLAYER_HEAD) {
+            return null;
+        }
+        for (var definition : registry.all()) {
+            EntityType type;
+            try {
+                type = EntityType.valueOf(definition.mob());
+            } catch (IllegalArgumentException e) {
+                continue;
+            }
+            if (!codes.castled.allium.spawnercraft.MobHeadRegistry
+                    .getMobKey(stack, false).equalsIgnoreCase(definition.mob())) {
+                continue;
+            }
+            var configured = definition.head();
+            if (configured != null) {
+                return configured;
+            }
+            var head = HeadResolver.resolve(plugin, items, type, null);
+            if (head.isEmpty()) return null;
+            return refOf(head.get());
+        }
+        return null;
+    }
+
+    private ItemRef refOf(ItemStack stack) {
+        var id = items.identify(stack);
+        return id.orElse(null);
     }
 
     // ==================== accessors ====================

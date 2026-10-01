@@ -67,6 +67,10 @@ public class GeneralPlaceholder extends PlaceholderExpansion {
         if (identifier.equals("fly_time")) {
             return getPlayerFlyTime(player);
         }
+        // Same as fly_time but at most two units (e.g. 1d 12h)
+        if (identifier.equals("fly_time_short")) {
+            return getPlayerFlyTimeShort(player);
+        }
 
         // Handle god mode status placeholder
         if (identifier.equals("god")) {
@@ -120,6 +124,17 @@ public class GeneralPlaceholder extends PlaceholderExpansion {
         if (mgr == null) return "0s";
         long secs = mgr.getTFlyTime(player.getUniqueId());
         return codes.castled.allium.tfly.TFlyManager.formatTime(secs);
+    }
+
+    /**
+     * Get tfly time remaining using at most two units (e.g. 1d 12h).
+     */
+    private String getPlayerFlyTimeShort(Player player) {
+        if (player == null) return "0s";
+        codes.castled.allium.tfly.TFlyManager mgr = plugin.getTFlyManager();
+        if (mgr == null) return "0s";
+        long secs = mgr.getTFlyTime(player.getUniqueId());
+        return codes.castled.allium.tfly.TFlyManager.formatTimeShort(secs);
     }
 
     /**

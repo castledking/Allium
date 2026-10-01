@@ -34,6 +34,8 @@ public class PartyManager {
     private final VisibilityTransitionTracker visibilityTransitions = new VisibilityTransitionTracker();
     private SchedulerAdapter.TaskHandle distanceCheckTask;
     private TabListManager tabListManager;
+    private codes.castled.allium.packetevents.LocatorVisibility locatorVisibility =
+            new codes.castled.allium.packetevents.LocatorVisibilityNoOp();
     
     // Config values
     private boolean partyLocatorBar;
@@ -696,6 +698,12 @@ public class PartyManager {
 
     private void showPlayerAndRefreshTab(Player viewer, Player target) {
         boolean wasVisible = isVisibleTo(viewer, target);
+        if (locatorVisibility.isActive()) {
+            // Nothing was ever hidden from Bukkit, so there is no tab entry to restore.
+            locatorVisibility.setHidden(viewer, target, false);
+            markVisible(viewer, target);
+            return;
+        }
         PlayerVisibilityHelper.showPlayer(viewer, target);
         markVisible(viewer, target);
 
@@ -709,6 +717,13 @@ public class PartyManager {
 
     private void hidePlayerAndRefreshTab(Player viewer, Player target) {
         boolean wasHidden = isHiddenFrom(viewer, target);
+        if (locatorVisibility.isActive()) {
+            // Only the locator dot goes away: tab list, canSee and command
+            // completion are untouched, so no tab refresh is needed either.
+            locatorVisibility.setHidden(viewer, target, true);
+            markHidden(viewer, target);
+            return;
+        }
         PlayerVisibilityHelper.hidePlayer(viewer, target);
         markHidden(viewer, target);
 
@@ -931,6 +946,17 @@ public class PartyManager {
     /**
      * Cleans up resources on disable.
      */
+    /**
+     * Packet-level locator control. When active, radius isolation stops using
+     * hidePlayer, so hidden players stay in the tab list and stay visible to
+     * canSee-based plugin checks (EssentialsX).
+     */
+    public void setLocatorVisibility(codes.castled.allium.packetevents.LocatorVisibility locatorVisibility) {
+        this.locatorVisibility = locatorVisibility == null
+                ? new codes.castled.allium.packetevents.LocatorVisibilityNoOp()
+                : locatorVisibility;
+    }
+
     public void setTabListManager(TabListManager tabListManager) {
         this.tabListManager = tabListManager;
     }

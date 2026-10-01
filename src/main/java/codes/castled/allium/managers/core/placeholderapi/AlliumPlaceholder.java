@@ -106,6 +106,7 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
             "negative_phase_mm_g",
             "fly",
             "fly_time",
+            "fly_time_short",
             "god",
             "reply",
             "mail_unread",
@@ -218,6 +219,8 @@ public class AlliumPlaceholder extends PlaceholderExpansion {
           Placeholders:
           %allium_fly% - Returns "yes" if the player has permanent flight, "temporary" if tfly is active and flying,
                           "temporary-paused" if tfly is enabled but not currently flying, "no" otherwise.
+          %allium_fly_time% - Returns the tfly time remaining (e.g. "1d 12h 30m").
+          %allium_fly_time_short% - Same, but at most two units (e.g. "1d 12h").
           %allium_god% - Returns "yes" if the player has god mode enabled, "no" otherwise.
           %allium_reply% - Returns the name of the player that the specified player can reply to.
           %allium_mail_unread% - Returns the number of unread mail messages for a player.

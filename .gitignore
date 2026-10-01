@@ -67,3 +67,7 @@ work/
 
 # Notes
 notes/
+
+# Built jars are outputs, not sources. They are kept locally for server
+# deployment; the jars are reproducible from the source tree.
+tradingcardjars/

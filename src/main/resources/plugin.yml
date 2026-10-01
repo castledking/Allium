@@ -481,6 +481,10 @@ commands:
     description: "Allium Harvest — custom crops and spawner models"
     usage: "/harvest <reload|give|crop|spawner|debug>"
     aliases: [hf]
+  tradingcards:
+    description: "Allium Trading Cards — mob cards, levelling and trades"
+    usage: "/tradingcards <reload|give|list|inspect>"
+    aliases: [tc, cards]
 
 permissions:
   allium.player:
@@ -1712,6 +1716,20 @@ permissions:
     default: true
   allium.harvest.soil.inspect:
     description: "Allows /harvest soil inspect"
+    default: op
+
+  # Trading card module permissions
+  allium.tradingcards.admin:
+    description: "Full access to every /tradingcards subcommand"
+    default: op
+  allium.tradingcards.reload:
+    description: "Allows /tradingcards reload"
+    default: op
+  allium.tradingcards.give:
+    description: "Allows /tradingcards give"
+    default: op
+  allium.tradingcards.inspect:
+    description: "Allows /tradingcards list and inspect"
     default: op
   allium.harvest.soil.modify:
     description: "Allows /harvest soil restore and forget"

@@ -1,0 +1,56 @@
+# ============================================================
+#  Allium Trading Cards — mob roster
+# ============================================================
+# One entry per mob. Tiers are WEIGHTS, not a fixed assignment, so a
+# single mob is tuned across the whole ladder and two mobs may weight
+# the same tier very differently — a chicken and a wither are not the
+# same proposition.
+#
+# Each drop is two independent rolls, both single-draws:
+#
+#   1. does this mob drop a card at all   (chance)
+#   2. which tier                          (tiers.*.weight)
+#   3. what condition                      (quality.bands in config.yml)
+#
+# Setting a tier's weight to 0 removes it from that mob's roll but
+# leaves the entry in place, so re-enabling it needs no retyping.
+#
+# The nexo: items below must exist in your Nexo pack. A tier with a
+# positive weight but a missing item is an ERROR and the card is
+# skipped entirely: a card that drops an item nobody can hold is worse
+# than no card at all.
+#
+# Reload with /tradingcards reload.
+
+cards:
+
+  # ------------------------------------------------------------
+  #  Chicken — the reference mob, and the cheapest to test with.
+  #
+  #  chance 0.0015 is one card per ~667 chickens. The tier weights
+  #  give roughly 60% SIMPLE / 25% ELITE / 10% ULTIMATE / 4.5%
+  #  LEGENDARY / 0.5% FABLED, so a FABLED chicken appears about once
+  #  per 89,000 kills — rare enough to be a trophy.
+  # ------------------------------------------------------------
+  chicken:
+    mob: CHICKEN
+    chance: 0.0015
+    # Optional; falls back to Allium's own mob head for this mob.
+    # head: nexo:chicken_head
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:chicken_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_chicken_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_chicken_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_chicken_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_chicken_trading_card

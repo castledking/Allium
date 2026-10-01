@@ -1,0 +1,214 @@
+# ============================================================
+#  Allium Trading Cards
+# ============================================================
+# Mob trading cards: dropped by the mobs they depict, levelled by
+# playing, and traded in for that mob's head.
+#
+# Card definitions live in tradingcards/cards.yml. Reload with
+# /tradingcards reload — an invalid entry is reported and skipped
+# rather than stopping the rest of the file from loading.
+
+enabled: true
+
+# ------------------------------------------------------------
+# Card levels.
+#
+# A dropped card starts at 0 and a merged card lands at 0 too, so
+# merging converts spare cards into progress rather than granting a
+# head start. Levels are per mob AND per tier: a FABLED chicken at
+# level 34 shares no experience with a SIMPLE chicken at level 34.
+#
+# Only the three SIGNATURE boosts grow with level. The bonus boosts
+# are a drop-time gamble, frozen once rolled — otherwise levelling
+# could re-roll them and grant boosts the drop never awarded.
+# ------------------------------------------------------------
+levelling:
+  start-level: 0
+  maximum-level: 100
+
+  # Each level adds this to ONE signature boost, chosen at random.
+  # Not all three: a card that grew evenly would be interchangeable
+  # with any other card at the same level, and there'd be no reason
+  # to keep levelling this one rather than another.
+  boost-per-level: 1.0
+
+  # How many signature boosts grow per level. 2 makes levelling a
+  # different gamble (which two) rather than a slower one.
+  boosts-per-level: 1
+
+  # XP needed to go from level N to N+1. Flat early, steep late.
+  curve:
+    type: PIECEWISE
+    breakpoints:
+      10: 25
+      25: 120
+      50: 600
+      75: 2400
+      100: 9000
+
+  # Chat, not a title or action bar: levelling is a persistent fact
+  # about an item, so it belongs in the log where a player can scroll
+  # back to it. The "40 -> 41" pair is the part that earns its
+  # place — watching a number tick is most of the appeal.
+  announce:
+    enabled: true
+    sound: ENTITY_PLAYER_LEVELUP
+    # Owner only. At scale a server-wide broadcast of every card level
+    # is pure noise; a busy server fires these constantly.
+    broadcast: false
+    # <card> is the card's own name, so a renamed card announces under
+    # the name its owner gave it.
+    message: "<dark_gray>(<gold><bold>TRADING CARD</bold></dark_gray>) <yellow>Your <card> is now level <green><level></green>! <dark_green><previous></dark_green> <white>→</white> <green><level></green>"
+
+# ------------------------------------------------------------
+# The 1..100 quality roll.
+#
+# One roll per card, partitioned across these bands. The loader
+# REJECTS a config whose bands leave a gap or overlap, because a
+# quality with no band would have no colour, no head payout, and no
+# name in its lore — a silent failure, so it's an error not a
+# warning.
+#
+# Quality is stored on the card as a plain integer, never as a band
+# name, and the band is derived on read. Move a boundary and existing
+# cards relabel themselves correctly; storing the name would freeze
+# them into whatever the bands were the day they dropped.
+#
+# `heads` is what a card in that band trades for. Eight stages
+# dividing into eight is why the ladder has eight bands.
+# ------------------------------------------------------------
+quality:
+  bands:
+    rotten:    { min: 1,   max: 5,   heads: 1, colour: "<dark_gray>" }
+    damaged:   { min: 6,   max: 15,  heads: 1, colour: "<gray>" }
+    torn:      { min: 16,  max: 25,  heads: 2, colour: "<dark_red>" }
+    okay:      { min: 26,  max: 45,  heads: 3, colour: "<white>" }
+    fine:      { min: 46,  max: 65,  heads: 5, colour: "<yellow>" }
+    great:     { min: 66,  max: 85,  heads: 6, colour: "<green>" }
+    mint:      { min: 86,  max: 99,  heads: 7, colour: "<aqua>" }
+    emaculate: { min: 100, max: 100, heads: 8, colour: "<gold>" }
+
+# ------------------------------------------------------------
+# Trading a card in for its mob's head.
+# ------------------------------------------------------------
+trade:
+  enabled: true
+  require-mint-or-better: false
+  consume-card: true
+
+# ------------------------------------------------------------
+# Rerolling. Progressive pricing, never flat.
+#
+# A flat fee makes "reroll forever" the optimum; a linear fee makes
+# the last few rerolls affordable to anyone who saved up. Each
+# reroll costs more than the last, so every one trades money for a
+# diminishing chance at a better roll.
+#
+#   #1 2k  #2 3k  #3 5k  #4 8k  #5 13k  #6 21k  #7 33k  #8 53k
+#
+# A reroll does two things: it may unlock a NEW signature boost, and
+# failing that it re-rolls the card's bonus boosts. It never
+# REPLACES a signature, so every reroll leaves the card strictly
+# better or unchanged — the price buys additive value, not a gamble
+# that might take something away.
+# ------------------------------------------------------------
+reroll:
+  enabled: true
+  base-cost: 2000.0
+  escalation: 1.6
+  round-to: 100
+  maximum-cost: 500000.0
+
+  # A tier multiplier on top, so a FABLED reroll isn't merely the
+  # same price one step further along the ladder.
+  tier-multipliers:
+    SIMPLE: 1.0
+    ELITE: 1.5
+    ULTIMATE: 2.0
+    LEGENDARY: 3.0
+    FABLED: 5.0
+
+  # Chance a reroll unlocks a new signature rather than re-rolling
+  # bonuses. 0.35 means roughly 3 unlocks across 10 rerolls.
+  signature-unlock-chance: 0.35
+
+  # How many signatures a card may ever hold. 3 is where every card
+  # starts, so this is the ceiling, not a starting count.
+  maximum-signatures: 6
+
+  # Once the signature pool is exhausted, rerolls re-roll bonuses
+  # only. Set false to refuse and refund — kinder, but it turns a
+  # maxed card into a dead item with no remaining value.
+  allow-bonus-only-when-full: true
+
+  # The signature pool a reroll may unlock from, per tier.
+  #
+  # ONLY integer-incrementable boosts belong here. Levelling adds
+  # +1 to one signature per level, so every signature needs a unit
+  # that +1 means something in. `transmit-range` qualifies because
+  # it is literally blocks; `scale` does not, because "+0.1x player
+  # scale" is not a quantity and its 0.6-1.9 clamp means nothing
+  # under flat addition.
+  signature-pool:
+    SIMPLE:    [ health, toughness, wisdom ]
+    ELITE:     [ health, toughness, wisdom, crit-chance ]
+    ULTIMATE:  [ health, toughness, wisdom, crit-chance, regeneration, armor ]
+    LEGENDARY: [ health, toughness, wisdom, crit-chance, regeneration, armor,
+                 crit-damage, haste, knockback ]
+    FABLED:    [ health, toughness, wisdom, crit-chance, regeneration, armor,
+                 crit-damage, haste, knockback, transmit-range, jump-height ]
+
+  # Amounts for boosts a reroll can unlock, and the three every card
+  # drops with. The "(+n)" in a card's lore is its total minus this.
+  signature-amounts:
+    luck: 5.0
+    strength: 5.0
+    speed: 3.0
+    health: 2.0
+    toughness: 2.0
+    wisdom: 3.0
+    regeneration: 2.0
+    crit-chance: 1.0
+    crit-damage: 2.0
+    haste: 0.5
+    armor: 1.0
+    knockback: 0.05
+    jump-height: 0.1
+    transmit-range: 48.0
+
+# ------------------------------------------------------------
+# Crafting: 8 heads of one mob around a paper.
+#
+# OFF BY DEFAULT, and the reason matters: heads buy cards and cards
+# buy heads. Turn both on with bound: false and you have built a money
+# printer — 8 heads become a card, which buys back 8 heads, forever.
+# `bound: true` stamps crafted cards so the trade-in refuses them.
+#
+# This is off by default also because it competes with the drop rate.
+# With it off, a card is something you earn by playing.
+# ------------------------------------------------------------
+crafting:
+  enabled: false
+  result-tier: SIMPLE
+  result-level: 0
+
+  # Crafting bypasses the quality roll: a crafted card has no
+  # condition and reads as a clean card.
+  result-quality: emaculate
+
+  consume: true
+  bound: true
+
+  # Which heads count as ingredients. allium: true is Allium's own
+  # drops (recognised by note_block_sound); datapack: true is the
+  # "More Mob Heads" datapack (recognised by item_name). Both true
+  # doubles the ingredient supply wherever the datapack overlaps
+  # the card roster, so watch that combination.
+  #
+  # vanilla-skulls is false deliberately: a plain creeper head is
+  # craftable and untradeable, so allowing it hands out cards for a
+  # resource with no sink.
+  accept:
+    allium: true
+    datapack: true
+    vanilla-skulls: false

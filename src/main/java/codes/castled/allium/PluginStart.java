@@ -261,6 +261,7 @@ public class PluginStart extends JavaPlugin {
     private OreGenerationManager oreGenerationManager;
     private SpawnerCoreManager spawnerCoreManager;
     private codes.castled.allium.harvest.HarvestModule harvestModule;
+    private codes.castled.allium.tradingcards.TradingCardsModule tradingCardsModule;
     private TFlyManager tflyManager;
     private VouchersConfig vouchersConfig;
     private SecurityAlertManager securityAlertManager;
@@ -299,6 +300,10 @@ public class PluginStart extends JavaPlugin {
      */
     public codes.castled.allium.harvest.HarvestModule getHarvestModule() {
         return harvestModule;
+    }
+
+    public codes.castled.allium.tradingcards.TradingCardsModule getTradingCardsModule() {
+        return tradingCardsModule;
     }
 
     public SpawnerCoreManager getSpawnerCoreManager() {
@@ -881,6 +886,22 @@ public class PluginStart extends JavaPlugin {
                 "Failed to enable harvest module: " + t.getMessage()
             );
         }
+
+        // Trading cards module (mob cards, quality, levelling, trades).
+        // Enabled after harvest so it can reuse the shared item resolver
+        // chain; it waits on the same Nexo items event.
+        try {
+            tradingCardsModule = new codes.castled.allium.tradingcards.TradingCardsModule(this);
+            tradingCardsModule.enable();
+            codes.castled.allium.tradingcards.command.TradingCardsCommand tradingCardsCommand =
+                new codes.castled.allium.tradingcards.command.TradingCardsCommand(tradingCardsModule);
+            registerCommand("tradingcards", tradingCardsCommand, tradingCardsCommand);
+        } catch (Throwable t) {
+            Text.sendDebugLog(
+                ERROR,
+                "Failed to enable trading cards module: " + t.getMessage()
+            );
+        }
     }
 
     @Override
@@ -1160,6 +1181,16 @@ public class PluginStart extends JavaPlugin {
             } catch (Throwable t) {
                 getLogger().warning(
                     "Error disabling harvest module: " + t.getMessage()
+                );
+            }
+        }
+
+        if (tradingCardsModule != null) {
+            try {
+                tradingCardsModule.disable();
+            } catch (Throwable t) {
+                getLogger().warning(
+                    "Error disabling trading cards module: " + t.getMessage()
                 );
             }
         }

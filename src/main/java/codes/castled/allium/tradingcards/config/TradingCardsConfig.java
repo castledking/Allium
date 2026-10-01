@@ -1,0 +1,332 @@
+package codes.castled.allium.tradingcards.config;
+
+import codes.castled.allium.tradingcards.TradingCardsBranding;
+import codes.castled.allium.tradingcards.card.QualityBand;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import org.bukkit.configuration.ConfigurationSection;
+
+/**
+ * Global trading card settings from {@code tradingcards/config.yml}.
+ *
+ * <p>Card definitions live in {@code cards.yml}; this file holds the rules
+ * every card obeys — the quality ladder, the level curve, and the drop
+ * mechanics.
+ *
+ * <p>Every value is clamped or defaulted, and every unrecognised enum falls
+ * back. A typo costs that one setting rather than the module.
+ */
+public record TradingCardsConfig(
+    boolean enabled,
+    Levelling levelling,
+    List<QualityBand> quality,
+    Trade trade,
+    Reroll reroll,
+    Crafting crafting
+) {
+
+    public static final String FILE = "config.yml";
+
+    public TradingCardsConfig {
+        quality = List.copyOf(quality);
+    }
+
+    /** A config that does nothing, used before the first successful load. */
+    public static TradingCardsConfig disabled() {
+        return new TradingCardsConfig(false, Levelling.defaults(), List.of(),
+            Trade.defaults(), Reroll.defaults(), Crafting.defaults());
+    }
+
+    // ==================== nested blocks ====================
+
+    /**
+     * Card level curve and the level-up announcement.
+     *
+     * @param startLevel  level a freshly dropped card sits at; a merged card
+     *                    lands here too, so merging is never a head start
+     * @param maximumLevel the ceiling, and the level at which a card can merge
+     * @param boostPerLevel added to one signature boost per level
+     * @param boostsPerLevel how many of the card's signatures grow per level
+     */
+    public record Levelling(
+        int startLevel,
+        int maximumLevel,
+        double boostPerLevel,
+        int boostsPerLevel,
+        Announce announce
+    ) {
+        public static Levelling defaults() {
+            return new Levelling(0, 100, 1.0, 1, Announce.defaults());
+        }
+    }
+
+    public record Announce(boolean enabled, boolean broadcast, String message) {
+        public static Announce defaults() {
+            return new Announce(true, false,
+                "<dark_gray>(<gold><bold>TRADING CARD</bold></dark_gray>) <yellow>Your "
+                    + "<card> is now level <green><level></green>! <dark_green><previous>"
+                    + "</dark_green> <white>→</white> <green><level></green>");
+        }
+    }
+
+    /** Trading a card in for its mob's head. */
+    public record Trade(boolean enabled, boolean requireMintOrBetter, boolean consumeCard) {
+        public static Trade defaults() {
+            return new Trade(true, false, true);
+        }
+    }
+
+    /**
+     * Reroll pricing. Progressive rather than flat: a flat fee makes "reroll
+     * forever" the optimum, and a linear fee makes the tail affordable to
+     * anyone who saved up.
+     */
+    public record Reroll(
+        boolean enabled,
+        double baseCost,
+        double escalation,
+        long roundTo,
+        double maximumCost,
+        java.util.Map<codes.castled.allium.tradingcards.card.Tier, Double> tierMultipliers
+    ) {
+        public Reroll {
+            tierMultipliers = java.util.Map.copyOf(tierMultipliers);
+        }
+
+        public static Reroll defaults() {
+            java.util.Map<codes.castled.allium.tradingcards.card.Tier, Double> flat =
+                new java.util.EnumMap<>(codes.castled.allium.tradingcards.card.Tier.class);
+            for (var t : codes.castled.allium.tradingcards.card.Tier.values()) {
+                flat.put(t, 1.0);
+            }
+            return new Reroll(true, 2000.0, 1.6, 100L, 500000.0, flat);
+        }
+
+        /**
+         * Cost of the {@code attempt}-th reroll on a card of {@code tier},
+         * counting from 1. This is the number the menu shows, so it is
+         * computed in one place and rounded once.
+         */
+        public double costFor(int attempt, codes.castled.allium.tradingcards.card.Tier tier) {
+            if (attempt < 1) attempt = 1;
+            double tierMultiplier = tierMultipliers.getOrDefault(tier, 1.0);
+            double raw = baseCost * Math.pow(escalation, attempt - 1.0) * tierMultiplier;
+            if (maximumCost > 0.0 && raw > maximumCost) raw = maximumCost;
+            if (roundTo > 1) {
+                raw = Math.round(raw / roundTo) * (double) roundTo;
+            }
+            return Math.max(roundTo > 1 ? roundTo : 1.0, raw);
+        }
+    }
+
+    /**
+     * Crafting cards from heads. Off by default: heads buy cards and cards buy
+     * heads, so enabling both without binding is an infinite loop.
+     */
+    public record Crafting(
+        boolean enabled,
+        codes.castled.allium.tradingcards.card.Tier resultTier,
+        int resultLevel,
+        String resultQuality,
+        boolean consume,
+        boolean bound,
+        Accept accept
+    ) {
+        public static Crafting defaults() {
+            return new Crafting(false, codes.castled.allium.tradingcards.card.Tier.SIMPLE, 0,
+                "emaculate", true, true, Accept.defaults());
+        }
+
+        /** Which head sources count as ingredients. */
+        public record Accept(boolean allium, boolean datapack, boolean vanillaSkulls) {
+            public static Accept defaults() {
+                return new Accept(true, true, false);
+            }
+        }
+    }
+
+    // ==================== loading ====================
+
+    public static TradingCardsConfig from(ConfigurationSection yaml) {
+        return load(yaml).config();
+    }
+
+    /** Parses the file, collecting problems rather than throwing. */
+    public static LoadResult load(ConfigurationSection yaml) {
+        List<ValidationIssue> issues = new ArrayList<>();
+        if (yaml == null) {
+            issues.add(ValidationIssue.error(FILE, "",
+                "File is missing or unreadable; trading cards stay disabled"));
+            return new LoadResult(disabled(), issues);
+        }
+        TradingCardsConfig config = new TradingCardsConfig(
+            yaml.getBoolean("enabled", true),
+            levelling(yaml.getConfigurationSection("levelling"), issues),
+            quality(yaml.getConfigurationSection("quality"), issues),
+            trade(yaml.getConfigurationSection("trade"), issues),
+            reroll(yaml.getConfigurationSection("reroll"), issues),
+            crafting(yaml.getConfigurationSection("crafting"), issues));
+        return new LoadResult(config, issues);
+    }
+
+    /** Result of one load pass. */
+    public record LoadResult(TradingCardsConfig config, List<ValidationIssue> issues) {
+        public List<ValidationIssue> issues() {
+            return List.copyOf(issues);
+        }
+
+        public boolean hasErrors() {
+            return issues.stream().anyMatch(ValidationIssue::isError);
+        }
+    }
+
+    private static Levelling levelling(ConfigurationSection section, List<ValidationIssue> issues) {
+        if (section == null) return Levelling.defaults();
+        int start = clamp(section.getInt("start-level", 0), 0, 1000);
+        int max = clamp(section.getInt("maximum-level", 100), start + 1, 1000);
+        double perLevel = section.getDouble("boost-per-level", 1.0);
+        if (perLevel < 0.0) {
+            issues.add(ValidationIssue.warning(FILE, "levelling.boost-per-level",
+                "Negative value; levelling would reduce a card's boosts. Using 0."));
+            perLevel = 0.0;
+        }
+        int perLevelCount = clamp(section.getInt("boosts-per-level", 1), 1, 9);
+        return new Levelling(start, max, perLevel, perLevelCount,
+            announce(section.getConfigurationSection("announce")));
+    }
+
+    private static Announce announce(ConfigurationSection section) {
+        if (section == null) return Announce.defaults();
+        String message = section.getString("message");
+        if (message == null || message.isBlank()) {
+            message = Announce.defaults().message();
+        }
+        return new Announce(section.getBoolean("enabled", true),
+            section.getBoolean("broadcast", false), message);
+    }
+
+    private static List<QualityBand> quality(ConfigurationSection section,
+                                             List<ValidationIssue> issues) {
+        List<QualityBand> bands = new ArrayList<>();
+        if (section == null) {
+            issues.add(ValidationIssue.error(FILE, "quality",
+                "No quality section; cards cannot be rolled"));
+            return bands;
+        }
+        ConfigurationSection bandSection = section.getConfigurationSection("bands");
+        if (bandSection == null) {
+            issues.add(ValidationIssue.error(FILE, "quality.bands",
+                "No quality bands configured"));
+            return bands;
+        }
+        for (String id : bandSection.getKeys(false)) {
+            String path = "quality.bands." + id;
+            ConfigurationSection band = bandSection.getConfigurationSection(id);
+            if (band == null) {
+                issues.add(ValidationIssue.error(FILE, path,
+                    "Quality band is not a section"));
+                continue;
+            }
+            int min = band.getInt("min", -1);
+            int max = band.getInt("max", -1);
+            int heads = band.getInt("heads", 1);
+            String colour = QualityBand.parseColour(band.getString("colour"));
+            try {
+                bands.add(new QualityBand(id, min, max, heads, colour));
+            } catch (IllegalArgumentException e) {
+                issues.add(ValidationIssue.error(FILE, path, e.getMessage()));
+            }
+        }
+        for (String problem : QualityBand.validate(bands)) {
+            // A gap means a rolled quality has no band, so it would have no
+            // colour and no head payout. That is an error, not a warning.
+            issues.add(ValidationIssue.error(FILE, "quality.bands", problem));
+        }
+        return bands;
+    }
+
+    private static Trade trade(ConfigurationSection section, List<ValidationIssue> issues) {
+        if (section == null) return Trade.defaults();
+        return new Trade(section.getBoolean("enabled", true),
+            section.getBoolean("require-mint-or-better", false),
+            section.getBoolean("consume-card", true));
+    }
+
+    private static Reroll reroll(ConfigurationSection section, List<ValidationIssue> issues) {
+        if (section == null) return Reroll.defaults();
+        double base = section.getDouble("base-cost", 2000.0);
+        if (base < 0.0) base = 0.0;
+        double escalation = section.getDouble("escalation", 1.6);
+        if (escalation < 1.0) {
+            // Below 1.0 every reroll gets cheaper, which inverts the whole
+            // point: the player would reroll until the price hit zero.
+            issues.add(ValidationIssue.warning(FILE, "reroll.escalation",
+                "Below 1.0, so rerolls get cheaper each time. Using 1.0 (flat)."));
+            escalation = 1.0;
+        }
+        long roundTo = section.getLong("round-to", 100L);
+        if (roundTo < 1) roundTo = 1;
+
+        var multipliers = new java.util.EnumMap<codes.castled.allium.tradingcards.card.Tier, Double>(
+            codes.castled.allium.tradingcards.card.Tier.class);
+        for (var tier : codes.castled.allium.tradingcards.card.Tier.values()) {
+            multipliers.put(tier, 1.0);
+        }
+        ConfigurationSection tierSection = section.getConfigurationSection("tier-multipliers");
+        if (tierSection != null) {
+            for (String key : tierSection.getKeys(false)) {
+                var tier = codes.castled.allium.tradingcards.card.CardDefinition.parseTier(key);
+                if (tier == null) {
+                    issues.add(ValidationIssue.warning(FILE, "reroll.tier-multipliers." + key,
+                        "Unknown tier '" + key + "'; using 1.0"));
+                    continue;
+                }
+                multipliers.put(tier, Math.max(0.0, tierSection.getDouble(key, 1.0)));
+            }
+        }
+        return new Reroll(section.getBoolean("enabled", true), base, escalation, roundTo,
+            section.getDouble("maximum-cost", 500000.0), multipliers);
+    }
+
+    private static Crafting crafting(ConfigurationSection section, List<ValidationIssue> issues) {
+        if (section == null) return Crafting.defaults();
+        var tier = codes.castled.allium.tradingcards.card.Tier.SIMPLE;
+        if (section.isString("result-tier")) {
+            var parsed = codes.castled.allium.tradingcards.card.CardDefinition.parseTier(
+                section.getString("result-tier"));
+            if (parsed == null) {
+                issues.add(ValidationIssue.warning(FILE, "crafting.result-tier",
+                    "Unknown tier '" + section.getString("result-tier") + "'; using SIMPLE"));
+            } else {
+                tier = parsed;
+            }
+        }
+        boolean bound = section.getBoolean("bound", true);
+        if (section.getBoolean("enabled", false) && !bound) {
+            // Heads buy cards and cards buy heads. Without binding, an operator
+            // who turns crafting on has built a money printer, so say so loudly
+            // rather than letting them discover it in economy.
+            issues.add(ValidationIssue.warning(FILE, "crafting.bound",
+                "Crafting is enabled with bound: false, so crafted cards can be "
+                    + "traded back for the same 8 heads. Set bound: true unless "
+                    + "the head trade is disabled for crafted cards."));
+        }
+        ConfigurationSection acceptSection = section.getConfigurationSection("accept");
+        Crafting.Accept accept = acceptSection == null
+            ? Crafting.Accept.defaults()
+            : new Crafting.Accept(
+                acceptSection.getBoolean("allium", true),
+                acceptSection.getBoolean("datapack", true),
+                acceptSection.getBoolean("vanilla-skulls", false));
+        String quality = section.getString("result-quality", "emaculate")
+            .trim().toLowerCase(Locale.ROOT);
+        return new Crafting(section.getBoolean("enabled", false), tier,
+            clamp(section.getInt("result-level", 0), 0, 1000), quality,
+            section.getBoolean("consume", true), bound, accept);
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+}

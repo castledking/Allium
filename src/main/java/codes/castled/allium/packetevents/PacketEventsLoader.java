@@ -105,6 +105,23 @@ public final class PacketEventsLoader {
     }
 
     /**
+     * Create LocatorVisibility implementation. Returns the packet-filtering version when
+     * PacketEvents is available, otherwise a no-op (callers fall back to hidePlayer).
+     */
+    public static LocatorVisibility createLocatorVisibility(PluginStart plugin) {
+        if (!isPacketEventsAvailable()) {
+            return new LocatorVisibilityNoOp();
+        }
+        try {
+            Class<?> clazz = Class.forName("codes.castled.allium.packetevents.impl.LocatorVisibilityPacketEventsImpl");
+            return (LocatorVisibility) clazz.getConstructor(PluginStart.class).newInstance(plugin);
+        } catch (Throwable e) {
+            plugin.getLogger().warning("Failed to load LocatorVisibilityPacketEventsImpl: " + e.getMessage());
+            return new LocatorVisibilityNoOp();
+        }
+    }
+
+    /**
      * Create TabListManager implementation. Returns TabListManagerPacketEventsImpl when
      * PacketEvents is available, otherwise TabListManagerNoOp.
      */

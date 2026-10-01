@@ -62,6 +62,7 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             case "inspect" -> inspect(sender, args);
             case "heads" -> heads(sender);
             case "boosts" -> boosts(sender, args);
+            case "status" -> status(sender);
             default -> sendHelp(sender);
         }
         return true;
@@ -136,6 +137,31 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         msg(sender, "<green>Gave</green> <yellow>" + tier + " " + definition.get().id()
             + "</yellow> <gray>to</gray> " + target.getName() + " <gray>— level " + level
             + ", quality " + quality + "%</gray>");
+    }
+
+    /**
+     * Reports what is actually wired, so a source that configures cleanly but
+     * never fires is visible rather than looking like a broken feature.
+     */
+    private void status(CommandSender sender) {
+        if (!can(sender, "inspect")) {
+            msg(sender, "<red>You do not have permission for that.</red>");
+            return;
+        }
+        msg(sender, "<gray>Cards:</gray> <white>" + module.registry().size()
+            + "</white> <gray>across</gray> <white>" + module.registry().mobCount() + "</white> <gray>mob(s)</gray>");
+        msg(sender, "<gray>Equipped:</gray> <white>" + module.equippedCards() + "</white> <gray>player(s)</gray>");
+        msg(sender, "<gray>Relique card slot:</gray> "
+            + (module.isReliqueSlotInstalled() ? "<green>installed" : "<red>not installed"));
+        msg(sender, "<gray>Quest completions:</gray> "
+            + (module.isQuestListenerLive() ? "<green>listening"
+                                           : "<red>not listening — needs the patched ExcellentQuests"));
+        if (module.xpConfig() != null) {
+            long on = module.xpConfig().sources().values().stream()
+                .filter(codes.castled.allium.tradingcards.xp.XpConfig.Source::enabled).count();
+            msg(sender, "<gray>Xp sources:</gray> <white>" + on + "</white><gray>/</gray><white>"
+                + module.xpConfig().sources().size() + "</white> <gray>enabled</gray>");
+        }
     }
 
     private void list(CommandSender sender) {
@@ -278,6 +304,8 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         sender.sendMessage(MM.deserialize(
             "  <gray>/tradingcards inspect</gray> <dark_gray>(card in main hand)</dark_gray>"));
         sender.sendMessage(MM.deserialize(
+            "  <gray>/tradingcards status</gray> <dark_gray>(what is wired and live)</dark_gray>"));
+        sender.sendMessage(MM.deserialize(
             "  <gray>/tradingcards boosts [player]</gray> <dark_gray>(what is equipped and applied)</dark_gray>"));
         sender.sendMessage(MM.deserialize(
             "  <gray>/tradingcards heads</gray> <dark_gray>(collect heads owed from a closed trade)</dark_gray>"));
@@ -298,7 +326,8 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
                                       @NotNull String alias, String @NotNull [] args) {
         List<String> options = new ArrayList<>();
         if (args.length == 1) {
-            options.addAll(List.of("reload", "give", "list", "inspect", "boosts", "heads"));
+            options.addAll(List.of("reload", "give", "list", "inspect",
+                "boosts", "heads", "status"));
         } else if (args.length == 2) {
             switch (args[0].toLowerCase(Locale.ROOT)) {
                 case "give", "boosts" -> Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));

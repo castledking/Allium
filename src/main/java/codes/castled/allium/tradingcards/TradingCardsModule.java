@@ -10,6 +10,7 @@ import codes.castled.allium.tradingcards.boost.BoostListener;
 import codes.castled.allium.tradingcards.boost.BoostService;
 import codes.castled.allium.tradingcards.boost.CardProgression;
 import codes.castled.allium.tradingcards.boost.EquippedCardTracker;
+import codes.castled.allium.tradingcards.integration.QuestsBridge;
 import codes.castled.allium.tradingcards.integration.ReliqueIntegration;
 import codes.castled.allium.tradingcards.merge.MergeRules;
 import codes.castled.allium.tradingcards.reroll.RerollPricing;
@@ -77,6 +78,7 @@ public final class TradingCardsModule {
     private PendingPayoutStore pending;
 
     private XpConfig xpConfig;
+    private boolean questsLive;
     private XpAntiFarmStore antiFarm;
     private CardXpService cardXp;
     private codes.castled.allium.scheduler.TaskHandle antiFarmSave;
@@ -541,6 +543,33 @@ public final class TradingCardsModule {
                 if (antiFarm != null) antiFarm.save();
             }, 12000L, 12000L);
 
+        // Quest completions arrive reflectively: Allium must not compile
+        // against ExcellentQuests, or the trading card module would fail to load
+        // on a server without it. The event is a plain Bukkit event, so
+        // registerEvent takes its class as a parameter and that is a supported
+        // API rather than a workaround.
+        if (xpConfig != null && xpConfig.isEnabled("quest-complete")) {
+            QuestsBridge quests = new QuestsBridge(logger, TradingCardsBranding.NAMESPACE);
+            if (quests.register(plugin, (player, questId) -> {
+                if (questId == null) {
+                    return;
+                }
+                // Keyed by the quest id and the player's daily record, so a
+                // quest that can be completed more than once a day pays each
+                // time and the same completion is never counted twice.
+                service.award(player, "quest-complete", 1.0, null,
+                    questId + ":" + java.time.LocalDate.now());
+            })) {
+                questsLive = true;
+            } else if (Bukkit.getPluginManager().isPluginEnabled("ExcellentQuests")) {
+                issues.add(ValidationIssue.warning(TradingCardsConfig.FILE,
+                    "xp.sources.quest-complete",
+                    "Enabled, but this ExcellentQuests build has no "
+                        + "QuestCompleteEvent. Replace it with the patched jar "
+                        + "from tradingcardjars/, or the source will never fire."));
+            }
+        }
+
         long enabled = loaded.config().sources().values().stream()
             .filter(codes.castled.allium.tradingcards.xp.XpConfig.Source::enabled)
             .count();
@@ -558,6 +587,11 @@ public final class TradingCardsModule {
 
     public XpAntiFarmStore antiFarm() {
         return antiFarm;
+    }
+
+    /** True when the quest listener is live, for the command's diagnostics. */
+    public boolean isQuestListenerLive() {
+        return questsLive;
     }
 
     /** The scale clamp, from the catalogue's own scale entry. */

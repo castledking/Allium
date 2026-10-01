@@ -299,15 +299,20 @@ xp:
       enabled: true
       xp: 20
 
+    # Needs the patched ExcellentQuests build in tradingcardjars/ — the
+    # released plugin has no quest-completion event at all, so this source
+    # cannot fire against it. Allium registers reflectively, so it loads
+    # fine without ExcellentQuests; the source simply never triggers.
+    quest-complete:
+      enabled: true
+      xp: 25
+
     # The remaining sources arrive with the phases that wire their
     # plugins. Listed here and disabled so the shape of the file is
     # already correct when they are switched on.
     auraskills-ability:
       enabled: false
       xp: 3
-    quest-complete:
-      enabled: false
-      xp: 25
     fish-large:
       enabled: false
       xp: 12

@@ -73,12 +73,21 @@ class XpConfigTest {
     }
 
     @Test
-    void thePluginBackedSourcesShipDisabled() {
-        // They arrive with the phases that wire their plugins. Shipping them
-        // enabled would mean a source that configures fine and never fires.
+    void theQuestSourceIsEnabledBecauseItsEventNowExists() {
+        // Enabled deliberately: the event was added to the ExcellentQuests
+        // fork, and the patched jar ships in tradingcardjars/. The source
+        // cannot fire against the released plugin, which is why the module
+        // reports it at startup rather than failing to load.
+        assertTrue(shipped().isEnabled("quest-complete"));
+    }
+
+    @Test
+    void theRemainingPluginSourcesShipDisabled() {
+        // They arrive with the phases that wire them. Shipping one enabled
+        // would mean a source that configures fine and never fires.
         XpConfig config = shipped();
-        assertFalse(config.isEnabled("quest-complete"));
         assertFalse(config.isEnabled("fish-large"));
+        assertFalse(config.isEnabled("auraskills-ability"));
     }
 
     @Test

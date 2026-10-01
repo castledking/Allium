@@ -483,7 +483,7 @@ commands:
     aliases: [hf]
   tradingcards:
     description: "Allium Trading Cards — mob cards, levelling and trades"
-    usage: "/tradingcards <reload|give|list|inspect|boosts|heads>"
+    usage: "/tradingcards <reload|give|list|inspect|boosts|heads|status>"
     aliases: [tc, cards]
 
 permissions:

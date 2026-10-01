@@ -243,6 +243,80 @@ merge:
   target-level: 0
 
 # ------------------------------------------------------------
+# Card experience.
+#
+# Xp goes to the EQUIPPED card, not a card in your inventory. Levels
+# are per mob AND per tier, so a FABLED chicken at 34 shares nothing
+# with a SIMPLE chicken at 34. That is what makes merging the only way
+# up the tier ladder, and therefore what gives merging a purpose
+# beyond tidying inventory.
+#
+# Xp to go from level N to N+1. Flat early so the first levels arrive
+# fast enough to be interesting, steep late so the last are a project.
+# Five rows describe a hundred levels: a level with no entry inherits
+# the next one's cost.
+# ------------------------------------------------------------
+xp:
+  curve:
+    10: 25
+    25: 120
+    50: 600
+    75: 2400
+    100: 9000
+
+  # Every source is independent and can be switched off on its own.
+  # A source whose plugin is absent is skipped and logged once, never
+  # an error — a server without ExcellentQuests should not have to
+  # delete its config to make the rest of the file quiet.
+  #
+  # `xp` is a flat award. `multiplier` scales the event's OWN value
+  # instead; a source uses one or the other, never both, because adding
+  # a flat amount to a plugin's xp is not a thing anybody can reason
+  # about.
+  sources:
+    kill-mob:
+      enabled: true
+      xp: 4
+
+    # Once per mob type, so a chicken farm does not put cows on
+    # cooldown and a player is not locked out of breeding entirely.
+    breed-mob:
+      enabled: true
+      xp: 40
+      per-mob-cooldown: true
+      per-mob-cooldown-duration: 7d
+
+    # Allium's own crop event, so custom crops pay out alongside
+    # vanilla ones with no second listener and no toggle.
+    farm-crop:
+      enabled: true
+      xp: 2
+
+    # Once each. Without the once-each claim an advancement is a
+    # repeatable xp fountain: it can be re-triggered by redoing its
+    # steps, and a player who notices will redo them all.
+    advancement:
+      enabled: true
+      xp: 20
+
+    # The remaining sources arrive with the phases that wire their
+    # plugins. Listed here and disabled so the shape of the file is
+    # already correct when they are switched on.
+    auraskills-ability:
+      enabled: false
+      xp: 3
+    quest-complete:
+      enabled: false
+      xp: 25
+    fish-large:
+      enabled: false
+      xp: 12
+      # LiteFish has no isLarge(); "large" is a percentile of the
+      # weight this drop's own range produced, so it is compared
+      # against a rolling figure rather than a fixed number.
+      minimum-percentile: 75
+
+# ------------------------------------------------------------
 # Crafting: 8 heads of one mob around a paper.
 #
 # OFF BY DEFAULT, and the reason matters: heads buy cards and cards

@@ -89,11 +89,46 @@ public class CardProgression implements Listener {
     }
 
     /**
-     * Xp to go from {@code level} to the next.
+     * How many levels {@code xp} covers from {@code level}, writing nothing.
      *
-     * <p>Flat early and steep late, so the first levels arrive fast enough to be
-     * interesting and the last are a project. Read from the config's curve
-     * breakpoints by the module, which supplies this through {@link #curve}.
+     * <p>Split out from {@link #award} so a caller can ask the question without
+     * the side effects — a menu showing "2 levels away", or a source levelling
+     * a card it is not holding.
+     *
+     * <p>Multiple levels in one award are counted in order, each against the
+     * curve at its own level, so a single large payout reads as the same
+     * progression a player would have seen one level at a time.
+     */
+    public int levelsGained(int level, double xp, int maximumLevel) {
+        if (xp <= 0) return 0;
+        int gained = 0;
+        int current = level;
+        double remaining = xp;
+        while (remaining > 0 && current < maximumLevel) {
+            double needed = xpForNextLevel(current);
+            if (needed <= 0 || remaining < needed) {
+                break;
+            }
+            remaining -= needed;
+            current++;
+            gained++;
+        }
+        return gained;
+    }
+
+    /**
+     * How far through the level after {@code level} a given xp gets a card.
+     *
+     * @return 0..1, where 1 means the next level is reached
+     */
+    public double progressTowards(int level, double xp, double nextLevelCost) {
+        if (nextLevelCost <= 0) return 1.0;
+        return Math.max(0.0, Math.min(1.0, xp / nextLevelCost));
+    }
+
+    /**
+     * Supplies the cost of a level, so the curve lives in the xp config rather
+     * than here. Implemented by a method reference onto {@code XpConfig}.
      */
     public interface XpCurve {
         double xpFor(int level);
@@ -107,13 +142,6 @@ public class CardProgression implements Listener {
 
     public double xpForNextLevel(int level) {
         return Math.max(0.0, curve.xpFor(level));
-    }
-
-    /** The xp still owed to reach the next level, for a progress display. */
-    public double progressTowards(int level, double xpIntoLevel) {
-        double needed = xpForNextLevel(level);
-        if (needed <= 0) return 1.0;
-        return Math.max(0.0, Math.min(1.0, xpIntoLevel / needed));
     }
 
     // ==================== signature growth ====================
@@ -197,5 +225,10 @@ public class CardProgression implements Listener {
 
     public int trackedCards() {
         return tracker.trackedPlayers();
+    }
+
+    /** The level rules this service enforces, so a caller can read the ceiling. */
+    public ProgressRules rules() {
+        return rules;
     }
 }

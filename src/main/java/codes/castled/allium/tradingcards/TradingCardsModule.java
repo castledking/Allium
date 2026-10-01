@@ -14,6 +14,10 @@ import codes.castled.allium.tradingcards.integration.ReliqueIntegration;
 import codes.castled.allium.tradingcards.merge.MergeRules;
 import codes.castled.allium.tradingcards.reroll.RerollPricing;
 import codes.castled.allium.tradingcards.reroll.RerollService;
+import codes.castled.allium.tradingcards.xp.CardXpListener;
+import codes.castled.allium.tradingcards.xp.CardXpService;
+import codes.castled.allium.tradingcards.xp.XpAntiFarmStore;
+import codes.castled.allium.tradingcards.xp.XpConfig;
 import codes.castled.allium.tradingcards.card.CardDefinitionLoader;
 import codes.castled.allium.tradingcards.card.CardDropListener;
 import codes.castled.allium.tradingcards.card.CardFactory;
@@ -36,9 +40,11 @@ import org.bukkit.inventory.ItemStack;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -70,6 +76,10 @@ public final class TradingCardsModule {
     private TradeQuote tradeQuote = new TradeQuote();
     private PendingPayoutStore pending;
 
+    private XpConfig xpConfig;
+    private XpAntiFarmStore antiFarm;
+    private CardXpService cardXp;
+    private codes.castled.allium.scheduler.TaskHandle antiFarmSave;
     private RerollService reroll;
     private MergeRules mergeRules;
     private BoostService boosts;
@@ -155,6 +165,7 @@ public final class TradingCardsModule {
         reportIssues(issues);
         applyTradeConfig();
         initBoosts(dataFolder);
+        initXp(dataFolder, issues);
         reportIssues(issues);
 
         enabled = true;
@@ -169,6 +180,15 @@ public final class TradingCardsModule {
         // Quiesce first: an AuraSkills modifier that outlives its card is
         // written to disk on logout and becomes a permanent invisible buff.
         removeAllBoosts();
+        // Saved on the way down rather than left to the timer: a cooldown that
+        // is lost on shutdown is a gate that is not there.
+        if (antiFarm != null) {
+            antiFarm.save();
+        }
+        if (antiFarmSave != null) {
+            antiFarmSave.cancel();
+            antiFarmSave = null;
+        }
         dropListener = null;
     }
 
@@ -478,6 +498,66 @@ public final class TradingCardsModule {
             }
         }
         reportIssues(issues);
+    }
+
+    /**
+     * Wires the xp sources and the anti-farm state.
+     *
+     * <p>Every source funnels through one service, so a source added later
+     * cannot forget the cooldown and once-each gates. Those gates are the whole
+     * reason a mob farm or an advancement re-trigger is not a xp fountain, and
+     * the easiest mistake when adding a fifth source is to award directly.
+     *
+     * <p>The store is saved on a timer rather than on every award: a burst of
+     * twenty advancements completing at once would otherwise be twenty disk
+     * writes, and the state only has to outlive a restart, not a tick.
+     */
+    private void initXp(File dataFolder, List<ValidationIssue> issues) {
+        XpConfig.LoadResult loaded = XpConfig.load(
+            org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                new File(dataFolder, TradingCardsConfig.FILE)));
+        issues.addAll(loaded.issues());
+        this.xpConfig = loaded.config();
+        this.antiFarm = new XpAntiFarmStore(dataFolder);
+
+        if (progression == null) {
+            issues.add(ValidationIssue.warning(TradingCardsConfig.FILE, "xp",
+                "Card xp is unavailable because the boost stage did not load; "
+                    + "sources will not fire"));
+            return;
+        }
+        progression.curve(loaded.config()::xpForLevel);
+
+        CardXpService service = new CardXpService(loaded.config(), antiFarm, progression,
+            player -> Optional.ofNullable(equippedCard(player)),
+            System::currentTimeMillis);
+        service.announcement(config.levelling().announce().message(),
+            config.levelling().announce().broadcast());
+        this.cardXp = service;
+        Bukkit.getPluginManager().registerEvents(new CardXpListener(this, service), plugin);
+
+        this.antiFarmSave = codes.castled.allium.scheduler.SchedulerAdapter.runAsyncRepeating(
+            plugin, () -> {
+                if (antiFarm != null) antiFarm.save();
+            }, 12000L, 12000L);
+
+        long enabled = loaded.config().sources().values().stream()
+            .filter(codes.castled.allium.tradingcards.xp.XpConfig.Source::enabled)
+            .count();
+        logger.info("[" + TradingCardsBranding.DISPLAY_NAME + "] Card xp enabled: "
+            + enabled + " of " + loaded.config().sources().size() + " source(s)");
+    }
+
+    public XpConfig xpConfig() {
+        return xpConfig;
+    }
+
+    public CardXpService cardXp() {
+        return cardXp;
+    }
+
+    public XpAntiFarmStore antiFarm() {
+        return antiFarm;
     }
 
     /** The scale clamp, from the catalogue's own scale entry. */

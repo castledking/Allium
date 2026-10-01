@@ -153,4 +153,38 @@ public class TFlyManager {
         if (secs > 0 || sb.length() == 0) sb.append(secs).append("s");
         return sb.toString().trim();
     }
+
+    /**
+     * Same as {@link #formatTime} but at most two units, so "1d 12h" instead of
+     * "1d 12h 30m 45s". The largest non-zero units win; the rest are dropped.
+     */
+    public static String formatTimeShort(long seconds) {
+        if (seconds <= 0) return "0s";
+        long days = seconds / 86400;
+        long hours = (seconds % 86400) / 3600;
+        long minutes = (seconds % 3600) / 60;
+        long secs = seconds % 60;
+        StringBuilder sb = new StringBuilder();
+        int parts = 0;
+        if (days > 0) {
+            sb.append(days).append("d");
+            parts++;
+        }
+        if (parts < 2 && hours > 0) {
+            if (parts > 0) sb.append(' ');
+            sb.append(hours).append("h");
+            parts++;
+        }
+        if (parts < 2 && minutes > 0) {
+            if (parts > 0) sb.append(' ');
+            sb.append(minutes).append("m");
+            parts++;
+        }
+        if (parts < 2 && secs > 0) {
+            if (parts > 0) sb.append(' ');
+            sb.append(secs).append("s");
+            parts++;
+        }
+        return parts == 0 ? "0s" : sb.toString();
+    }
 }

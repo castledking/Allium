@@ -62,8 +62,9 @@ public class CardProgression implements Listener {
      */
     public int award(ItemStack card, UUID owner, double xp) {
         if (card == null || xp <= 0) return 0;
-        var data = TradingCardData.read(card);
-        if (data.isEmpty()) return 0;
+        var read = TradingCardData.read(card);
+        if (read.isEmpty()) return 0;
+        TradingCardData data = read.get();
 
         int levels = 0;
         double remaining = xp;

@@ -222,6 +222,27 @@ reroll:
     transmit-range: 48.0
 
 # ------------------------------------------------------------
+# Merging: two cards of the same mob at maximum level of the same
+# tier become one card of the NEXT tier at level 0.
+#
+# Level 0 is deliberate. A dropped card also starts at level 0, so a
+# merged card is worth exactly what a fresh drop of the next tier
+# would be worth — merging converts SPARE cards into progress rather
+# than granting a head start. Landing anywhere above a natural drop
+# would make merging a better source than killing the mob, and
+# players would farm duplicates instead of playing.
+#
+# All three conditions are checked — same mob, same tier, both at
+# maximum — and a refusal names which one failed. A vague refusal is
+# how a merge feature loses player trust: someone merges two cards,
+# gets a confusing result, and never tries again.
+# ------------------------------------------------------------
+merge:
+  enabled: true
+  require-same-mob: true
+  target-level: 0
+
+# ------------------------------------------------------------
 # Crafting: 8 heads of one mob around a paper.
 #
 # OFF BY DEFAULT, and the reason matters: heads buy cards and cards

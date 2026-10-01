@@ -49,8 +49,10 @@ public class CardMenuListener implements Listener {
         // block or swing at whatever is behind the card.
         event.setCancelled(true);
 
-        var quote = module.quote(card.get());
+        // The workshop, not the read-only card menu: reroll, merge and trade
+        // are all one-click decisions on a card the player is already holding,
+        // so they live in one window with tabs rather than three windows.
         int slot = inventory.getHeldItemSlot();
-        new CardMenuGui(event.getPlayer(), module, card.get(), held, quote, slot).open();
+        new CardWorkshopGui(event.getPlayer(), module, card.get(), held, slot).open();
     }
 }

@@ -11,6 +11,9 @@ import codes.castled.allium.tradingcards.boost.BoostService;
 import codes.castled.allium.tradingcards.boost.CardProgression;
 import codes.castled.allium.tradingcards.boost.EquippedCardTracker;
 import codes.castled.allium.tradingcards.integration.ReliqueIntegration;
+import codes.castled.allium.tradingcards.merge.MergeRules;
+import codes.castled.allium.tradingcards.reroll.RerollPricing;
+import codes.castled.allium.tradingcards.reroll.RerollService;
 import codes.castled.allium.tradingcards.card.CardDefinitionLoader;
 import codes.castled.allium.tradingcards.card.CardDropListener;
 import codes.castled.allium.tradingcards.card.CardFactory;
@@ -67,6 +70,8 @@ public final class TradingCardsModule {
     private TradeQuote tradeQuote = new TradeQuote();
     private PendingPayoutStore pending;
 
+    private RerollService reroll;
+    private MergeRules mergeRules;
     private BoostService boosts;
     private EquippedCardTracker equipped;
     private CardProgression progression;
@@ -274,6 +279,126 @@ public final class TradingCardsModule {
         return progression;
     }
 
+    // ==================== reroll ====================
+
+    /**
+     * Performs a reroll on the card in {@code slot} and writes the result back.
+     *
+     * <p>Reads the card from the inventory rather than trusting the caller's
+     * copy, re-derives the price from the current config, and only then charges.
+     * A card is written only after the charge succeeds, and a failed write
+     * refunds — so a player is never left having paid for a reroll that did not
+     * happen.
+     *
+     * @return the outcome, for the menu to report
+     */
+    public RerollService.Result reroll(Player player, TradingCardData presented, int slot) {
+        if (reroll == null) {
+            return new RerollService.Result(RerollService.Outcome.DISABLED, 0.0,
+                presented.signatures(), "Rerolling is unavailable.");
+        }
+        var held = player.getInventory().getItem(slot);
+        var current = TradingCardData.read(held);
+        if (current.isEmpty()) {
+            return new RerollService.Result(RerollService.Outcome.DISABLED, 0.0,
+                presented.signatures(), "That slot no longer holds a trading card.");
+        }
+        TradingCardData card = current.get();
+        RerollService.Result result = reroll.reroll(player, card);
+        if (!result.succeeded()) {
+            return result;
+        }
+
+        // An unlock changes the signature list; a bonus reroll leaves it alone
+        // and the tier pool is re-rolled instead.
+        TradingCardData updated = result.outcome() == RerollService.Outcome.SIGNATURE_UNLOCKED
+            ? new TradingCardData(card.mob(), card.cardId(), card.tier(), card.level(),
+                card.quality(), result.signatures(), card.rerolls() + 1, card.bound())
+            : new TradingCardData(card.mob(), card.cardId(), card.tier(), card.level(),
+                card.quality(), card.signatures(), card.rerolls() + 1, card.bound());
+        TradingCardData.write(held, updated);
+
+        if (equipped != null && equipped.card(player.getUniqueId()) != null) {
+            // A card that is currently equipped has just changed; re-apply so
+            // the new signature is live immediately rather than at next equip.
+            progression.refreshEquipped(player, updated);
+        }
+        return result;
+    }
+
+    public RerollService reroll() {
+        return reroll;
+    }
+
+    public MergeRules mergeRules() {
+        return mergeRules;
+    }
+
+    /**
+     * Merges two cards into one of the next tier.
+     *
+     * <p>Both inputs are removed only after the result has been built, so a
+     * merge that cannot produce a card leaves the player's items alone. The
+     * result is returned rather than given, because the caller adds it to the
+     * inventory and can handle overflow itself.
+     *
+     * @return the merged card, or null when the merge was refused
+     */
+    public ItemStack mergeCards(Player player, ItemStack first, ItemStack second,
+                                MergeRules rules, MergeRules.Verdict verdict) {
+        if (!verdict.allowed() || first == null || second == null) {
+            return null;
+        }
+        TradingCardData a = TradingCardData.read(first).orElse(null);
+        TradingCardData b = TradingCardData.read(second).orElse(null);
+        if (a == null || b == null) {
+            return null;
+        }
+        var definition = registry.byId(a.cardId());
+        if (definition.isEmpty()) {
+            // The source card's config has gone; there is no item to mint.
+            player.sendMessage(MiniMessage.miniMessage().deserialize(
+                "<red>No card definition exists for '" + a.cardId()
+                    + "', so it cannot be merged.</red>"));
+            return null;
+        }
+        var result = factory.create(definition.get(), verdict.resultTier(),
+            rules.targetLevel(), a.quality(), rules.mergedSignatures(), a.bound(),
+            config);
+        if (result.isEmpty()) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize(
+                "<red>The merged card's item does not exist. Is Nexo loaded?</red>"));
+            return null;
+        }
+        // Only now are the inputs consumed.
+        removeFromInventory(player, first);
+        removeFromInventory(player, second);
+        return result.get();
+    }
+
+    /**
+     * Removes one specific stack from a player's inventory.
+     *
+     * <p>Matched by identity rather than by slot, because the merge window
+     * holds copies and the player may have moved the originals since staging.
+     */
+    private void removeFromInventory(Player player, ItemStack target) {
+        var contents = player.getInventory().getStorageContents();
+        for (int slot = 0; slot < contents.length; slot++) {
+            ItemStack stack = contents[slot];
+            if (stack == null || stack.getType().isAir()) continue;
+            if (!stack.isSimilar(target)) continue;
+            if (stack.getAmount() <= target.getAmount()) {
+                contents[slot] = null;
+            } else {
+                stack.setAmount(stack.getAmount() - target.getAmount());
+                contents[slot] = stack;
+            }
+            player.getInventory().setStorageContents(contents);
+            return;
+        }
+    }
+
     /** Re-points the trade quoter at the freshly loaded band table. */
     private void applyTradeConfig() {
         tradeQuote.configure(config::quality, config.trade().enabled(),
@@ -307,6 +432,20 @@ public final class TradingCardsModule {
             scaleMinimum(), scaleMaximum());
         this.boosts = service;
         this.equipped = tracker;
+
+        // Reroll and merge need the boost catalogue, the economy, and the card
+        // definitions, so they are built after the catalogue has loaded.
+        RerollPricing pricing = RerollPricing.from(config.reroll());
+        var booster = loaded.boosts().isEmpty()
+            ? null
+            : new RerollService(loaded, pricing,
+                codes.castled.allium.PluginStart.getInstance().getEconomyManager(),
+                java.util.concurrent.ThreadLocalRandom.current());
+        this.reroll = booster;
+        this.mergeRules = new MergeRules(config.merge().enabled(),
+            config.merge().requireSameMob(),
+            config.levelling().maximumLevel(),
+            config.merge().targetLevel());
 
         CardProgression progress = new CardProgression(service, tracker,
             new CardProgression.ProgressRules(

@@ -2,6 +2,7 @@ package codes.castled.allium.tradingcards.config;
 
 import codes.castled.allium.tradingcards.TradingCardsBranding;
 import codes.castled.allium.tradingcards.card.QualityBand;
+import codes.castled.allium.tradingcards.card.Tier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -23,6 +24,7 @@ public record TradingCardsConfig(
     List<QualityBand> quality,
     Trade trade,
     Reroll reroll,
+    Merge merge,
     Crafting crafting
 ) {
 
@@ -35,7 +37,7 @@ public record TradingCardsConfig(
     /** A config that does nothing, used before the first successful load. */
     public static TradingCardsConfig disabled() {
         return new TradingCardsConfig(false, Levelling.defaults(), List.of(),
-            Trade.defaults(), Reroll.defaults(), Crafting.defaults());
+            Trade.defaults(), Reroll.defaults(), Merge.defaults(), Crafting.defaults());
     }
 
     // ==================== nested blocks ====================
@@ -125,19 +127,21 @@ public record TradingCardsConfig(
         double escalation,
         long roundTo,
         double maximumCost,
-        java.util.Map<codes.castled.allium.tradingcards.card.Tier, Double> tierMultipliers
+        java.util.Map<Tier, Double> tierMultipliers,
+        double signatureUnlockChance,
+        int maximumSignatures,
+        boolean allowBonusOnlyWhenFull
     ) {
         public Reroll {
             tierMultipliers = java.util.Map.copyOf(tierMultipliers);
         }
 
         public static Reroll defaults() {
-            java.util.Map<codes.castled.allium.tradingcards.card.Tier, Double> flat =
-                new java.util.EnumMap<>(codes.castled.allium.tradingcards.card.Tier.class);
-            for (var t : codes.castled.allium.tradingcards.card.Tier.values()) {
+            java.util.Map<Tier, Double> flat = new java.util.EnumMap<>(Tier.class);
+            for (var t : Tier.values()) {
                 flat.put(t, 1.0);
             }
-            return new Reroll(true, 2000.0, 1.6, 100L, 500000.0, flat);
+            return new Reroll(true, 2000.0, 1.6, 100L, 500000.0, flat, 0.35, 6, true);
         }
 
         /**
@@ -145,7 +149,7 @@ public record TradingCardsConfig(
          * counting from 1. This is the number the menu shows, so it is
          * computed in one place and rounded once.
          */
-        public double costFor(int attempt, codes.castled.allium.tradingcards.card.Tier tier) {
+        public double costFor(int attempt, Tier tier) {
             if (attempt < 1) attempt = 1;
             double tierMultiplier = tierMultipliers.getOrDefault(tier, 1.0);
             double raw = baseCost * Math.pow(escalation, attempt - 1.0) * tierMultiplier;
@@ -154,6 +158,23 @@ public record TradingCardsConfig(
                 raw = Math.round(raw / roundTo) * (double) roundTo;
             }
             return Math.max(roundTo > 1 ? roundTo : 1.0, raw);
+        }
+    }
+
+    /**
+     * Merging two cards into one of the next tier.
+     *
+     * @param targetLevel the level a merged card lands at; 0 matches where a
+     *                    dropped card starts, so merging converts spares
+     *                    rather than granting a head start
+     */
+    public record Merge(
+        boolean enabled,
+        boolean requireSameMob,
+        int targetLevel
+    ) {
+        public static Merge defaults() {
+            return new Merge(true, true, 0);
         }
     }
 
@@ -203,6 +224,7 @@ public record TradingCardsConfig(
             quality(yaml.getConfigurationSection("quality"), issues),
             trade(yaml.getConfigurationSection("trade"), issues),
             reroll(yaml.getConfigurationSection("reroll"), issues),
+            merge(yaml.getConfigurationSection("merge"), issues),
             crafting(yaml.getConfigurationSection("crafting"), issues));
         return new LoadResult(config, issues);
     }
@@ -330,8 +352,35 @@ public record TradingCardsConfig(
                 multipliers.put(tier, Math.max(0.0, tierSection.getDouble(key, 1.0)));
             }
         }
+        double unlockChance = section.getDouble("signature-unlock-chance", 0.35);
+        if (unlockChance < 0.0 || unlockChance > 1.0) {
+            issues.add(ValidationIssue.warning(FILE, "reroll.signature-unlock-chance",
+                "Must be in (0,1], got " + unlockChance + "; using 0.35"));
+            unlockChance = 0.35;
+        }
+        int maxSignatures = section.getInt("maximum-signatures", 6);
+        if (maxSignatures < 3) {
+            // 3 is where every card starts; below that a card would have to
+            // lose a signature to equip, which nothing supports.
+            issues.add(ValidationIssue.warning(FILE, "reroll.maximum-signatures",
+                "Below 3, which is where every card starts. Using 3."));
+            maxSignatures = 3;
+        }
         return new Reroll(section.getBoolean("enabled", true), base, escalation, roundTo,
-            section.getDouble("maximum-cost", 500000.0), multipliers);
+            section.getDouble("maximum-cost", 500000.0), multipliers, unlockChance,
+            maxSignatures, section.getBoolean("allow-bonus-only-when-full", true));
+    }
+
+    private static Merge merge(ConfigurationSection section, List<ValidationIssue> issues) {
+        if (section == null) return Merge.defaults();
+        int target = section.getInt("target-level", 0);
+        if (target < 0) {
+            issues.add(ValidationIssue.warning(FILE, "merge.target-level",
+                "Negative; a merged card cannot start below 0. Using 0."));
+            target = 0;
+        }
+        return new Merge(section.getBoolean("enabled", true),
+            section.getBoolean("require-same-mob", true), target);
     }
 
     private static Crafting crafting(ConfigurationSection section, List<ValidationIssue> issues) {

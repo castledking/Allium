@@ -1,0 +1,302 @@
+# ============================================================
+#  Allium Trading Cards — boost catalogue
+# ============================================================
+# Every boost is declared ONCE here and referenced by id from card
+# definitions, so adding a boost to every card is one edit per card
+# and a new card that reuses an existing boost needs nothing here.
+#
+# Two families, and they are not interchangeable:
+#
+#   SIGNATURE  The three every card drops with. Hard-strapped to
+#              AuraSkills stats, and they are what levelling grows.
+#   BONUS      Everything else. Rolled at drop, then frozen.
+#
+# Reload with /tradingcards reload.
+
+# How many signature boosts a card may ever hold. 3 is where every
+# card starts, so this is the ceiling, not a starting count.
+maximum-signatures: 6
+
+# Chance a reroll unlocks a new signature rather than re-rolling
+# bonuses. 0.35 means roughly 3 unlocks across 10 rerolls.
+signature-unlock-chance: 0.35
+
+# How many bonus boosts a card rolls at drop.
+roll:
+  count: 3
+
+# ------------------------------------------------------------
+# Amounts. These are the numbers a card's lore shows, and the base
+# the "(+n)" levelling figure is measured from — so rebalancing a
+# tier here retroactively changes what existing cards read as,
+# without any stored value being wrong.
+#
+# Every signature must be in a unit that +1 means something in.
+# `waypoint-range` looks like it qualifies because it is literally
+# blocks — and it does, which is why its mechanism would have to be
+# incrementable. It is a CARD_* mechanism, so it stays a bonus boost.
+# `scale` does not qualify at all: "+0.1x player scale" is not a
+# quantity, and its 0.6-1.9 clamp means nothing under flat addition.
+# ------------------------------------------------------------
+signature-amounts:
+  # The three every card drops with.
+  luck: 5.0
+  strength: 5.0
+  speed: 3.0
+  # Unlockable by rerolling, smallest pools first.
+  health: 2.0
+  toughness: 2.0
+  wisdom: 3.0
+  regeneration: 2.0
+  crit-chance: 1.0
+  crit-damage: 2.0
+  haste: 0.5
+  armor: 2.0
+  knockback: 0.1
+  haste: 0.2
+
+# ------------------------------------------------------------
+# The signature pool a reroll may unlock from, per tier.
+#
+# ONLY AURASKILL_STAT mechanisms are accepted here, and the loader
+# rejects anything else with an explanation. A signature is the one
+# thing levelling grows, so it has to be something "+1" means
+# something in — a flat attribute bonus or a percentage does not
+# qualify, and putting one here would show a meaningless number on
+# the card rather than failing loudly.
+#
+# That leaves the remaining six of AuraSkills' nine stats. Haste,
+# armour and knockback resistance look like they belong: they do not,
+# and they are bonus boosts below.
+# ------------------------------------------------------------
+signature-pool:
+  SIMPLE:    [ health, toughness, wisdom ]
+  ELITE:     [ health, toughness, wisdom, crit-chance ]
+  ULTIMATE:  [ health, toughness, wisdom, crit-chance, regeneration ]
+  LEGENDARY: [ health, toughness, wisdom, crit-chance, regeneration, crit-damage ]
+  FABLED:    [ health, toughness, wisdom, crit-chance, regeneration, crit-damage ]
+
+# ------------------------------------------------------------
+# The bonus pool each tier draws its rolled boosts from. Rolled at
+# drop and frozen: levelling never touches these, so a card can
+# never grow a boost the drop did not award it.
+# ------------------------------------------------------------
+bonus:
+  SIMPLE:    [ crop-boost, xp-drop-boost ]
+  ELITE:     [ crop-boost, xp-drop-boost, armor, loot-boost ]
+  ULTIMATE:  [ crop-boost, xp-drop-boost, armor, loot-boost, haste, regeneration ]
+  LEGENDARY: [ crop-boost, xp-drop-boost, armor, loot-boost, haste, regeneration,
+               money-quest, tokens-quest, scale, waypoint-range ]
+  FABLED:    [ crop-boost, xp-drop-boost, armor, loot-boost, haste, regeneration,
+               money-quest, tokens-quest, token-drop-chance, token-drop-multiplier,
+               scale, waypoint-range, waypoint-multiplier, flight-speed,
+               disarm-rate, knockback ]
+
+# ============================================================
+#  The catalogue
+# ============================================================
+# `mechanism` decides what implements it, and decides cleanup:
+#
+#   AURASKILL_STAT / AURASKILL_TRAIT / CARD_PERMISSION  are held
+#       by another plugin and MUST be removed on unequip, or the
+#       boost outlives the card. AurasSkills modifiers are also
+#       written to disk on logout unless marked non-persistent, so
+#       a skipped removal survives a relog as a buff the player
+#       cannot see.
+#   ATTRIBUTE  is engine-owned. Bukkit drops the modifier with the
+#       entity, so unequip only has to forget it.
+#   CARD_*     implemented by Allium.
+#
+# A boost whose mechanism is AURASKILL_STAT is automatically
+# eligible to be a signature; nothing else is.
+# ============================================================
+boosts:
+
+  # ---------------- the three every card has ----------------
+  # These are in signature-amounts above; listed here so the
+  # mechanism that applies them is explicit.
+
+  luck:
+    display: "<green>Luck"
+    mechanism: AURASKILL_STAT
+    stat: LUCK
+
+  strength:
+    display: "<red>Strength"
+    mechanism: AURASKILL_STAT
+    stat: STRENGTH
+
+  speed:
+    display: "<yellow>Speed"
+    mechanism: AURASKILL_STAT
+    stat: SPEED
+
+  # ---------------- unlockable signatures ----------------
+  # The other six of AuraSkills' nine stats, so no stat is quietly
+  # unreachable through cards. AuraSkills has exactly nine: STRENGTH,
+  # HEALTH, REGENERATION, LUCK, WISDOM, TOUGHNESS, CRIT_CHANCE,
+  # CRIT_DAMAGE, SPEED.
+
+  health:
+    display: "<red>Health"
+    mechanism: AURASKILL_STAT
+    stat: HEALTH
+
+  toughness:
+    display: "<dark_gray>Toughness"
+    mechanism: AURASKILL_STAT
+    stat: TOUGHNESS
+
+  wisdom:
+    display: "<aqua>Wisdom"
+    mechanism: AURASKILL_STAT
+    stat: WISDOM
+
+  regeneration:
+    display: "<light_purple>Regeneration"
+    mechanism: AURASKILL_STAT
+    stat: REGENERATION
+
+  crit-chance:
+    display: "<gold>Crit Chance"
+    mechanism: AURASKILL_STAT
+    stat: CRIT_CHANCE
+
+  crit-damage:
+    display: "<yellow>Crit Damage"
+    mechanism: AURASKILL_STAT
+    stat: CRIT_DAMAGE
+
+  # ---------------- not AuraSkills stats ----------------
+  #
+  # AuraSkills' enum has no haste, no armour, no knockback
+  # resistance, no disarm and no looting. These are not stats we
+  # failed to find — they do not exist there — so each is either a
+  # vanilla attribute or a mechanism of our own, with its own lore
+  # line and its own scaling.
+
+  haste:
+    display: "<gold>Haste"
+    mechanism: ATTRIBUTE
+    attribute: ATTACK_SPEED
+    operation: ADD_SCALAR
+    amount: 0.2
+
+  armor:
+    display: "<white>Armor"
+    mechanism: ATTRIBUTE
+    attribute: ARMOR
+    operation: ADD_NUMBER
+    amount: 2.0
+
+  knockback:
+    display: "<gray>Knockback Resistance"
+    mechanism: ATTRIBUTE
+    attribute: KNOCKBACK_RESISTANCE
+    operation: ADD_SCALAR
+    amount: 0.1
+
+  # There is deliberately no jump-height boost. Vanilla has no player jump
+  # attribute — HORSE_JUMP_STRENGTH is horse-only, and SAFE_FALL_DISTANCE
+  # controls fall damage, not jump height. A boost that quietly boosted the
+  # wrong thing would read as working, which is worse than its absence.
+
+  loot-boost:
+    display: "<white>Looting"
+    mechanism: AURASKILL_STAT
+    stat: LUCK
+    amount: 3.0
+
+  # ---------------- fully implemented by Allium ----------------
+
+  # Player scale, as a factor on the player's own size.
+  #
+  # NOT a signature: levelling adds +1, and "+0.1x player scale" is
+  # not a quantity. Clamped to 0.6-1.9 at every read rather than
+  # rejected, so a card that rolled a large factor grants the
+  # strongest legal version of it instead of nothing.
+  scale:
+    display: "<gold>Player Scale"
+    mechanism: CARD_SCALE
+    amount: 1.0
+    minimum: 0.6
+    maximum: 1.9
+
+  flight-speed:
+    display: "<aqua>Flight Speed"
+    mechanism: CARD_FLIGHT_SPEED
+    amount: 1.6
+
+  disarm-rate:
+    display: "<dark_purple>Disarm Rate"
+    mechanism: CARD_DISARM
+    amount: 0.15
+
+  # Flat and multiplicative are separate boosts because they are
+  # separate purchases: a flat bonus helps a player who is slightly
+  # too short-reach, where a multiplier does nothing useful at the
+  # low end. Applied as (base * multiplier) + flat, so a card
+  # rolling both produces a range somebody actually configured.
+  waypoint-range:
+    display: "<light_blue>Transmit Range"
+    mechanism: CARD_WAYPOINT_RANGE
+    amount: 48.0
+
+  waypoint-multiplier:
+    display: "<aqua>Transmit Reach"
+    mechanism: CARD_WAYPOINT_MULTIPLIER
+    amount: 2.0
+
+  xp-drop-boost:
+    display: "<aqua>Experience"
+    mechanism: CARD_XP_MULTIPLIER
+    amount: 1.25
+
+  selling-boost:
+    display: "<yellow>Sell Value"
+    mechanism: CARD_SELL_MULTIPLIER
+    amount: 1.2
+
+  # ---------------- economy ----------------
+  #
+  # Money and tokens are separate boosts because they are separate
+  # currencies with separate sinks. A 20% token rate and a 20% money
+  # rate are not comparable numbers, so they must not share a
+  # slider.
+
+  money-quest:
+    display: "<yellow>Quest Bounty"
+    mechanism: CARD_MONEY_ON_QUEST
+    amount: 250.0
+
+  tokens-quest:
+    display: "<light_purple>Quest Tokens"
+    mechanism: CARD_TOKENS_ON_QUEST
+    amount: 5.0
+
+  # A drop chance and a drop size are different requests, so they
+  # are two boosts: a player who wants more drops is not asking for
+  # bigger ones.
+  token-drop-chance:
+    display: "<purple>Token Fortune"
+    mechanism: CARD_TOKEN_DROP_CHANCE
+    amount: 0.15
+
+  token-drop-multiplier:
+    display: "<gold>Token Yield"
+    mechanism: CARD_TOKEN_MULTIPLIER
+    amount: 1.5
+
+  token:
+    display: "<light_purple>Token"
+    mechanism: CARD_PERMISSION
+    permission: "sf.tokens.cardholder"
+    amount: 1.0
+
+  # Wires into Allium's own crop quality tables rather than editing
+  # crop files, so a card raises quality weights globally while
+  # equipped.
+  crop-boost:
+    display: "<green>Crop Yield"
+    mechanism: CARD_CROP_QUALITY
+    amount: 0.25

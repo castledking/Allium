@@ -29,7 +29,6 @@ build/
 
 # Dependencies
 dependency-reduced-pom.xml
-lib/
 
 # Gradle
 .gradle/

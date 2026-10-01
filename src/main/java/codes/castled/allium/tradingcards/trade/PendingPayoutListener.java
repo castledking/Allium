@@ -1,7 +1,9 @@
-package codes.castled.allium.tradingcards;
+package codes.castled.allium.tradingcards.trade;
+
+
+import org.bukkit.event.EventHandler;
 
 import codes.castled.allium.tradingcards.TradingCardsModule;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;

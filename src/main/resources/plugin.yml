@@ -483,7 +483,7 @@ commands:
     aliases: [hf]
   tradingcards:
     description: "Allium Trading Cards — mob cards, levelling and trades"
-    usage: "/tradingcards <reload|give|list|inspect>"
+    usage: "/tradingcards <reload|give|list|inspect|boosts|heads>"
     aliases: [tc, cards]
 
 permissions:
@@ -1730,6 +1730,9 @@ permissions:
     default: op
   allium.tradingcards.inspect:
     description: "Allows /tradingcards list and inspect"
+    default: op
+  allium.tradingcards.boosts:
+    description: "Allows /tradingcards boosts, to see what cards are equipped"
     default: op
   allium.harvest.soil.modify:
     description: "Allows /harvest soil restore and forget"

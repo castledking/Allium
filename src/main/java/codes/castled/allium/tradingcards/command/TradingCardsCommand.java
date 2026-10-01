@@ -61,6 +61,7 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             case "list" -> list(sender);
             case "inspect" -> inspect(sender, args);
             case "heads" -> heads(sender);
+            case "boosts" -> boosts(sender, args);
             default -> sendHelp(sender);
         }
         return true;
@@ -226,6 +227,46 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         module.deliverPending(player);
     }
 
+    /**
+     * Shows what a player has equipped and which boosts it actually granted.
+     *
+     * <p>Reports the granted list rather than the card's signature list, because
+     * a boost that failed to apply — AuraSkills not loaded, the user still
+     * loading — would otherwise look present on the card and be missing in
+     * practice. The difference is the useful diagnostic.
+     */
+    private void boosts(CommandSender sender, String[] args) {
+        if (!can(sender, "boosts")) {
+            msg(sender, "<red>You do not have permission for that.</red>");
+            return;
+        }
+        Player target = args.length > 1
+            ? Bukkit.getPlayerExact(args[1])
+            : (sender instanceof Player self ? self : null);
+        if (target == null) {
+            msg(sender, "<red>Usage: /tradingcards boosts [player]</red>");
+            return;
+        }
+        var card = module.equippedCard(target.getUniqueId());
+        if (card == null) {
+            msg(sender, "<gray>" + target.getName() + " has no trading card equipped.</gray>");
+            if (!module.isReliqueSlotInstalled()) {
+                msg(sender, "<red>The /reliques card slot is not installed, so nothing "
+                    + "can be equipped. See the console for the reason.</red>");
+            }
+            return;
+        }
+        msg(sender, "<gray>" + target.getName() + "'s card:</gray> <yellow>"
+            + card.tier().name() + " " + card.mob() + "</yellow> <gray>level "
+            + card.level() + ", " + card.signatures().size() + " signature(s)</gray>");
+        var granted = module.appliedBoosts(target.getUniqueId());
+        if (granted.isEmpty()) {
+            msg(sender, "<gray>No boosts applied. AuraSkills may be unavailable.</gray>");
+            return;
+        }
+        msg(sender, "<gray>Applied:</gray> <white>" + String.join(", ", granted) + "</white>");
+    }
+
     private static void sendHelp(CommandSender sender) {
         msg(sender, "<gray>Usage:</gray>");
         sender.sendMessage(MM.deserialize(
@@ -236,6 +277,8 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             "  <gray>/tradingcards list</gray>"));
         sender.sendMessage(MM.deserialize(
             "  <gray>/tradingcards inspect</gray> <dark_gray>(card in main hand)</dark_gray>"));
+        sender.sendMessage(MM.deserialize(
+            "  <gray>/tradingcards boosts [player]</gray> <dark_gray>(what is equipped and applied)</dark_gray>"));
         sender.sendMessage(MM.deserialize(
             "  <gray>/tradingcards heads</gray> <dark_gray>(collect heads owed from a closed trade)</dark_gray>"));
     }
@@ -255,10 +298,10 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
                                       @NotNull String alias, String @NotNull [] args) {
         List<String> options = new ArrayList<>();
         if (args.length == 1) {
-            options.addAll(List.of("reload", "give", "list", "inspect", "heads"));
+            options.addAll(List.of("reload", "give", "list", "inspect", "boosts", "heads"));
         } else if (args.length == 2) {
             switch (args[0].toLowerCase(Locale.ROOT)) {
-                case "give" -> Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
+                case "give", "boosts" -> Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
                 default -> { }
             }
         } else if (args.length == 3 && args[0].equalsIgnoreCase("give")) {

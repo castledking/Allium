@@ -4,6 +4,13 @@ import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.item.ItemResolverChain;
 import codes.castled.allium.item.ItemResolvers;
 import codes.castled.allium.item.NexoItemsGate;
+import codes.castled.allium.tradingcards.boost.AuraSkillsBridge;
+import codes.castled.allium.tradingcards.boost.BoostCatalog;
+import codes.castled.allium.tradingcards.boost.BoostListener;
+import codes.castled.allium.tradingcards.boost.BoostService;
+import codes.castled.allium.tradingcards.boost.CardProgression;
+import codes.castled.allium.tradingcards.boost.EquippedCardTracker;
+import codes.castled.allium.tradingcards.integration.ReliqueIntegration;
 import codes.castled.allium.tradingcards.card.CardDefinitionLoader;
 import codes.castled.allium.tradingcards.card.CardDropListener;
 import codes.castled.allium.tradingcards.card.CardFactory;
@@ -15,6 +22,7 @@ import codes.castled.allium.tradingcards.gui.CardMenuListener;
 import codes.castled.allium.tradingcards.gui.TradeInListener;
 import codes.castled.allium.tradingcards.item.HeadResolver;
 import codes.castled.allium.tradingcards.item.TradingCardData;
+import codes.castled.allium.tradingcards.TradingCardsModule;
 import codes.castled.allium.tradingcards.trade.PendingPayoutListener;
 import codes.castled.allium.tradingcards.trade.PendingPayoutStore;
 import codes.castled.allium.tradingcards.trade.TradeQuote;
@@ -59,6 +67,11 @@ public final class TradingCardsModule {
     private TradeQuote tradeQuote = new TradeQuote();
     private PendingPayoutStore pending;
 
+    private BoostService boosts;
+    private EquippedCardTracker equipped;
+    private CardProgression progression;
+    private boolean reliqueSlotInstalled;
+
     private boolean enabled;
 
     public TradingCardsModule(JavaPlugin plugin) {
@@ -96,6 +109,7 @@ public final class TradingCardsModule {
 
         File dataFolder = new File(plugin.getDataFolder(), TradingCardsBranding.DATA_FOLDER);
         saveDefault(dataFolder, TradingCardsConfig.FILE);
+        saveDefault(dataFolder, BoostCatalog.FILE);
         saveDefault(dataFolder, CardDefinitionLoader.FILE);
 
         TradingCardsConfig.LoadResult loaded = TradingCardsConfig.load(
@@ -135,6 +149,8 @@ public final class TradingCardsModule {
         Bukkit.getPluginManager().registerEvents(new PendingPayoutListener(this), plugin);
         reportIssues(issues);
         applyTradeConfig();
+        initBoosts(dataFolder);
+        reportIssues(issues);
 
         enabled = true;
         logger.info("[" + TradingCardsBranding.DISPLAY_NAME + "] Enabled with "
@@ -145,6 +161,9 @@ public final class TradingCardsModule {
     public void disable() {
         if (!enabled) return;
         enabled = false;
+        // Quiesce first: an AuraSkills modifier that outlives its card is
+        // written to disk on logout and becomes a permanent invisible buff.
+        removeAllBoosts();
         dropListener = null;
     }
 
@@ -192,13 +211,143 @@ public final class TradingCardsModule {
 
         reportIssues(issues);
         applyTradeConfig();
+        if (boosts != null) {
+            BoostCatalog.LoadResult reloaded = BoostCatalog.load(
+                org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                    new File(dataFolder, BoostCatalog.FILE)),
+                3, 0.35, 6);
+            issues.addAll(reloaded.issues());
+            boosts.configure(reloaded, config.levelling().boostPerLevel(),
+                scaleMinimum(), scaleMaximum());
+            removeAllBoosts();
+        }
         return issues;
+    }
+
+    /**
+     * Removes every boost from every online player.
+     *
+     * <p>Quiesced before the module goes down, and before any persistence, in
+     * the same order the harvest module uses. An AuraSkills modifier that
+     * outlives the card is written to disk on logout, so a missed teardown here
+     * becomes a permanent buff the player cannot see or get rid of.
+     */
+    public void removeAllBoosts() {
+        if (boosts == null) return;
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            boosts.remove(online);
+        }
+        if (equipped != null) {
+            equipped.clearAll();
+        }
+    }
+
+    /** Cards currently equipped across the server, for the command. */
+    public int equippedCards() {
+        return equipped == null ? 0 : equipped.trackedPlayers();
+    }
+
+    /** The boost ids a player currently has applied, for inspect. */
+    public java.util.List<String> appliedBoosts(java.util.UUID player) {
+        return boosts == null ? java.util.List.of() : boosts.appliedTo(player);
+    }
+
+    /** The card a player has equipped, or null. */
+    public TradingCardData equippedCard(java.util.UUID player) {
+        return equipped == null ? null : equipped.card(player);
+    }
+
+    /** True when the /reliques card slot is actually installed. */
+    public boolean isReliqueSlotInstalled() {
+        return reliqueSlotInstalled;
+    }
+
+    public BoostService boosts() {
+        return boosts;
+    }
+
+    public EquippedCardTracker equipped() {
+        return equipped;
+    }
+
+    public CardProgression progression() {
+        return progression;
     }
 
     /** Re-points the trade quoter at the freshly loaded band table. */
     private void applyTradeConfig() {
         tradeQuote.configure(config::quality, config.trade().enabled(),
             config.trade().requireMintOrBetter());
+    }
+
+    /**
+     * Loads the boost catalogue and wires the equip/unequip path.
+     *
+     * <p>The Relique slot is installed first and is what makes the rest
+     * meaningful: without it there is no slot to equip a card into, so no
+     * boost would ever be applied. Both Relique and AuraSkills are optional —
+     * the module loads and cards drop either way, they just do not do anything
+     * while equipped, and that is reported once rather than thrown.
+     */
+    private void initBoosts(File dataFolder) {
+        List<ValidationIssue> issues = new ArrayList<>();
+
+        AuraSkillsBridge bridge = new AuraSkillsBridge(logger,
+            TradingCardsBranding.NAMESPACE + ":card");
+        BoostService service = new BoostService(logger, bridge);
+        EquippedCardTracker tracker = new EquippedCardTracker();
+
+        BoostCatalog.LoadResult loaded = BoostCatalog.load(
+            org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                new File(dataFolder, BoostCatalog.FILE)),
+            3, 0.35, 6);
+        issues.addAll(loaded.issues());
+
+        service.configure(loaded, config.levelling().boostPerLevel(),
+            scaleMinimum(), scaleMaximum());
+        this.boosts = service;
+        this.equipped = tracker;
+
+        CardProgression progress = new CardProgression(service, tracker,
+            new CardProgression.ProgressRules(
+                config.levelling().maximumLevel(),
+                config.levelling().boostPerLevel(),
+                config.levelling().boostsPerLevel()),
+            logger);
+        this.progression = progress;
+        Bukkit.getPluginManager().registerEvents(progress, plugin);
+
+        boolean reliquePresent = Bukkit.getPluginManager().isPluginEnabled("Relique");
+        reliqueSlotInstalled = ReliqueIntegration.install(plugin, logger);
+        if (!reliquePresent) {
+            logger.info("[" + TradingCardsBranding.DISPLAY_NAME
+                + "] Relique is not installed; cards drop but cannot be equipped");
+        } else if (!reliqueSlotInstalled) {
+            logger.warning("[" + TradingCardsBranding.DISPLAY_NAME
+                + "] Relique is installed but the card slot could not be added; "
+                + "cards drop but cannot be equipped until "
+                + "plugins/Relique/relic/allium/slots/card.json exists");
+        } else {
+            Bukkit.getPluginManager().registerEvents(new BoostListener(service, tracker), plugin);
+            if (!bridge.isAvailable()) {
+                logger.warning("[" + TradingCardsBranding.DISPLAY_NAME
+                    + "] AuraSkills is not loaded; signature boosts will not apply");
+            } else {
+                logger.info("[" + TradingCardsBranding.DISPLAY_NAME + "] Boosts enabled: "
+                    + loaded.boosts().size() + " in the catalogue, "
+                    + "card slot " + TradingCardsBranding.RELIQUE_SLOT);
+            }
+        }
+        reportIssues(issues);
+    }
+
+    /** The scale clamp, from the catalogue's own scale entry. */
+    private double scaleMinimum() {
+        return 0.6;
+    }
+
+    private double scaleMaximum() {
+        return 1.9;
     }
 
     // ==================== trading ====================

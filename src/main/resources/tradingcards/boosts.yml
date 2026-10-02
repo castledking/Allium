@@ -247,7 +247,7 @@ boosts:
   # low end. Applied as (base * multiplier) + flat, so a card
   # rolling both produces a range somebody actually configured.
   waypoint-range:
-    display: "<light_blue>Transmit Range"
+    display: "<aqua>Transmit Range"
     mechanism: CARD_WAYPOINT_RANGE
     amount: 48.0
 
@@ -287,7 +287,7 @@ boosts:
   # are two boosts: a player who wants more drops is not asking for
   # bigger ones.
   token-drop-chance:
-    display: "<purple>Token Fortune"
+    display: "<light_purple>Token Fortune"
     mechanism: CARD_TOKEN_DROP_CHANCE
     amount: 0.15
 

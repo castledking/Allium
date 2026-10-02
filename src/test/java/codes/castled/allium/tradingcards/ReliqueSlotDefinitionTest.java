@@ -26,8 +26,14 @@ class ReliqueSlotDefinitionTest {
     private static final Path SLOT =
         Path.of("src/main/resources/tradingcards/relic/allium/slots/card.json");
 
-    /** The path Allium registers, mirrored from ReliqueIntegration. */
-    private static final String VALIDATOR_PATH = "trading_card";
+    /**
+     * The key both sides must use, mirrored from ReliqueIntegration.
+     *
+     * <p>Full key, not a bare path token: Relique resolves the name through
+     * {@code Key.asString()} against a live registry, so it has to be exactly
+     * what was registered.
+     */
+    private static final String VALIDATOR_KEY = "relique:trading_card";
 
     @Test
     void theSlotNamesTheValidatorAlliumRegisters() throws Exception {
@@ -35,16 +41,15 @@ class ReliqueSlotDefinitionTest {
         Matcher m = Pattern.compile("\"validators\"\\s*:\\s*\\[\\s*\"([^\"]+)\"")
             .matcher(json);
         assertTrue(m.find(), "no validators entry in " + SLOT);
-        assertEquals("relique:" + VALIDATOR_PATH, m.group(1),
-            "the slot names a validator Allium never registers. Relique parses this "
-                + "with Key.key(...) so it needs the full key including Relique's own "
-                + "namespace, because Relique registers the validator under that "
-                + "namespace from a bare path token.");
+        assertEquals(VALIDATOR_KEY, m.group(1),
+            "the slot names a validator Allium never registers. Both sides use the "
+                + "same full key, including Relique's own namespace, because that is "
+                + "what ends up in the registry the slot is resolved against.");
     }
 
     @Test
     void theValidatorKeyHasExactlyOneColon() {
-        String key = "relique:" + VALIDATOR_PATH;
+        String key = VALIDATOR_KEY;
         assertEquals(1, key.chars().filter(c -> c == ':').count(),
             "Adventure rejects a key with more than one colon, which is what "
                 + "disabled the integration");

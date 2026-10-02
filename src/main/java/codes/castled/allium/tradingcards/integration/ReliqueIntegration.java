@@ -2,8 +2,11 @@ package codes.castled.allium.tradingcards.integration;
 
 import codes.castled.allium.tradingcards.TradingCardsBranding;
 import codes.castled.allium.tradingcards.item.TradingCardData;
+import com.github.darksoulq.abyssallib.server.registry.Registry;
+import com.github.darksoulq.relique.api.RelicSlot;
+import com.github.darksoulq.relique.api.RelicValidator;
+import com.github.darksoulq.relique.core.RelicManager;
 import com.github.darksoulq.relique.core.RelicRegistries;
-import com.github.darksoulq.relique.core.RelicValidators;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -49,7 +52,7 @@ public final class ReliqueIntegration {
      * <p>So this is {@code trading_card} here, and {@code relique:trading_card} in
      * the slot JSON, which Relique parses with {@code Key.key(...)} as a full key.
      */
-    private static final String VALIDATOR_PATH = "trading_card";
+    private static final String VALIDATOR_KEY = "relique:trading_card";
 
     private ReliqueIntegration() {}
 
@@ -171,14 +174,69 @@ public final class ReliqueIntegration {
      * <p>Registered under Relique's namespace, so it matches the
      * {@code relique:trading_card} key in the slot JSON.
      */
-    private static void registerValidator(Logger logger) {
+    static void registerValidator(Logger logger) {
         try {
-            RelicValidators.VALIDATORS.register(VALIDATOR_PATH,
-                id -> (slotId, item, entity) -> TradingCardData.isCard(item));
-            RelicRegistries.VALIDATORS.getClass();   // touch to fail fast on an API change
+            RelicValidator validator =
+                (slotId, item, entity) -> TradingCardData.isCard(item);
+            Registry<RelicValidator> registry = RelicRegistries.VALIDATORS;
+            if (!registry.contains(VALIDATOR_KEY)) {
+                registry.register(VALIDATOR_KEY, validator);
+            }
         } catch (Throwable t) {
             logger.warning("[" + TradingCardsBranding.DISPLAY_NAME
                 + "] Relique present but its validator API does not match: " + t);
+        }
+    }
+
+    /**
+     * Whether Relique can actually reach the validator, end to end.
+     *
+     * <p>This is the whole integration in one boolean, and it is worth having
+     * in a log line because every way it can be broken fails silently: Relique
+     * resolves validators from its live {@code Registry}, skips a key it cannot
+     * find without complaint, and then rejects every item in the slot. The slot
+     * still renders its icon, so the menu looks installed and correct while
+     * nothing can be equipped into it.
+     */
+    public static String diagnose(Logger logger) {
+        StringBuilder out = new StringBuilder();
+        try {
+            Registry<RelicValidator> registry = RelicRegistries.VALIDATORS;
+            boolean registered = registry.contains(VALIDATOR_KEY);
+            RelicSlot slot = com.github.darksoulq.relique.core.RelicManager.getSlot(SLOT_ID);
+            out.append("slot '").append(SLOT_ID).append("' registered=").append(slot != null);
+            out.append(", validators=").append(slot == null ? "n/a" : slot.validators());
+            out.append(", validator '").append(VALIDATOR_KEY).append("' reachable=")
+                .append(registered);
+            if (!registered || slot == null) {
+                logger.warning("[" + TradingCardsBranding.DISPLAY_NAME
+                    + "] Relique cannot equip cards yet: " + out);
+            } else {
+                logger.info("[" + TradingCardsBranding.DISPLAY_NAME + "] Relique ready, " + out);
+            }
+        } catch (Throwable t) {
+            logger.warning("[" + TradingCardsBranding.DISPLAY_NAME
+                + "] Could not diagnose the Relique integration: " + t);
+        }
+        return out.toString();
+    }
+
+    /**
+     * True when Relique can equip a card, so a competing handler should stand back.
+     *
+     * <p>Checked rather than assumed because Relique's failure mode is silence: if
+     * its slot or validator is missing, nothing consumes the right-click and the
+     * player is left holding a card that nothing will take.
+     */
+    public static boolean canEquipCards() {
+        if (!Bukkit.getPluginManager().isPluginEnabled("Relique")) {
+            return false;
+        }
+        try {
+            return RelicRegistries.VALIDATORS.contains(VALIDATOR_KEY)
+                && RelicManager.getSlot(SLOT_ID) != null;
+        } catch (Throwable t) {
+            return false;
         }
     }
 

@@ -747,6 +747,7 @@ public final class TradingCardsModule {
 
         boolean reliquePresent = Bukkit.getPluginManager().isPluginEnabled("Relique");
         reliqueSlotInstalled = ReliqueIntegration.install(plugin, logger);
+        ReliqueIntegration.diagnose(logger);
         if (!reliquePresent) {
             logger.info("[" + TradingCardsBranding.DISPLAY_NAME
                 + "] Relique is not installed; cards drop but cannot be equipped");

@@ -258,6 +258,23 @@ class CardLoreTest {
     }
 
     @Test
+    void theSeparatorIsCapturedNotReadLive() {
+        // LoreData takes the separator as a value, so a renderer built at startup
+        // keeps drawing the old rule no matter what config.yml says afterwards.
+        // That is why a reload has to rebuild the renderer before re-rendering
+        // anything; without it, editing lore-separator looks like a reload that
+        // did nothing.
+        var narrow = lore(5, "---").render(
+            card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0), 0.0);
+        var wide = lore(5, "───────────────").render(
+            card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0), 0.0);
+        assertFalse(narrow.equals(wide),
+            "two renderers built from different separators rendered identically");
+        assertTrue(wide.stream().anyMatch(l -> l.contains("───────────────")));
+        assertFalse(narrow.stream().anyMatch(l -> l.contains("───────────────")));
+    }
+
+    @Test
     void aFreshCardShowsNoBonusesAtAll() {
         // Drops carry no bonuses now: a slot is bought with its own money, so a
         // drop that handed one over made the price a suggestion. This is the

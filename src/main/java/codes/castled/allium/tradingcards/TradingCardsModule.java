@@ -298,8 +298,9 @@ public final class TradingCardsModule {
 
         reportIssues(issues);
         applyTradeConfig();
+        BoostCatalog.LoadResult reloaded = null;
         if (boosts != null) {
-            BoostCatalog.LoadResult reloaded = BoostCatalog.load(
+            reloaded = BoostCatalog.load(
                 org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
                     new File(dataFolder, BoostCatalog.FILE)),
                 3, 0.35, 6);
@@ -307,7 +308,17 @@ public final class TradingCardsModule {
             boosts.configure(reloaded, config.levelling().boostPerLevel(),
                 scaleMinimum(), scaleMaximum());
             removeAllBoosts();
+            factory.bonuses(reloaded.bonusPool(), reloaded.bonusRollCount());
         }
+        // The lore renderer is rebuilt from the new config before anything is
+        // re-rendered. LoreData captures the separator, the bonus slot count and
+        // the head label as values, so without this the renderer keeps whatever
+        // was there at startup and a reload re-renders cards with the old text —
+        // which looks exactly like the reload having done nothing.
+        installCardLore(reloaded != null ? reloaded : BoostCatalog.load(
+            org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                new File(dataFolder, BoostCatalog.FILE)),
+            3, 0.35, 6));
         // Cards carry their lore as written text, so a stylistic edit to the
         // config cannot reach a card already sitting in someone's inventory.
         // Re-rendering them here is what makes /tradingcards reload mean what an

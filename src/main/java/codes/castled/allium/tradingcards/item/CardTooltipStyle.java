@@ -44,15 +44,18 @@ public final class CardTooltipStyle {
      * <p>Lore length varies per card — every signature is a line and the xp row
      * is optional — and the shader draws the panel 1:1 and stops at this height,
      * so one constant would leave a tall panel on a short card and clip the last
-     * line on a long one.
+     * line of a long one.
      *
-     * <p>Calibrated against the client rather than derived from font metrics:
-     * the bottom cap is 15 art rows and the lore ends only about 3px above the
-     * quad's bottom edge, so the cap cannot be placed from the line count alone.
-     * Must match {@code tools/generate_tooltip_sprites.py}.
+     * <p>The base has to clear the text AND the whole bottom cap. Sizing it to
+     * the text alone put the cap's top rule straight through the last lore line,
+     * because the cap is 15 art rows drawn 1:1 at the bottom and there is only
+     * about 3px between the lore and the quad's bottom edge.
      */
-    public static final int FRAME_BASE = 32;
+    public static final int TEXT_TOP = 25;
+    public static final int BOTTOM_CAP = 15;
+    public static final int CAP_GAP = 2;
     public static final int LINE_PITCH = 10;
+    public static final int FRAME_BASE = TEXT_TOP + BOTTOM_CAP + CAP_GAP;
     private static final int MIN_LINES = 15;
     private static final int MAX_LINES = 30;
 

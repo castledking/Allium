@@ -36,11 +36,22 @@ from PIL import Image
 
 TIERS = ("simple", "elite", "ultimate", "legendary", "fabled")
 
-# Must match CardTooltipStyle.FRAME_BASE and .LINE_PITCH.
-HEIGHT_BASE = 32
+# Must match CardTooltipStyle.TEXT_TOP, .BOTTOM_CAP, .CAP_GAP and .LINE_PITCH.
+# The frame has to clear the text AND the whole bottom cap, or the cap's top rule
+# lands on the last lore line. TEXT_TOP is where lore line 0 starts: the tooltip's
+# first line is a blanked name, so the lore is pushed down by its 10px plus the
+# 2px vanilla puts after the name.
+TEXT_TOP = 25
+CAP_GAP = 2
 LINE_PITCH = 10
 MIN_LINES = 15
 MAX_LINES = 30
+
+# Cards already in circulation carry the old unsuffixed style id
+# (sf:card_fabled). Nothing rewrites a card sitting in a player's inventory, so
+# without these they would quietly fall back to the vanilla tooltip until the
+# card was next written. Emitted at a typical lore length.
+COMPAT_LINES = 21
 HERE = pathlib.Path(__file__).resolve().parent.parent
 ORIGINALS = HERE / "src/main/resources/tradingcards/tooltip-originals"
 
@@ -85,13 +96,12 @@ def build(art: Image.Image, height: int) -> Image.Image:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, type=pathlib.Path)
-    ap.add_argument("--height", type=int,
-                    help="fixed frame height; overrides the per-length variants")
     args = ap.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
 
-    lengths = [None] if args.height else range(MIN_LINES, MAX_LINES + 1)
+    lengths = range(MIN_LINES, MAX_LINES + 1)
+    bases = {}
     for tier in TIERS:
         # The style id is sf:card_<tier>_<lines>, which the client resolves to the
         # pair tooltip/<id>_background and <id>_frame. The background carries the
@@ -100,9 +110,26 @@ def main() -> None:
         src = ORIGINALS / f"card_{tier}_frame.png"
         art = Image.open(src).convert("RGBA")
 
-        for n in lengths:
-            height = args.height if n is None else HEIGHT_BASE + LINE_PITCH * n
-            name = f"card_{tier}" if n is None else f"card_{tier}_{n}"
+        # Measured per tier rather than assumed, so art with a taller bottom cap
+        # still gets a frame that clears it.
+        _, bot = measure(art)
+        base = TEXT_TOP + bot + CAP_GAP
+        bases[tier] = base
+
+        for n in list(lengths) + [COMPAT_LINES]:
+            height = base + LINE_PITCH * n
+            # The unsuffixed id is emitted once; the loop also covers it when
+            # COMPAT_LINES falls inside the range.
+            name = f"card_{tier}_{n}"
+            if n == COMPAT_LINES:
+                compat = f"card_{tier}"
+                build(art, height).save(args.out / f"{compat}_background.png")
+                (args.out / f"{compat}_background.png.mcmeta").write_text(
+                    json.dumps(STRETCH_MCMETA, indent=4) + "\n")
+                Image.new("RGBA", art.size, (0, 0, 0, 0)).save(
+                    args.out / f"{compat}_frame.png")
+                (args.out / f"{compat}_frame.png.mcmeta").write_text(
+                    json.dumps(STRETCH_MCMETA, indent=4) + "\n")
 
             build(art, height).save(args.out / f"{name}_background.png")
             (args.out / f"{name}_background.png.mcmeta").write_text(
@@ -115,9 +142,15 @@ def main() -> None:
             (args.out / f"{name}_frame.png.mcmeta").write_text(
                 json.dumps(STRETCH_MCMETA, indent=4) + "\n")
 
-        span = f"{args.height}" if args.height else \
-            f"{HEIGHT_BASE + LINE_PITCH * MIN_LINES}..{HEIGHT_BASE + LINE_PITCH * MAX_LINES}"
-        print(f"  card_{tier}  art {art.size[0]}x{art.size[1]}  frame heights {span}")
+        print(f"  card_{tier}  art {art.size[0]}x{art.size[1]}  bottom cap {bot}  "
+              f"base {base}  heights {base + LINE_PITCH * MIN_LINES}"
+              f"..{base + LINE_PITCH * MAX_LINES}")
+
+    # CardTooltipStyle carries one FRAME_BASE, so every tier has to agree or the
+    # java side would pick a height that is wrong for the others.
+    if len(set(bases.values())) != 1:
+        raise SystemExit(f"tiers disagree on the frame base {bases}; "
+                         "CardTooltipStyle.FRAME_BASE assumes they match")
 
 
 if __name__ == "__main__":

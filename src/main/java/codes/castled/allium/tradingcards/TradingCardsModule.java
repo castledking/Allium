@@ -307,6 +307,7 @@ public final class TradingCardsModule {
             issues.addAll(reloaded.issues());
             boosts.configure(reloaded, config.levelling().boostPerLevel(),
                 scaleMinimum(), scaleMaximum());
+            boosts.startingBoosts(startingBoosts(), config.quality());
             removeAllBoosts();
             factory.bonuses(reloaded.bonusPool(), reloaded.bonusRollCount());
         }
@@ -698,6 +699,7 @@ public final class TradingCardsModule {
 
         service.configure(loaded, config.levelling().boostPerLevel(),
             scaleMinimum(), scaleMaximum());
+        service.startingBoosts(startingBoosts(), config.quality());
         // Bonus rolls are the catalogue's, but the cards that carry them are
         // built by the factory, so the pool is handed over once it is known.
         factory.bonuses(loaded.bonusPool(), loaded.bonusRollCount());
@@ -855,7 +857,45 @@ public final class TradingCardsModule {
             // replaces the roster, and a title left on the old mob's colour is
             // the kind of thing nobody notices until two cards look alike.
             mob -> registry == null ? null
-                : registry.byMob(mob).map(d -> d.colour()).orElse(null))));
+                : registry.byMob(mob).map(d -> d.colour()).orElse(null),
+            // Built per call rather than captured, because the bands and the
+            // levelling rules are both re-read by a reload.
+            startingBoosts(),
+            (id, value) -> {
+                var boost = defs.get(id);
+                return boost == null
+                    ? id + " " + value
+                    : boost.display() + " <white>" + trim(value) + "</white>";
+            },
+            id -> {
+                var boost = defs.get(id);
+                return boost == null ? id : boost.display();
+            })));
+    }
+
+    /**
+     * The rules a card's starting boosts are derived from.
+     *
+     * <p>Built on each call rather than held: it reads the current bands and the
+     * current levelling config, so a reload is picked up without the renderer
+     * having to be rebuilt again.
+     */
+    private codes.castled.allium.tradingcards.boost.StartingBoosts startingBoosts() {
+        return new codes.castled.allium.tradingcards.boost.StartingBoosts(
+            config.quality(),
+            new codes.castled.allium.tradingcards.boost.StartingBoosts.Rules(
+                config.levelling().boostPerLevel(),
+                config.levelling().boostsPerLevel()));
+    }
+
+    /** The same derivation the lore uses, for the value actually applied. */
+    public double startingBoostValue(TradingCardData card, String signatureId) {
+        int index = card.signatures().indexOf(signatureId);
+        if (index < 0) {
+            return 0.0;
+        }
+        return startingBoosts().valueAt(card, config.quality(), index)
+            .total(startingBoosts().rules());
     }
 
     /** Trims a boost value to something a lore line should carry. */

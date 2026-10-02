@@ -39,6 +39,18 @@ public class BoostService {
     private final AuraSkillsBridge aura;
     private final Map<String, BoostCatalog.LoadResult> catalogHolder = new LinkedHashMap<>();
 
+    /**
+     * The same derivation the card's lore reads.
+     *
+     * <p>Held rather than passed per call because applying a boost and drawing a
+     * card are both frequent, and the two must never disagree about what a card
+     * is worth. Set by the module alongside the catalogue; null falls back to the
+     * catalogue amount, so a card is never left without a value.
+     */
+    private volatile StartingBoosts startingBoosts;
+    private volatile List<codes.castled.allium.tradingcards.card.QualityBand> bands =
+        List.of();
+
     /** What a player currently has applied, by boost id. */
     private final Map<UUID, Map<String, AppliedBoost>> applied = new LinkedHashMap<>();
 
@@ -76,6 +88,13 @@ public class BoostService {
         }
     }
 
+    /** Installs the starting-boost derivation, so applied values match the lore. */
+    public void startingBoosts(StartingBoosts boosts,
+                               List<codes.castled.allium.tradingcards.card.QualityBand> bands) {
+        this.startingBoosts = boosts;
+        this.bands = bands == null ? List.of() : List.copyOf(bands);
+    }
+
     public void configure(BoostCatalog.LoadResult loaded, double boostPerLevel,
                           double scaleMin, double scaleMax) {
         this.catalog = loaded;
@@ -110,14 +129,29 @@ public class BoostService {
 
         // Signatures first: they are the card's identity and the numbers a
         // player compares between cards.
-        for (String signatureId : card.signatures()) {
+        List<StartingBoosts.Value> derived = startingBoosts == null
+            ? List.of()
+            : startingBoosts.valuesFor(card, bands);
+        for (int i = 0; i < card.signatures().size(); i++) {
+            String signatureId = card.signatures().get(i);
             BoostDefinition boost = boosts.get(signatureId);
             if (boost == null) {
                 logger.fine("[tradingcards] Card " + card.cardId() + " names unknown "
                     + "signature '" + signatureId + "'; skipped");
                 continue;
             }
-            double value = boost.totalAt(card.level(), boostPerLevel, scaleMin, scaleMax);
+            // The same derivation the lore reads. A signature is a scale boost
+            // rather than a flat one, so it is clamped; everything else takes the
+            // derived value outright.
+            double value;
+            if (i < derived.size()) {
+                value = derived.get(i).total(startingBoosts.rules());
+                if (boost.mechanism() == BoostMechanism.CARD_SCALE) {
+                    value = Math.max(scaleMin, Math.min(scaleMax, value));
+                }
+            } else {
+                value = boost.totalAt(card.level(), boostPerLevel, scaleMin, scaleMax);
+            }
             if (applyOne(player, boost, value)) {
                 granted.add(boost.id());
             }

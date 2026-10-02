@@ -38,6 +38,13 @@ class CardLoreTest {
         new QualityBand("damaged", 1, 25, 1, "<red>"),
         new QualityBand("pristine", 76, 100, 8, "<gold>"));
 
+    private static final codes.castled.allium.tradingcards.boost.StartingBoosts.Rules
+        STARTING_RULES = new codes.castled.allium.tradingcards.boost.StartingBoosts.Rules(1.0, 1);
+
+    private static codes.castled.allium.tradingcards.boost.StartingBoosts startingBoosts() {
+        return new codes.castled.allium.tradingcards.boost.StartingBoosts(BANDS, STARTING_RULES);
+    }
+
     private static CardLore lore(int bonusSlots, String separator) {
         return new CardLore(new CardLore.LoreData(
             BANDS,
@@ -47,7 +54,10 @@ class CardLoreTest {
             bonusSlots,
             separator,
             level -> 25.0,
-            mob -> "aqua"));
+            mob -> "aqua",
+            startingBoosts(),
+            (id, value) -> id + " " + value,
+            id -> id));
     }
 
     private static TradingCardData card(Tier tier, int level, int quality, int rerolls,
@@ -351,7 +361,8 @@ class CardLoreTest {
         // not get a tag wrapped around a tag.
         var bands = List.of(new QualityBand("mint", 86, 99, 7, "aqua"));
         var lore = new CardLore(new CardLore.LoreData(bands, (id, l) -> id, "heads", 100,
-            5, "", l -> 25.0, mob -> "aqua"));
+            5, "", l -> 25.0, mob -> "aqua", startingBoosts(),
+            (id, value) -> id + " " + value, id -> id));
         var lines = lore.body(card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0),
             Tier.SIMPLE, 0.0);
         String quality = lines.stream().filter(l -> l.contains("Quality:"))
@@ -364,7 +375,8 @@ class CardLoreTest {
     void aHexColourInConfigIsAccepted() {
         var bands = List.of(new QualityBand("mint", 86, 99, 7, "#777777"));
         var lore = new CardLore(new CardLore.LoreData(bands, (id, l) -> id, "heads", 100,
-            5, "", l -> 25.0, mob -> "aqua"));
+            5, "", l -> 25.0, mob -> "aqua", startingBoosts(),
+            (id, value) -> id + " " + value, id -> id));
         var lines = lore.body(card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0),
             Tier.SIMPLE, 0.0);
         String quality = lines.stream().filter(l -> l.contains("Quality:"))

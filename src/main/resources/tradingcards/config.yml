@@ -89,14 +89,17 @@ levelling:
 # ------------------------------------------------------------
 quality:
   bands:
-    rotten:    { min: 1,   max: 5,   heads: 1, colour: "<dark_gray>" }
-    damaged:   { min: 6,   max: 15,  heads: 1, colour: "<gray>" }
-    torn:      { min: 16,  max: 25,  heads: 2, colour: "<dark_red>" }
-    okay:      { min: 26,  max: 45,  heads: 3, colour: "<white>" }
-    fine:      { min: 46,  max: 65,  heads: 5, colour: "<yellow>" }
-    great:     { min: 66,  max: 85,  heads: 6, colour: "<green>" }
-    mint:      { min: 86,  max: 99,  heads: 7, colour: "<aqua>" }
-    emaculate: { min: 100, max: 100, heads: 8, colour: "<gold>" }
+    # `boost` is the range each STARTING boost is rolled from. It is derived
+    # from the card's identity, not stored, so rebalancing a range moves every
+    # card in that band at once — which is the point of tuning a ladder.
+    rotten:    { min: 1,   max: 5,   heads: 1, colour: "<dark_gray>", boost: [1, 2] }
+    damaged:   { min: 6,   max: 15,  heads: 1, colour: "<gray>",      boost: [2, 3] }
+    torn:      { min: 16,  max: 25,  heads: 2, colour: "<dark_red>",  boost: [3, 4] }
+    okay:      { min: 26,  max: 45,  heads: 3, colour: "<white>",     boost: [4, 5] }
+    fine:      { min: 46,  max: 65,  heads: 5, colour: "<yellow>",    boost: [5, 6] }
+    great:     { min: 66,  max: 85,  heads: 6, colour: "<green>",    boost: [6, 7] }
+    mint:      { min: 86,  max: 99,  heads: 7, colour: "<aqua>",     boost: [7, 9] }
+    emaculate: { min: 100, max: 100, heads: 8, colour: "<gold>",      boost: [7, 11] }
 
 # ------------------------------------------------------------
 # Trading a card in for its mob's head.

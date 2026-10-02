@@ -22,8 +22,19 @@ public record QualityBand(
     int min,
     int max,
     int heads,
-    String colour
+    String colour,
+    int boostMin,
+    int boostMax
 ) {
+
+    /**
+     * A band with no starting-boost range, for configs written before the
+     * ranges existed. One point everywhere, so an unconfigured card still has a
+     * value rather than none.
+     */
+    public QualityBand(String id, int min, int max, int heads, String colour) {
+        this(id, min, max, heads, colour, 1, 1);
+    }
 
     public static final int ROLL_MIN = 1;
     public static final int ROLL_MAX = 100;
@@ -40,6 +51,10 @@ public record QualityBand(
         }
         if (colour == null || colour.isBlank()) {
             throw new IllegalArgumentException("Quality band '" + id + "' has no colour");
+        }
+        if (boostMin < 0 || boostMax < boostMin) {
+            throw new IllegalArgumentException("Quality band '" + id + "' starting-boost "
+                + boostMin + ".." + boostMax + " is not a range");
         }
     }
 

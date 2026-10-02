@@ -400,8 +400,21 @@ public record TradingCardsConfig(
             int max = band.getInt("max", -1);
             int heads = band.getInt("heads", 1);
             String colour = QualityBand.parseColour(band.getString("colour"));
+            // The range each starting boost is rolled from. Absent means one
+            // point everywhere, so a config predating this still produces a card.
+            List<Integer> range = band.getIntegerList("boost");
+            int boostMin = range.size() > 0 ? range.get(0) : 1;
+            int boostMax = range.size() > 1 ? range.get(1) : boostMin;
+            if (boostMax < boostMin) {
+                issues.add(ValidationIssue.warning(FILE, path + ".boost",
+                    "boost: [" + boostMin + ", " + boostMax + "] runs backwards; using "
+                        + boostMax + ".." + boostMin));
+                int swap = boostMin;
+                boostMin = boostMax;
+                boostMax = swap;
+            }
             try {
-                bands.add(new QualityBand(id, min, max, heads, colour));
+                bands.add(new QualityBand(id, min, max, heads, colour, boostMin, boostMax));
             } catch (IllegalArgumentException e) {
                 issues.add(ValidationIssue.error(FILE, path, e.getMessage()));
             }

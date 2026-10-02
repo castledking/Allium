@@ -1,5 +1,6 @@
 package codes.castled.allium.tradingcards.item;
 
+import codes.castled.allium.tradingcards.boost.StartingBoosts;
 import codes.castled.allium.tradingcards.card.CardDefinition;
 import codes.castled.allium.tradingcards.card.QualityBand;
 import codes.castled.allium.tradingcards.card.Tier;
@@ -66,7 +67,10 @@ public final class CardLore {
         int bonusSlots,
         String separator,
         IntFunction<Double> xpForLevel,
-        java.util.function.Function<String, String> titleColour
+        java.util.function.Function<String, String> titleColour,
+        StartingBoosts startingBoosts,
+        java.util.function.BiFunction<String, Double, String> startingBoostValue,
+        java.util.function.Function<String, String> boostLabel
     ) {
         public LoreData {
             bands = bands == null ? List.of() : List.copyOf(bands);
@@ -75,6 +79,9 @@ public final class CardLore {
             bonusSlots = Math.max(1, bonusSlots);
             separator = separator == null ? "" : separator;
             titleColour = titleColour == null ? mob -> null : titleColour;
+            startingBoosts = startingBoosts;
+            startingBoostValue = startingBoostValue == null ? (id, v) -> String.valueOf(v) : startingBoostValue;
+            boostLabel = boostLabel == null ? id -> id : boostLabel;
         }
     }
 
@@ -106,6 +113,19 @@ public final class CardLore {
         // the italic and the whole card reads as slanted. Reset per line, since
         // lore lines are independent components rather than one nested tree.
         return lines.stream().map(CardLore::notItalic).toList();
+    }
+
+    /**
+     * The starting boosts' derived numbers, empty when no rules are installed.
+     *
+     * <p>Read once per render so every line of the section agrees, and empty
+     * rather than throwing when the rules failed to load, so a card still renders.
+     */
+    private List<StartingBoosts.Value> startingValues(TradingCardData card) {
+        if (data.startingBoosts() == null) {
+            return List.of();
+        }
+        return data.startingBoosts().valuesFor(card, data.bands());
     }
 
     /**
@@ -172,8 +192,17 @@ public final class CardLore {
         if (card.signatures().isEmpty()) {
             out.add("  <dark_gray>None</dark_gray>");
         } else {
-            for (String id : card.signatures()) {
-                out.add("  " + data.boostLine().apply(id, card.level()));
+            var values = startingValues(card);
+            List<String> signatures = card.signatures();
+            for (int i = 0; i < signatures.size(); i++) {
+                String id = signatures.get(i);
+                String suffix = i < values.size()
+                    ? values.get(i).pointsSuffix() : "";
+                // startingBoostValue returns the whole "Luck +6" line, so the
+                // label is not added again here.
+                out.add("  " + data.startingBoostValue()
+                    .apply(id, i < values.size() ? values.get(i).base() : 0.0)
+                    + suffix);
             }
         }
         if (!sep.isEmpty()) out.add(sep);

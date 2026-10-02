@@ -24,6 +24,7 @@ public record TradingCardsConfig(
     List<QualityBand> quality,
     Trade trade,
     Reroll reroll,
+    BonusSlotRoll bonusSlotRoll,
     Merge merge,
     Morph morph,
     Crafting crafting
@@ -38,8 +39,8 @@ public record TradingCardsConfig(
     /** A config that does nothing, used before the first successful load. */
     public static TradingCardsConfig disabled() {
         return new TradingCardsConfig(false, Levelling.defaults(), List.of(),
-            Trade.defaults(), Reroll.defaults(), Merge.defaults(), Morph.defaults(),
-            Crafting.defaults());
+            Trade.defaults(), Reroll.defaults(), BonusSlotRoll.defaults(),
+            Merge.defaults(), Morph.defaults(), Crafting.defaults());
     }
 
     // ==================== nested blocks ====================
@@ -124,6 +125,61 @@ public record TradingCardsConfig(
                 if (source.name().equalsIgnoreCase(raw.trim())) return source;
             }
             return SPAWNER_HEADS;
+        }
+    }
+
+    /**
+     * Bonus slot pricing.
+     *
+     * <p>A slot is rolled on its own, so this is a flat fee per slot rather than
+     * a ladder: the escalating reroll price exists to stop one card being
+     * rerolled forever, and a player choosing to spend on a specific slot has
+     * already decided how many they want.
+     *
+     * <p>The tier multiplier still applies, so filling every slot on a Fabled
+     * card costs more than on a SIMPLE one — which is the point of the ladder.
+     */
+    public record BonusSlotRoll(
+        boolean enabled,
+        double cost,
+        double escalation,
+        long roundTo,
+        java.util.Map<Tier, Double> tierMultipliers
+    ) {
+        public BonusSlotRoll {
+            tierMultipliers = java.util.Map.copyOf(tierMultipliers);
+        }
+
+        public static BonusSlotRoll defaults() {
+            // The same ladder config.yml ships. Flat multipliers here would make a
+            // server whose config predates the block charge a Fabled card the same
+            // as a SIMPLE one, so the top of the ladder would buy nothing.
+            java.util.Map<Tier, Double> ladder = new java.util.EnumMap<>(Tier.class);
+            ladder.put(Tier.SIMPLE, 1.0);
+            ladder.put(Tier.ELITE, 1.5);
+            ladder.put(Tier.ULTIMATE, 2.0);
+            ladder.put(Tier.LEGENDARY, 3.0);
+            ladder.put(Tier.FABLED, 5.0);
+            return new BonusSlotRoll(true, 2000.0, 1.35, 100L, ladder);
+        }
+
+        /**
+         * The price of the next roll on a slot that has already been rolled
+         * {@code rolls} times, counting from 0.
+         *
+         * <p>Escalating per slot for the same reason a reroll escalates: a flat
+         * fee makes "roll until satisfied" free of friction, and the player
+         * sees the next price before committing rather than after.
+         */
+        public double costFor(int rolls, Tier tier) {
+            if (rolls < 0) rolls = 0;
+            double tierMultiplier = tierMultipliers.getOrDefault(
+                tier == null ? Tier.SIMPLE : tier, 1.0);
+            double raw = cost * Math.pow(escalation, rolls) * tierMultiplier;
+            if (roundTo > 1) {
+                raw = Math.round(raw / roundTo) * (double) roundTo;
+            }
+            return Math.max(roundTo > 1 ? roundTo : 1.0, raw);
         }
     }
 
@@ -267,6 +323,7 @@ public record TradingCardsConfig(
             quality(yaml.getConfigurationSection("quality"), issues),
             trade(yaml.getConfigurationSection("trade"), issues),
             reroll(yaml.getConfigurationSection("reroll"), issues),
+            bonusSlotRoll(yaml.getConfigurationSection("bonus-slot-roll"), issues),
             merge(yaml.getConfigurationSection("merge"), issues),
             morph(yaml.getConfigurationSection("morph"), issues),
             crafting(yaml.getConfigurationSection("crafting"), issues));
@@ -421,6 +478,33 @@ public record TradingCardsConfig(
         return new Reroll(section.getBoolean("enabled", true), base, escalation, roundTo,
             section.getDouble("maximum-cost", 500000.0), multipliers, unlockChance,
             maxSignatures, section.getBoolean("allow-bonus-only-when-full", true));
+    }
+
+    private static BonusSlotRoll bonusSlotRoll(ConfigurationSection section,
+                                               List<ValidationIssue> issues) {
+        // An absent section is a config that predates the block, not an error:
+        // the defaults are what that config would have meant anyway.
+        if (section == null) {
+            return BonusSlotRoll.defaults();
+        }
+        var multipliers = new java.util.EnumMap<Tier, Double>(Tier.class);
+        for (var t : Tier.values()) {
+            multipliers.put(t, section.getDouble("tier-multipliers." + t.name(), 1.0));
+        }
+        double cost = section.getDouble("cost", 2000.0);
+        if (cost < 0) {
+            issues.add(ValidationIssue.warning(FILE, "bonus-slot-roll.cost",
+                "Negative, which would pay the player to roll. Using 0."));
+            cost = 0.0;
+        }
+        double escalation = section.getDouble("escalation", 1.35);
+        if (escalation < 1.0) {
+            issues.add(ValidationIssue.warning(FILE, "bonus-slot-roll.escalation",
+                "Below 1, so each roll would cost less than the last. Using 1."));
+            escalation = 1.0;
+        }
+        return new BonusSlotRoll(section.getBoolean("enabled", true), cost, escalation,
+            section.getLong("round-to", 100L), multipliers);
     }
 
     private static Merge merge(ConfigurationSection section, List<ValidationIssue> issues) {

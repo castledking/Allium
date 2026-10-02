@@ -62,6 +62,23 @@ public final class TradingCardKeys {
     public static final NamespacedKey BONUSES = key("bonuses");
 
     /**
+     * Per bonus slot: roll count, money spent, locked.
+     *
+     * <p>Separate from {@link #BONUSES} because that one predates slots being
+     * rolled individually and is read by cards already in circulation; a card
+     * with no state here has simply never been rolled.
+     */
+    public static final NamespacedKey SLOT_STATE = key("slot_state");
+
+    /**
+     * Marks a bonus menu button with the slot index it acts on.
+     *
+     * <p>Only on the menu's own buttons, never on a card, so a drop handler can
+     * tell "threw away a button" from "dropped a card".
+     */
+    public static final NamespacedKey SLOT_BUTTON = key("slot_button");
+
+    /**
      * Accumulated xp toward the next level.
      *
      * <p>Stored rather than recomputed, because the level alone cannot say how

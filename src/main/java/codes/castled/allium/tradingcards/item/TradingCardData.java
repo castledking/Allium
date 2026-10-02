@@ -152,6 +152,17 @@ public record TradingCardData(
      */
     private static volatile CardLore lore;
 
+    /**
+     * The installed lore renderer, or null before the module enables.
+     *
+     * <p>Named apart from {@link #lore(CardLore)} because {@code lore} is also
+     * a component of this record, so a no-argument overload would be ambiguous
+     * at every call site.
+     */
+    public static CardLore loreRenderer() {
+        return lore;
+    }
+
     /** Installs the lore renderer. Pass null to stop rendering lore. */
     public static void lore(CardLore renderer) {
         lore = renderer;
@@ -175,8 +186,7 @@ public record TradingCardData(
         pdc.set(TradingCardKeys.QUALITY, PersistentDataType.INTEGER, data.quality());
         pdc.set(TradingCardKeys.SIGNATURES, PersistentDataType.STRING,
             String.join(",", data.signatures()));
-        pdc.set(TradingCardKeys.BONUSES, PersistentDataType.STRING,
-            String.join(",", data.bonuses()));
+        pdc.set(TradingCardKeys.BONUSES, PersistentDataType.STRING, writeBonuses(data));
         pdc.set(TradingCardKeys.XP, PersistentDataType.DOUBLE, data.xp());
         pdc.set(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, data.rerolls());
         pdc.set(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) (data.bound() ? 1 : 0));
@@ -273,12 +283,68 @@ public record TradingCardData(
         return out;
     }
 
+    /**
+     * Placeholder for a bonus slot with nothing in it.
+     *
+     * <p>A bonus slot can be rolled on its own, so the list has to keep its
+     * length and its positions — a card with a bonus in slot 4 and nothing in
+     * slots 0-2 must still know about those empties. An empty entry cannot be
+     * written as an empty string: {@code split(",")} drops trailing empties and
+     * the reader discards blank parts, so the slots would silently collapse
+     * together. This token cannot collide with a boost id, which is a config key.
+     */
+    private static final String EMPTY_SLOT = "-";
+
+    /** The boost in a bonus slot, or {@code ""} when it is empty or absent. */
+    public String bonusAt(int slot) {
+        return slot >= 0 && slot < bonuses.size() ? bonuses.get(slot) : "";
+    }
+
+    /** A copy with one bonus slot set. An empty id clears the slot. */
+    public TradingCardData withBonusAt(int slot, String boostId, int slotCount) {
+        List<String> next = new ArrayList<>();
+        for (int i = 0; i < Math.max(slotCount, bonuses.size()); i++) {
+            next.add(i < bonuses.size() ? bonuses.get(i) : "");
+        }
+        if (slot >= 0 && slot < next.size()) {
+            next.set(slot, boostId == null ? "" : boostId);
+        }
+        return new TradingCardData(mob, cardId, tier, level, quality, signatures,
+            List.copyOf(next), xp, rerolls, bound);
+    }
+
     private static List<String> readSignatures(String raw) {
         if (raw == null || raw.isBlank()) return List.of();
         List<String> out = new ArrayList<>();
         for (String part : Arrays.asList(raw.split(","))) {
             String trimmed = part.trim();
             if (!trimmed.isEmpty()) out.add(trimmed);
+        }
+        return List.copyOf(out);
+    }
+
+    /** Serialises bonuses keeping empty slots in place. See {@link #EMPTY_SLOT}. */
+    private static String writeBonuses(TradingCardData data) {
+        List<String> parts = new ArrayList<>();
+        for (String bonus : data.bonuses()) {
+            parts.add(bonus == null || bonus.isBlank() ? EMPTY_SLOT : bonus);
+        }
+        return String.join(",", parts);
+    }
+
+    /**
+     * Reads bonuses keeping empty slots in place.
+     *
+     * <p>A list written before slots were rolled individually has no placeholders,
+     * so it reads back as-is and the absent trailing slots come back empty from
+     * {@link #bonusAt}. That keeps every card already in circulation readable.
+     */
+    private static List<String> readBonuses(String raw) {
+        if (raw == null || raw.isBlank()) return List.of();
+        List<String> out = new ArrayList<>();
+        for (String part : raw.split(",", -1)) {
+            String trimmed = part.trim();
+            out.add(EMPTY_SLOT.equals(trimmed) ? "" : trimmed);
         }
         return List.copyOf(out);
     }

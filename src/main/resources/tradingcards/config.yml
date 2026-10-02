@@ -167,6 +167,31 @@ trade:
 # better or unchanged — the price buys additive value, not a gamble
 # that might take something away.
 # ------------------------------------------------------------
+bonus-slot-roll:
+  # A bonus slot is rolled on its own, for its own price, rather than
+  # as a side effect of a reroll. The card always shows every
+  # slot it could ever have: one opens per tier, so a SIMPLE card
+  # has one to roll and a FABLED one has all five. An open slot with
+  # nothing in it reads "Empty!" and costs this to fill.
+  enabled: true
+  cost: 2000.0
+
+  # Each roll of a slot costs more than the last, the same way a reroll
+  # does. The menu always shows the NEXT price, so the player commits
+  # knowing it.
+  escalation: 1.35
+  round-to: 100
+
+  # A tier multiplier, so filling every slot on a Fabled card costs
+  # more than on a SIMPLE one. That is the point of the ladder.
+  tier-multipliers:
+    SIMPLE: 1.0
+    ELITE: 1.5
+    ULTIMATE: 2.0
+    LEGENDARY: 3.0
+    FABLED: 5.0
+
+# ------------------------------------------------------------
 reroll:
   enabled: true
   base-cost: 2000.0

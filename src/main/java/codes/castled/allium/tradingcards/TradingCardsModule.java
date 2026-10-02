@@ -108,6 +108,7 @@ public final class TradingCardsModule {
     private CardXpService cardXp;
     private codes.castled.allium.scheduler.TaskHandle antiFarmSave;
     private RerollService reroll;
+    private codes.castled.allium.tradingcards.bonus.BonusSlotService bonusSlots;
     private MergeRules mergeRules;
     private BoostService boosts;
     private EquippedCardTracker equipped;
@@ -187,6 +188,8 @@ public final class TradingCardsModule {
 
         Bukkit.getPluginManager().registerEvents(dropListener, plugin);
         Bukkit.getPluginManager().registerEvents(new CardMenuListener(this), plugin);
+        Bukkit.getPluginManager().registerEvents(
+            new codes.castled.allium.tradingcards.gui.BonusSlotDropListener(this), plugin);
         Bukkit.getPluginManager().registerEvents(new TradeInListener(this), plugin);
         Bukkit.getPluginManager().registerEvents(new PendingPayoutListener(this), plugin);
         reportIssues(issues);
@@ -390,9 +393,16 @@ public final class TradingCardsModule {
         // Exactly one of the two lists moves, and the result says which: an
         // unlock adds a signature and leaves the bonuses alone, a bonus roll
         // replaces the bonuses and leaves the signatures alone.
+        // A bonus-only reroll fills slots that are empty rather than replacing
+        // what is there. Slots are bought with their own money, and a reroll
+        // that overwrote one would make buying it pointless — the cheapest
+        // reroll would undo the most expensive slot.
+        List<String> bonuses = result.rerolledBonuses()
+            ? fillEmptySlots(player, card, result.bonuses(), held)
+            : card.bonuses();
         TradingCardData updated = card
             .withReroll(card.rerolls() + 1, result.signatures())
-            .withBonuses(result.rerolledBonuses() ? result.bonuses() : card.bonuses());
+            .withBonuses(bonuses);
         TradingCardData.write(held, updated);
 
         if (equipped != null && equipped.card(player.getUniqueId()) != null) {
@@ -403,8 +413,105 @@ public final class TradingCardsModule {
         return result;
     }
 
+    /**
+     * Places rolled bonuses into the slots that are free, leaving bought ones.
+     *
+     * <p>A locked slot is skipped even when it is empty: locking is how a player
+     * says "this slot is spoken for", and an empty locked slot is the one case
+     * where honouring that costs nothing to get wrong.
+     */
+    private List<String> fillEmptySlots(Player player, TradingCardData card,
+                                        List<String> rolled, ItemStack held) {
+        var service = bonusSlots;
+        if (service == null || rolled.isEmpty()) {
+            return rolled;
+        }
+        List<codes.castled.allium.tradingcards.bonus.BonusSlot> slots =
+            new ArrayList<>(service.slots(held, card));
+        int next = 0;
+        for (int i = 0; i < slots.size() && next < rolled.size(); i++) {
+            var slot = slots.get(i);
+            if (!slot.isEmpty() || slot.locked()) {
+                continue;
+            }
+            if (!service.isTierUnlocked(card, i)) {
+                continue;
+            }
+            // The roll was already charged as part of the reroll, so the slot's
+            // own spend is not increased again here.
+            slots.set(i, slot.rolled(rolled.get(next++), 0.0));
+        }
+        service.writeState(held, slots);
+        List<String> ids = new ArrayList<>(slots.size());
+        for (var slot : slots) {
+            ids.add(slot.id());
+        }
+        return List.copyOf(ids);
+    }
+
     public RerollService reroll() {
         return reroll;
+    }
+
+    public codes.castled.allium.tradingcards.bonus.BonusSlotService bonusSlots() {
+        return bonusSlots;
+    }
+
+    /**
+     * Rolls one bonus slot on a card in the player's inventory, charging for it.
+     *
+     * <p>Read back from the stack rather than trusting the caller, so a stale
+     * card cannot be rolled twice from one click, and refunded if the write
+     * fails. The charge and the write are deliberately separate steps.
+     */
+    public codes.castled.allium.tradingcards.bonus.BonusSlotService.Result rollBonusSlot(
+            Player player, int slot, int slotIndex) {
+        var service = bonusSlots;
+        if (service == null) {
+            return null;
+        }
+        var held = player.getInventory().getItem(slot);
+        var current = TradingCardData.read(held);
+        if (current.isEmpty()) {
+            return null;
+        }
+        var card = current.get();
+        var result = service.roll(player.getUniqueId(), card, slotIndex, held);
+        if (!result.succeeded()) {
+            return result;
+        }
+        service.writeBonuses(held, card, result.slots());
+        service.writeState(held, result.slots());
+
+        if (equipped != null && equipped.card(player.getUniqueId()) != null) {
+            progression.refreshEquipped(player,
+                TradingCardData.read(held).orElse(card));
+        }
+        return result;
+    }
+
+    /** Locks, unlocks or clears a bonus slot. Never charged. */
+    public codes.castled.allium.tradingcards.bonus.BonusSlotService.Result editBonusSlot(
+            Player player, int slot, int slotIndex, boolean clear) {
+        var service = bonusSlots;
+        if (service == null) {
+            return null;
+        }
+        var held = player.getInventory().getItem(slot);
+        var current = TradingCardData.read(held);
+        if (current.isEmpty()) {
+            return null;
+        }
+        var card = current.get();
+        var result = clear
+            ? service.clear(card, slotIndex, held)
+            : service.toggleLock(card, slotIndex, held);
+        if (result.slots() == null) {
+            return result;
+        }
+        service.writeBonuses(held, card, result.slots());
+        service.writeState(held, result.slots());
+        return result;
     }
 
     public MergeRules mergeRules() {
@@ -534,6 +641,10 @@ public final class TradingCardsModule {
                 codes.castled.allium.PluginStart.getInstance().getEconomyManager(),
                 java.util.concurrent.ThreadLocalRandom.current());
         this.reroll = booster;
+        this.bonusSlots = new codes.castled.allium.tradingcards.bonus.BonusSlotService(
+            loaded, config.bonusSlotRoll(), config.levelling().loreBonusSlots(),
+            codes.castled.allium.PluginStart.getInstance().getEconomyManager(),
+            java.util.concurrent.ThreadLocalRandom.current());
         this.mergeRules = new MergeRules(config.merge().enabled(),
             config.merge().requireSameMob(),
             config.levelling().maximumLevel(),

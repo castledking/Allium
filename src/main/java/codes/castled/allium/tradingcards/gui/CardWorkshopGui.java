@@ -37,6 +37,7 @@ public final class CardWorkshopGui extends BaseGUI {
 
     /** Tab row, well clear of the content row beneath it. */
     public static final int SLOT_TAB_REROLL = 10;
+    public static final int SLOT_TAB_BONUS = 11;
     public static final int SLOT_TAB_MERGE = 12;
     public static final int SLOT_TAB_TRADE = 14;
 
@@ -55,7 +56,7 @@ public final class CardWorkshopGui extends BaseGUI {
     public static final int SLOT_MERGE_A = 29;
     public static final int SLOT_MERGE_B = 33;
 
-    private enum Tab { REROLL, MERGE, TRADE }
+    private enum Tab { REROLL, BONUS, MERGE, TRADE }
 
     private final TradingCardsModule module;
     private TradingCardData card;
@@ -81,12 +82,22 @@ public final class CardWorkshopGui extends BaseGUI {
         clearAll();
         setItem(SLOT_TAB_REROLL, tabIcon(Material.AMETHYST_SHARD, Tab.REROLL,
             "Reroll"), event -> switchTab(Tab.REROLL));
+        setItem(SLOT_TAB_BONUS, tabIcon(Material.LIME_DYE, Tab.BONUS,
+            "Bonus Slots"), event -> switchTab(Tab.BONUS));
         setItem(SLOT_TAB_MERGE, tabIcon(Material.SHEARS, Tab.MERGE,
             "Merge"), event -> switchTab(Tab.MERGE));
         setItem(SLOT_TAB_TRADE, tabIcon(Material.HOPPER, Tab.TRADE,
             "Trade In"), event -> switchTab(Tab.TRADE));
         switch (tab) {
             case REROLL -> renderReroll();
+            // The slot menu is its own window: it has five buttons and its own
+            // click handling, and squeezing that into a tab of this one would
+            // mean two different things owning the same slots.
+            case BONUS -> {
+                // switchTab opens the slot menu instead of rendering here; this
+                // only runs if the window is somehow redrawn while on the tab.
+                new CardBonusGui(player, module, card, cardStack, sourceSlot).open();
+            }
             case MERGE -> renderMerge();
             case TRADE -> renderTrade();
         }
@@ -113,6 +124,13 @@ public final class CardWorkshopGui extends BaseGUI {
     }
 
     private void switchTab(Tab which) {
+        // Bonus slots get their own window rather than a tab of this one: they
+        // have five buttons and their own click handling, and sharing the slots
+        // would mean two things owning the same clicks.
+        if (which == Tab.BONUS) {
+            new CardBonusGui(player, module, card, cardStack, sourceSlot).open();
+            return;
+        }
         this.tab = which;
         initialize();
     }

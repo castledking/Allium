@@ -108,6 +108,16 @@ public final class CardLore {
         return lines.stream().map(CardLore::notItalic).toList();
     }
 
+    /**
+     * One bonus boost rendered the way it appears in a card's lore.
+     *
+     * <p>Public so the bonus menu can label a slot with exactly what the card
+     * will show, rather than a second formatting path that can drift from it.
+     */
+    public String bonusLineFor(String boostId, int level) {
+        return data.boostLine().apply(boostId, level);
+    }
+
     /** The card's title, e.g. {@code Allay Trading Card}, in the mob's colour. */
     private String titleLine(TradingCardData card) {
         String mob = card.mob();
@@ -175,8 +185,11 @@ public final class CardLore {
             + " <" + tierColour(tier) + ">[" + (tier.ordinal() + 1)
             + "/" + Tier.values().length + "]</" + tierColour(tier) + ">");
 
+        // bonusSlots returns whole lines: a slot that holds a bonus drops the
+        // "Bonus:" prefix, because the boost names itself and the prefix only
+        // ever labelled the ones that were empty or locked.
         for (String slot : bonusSlots(card)) {
-            out.add("<gray>Bonus:</gray> " + slot);
+            out.add(slot);
         }
 
         if (!sep.isEmpty()) out.add(sep);
@@ -197,21 +210,22 @@ public final class CardLore {
      */
     List<String> bonusSlots(TradingCardData card) {
         List<String> out = new ArrayList<>();
-        List<String> held = card.bonuses();
-        // A card that rolled bonuses must show all of them, so the slot count
-        // cannot be below what it holds. Keying this on rerolls alone hid every
-        // rolled bonus past the first behind "Locked", which read as the drop
-        // having awarded nothing. One slot is open from the start and every
-        // reroll opens another.
-        int unlocked = Math.min(data.bonusSlots(),
-            Math.max(held.size(), card.rerolls() + 1));
+        Tier tier = card.tier() == null ? Tier.SIMPLE : card.tier();
+        // One slot opens per tier: a SIMPLE card has one to roll and a FABLED one
+        // has all of them. Keyed on the tier rather than on rerolls, because a
+        // slot is now bought with its own roll and a reroll must not hand out a
+        // free one.
+        int unlocked = Math.min(data.bonusSlots(), tier.ordinal() + 1);
         for (int i = 0; i < data.bonusSlots(); i++) {
-            if (i >= unlocked) {
-                out.add("<dark_gray>Locked</dark_gray>");
-            } else if (i < held.size()) {
-                out.add(data.boostLine().apply(held.get(i), card.level()));
+            String held = card.bonusAt(i);
+            if (!held.isEmpty()) {
+                out.add(data.boostLine().apply(held, card.level()));
+            } else if (i < unlocked) {
+                // Rolled for a fee, so it reads as available rather than as a
+                // value the drop already gave. Grey, matching the pips.
+                out.add("<#777777>Empty!</#777777>");
             } else {
-                out.add("<red>Empty!</red>");
+                out.add("<#F15A45>Locked 🔒</#F15A45>");
             }
         }
         return out;

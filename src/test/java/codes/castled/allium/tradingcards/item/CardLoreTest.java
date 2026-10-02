@@ -199,14 +199,40 @@ class CardLoreTest {
     }
 
     @Test
-    void rerollsUnlockAnotherSlotEachTime() {
-        for (int rerolls = 0; rerolls < 5; rerolls++) {
-            var slots = lore(5, "").bonusSlots(
-                card(Tier.SIMPLE, 0, 15, rerolls, List.of("luck"), List.of(), 0.0));
-            int locked = (int) slots.stream().filter(s -> s.contains("Locked")).count();
-            assertEquals(5 - Math.min(5, rerolls + 1), locked,
-                "at " + rerolls + " rerolls, " + locked + " slots should be locked");
+    void theTierDecidesHowManySlotsOpenAndRerollsDoNot() {
+        // A slot is bought with its own roll now, so a reroll must not hand out a
+        // free one — otherwise the reroll button undercuts the slot price.
+        for (Tier tier : Tier.values()) {
+            for (int rerolls = 0; rerolls < 5; rerolls++) {
+                var slots = lore(5, "").bonusSlots(
+                    card(tier, 0, 15, rerolls, List.of("luck"), List.of(), 0.0));
+                int locked = (int) slots.stream().filter(s -> s.contains("Locked")).count();
+                assertEquals(5 - Math.min(5, tier.ordinal() + 1), locked,
+                    tier + " at " + rerolls + " rerolls should have the same "
+                        + "locked slots, had " + locked);
+            }
         }
+    }
+
+    @Test
+    void aFabledCardOpensEverySlot() {
+        var slots = lore(5, "").bonusSlots(
+            card(Tier.FABLED, 0, 15, 0, List.of("luck"), List.of(), 0.0));
+        assertEquals(5, slots.size());
+        for (int i = 0; i < 5; i++) {
+            assertTrue(slots.get(i).contains("Empty!"),
+                "slot " + i + " should be rollable on a Fabled card, was " + slots.get(i));
+        }
+    }
+
+    @Test
+    void anUnrolledSlotIsGreyRatherThanRed() {
+        // Grey reads as available; red read as a warning about something wrong.
+        var slots = lore(5, "").bonusSlots(
+            card(Tier.ELITE, 0, 15, 0, List.of("luck"), List.of(), 0.0));
+        assertTrue(slots.get(0).contains("<#777777>Empty!</#777777>"),
+            "slot 0 was " + slots.get(0));
+        assertFalse(slots.get(0).contains("<red>"));
     }
 
     @Test
@@ -219,13 +245,16 @@ class CardLoreTest {
     }
 
     @Test
-    void unlockedSlotsShowTheBonusesTheCardHolds() {
+    void rolledSlotsShowTheBonusesTheCardHolds() {
         var slots = lore(5, "").bonusSlots(
-            card(Tier.SIMPLE, 4, 15, 2, List.of("luck"), List.of("armor", "haste"), 0.0));
+            card(Tier.LEGENDARY, 4, 15, 0, List.of("luck"), List.of("armor", "haste"), 0.0));
         assertTrue(slots.get(0).contains("armor"));
         assertTrue(slots.get(1).contains("haste"));
-        assertTrue(slots.get(2).contains("Empty!"), "a third reroll opens a third slot");
-        assertTrue(slots.get(3).contains("Locked"));
+        // LEGENDARY opens four slots, so the next two are rollable and the
+        // fifth is not yet.
+        assertTrue(slots.get(2).contains("Empty!"));
+        assertTrue(slots.get(3).contains("Empty!"));
+        assertTrue(slots.get(4).contains("Locked"));
     }
 
     @Test

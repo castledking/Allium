@@ -96,16 +96,15 @@ public class HeldCardNameListener implements Listener {
         if (!TradingCardData.isCard(held)) {
             return null;
         }
-        // The item's own name is blank — the title moved into lore line 0 so it
-        // clears the panel's ornament — so the action bar takes that line
-        // instead. Reading it rather than rebuilding it means the action bar and
-        // the card cannot disagree about the mob or its colour.
+        // The item's own name is blanked by the pack — the title sits in the lore
+        // under the panel's header — so the action bar takes that line instead,
+        // with the frame glyphs taken off. Reading it rather than rebuilding it
+        // means the action bar and the card cannot disagree about the mob or its
+        // colour.
         var meta = held.getItemMeta();
-        if (meta != null && meta.lore() != null && !meta.lore().isEmpty()) {
-            var title = meta.lore().get(0);
-            if (title != null) {
-                return MM.serialize(title);
-            }
+        var title = meta == null ? null : CardFrame.title(meta.lore());
+        if (title != null) {
+            return MM.serialize(title);
         }
         // No lore, so fall back to the mob rather than showing nothing.
         var card = TradingCardData.read(held).orElse(null);

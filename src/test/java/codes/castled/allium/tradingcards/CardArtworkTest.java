@@ -4,54 +4,74 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import codes.castled.allium.tradingcards.card.Tier;
-import codes.castled.allium.tradingcards.item.CardTooltipStyle;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 
 /**
- * The frame constants against the artwork they describe.
+ * The card artwork against the layout the frame glyphs are cut for.
  *
- * <p>{@code CardTooltipStyle.FRAME_BASE} and
- * {@code tools/generate_tooltip_sprites.py} both have to agree on the same
- * numbers, in two files that cannot see each other. When they disagreed the
- * bottom cap's top rule landed on the last lore line — the frame still drew, it
- * was just drawn through the text, which no compiler or server log reports.
+ * <p>{@code tools/generate_card_glyphs.py} slices this art into a header, a
+ * one-line body slice and a bottom cap, and {@code CardFrame} puts them on fixed
+ * lines. Neither notices if the art stops fitting: a taller cap is drawn
+ * anyway, through the title or over the F3+H lines, and no server log reports
+ * it. The generator refuses such art, but only when someone runs it, so the
+ * same checks run here against the committed PNGs.
  *
- * <p>So the artwork is the source of truth here. The caps are measured from the
- * committed PNGs exactly as the generator measures them: the plain panel ROW is
- * the most common whole row, everything above its first occurrence is the top
- * cap and everything below its last is the bottom cap. Measuring per-pixel
- * colour instead gives a different answer, because the panel row carries the
- * 1px inset border lines and the last row does not.
+ * <p>The caps are measured exactly as the generator measures them: the plain
+ * panel ROW is the most common whole row, everything above its first occurrence
+ * is the top cap and everything below its last is the bottom cap. Measuring
+ * per-pixel colour instead gives a different answer, because the panel row
+ * carries the 1px inset border lines and the last row does not.
  */
 class CardArtworkTest {
 
     private static final File ART =
         new File("src/main/resources/tradingcards/tooltip-originals");
 
+    private static final Path GENERATOR = Path.of("tools/generate_card_glyphs.py");
+
     @Test
-    void theBottomCapMatchesWhatThePluginAssumes() {
+    void theTopCapFitsInTheHeaderAboveTheTitle() throws Exception {
+        int titleRow = generatorInt("TITLE_ROW");
         for (Tier tier : Tier.values()) {
-            int[] caps = caps(artFor(tier));
-            assertEquals(CardTooltipStyle.BOTTOM_CAP, caps[1],
-                tier + " artwork has a " + caps[1] + " row bottom cap but "
-                    + "CardTooltipStyle assumes " + CardTooltipStyle.BOTTOM_CAP
-                    + "; regenerate the sprites and update BOTTOM_CAP together");
+            int top = caps(artFor(tier))[0];
+            assertTrue(top <= titleRow,
+                tier + " has a " + top + " row top cap, but the title starts at art row "
+                    + titleRow + "; the cap would be drawn through it");
         }
     }
 
     @Test
-    void theMiddleBandIsUniformSoTheShaderCanRepeatIt() {
-        // The shader fills the space between the caps by repeating one plain
-        // panel row. If the art ever gains a rule or a flourish in the middle,
-        // that row stops being plain and the repeat smears it down the panel.
+    void theBottomCapFitsInTheLinesTheFrameLeavesForIt() throws Exception {
+        // The cap starts on the bottom line, after BOTTOM_LEAD plain rows, and
+        // the blank lines after it have to cover the rest of it.
+        int line = generatorInt("LINE");
+        int lead = generatorInt("BOTTOM_LEAD");
+        int extra = generatorInt("BOTTOM_EXTRA_LINES");
+        for (Tier tier : Tier.values()) {
+            int bot = caps(artFor(tier))[1];
+            assertEquals(extra, (lead + bot + line - 1) / line - 1,
+                tier + " has a " + bot + " row bottom cap, which needs a different "
+                    + "number of blank lines after it than CardFrame leaves");
+        }
+    }
+
+    @Test
+    void theMiddleBandIsUniformSoOneRowCanStandForIt() {
+        // The body glyph is one plain panel row repeated, and every line between
+        // the caps gets that glyph. If the art ever gains a rule or a flourish in
+        // the middle, the cards lose it rather than repeating it.
         for (Tier tier : Tier.values()) {
             BufferedImage art = artFor(tier);
             List<List<Integer>> rows = rows(art);
@@ -60,23 +80,20 @@ class CardArtworkTest {
             for (int y = caps[0]; y < art.getHeight() - caps[1]; y++) {
                 assertEquals(panel, rows.get(y),
                     tier + " row " + y + " differs from the panel row, so the "
-                        + "shader's middle repeat would smear it");
+                        + "body glyph would drop it");
             }
         }
     }
 
     @Test
-    void everyTierProducesTheSameFrameHeight() {
-        // CardTooltipStyle carries one FRAME_BASE for all tiers, so a tier whose
-        // art measured differently would be drawn at the wrong height.
-        Map<Tier, Integer> bases = new HashMap<>();
+    void everyTierIsTheSameWidth() {
+        // One space steps back from the end of the frame glyph to the text for
+        // every tier, so a tier drawn at another width puts its text elsewhere.
+        Set<Integer> widths = new HashSet<>();
         for (Tier tier : Tier.values()) {
-            int bot = caps(artFor(tier))[1];
-            bases.put(tier, CardTooltipStyle.TEXT_TOP + bot + CardTooltipStyle.CAP_GAP);
+            widths.add(artFor(tier).getWidth());
         }
-        assertEquals(1, new HashSet<>(bases.values()).size(),
-            "tiers disagree on the frame base: " + bases);
-        assertEquals(CardTooltipStyle.FRAME_BASE, bases.values().iterator().next());
+        assertEquals(1, widths.size(), "tiers disagree on the frame width: " + widths);
     }
 
     @Test
@@ -85,6 +102,15 @@ class CardArtworkTest {
             assertTrue(caps(artFor(tier))[0] > 0,
                 tier + " has no top ornament; the title would sit on the panel");
         }
+    }
+
+    private static int generatorInt(String name) throws Exception {
+        var matcher = Pattern.compile("^" + name + " = (\\d+)", Pattern.MULTILINE)
+            .matcher(Files.readString(GENERATOR));
+        if (!matcher.find()) {
+            throw new AssertionError(name + " not found in " + GENERATOR);
+        }
+        return Integer.parseInt(matcher.group(1));
     }
 
     /** Top cap then bottom cap, measured the way the generator measures them. */

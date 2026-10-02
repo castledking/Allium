@@ -2,6 +2,7 @@ package codes.castled.allium.tradingcards.gui;
 
 import codes.castled.allium.inventory.gui.BaseGUI;
 import codes.castled.allium.tradingcards.TradingCardsModule;
+import codes.castled.allium.tradingcards.item.CardFrame;
 import codes.castled.allium.tradingcards.item.TradingCardData;
 import codes.castled.allium.tradingcards.trade.TradeQuote;
 import java.util.ArrayList;
@@ -75,7 +76,7 @@ public final class CardMenuGui extends BaseGUI {
             // Only a refusal is worth stating here; a payout is not.
             lore.add(MM.deserialize("<red>" + quote.denial().message()));
         }
-        meta.lore(lore);
+        meta.lore(CardFrame.rewrap(card.tier(), meta.lore(), lore));
         shown.setItemMeta(meta);
         return shown;
     }

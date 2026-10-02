@@ -12,24 +12,13 @@ import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 
 /**
- * Renders a card's lore. The panel behind it is drawn by the client, not here.
+ * Renders a card's lore. The panel behind it is not drawn here.
  *
  * <h2>The background</h2>
  *
- * <p>Drawn by vanilla, not by this class. The client renders every item tooltip
- * from one sprite, {@code gui/sprites/tooltip/background}, and a {@code .mcmeta}
- * nine-slice on that sprite makes vanilla stretch or tile its centre to fit the
- * tooltip — so the panel grows with the lore for free, on every client, with no
- * server-side work at all.
- *
- * <p>The obvious alternative, drawing the panel as font glyphs in the lore so
- * each tier could have its own, is not viable here: Nexo rewrites any
- * font JSON it finds under any namespace, replacing the declared metrics with
- * its own defaults and dropping negative advances outright, so the glyph resolves
- * to placeholders and every character renders as a box.
- *
- * <p>Tiers are therefore distinguished by the badge and colour rather than by
- * panel colour, which is what the tier label glyph is for.
+ * <p>{@link CardFrame} wraps these lines in the tier's panel after they are
+ * parsed, so this class only decides what the card says. The title comes first
+ * here; the frame puts its header line above it.
  */
 public final class CardLore {
 
@@ -105,9 +94,9 @@ public final class CardLore {
         }
         Tier tier = card.tier() == null ? Tier.SIMPLE : card.tier();
         // The card's name is blank on the item, because the tooltip's first line
-        // is the name and the ornament sits in the rows above the text. A title
-        // there collided with the ornament, so the title moved into the lore as
-        // line 0 and everything below it shifted clear.
+        // is the name and the panel's header reaches up through it. A title
+        // there collided with the ornament, so the title lives in the lore,
+        // under the header CardFrame adds.
         List<String> lines = new ArrayList<>();
         lines.add(titleLine(card));
         lines.addAll(body(card, tier, xp));

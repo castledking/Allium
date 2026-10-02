@@ -338,8 +338,7 @@ public final class TradingCardsModule {
      *
      * <p>Only presentation: the card's level, quality, boosts and slot state are
      * left exactly as they were, so a reload can never change what a card is
-     * worth. The tooltip frame is re-picked too, because its sprite depends on
-     * the line count and an edit that adds or removes a line changes that.
+     * worth. The frame is part of the lore, so it is rebuilt with it.
      *
      * <p>Only the player's own inventory is touched. Anything in an open GUI is
      * left alone: rewriting an item mid-click is how a player ends up with a

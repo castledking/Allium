@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import net.kyori.adventure.text.Component;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -191,13 +192,12 @@ public record TradingCardData(
         pdc.set(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, data.rerolls());
         pdc.set(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) (data.bound() ? 1 : 0));
         meta.setMaxStackSize(1);
-        int loreLines = renderLore(meta, data);
+        Component title = renderLore(meta, data);
         stack.setItemMeta(meta);
         // After the meta is committed, because both are stack components and
-        // setItemMeta can replace the stack's component set. The style is
-        // per-line-count, so it needs the count renderLore just produced.
-        CardTooltipStyle.apply(stack, data.tier(), loreLines);
-        CardTooltipStyle.blankName(stack);
+        // setItemMeta can replace the stack's component set.
+        CardTooltipStyle.apply(stack);
+        CardTooltipStyle.name(stack, title);
     }
 
     /**
@@ -215,29 +215,34 @@ public record TradingCardData(
         if (meta == null) {
             return;
         }
-        int loreLines = renderLore(meta, data);
+        Component title = renderLore(meta, data);
         stack.setItemMeta(meta);
-        // The tooltip's first line is the item name and the panel's ornament
-        // sits in the rows above the text, so a title there overlapped the
-        // ornament. See blankName for why this is item_name and not displayName.
-        CardTooltipStyle.blankName(stack);
-        CardTooltipStyle.apply(stack, data.tier(), loreLines);
+        // Both rewritten too, so a card written before the panel moved into the
+        // lore stops pointing at the old sprites. See CardTooltipStyle.name for
+        // why this is item_name and not displayName.
+        CardTooltipStyle.name(stack, title);
+        CardTooltipStyle.apply(stack);
     }
 
-    /** Writes the card's lore and returns how many lines it wrote. */
-    private static int renderLore(ItemMeta meta, TradingCardData data) {
+    /**
+     * Writes the card's lore, framed, and returns its title.
+     *
+     * <p>The title goes back to the caller because the item's name is built
+     * from it: a player without the pack sees that name instead of a blank line.
+     */
+    private static Component renderLore(ItemMeta meta, TradingCardData data) {
         CardLore renderer = lore;
         if (renderer == null) {
-            return 0;
+            return Component.empty();
         }
         // Rebuilt from the card every time rather than appended to, so repeated
         // writes replace the level line instead of stacking a new one on top.
-        java.util.List<net.kyori.adventure.text.Component> lines =
+        java.util.List<Component> lines =
             renderer.render(data, data.xp()).stream()
                 .map(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()::deserialize)
                 .collect(java.util.stream.Collectors.toList());
-        meta.lore(lines);
-        return lines.size();
+        meta.lore(CardFrame.wrap(data.tier(), lines));
+        return lines.isEmpty() ? Component.empty() : lines.get(0);
     }
 
     /** A copy of this card at a different level. */

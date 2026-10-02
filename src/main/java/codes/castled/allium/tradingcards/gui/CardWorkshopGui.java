@@ -2,6 +2,7 @@ package codes.castled.allium.tradingcards.gui;
 
 import codes.castled.allium.inventory.gui.BaseGUI;
 import codes.castled.allium.tradingcards.TradingCardsModule;
+import codes.castled.allium.tradingcards.item.CardFrame;
 import codes.castled.allium.tradingcards.item.TradingCardData;
 import codes.castled.allium.tradingcards.merge.MergeRules;
 import codes.castled.allium.tradingcards.reroll.RerollService;
@@ -362,7 +363,7 @@ public final class CardWorkshopGui extends BaseGUI {
         lore.add(MM.deserialize(module.loreSeparator()));
         lore.add(MM.deserialize("<gray>Signatures: <white>"
             + String.join(", ", card.signatures()) + "</white>"));
-        meta.lore(lore);
+        meta.lore(CardFrame.rewrap(card.tier(), meta.lore(), lore));
         shown.setItemMeta(meta);
         return shown;
     }

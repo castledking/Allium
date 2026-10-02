@@ -38,16 +38,29 @@ public final class CardTooltipStyle {
     /** The namespace the sprite pair lives under. */
     public static final String NAMESPACE = "sf";
 
-    private static final Map<Tier, Key> STYLES = styles();
+    /**
+     * Frame height, in GUI pixels, is {@code FRAME_BASE + LINE_PITCH * lines}.
+     *
+     * <p>Lore length varies per card — every signature is a line and the xp row
+     * is optional — and the shader draws the panel 1:1 and stops at this height,
+     * so one constant would leave a tall panel on a short card and clip the last
+     * line on a long one.
+     *
+     * <p>Calibrated against the client rather than derived from font metrics:
+     * the bottom cap is 15 art rows and the lore ends only about 3px above the
+     * quad's bottom edge, so the cap cannot be placed from the line count alone.
+     * Must match {@code tools/generate_tooltip_sprites.py}.
+     */
+    public static final int FRAME_BASE = 32;
+    public static final int LINE_PITCH = 10;
+    private static final int MIN_LINES = 15;
+    private static final int MAX_LINES = 30;
 
     private CardTooltipStyle() {}
 
-    private static Map<Tier, Key> styles() {
-        Map<Tier, Key> map = new EnumMap<>(Tier.class);
-        for (Tier tier : Tier.values()) {
-            map.put(tier, Key.key(NAMESPACE, "card_" + tier.name().toLowerCase(Locale.ROOT)));
-        }
-        return Map.copyOf(map);
+    private static String styleId(Tier tier, int lines) {
+        int n = Math.clamp(lines, MIN_LINES, MAX_LINES);
+        return "card_" + tier.name().toLowerCase(Locale.ROOT) + "_" + n;
     }
 
     /**
@@ -58,8 +71,8 @@ public final class CardTooltipStyle {
      * finds {@code card_fabled_background.png}, while {@code sf:card_FABLED} would
      * not.
      */
-    public static Key styleFor(Tier tier) {
-        return STYLES.get(tier == null ? Tier.SIMPLE : tier);
+    public static Key styleFor(Tier tier, int lines) {
+        return Key.key(NAMESPACE, styleId(tier == null ? Tier.SIMPLE : tier, lines));
     }
 
     /**
@@ -70,12 +83,12 @@ public final class CardTooltipStyle {
      * has to leave the LORE tier's panel behind, or it takes two cards' worth of
      * chrome with it.
      */
-    public static void apply(ItemStack stack, Tier tier) {
+    public static void apply(ItemStack stack, Tier tier, int loreLines) {
         if (stack == null) {
             return;
         }
         try {
-            stack.setData(DataComponentTypes.TOOLTIP_STYLE, styleFor(tier));
+            stack.setData(DataComponentTypes.TOOLTIP_STYLE, styleFor(tier, loreLines));
         } catch (Throwable ignored) {
             // A Paper build without the component, or an item the stack cannot
             // carry one. The card is still correct; it just uses the default

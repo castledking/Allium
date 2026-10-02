@@ -181,11 +181,12 @@ public record TradingCardData(
         pdc.set(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, data.rerolls());
         pdc.set(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) (data.bound() ? 1 : 0));
         meta.setMaxStackSize(1);
-        renderLore(meta, data);
+        int loreLines = renderLore(meta, data);
         stack.setItemMeta(meta);
         // After the meta is committed, because both are stack components and
-        // setItemMeta can replace the stack's component set.
-        CardTooltipStyle.apply(stack, data.tier());
+        // setItemMeta can replace the stack's component set. The style is
+        // per-line-count, so it needs the count renderLore just produced.
+        CardTooltipStyle.apply(stack, data.tier(), loreLines);
         CardTooltipStyle.blankName(stack);
     }
 
@@ -204,18 +205,20 @@ public record TradingCardData(
         if (meta == null) {
             return;
         }
-        renderLore(meta, data);
+        int loreLines = renderLore(meta, data);
         stack.setItemMeta(meta);
         // The tooltip's first line is the item name and the panel's ornament
         // sits in the rows above the text, so a title there overlapped the
         // ornament. See blankName for why this is item_name and not displayName.
         CardTooltipStyle.blankName(stack);
+        CardTooltipStyle.apply(stack, data.tier(), loreLines);
     }
 
-    private static void renderLore(ItemMeta meta, TradingCardData data) {
+    /** Writes the card's lore and returns how many lines it wrote. */
+    private static int renderLore(ItemMeta meta, TradingCardData data) {
         CardLore renderer = lore;
         if (renderer == null) {
-            return;
+            return 0;
         }
         // Rebuilt from the card every time rather than appended to, so repeated
         // writes replace the level line instead of stacking a new one on top.
@@ -224,6 +227,7 @@ public record TradingCardData(
                 .map(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()::deserialize)
                 .collect(java.util.stream.Collectors.toList());
         meta.lore(lines);
+        return lines.size();
     }
 
     /** A copy of this card at a different level. */

@@ -24,11 +24,11 @@ class CardTooltipStyleTest {
     @Test
     void theStyleIdIsLowercaseSoTheAssetPathResolves() {
         for (Tier tier : Tier.values()) {
-            var key = CardTooltipStyle.styleFor(tier);
+            var key = CardTooltipStyle.styleFor(tier, 21);
             assertEquals(key.namespace(), CardTooltipStyle.NAMESPACE);
             assertEquals(key.value(), key.value().toLowerCase(java.util.Locale.ROOT),
                 tier + " style id must be lowercase; the client uses it as a path verbatim");
-            assertEquals("card_" + tier.name().toLowerCase(java.util.Locale.ROOT),
+            assertEquals("card_" + tier.name().toLowerCase(java.util.Locale.ROOT) + "_21",
                 key.value());
         }
     }
@@ -38,10 +38,10 @@ class CardTooltipStyleTest {
         // The client maps ns:path to ns:tooltip/path_background and _frame, so the
         // file name has to be exactly the style id with the sprite kind appended.
         for (Tier tier : Tier.values()) {
-            String style = CardTooltipStyle.styleFor(tier).value();
+            String style = CardTooltipStyle.styleFor(tier, 21).value();
             for (String kind : new String[] {"background", "frame"}) {
                 String file = "card_" + tier.name().toLowerCase(java.util.Locale.ROOT)
-                    + "_" + kind + ".png";
+                    + "_21_" + kind + ".png";
                 assertEquals(file, style + "_" + kind + ".png");
             }
         }
@@ -51,7 +51,7 @@ class CardTooltipStyleTest {
     void everyTierGetsItsOwnStyle() {
         Set<String> seen = new HashSet<>();
         for (Tier tier : Tier.values()) {
-            assertTrue(seen.add(CardTooltipStyle.styleFor(tier).value()),
+            assertTrue(seen.add(CardTooltipStyle.styleFor(tier, 21).value()),
                 tier + " reuses another tier's style, so two tiers look identical");
         }
         assertEquals(Tier.values().length, seen.size());
@@ -59,14 +59,36 @@ class CardTooltipStyleTest {
 
     @Test
     void fabledIsNotTheSameStyleAsSimple() {
-        assertNotEquals(CardTooltipStyle.styleFor(Tier.FABLED).value(),
-            CardTooltipStyle.styleFor(Tier.SIMPLE).value());
+        assertNotEquals(CardTooltipStyle.styleFor(Tier.FABLED, 21).value(),
+            CardTooltipStyle.styleFor(Tier.SIMPLE, 21).value());
     }
 
     @Test
     void aNullTierFallsBackToTheLowestRatherThanThrowing() {
         // A hand-edited card with no tier read should still get a panel.
-        assertEquals(CardTooltipStyle.styleFor(Tier.SIMPLE).value(),
-            CardTooltipStyle.styleFor(null).value());
+        assertEquals(CardTooltipStyle.styleFor(Tier.SIMPLE, 21).value(),
+            CardTooltipStyle.styleFor(null, 21).value());
+    }
+
+    @Test
+    void theFrameHeightFollowsTheLoreLength() {
+        // Lore length varies per card, so the style id carries the line count and
+        // a longer card must not reuse a shorter card's frame.
+        for (Tier tier : Tier.values()) {
+            assertNotEquals(CardTooltipStyle.styleFor(tier, 20).value(),
+                CardTooltipStyle.styleFor(tier, 21).value(),
+                tier + " frames must differ between lore lengths");
+        }
+    }
+
+    @Test
+    void anAbsurdLoreLengthClampsInsteadOfMissingTheSprite() {
+        // A style id with no sprite behind it falls back to the default tooltip,
+        // silently. Clamping keeps a card that somehow grew too many lines on the
+        // card frame rather than on vanilla's.
+        var tiny = CardTooltipStyle.styleFor(Tier.FABLED, 2).value();
+        var huge = CardTooltipStyle.styleFor(Tier.FABLED, 900).value();
+        assertEquals(CardTooltipStyle.styleFor(Tier.FABLED, 15).value(), tiny);
+        assertEquals(CardTooltipStyle.styleFor(Tier.FABLED, 30).value(), huge);
     }
 }

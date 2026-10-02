@@ -11,8 +11,20 @@ Sprite layout (row 0 is metadata and is never drawn):
     (2,0) caps    R = top, G = bottom   cap heights, measured from the artwork
     rows 1..n     the artwork, unchanged
 
+Frame height is per lore length. The shader draws the art 1:1 and stops at the
+height in the metadata row, and lore length varies per card (each signature is a
+line, the xp row is optional), so a single height would leave a tall panel on a
+short card and clip the last line on a long one. The plugin counts the lines it
+just rendered and picks the matching sprite.
+
+    H(n) = HEIGHT_BASE + LINE_PITCH * n
+
+HEIGHT_BASE is calibrated against the client, not derived: the bottom cap is 15
+art rows and the lore ends only about 3px above the quad's bottom edge, so the
+cap cannot be positioned from the font metrics alone.
+
 Usage:
-    python3 tools/generate_tooltip_sprites.py --out <dir> --height 235
+    python3 tools/generate_tooltip_sprites.py --out <dir>
 """
 
 import argparse
@@ -23,6 +35,12 @@ from collections import Counter
 from PIL import Image
 
 TIERS = ("simple", "elite", "ultimate", "legendary", "fabled")
+
+# Must match CardTooltipStyle.FRAME_BASE and .LINE_PITCH.
+HEIGHT_BASE = 32
+LINE_PITCH = 10
+MIN_LINES = 15
+MAX_LINES = 30
 HERE = pathlib.Path(__file__).resolve().parent.parent
 ORIGINALS = HERE / "src/main/resources/tradingcards/tooltip-originals"
 
@@ -67,34 +85,39 @@ def build(art: Image.Image, height: int) -> Image.Image:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, type=pathlib.Path)
-    ap.add_argument("--height", required=True, type=int)
-    ap.add_argument("--suffix", default="",
-                    help="appended to the sprite name, e.g. '_21' for a lore length")
+    ap.add_argument("--height", type=int,
+                    help="fixed frame height; overrides the per-length variants")
     args = ap.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
 
+    lengths = [None] if args.height else range(MIN_LINES, MAX_LINES + 1)
     for tier in TIERS:
-        # The style id is sf:card_<tier>, which the client resolves to the pair
-        # tooltip/card_<tier>_background and tooltip/card_<tier>_frame. The
-        # background carries the whole panel now; the frame stays empty because
-        # the shader emits background and border in a single draw.
+        # The style id is sf:card_<tier>_<lines>, which the client resolves to the
+        # pair tooltip/<id>_background and <id>_frame. The background carries the
+        # whole panel; the frame stays empty because the shader emits background
+        # and border in a single draw.
         src = ORIGINALS / f"card_{tier}_frame.png"
         art = Image.open(src).convert("RGBA")
-        name = f"card_{tier}{args.suffix}"
 
-        build(art, args.height).save(args.out / f"{name}_background.png")
-        (args.out / f"{name}_background.png.mcmeta").write_text(
-            json.dumps(STRETCH_MCMETA, indent=4) + "\n")
+        for n in lengths:
+            height = args.height if n is None else HEIGHT_BASE + LINE_PITCH * n
+            name = f"card_{tier}" if n is None else f"card_{tier}_{n}"
 
-        # No marker: the vanilla path samples it, finds alpha 0 and discards, so
-        # it costs nothing and needs no height.
-        empty = Image.new("RGBA", art.size, (0, 0, 0, 0))
-        empty.save(args.out / f"{name}_frame.png")
-        (args.out / f"{name}_frame.png.mcmeta").write_text(
-            json.dumps(STRETCH_MCMETA, indent=4) + "\n")
+            build(art, height).save(args.out / f"{name}_background.png")
+            (args.out / f"{name}_background.png.mcmeta").write_text(
+                json.dumps(STRETCH_MCMETA, indent=4) + "\n")
 
-        print(f"  {name}  art {art.size[0]}x{art.size[1]}  frame height {args.height}")
+            # No marker: the vanilla path samples it, finds alpha 0 and discards,
+            # so it costs nothing and needs no height.
+            empty = Image.new("RGBA", art.size, (0, 0, 0, 0))
+            empty.save(args.out / f"{name}_frame.png")
+            (args.out / f"{name}_frame.png.mcmeta").write_text(
+                json.dumps(STRETCH_MCMETA, indent=4) + "\n")
+
+        span = f"{args.height}" if args.height else \
+            f"{HEIGHT_BASE + LINE_PITCH * MIN_LINES}..{HEIGHT_BASE + LINE_PITCH * MAX_LINES}"
+        print(f"  card_{tier}  art {art.size[0]}x{art.size[1]}  frame heights {span}")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 {
   "order": 5,
-  "icon": "nexo:chicken_trading_card",
+  "icon": "nexo:relique_card_slot_icon",
   "size": 1,
   "drop_rule": "DEFAULT",
   "validators": [ "relique:trading_card" ]

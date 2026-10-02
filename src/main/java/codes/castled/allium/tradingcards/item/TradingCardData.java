@@ -34,9 +34,16 @@ public record TradingCardData(
     int level,
     int quality,
     List<String> signatures,
+    List<String> bonuses,
     int rerolls,
     boolean bound
 ) {
+
+    /** A card with nothing but its three starting signatures. */
+    public TradingCardData(String mob, String cardId, Tier tier, int level, int quality,
+                           List<String> signatures, int rerolls, boolean bound) {
+        this(mob, cardId, tier, level, quality, signatures, List.of(), rerolls, bound);
+    }
 
     /** The band this card's quality falls in, from the current config. */
     public QualityBand band(List<QualityBand> bands) {
@@ -87,6 +94,7 @@ public record TradingCardData(
             pdc.getOrDefault(TradingCardKeys.LEVEL, PersistentDataType.INTEGER, 0),
             pdc.getOrDefault(TradingCardKeys.QUALITY, PersistentDataType.INTEGER, 100),
             readSignatures(pdc.get(TradingCardKeys.SIGNATURES, PersistentDataType.STRING)),
+            readSignatures(pdc.get(TradingCardKeys.BONUSES, PersistentDataType.STRING)),
             pdc.getOrDefault(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, 0),
             pdc.getOrDefault(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) 0) == 1));
     }
@@ -101,7 +109,8 @@ public record TradingCardData(
      */
     public static Optional<ItemStack> create(ItemResolverChain items, CardDefinition definition,
                                              Tier tier, int level, int quality,
-                                             List<String> signatures, boolean bound) {
+                                             List<String> signatures, List<String> bonuses,
+                                             boolean bound) {
         ItemRef ref = definition.itemFor(tier);
         if (ref == null) {
             return Optional.empty();
@@ -112,7 +121,8 @@ public record TradingCardData(
         }
         ItemStack stack = base.get();
         TradingCardData data = new TradingCardData(
-            definition.mob(), definition.id(), tier, level, quality, signatures, 0, bound);
+            definition.mob(), definition.id(), tier, level, quality, signatures, bonuses, 0,
+            bound);
         write(stack, data);
         return Optional.of(stack);
     }
@@ -135,6 +145,8 @@ public record TradingCardData(
         pdc.set(TradingCardKeys.QUALITY, PersistentDataType.INTEGER, data.quality());
         pdc.set(TradingCardKeys.SIGNATURES, PersistentDataType.STRING,
             String.join(",", data.signatures()));
+        pdc.set(TradingCardKeys.BONUSES, PersistentDataType.STRING,
+            String.join(",", data.bonuses()));
         pdc.set(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, data.rerolls());
         pdc.set(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) (data.bound() ? 1 : 0));
         // Two cards of the same mob and tier differ in level, quality and
@@ -146,13 +158,25 @@ public record TradingCardData(
 
     /** A copy of this card at a different level. */
     public TradingCardData withLevel(int newLevel) {
-        return new TradingCardData(mob, cardId, tier, newLevel, quality, signatures, rerolls, bound);
+        return new TradingCardData(mob, cardId, tier, newLevel, quality, signatures, bonuses,
+            rerolls, bound);
     }
 
     /** A copy of this card one reroll further on. */
     public TradingCardData withReroll(int newRerolls, List<String> newSignatures) {
-        return new TradingCardData(mob, cardId, tier, level, quality, newSignatures,
+        return new TradingCardData(mob, cardId, tier, level, quality, newSignatures, bonuses,
             newRerolls, bound);
+    }
+
+    /**
+     * A copy of this card with different bonus boosts.
+     *
+     * <p>Bonuses change on a reroll and at nothing else. Levelling must not reach
+     * this, which is why it is its own method rather than a general copy-with.
+     */
+    public TradingCardData withBonuses(List<String> newBonuses) {
+        return new TradingCardData(mob, cardId, tier, level, quality, signatures,
+            List.copyOf(newBonuses), rerolls, bound);
     }
 
     /** True when the card has reached the level at which it can be merged. */

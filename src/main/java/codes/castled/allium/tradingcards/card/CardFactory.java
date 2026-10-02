@@ -3,7 +3,9 @@ package codes.castled.allium.tradingcards.card;
 import codes.castled.allium.item.ItemResolverChain;
 import codes.castled.allium.tradingcards.config.TradingCardsConfig;
 import codes.castled.allium.tradingcards.item.TradingCardData;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.random.RandomGenerator;
 import org.bukkit.inventory.ItemStack;
@@ -22,8 +24,46 @@ public final class CardFactory {
 
     private final ItemResolverChain items;
 
+    /**
+     * The bonus pool per tier, and how many to roll.
+     *
+     * <p>Set after construction rather than passed in, because the factory is
+     * built with the card table and the boost catalogue loads later — it needs
+     * the economy and the Relique slot in place first. A card that drops before
+     * the catalogue arrives is built with no bonuses and never claims otherwise.
+     */
+    private Map<Tier, List<String>> bonusPool = Map.of();
+    private int bonusRollCount = 3;
+
     public CardFactory(ItemResolverChain items) {
         this.items = items;
+    }
+
+    /** Supplies the bonus rolls, from the loaded boost catalogue. */
+    public void bonuses(Map<Tier, List<String>> pool, int rollCount) {
+        this.bonusPool = pool == null ? Map.of() : Map.copyOf(pool);
+        this.bonusRollCount = Math.max(1, rollCount);
+    }
+
+    /**
+     * Rolls a card's bonus boosts from its tier's pool.
+     *
+     * <p>Sampled without replacement, so a card never holds the same boost twice.
+     * A pool smaller than the roll count yields the whole pool rather than
+     * repeating — a duplicate bonus line is worse than a shorter card.
+     */
+    public List<String> rollBonuses(Tier tier, RandomGenerator random) {
+        List<String> pool = bonusPool.get(tier);
+        if (pool == null || pool.isEmpty()) {
+            return List.of();
+        }
+        List<String> remaining = new ArrayList<>(pool);
+        List<String> rolled = new ArrayList<>();
+        int wanted = Math.min(bonusRollCount, remaining.size());
+        for (int i = 0; i < wanted; i++) {
+            rolled.add(remaining.remove(random.nextInt(remaining.size())));
+        }
+        return List.copyOf(rolled);
     }
 
     /**
@@ -37,7 +77,8 @@ public final class CardFactory {
     public Optional<ItemStack> create(CardRoller.RolledCard rolled, TradingCardsConfig config,
                                       RandomGenerator random) {
         return TradingCardData.create(items, rolled.definition(), rolled.tier(),
-            config.levelling().startLevel(), rolled.quality(), BASE_SIGNATURES, false);
+            config.levelling().startLevel(), rolled.quality(), BASE_SIGNATURES,
+            rollBonuses(rolled.tier(), random), false);
     }
 
     /**
@@ -48,11 +89,11 @@ public final class CardFactory {
      */
     public Optional<ItemStack> create(CardDefinition definition, Tier tier, int level,
                                       int quality, List<String> signatures, boolean bound,
-                                      TradingCardsConfig config) {
+                                      TradingCardsConfig config, RandomGenerator random) {
         int clampedQuality = Math.max(QualityBand.ROLL_MIN,
             Math.min(QualityBand.ROLL_MAX, quality));
         return TradingCardData.create(items, definition, tier, level, clampedQuality,
-            signatures, bound);
+            signatures, rollBonuses(tier, random), bound);
     }
 
     /** The signatures a card of this tier starts with. */

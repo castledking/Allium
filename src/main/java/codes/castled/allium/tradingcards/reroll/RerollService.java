@@ -49,11 +49,26 @@ public final class RerollService {
         NO_TIER_POOL
     }
 
-    /** The result of a reroll attempt. */
+    /**
+     * The result of a reroll attempt.
+     *
+     * <p>Both lists are the card's state <i>after</i> the roll, so the caller
+     * writes whichever applies and cannot get it wrong by deciding which list
+     * moved.
+     */
     public record Result(Outcome outcome, double cost, List<String> signatures,
-                         String message) {
+                         List<String> bonuses, String message) {
+        public Result(Outcome outcome, double cost, List<String> signatures, String message) {
+            this(outcome, cost, signatures, List.of(), message);
+        }
+
         public boolean succeeded() {
             return outcome == Outcome.SIGNATURE_UNLOCKED || outcome == Outcome.BONUSES_REROLLED;
+        }
+
+        /** True when this roll changed the card's bonuses and not its signatures. */
+        public boolean rerolledBonuses() {
+            return outcome == Outcome.BONUSES_REROLLED;
         }
     }
 
@@ -148,11 +163,34 @@ public final class RerollService {
             return new Result(Outcome.NOT_ENOUGH_MONEY, cost, card.signatures(),
                 "You need " + economy.formatBalance(price) + " to reroll that card.");
         }
-        // Signatures are untouched here. The bonus boosts are re-rolled by the
-        // caller from the tier pool; this result carries the signature list
-        // unchanged so the caller can tell "no unlock" from "new unlock".
-        return new Result(Outcome.BONUSES_REROLLED, cost, card.signatures(),
-            "Re-rolled your bonus boosts.");
+        // The bonus rolls happen here rather than in the caller, so a reroll is
+        // a single atomic decision: either the card is charged and both lists are
+        // settled, or nothing happened at all.
+        List<String> bonuses = rollBonuses(bonusPool);
+        String message = bonuses.isEmpty()
+            ? "Re-rolled your card. It has no bonus boosts to roll."
+            : "Re-rolled your bonus boosts: " + String.join(", ", bonuses) + ".";
+        return new Result(Outcome.BONUSES_REROLLED, cost, card.signatures(), bonuses, message);
+    }
+
+    /**
+     * Rolls a fresh set of bonus boosts from the tier's pool.
+     *
+     * <p>Without replacement, so a card never holds the same bonus twice, and
+     * capped at the pool size — a pool of two and a roll count of three yields
+     * two, because a duplicate bonus line is worse than a shorter card.
+     */
+    public List<String> rollBonuses(List<String> pool) {
+        if (pool == null || pool.isEmpty()) {
+            return List.of();
+        }
+        List<String> remaining = new java.util.ArrayList<>(pool);
+        List<String> rolled = new java.util.ArrayList<>();
+        int wanted = Math.min(catalog.bonusRollCount(), remaining.size());
+        for (int i = 0; i < wanted; i++) {
+            rolled.add(remaining.remove(random.nextInt(remaining.size())));
+        }
+        return List.copyOf(rolled);
     }
 
     /**

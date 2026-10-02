@@ -49,6 +49,18 @@ public final class TradingCardKeys {
      */
     public static final NamespacedKey SIGNATURES = key("signatures");
 
+    /**
+     * Unlocked bonus boosts, as a comma-separated list of boost ids in roll
+     * order.
+     *
+     * <p>Kept apart from {@link #SIGNATURES} because the two behave differently:
+     * signatures are the card's identity and grow with every level, while bonuses
+     * are flat and only ever change when the card is rerolled. Merging them into
+     * one list would make "how many is this card worth" unanswerable, and would
+     * let levelling accidentally grow a bonus.
+     */
+    public static final NamespacedKey BONUSES = key("bonuses");
+
     /** How many times this card has been rerolled, for the escalating price. */
     public static final NamespacedKey REROLLS = key("rerolls");
 

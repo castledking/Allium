@@ -41,7 +41,21 @@ public class CardXpService {
         void write(UUID player, TradingCardData updated);
     }
 
+    /**
+     * Supplies the card multiplier from whatever the equipped card grants.
+     *
+     * <p>A separate dependency rather than a hard reference to the boost
+     * service, so the xp path has no opinion about how boosts are stored — and so
+     * a server without Relique installed still pays xp at 1x instead of failing
+     * to award it at all.
+     */
+    @FunctionalInterface
+    public interface CardMultiplier {
+        double multiplierFor(UUID player);
+    }
+
     private CardWriter writer = (player, card) -> { };
+    private CardMultiplier multiplier = player -> 1.0;
 
     public CardXpService(XpConfig config, XpAntiFarmStore antiFarm,
                           CardProgression progression, EquippedCardLookup equipped,
@@ -55,6 +69,11 @@ public class CardXpService {
 
     public void writer(CardWriter writer) {
         this.writer = writer == null ? (player, card) -> { } : writer;
+    }
+
+    /** Supplies the equipped card's xp multiplier, floored so it cannot zero an award. */
+    public void multiplier(CardMultiplier multiplier) {
+        this.multiplier = multiplier == null ? player -> 1.0 : multiplier;
     }
 
     /**
@@ -101,7 +120,12 @@ public class CardXpService {
             return Award.skipped(sourceId, "already paid for this one");
         }
 
-        double xp = source.usesMultiplier() ? amount * source.multiplier() : source.xp();
+        // The card's own bonus applies on top of the source's multiplier, and
+        // is floored at 1x so a card can never make levelling slower than doing
+        // nothing at all.
+        double cardMultiplier = Math.max(1.0, multiplier.multiplierFor(player.getUniqueId()));
+        double xp = (source.usesMultiplier() ? amount * source.multiplier() : source.xp())
+            * cardMultiplier;
         if (xp <= 0.0) {
             return Award.skipped(sourceId, "awards nothing");
         }

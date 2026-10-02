@@ -69,7 +69,17 @@ public class CardMenuListener implements Listener {
         new CardWorkshopGui(event.getPlayer(), module, card.get(), held, slot).open();
     }
 
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    /**
+     * Runs at LOW so it sees the click before another plugin can cancel it.
+     *
+     * <p>Relique cancels inventory clicks in its own window, and at NORMAL this
+     * handler never got a look at a click inside the /reliques menu — the exact
+     * place a player reaches for a card. LOW is still late enough to respect
+     * anything cancelled before us, and the handler is narrow enough (a
+     * right-click on a card in the player's own inventory) that running early
+     * costs nothing.
+     */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
@@ -80,9 +90,8 @@ public class CardMenuListener implements Listener {
         if (event.getClick() != ClickType.RIGHT) {
             return;
         }
-        // Only the player's own belongings, and only while they are looking at
-        // one of our windows, so this cannot fire from inside another plugin's
-        // menu or reopen the workshop from within the workshop.
+        // Only the player's own belongings, so this cannot fire from inside
+        // another plugin's menu or reopen the workshop from within the workshop.
         if (event.getClickedInventory() == null
             || !event.getClickedInventory().equals(player.getInventory())) {
             return;
@@ -90,17 +99,17 @@ public class CardMenuListener implements Listener {
         if (event.getView().getTopInventory().getHolder() instanceof BaseGUI) {
             return;
         }
-        ItemStack held = player.getInventory().getItemInMainHand();
-        if (TradingCardData.read(held).isEmpty()) {
-            return;
-        }
+        // Any card, not just the held one. The workshop addresses the card by
+        // inventory slot, so it works from anywhere in the inventory, and
+        // requiring the card in the main hand meant the click did nothing
+        // whenever the card was in the rows above the hotbar.
         ItemStack clicked = event.getCurrentItem();
-        if (clicked == null || !clicked.isSimilar(held)) {
+        var card = TradingCardData.read(clicked);
+        if (card.isEmpty()) {
             return;
         }
         // The click would otherwise split the stack, so take it and open instead.
         event.setCancelled(true);
-        new CardWorkshopGui(player, module, TradingCardData.read(held).get(), held,
-            player.getInventory().getHeldItemSlot()).open();
+        new CardWorkshopGui(player, module, card.get(), clicked, event.getSlot()).open();
     }
 }

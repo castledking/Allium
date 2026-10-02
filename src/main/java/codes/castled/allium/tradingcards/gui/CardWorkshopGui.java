@@ -292,10 +292,14 @@ public final class CardWorkshopGui extends BaseGUI {
      * real card is only consumed when the merge actually happens.
      */
     private void stageFromHand(int slot) {
-        ItemStack held = player.getInventory().getItemInMainHand();
+        // The card this workshop was opened on, not whatever happens to be in
+        // the hand: it can be opened from anywhere in the inventory now, and a
+        // merge that staged the hand's card while working on a different one
+        // would consume the wrong stack.
+        ItemStack held = player.getInventory().getItem(sourceSlot);
         if (TradingCardData.read(held).isEmpty()) {
             player.sendMessage(MM.deserialize(
-                "<red>Hold a trading card in your main hand first.</red>"));
+                "<red>The card this window was opened on is gone.</red>"));
             return;
         }
         if (slot == SLOT_MERGE_A) {

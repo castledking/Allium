@@ -10,20 +10,30 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.inventory.ItemStack;
 
 /**
- * Gives a card a tooltip background that matches its tier.
+ * Gives a card a tooltip panel that matches its tier and fits its lore.
  *
  * <p>Minecraft has a per-item tooltip style component,
  * {@code minecraft:tooltip_style}, holding a namespaced id. The client resolves
- * that id to a pair of GUI sprites — {@code <ns>:tooltip/<path>_background} and
- * {@code <ns>:tooltip/<path>_frame} — and nine-slices each to whatever size the
- * lore needs. So the panel grows with the card's text on the client, with no
- * fixed-size image to guess at.
+ * that id to a pair of GUI sprites — {@code <ns>:tooltip/<id>_background} and
+ * {@code <ns>:tooltip/<id>_frame} — and draws each across the tooltip quad.
  *
- * <p>This is why the per-tier background is worth having here. The other
- * candidate, the global {@code gui/sprites/tooltip/background}, is a single
- * sprite for the entire client — changing it restyles every tooltip on the
- * server, and no item can pick a different one. {@code tooltip_style} was added
- * in 1.21.2 and is the only way to make one item's tooltip differ from another's.
+ * <p>The panel is NOT nine-sliced, and it does not grow with the lore. A pack
+ * shader overrides {@code core/position_tex_color}, which is the pipeline the
+ * tooltip is drawn through, and draws the background sprite 1:1 from the quad's
+ * top-left, stopping at a height carried in the sprite's own metadata row. So
+ * the frame ends where the card's own text ends and the client's F3+H lines fall
+ * outside it, which no nine-slice can do — a nine-slice is handed the whole quad
+ * and stretches to fill it.
+ *
+ * <p>Because the height is fixed per sprite, it has to vary with the lore, which
+ * is why the id carries a line count and {@link #FRAME_BASE} exists. See the
+ * constants below for how the height is arrived at.
+ *
+ * <p>Why a per-item style at all: the alternative is the global
+ * {@code gui/sprites/tooltip/background}, one sprite for the whole client —
+ * changing it restyles every tooltip on the server, and no item can pick a
+ * different one. {@code tooltip_style} (1.21.2) is the only way to make one
+ * item's tooltip differ from another's.
  *
  * <p>The component lives on the {@link ItemStack} rather than the
  * {@code ItemMeta}, because Paper exposes arbitrary data components on the stack
@@ -31,7 +41,9 @@ import org.bukkit.inventory.ItemStack;
  *
  * <p>Failures are silent by design. A client without the resource pack shows the
  * default tooltip, which is a cosmetic downgrade rather than an unreadable card,
- * so there is nothing here worth failing a card write over.
+ * so there is nothing here worth failing a card write over. The corollary is
+ * that a style id with no sprite behind it is equally silent, which is why the
+ * line count clamps to the generated range.
  */
 public final class CardTooltipStyle {
 

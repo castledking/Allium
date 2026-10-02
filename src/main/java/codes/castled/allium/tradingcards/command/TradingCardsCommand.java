@@ -80,6 +80,11 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         long warnings = issues.size() - errors;
         msg(sender, "<green>Reloaded</green> <gray>—</gray> " + module.registry().size()
             + " card(s) across " + module.registry().mobCount() + " mob(s)");
+        int refreshed = module.lastReloreRefreshed();
+        if (refreshed > 0) {
+            msg(sender, "<gray>Re-rendered " + refreshed
+                + " card(s) in online inventories.</gray>");
+        }
         if (errors > 0 || warnings > 0) {
             msg(sender, "<gray>" + errors + " error(s), " + warnings
                 + " warning(s); see console.</gray>");

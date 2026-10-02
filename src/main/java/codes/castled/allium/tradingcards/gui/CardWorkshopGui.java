@@ -165,12 +165,12 @@ public final class CardWorkshopGui extends BaseGUI {
         List<Component> lore = new ArrayList<>();
         lore.add(MM.deserialize("<gray>Either <white>unlocks a new signature</white>…"));
         lore.add(MM.deserialize("<gray>…or re-rolls your bonus boosts."));
-        lore.add(MM.deserialize("<dark_gray>─────────────"));
+        lore.add(MM.deserialize(module.loreSeparator()));
         lore.add(MM.deserialize("<gray>Chance of a new signature: <white>"
             + Math.round(rerollService.catalog().signatureUnlockChance() * 100) + "%"));
         lore.add(MM.deserialize("<gray>Signatures: <white>" + card.signatures().size()
             + "</white><gray>/</gray><white>" + rerollService.catalog().maximumSignatures()));
-        lore.add(MM.deserialize("<dark_gray>─────────────"));
+        lore.add(MM.deserialize(module.loreSeparator()));
         lore.add(MM.deserialize("<yellow>Each reroll costs more than the last."));
         lore.add(MM.deserialize("<dark_gray>Your existing signatures are never replaced."));
         meta.lore(lore);
@@ -341,7 +341,7 @@ public final class CardWorkshopGui extends BaseGUI {
         ItemMeta meta = shown.getItemMeta();
         if (meta == null) return shown;
         List<Component> lore = new ArrayList<>();
-        lore.add(MM.deserialize("<dark_gray>─────────────"));
+        lore.add(MM.deserialize(module.loreSeparator()));
         lore.add(MM.deserialize("<gray>Tier: " + card.tier().name() + " "
             + card.tier().pipsWithPosition()));
         lore.add(MM.deserialize("<gray>Level: <green>" + card.level()
@@ -355,7 +355,7 @@ public final class CardWorkshopGui extends BaseGUI {
         if (card.rerolls() > 0) {
             lore.add(MM.deserialize("<gray>Rerolled: <white>" + card.rerolls() + "</white> times"));
         }
-        lore.add(MM.deserialize("<dark_gray>─────────────"));
+        lore.add(MM.deserialize(module.loreSeparator()));
         lore.add(MM.deserialize("<gray>Signatures: <white>"
             + String.join(", ", card.signatures()) + "</white>"));
         meta.lore(lore);

@@ -60,7 +60,7 @@ public final class CardMenuGui extends BaseGUI {
         ItemMeta meta = shown.getItemMeta();
         if (meta == null) return shown;
         List<Component> lore = new ArrayList<>();
-        lore.add(MM.deserialize("<dark_gray>─────────────"));
+        lore.add(MM.deserialize(module.loreSeparator()));
         lore.add(MM.deserialize("<gray>Tier: " + card.tier().name() + " "
             + card.tier().pipsWithPosition()));
         lore.add(MM.deserialize("<gray>Level: <green>" + card.level()
@@ -70,7 +70,7 @@ public final class CardMenuGui extends BaseGUI {
             ? "<red>Quality: unknown (" + card.quality() + "%)"
             : band.colour() + "Quality: " + codes.castled.allium.tradingcards.card.QualityBand
                 .displayId(band.id()) + " <gray>(" + card.quality() + "%)"));
-        lore.add(MM.deserialize("<dark_gray>─────────────"));
+        lore.add(MM.deserialize(module.loreSeparator()));
         if (!quote.isQuoted()) {
             // Only a refusal is worth stating here; a payout is not.
             lore.add(MM.deserialize("<red>" + quote.denial().message()));
@@ -98,7 +98,7 @@ public final class CardMenuGui extends BaseGUI {
                     + " <dark_gray>" + band.min() + "-" + band.max() + "%"
                     + (showWorth ? " <white>×" + band.heads() : "")));
         }
-        lore.add(MM.deserialize("<dark_gray>─────────────"));
+        lore.add(MM.deserialize(module.loreSeparator()));
         lore.add(MM.deserialize("<gray>Right-click this card to trade it in."));
         meta.lore(lore);
         icon.setItemMeta(meta);

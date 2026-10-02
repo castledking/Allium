@@ -107,6 +107,7 @@ public final class TradingCardsModule {
     private XpAntiFarmStore antiFarm;
     private CardXpService cardXp;
     private codes.castled.allium.scheduler.TaskHandle antiFarmSave;
+    private int lastReloreRefreshed;
     private RerollService reroll;
     private codes.castled.allium.tradingcards.bonus.BonusSlotService bonusSlots;
     private MergeRules mergeRules;
@@ -307,7 +308,65 @@ public final class TradingCardsModule {
                 scaleMinimum(), scaleMaximum());
             removeAllBoosts();
         }
+        // Cards carry their lore as written text, so a stylistic edit to the
+        // config cannot reach a card already sitting in someone's inventory.
+        // Re-rendering them here is what makes /tradingcards reload mean what an
+        // operator expects it to mean.
+        lastReloreRefreshed = refreshOnlineCardLore();
         return issues;
+    }
+
+    /** Cards re-rendered by the last {@link #reload()}, for it to report. */
+    public int lastReloreRefreshed() {
+        return lastReloreRefreshed;
+    }
+
+    /**
+     * Re-renders the lore of every trading card held by an online player.
+     *
+     * <p>Only presentation: the card's level, quality, boosts and slot state are
+     * left exactly as they were, so a reload can never change what a card is
+     * worth. The tooltip frame is re-picked too, because its sprite depends on
+     * the line count and an edit that adds or removes a line changes that.
+     *
+     * <p>Only the player's own inventory is touched. Anything in an open GUI is
+     * left alone: rewriting an item mid-click is how a player ends up with a
+     * card they did not mean to take.
+     *
+     * @return how many cards were re-rendered, for the reload to report
+     */
+    public int refreshOnlineCardLore() {
+        int touched = 0;
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            var inventory = online.getInventory();
+            ItemStack[] storage = inventory.getStorageContents();
+            for (int i = 0; i < storage.length; i++) {
+                if (refreshCardLore(storage[i])) {
+                    inventory.setItem(i, storage[i]);
+                    touched++;
+                }
+            }
+            ItemStack[] armour = inventory.getArmorContents();
+            for (int i = 0; i < armour.length; i++) {
+                if (refreshCardLore(armour[i])) {
+                    inventory.setArmorContents(armour);
+                    touched++;
+                }
+            }
+            if (refreshCardLore(inventory.getItemInOffHand())) {
+                touched++;
+            }
+        }
+        return touched;
+    }
+
+    private boolean refreshCardLore(ItemStack stack) {
+        var data = TradingCardData.read(stack);
+        if (data.isEmpty()) {
+            return false;
+        }
+        TradingCardData.refreshLore(stack, data.get());
+        return true;
     }
 
     /**
@@ -803,8 +862,12 @@ public final class TradingCardsModule {
      * here instead of being written into the config value — the config holds the
      * glyphs and this owns how they are drawn, which means a separator length
      * change needs no tags edited alongside it.
+     *
+     * <p>Public because the menus draw the same rule. They each used to carry a
+     * hardcoded copy, so editing {@code lore-separator} changed the cards and left
+     * every menu showing the old one — which reads as the reload not working.
      */
-    private String loreSeparator() {
+    public String loreSeparator() {
         String rule = config.levelling().loreSeparator();
         return rule.isBlank()
             ? "" : "<dark_gray><strikethrough>" + rule + "</strikethrough></dark_gray>";

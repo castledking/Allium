@@ -183,9 +183,10 @@ public record TradingCardData(
         meta.setMaxStackSize(1);
         renderLore(meta, data);
         stack.setItemMeta(meta);
-        // After the meta is committed, because the style is a stack component and
+        // After the meta is committed, because both are stack components and
         // setItemMeta can replace the stack's component set.
         CardTooltipStyle.apply(stack, data.tier());
+        CardTooltipStyle.blankName(stack);
     }
 
     /**
@@ -203,17 +204,12 @@ public record TradingCardData(
         if (meta == null) {
             return;
         }
-        // The tooltip's first line is the item name, and the panel's ornament
-        // occupies the rows above the text, so a title there sat on top of the
-        // ornament. The name is blanked and the title is lore line 0 instead,
-        // which pushes the rest of the card clear of it.
-        //
-        // A single space rather than an empty component: an empty display name
-        // is dropped by some paths and the item falls back to the material's
-        // own name, which would put "Paper" at the top of every card.
-        meta.displayName(net.kyori.adventure.text.Component.text(" "));
         renderLore(meta, data);
         stack.setItemMeta(meta);
+        // The tooltip's first line is the item name and the panel's ornament
+        // sits in the rows above the text, so a title there overlapped the
+        // ornament. See blankName for why this is item_name and not displayName.
+        CardTooltipStyle.blankName(stack);
     }
 
     private static void renderLore(ItemMeta meta, TradingCardData data) {

@@ -6,6 +6,7 @@ import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
 import net.kyori.adventure.key.Key;
+import net.kyori.adventure.text.Component;
 import org.bukkit.inventory.ItemStack;
 
 /**
@@ -79,6 +80,30 @@ public final class CardTooltipStyle {
             // A Paper build without the component, or an item the stack cannot
             // carry one. The card is still correct; it just uses the default
             // tooltip, and saying so once per write would be noise.
+        }
+    }
+
+    /**
+     * Blanks the tooltip's first line, which is the item's name.
+     *
+     * <p>Set as {@code item_name}, not through {@code ItemMeta.displayName}:
+     * that writes {@code custom_name}, and {@code item_name} takes precedence
+     * for the tooltip, so the item definition's name kept winning and the card
+     * showed its title twice. A single space rather than an empty component,
+     * because an empty name is dropped by some paths and the item falls back to
+     * the material's own name.
+     *
+     * <p>Called after the meta is committed, since it is a stack component and
+     * {@code setItemMeta} can replace the stack's component set.
+     */
+    public static void blankName(ItemStack stack) {
+        if (stack == null) {
+            return;
+        }
+        try {
+            stack.setData(DataComponentTypes.ITEM_NAME, Component.text(" "));
+        } catch (Throwable ignored) {
+            // As above: a missing component costs the blank line, not the card.
         }
     }
 }

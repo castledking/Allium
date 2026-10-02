@@ -28,7 +28,7 @@ class CardRollerTest {
         for (Tier tier : weights.keySet()) {
             items.put(tier, ItemRef.parse("nexo:" + tier.name().toLowerCase() + "_card"));
         }
-        return new CardDefinition("chicken", "CHICKEN", chance, weights, items, null);
+        return new CardDefinition("chicken", "CHICKEN", "white", chance, weights, items, null);
     }
 
     private static CardRoller rollerFor(CardDefinition card) {

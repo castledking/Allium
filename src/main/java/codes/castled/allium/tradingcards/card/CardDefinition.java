@@ -16,6 +16,10 @@ import java.util.Map;
  *
  * @param id     lower-case config key, e.g. {@code chicken}
  * @param mob    Bukkit entity type name, e.g. {@code CHICKEN}
+ * @param colour MiniMessage colour for the card's title, e.g. {@code aqua}. Lives
+ *               here rather than in the item definition because the title moved
+ *               out of the item name and into the tooltip's first lore line,
+ *               and the name itself is now blank.
  * @param chance probability in (0,1] that a kill of this mob drops a card at all
  * @param tiers  weight per tier, ascending by {@link Tier#ordinal()}
  * @param items  the item each tier renders as, keyed by tier
@@ -25,6 +29,7 @@ import java.util.Map;
 public record CardDefinition(
     String id,
     String mob,
+    String colour,
     double chance,
     Map<Tier, Double> tiers,
     Map<Tier, ItemRef> items,
@@ -33,9 +38,13 @@ public record CardDefinition(
 
     public static final int DEFAULT_CHANCE_PRECISION = 6;
 
+    /** Used when a mob sets no colour, so a title is never unstyled. */
+    public static final String DEFAULT_COLOUR = "white";
+
     public CardDefinition {
         tiers = Map.copyOf(tiers);
         items = Map.copyOf(items);
+        colour = colour == null || colour.isBlank() ? DEFAULT_COLOUR : colour;
     }
 
     /** Total of the tier weights, or zero when none are positive. */

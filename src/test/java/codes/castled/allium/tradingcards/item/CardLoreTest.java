@@ -7,7 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import codes.castled.allium.tradingcards.card.QualityBand;
 import codes.castled.allium.tradingcards.card.Tier;
+import java.util.ArrayList;
 import java.util.List;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -41,7 +46,8 @@ class CardLoreTest {
             100,
             bonusSlots,
             separator,
-            level -> 25.0));
+            level -> 25.0,
+            mob -> "aqua"));
     }
 
     private static TradingCardData card(Tier tier, int level, int quality, int rerolls,
@@ -49,6 +55,53 @@ class CardLoreTest {
                                         double xp) {
         return new TradingCardData("AXOLOTL", "axolotl", tier, level, quality, signatures,
             bonuses, xp, rerolls, false);
+    }
+
+    // ==================== title ====================
+
+    @Test
+    void theTitleIsTheFirstLoreLine() {
+        // The item's own name is blank, because the tooltip's first line is the
+        // name and the panel's ornament occupies the rows above the text. The
+        // title therefore has to arrive as lore line 0 or the card shows nothing.
+        var lines = lore(5, "---").render(card(Tier.FABLED, 3, 90, 0,
+            List.of("luck"), List.of(), 12.0), 12.0);
+        assertTrue(lines.get(0).contains("Axolotl Trading Card"),
+            "line 0 should be the title, was: " + lines.get(0));
+    }
+
+    @Test
+    void theTitleTakesTheMobsColour() {
+        var lines = lore(5, "").render(card(Tier.SIMPLE, 1, 90, 0,
+            List.of("luck"), List.of(), 0.0), 0.0);
+        assertTrue(lines.get(0).endsWith("<aqua>Axolotl Trading Card</aqua>"),
+            lines.get(0));
+    }
+
+    @Test
+    void everyLoreSegmentCarriesAnExplicitColour() {
+        // Regression: "<dark_gray>[<white>0</white>]</dark_gray>" leaves the
+        // closing bracket with no colour of its own, relying on inheritance from
+        // its parent. The client resolved that to vanilla's default lore colour
+        // instead, so the bracket rendered dark purple on an otherwise grey line.
+        var lines = lore(5, "---").render(card(Tier.FABLED, 12, 90, 2,
+            List.of("luck", "might"), List.of("regeneration"), 40.0), 40.0);
+        for (String line : lines) {
+            collect(MiniMessage.miniMessage().deserialize(line), line);
+        }
+    }
+
+    private static void collect(Component c, String source) {
+        for (Component child : c.children()) {
+            String text = child instanceof TextComponent t ? t.content() : "";
+            if (!text.isBlank()) {
+                TextColor colour = child.style().color();
+                assertTrue(colour != null,
+                    "segment '" + text + "' has no colour of its own and would "
+                        + "fall back to the default lore colour, in: " + source);
+            }
+            collect(child, source);
+        }
     }
 
     // ==================== pips ====================
@@ -219,7 +272,7 @@ class CardLoreTest {
         // not get a tag wrapped around a tag.
         var bands = List.of(new QualityBand("mint", 86, 99, 7, "aqua"));
         var lore = new CardLore(new CardLore.LoreData(bands, (id, l) -> id, "heads", 100,
-            5, "", l -> 25.0));
+            5, "", l -> 25.0, mob -> "aqua"));
         var lines = lore.body(card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0),
             Tier.SIMPLE, 0.0);
         String quality = lines.stream().filter(l -> l.contains("Quality:"))
@@ -232,7 +285,7 @@ class CardLoreTest {
     void aHexColourInConfigIsAccepted() {
         var bands = List.of(new QualityBand("mint", 86, 99, 7, "#777777"));
         var lore = new CardLore(new CardLore.LoreData(bands, (id, l) -> id, "heads", 100,
-            5, "", l -> 25.0));
+            5, "", l -> 25.0, mob -> "aqua"));
         var lines = lore.body(card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0),
             Tier.SIMPLE, 0.0);
         String quality = lines.stream().filter(l -> l.contains("Quality:"))

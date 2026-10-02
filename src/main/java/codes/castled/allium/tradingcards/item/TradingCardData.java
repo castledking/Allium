@@ -203,6 +203,15 @@ public record TradingCardData(
         if (meta == null) {
             return;
         }
+        // The tooltip's first line is the item name, and the panel's ornament
+        // occupies the rows above the text, so a title there sat on top of the
+        // ornament. The name is blanked and the title is lore line 0 instead,
+        // which pushes the rest of the card clear of it.
+        //
+        // A single space rather than an empty component: an empty display name
+        // is dropped by some paths and the item falls back to the material's
+        // own name, which would put "Paper" at the top of every card.
+        meta.displayName(net.kyori.adventure.text.Component.text(" "));
         renderLore(meta, data);
         stack.setItemMeta(meta);
     }

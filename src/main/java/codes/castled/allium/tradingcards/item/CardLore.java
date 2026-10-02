@@ -1,5 +1,6 @@
 package codes.castled.allium.tradingcards.item;
 
+import codes.castled.allium.tradingcards.card.CardDefinition;
 import codes.castled.allium.tradingcards.card.QualityBand;
 import codes.castled.allium.tradingcards.card.Tier;
 import java.util.ArrayList;
@@ -64,7 +65,8 @@ public final class CardLore {
         int maximumLevel,
         int bonusSlots,
         String separator,
-        IntFunction<Double> xpForLevel
+        IntFunction<Double> xpForLevel,
+        java.util.function.Function<String, String> titleColour
     ) {
         public LoreData {
             bands = bands == null ? List.of() : List.copyOf(bands);
@@ -72,6 +74,7 @@ public final class CardLore {
             headLabel = headLabel == null || headLabel.isBlank() ? "heads" : headLabel;
             bonusSlots = Math.max(1, bonusSlots);
             separator = separator == null ? "" : separator;
+            titleColour = titleColour == null ? mob -> null : titleColour;
         }
     }
 
@@ -92,10 +95,30 @@ public final class CardLore {
             return List.of();
         }
         Tier tier = card.tier() == null ? Tier.SIMPLE : card.tier();
+        // The card's name is blank on the item, because the tooltip's first line
+        // is the name and the ornament sits in the rows above the text. A title
+        // there collided with the ornament, so the title moved into the lore as
+        // line 0 and everything below it shifted clear.
+        List<String> lines = new ArrayList<>();
+        lines.add(titleLine(card));
+        lines.addAll(body(card, tier, xp));
         // The pack's font ships italic glyphs only, so an unstyled line inherits
         // the italic and the whole card reads as slanted. Reset per line, since
         // lore lines are independent components rather than one nested tree.
-        return body(card, tier, xp).stream().map(CardLore::notItalic).toList();
+        return lines.stream().map(CardLore::notItalic).toList();
+    }
+
+    /** The card's title, e.g. {@code Allay Trading Card}, in the mob's colour. */
+    private String titleLine(TradingCardData card) {
+        String mob = card.mob();
+        String label = mob == null || mob.isBlank() ? "Trading Card" : title(mob) + " Trading Card";
+        String colour = data.titleColour() == null
+            ? CardDefinition.DEFAULT_COLOUR
+            : data.titleColour().apply(mob == null ? "" : mob);
+        if (colour == null || colour.isBlank()) {
+            colour = CardDefinition.DEFAULT_COLOUR;
+        }
+        return "<" + colour + ">" + label + "</" + colour + ">";
     }
 
     /**
@@ -119,14 +142,23 @@ public final class CardLore {
         out.add("<white>" + label(tier) + "</white>");
         if (!sep.isEmpty()) out.add(sep);
 
-        out.add("<gray>Level:</gray> <dark_gray>[<white>" + card.level() + "</white>]</dark_gray>");
+        // Every segment is coloured explicitly. Writing
+        // "<dark_gray>[<white>0</white>]</dark_gray>" leaves the closing bracket
+        // as a child with no colour of its own, relying on inheritance from the
+        // dark_gray parent; the client resolved that to vanilla's default lore
+        // colour instead, so the bracket rendered dark purple.
+        out.add("<gray>Level:</gray> <dark_gray>[</dark_gray><white>" + card.level()
+            + "</white><dark_gray>]</dark_gray>");
         String progress = progressLine(card.level(), xp);
         if (!progress.isEmpty()) {
             out.add(progress);
         }
         if (!sep.isEmpty()) out.add(sep);
 
-        out.add("<gray>While equipped in <aqua>/reliques</aqua>:</gray>");
+        // The trailing colon is coloured explicitly. Text after a nested </aqua> is a
+        // child with no colour of its own, and the client resolves that to the
+        // default lore colour rather than the gray enclosing it.
+        out.add("<gray>While equipped in </gray><aqua>/reliques</aqua><gray>:</gray>");
         if (card.signatures().isEmpty()) {
             out.add("  <dark_gray>None</dark_gray>");
         } else {

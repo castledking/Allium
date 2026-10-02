@@ -655,7 +655,12 @@ public final class TradingCardsModule {
             // curve is loaded, and a reload replaces it. A fallback keeps the
             // progress row off until the real curve arrives rather than throwing
             // on a card write during startup.
-            level -> xpConfig == null ? 0.0 : xpConfig.xpForLevel(level))));
+            level -> xpConfig == null ? 0.0 : xpConfig.xpForLevel(level),
+            // Read live rather than captured, like the xp curve above: a reload
+            // replaces the roster, and a title left on the old mob's colour is
+            // the kind of thing nobody notices until two cards look alike.
+            mob -> registry == null ? null
+                : registry.byMob(mob).map(d -> d.colour()).orElse(null))));
     }
 
     /** Trims a boost value to something a lore line should carry. */

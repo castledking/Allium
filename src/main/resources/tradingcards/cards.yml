@@ -47,6 +47,7 @@ cards:
   # ------------------------------------------------------------
   allay:
     mob: ALLAY
+    colour: aqua
     chance: 0.0015
 
     tiers:
@@ -68,6 +69,7 @@ cards:
 
   axolotl:
     mob: AXOLOTL
+    colour: dark_aqua
     chance: 0.0015
 
     tiers:
@@ -89,6 +91,7 @@ cards:
 
   bee:
     mob: BEE
+    colour: gold
     chance: 0.0015
 
     tiers:
@@ -110,6 +113,7 @@ cards:
 
   blaze:
     mob: BLAZE
+    colour: gold
     chance: 0.0015
 
     tiers:
@@ -131,6 +135,7 @@ cards:
 
   chicken:
     mob: CHICKEN
+    colour: yellow
     chance: 0.0015
 
     tiers:
@@ -152,6 +157,7 @@ cards:
 
   cow:
     mob: COW
+    colour: gray
     chance: 0.0015
 
     tiers:
@@ -173,6 +179,7 @@ cards:
 
   creeper:
     mob: CREEPER
+    colour: dark_green
     chance: 0.0015
 
     tiers:
@@ -194,6 +201,7 @@ cards:
 
   dolphin:
     mob: DOLPHIN
+    colour: dark_aqua
     chance: 0.0015
 
     tiers:
@@ -215,6 +223,7 @@ cards:
 
   enderman:
     mob: ENDERMAN
+    colour: dark_purple
     chance: 0.0015
 
     tiers:
@@ -236,6 +245,7 @@ cards:
 
   fox:
     mob: FOX
+    colour: gold
     chance: 0.0015
 
     tiers:
@@ -257,6 +267,7 @@ cards:
 
   ghast:
     mob: GHAST
+    colour: white
     chance: 0.0015
 
     tiers:
@@ -278,6 +289,7 @@ cards:
 
   goat:
     mob: GOAT
+    colour: gray
     chance: 0.0015
 
     tiers:
@@ -299,6 +311,7 @@ cards:
 
   hoglin:
     mob: HOGLIN
+    colour: dark_purple
     chance: 0.0015
 
     tiers:
@@ -320,6 +333,7 @@ cards:
 
   horse:
     mob: HORSE
+    colour: gold
     chance: 0.0015
 
     tiers:
@@ -341,6 +355,7 @@ cards:
 
   husk:
     mob: HUSK
+    colour: dark_purple
     chance: 0.0015
 
     tiers:
@@ -362,6 +377,7 @@ cards:
 
   magma_cube:
     mob: MAGMA_CUBE
+    colour: gold
     chance: 0.0015
 
     tiers:
@@ -383,6 +399,7 @@ cards:
 
   mooshroom:
     mob: MOOSHROOM
+    colour: light_purple
     chance: 0.0015
 
     tiers:
@@ -404,6 +421,7 @@ cards:
 
   ocelot:
     mob: OCELOT
+    colour: yellow
     chance: 0.0015
 
     tiers:
@@ -425,6 +443,7 @@ cards:
 
   parrot:
     mob: PARROT
+    colour: yellow
     chance: 0.0015
 
     tiers:
@@ -446,6 +465,7 @@ cards:
 
   pig:
     mob: PIG
+    colour: light_purple
     chance: 0.0015
 
     tiers:
@@ -467,6 +487,7 @@ cards:
 
   piglin:
     mob: PIGLIN
+    colour: light_purple
     chance: 0.0015
 
     tiers:
@@ -488,6 +509,7 @@ cards:
 
   piglin_brute:
     mob: PIGLIN_BRUTE
+    colour: dark_purple
     chance: 0.0015
 
     tiers:
@@ -509,6 +531,7 @@ cards:
 
   pillager:
     mob: PILLAGER
+    colour: gold
     chance: 0.0015
 
     tiers:
@@ -530,6 +553,7 @@ cards:
 
   pufferfish:
     mob: PUFFERFISH
+    colour: gold
     chance: 0.0015
 
     tiers:
@@ -551,6 +575,7 @@ cards:
 
   ravager:
     mob: RAVAGER
+    colour: dark_purple
     chance: 0.0015
 
     tiers:
@@ -572,6 +597,7 @@ cards:
 
   sheep:
     mob: SHEEP
+    colour: white
     chance: 0.0015
 
     tiers:
@@ -593,6 +619,7 @@ cards:
 
   skeleton:
     mob: SKELETON
+    colour: gray
     chance: 0.0015
 
     tiers:
@@ -614,6 +641,7 @@ cards:
 
   slime:
     mob: SLIME
+    colour: green
     chance: 0.0015
 
     tiers:
@@ -635,6 +663,7 @@ cards:
 
   stray:
     mob: STRAY
+    colour: white
     chance: 0.0015
 
     tiers:
@@ -656,6 +685,7 @@ cards:
 
   turtle:
     mob: TURTLE
+    colour: dark_green
     chance: 0.0015
 
     tiers:
@@ -677,6 +707,7 @@ cards:
 
   vex:
     mob: VEX
+    colour: light_purple
     chance: 0.0015
 
     tiers:
@@ -698,6 +729,7 @@ cards:
 
   villager:
     mob: VILLAGER
+    colour: white
     chance: 0.0015
 
     tiers:
@@ -719,6 +751,7 @@ cards:
 
   witch:
     mob: WITCH
+    colour: dark_purple
     chance: 0.0015
 
     tiers:
@@ -740,6 +773,7 @@ cards:
 
   wither_skeleton:
     mob: WITHER_SKELETON
+    colour: dark_gray
     chance: 0.0015
 
     tiers:
@@ -761,6 +795,7 @@ cards:
 
   wolf:
     mob: WOLF
+    colour: gray
     chance: 0.0015
 
     tiers:
@@ -782,6 +817,7 @@ cards:
 
   zombie:
     mob: ZOMBIE
+    colour: dark_green
     chance: 0.0015
 
     tiers:

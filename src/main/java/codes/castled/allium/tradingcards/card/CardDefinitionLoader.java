@@ -198,7 +198,8 @@ public final class CardDefinitionLoader {
             head = parseItemRef(headRaw, base + ".head", issues);
         }
 
-        return new CardDefinition(id, mob, chance, tiers, items, head);
+        return new CardDefinition(id, mob,
+            section.getString("colour"), chance, tiers, items, head);
     }
 
     private ItemRef parseItemRef(String raw, String path, List<ValidationIssue> issues) {

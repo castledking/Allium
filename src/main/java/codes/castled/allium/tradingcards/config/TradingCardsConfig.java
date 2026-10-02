@@ -61,12 +61,18 @@ public record TradingCardsConfig(
         int boostsPerLevel,
         String loreSeparator,
         int loreBonusSlots,
+        int xpBarWidth,
         Announce announce
     ) {
         public static Levelling defaults() {
             return new Levelling(0, 100, 1.0, 1,
                 "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
-                5, Announce.defaults());
+                5, 10, Announce.defaults());
+        }
+
+        /** The XP bar's width in characters, never zero. */
+        public int xpBarWidth() {
+            return Math.max(1, xpBarWidth);
         }
 
         /** The rule between lore sections; blank omits every separator. */
@@ -360,8 +366,16 @@ public record TradingCardsConfig(
         // the lore shows the card's full potential so a player can see what is
         // still available, which is not the same as how many it starts with.
         int slots = clamp(section.getInt("lore-bonus-slots", 5), 1, 9);
+        // The bar is sized by hand against the card's own layout, and it was
+        // resized more than once while the lore was still settling — so it is a
+        // config value, tuned with a reload rather than a rebuild.
+        int barWidth = clamp(section.getInt("xp-bar-width", 10), 1, 64);
+        if (barWidth != section.getInt("xp-bar-width", 10)) {
+            issues.add(ValidationIssue.warning(FILE, "levelling.xp-bar-width",
+                "Outside 1..64. Using " + barWidth + "."));
+        }
         return new Levelling(start, max, perLevel, perLevelCount, separator, slots,
-            announce(section.getConfigurationSection("announce")));
+            barWidth, announce(section.getConfigurationSection("announce")));
     }
 
     private static Announce announce(ConfigurationSection section) {

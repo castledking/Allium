@@ -70,7 +70,8 @@ public final class CardLore {
         java.util.function.Function<String, String> titleColour,
         StartingBoosts startingBoosts,
         java.util.function.BiFunction<String, Double, String> startingBoostValue,
-        java.util.function.Function<String, String> boostLabel
+        java.util.function.Function<String, String> boostLabel,
+        int xpBarWidth
     ) {
         public LoreData {
             bands = bands == null ? List.of() : List.copyOf(bands);
@@ -82,6 +83,7 @@ public final class CardLore {
             startingBoosts = startingBoosts;
             startingBoostValue = startingBoostValue == null ? (id, v) -> String.valueOf(v) : startingBoostValue;
             boostLabel = boostLabel == null ? id -> id : boostLabel;
+            xpBarWidth = Math.max(1, xpBarWidth);
         }
     }
 
@@ -317,7 +319,7 @@ public final class CardLore {
             return "";
         }
         double ratio = xp <= 0.0 ? 0.0 : Math.max(0.0, Math.min(1.0, xp / needed));
-        int filled = (int) Math.round(BAR_WIDTH * ratio);
+        int filled = (int) Math.round(data.xpBarWidth() * ratio);
         return bar(filled) + " "
             + "<gray>" + (long) xp + "</gray><dark_gray>/" + (long) needed + " XP</dark_gray>";
     }
@@ -335,15 +337,13 @@ public final class CardLore {
      * and would render them literally, and a bar that needs another plugin to
      * draw is worse than one that does not.
      */
-    private static String bar(int filled) {
-        int f = Math.max(0, Math.min(BAR_WIDTH, filled));
+    private String bar(int filled) {
+        int width = data.xpBarWidth();
+        int f = Math.max(0, Math.min(width, filled));
         return "<green><strikethrough>" + BAR_CHAR.repeat(f) + "</strikethrough></green>"
-            + "<dark_gray><strikethrough>" + BAR_CHAR.repeat(BAR_WIDTH - f)
+            + "<dark_gray><strikethrough>" + BAR_CHAR.repeat(width - f)
             + "</strikethrough></dark_gray>";
     }
-
-    /** Bar width, in characters. Roughly the width of lore-separator. */
-    private static final int BAR_WIDTH = 35;
 
     /** The character the bar is drawn with. */
     private static final String BAR_CHAR = "\u2500";

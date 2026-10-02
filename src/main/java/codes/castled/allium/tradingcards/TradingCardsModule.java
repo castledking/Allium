@@ -870,7 +870,8 @@ public final class TradingCardsModule {
             id -> {
                 var boost = defs.get(id);
                 return boost == null ? id : boost.display();
-            })));
+            },
+            config.levelling().xpBarWidth())));
     }
 
     /**

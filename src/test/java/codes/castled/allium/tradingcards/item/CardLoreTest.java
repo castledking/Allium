@@ -38,6 +38,8 @@ class CardLoreTest {
         new QualityBand("damaged", 1, 25, 1, "<red>"),
         new QualityBand("pristine", 76, 100, 8, "<gold>"));
 
+    private static final int BAR_WIDTH = 10;
+
     private static final codes.castled.allium.tradingcards.boost.StartingBoosts.Rules
         STARTING_RULES = new codes.castled.allium.tradingcards.boost.StartingBoosts.Rules(1.0, 1);
 
@@ -57,7 +59,8 @@ class CardLoreTest {
             mob -> "aqua",
             startingBoosts(),
             (id, value) -> id + " " + value,
-            id -> id));
+            id -> id,
+            BAR_WIDTH));
     }
 
     private static TradingCardData card(Tier tier, int level, int quality, int rerolls,
@@ -362,7 +365,7 @@ class CardLoreTest {
         var bands = List.of(new QualityBand("mint", 86, 99, 7, "aqua"));
         var lore = new CardLore(new CardLore.LoreData(bands, (id, l) -> id, "heads", 100,
             5, "", l -> 25.0, mob -> "aqua", startingBoosts(),
-            (id, value) -> id + " " + value, id -> id));
+            (id, value) -> id + " " + value, id -> id, BAR_WIDTH));
         var lines = lore.body(card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0),
             Tier.SIMPLE, 0.0);
         String quality = lines.stream().filter(l -> l.contains("Quality:"))
@@ -376,7 +379,7 @@ class CardLoreTest {
         var bands = List.of(new QualityBand("mint", 86, 99, 7, "#777777"));
         var lore = new CardLore(new CardLore.LoreData(bands, (id, l) -> id, "heads", 100,
             5, "", l -> 25.0, mob -> "aqua", startingBoosts(),
-            (id, value) -> id + " " + value, id -> id));
+            (id, value) -> id + " " + value, id -> id, BAR_WIDTH));
         var lines = lore.body(card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0),
             Tier.SIMPLE, 0.0);
         String quality = lines.stream().filter(l -> l.contains("Quality:"))
@@ -407,9 +410,13 @@ class CardLoreTest {
         String row = String.join("\n", none);
         assertTrue(row.contains("<green><strikethrough></strikethrough></green>"),
             "no bar filled yet, was: " + row);
-        assertTrue(row.contains("<dark_gray><strikethrough>" + "\u2500".repeat(35)
+        // Ten characters, from the fixture's bar width rather than a constant,
+        // so retuning the bar does not fail a test about something else.
+        assertTrue(row.contains("<dark_gray><strikethrough>" + "\u2500".repeat(BAR_WIDTH)
                 + "</strikethrough></dark_gray>"),
             "but the empty bar is still drawn, was: " + row);
+        assertTrue(!row.contains("\u2500".repeat(BAR_WIDTH + 1)),
+            "the bar must be exactly the configured width, was: " + row);
     }
 
     @Test

@@ -264,14 +264,17 @@ class CardLoreTest {
         // That is why a reload has to rebuild the renderer before re-rendering
         // anything; without it, editing lore-separator looks like a reload that
         // did nothing.
-        var narrow = lore(5, "---").render(
+        // Letters, not rules: the XP bar is a run of the same box-drawing
+        // character as lore-separator, so a rule separator would be found
+        // inside the bar and the comparison would pass for the wrong reason.
+        var narrow = lore(5, "AA").render(
             card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0), 0.0);
-        var wide = lore(5, "───────────────").render(
+        var wide = lore(5, "BBBB").render(
             card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0), 0.0);
         assertFalse(narrow.equals(wide),
             "two renderers built from different separators rendered identically");
-        assertTrue(wide.stream().anyMatch(l -> l.contains("───────────────")));
-        assertFalse(narrow.stream().anyMatch(l -> l.contains("───────────────")));
+        assertTrue(wide.stream().anyMatch(l -> l.contains("BBBB")));
+        assertFalse(narrow.stream().anyMatch(l -> l.contains("BBBB")));
     }
 
     @Test
@@ -390,16 +393,24 @@ class CardLoreTest {
         var none = lore(5, "").body(
             card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 0.0), Tier.SIMPLE, 0.0);
         String row = String.join("\n", none);
-        assertTrue(row.contains("<green></green>"), "no bar filled yet");
-        assertTrue(row.contains("||||||||||||||||||||"), "but the empty bar is still drawn");
+        assertTrue(row.contains("<green><strikethrough></strikethrough></green>"),
+            "no bar filled yet, was: " + row);
+        assertTrue(row.contains("<dark_gray><strikethrough>" + "\u2500".repeat(35)
+                + "</strikethrough></dark_gray>"),
+            "but the empty bar is still drawn, was: " + row);
     }
 
     @Test
     void theSeparatorIsOmittedEntirelyWhenBlank() {
+        // The XP row legitimately draws the same box-drawing character, so it is
+        // excluded here: what this pins is that no *bare* rule line appears.
         var lines = lore(5, "").body(
             card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 0.0), Tier.SIMPLE, 0.0);
         for (String line : lines) {
-            assertFalse(line.contains("──"), "no separator characters when unset");
+            if (line.contains("<strikethrough>")) {
+                continue;
+            }
+            assertFalse(line.contains("\u2500"), "no separator characters when unset: " + line);
         }
     }
 

@@ -26,9 +26,12 @@ import org.junit.jupiter.api.Test;
  */
 class CardLoreTest {
 
+    // Colours are WRAPPED here, exactly as config.yml writes them. The previous
+    // fixture used bare "red"/"gold", which hid the double-wrap bug: the test
+    // passed while every real card rendered <>Emaculate</>.
     private static final List<QualityBand> BANDS = List.of(
-        new QualityBand("damaged", 1, 25, 1, "red"),
-        new QualityBand("pristine", 76, 100, 8, "gold"));
+        new QualityBand("damaged", 1, 25, 1, "<red>"),
+        new QualityBand("pristine", 76, 100, 8, "<gold>"));
 
     private static CardLore lore(int bonusSlots, String separator) {
         return new CardLore(new CardLore.LoreData(
@@ -203,6 +206,33 @@ class CardLoreTest {
         // text between two literal angle brackets — exactly what was reported.
         assertFalse(all.contains("<<"), "the band colour must be used verbatim: " + all);
         assertFalse(plain(all).contains("<"), "no raw tag characters should survive");
+    }
+
+    @Test
+    void aBareColourInConfigIsStillAccepted() {
+        // An operator writing colour: gold rather than colour: "<gold>" should
+        // not get a tag wrapped around a tag.
+        var bands = List.of(new QualityBand("mint", 86, 99, 7, "aqua"));
+        var lore = new CardLore(new CardLore.LoreData(bands, (id, l) -> id, "heads", 100,
+            5, "", l -> 25.0));
+        var lines = lore.body(card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0),
+            Tier.SIMPLE, 0.0);
+        String quality = lines.stream().filter(l -> l.contains("Quality:"))
+            .findFirst().orElseThrow();
+        assertFalse(quality.contains("<<"), "bare colour must be wrapped once: " + quality);
+        assertFalse(plain(quality).contains("<"), quality);
+    }
+
+    @Test
+    void aHexColourInConfigIsAccepted() {
+        var bands = List.of(new QualityBand("mint", 86, 99, 7, "#777777"));
+        var lore = new CardLore(new CardLore.LoreData(bands, (id, l) -> id, "heads", 100,
+            5, "", l -> 25.0));
+        var lines = lore.body(card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0),
+            Tier.SIMPLE, 0.0);
+        String quality = lines.stream().filter(l -> l.contains("Quality:"))
+            .findFirst().orElseThrow();
+        assertTrue(quality.contains("<color:#777777>"), "hex needs the colour tag: " + quality);
     }
 
     @Test

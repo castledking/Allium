@@ -201,16 +201,36 @@ public final class CardLore {
     }
 
     private String qualityLine(int quality, QualityBand band) {
-        // Used verbatim: config.yml stores the colour already wrapped, as
-        // colour: "<gold>". Wrapping it again produced <<gold>>, which MiniMessage
-        // renders as gold text between two literal angle brackets.
-        String colour = band == null || band.colour().isBlank()
-            ? "<gray>" : band.colour().trim();
+        String colour = wrapColour(band == null ? null : band.colour());
         String name = band == null ? "Unknown" : title(band.id());
         // The percentage, because a raw 1..100 reads as a number nobody has a
         // frame of reference for.
-        return "<" + colour + ">" + name + "</" + colour + "> "
+        return colour + name + "</" + colour.substring(1, colour.length() - 1) + "> "
             + "<dark_gray>[" + quality + "%]</dark_gray>";
+    }
+
+    /**
+     * Normalises a configured colour into an opening MiniMessage tag.
+     *
+     * <p>config.yml writes these wrapped, as {@code colour: "<gold>"}, so they
+     * are used as they are. A bare {@code gold} is also accepted and wrapped,
+     * because an operator writing the short form should not get
+     * {@code <<gold>>} — which renders as gold text between two literal angle
+     * brackets, and looked exactly like a missing glyph when it happened.
+     *
+     * <p>Returning the opening tag only is what makes the close tag derivable:
+     * a second wrap is the whole bug this exists to prevent.
+     */
+    private static String wrapColour(String raw) {
+        String value = raw == null ? "" : raw.trim();
+        if (value.isEmpty()) {
+            return "<gray>";
+        }
+        if (value.startsWith("<") && value.endsWith(">")) {
+            return value;
+        }
+        // Hex and named colours both arrive as a bare word.
+        return value.startsWith("#") ? "<color:" + value + ">" : "<" + value + ">";
     }
 
     /** The progress row, or empty when there is nothing to show. */

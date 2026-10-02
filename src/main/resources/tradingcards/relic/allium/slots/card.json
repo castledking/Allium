@@ -3,5 +3,5 @@
   "icon": "nexo:chicken_trading_card",
   "size": 1,
   "drop_rule": "DEFAULT",
-  "validators": [ "allium:trading_card" ]
+  "validators": [ "relique:trading_card" ]
 }

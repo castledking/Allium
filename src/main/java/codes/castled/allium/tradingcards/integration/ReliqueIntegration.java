@@ -36,7 +36,20 @@ import org.bukkit.plugin.Plugin;
 public final class ReliqueIntegration {
 
     private static final String SLOT_ID = TradingCardsBranding.RELIQUE_SLOT;
-    private static final String VALIDATOR_ID = "allium:trading_card";
+    /**
+     * The validator's registry path, not a full key.
+     *
+     * <p>Relique creates its validator registry with its own namespace —
+     * {@code DeferredRegistry.create(VALIDATORS, "relique")} — so
+     * {@code register(path, ...)} builds {@code Key("relique", path)}. Passing a
+     * namespaced id produced {@code Key[relique:allium:trading_card]}, which
+     * Adventure rejects for having two colons, and the whole integration
+     * silently disabled itself with a warning nobody was reading.
+     *
+     * <p>So this is {@code trading_card} here, and {@code relique:trading_card} in
+     * the slot JSON, which Relique parses with {@code Key.key(...)} as a full key.
+     */
+    private static final String VALIDATOR_PATH = "trading_card";
 
     private ReliqueIntegration() {}
 
@@ -155,12 +168,12 @@ public final class ReliqueIntegration {
     /**
      * Registers the validator that makes the slot accept trading cards.
      *
-     * <p>Registered through the deferred registry under Allium's own namespace
-     * so it matches the {@code allium:trading_card} key in the slot JSON.
+     * <p>Registered under Relique's namespace, so it matches the
+     * {@code relique:trading_card} key in the slot JSON.
      */
     private static void registerValidator(Logger logger) {
         try {
-            RelicValidators.VALIDATORS.register(VALIDATOR_ID,
+            RelicValidators.VALIDATORS.register(VALIDATOR_PATH,
                 id -> (slotId, item, entity) -> TradingCardData.isCard(item));
             RelicRegistries.VALIDATORS.getClass();   // touch to fail fast on an API change
         } catch (Throwable t) {

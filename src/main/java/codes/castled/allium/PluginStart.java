@@ -302,6 +302,34 @@ public class PluginStart extends JavaPlugin {
         return harvestModule;
     }
 
+    /**
+     * Lets an equipped card widen the party manager's locator radius.
+     *
+     * <p>Attached here rather than inside the card module so the party system
+     * never depends on the cards: this is the only line that knows both exist,
+     * and if the card module fails to load the configured radius is simply left
+     * alone. The reads are live, so unequipping takes effect on the next
+     * visibility tick with no re-registration.
+     */
+    private void wireCardLocatorRadius() {
+        var partyManager = getPartyManager();
+        if (partyManager == null || tradingCardsModule == null) {
+            return;
+        }
+        var boosts = tradingCardsModule.boosts();
+        if (boosts == null) {
+            return;
+        }
+        partyManager.setRadiusExtension(new codes.castled.allium.tradingcards.boost
+            .CardLocatorRadius(
+                id -> boosts.product(id,
+                    codes.castled.allium.tradingcards.boost.BoostMechanism
+                        .CARD_WAYPOINT_MULTIPLIER),
+                id -> boosts.total(id,
+                    codes.castled.allium.tradingcards.boost.BoostMechanism
+                        .CARD_WAYPOINT_RANGE)));
+    }
+
     public codes.castled.allium.tradingcards.TradingCardsModule getTradingCardsModule() {
         return tradingCardsModule;
     }
@@ -899,6 +927,7 @@ public class PluginStart extends JavaPlugin {
             codes.castled.allium.tradingcards.command.MorphCommand morphCommand =
                 new codes.castled.allium.tradingcards.command.MorphCommand(tradingCardsModule);
             registerCommand("morph", morphCommand, morphCommand);
+            wireCardLocatorRadius();
         } catch (Throwable t) {
             Text.sendDebugLog(
                 ERROR,

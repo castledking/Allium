@@ -42,6 +42,13 @@ public class PartyManager {
     private int showNonPartyMembersRadius;
     private boolean syncWithMcMMO;
 
+    /**
+     * Widens the configured radius per viewer, for equipped cards. Null means
+     * "nothing extends it" and is resolved through LocatorRadiusExtension.orNone
+     * so the decision points never have to null-check.
+     */
+    private LocatorRadiusExtension radiusExtension = LocatorRadiusExtension.NONE;
+
     // Temporary visibility overrides: player -> (target -> expiration time)
     private final Map<UUID, Map<UUID, Long>> forcedVisibilityOverrides = new ConcurrentHashMap<>();
     
@@ -167,10 +174,42 @@ public class PartyManager {
         // Check if in same party - party members always see each other
         if (isInSameParty(viewer, target)) return true;
         
-        // Check distance for non-party members
-        double distanceSquared = viewer.getLocation().distanceSquared(target.getLocation());
-        int radiusSquared = showNonPartyMembersRadius * showNonPartyMembersRadius;
-        return distanceSquared <= radiusSquared;
+        // Check distance for non-party members. The radius is the viewer's, not
+        // the server's: an equipped card widens how far its holder can see, and
+        // two players looking at each other from the same spot can therefore see
+        // different distances.
+        return viewer.getLocation().distanceSquared(target.getLocation())
+            <= Math.pow(effectiveRadius(viewer), 2);
+    }
+
+    /**
+     * The radius this viewer actually uses.
+     *
+     * <p>The configured value, widened by whatever the viewer's card grants. Only
+     * ever wider: an extension computing something smaller than the base is
+     * ignored, because a card that took visibility away rather than granting it
+     * would be a downgrade dressed as a reward.
+     */
+    public double effectiveRadius(Player viewer) {
+        if (viewer == null) {
+            return showNonPartyMembersRadius;
+        }
+        double base = showNonPartyMembersRadius;
+        double extended = radiusExtension.radiusFor(viewer.getUniqueId(), base);
+        if (!Double.isFinite(extended) || extended <= base) {
+            return base;
+        }
+        return extended;
+    }
+
+    /**
+     * Installs the per-viewer radius extension, or clears it with null.
+     *
+     * <p>Set after the trading card module enables and cleared on reload, so a
+     * module that fails to load leaves the configured radius exactly as it was.
+     */
+    public void setRadiusExtension(LocatorRadiusExtension radiusExtension) {
+        this.radiusExtension = LocatorRadiusExtension.orNone(radiusExtension);
     }
 
     /**
@@ -681,7 +720,7 @@ public class PartyManager {
         }
 
         double distance = viewer.getLocation().distance(target.getLocation());
-        if (distance <= showNonPartyMembersRadius) {
+        if (distance <= effectiveRadius(viewer)) {
             showPlayerAndRefreshTab(viewer, target);
         } else {
             hidePlayerAndRefreshTab(viewer, target);

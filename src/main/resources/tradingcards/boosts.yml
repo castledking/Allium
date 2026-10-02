@@ -232,6 +232,15 @@ boosts:
     mechanism: CARD_DISARM
     amount: 0.15
 
+  # These widen Allium's own party locator radius — the one in
+  # party-manager.show-non-party-members-radius — for the player
+  # wearing the card. Not a second reachability system: the party
+  # manager already decides who shows on a viewer's locator bar, so
+  # a card just widens that number and inherits the whole existing
+  # behaviour, including the locator-packet filtering.
+  #
+  # Only ever widens. A card cannot take reach away.
+  #
   # Flat and multiplicative are separate boosts because they are
   # separate purchases: a flat bonus helps a player who is slightly
   # too short-reach, where a multiplier does nothing useful at the

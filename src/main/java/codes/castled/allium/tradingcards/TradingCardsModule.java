@@ -43,6 +43,7 @@ import codes.castled.allium.tradingcards.gui.TradeInListener;
 import codes.castled.allium.tradingcards.item.HeadResolver;
 import codes.castled.allium.tradingcards.item.TradingCardData;
 import codes.castled.allium.tradingcards.item.CardLore;
+import codes.castled.allium.tradingcards.item.HeldCardNameListener;
 import codes.castled.allium.tradingcards.TradingCardsModule;
 import codes.castled.allium.tradingcards.trade.PendingPayoutListener;
 import codes.castled.allium.tradingcards.trade.PendingPayoutStore;
@@ -100,6 +101,7 @@ public final class TradingCardsModule {
     private boolean abilitiesLive;
     private FishSizeTracker fishSizes;
     private DisguiseBridge disguises;
+    private HeldCardNameListener heldCardNames;
     private codes.castled.allium.tradingcards.integration.BeastTokensBridge beastTokens;
     private MorphService morphs;
     private XpAntiFarmStore antiFarm;
@@ -195,6 +197,11 @@ public final class TradingCardsModule {
         // Morph and token drops, after boosts so both can read the live total.
         initMorph(issues);
 
+        // The action bar names a held card, which is the one place its name can
+        // be shown given the tooltip deliberately has none.
+        heldCardNames = new HeldCardNameListener(plugin);
+        heldCardNames.start();
+
         // BeastTokens is not on the compile classpath, so the bridge is
         // reflection throughout. Optional in the same way as everything else
         // here: a server without it still drops cards and pays xp.
@@ -226,6 +233,10 @@ public final class TradingCardsModule {
         removeAllBoosts();
         if (morphs != null) {
             morphs.clearAll();
+        }
+        if (heldCardNames != null) {
+            heldCardNames.stop();
+            heldCardNames = null;
         }
         // Saved on the way down rather than left to the timer: a cooldown that
         // is lost on shutdown is a gate that is not there.

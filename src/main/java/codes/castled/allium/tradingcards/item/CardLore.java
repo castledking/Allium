@@ -10,32 +10,24 @@ import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 
 /**
- * Renders a card's lore, and the tier-coloured background behind it.
+ * Renders a card's lore. The panel behind it is drawn by the client, not here.
  *
- * <h2>The background is drawn as glyphs, not as a tooltip sprite</h2>
+ * <h2>The background</h2>
  *
- * <p>Vanilla has exactly one item-tooltip background, at
- * {@code gui/sprites/tooltip/background}, and nine-slicing it via a
- * {@code .mcmeta} is the easy way to get a panel that grows with the lore — but
- * it is one file for the whole client, so every tooltip on the server would get
- * the same tier colour and no tier could have its own.
+ * <p>Drawn by vanilla, not by this class. The client renders every item tooltip
+ * from one sprite, {@code gui/sprites/tooltip/background}, and a {@code .mcmeta}
+ * nine-slice on that sprite makes vanilla stretch or tile its centre to fit the
+ * tooltip — so the panel grows with the lore for free, on every client, with no
+ * server-side work at all.
  *
- * <p>So the panel is drawn here instead: each lore line is prefixed with a
- * 200px-wide band glyph, and the font gives that glyph a negative advance so the
- * text lands on top of its own band rather than after it. A line at the top of
- * the card gets the {@code _top} slice, the last line the {@code _bottom}, and
- * every line between a {@code _middle}. That is why the source art is a
- * three-slice at a fixed width with an 11px middle: one band per line, so the
- * panel grows vertically with the lore exactly as it would have if vanilla had
- * drawn it.
+ * <p>The obvious alternative, drawing the panel as font glyphs in the lore so
+ * each tier could have its own, is not viable here: Nexo rewrites any
+ * font JSON it finds under any namespace, replacing the declared metrics with
+ * its own defaults and dropping negative advances outright, so the glyph resolves
+ * to placeholders and every character renders as a box.
  *
- * <p>Because the server chooses which glyph to emit, all five tiers get their own
- * background. That is the whole reason for the extra machinery.
- *
- * <p><b>Width is a known soft spot.</b> Vanilla sizes the tooltip box to the
- * <i>text</i>, and the band's negative advance cancels its own width, so a short
- * line clips its band. The art was drawn for 200px; lines are kept short to stay
- * inside it. This is unverifiable without a client.
+ * <p>Tiers are therefore distinguished by the badge and colour rather than by
+ * panel colour, which is what the tier label glyph is for.
  */
 public final class CardLore {
 
@@ -53,24 +45,10 @@ public final class CardLore {
         Tier.LEGENDARY, "᪛",
         Tier.FABLED, "᪜");
 
-    /** Band glyphs, keyed by tier then slice. Mirrors the pack's font allocation. */
-    private static final Map<Tier, String[]> BANDS = Map.of(
-        Tier.SIMPLE, new String[] {"", "", ""},
-        Tier.ELITE, new String[] {"", "", ""},
-        Tier.ULTIMATE, new String[] {"", "", ""},
-        Tier.LEGENDARY, new String[] {"", "", ""},
-        Tier.FABLED, new String[] {"", "", ""});
-
-    /** The font that owns the band glyphs. Includes the default font for the text. */
-    private static final String BAND_FONT = "sf.allium_tradingcards";
-
-    /**
-     * The cursor reset: a space provider with a -200 advance, which cancels the
-     * band glyph's own 200px advance so the text after it starts back at x=0.
-     */
-    private static final String RESET = "";
-
-    private static final int BAR_WIDTH = 20;
+    /** The tier label glyph, or an empty string for a null tier. */
+    public static String label(Tier tier) {
+        return tier == null ? "" : TIER_LABEL.getOrDefault(tier, "");
+    }
 
     /**
      * Everything the lore needs that lives in config rather than on the card.
@@ -97,28 +75,6 @@ public final class CardLore {
         }
     }
 
-    /**
-     * A tier's three band glyphs, in the order they are used: top, middle,
-     * bottom.
-     *
-     * <p>Exposed so the layout can be asserted against the allocation rather
-     * than by reading glyphs back out of a rendered line, which only works if a
-     * line happens to carry all three and it never does.
-     */
-    static String[] bands(Tier tier) {
-        return BANDS.get(tier == null ? Tier.SIMPLE : tier);
-    }
-
-    /** The font that carries the band glyphs. */
-    static String bandFont() {
-        return BAND_FONT;
-    }
-
-    /** The tier label glyph, or an empty string for a null tier. */
-    public static String label(Tier tier) {
-        return tier == null ? "" : TIER_LABEL.getOrDefault(tier, "");
-    }
-
     private final LoreData data;
 
     public CardLore(LoreData data) {
@@ -135,9 +91,7 @@ public final class CardLore {
         if (card == null) {
             return List.of();
         }
-        Tier tier = card.tier() == null ? Tier.SIMPLE : card.tier();
-        List<String> lines = body(card, tier, xp);
-        return wrapWithBands(tier, lines);
+        return body(card, card.tier() == null ? Tier.SIMPLE : card.tier(), xp);
     }
 
     /**
@@ -223,23 +177,6 @@ public final class CardLore {
         return out;
     }
 
-    /** Wraps each line in the tier's band glyph and the font that carries it. */
-    List<String> wrapWithBands(Tier tier, List<String> lines) {
-        if (lines.isEmpty()) {
-            return List.of();
-        }
-        String[] band = BANDS.getOrDefault(tier, BANDS.get(Tier.SIMPLE));
-        List<String> out = new ArrayList<>(lines.size());
-        int last = lines.size() - 1;
-        for (int i = 0; i <= last; i++) {
-            // Two bands on a one-line card would stack the caps on each other, so
-            // a single line gets the top slice alone.
-            String slice = (lines.size() == 1) ? band[0]
-                : (i == 0 ? band[0] : (i == last ? band[2] : band[1]));
-            out.add("<font:" + BAND_FONT + ">" + slice + RESET + lines.get(i) + "</font>");
-        }
-        return out;
-    }
 
     private String qualityLine(int quality, QualityBand band) {
         String colour = band == null ? "gray" : band.colour();
@@ -262,6 +199,14 @@ public final class CardLore {
             + "<dark_gray>" + "|".repeat(BAR_WIDTH - filled) + "</dark_gray> "
             + "<gray>" + (long) xp + "</gray><dark_gray>/" + (long) needed + " XP</dark_gray>";
     }
+
+    /**
+     * Tier colours, approximating the badge glyph's own colour.
+     *
+     * <p>The word is there to stay readable without the resource pack, not to be
+     * the badge.
+     */
+    private static final int BAR_WIDTH = 20;
 
     /**
      * Tier colours, approximating the badge glyph's own colour.

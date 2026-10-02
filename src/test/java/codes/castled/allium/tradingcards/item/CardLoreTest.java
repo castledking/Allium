@@ -104,72 +104,16 @@ class CardLoreTest {
         }
     }
 
-    @Test
-    void eachTierHasItsOwnBandGlyphs() {
-        CardLore lore = lore(5, "");
-        String[] simple = CardLore.bands(Tier.SIMPLE);
-        String[] fabled = CardLore.bands(Tier.FABLED);
-        assertFalse(java.util.Arrays.equals(simple, fabled),
-            "the bands are what make the background per-tier; sharing them defeats it");
-        for (Tier tier : Tier.values()) {
-            String[] band = CardLore.bands(tier);
-            assertEquals(3, band.length);
-            for (String slice : band) {
-                assertFalse(slice.isBlank());
-            }
-            assertNotEquals(band[0], band[1]);
-            assertNotEquals(band[1], band[2]);
-        }
-    }
 
 
     // ==================== banding ====================
 
-    @Test
-    void theFirstLineGetsTheTopSliceAndTheLastTheBottom() {
-        CardLore lore = lore(5, "");
-        var lines = lore.render(
-            card(Tier.ELITE, 0, 15, 0, List.of("luck"), List.of(), 0.0), 0.0);
-        assertTrue(lines.size() > 3, "the layout should have several lines");
-        String[] band = CardLore.bands(Tier.ELITE);
-        assertTrue(strip(lines.get(0)).startsWith(band[0]), "first line is the top slice");
-        assertTrue(strip(lines.get(1)).startsWith(band[1]), "middle lines are the middle slice");
-        assertTrue(strip(lines.get(lines.size() - 1)).startsWith(band[2]),
-            "last line is the bottom slice");
-    }
 
-    @Test
-    void everyLineIsWrappedInTheBandFont() {
-        for (String line : lore(5, "").render(
-                card(Tier.ULTIMATE, 3, 15, 0, List.of("luck"), List.of(), 0.0), 0.0)) {
-            assertTrue(line.startsWith("<font:sf.allium_tradingcards>"),
-                "every line needs the band font: " + line);
-            assertTrue(line.endsWith("</font>"), "every line must close the font tag");
-        }
-    }
 
-    @Test
-    void aOneLineCardGetsTheTopSliceAlone() {
-        // Two caps stacked on one line would draw the bottom cap over the top one.
-        var lines = new CardLore(new CardLore.LoreData(BANDS, (id, l) -> id, "heads", 100, 1,
-            "", level -> 0.0)).wrapWithBands(Tier.SIMPLE, List.of("only line"));
-        assertEquals(1, lines.size());
-        String body = strip(lines.get(0));
-        assertTrue(body.startsWith(CardLore.bands(Tier.SIMPLE)[0]));
-        assertFalse(body.startsWith(CardLore.bands(Tier.SIMPLE)[1]),
-            "a one-line card must not also get a middle slice");
-        assertFalse(body.contains(CardLore.bands(Tier.SIMPLE)[2]),
-            "stacking both caps on one line draws one over the other");
-    }
 
     /** The line with MiniMessage tags removed, so assertions read as a player sees it. */
     private static String plain(String line) {
         return line.replaceAll("<[^>]*>", "");
-    }
-
-    private static String strip(String line) {
-        String body = line.substring(line.indexOf('>') + 1);
-        return body.substring(0, body.length() - "</font>".length());
     }
 
     // ==================== bonus slots ====================

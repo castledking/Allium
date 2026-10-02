@@ -78,21 +78,6 @@ public record TradingCardData(
         return meta.getPersistentDataContainer().has(TradingCardKeys.CARD, PersistentDataType.BYTE);
     }
 
-    /**
-     * The card's stored display name, for the action bar.
-     *
-     * <p>Absent on a card minted before names were captured, so the caller needs
-     * a fallback rather than treating it as a corrupt card.
-     */
-    public static Optional<String> storedName(ItemStack stack) {
-        if (stack == null || !stack.hasItemMeta()) return Optional.empty();
-        var meta = stack.getItemMeta();
-        if (meta == null) return Optional.empty();
-        var value = meta.getPersistentDataContainer()
-            .get(TradingCardKeys.NAME, PersistentDataType.STRING);
-        return value == null || value.isBlank() ? Optional.empty() : Optional.of(value);
-    }
-
     /** Reads a card, or empty when the stack is not one. */
     public static Optional<TradingCardData> read(ItemStack stack) {
         if (stack == null || !stack.hasItemMeta()) return Optional.empty();
@@ -195,27 +180,6 @@ public record TradingCardData(
         pdc.set(TradingCardKeys.XP, PersistentDataType.DOUBLE, data.xp());
         pdc.set(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, data.rerolls());
         pdc.set(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) (data.bound() ? 1 : 0));
-        // Two cards of the same mob and tier differ in level, quality and
-        // signatures, so they must never merge into one stack — a merged
-        // stack would silently discard the extra cards' state.
-        // The card carries no display name. Vanilla's tooltip puts the first line
-        // at y=3 whatever it is, so any name would land on the frame's ornament —
-        // the mob name lives in the lore instead, under a blank line that reserves
-        // the decoration.
-        //
-        // Set once, here, rather than swapped per hover: an item rewritten while
-        // the player is looking at it is what causes a visible refresh on the
-        // client, and there is no reason for it to ever be rewritten.
-        // Captured before the blank below, so the action bar can still show the
-        // name the card was minted with.
-        var existing = meta.displayName();
-        if (existing != null && !existing.equals(net.kyori.adventure.text.Component.empty())) {
-            meta.getPersistentDataContainer().set(TradingCardKeys.NAME,
-                PersistentDataType.STRING,
-                net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
-                    .serialize(existing));
-        }
-        meta.displayName(net.kyori.adventure.text.Component.empty());
         meta.setMaxStackSize(1);
         renderLore(meta, data);
         stack.setItemMeta(meta);

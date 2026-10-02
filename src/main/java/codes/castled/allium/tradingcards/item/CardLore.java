@@ -109,18 +109,14 @@ public final class CardLore {
         QualityBand band = card.band(data.bands());
         String sep = data.separator();
 
-        // A blank first line. It reserves the top of the tooltip for the card
-        // frame's ornament and rule, which the client draws in the border region
-        // where any text would collide with it. Vanilla's PADDING_TOP is 3, so
-        // the first line always starts at y=3 — inside the ornament.
-        out.add("");
-        // The mob name, which used to be the item's display name. It moved here
-        // so the top of the card could be decoration instead of text, which means
-        // the card carries no display name at all.
-        out.add("<white>" + title(card.mob().toLowerCase(Locale.ROOT)) + "</white>");
-        // The tier badge on its own. Read off the card, never the display name,
-        // so a mislabelled item cannot make two parts disagree.
-        out.add(label(tier));
+        // The tier badge, forced to white so the glyph's own texture colour
+        // shows. A colour on the line tints a bitmap font glyph, which washes the
+        // texture out to whatever colour the text would have been — the Fabled
+        // badge read as dull red instead of the red it is drawn in.
+        //
+        // Read off the card, never the display name, so a mislabelled item cannot
+        // make two parts disagree.
+        out.add("<white>" + label(tier) + "</white>");
         if (!sep.isEmpty()) out.add(sep);
 
         out.add("<gray>Level:</gray> <dark_gray>[<white>" + card.level() + "</white>]</dark_gray>");

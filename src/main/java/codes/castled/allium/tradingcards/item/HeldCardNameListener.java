@@ -20,10 +20,11 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Shows the card name above the hotbar while a card is held.
  *
- * <p>A card deliberately has no display name, because vanilla puts a tooltip's
- * first line at y=3 where it lands on the frame's ornament. That leaves the
- * name nowhere on the item, so it is shown here instead — the action bar is the
- * one place a held item can be named without touching the tooltip.
+ * <p>Read off the item rather than rebuilt, so the name always matches whatever
+ * the item definition says. Cards are also named on the item itself now, so this
+ * is a second place the name appears rather than the only one — kept because a
+ * held card is the one you are looking at, and reading it from the hotbar slot
+ * beats moving the mouse to it.
  *
  * <h2>Why this repeats rather than firing once</h2>
  *
@@ -95,13 +96,16 @@ public class HeldCardNameListener implements Listener {
         if (!TradingCardData.isCard(held)) {
             return null;
         }
-        // Preferred: the name the card was minted with, captured before the
-        // tooltip name was blanked. Falls back for cards minted before names
-        // were stored, so an old card is still named rather than silent.
-        String stored = TradingCardData.storedName(held).orElse(null);
-        if (stored != null) {
-            return stored;
+        // Read the name off the item itself, so an operator renaming it in the
+        // item definition gets the change here with no code edit.
+        var meta = held.getItemMeta();
+        if (meta != null && meta.hasDisplayName()) {
+            var name = meta.displayName();
+            if (name != null) {
+                return MM.serialize(name);
+            }
         }
+        // No custom name, so fall back to the mob rather than showing nothing.
         var card = TradingCardData.read(held).orElse(null);
         if (card == null) {
             return null;

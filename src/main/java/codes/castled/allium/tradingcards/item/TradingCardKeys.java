@@ -71,20 +71,6 @@ public final class TradingCardKeys {
      */
     public static final NamespacedKey XP = key("xp");
 
-    /**
-     * The card's display name, captured before the tooltip name is blanked.
-     *
-     * <p>A card shows no display name, because vanilla puts the first tooltip
-     * line at y=3 where it collides with the frame's ornament. The name is still
-     * wanted — for the action bar while the card is held — so it is kept here
-     * rather than only in the item's own name, which the blanking overwrites.
-     *
-     * <p>Written as the component serialised to MiniMessage, so a colour from the
-     * item definition survives the round trip without a second copy of the
-     * palette living in Java.
-     */
-    public static final NamespacedKey NAME = key("name");
-
     /** How many times this card has been rerolled, for the escalating price. */
     public static final NamespacedKey REROLLS = key("rerolls");
 

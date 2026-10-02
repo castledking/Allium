@@ -617,7 +617,7 @@ public final class TradingCardsModule {
         double perLevel = config.levelling().boostPerLevel();
         double sMin = scaleMinimum();
         double sMax = scaleMaximum();
-        int bonusSlots = Math.max(1, catalog.bonusRollCount());
+        int bonusSlots = config.levelling().loreBonusSlots();
         var quality = config.quality();
 
         TradingCardData.lore(new CardLore(new CardLore.LoreData(
@@ -655,10 +655,18 @@ public final class TradingCardsModule {
         return String.format(java.util.Locale.ROOT, "%.2f", value);
     }
 
-    /** The rule between lore sections, in the character's own colour. */
+    /**
+     * The rule between lore sections: dark grey, struck through.
+     *
+     * <p>The strikethrough is a style rather than a character, so it is applied
+     * here instead of being written into the config value — the config holds the
+     * glyphs and this owns how they are drawn, which means a separator length
+     * change needs no tags edited alongside it.
+     */
     private String loreSeparator() {
         String rule = config.levelling().loreSeparator();
-        return rule.isBlank() ? "" : "<dark_gray>" + rule + "</dark_gray>";
+        return rule.isBlank()
+            ? "" : "<dark_gray><strikethrough>" + rule + "</strikethrough></dark_gray>";
     }
 
     /** What a card trades for, named for the lore line. */

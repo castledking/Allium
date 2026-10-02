@@ -59,14 +59,13 @@ public record TradingCardsConfig(
         double boostPerLevel,
         int boostsPerLevel,
         String loreSeparator,
+        int loreBonusSlots,
         Announce announce
     ) {
         public static Levelling defaults() {
             return new Levelling(0, 100, 1.0, 1,
-                "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
-                    + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
-                    + "\u2500\u2500\u2500\u2500\u2500",
-                Announce.defaults());
+                "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+                5, Announce.defaults());
         }
 
         /** The rule between lore sections; blank omits every separator. */
@@ -300,7 +299,11 @@ public record TradingCardsConfig(
             perLevel = 0.0;
         }
         int perLevelCount = clamp(section.getInt("boosts-per-level", 1), 1, 9);
-        return new Levelling(start, max, perLevel, perLevelCount, separator,
+        // Slots shown on a card, independent of how many bonuses a drop rolls:
+        // the lore shows the card's full potential so a player can see what is
+        // still available, which is not the same as how many it starts with.
+        int slots = clamp(section.getInt("lore-bonus-slots", 5), 1, 9);
+        return new Levelling(start, max, perLevel, perLevelCount, separator, slots,
             announce(section.getConfigurationSection("announce")));
     }
 

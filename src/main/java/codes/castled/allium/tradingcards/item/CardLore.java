@@ -91,7 +91,11 @@ public final class CardLore {
         if (card == null) {
             return List.of();
         }
-        return body(card, card.tier() == null ? Tier.SIMPLE : card.tier(), xp);
+        Tier tier = card.tier() == null ? Tier.SIMPLE : card.tier();
+        // The pack's font ships italic glyphs only, so an unstyled line inherits
+        // the italic and the whole card reads as slanted. Reset per line, since
+        // lore lines are independent components rather than one nested tree.
+        return body(card, tier, xp).stream().map(CardLore::notItalic).toList();
     }
 
     /**
@@ -105,11 +109,12 @@ public final class CardLore {
         QualityBand band = card.band(data.bands());
         String sep = data.separator();
 
-        // The badge and the pips below both read the tier off the card, never off
-        // the item's display name. A card whose item was mislabelled shows a
-        // consistent (if wrong) tier rather than two tiers disagreeing on it.
-        out.add(label(tier) + " <" + tierColour(tier) + ">" + title(tier.name())
-            + "</" + tierColour(tier) + ">");
+        // The badge on its own. It used to be followed by the tier name, which
+        // printed the tier twice: once in the item name and once here.
+        //
+        // Read off the card, never the item's display name, so a mislabelled item
+        // shows a consistent tier rather than two disagreeing.
+        out.add(label(tier));
         if (!sep.isEmpty()) out.add(sep);
 
         out.add("<gray>Level:</gray> <dark_gray>[<white>" + card.level() + "</white>]</dark_gray>");
@@ -132,8 +137,8 @@ public final class CardLore {
         out.add("<gray>Quality:</gray> " + qualityLine(card.quality(), band));
         if (!sep.isEmpty()) out.add(sep);
 
-        out.add("<gray>Tier:</gray> <dark_gray>" + tier.pips()
-            + "</dark_gray> <" + tierColour(tier) + ">[" + (tier.ordinal() + 1)
+        out.add("<gray>Tier:</gray> " + pipRow(tier)
+            + " <" + tierColour(tier) + ">[" + (tier.ordinal() + 1)
             + "/" + Tier.values().length + "]</" + tierColour(tier) + ">");
 
         for (String slot : bonusSlots(card)) {
@@ -141,11 +146,7 @@ public final class CardLore {
         }
 
         if (!sep.isEmpty()) out.add(sep);
-        out.add("<dark_gray>Right-click to roll bonuses</dark_gray>");
-        if (band != null && band.heads() > 0) {
-            out.add("<dark_gray>Trades for <white>" + band.heads()
-                + "</white> <dark_gray>" + data.headLabel() + "</dark_gray>");
-        }
+        out.add("<dark_gray>Right-Click to Open Menu</dark_gray>");
         return out;
     }
 
@@ -163,8 +164,13 @@ public final class CardLore {
     List<String> bonusSlots(TradingCardData card) {
         List<String> out = new ArrayList<>();
         List<String> held = card.bonuses();
-        // One slot is open from the start; every reroll opens another.
-        int unlocked = Math.min(data.bonusSlots(), card.rerolls() + 1);
+        // A card that rolled bonuses must show all of them, so the slot count
+        // cannot be below what it holds. Keying this on rerolls alone hid every
+        // rolled bonus past the first behind "Locked", which read as the drop
+        // having awarded nothing. One slot is open from the start and every
+        // reroll opens another.
+        int unlocked = Math.min(data.bonusSlots(),
+            Math.max(held.size(), card.rerolls() + 1));
         for (int i = 0; i < data.bonusSlots(); i++) {
             if (i >= unlocked) {
                 out.add("<dark_gray>Locked</dark_gray>");
@@ -178,8 +184,28 @@ public final class CardLore {
     }
 
 
+    /**
+     * The pip row: filled diamonds green, hollow ones the grey the design uses.
+     *
+     * <p>Coloured per glyph rather than one colour for the row, so a SIMPLE card
+     * reads as one green pip and four grey ones rather than five grey diamonds
+     * that happen to differ in shape.
+     */
+    private static String pipRow(Tier tier) {
+        StringBuilder row = new StringBuilder();
+        for (int i = 0; i < Tier.values().length; i++) {
+            boolean filled = i <= tier.ordinal();
+            row.append(filled ? "<green>◆</green>" : "<#777777>◇</#777777>");
+        }
+        return row.toString();
+    }
+
     private String qualityLine(int quality, QualityBand band) {
-        String colour = band == null ? "gray" : band.colour();
+        // Used verbatim: config.yml stores the colour already wrapped, as
+        // colour: "<gold>". Wrapping it again produced <<gold>>, which MiniMessage
+        // renders as gold text between two literal angle brackets.
+        String colour = band == null || band.colour().isBlank()
+            ? "<gray>" : band.colour().trim();
         String name = band == null ? "Unknown" : title(band.id());
         // The percentage, because a raw 1..100 reads as a number nobody has a
         // frame of reference for.
@@ -223,6 +249,11 @@ public final class CardLore {
             case LEGENDARY -> "gold";
             case FABLED -> "red";
         };
+    }
+
+    /** One lore line with the italic reset in front of it. */
+    private static String notItalic(String line) {
+        return line.startsWith("<!italic>") ? line : "<!italic>" + line;
     }
 
     /** Title-cases an enum or config id for display. */

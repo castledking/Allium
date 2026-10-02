@@ -36,14 +36,15 @@ levelling:
   # different gamble (which two) rather than a slower one.
   boosts-per-level: 1
 
-  # The rule between lore sections, drawn in the character's own colour.
-  # Blank omits every separator.
-  #
-  # The count here is matched to the width of the card background art
-  # (sf/textures/tooltip/*_middle.png is 200px wide). A longer rule
-  # overflows the background and gets clipped by the tooltip box; a
-  # shorter one leaves the panel looking narrow. Change both together.
-  lore-separator: "───────────────────────────"
+  # The rule between lore sections. Rendered dark grey with a strikethrough,
+  # which is what the design uses. Nine characters wide, trimmed from the
+  # 200px of the source art to fit the tooltip without the ends being clipped.
+  lore-separator: "─────────"
+
+  # How many bonus slots a card shows. Independent of how many bonuses a drop
+  # actually rolls (boosts.yml roll.count): the card shows its full potential
+  # so a player can see what is still locked, then fills in one slot per reroll.
+  lore-bonus-slots: 5
 
   # XP needed to go from level N to N+1. Flat early, steep late.
   curve:

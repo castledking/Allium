@@ -84,9 +84,16 @@ class CardLoreTest {
             String pipRow = lines.stream()
                 .filter(l -> l.startsWith("<gray>Tier:</gray>"))
                 .findFirst().orElseThrow();
-            assertTrue(pipRow.contains(tier.pips()),
-                tier + " pip row should be " + tier.pips());
-            assertTrue(badge.contains(CardLore.label(tier)));
+            // Each pip is coloured individually now, so the raw glyph string is
+            // no longer contiguous — count the filled ones instead.
+            assertEquals(tier.ordinal() + 1,
+                pipRow.split("<green>", -1).length - 1,
+                tier + " should have " + (tier.ordinal() + 1) + " filled pips");
+            assertEquals(Tier.values().length - tier.ordinal() - 1,
+                pipRow.split("<#777777>", -1).length - 1,
+                tier + " should have the rest hollow");
+            // The badge is now bare: the item name already says the tier.
+            assertEquals(CardLore.label(tier), plain(badge).strip());
             assertTrue(pipRow.contains("[" + (tier.ordinal() + 1) + "/5]"),
                 tier + " position should read " + (tier.ordinal() + 1) + "/5");
         }
@@ -142,6 +149,15 @@ class CardLoreTest {
     }
 
     @Test
+    void thereAreFiveSlotsNotThree() {
+        // boosts.yml roll.count is 3, but the card shows five so a player can see
+        // what is still locked. Deriving the slot count from the roll count is
+        // what made only three appear.
+        assertEquals(5, lore(5, "").bonusSlots(
+            card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 0.0)).size());
+    }
+
+    @Test
     void unlockedSlotsShowTheBonusesTheCardHolds() {
         var slots = lore(5, "").bonusSlots(
             card(Tier.SIMPLE, 4, 15, 2, List.of("luck"), List.of("armor", "haste"), 0.0));
@@ -173,18 +189,20 @@ class CardLoreTest {
         assertTrue(plain(all).contains("Damaged"), "quality band name comes from the config");
         assertTrue(all.contains("[15%]"), "quality reads as a percentage");
         assertTrue(all.contains("Tier:"), "tier row");
-        assertTrue(all.contains("Right-click to roll bonuses"), "the reroll hint");
-        assertTrue(all.contains("spawner heads"), "what it trades for");
+        assertTrue(all.contains("Right-Click to Open Menu"), "the menu hint");
     }
 
     @Test
-    void theQualityBandAndItsHeadValueBothComeFromTheConfig() {
+    void theQualityBandComesFromTheConfigAndIsNotDoubleWrapped() {
         var lines = lore(5, "").body(
             card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0), Tier.SIMPLE, 0.0);
         String all = String.join("\n", lines);
-        assertTrue(all.contains("Pristine"), "90 is in the pristine band");
-        assertTrue(plain(all).contains("8 spawner heads"),
-            "pristine pays 8 heads per the band; got: " + plain(all));
+        assertTrue(plain(all).contains("Pristine"), "90 is in the pristine band");
+        // config.yml stores the colour already wrapped, as colour: "<gold>".
+        // Wrapping it again emitted <<gold>>, which MiniMessage renders as gold
+        // text between two literal angle brackets — exactly what was reported.
+        assertFalse(all.contains("<<"), "the band colour must be used verbatim: " + all);
+        assertFalse(plain(all).contains("<"), "no raw tag characters should survive");
     }
 
     @Test

@@ -25,6 +25,7 @@ public record TradingCardsConfig(
     Trade trade,
     Reroll reroll,
     Merge merge,
+    Morph morph,
     Crafting crafting
 ) {
 
@@ -37,7 +38,8 @@ public record TradingCardsConfig(
     /** A config that does nothing, used before the first successful load. */
     public static TradingCardsConfig disabled() {
         return new TradingCardsConfig(false, Levelling.defaults(), List.of(),
-            Trade.defaults(), Reroll.defaults(), Merge.defaults(), Crafting.defaults());
+            Trade.defaults(), Reroll.defaults(), Merge.defaults(), Morph.defaults(),
+            Crafting.defaults());
     }
 
     // ==================== nested blocks ====================
@@ -179,6 +181,38 @@ public record TradingCardsConfig(
     }
 
     /**
+     * Turning into the mob on a FABLED card.
+     *
+     * <p>The disguise itself is cosmetic — LibsDisguises changes packets only,
+     * so the server still treats the player as a player. Everything that makes a
+     * morph <i>behave</i> like a mob is implemented by this module, and the
+     * fields below govern that behaviour rather than the costume.
+     *
+     * @param minimumTier  the lowest tier that may morph
+     * @param durationSeconds 0 for a toggle that never auto-expires
+     * @param deactivateBelowHealth 0 disables; 10 is half of vanilla 20
+     * @param allowFlight  whether fliers may take flight at all — the single
+     *                     most abusable thing in the set, so opt-in per mob
+     * @param stealthUntilAttacked hold off mob aggro until the player strikes
+     * @param mobsTargetDisguised pass through to LibsDisguises; false makes the
+     *                            morphed player invisible to mob AI entirely,
+     *                            which is the opposite of the point
+     */
+    public record Morph(
+        boolean enabled,
+        Tier minimumTier,
+        int durationSeconds,
+        double deactivateBelowHealth,
+        boolean allowFlight,
+        boolean stealthUntilAttacked,
+        boolean mobsTargetDisguised
+    ) {
+        public static Morph defaults() {
+            return new Morph(true, Tier.FABLED, 0, 0.0, false, true, true);
+        }
+    }
+
+    /**
      * Crafting cards from heads. Off by default: heads buy cards and cards buy
      * heads, so enabling both without binding is an infinite loop.
      */
@@ -225,6 +259,7 @@ public record TradingCardsConfig(
             trade(yaml.getConfigurationSection("trade"), issues),
             reroll(yaml.getConfigurationSection("reroll"), issues),
             merge(yaml.getConfigurationSection("merge"), issues),
+            morph(yaml.getConfigurationSection("morph"), issues),
             crafting(yaml.getConfigurationSection("crafting"), issues));
         return new LoadResult(config, issues);
     }
@@ -381,6 +416,37 @@ public record TradingCardsConfig(
         }
         return new Merge(section.getBoolean("enabled", true),
             section.getBoolean("require-same-mob", true), target);
+    }
+
+    private static Morph morph(ConfigurationSection section, List<ValidationIssue> issues) {
+        if (section == null) return Morph.defaults();
+        Tier tier = Tier.SIMPLE;
+        if (section.isString("minimum-tier")) {
+            Tier parsed = codes.castled.allium.tradingcards.card.CardDefinition.parseTier(
+                section.getString("minimum-tier"));
+            if (parsed == null) {
+                issues.add(ValidationIssue.warning(FILE, "morph.minimum-tier",
+                    "Unknown tier '" + section.getString("minimum-tier")
+                        + "'; using FABLED"));
+                tier = Tier.FABLED;
+            } else {
+                tier = parsed;
+            }
+        } else {
+            tier = Tier.FABLED;
+        }
+        int duration = section.getInt("duration", 0);
+        if (duration < 0) duration = 0;
+        double health = section.getDouble("deactivate-below-health", 0.0);
+        if (health < 0.0) {
+            issues.add(ValidationIssue.warning(FILE, "morph.deactivate-below-health",
+                "Negative; using 0, which disables the check"));
+            health = 0.0;
+        }
+        return new Morph(section.getBoolean("enabled", true), tier, duration, health,
+            section.getBoolean("allow-flight", false),
+            section.getBoolean("stealth-until-attacked", true),
+            section.getBoolean("mobs-target-disguised", true));
     }
 
     private static Crafting crafting(ConfigurationSection section, List<ValidationIssue> issues) {

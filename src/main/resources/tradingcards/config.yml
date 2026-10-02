@@ -243,6 +243,61 @@ merge:
   target-level: 0
 
 # ------------------------------------------------------------
+# Morphing.
+#
+# /morph turns you into the mob on your EQUIPPED card. The
+# disguise itself is cosmetic: LibsDisguises changes packets only,
+# so the server still treats you as a player in every mechanical
+# sense. Anything that makes a morph BEHAVE like a mob — aggro,
+# flight, breaking at low health — is implemented by Allium and
+# governed by the fields below.
+#
+# LibsDisguises is premium, so Allium talks to it reflectively and
+# needs nothing on the classpath. On the free version the disguise
+# is visible to you only, which is still worth having; premium
+# shows it to everyone, which is what makes the mob aggro below
+# legible to the mobs involved.
+# ------------------------------------------------------------
+morph:
+  enabled: true
+
+  # Lowest tier that may morph. FABLED is the intended gate: morphing
+  # is the reward for having merged all the way up.
+  minimum-tier: FABLED
+
+  # 0 is a toggle that lasts until the player runs /morph again,
+  # quits, or drops below the health floor below.
+  duration: 0
+
+  # A morphed player under this health drops the morph. 0 disables
+  # the check. There is no Bukkit event for "health crossed a
+  # threshold", so this is polled once a second while anyone is
+  # morphed rather than hooked.
+  deactivate-below-health: 0.0
+
+  # Flight for mob types that fly. The most abusable thing in the
+  # set, so it is opt-in and per-mob: parrots, bees, phantoms,
+  # ghasts, vexes and allays, and nothing else.
+  allow-flight: false
+
+  # A morphed player shaped like a hostile is not a target until
+  # they strike first. The mobs that witness the attack converge;
+  # mobs that spawn later have no memory of an event they never saw,
+  # which is what makes this read as vanilla rather than as an
+  # invincibility button.
+  #
+  # Named vindicators and evokers are exempt outright — Johnny is a
+  # vanilla pacifist, and a morph should not start a fight its
+  # wearer did not ask for.
+  stealth-until-attacked: true
+
+  # Passed to LibsDisguises. Leave this true. Setting it false stops
+  # LibsDisguises cancelling the targeting event for disguised
+  # entities, which makes the morphed player invisible to mob AI
+  # entirely — the opposite of the point of the feature.
+  mobs-target-disguised: true
+
+# ------------------------------------------------------------
 # Card experience.
 #
 # Xp goes to the EQUIPPED card, not a card in your inventory. Levels

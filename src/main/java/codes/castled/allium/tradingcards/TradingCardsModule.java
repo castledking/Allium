@@ -7,12 +7,20 @@ import codes.castled.allium.item.NexoItemsGate;
 import codes.castled.allium.tradingcards.boost.AuraSkillsBridge;
 import codes.castled.allium.tradingcards.boost.BoostCatalog;
 import codes.castled.allium.tradingcards.boost.BoostListener;
+import codes.castled.allium.tradingcards.boost.CropQualityModifier;
+import codes.castled.allium.tradingcards.boost.DisarmListener;
+import codes.castled.allium.tradingcards.boost.TokenDropListener;
+import codes.castled.allium.tradingcards.boost.BoostMechanism;
 import codes.castled.allium.tradingcards.boost.BoostService;
 import codes.castled.allium.tradingcards.boost.CardProgression;
 import codes.castled.allium.tradingcards.boost.EquippedCardTracker;
 import codes.castled.allium.tradingcards.integration.QuestsBridge;
 import codes.castled.allium.tradingcards.integration.ReliqueIntegration;
+import codes.castled.allium.tradingcards.integration.ReliqueCardWriter;
 import codes.castled.allium.tradingcards.merge.MergeRules;
+import codes.castled.allium.tradingcards.morph.DisguiseBridge;
+import codes.castled.allium.tradingcards.morph.MorphService;
+import codes.castled.allium.tradingcards.morph.MorphTargetingListener;
 import codes.castled.allium.tradingcards.reroll.RerollPricing;
 import codes.castled.allium.tradingcards.reroll.RerollService;
 import codes.castled.allium.tradingcards.xp.AuraSkillsAbilityListener;
@@ -54,6 +62,9 @@ import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
 
 /**
  * Facade wiring the trading card subsystem into Allium. Everything is
@@ -87,6 +98,9 @@ public final class TradingCardsModule {
     private boolean jobsLive;
     private boolean abilitiesLive;
     private FishSizeTracker fishSizes;
+    private DisguiseBridge disguises;
+    private codes.castled.allium.tradingcards.integration.BeastTokensBridge beastTokens;
+    private MorphService morphs;
     private XpAntiFarmStore antiFarm;
     private CardXpService cardXp;
     private codes.castled.allium.scheduler.TaskHandle antiFarmSave;
@@ -176,6 +190,25 @@ public final class TradingCardsModule {
         applyTradeConfig();
         initBoosts(dataFolder);
         initXp(dataFolder, issues);
+
+        // Morph and token drops, after boosts so both can read the live total.
+        initMorph(issues);
+
+        // BeastTokens is not on the compile classpath, so the bridge is
+        // reflection throughout. Optional in the same way as everything else
+        // here: a server without it still drops cards and pays xp.
+        var tokensBridge =
+            new codes.castled.allium.tradingcards.integration.BeastTokensBridge(logger);
+        if (tokensBridge.initialise()) {
+            beastTokens = tokensBridge;
+            // Token drop chance and token yield are separate boosts because they
+            // are separate requests: a player who wants more drops is not asking
+            // for bigger ones.
+            new TokenDropListener(logger,
+                id -> boosts.total(id, BoostMechanism.CARD_TOKEN_DROP_CHANCE),
+                id -> boosts.total(id, BoostMechanism.CARD_TOKEN_MULTIPLIER))
+                .register(plugin);
+        }
         reportIssues(issues);
 
         enabled = true;
@@ -190,6 +223,9 @@ public final class TradingCardsModule {
         // Quiesce first: an AuraSkills modifier that outlives its card is
         // written to disk on logout and becomes a permanent invisible buff.
         removeAllBoosts();
+        if (morphs != null) {
+            morphs.clearAll();
+        }
         // Saved on the way down rather than left to the timer: a cooldown that
         // is lost on shutdown is a gate that is not there.
         if (antiFarm != null) {
@@ -339,13 +375,12 @@ public final class TradingCardsModule {
             return result;
         }
 
-        // An unlock changes the signature list; a bonus reroll leaves it alone
-        // and the tier pool is re-rolled instead.
-        TradingCardData updated = result.outcome() == RerollService.Outcome.SIGNATURE_UNLOCKED
-            ? new TradingCardData(card.mob(), card.cardId(), card.tier(), card.level(),
-                card.quality(), result.signatures(), card.rerolls() + 1, card.bound())
-            : new TradingCardData(card.mob(), card.cardId(), card.tier(), card.level(),
-                card.quality(), card.signatures(), card.rerolls() + 1, card.bound());
+        // Exactly one of the two lists moves, and the result says which: an
+        // unlock adds a signature and leaves the bonuses alone, a bonus roll
+        // replaces the bonuses and leaves the signatures alone.
+        TradingCardData updated = card
+            .withReroll(card.rerolls() + 1, result.signatures())
+            .withBonuses(result.rerolledBonuses() ? result.bonuses() : card.bonuses());
         TradingCardData.write(held, updated);
 
         if (equipped != null && equipped.card(player.getUniqueId()) != null) {
@@ -394,7 +429,7 @@ public final class TradingCardsModule {
         }
         var result = factory.create(definition.get(), verdict.resultTier(),
             rules.targetLevel(), a.quality(), rules.mergedSignatures(), a.bound(),
-            config);
+            config, java.util.concurrent.ThreadLocalRandom.current());
         if (result.isEmpty()) {
             player.sendMessage(MiniMessage.miniMessage().deserialize(
                 "<red>The merged card's item does not exist. Is Nexo loaded?</red>"));
@@ -460,6 +495,20 @@ public final class TradingCardsModule {
 
         service.configure(loaded, config.levelling().boostPerLevel(),
             scaleMinimum(), scaleMaximum());
+        // Bonus rolls are the catalogue's, but the cards that carry them are
+        // built by the factory, so the pool is handed over once it is known.
+        factory.bonuses(loaded.bonusPool(), loaded.bonusRollCount());
+
+        // Crop quality is Allium's own module, reached through its public API
+        // rather than by editing crop files — so the bias applies globally while
+        // equipped and vanishes with the card. Registered once, and it reads the
+        // live boost total on every harvest so a re-equip needs no re-register.
+        var harvestApi = Bukkit.getServicesManager()
+            .load(codes.castled.allium.harvest.api.AlliumHarvestApi.class);
+        if (harvestApi != null) {
+            harvestApi.registerWeightModifier(new CropQualityModifier(id -> service.total(id,
+                codes.castled.allium.tradingcards.boost.BoostMechanism.CARD_CROP_QUALITY)));
+        }
         this.boosts = service;
         this.equipped = tracker;
 
@@ -498,6 +547,12 @@ public final class TradingCardsModule {
                 + "plugins/Relique/relic/allium/slots/card.json exists");
         } else {
             Bukkit.getPluginManager().registerEvents(new BoostListener(service, tracker), plugin);
+            // Registered once, unconditionally: the listener reads the live boost
+            // total per hit, so a player with no disarm card costs one map lookup.
+            Bukkit.getPluginManager().registerEvents(new DisarmListener(
+                id -> service.total(id,
+                    codes.castled.allium.tradingcards.boost.BoostMechanism.CARD_DISARM),
+                Math::random), plugin);
             if (!bridge.isAvailable()) {
                 logger.warning("[" + TradingCardsBranding.DISPLAY_NAME
                     + "] AuraSkills is not loaded; signature boosts will not apply");
@@ -508,6 +563,39 @@ public final class TradingCardsModule {
             }
         }
         reportIssues(issues);
+    }
+
+    /**
+     * Pays the flat quest bounties a card grants.
+     *
+     * <p>Money and tokens are separate currencies with separate sinks, so they
+     * are separate boosts: a 20% token rate and a 20% money rate are not
+     * comparable numbers and must not share a slider.
+     *
+     * <p>Both are read live from the applied boosts rather than snapshotted at
+     * equip time, so unequipping mid-quest stops the payout without a
+     * re-registration, and both are additive across cards.
+     */
+    private void payQuestBonuses(Player player) {
+        if (boosts == null) return;
+        var id = player.getUniqueId();
+        double money = boosts.total(id,
+            codes.castled.allium.tradingcards.boost.BoostMechanism.CARD_MONEY_ON_QUEST);
+        if (money > 0.0) {
+            var economy = codes.castled.allium.PluginStart.getInstance().getEconomyManager();
+            if (economy != null) {
+                economy.deposit(id, java.math.BigDecimal.valueOf(money));
+                player.sendMessage(MiniMessage.miniMessage().deserialize(
+                    "<gold>Quest bounty: <white>+" + java.math.BigDecimal.valueOf(money)
+                        .setScale(2, java.math.RoundingMode.HALF_UP) + "</white>"));
+            }
+        }
+        double tokens = boosts.total(id,
+            codes.castled.allium.tradingcards.boost.BoostMechanism.CARD_TOKENS_ON_QUEST);
+        if (tokens > 0.0 && beastTokens != null && beastTokens.addTokens(player, tokens)) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize(
+                "<light_purple>Quest tokens: <white>+" + tokens + "</white>"));
+        }
     }
 
     /**
@@ -543,6 +631,26 @@ public final class TradingCardsModule {
             System::currentTimeMillis);
         service.announcement(config.levelling().announce().message(),
             config.levelling().announce().broadcast());
+        // The card's xp bonus is read from the applied boosts, so it only counts
+        // while the card is actually equipped and the boosts are live.
+        BoostService boostService = boosts;
+        if (boostService != null) {
+            service.multiplier(id -> boostService.multiplier(id,
+                codes.castled.allium.tradingcards.boost.BoostMechanism.CARD_XP_MULTIPLIER, 1.0));
+        }
+        // Without a writer the level only exists in the tracker, so it is lost
+        // the moment the card leaves the slot. Relique owns the item, so the
+        // write goes through it; on a server without Relique there is no slot to
+        // write to and no warning worth logging every award.
+        if (reliqueSlotInstalled) {
+            ReliqueCardWriter cardWriter = new ReliqueCardWriter(logger);
+            service.writer((id, updated) -> {
+                Player player = Bukkit.getPlayer(id);
+                if (player != null) {
+                    cardWriter.write(player, updated);
+                }
+            });
+        }
         this.cardXp = service;
         Bukkit.getPluginManager().registerEvents(new CardXpListener(this, service), plugin);
 
@@ -567,6 +675,7 @@ public final class TradingCardsModule {
                 // time and the same completion is never counted twice.
                 service.award(player, "quest-complete", 1.0, null,
                     questId + ":" + java.time.LocalDate.now());
+                payQuestBonuses(player);
             })) {
                 questsLive = true;
             } else if (Bukkit.getPluginManager().isPluginEnabled("ExcellentQuests")) {
@@ -674,6 +783,81 @@ public final class TradingCardsModule {
     /** The fishing size tracker, for a menu line showing what "large" means. */
     public FishSizeTracker fishSizes() {
         return fishSizes;
+    }
+
+    /**
+     * Wires the morph feature.
+     *
+     * <p>The health check is one shared repeating task over morphed players,
+     * not one per player: there is no Bukkit event for "health crossed a
+     * threshold", so it has to be polled, and a task per morph would be a task
+     * per player for a condition that is usually disabled.
+     */
+    private void initMorph(List<ValidationIssue> issues) {
+        if (!config.morph().enabled()) {
+            return;
+        }
+        DisguiseBridge bridge = new DisguiseBridge(plugin, logger);
+        if (!bridge.initialise()) {
+            if (Bukkit.getPluginManager().isPluginEnabled("LibsDisguises")) {
+                issues.add(ValidationIssue.warning(TradingCardsConfig.FILE, "morph",
+                    "Enabled, but LibsDisguises is installed and its API does not "
+                        + "match. /morph will report itself unavailable."));
+            }
+            return;
+        }
+        MorphService.Config morphConfig = new MorphService.Config(
+            true,
+            config.morph().minimumTier(),
+            config.morph().durationSeconds(),
+            config.morph().deactivateBelowHealth(),
+            config.morph().allowFlight(),
+            config.morph().stealthUntilAttacked(),
+            config.morph().mobsTargetDisguised());
+        MorphService service = new MorphService(bridge, morphConfig);
+        this.disguises = bridge;
+        this.morphs = service;
+
+        Bukkit.getPluginManager().registerEvents(new MorphTargetingListener(service), plugin);
+        // Quit cleanup goes through the module rather than MorphService itself:
+        // CardProgression already owns the quit event for the Relique slot, and
+        // two handlers racing to clear the same player is how a half-torn-down
+        // state happens.
+        Bukkit.getPluginManager().registerEvents(new Listener() {
+            @EventHandler(priority = EventPriority.MONITOR)
+            public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+                service.handleQuit(event.getPlayer());
+            }
+        }, plugin);
+
+        // One shared second-tick for both expiry rules, and only when one of
+        // them is actually on. Neither has a Bukkit event: there is no "health
+        // crossed a threshold", and a disconnect must not cancel a timed morph.
+        if (morphConfig.durationSeconds() > 0 || morphConfig.deactivateBelowHealth() > 0.0) {
+            codes.castled.allium.scheduler.SchedulerAdapter.runRepeatingGlobal(
+                plugin, () -> {
+                    for (Player online : Bukkit.getOnlinePlayers()) {
+                        service.tick(online);
+                    }
+                }, 20L, 20L);
+        }
+        logger.info("[" + TradingCardsBranding.DISPLAY_NAME + "] Morphing enabled: needs a "
+            + morphConfig.minimumTier() + " card, "
+            + (bridge.isFree() ? "free LibsDisguises (self view only)" : "premium")
+            + ", stealth-until-attacked " + (morphConfig.stealthUntilAttacked() ? "on" : "off"));
+    }
+
+    public MorphService morphs() {
+        return morphs;
+    }
+
+    public DisguiseBridge disguises() {
+        return disguises;
+    }
+
+    /** True when the morph plugin is wired and the feature is usable. */
+    public boolean isMorphAvailable() {
+        return morphs != null && disguises != null && disguises.isReady();
     }
 
     /** The scale clamp, from the catalogue's own scale entry. */

@@ -125,7 +125,8 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         int quality = args.length > 5 ? parseInt(args[5], 100, 1, 100) : 100;
 
         Optional<ItemStack> card = module.factory().create(definition.get(), tier, level, quality,
-            List.of("luck", "strength", "speed"), false, module.config());
+            List.of("luck", "strength", "speed"), false, module.config(),
+            java.util.concurrent.ThreadLocalRandom.current());
         if (card.isEmpty()) {
             msg(sender, "<red>Could not build that card — the item does not resolve. "
                 + "Is Nexo loaded?</red>");

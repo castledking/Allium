@@ -4,6 +4,9 @@ import dev.aurelium.auraskills.api.AuraSkillsApi;
 import dev.aurelium.auraskills.api.stat.Stat;
 import dev.aurelium.auraskills.api.stat.StatModifier;
 import dev.aurelium.auraskills.api.stat.Stats;
+import dev.aurelium.auraskills.api.trait.Trait;
+import dev.aurelium.auraskills.api.trait.TraitModifier;
+import dev.aurelium.auraskills.api.trait.Traits;
 import dev.aurelium.auraskills.api.user.SkillsUser;
 import dev.aurelium.auraskills.api.util.AuraSkillsModifier;
 import java.util.logging.Logger;
@@ -99,6 +102,72 @@ public final class AuraSkillsBridge {
             user.removeStatModifier(name(player, boostId));
             user.addStatModifier(modifier);
         });
+    }
+
+    /**
+     * Adds a percentage multiplier to an AuraSkills <i>trait</i>.
+     *
+     * <p>Traits are not stats: {@code mining} and {@code farming} describe how
+     * a stat is earned, so a card that rewards mining more has to move the
+     * trait, not the stat. Adding to the stat instead would give the player more
+     * of a number while their mining rate stayed where it was — which reads as
+     * working, and is not.
+     *
+     * <p>Non-persistent for the same reason as {@link #addStat}: AuraSkills
+     * writes modifiers to disk on logout unless told not to, so an unremoved
+     * boost would survive the card.
+     *
+     * @param percent the multiplier as a percentage, so 10 is +10%. This is
+     *                AuraSkills' own unit, not a fraction.
+     */
+    public boolean addTrait(java.util.UUID player, String boostId, String traitName,
+                            double percent) {
+        Trait trait = resolveTrait(traitName);
+        if (trait == null) {
+            logger.warning("[tradingcards] Unknown AuraSkills trait '" + traitName
+                + "' for boost '" + boostId + "'");
+            return false;
+        }
+        if (percent == 0.0) {
+            return false;
+        }
+        return withUser(player, user -> {
+            TraitModifier modifier = new TraitModifier(
+                name(player, boostId), trait, percent, AuraSkillsModifier.Operation.MULTIPLY);
+            modifier.setNonPersistent();
+            // Same name as any stat boost would be, so removal is identical and
+            // the two cannot both be left behind by a partial teardown.
+            user.removeTraitModifier(name(player, boostId));
+            user.addTraitModifier(modifier);
+        });
+    }
+
+    /**
+     * Looks a trait up by name, case-insensitively.
+     *
+     * <p>Resolved from the loaded traits rather than a compiled-in list,
+     * because AuraSkills lets servers register their own — and a card naming one
+     * of those should work without an Allium rebuild.
+     */
+    private Trait resolveTrait(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String wanted = raw.trim();
+        try {
+            for (Trait trait : AuraSkillsApi.get().getGlobalRegistry().getTraits()) {
+                if (trait != null && trait.name().equalsIgnoreCase(wanted)) {
+                    return trait;
+                }
+            }
+        } catch (Throwable ignored) {
+            // AuraSkills not loaded, or too old to have a global registry. The
+            // built-in enum below still resolves, so this is not fatal.
+        }
+        for (Traits trait : Traits.values()) {
+            if (trait.name().equalsIgnoreCase(wanted)) {
+                return trait;
+            }
+        }
+        return null;
     }
 
     /** Removes a previously added stat modifier. Safe to call when absent. */

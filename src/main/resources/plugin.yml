@@ -486,6 +486,10 @@ commands:
     usage: "/tradingcards <reload|give|list|inspect|boosts|heads|status>"
     aliases: [tc, cards]
 
+  morph:
+    description: "Turn into the mob on your equipped Fabled trading card"
+    usage: "/morph <list|status>"
+
 permissions:
   allium.player:
     description: "Gives access to player commands"
@@ -1722,6 +1726,9 @@ permissions:
   allium.tradingcards.admin:
     description: "Full access to every /tradingcards subcommand"
     default: op
+  allium.tradingcards.morph:
+    description: "Allows /morph"
+    default: true
   allium.tradingcards.reload:
     description: "Allows /tradingcards reload"
     default: op

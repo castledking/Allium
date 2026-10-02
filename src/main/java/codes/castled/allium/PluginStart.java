@@ -896,6 +896,9 @@ public class PluginStart extends JavaPlugin {
             codes.castled.allium.tradingcards.command.TradingCardsCommand tradingCardsCommand =
                 new codes.castled.allium.tradingcards.command.TradingCardsCommand(tradingCardsModule);
             registerCommand("tradingcards", tradingCardsCommand, tradingCardsCommand);
+            codes.castled.allium.tradingcards.command.MorphCommand morphCommand =
+                new codes.castled.allium.tradingcards.command.MorphCommand(tradingCardsModule);
+            registerCommand("morph", morphCommand, morphCommand);
         } catch (Throwable t) {
             Text.sendDebugLog(
                 ERROR,

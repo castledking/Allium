@@ -67,8 +67,14 @@ public class BoostService {
         Attribute attribute,
         UUID modifierId,
         String auraModifierName,
-        String permission
-    ) {}
+        String permission,
+        double value
+    ) {
+        public AppliedBoost(String boostId, BoostMechanism mechanism, Attribute attribute,
+                            UUID modifierId, String auraModifierName, String permission) {
+            this(boostId, mechanism, attribute, modifierId, auraModifierName, permission, 0.0);
+        }
+    }
 
     public void configure(BoostCatalog.LoadResult loaded, double boostPerLevel,
                           double scaleMin, double scaleMax) {
@@ -116,6 +122,24 @@ public class BoostService {
                 granted.add(boost.id());
             }
         }
+
+        // Bonuses are flat: the same value at every level, because levelling
+        // grows the card's identity rather than its loot. They are read by
+        // consumers rather than applied here, so a bonus boost whose source
+        // plugin is absent costs the player nothing they would otherwise have.
+        for (String bonusId : card.bonuses()) {
+            BoostDefinition boost = boosts.get(bonusId);
+            if (boost == null) {
+                logger.fine("[tradingcards] Card " + card.cardId() + " names unknown "
+                    + "bonus '" + bonusId + "'; skipped");
+                continue;
+            }
+            double value = boost.totalAt(0, boostPerLevel, scaleMin, scaleMax);
+            if (applyOne(player, boost, value)) {
+                granted.add(boost.id());
+            }
+        }
+
         if (!granted.isEmpty()) {
             applied.put(player.getUniqueId(), currentApplied(player));
         }
@@ -140,14 +164,27 @@ public class BoostService {
                 }
                 yield ok;
             }
-            case AURASKILL_TRAIT, CARD_XP_MULTIPLIER, CARD_SELL_MULTIPLIER,
+            case AURASKILL_TRAIT -> {
+                // Traits are AuraSkills' percent multipliers on how a stat is
+                // earned, so the amount is read as a percentage rather than a
+                // flat addition — "+1 mining" is meaningless to that plugin.
+                String trait = boost.option("trait", "");
+                boolean ok = aura.addTrait(player.getUniqueId(), boost.id(), trait, value);
+                if (ok) {
+                    record(player, new AppliedBoost(boost.id(), boost.mechanism(), null, null,
+                        aura.name(player.getUniqueId(), boost.id()), null, value));
+                }
+                yield ok;
+            }
+            case CARD_XP_MULTIPLIER, CARD_SELL_MULTIPLIER,
                  CARD_MONEY_ON_QUEST, CARD_TOKENS_ON_QUEST, CARD_TOKEN_DROP_CHANCE,
                  CARD_TOKEN_MULTIPLIER, CARD_WAYPOINT_RANGE, CARD_WAYPOINT_MULTIPLIER,
-                 CARD_DISARM, CARD_FLIGHT_SPEED, CARD_CROP_QUALITY -> {
-                // Mechanism implementations arrive with the phase that wires
-                // their source plugin. Recorded so the teardown knows a
-                // cleanup is owed, even though nothing is applied yet.
-                record(player, new AppliedBoost(boost.id(), boost.mechanism(), null, null, null, null));
+                 CARD_DISARM, CARD_CROP_QUALITY -> {
+                // No state held here: these are multipliers and flat rates that
+                // a consumer reads while the card is equipped. Recorded so the
+                // value is queryable per player and so teardown stays uniform.
+                record(player, new AppliedBoost(boost.id(), boost.mechanism(), null, null, null,
+                    null, value));
                 yield true;
             }
             case ATTRIBUTE -> {
@@ -161,9 +198,7 @@ public class BoostService {
                 }
                 // A unique modifier id per player+boost: two players, or two
                 // cards, must never collide on the same attribute instance.
-                UUID modifierId = UUID.nameUUIDFromBytes(
-                    (TradingCardsBranding.NAMESPACE + player.getUniqueId() + boost.id())
-                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                UUID modifierId = modifierId(player, boost.id());
                 instance.addModifier(new AttributeModifier(modifierId, "tradingcard", value,
                     attributeOperation(boost)));
                 record(player, new AppliedBoost(boost.id(), boost.mechanism(), attribute,
@@ -171,13 +206,37 @@ public class BoostService {
                 yield true;
             }
             case CARD_SCALE -> {
-                // Scale is a per-frame visual attribute rather than a Bukkit
-                // attribute, so it is clamped and handed to the scale handler.
+                // Vanilla has a SCALE attribute, so this is an ordinary
+                // modifier. Clamped rather than rejected: a card that rolled a
+                // factor outside the legal range grants the strongest version
+                // of it that fits inside a door instead of granting nothing.
+                if (value <= 0.0) {
+                    yield false;
+                }
                 double clamped = Math.max(scaleMin, Math.min(scaleMax, value));
-                record(player, new AppliedBoost(boost.id(), boost.mechanism(), null, null, null,
-                    null));
-                logger.fine(() -> "[tradingcards] scale " + clamped + " for "
-                    + player.getName());
+                AttributeInstance instance = player.getAttribute(Attribute.SCALE);
+                if (instance == null) {
+                    yield false;
+                }
+                UUID modifierId = modifierId(player, boost.id());
+                instance.addModifier(new AttributeModifier(modifierId, "tradingcard", clamped,
+                    AttributeModifier.Operation.MULTIPLY_SCALAR_1));
+                record(player, new AppliedBoost(boost.id(), boost.mechanism(), Attribute.SCALE,
+                    modifierId, null, null, clamped));
+                yield true;
+            }
+            case CARD_FLIGHT_SPEED -> {
+                // Only meaningful while flying, but FLYING_SPEED is an ordinary
+                // attribute and holds its value, so no listener is needed.
+                AttributeInstance instance = player.getAttribute(Attribute.FLYING_SPEED);
+                if (instance == null || value <= 0.0) {
+                    yield false;
+                }
+                UUID modifierId = modifierId(player, boost.id());
+                instance.addModifier(new AttributeModifier(modifierId, "tradingcard", value,
+                    AttributeModifier.Operation.ADD_SCALAR));
+                record(player, new AppliedBoost(boost.id(), boost.mechanism(),
+                    Attribute.FLYING_SPEED, modifierId, null, null, value));
                 yield true;
             }
             case CARD_PERMISSION -> {
@@ -196,6 +255,18 @@ public class BoostService {
                 yield true;
             }
         };
+    }
+
+    /**
+     * The modifier id for a boost on a player.
+     *
+     * <p>Derived rather than random so a re-apply replaces its own modifier
+     * rather than accumulating a second one on the same attribute instance.
+     */
+    private static UUID modifierId(Player player, String boostId) {
+        return UUID.nameUUIDFromBytes(
+            (TradingCardsBranding.NAMESPACE + player.getUniqueId() + boostId)
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     private void record(Player player, AppliedBoost entry) {
@@ -285,6 +356,51 @@ public class BoostService {
     }
 
     // ==================== inspection ====================
+
+    /**
+     * The active values of every boost using a mechanism, summed.
+     *
+     * <p>The read side of the CARD_* mechanisms: they hold no state, so a
+     * consumer asks here rather than being pushed to. Summed because two
+     * multiplications are one multiplication, and summed flat rates are one
+     * flat rate — which is what a player expects from two cards.
+     *
+     * @return the total, or 0 when the player has none of these equipped
+     */
+    public double total(UUID player, BoostMechanism mechanism) {
+        return applied.getOrDefault(player, Map.of()).values().stream()
+            .filter(entry -> entry.mechanism() == mechanism)
+            .mapToDouble(AppliedBoost::value)
+            .sum();
+    }
+
+    /**
+     * The product of every boost using a mechanism, starting from 1.
+     *
+     * <p>Multipliers compose multiplicatively, so a card granting x1.25 and a
+     * card granting x1.5 give x1.875 — not x2.75, which is what summing them
+     * would produce.
+     */
+    public double product(UUID player, BoostMechanism mechanism) {
+        double product = 1.0;
+        for (AppliedBoost entry : applied.getOrDefault(player, Map.of()).values()) {
+            if (entry.mechanism() == mechanism) {
+                product *= entry.value();
+            }
+        }
+        return product;
+    }
+
+    /**
+     * A player's multiplier for a mechanism, never below {@code floor}.
+     *
+     * <p>The read most consumers want. {@code floor} exists because a card can
+     * hold a multiplier below 1, and a sell-value multiplier of 0 would zero a
+     * sale rather than discount it.
+     */
+    public double multiplier(UUID player, BoostMechanism mechanism, double floor) {
+        return Math.max(floor, product(player, mechanism));
+    }
 
     /** The boost ids currently applied to a player, for diagnostics. */
     public List<String> appliedTo(UUID player) {

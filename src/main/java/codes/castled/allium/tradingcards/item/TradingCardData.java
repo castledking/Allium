@@ -186,6 +186,9 @@ public record TradingCardData(
         meta.setMaxStackSize(1);
         renderLore(meta, data);
         stack.setItemMeta(meta);
+        // After the meta is committed, because the style is a stack component and
+        // setItemMeta can replace the stack's component set.
+        CardTooltipStyle.apply(stack, data.tier());
     }
 
     /**

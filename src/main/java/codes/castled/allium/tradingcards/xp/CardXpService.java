@@ -141,18 +141,21 @@ public class CardXpService {
      */
     public Award apply(Player player, TradingCardData card, double xp, String sourceId) {
         int maxLevel = progression.rules().maximumLevel();
-        int levels = progression.levelsGained(card.level(), xp, maxLevel);
-        if (levels <= 0) {
+        // The card carries what it has already banked, so the remainder survives
+        // to the next award instead of being thrown away with this one.
+        CardProgression.Progression result = progression.award(
+            card.level(), card.xp(), xp, maxLevel);
+        if (!result.levelled()) {
             return Award.progress(sourceId, xp, 0, progression.progressTowards(
-                card.level(), xp, config.xpForLevel(card.level())));
+                card.level(), result.xp(), config.xpForLevel(card.level())));
         }
-        TradingCardData updated = card.withLevel(card.level() + levels);
+        TradingCardData updated = card.withLevel(result.level()).withXp(result.xp());
         writer.write(player.getUniqueId(), updated);
         progression.refreshEquipped(player, updated);
         progression.announce(player, cardLabel(card), card.level(), updated.level(),
             announceTemplate, announceBroadcast);
-        return Award.progress(sourceId, xp, levels, progression.progressTowards(
-            updated.level(), xp, config.xpForLevel(updated.level())));
+        return Award.progress(sourceId, xp, result.levels(), progression.progressTowards(
+            updated.level(), result.xp(), config.xpForLevel(updated.level())));
     }
 
     /** The config's level-up message, which the module supplies. */

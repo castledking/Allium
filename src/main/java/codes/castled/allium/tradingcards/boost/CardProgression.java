@@ -117,6 +117,55 @@ public class CardProgression implements Listener {
     }
 
     /**
+     * What an award does to a card's level and banked xp.
+     *
+     * @param levels levels gained
+     * @param xp     what is left over toward the next one
+     * @param level  the level the card ends up at
+     */
+    public record Progression(int levels, double xp, int level) {
+        public boolean levelled() {
+            return levels > 0;
+        }
+    }
+
+    /**
+     * Applies an award against a card that already has banked xp.
+     *
+     * <p>Levels are bought in order, each against the curve at its own level, so
+     * a single large payout reads as the same progression a player would have
+     * seen one level at a time. Whatever cannot buy a whole level stays banked
+     * rather than being discarded — without that, a card at level 0 earning 10
+     * xp of a 500 xp level would lose it every time.
+     *
+     * @param banked xp already carried toward the next level
+     */
+    public Progression award(int level, double banked, double xp, int maximumLevel) {
+        int gained = 0;
+        int current = level;
+        double remaining = Math.max(0.0, banked) + Math.max(0.0, xp);
+        while (current < maximumLevel) {
+            double needed = xpForNextLevel(current);
+            if (needed <= 0) {
+                // A zero-cost level would loop forever, and would give xp away for
+                // free. Treated as a stop rather than a climb.
+                break;
+            }
+            if (remaining < needed) {
+                break;
+            }
+            remaining -= needed;
+            current++;
+            gained++;
+        }
+        // At the ceiling the remainder is dropped rather than banked: there is no
+        // next level to be partway towards, and holding it would make a maxed
+        // card look like it is still progressing.
+        double carried = current >= maximumLevel ? 0.0 : remaining;
+        return new Progression(gained, carried, current);
+    }
+
+    /**
      * How far through the level after {@code level} a given xp gets a card.
      *
      * @return 0..1, where 1 means the next level is reached

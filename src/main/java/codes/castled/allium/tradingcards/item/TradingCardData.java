@@ -35,14 +35,22 @@ public record TradingCardData(
     int quality,
     List<String> signatures,
     List<String> bonuses,
+    double xp,
     int rerolls,
     boolean bound
 ) {
 
-    /** A card with nothing but its three starting signatures. */
+    /** A card with nothing but its three starting signatures and no banked xp. */
     public TradingCardData(String mob, String cardId, Tier tier, int level, int quality,
                            List<String> signatures, int rerolls, boolean bound) {
-        this(mob, cardId, tier, level, quality, signatures, List.of(), rerolls, bound);
+        this(mob, cardId, tier, level, quality, signatures, List.of(), 0.0, rerolls, bound);
+    }
+
+    /** A card with bonus boosts but no banked xp. */
+    public TradingCardData(String mob, String cardId, Tier tier, int level, int quality,
+                           List<String> signatures, List<String> bonuses,
+                           int rerolls, boolean bound) {
+        this(mob, cardId, tier, level, quality, signatures, bonuses, 0.0, rerolls, bound);
     }
 
     /** The band this card's quality falls in, from the current config. */
@@ -95,6 +103,7 @@ public record TradingCardData(
             pdc.getOrDefault(TradingCardKeys.QUALITY, PersistentDataType.INTEGER, 100),
             readSignatures(pdc.get(TradingCardKeys.SIGNATURES, PersistentDataType.STRING)),
             readSignatures(pdc.get(TradingCardKeys.BONUSES, PersistentDataType.STRING)),
+            pdc.getOrDefault(TradingCardKeys.XP, PersistentDataType.DOUBLE, 0.0D),
             pdc.getOrDefault(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, 0),
             pdc.getOrDefault(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) 0) == 1));
     }
@@ -121,10 +130,31 @@ public record TradingCardData(
         }
         ItemStack stack = base.get();
         TradingCardData data = new TradingCardData(
-            definition.mob(), definition.id(), tier, level, quality, signatures, bonuses, 0,
-            bound);
+            definition.mob(), definition.id(), tier, level, quality, signatures, bonuses, 0.0,
+            0, bound);
         write(stack, data);
         return Optional.of(stack);
+    }
+
+    /**
+     * The lore renderer, installed once when the module enables.
+     *
+     * <p>Static because every path that writes a card must render its lore, and
+     * those paths are spread across classes this one does not own — the drop
+     * factory, the reroll handler, the merge handler, and Relique's write-back.
+     * Threading a renderer through all of them is more invasive and, more to the
+     * point, easier to forget on the next path added. One global card format
+     * genuinely is a global, so this is where the global belongs.
+     *
+     * <p>Null means write no lore, which is what happens when the module is
+     * disabled: the PDC is still correct, so a card dropped before an enable is
+     * still readable afterwards.
+     */
+    private static volatile CardLore lore;
+
+    /** Installs the lore renderer. Pass null to stop rendering lore. */
+    public static void lore(CardLore renderer) {
+        lore = renderer;
     }
 
     /**
@@ -147,25 +177,66 @@ public record TradingCardData(
             String.join(",", data.signatures()));
         pdc.set(TradingCardKeys.BONUSES, PersistentDataType.STRING,
             String.join(",", data.bonuses()));
+        pdc.set(TradingCardKeys.XP, PersistentDataType.DOUBLE, data.xp());
         pdc.set(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, data.rerolls());
         pdc.set(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) (data.bound() ? 1 : 0));
         // Two cards of the same mob and tier differ in level, quality and
         // signatures, so they must never merge into one stack — a merged
         // stack would silently discard the extra cards' state.
         meta.setMaxStackSize(1);
+        renderLore(meta, data);
         stack.setItemMeta(meta);
+    }
+
+    /**
+     * Re-renders an already-written card's lore, for a config reload.
+     *
+     * <p>Lore embeds display names and the xp curve, so a rebalance leaves
+     * existing cards quoting numbers that no longer apply. This puts them back
+     * in step without touching the card's actual state.
+     */
+    public static void refreshLore(ItemStack stack, TradingCardData data) {
+        if (stack == null || data == null) {
+            return;
+        }
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null) {
+            return;
+        }
+        renderLore(meta, data);
+        stack.setItemMeta(meta);
+    }
+
+    private static void renderLore(ItemMeta meta, TradingCardData data) {
+        CardLore renderer = lore;
+        if (renderer == null) {
+            return;
+        }
+        // Rebuilt from the card every time rather than appended to, so repeated
+        // writes replace the level line instead of stacking a new one on top.
+        java.util.List<net.kyori.adventure.text.Component> lines =
+            renderer.render(data, data.xp()).stream()
+                .map(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()::deserialize)
+                .collect(java.util.stream.Collectors.toList());
+        meta.lore(lines);
     }
 
     /** A copy of this card at a different level. */
     public TradingCardData withLevel(int newLevel) {
         return new TradingCardData(mob, cardId, tier, newLevel, quality, signatures, bonuses,
-            rerolls, bound);
+            xp, rerolls, bound);
+    }
+
+    /** A copy of this card with a different banked xp toward its next level. */
+    public TradingCardData withXp(double newXp) {
+        return new TradingCardData(mob, cardId, tier, level, quality, signatures, bonuses,
+            newXp, rerolls, bound);
     }
 
     /** A copy of this card one reroll further on. */
     public TradingCardData withReroll(int newRerolls, List<String> newSignatures) {
         return new TradingCardData(mob, cardId, tier, level, quality, newSignatures, bonuses,
-            newRerolls, bound);
+            xp, newRerolls, bound);
     }
 
     /**
@@ -176,7 +247,7 @@ public record TradingCardData(
      */
     public TradingCardData withBonuses(List<String> newBonuses) {
         return new TradingCardData(mob, cardId, tier, level, quality, signatures,
-            List.copyOf(newBonuses), rerolls, bound);
+            List.copyOf(newBonuses), xp, rerolls, bound);
     }
 
     /** True when the card has reached the level at which it can be merged. */

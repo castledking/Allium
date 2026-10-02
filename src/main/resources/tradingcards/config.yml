@@ -36,6 +36,15 @@ levelling:
   # different gamble (which two) rather than a slower one.
   boosts-per-level: 1
 
+  # The rule between lore sections, drawn in the character's own colour.
+  # Blank omits every separator.
+  #
+  # The count here is matched to the width of the card background art
+  # (sf/textures/tooltip/*_middle.png is 200px wide). A longer rule
+  # overflows the background and gets clipped by the tooltip box; a
+  # shorter one leaves the panel looking narrow. Change both together.
+  lore-separator: "───────────────────────────"
+
   # XP needed to go from level N to N+1. Flat early, steep late.
   curve:
     type: PIECEWISE

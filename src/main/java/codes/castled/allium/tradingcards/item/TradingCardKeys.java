@@ -61,6 +61,16 @@ public final class TradingCardKeys {
      */
     public static final NamespacedKey BONUSES = key("bonuses");
 
+    /**
+     * Accumulated xp toward the next level.
+     *
+     * <p>Stored rather than recomputed, because the level alone cannot say how
+     * far through it a card is. It is also the only reason a card can show a
+     * progress bar at all: xp arrives in irregular amounts, so a card at level
+     * 12 has no level for "how close am I to 13" until the remainder is kept.
+     */
+    public static final NamespacedKey XP = key("xp");
+
     /** How many times this card has been rerolled, for the escalating price. */
     public static final NamespacedKey REROLLS = key("rerolls");
 

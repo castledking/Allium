@@ -25,18 +25,113 @@
 cards:
 
   # ------------------------------------------------------------
-  #  Chicken — the reference mob, and the cheapest to test with.
+  #  The vanilla set: 36 mobs x 5 tiers = 180 cards.
   #
-  #  chance 0.0015 is one card per ~667 chickens. The tier weights
+  #  chance 0.0015 is one card per ~667 kills, and the tier weights
   #  give roughly 60% SIMPLE / 25% ELITE / 10% ULTIMATE / 4.5%
-  #  LEGENDARY / 0.5% FABLED, so a FABLED chicken appears about once
-  #  per 89,000 kills — rare enough to be a trophy.
+  #  LEGENDARY / 0.5% FABLED. So a Fabled card appears about once per
+  #  89,000 kills of one mob — rare enough to be a trophy, and
+  #  reachable by farming any mob rather than only the rarest.
+  #
+  #  Every mob shares the same ladder. That is a starting point, not a
+  #  finished balance: these are weights, so a single mob can be
+  #  skewed by editing its five numbers without touching anything
+  #  else. The design intent is that a chicken and a wither are not the
+  #  same proposition, and the numbers to express that do not exist
+  #  yet — they need playtesting, so they are left uniform rather
+  #  than invented.
+  #
+  #  Only Fabled has its own art. The other four tiers share one
+  #  static texture per mob and are told apart by the tier glyph in
+  #  the name and lore.
   # ------------------------------------------------------------
+  allay:
+    mob: ALLAY
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:allay_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_allay_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_allay_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_allay_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_allay_trading_card
+
+  axolotl:
+    mob: AXOLOTL
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:axolotl_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_axolotl_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_axolotl_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_axolotl_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_axolotl_trading_card
+
+  bee:
+    mob: BEE
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:bee_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_bee_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_bee_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_bee_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_bee_trading_card
+
+  blaze:
+    mob: BLAZE
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:blaze_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_blaze_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_blaze_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_blaze_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_blaze_trading_card
+
   chicken:
     mob: CHICKEN
     chance: 0.0015
-    # Optional; falls back to Allium's own mob head for this mob.
-    # head: nexo:chicken_head
 
     tiers:
       SIMPLE:
@@ -54,3 +149,654 @@ cards:
       FABLED:
         weight: 0.5
         item: nexo:fabled_chicken_trading_card
+
+  cow:
+    mob: COW
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:cow_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_cow_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_cow_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_cow_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_cow_trading_card
+
+  creeper:
+    mob: CREEPER
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:creeper_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_creeper_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_creeper_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_creeper_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_creeper_trading_card
+
+  dolphin:
+    mob: DOLPHIN
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:dolphin_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_dolphin_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_dolphin_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_dolphin_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_dolphin_trading_card
+
+  enderman:
+    mob: ENDERMAN
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:enderman_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_enderman_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_enderman_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_enderman_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_enderman_trading_card
+
+  fox:
+    mob: FOX
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:fox_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_fox_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_fox_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_fox_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_fox_trading_card
+
+  ghast:
+    mob: GHAST
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:ghast_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_ghast_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_ghast_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_ghast_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_ghast_trading_card
+
+  goat:
+    mob: GOAT
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:goat_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_goat_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_goat_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_goat_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_goat_trading_card
+
+  hoglin:
+    mob: HOGLIN
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:hoglin_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_hoglin_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_hoglin_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_hoglin_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_hoglin_trading_card
+
+  horse:
+    mob: HORSE
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:horse_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_horse_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_horse_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_horse_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_horse_trading_card
+
+  husk:
+    mob: HUSK
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:husk_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_husk_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_husk_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_husk_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_husk_trading_card
+
+  magma_cube:
+    mob: MAGMA_CUBE
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:magma_cube_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_magma_cube_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_magma_cube_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_magma_cube_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_magma_cube_trading_card
+
+  mooshroom:
+    mob: MOOSHROOM
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:mooshroom_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_mooshroom_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_mooshroom_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_mooshroom_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_mooshroom_trading_card
+
+  ocelot:
+    mob: OCELOT
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:ocelot_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_ocelot_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_ocelot_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_ocelot_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_ocelot_trading_card
+
+  parrot:
+    mob: PARROT
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:parrot_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_parrot_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_parrot_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_parrot_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_parrot_trading_card
+
+  pig:
+    mob: PIG
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:pig_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_pig_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_pig_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_pig_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_pig_trading_card
+
+  piglin:
+    mob: PIGLIN
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:piglin_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_piglin_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_piglin_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_piglin_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_piglin_trading_card
+
+  piglin_brute:
+    mob: PIGLIN_BRUTE
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:piglin_brute_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_piglin_brute_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_piglin_brute_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_piglin_brute_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_piglin_brute_trading_card
+
+  pillager:
+    mob: PILLAGER
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:pillager_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_pillager_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_pillager_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_pillager_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_pillager_trading_card
+
+  pufferfish:
+    mob: PUFFERFISH
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:pufferfish_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_pufferfish_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_pufferfish_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_pufferfish_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_pufferfish_trading_card
+
+  ravager:
+    mob: RAVAGER
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:ravager_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_ravager_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_ravager_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_ravager_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_ravager_trading_card
+
+  sheep:
+    mob: SHEEP
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:sheep_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_sheep_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_sheep_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_sheep_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_sheep_trading_card
+
+  skeleton:
+    mob: SKELETON
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:skeleton_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_skeleton_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_skeleton_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_skeleton_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_skeleton_trading_card
+
+  slime:
+    mob: SLIME
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:slime_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_slime_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_slime_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_slime_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_slime_trading_card
+
+  stray:
+    mob: STRAY
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:stray_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_stray_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_stray_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_stray_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_stray_trading_card
+
+  turtle:
+    mob: TURTLE
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:turtle_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_turtle_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_turtle_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_turtle_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_turtle_trading_card
+
+  vex:
+    mob: VEX
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:vex_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_vex_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_vex_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_vex_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_vex_trading_card
+
+  villager:
+    mob: VILLAGER
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:villager_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_villager_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_villager_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_villager_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_villager_trading_card
+
+  witch:
+    mob: WITCH
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:witch_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_witch_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_witch_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_witch_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_witch_trading_card
+
+  wither_skeleton:
+    mob: WITHER_SKELETON
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:wither_skeleton_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_wither_skeleton_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_wither_skeleton_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_wither_skeleton_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_wither_skeleton_trading_card
+
+  wolf:
+    mob: WOLF
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:wolf_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_wolf_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_wolf_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_wolf_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_wolf_trading_card
+
+  zombie:
+    mob: ZOMBIE
+    chance: 0.0015
+
+    tiers:
+      SIMPLE:
+        weight: 60.0
+        item: nexo:zombie_trading_card
+      ELITE:
+        weight: 25.0
+        item: nexo:elite_zombie_trading_card
+      ULTIMATE:
+        weight: 10.0
+        item: nexo:ultimate_zombie_trading_card
+      LEGENDARY:
+        weight: 4.5
+        item: nexo:legendary_zombie_trading_card
+      FABLED:
+        weight: 0.5
+        item: nexo:fabled_zombie_trading_card

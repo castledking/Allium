@@ -58,10 +58,20 @@ public record TradingCardsConfig(
         int maximumLevel,
         double boostPerLevel,
         int boostsPerLevel,
+        String loreSeparator,
         Announce announce
     ) {
         public static Levelling defaults() {
-            return new Levelling(0, 100, 1.0, 1, Announce.defaults());
+            return new Levelling(0, 100, 1.0, 1,
+                "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+                    + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+                    + "\u2500\u2500\u2500\u2500\u2500",
+                Announce.defaults());
+        }
+
+        /** The rule between lore sections; blank omits every separator. */
+        public String loreSeparator() {
+            return loreSeparator == null ? "" : loreSeparator;
         }
     }
 
@@ -279,6 +289,10 @@ public record TradingCardsConfig(
         if (section == null) return Levelling.defaults();
         int start = clamp(section.getInt("start-level", 0), 0, 1000);
         int max = clamp(section.getInt("maximum-level", 100), start + 1, 1000);
+        String separator = section.getString("lore-separator",
+            "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+                + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+                + "\u2500\u2500\u2500\u2500\u2500");
         double perLevel = section.getDouble("boost-per-level", 1.0);
         if (perLevel < 0.0) {
             issues.add(ValidationIssue.warning(FILE, "levelling.boost-per-level",
@@ -286,7 +300,7 @@ public record TradingCardsConfig(
             perLevel = 0.0;
         }
         int perLevelCount = clamp(section.getInt("boosts-per-level", 1), 1, 9);
-        return new Levelling(start, max, perLevel, perLevelCount,
+        return new Levelling(start, max, perLevel, perLevelCount, separator,
             announce(section.getConfigurationSection("announce")));
     }
 

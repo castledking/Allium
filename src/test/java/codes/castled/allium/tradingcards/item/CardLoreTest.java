@@ -1,0 +1,291 @@
+package codes.castled.allium.tradingcards.item;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import codes.castled.allium.tradingcards.card.QualityBand;
+import codes.castled.allium.tradingcards.card.Tier;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Card lore: the tier presentation, and the band glyphs behind it.
+ *
+ * <p>Two things are being pinned down.
+ *
+ * <p>The tier is shown twice — as the {@code lb_*} badge near the top and as the
+ * pip row further down — and they are read from one place. If they were ever
+ * derived separately a mislabelled item could show a SIMPLE badge above an
+ * ULTIMATE pip row, which is exactly what a player cannot interpret.
+ *
+ * <p>The bands are what make the background per-tier. Each line is wrapped in the
+ * tier's own glyphs, so all five tiers get their own panel and the server is
+ * what chooses between them.
+ */
+class CardLoreTest {
+
+    private static final List<QualityBand> BANDS = List.of(
+        new QualityBand("damaged", 1, 25, 1, "red"),
+        new QualityBand("pristine", 76, 100, 8, "gold"));
+
+    private static CardLore lore(int bonusSlots, String separator) {
+        return new CardLore(new CardLore.LoreData(
+            BANDS,
+            (id, level) -> "<green>" + id + " <white>+" + level + "</white>",
+            "spawner heads",
+            100,
+            bonusSlots,
+            separator,
+            level -> 25.0));
+    }
+
+    private static TradingCardData card(Tier tier, int level, int quality, int rerolls,
+                                        List<String> signatures, List<String> bonuses,
+                                        double xp) {
+        return new TradingCardData("AXOLOTL", "axolotl", tier, level, quality, signatures,
+            bonuses, xp, rerolls, false);
+    }
+
+    // ==================== pips ====================
+
+    @Test
+    void simpleHasExactlyOneFilledPip() {
+        assertEquals("◆◇◇◇◇", Tier.SIMPLE.pips());
+        assertEquals("◆◆◇◇◇", Tier.ELITE.pips());
+        assertEquals("◆◆◆◇◇", Tier.ULTIMATE.pips());
+        assertEquals("◆◆◆◆◇", Tier.LEGENDARY.pips());
+        assertEquals("◆◆◆◆◆", Tier.FABLED.pips());
+    }
+
+    @Test
+    void thePipRowSaysOneThroughFive() {
+        assertEquals("◆◇◇◇◇  (1/5)", Tier.SIMPLE.pipsWithPosition());
+        assertEquals("◆◆◆◆◆  (5/5)", Tier.FABLED.pipsWithPosition());
+    }
+
+    @Test
+    void everyTierShowsFivePipsSoTheRowIsAConstantWidth() {
+        for (Tier tier : Tier.values()) {
+            assertEquals(5, tier.pips().length(),
+                tier + " must render a full row, or the lore reflows per tier");
+        }
+    }
+
+    // ==================== tier badge and row agree ====================
+
+    @Test
+    void theBadgeAndThePipRowComeFromTheSameTier() {
+        for (Tier tier : Tier.values()) {
+            var lines = lore(5, "").body(
+                card(tier, 0, 15, 0, List.of("luck"), List.of(), 0.0), tier, 0.0);
+            String badge = lines.get(0);
+            String pipRow = lines.stream()
+                .filter(l -> l.startsWith("<gray>Tier:</gray>"))
+                .findFirst().orElseThrow();
+            assertTrue(pipRow.contains(tier.pips()),
+                tier + " pip row should be " + tier.pips());
+            assertTrue(badge.contains(CardLore.label(tier)));
+            assertTrue(pipRow.contains("[" + (tier.ordinal() + 1) + "/5]"),
+                tier + " position should read " + (tier.ordinal() + 1) + "/5");
+        }
+    }
+
+    @Test
+    void eachTierHasItsOwnBadgeGlyph() {
+        List<String> glyphs = java.util.Arrays.stream(Tier.values())
+            .map(CardLore::label).toList();
+        assertEquals(5, glyphs.size());
+        assertEquals(5, new java.util.HashSet<>(glyphs).size(),
+            "two tiers sharing a badge glyph is a card reading as the wrong tier");
+        for (String glyph : glyphs) {
+            assertFalse(glyph.isBlank(), "every tier needs a badge");
+        }
+    }
+
+    @Test
+    void eachTierHasItsOwnBandGlyphs() {
+        CardLore lore = lore(5, "");
+        String[] simple = CardLore.bands(Tier.SIMPLE);
+        String[] fabled = CardLore.bands(Tier.FABLED);
+        assertFalse(java.util.Arrays.equals(simple, fabled),
+            "the bands are what make the background per-tier; sharing them defeats it");
+        for (Tier tier : Tier.values()) {
+            String[] band = CardLore.bands(tier);
+            assertEquals(3, band.length);
+            for (String slice : band) {
+                assertFalse(slice.isBlank());
+            }
+            assertNotEquals(band[0], band[1]);
+            assertNotEquals(band[1], band[2]);
+        }
+    }
+
+
+    // ==================== banding ====================
+
+    @Test
+    void theFirstLineGetsTheTopSliceAndTheLastTheBottom() {
+        CardLore lore = lore(5, "");
+        var lines = lore.render(
+            card(Tier.ELITE, 0, 15, 0, List.of("luck"), List.of(), 0.0), 0.0);
+        assertTrue(lines.size() > 3, "the layout should have several lines");
+        String[] band = CardLore.bands(Tier.ELITE);
+        assertTrue(strip(lines.get(0)).startsWith(band[0]), "first line is the top slice");
+        assertTrue(strip(lines.get(1)).startsWith(band[1]), "middle lines are the middle slice");
+        assertTrue(strip(lines.get(lines.size() - 1)).startsWith(band[2]),
+            "last line is the bottom slice");
+    }
+
+    @Test
+    void everyLineIsWrappedInTheBandFont() {
+        for (String line : lore(5, "").render(
+                card(Tier.ULTIMATE, 3, 15, 0, List.of("luck"), List.of(), 0.0), 0.0)) {
+            assertTrue(line.startsWith("<font:sf.allium_tradingcards>"),
+                "every line needs the band font: " + line);
+            assertTrue(line.endsWith("</font>"), "every line must close the font tag");
+        }
+    }
+
+    @Test
+    void aOneLineCardGetsTheTopSliceAlone() {
+        // Two caps stacked on one line would draw the bottom cap over the top one.
+        var lines = new CardLore(new CardLore.LoreData(BANDS, (id, l) -> id, "heads", 100, 1,
+            "", level -> 0.0)).wrapWithBands(Tier.SIMPLE, List.of("only line"));
+        assertEquals(1, lines.size());
+        String body = strip(lines.get(0));
+        assertTrue(body.startsWith(CardLore.bands(Tier.SIMPLE)[0]));
+        assertFalse(body.startsWith(CardLore.bands(Tier.SIMPLE)[1]),
+            "a one-line card must not also get a middle slice");
+        assertFalse(body.contains(CardLore.bands(Tier.SIMPLE)[2]),
+            "stacking both caps on one line draws one over the other");
+    }
+
+    /** The line with MiniMessage tags removed, so assertions read as a player sees it. */
+    private static String plain(String line) {
+        return line.replaceAll("<[^>]*>", "");
+    }
+
+    private static String strip(String line) {
+        String body = line.substring(line.indexOf('>') + 1);
+        return body.substring(0, body.length() - "</font>".length());
+    }
+
+    // ==================== bonus slots ====================
+
+    @Test
+    void aFreshCardShowsOneEmptySlotAndTheRestLocked() {
+        var slots = lore(5, "").bonusSlots(
+            card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 0.0));
+        assertEquals(5, slots.size());
+        assertTrue(slots.get(0).contains("Empty!"), "one slot is open from the start");
+        for (int i = 1; i < 5; i++) {
+            assertTrue(slots.get(i).contains("Locked"),
+                "slot " + (i + 1) + " should be locked, got " + slots.get(i));
+        }
+    }
+
+    @Test
+    void rerollsUnlockAnotherSlotEachTime() {
+        for (int rerolls = 0; rerolls < 5; rerolls++) {
+            var slots = lore(5, "").bonusSlots(
+                card(Tier.SIMPLE, 0, 15, rerolls, List.of("luck"), List.of(), 0.0));
+            int locked = (int) slots.stream().filter(s -> s.contains("Locked")).count();
+            assertEquals(5 - Math.min(5, rerolls + 1), locked,
+                "at " + rerolls + " rerolls, " + locked + " slots should be locked");
+        }
+    }
+
+    @Test
+    void unlockedSlotsShowTheBonusesTheCardHolds() {
+        var slots = lore(5, "").bonusSlots(
+            card(Tier.SIMPLE, 4, 15, 2, List.of("luck"), List.of("armor", "haste"), 0.0));
+        assertTrue(slots.get(0).contains("armor"));
+        assertTrue(slots.get(1).contains("haste"));
+        assertTrue(slots.get(2).contains("Empty!"), "a third reroll opens a third slot");
+        assertTrue(slots.get(3).contains("Locked"));
+    }
+
+    @Test
+    void thereIsAlwaysAtLeastOneSlot() {
+        var slots = lore(0, "").bonusSlots(
+            card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 0.0));
+        assertEquals(1, slots.size(), "a card showing no bonus slots reads as a bug");
+    }
+
+    // ==================== body layout ====================
+
+    @Test
+    void aFullCardCarriesEverySectionTheDesignCallsFor() {
+        var lines = lore(5, "---").body(
+            card(Tier.SIMPLE, 0, 15, 0, List.of("luck", "strength", "tokens"),
+                List.of(), 0.0), Tier.SIMPLE, 0.0);
+        String all = String.join("\n", lines);
+        assertTrue(all.contains("Level:"), "level row");
+        assertTrue(all.contains("While equipped in"), "the /reliques header");
+        assertTrue(all.contains("luck"), "signatures are listed");
+        assertTrue(all.contains("Quality:"), "quality row");
+        assertTrue(plain(all).contains("Damaged"), "quality band name comes from the config");
+        assertTrue(all.contains("[15%]"), "quality reads as a percentage");
+        assertTrue(all.contains("Tier:"), "tier row");
+        assertTrue(all.contains("Right-click to roll bonuses"), "the reroll hint");
+        assertTrue(all.contains("spawner heads"), "what it trades for");
+    }
+
+    @Test
+    void theQualityBandAndItsHeadValueBothComeFromTheConfig() {
+        var lines = lore(5, "").body(
+            card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0), Tier.SIMPLE, 0.0);
+        String all = String.join("\n", lines);
+        assertTrue(all.contains("Pristine"), "90 is in the pristine band");
+        assertTrue(plain(all).contains("8 spawner heads"),
+            "pristine pays 8 heads per the band; got: " + plain(all));
+    }
+
+    @Test
+    void theProgressRowAlwaysShowsSoTheCardLooksTheSameBeforeAndAfter() {
+        // The design shows 0/25 XP on a fresh card, so the row is always there.
+        // Hiding it would make a card's layout change the first time it earned
+        // anything, which reads as the card being a different item.
+        var none = lore(5, "").body(
+            card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 0.0), Tier.SIMPLE, 0.0);
+        assertTrue(plain(String.join("\n", none)).contains("0/25 XP"),
+            "got: " + plain(String.join("\n", none)));
+
+        var some = lore(5, "").body(
+            card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 10.0), Tier.SIMPLE, 10.0);
+        assertTrue(plain(String.join("\n", some)).contains("10/25 XP"),
+            "got: " + plain(String.join("\n", some)));
+    }
+
+    @Test
+    void theProgressBarIsEmptyButPresentAtZero() {
+        var none = lore(5, "").body(
+            card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 0.0), Tier.SIMPLE, 0.0);
+        String row = String.join("\n", none);
+        assertTrue(row.contains("<green></green>"), "no bar filled yet");
+        assertTrue(row.contains("||||||||||||||||||||"), "but the empty bar is still drawn");
+    }
+
+    @Test
+    void theSeparatorIsOmittedEntirelyWhenBlank() {
+        var lines = lore(5, "").body(
+            card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 0.0), Tier.SIMPLE, 0.0);
+        for (String line : lines) {
+            assertFalse(line.contains("──"), "no separator characters when unset");
+        }
+    }
+
+    @Test
+    void aCardWithNoSignaturesSaysSoRatherThanShowingAnEmptyGap() {
+        var lines = lore(5, "").body(
+            card(Tier.SIMPLE, 0, 15, 0, List.of(), List.of(), 0.0), Tier.SIMPLE, 0.0);
+        assertTrue(String.join("\n", lines).contains("None"));
+    }
+
+    @Test
+    void aNullCardRendersToNothingRatherThanThrowing() {
+        assertEquals(List.of(), lore(5, "").render(null, 0.0));
+    }
+}

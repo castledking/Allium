@@ -42,6 +42,7 @@ import codes.castled.allium.tradingcards.gui.CardMenuListener;
 import codes.castled.allium.tradingcards.gui.TradeInListener;
 import codes.castled.allium.tradingcards.item.HeadResolver;
 import codes.castled.allium.tradingcards.item.TradingCardData;
+import codes.castled.allium.tradingcards.item.CardLore;
 import codes.castled.allium.tradingcards.TradingCardsModule;
 import codes.castled.allium.tradingcards.trade.PendingPayoutListener;
 import codes.castled.allium.tradingcards.trade.PendingPayoutStore;
@@ -498,6 +499,7 @@ public final class TradingCardsModule {
         // Bonus rolls are the catalogue's, but the cards that carry them are
         // built by the factory, so the pool is handed over once it is known.
         factory.bonuses(loaded.bonusPool(), loaded.bonusRollCount());
+        installCardLore(loaded);
 
         // Crop quality is Allium's own module, reached through its public API
         // rather than by editing crop files — so the bias applies globally while
@@ -596,6 +598,79 @@ public final class TradingCardsModule {
             player.sendMessage(MiniMessage.miniMessage().deserialize(
                 "<light_purple>Quest tokens: <white>+" + tokens + "</white>"));
         }
+    }
+
+    /**
+     * Installs the card lore renderer.
+     *
+     * <p>Installed on {@link TradingCardData} rather than threaded through each
+     * write path, because the paths that write a card are spread across classes
+     * this one does not own — the drop factory, the reroll handler, the merge
+     * handler and Relique's write-back — and a renderer that one of them forgets
+     * to call produces a card with correct state and no lore at all.
+     *
+     * <p>Boost lines come from the catalogue, so the numbers on a card are the
+     * configured ones rather than a second set baked into the renderer.
+     */
+    private void installCardLore(BoostCatalog.LoadResult catalog) {
+        var defs = catalog.boosts();
+        double perLevel = config.levelling().boostPerLevel();
+        double sMin = scaleMinimum();
+        double sMax = scaleMaximum();
+        int bonusSlots = Math.max(1, catalog.bonusRollCount());
+        var quality = config.quality();
+
+        TradingCardData.lore(new CardLore(new CardLore.LoreData(
+            quality,
+            (id, level) -> {
+                var boost = defs.get(id);
+                if (boost == null) {
+                    // A card naming a boost the catalogue does not define is
+                    // shown by id rather than dropped, so the player can see
+                    // something is wrong instead of a line silently vanishing.
+                    return "<red>" + id + "</red>";
+                }
+                double value = boost.totalAt(level, perLevel, sMin, sMax);
+                String amount = boost.mechanism().isMultiplier()
+                    ? "x" + trim(value)
+                    : "+" + trim(value);
+                return boost.display() + " <white>" + amount + "</white>";
+            },
+            headsLabel(),
+            config.levelling().maximumLevel(),
+            bonusSlots,
+            loreSeparator(),
+            // Read live rather than captured: initBoosts runs before the xp
+            // curve is loaded, and a reload replaces it. A fallback keeps the
+            // progress row off until the real curve arrives rather than throwing
+            // on a card write during startup.
+            level -> xpConfig == null ? 0.0 : xpConfig.xpForLevel(level))));
+    }
+
+    /** Trims a boost value to something a lore line should carry. */
+    private static String trim(double value) {
+        if (value == Math.rint(value) && !Double.isInfinite(value)) {
+            return String.valueOf((long) value);
+        }
+        return String.format(java.util.Locale.ROOT, "%.2f", value);
+    }
+
+    /** The rule between lore sections, in the character's own colour. */
+    private String loreSeparator() {
+        String rule = config.levelling().loreSeparator();
+        return rule.isBlank() ? "" : "<dark_gray>" + rule + "</dark_gray>";
+    }
+
+    /** What a card trades for, named for the lore line. */
+    private String headsLabel() {
+        var source = config.trade().headSource();
+        if (source == null) {
+            return "spawner heads";
+        }
+        return switch (source) {
+            case SPAWNER_HEADS -> "spawner heads";
+            case CARD_ITEM -> "card heads";
+        };
     }
 
     /**

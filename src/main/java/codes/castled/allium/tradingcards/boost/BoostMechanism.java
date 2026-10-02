@@ -85,6 +85,21 @@ public enum BoostMechanism {
      */
     CARD_PERMISSION;
 
+    /**
+     * True when the amount scales something rather than adding to it.
+     *
+     * <p>Only affects how the value is written on a card's lore — x1.25 against
+     * +2.0 — because a player reading "Experience +1.25" has no way to know
+     * whether that is 1.25 times their xp or 1.25 more of it.
+     */
+    public boolean isMultiplier() {
+        return this == CARD_XP_MULTIPLIER
+            || this == CARD_SELL_MULTIPLIER
+            || this == CARD_WAYPOINT_MULTIPLIER
+            || this == CARD_TOKEN_MULTIPLIER
+            || this == AURASKILL_TRAIT;
+    }
+
     /** True when this mechanism holds state that must be removed on unequip. */
     public boolean needsExplicitCleanup() {
         return this == AURASKILL_STAT

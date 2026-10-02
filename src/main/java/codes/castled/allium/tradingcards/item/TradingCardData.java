@@ -183,6 +183,15 @@ public record TradingCardData(
         // Two cards of the same mob and tier differ in level, quality and
         // signatures, so they must never merge into one stack — a merged
         // stack would silently discard the extra cards' state.
+        // The card carries no display name. Vanilla's tooltip puts the first line
+        // at y=3 whatever it is, so any name would land on the frame's ornament —
+        // the mob name lives in the lore instead, under a blank line that reserves
+        // the decoration.
+        //
+        // Set once, here, rather than swapped per hover: an item rewritten while
+        // the player is looking at it is what causes a visible refresh on the
+        // client, and there is no reason for it to ever be rewritten.
+        meta.displayName(net.kyori.adventure.text.Component.empty());
         meta.setMaxStackSize(1);
         renderLore(meta, data);
         stack.setItemMeta(meta);

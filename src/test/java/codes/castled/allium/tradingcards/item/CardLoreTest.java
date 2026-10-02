@@ -83,7 +83,7 @@ class CardLoreTest {
         for (Tier tier : Tier.values()) {
             var lines = lore(5, "").body(
                 card(tier, 0, 15, 0, List.of("luck"), List.of(), 0.0), tier, 0.0);
-            String badge = lines.get(0);
+            String badge = lines.get(2);   // blank spacer, then the mob name
             String pipRow = lines.stream()
                 .filter(l -> l.startsWith("<gray>Tier:</gray>"))
                 .findFirst().orElseThrow();
@@ -95,7 +95,10 @@ class CardLoreTest {
             assertEquals(Tier.values().length - tier.ordinal() - 1,
                 pipRow.split("<#777777>", -1).length - 1,
                 tier + " should have the rest hollow");
-            // The badge is now bare: the item name already says the tier.
+            // The tier badge is bare. It moved down two lines: a blank spacer
+            // reserves the frame's ornament, then the mob name takes the slot the
+            // display name used to hold, since the card no longer has one.
+            assertEquals(CardLore.label(tier), plain(lines.get(2)).strip());
             assertEquals(CardLore.label(tier), plain(badge).strip());
             assertTrue(pipRow.contains("[" + (tier.ordinal() + 1) + "/5]"),
                 tier + " position should read " + (tier.ordinal() + 1) + "/5");

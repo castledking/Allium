@@ -258,6 +258,36 @@ class CardLoreTest {
     }
 
     @Test
+    void aFreshCardShowsNoBonusesAtAll() {
+        // Drops carry no bonuses now: a slot is bought with its own money, so a
+        // drop that handed one over made the price a suggestion. This is the
+        // observable half of that — the drop path itself needs a Bukkit mock.
+        var slots = lore(5, "").bonusSlots(
+            card(Tier.FABLED, 0, 90, 0, List.of("luck"), List.of(), 0.0));
+        for (String slot : slots) {
+            assertFalse(slot.contains("luck"),
+                "a card that was never rolled must not show a bonus, was " + slot);
+        }
+        assertEquals(5, slots.size());
+        assertEquals(5, slots.stream().filter(s -> s.contains("Empty!")).count(),
+            "a Fabled card opens every slot to roll, got " + slots);
+    }
+
+    @Test
+    void aFilledSlotHasNoPrefixAndAnEmptyOneDoes() {
+        // "Crop Yield +15%" names itself. The prefix only ever labelled the slots
+        // that were empty or locked, and on a full card it read as five pending
+        // rolls rather than five bonuses.
+        var slots = lore(5, "").bonusSlots(
+            card(Tier.FABLED, 0, 90, 0, List.of("luck"), List.of("crop_yield"), 0.0));
+        assertFalse(slots.get(0).contains("Bonus:"),
+            "a filled slot should not be prefixed, was " + slots.get(0));
+        assertTrue(slots.get(0).contains("crop_yield"));
+        assertTrue(slots.get(1).contains("Bonus:"),
+            "an empty slot still needs labelling, was " + slots.get(1));
+    }
+
+    @Test
     void thereIsAlwaysAtLeastOneSlot() {
         var slots = lore(0, "").bonusSlots(
             card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 0.0));

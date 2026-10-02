@@ -160,7 +160,7 @@ public record TradingCardsConfig(
             ladder.put(Tier.ULTIMATE, 2.0);
             ladder.put(Tier.LEGENDARY, 3.0);
             ladder.put(Tier.FABLED, 5.0);
-            return new BonusSlotRoll(true, 2000.0, 1.35, 100L, ladder);
+            return new BonusSlotRoll(true, 500.0, 1.35, 100L, ladder);
         }
 
         /**
@@ -491,7 +491,7 @@ public record TradingCardsConfig(
         for (var t : Tier.values()) {
             multipliers.put(t, section.getDouble("tier-multipliers." + t.name(), 1.0));
         }
-        double cost = section.getDouble("cost", 2000.0);
+        double cost = section.getDouble("cost", 500.0);
         if (cost < 0) {
             issues.add(ValidationIssue.warning(FILE, "bonus-slot-roll.cost",
                 "Negative, which would pay the player to roll. Using 0."));

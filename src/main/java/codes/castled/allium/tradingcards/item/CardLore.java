@@ -223,9 +223,9 @@ public final class CardLore {
             } else if (i < unlocked) {
                 // Rolled for a fee, so it reads as available rather than as a
                 // value the drop already gave. Grey, matching the pips.
-                out.add("<#777777>Empty!</#777777>");
+                out.add("<gray>Bonus:</gray> <#777777>Empty!</#777777>");
             } else {
-                out.add("<#F15A45>Locked 🔒</#F15A45>");
+                out.add("<gray>Bonus:</gray> <#F15A45>Locked 🔒</#F15A45>");
             }
         }
         return out;

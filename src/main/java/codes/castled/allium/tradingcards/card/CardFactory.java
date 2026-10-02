@@ -76,9 +76,12 @@ public final class CardFactory {
      */
     public Optional<ItemStack> create(CardRoller.RolledCard rolled, TradingCardsConfig config,
                                       RandomGenerator random) {
+        // No bonuses on the drop. A bonus slot is bought with its own money, and
+        // a drop that handed one over for free made the price a suggestion. Every
+        // slot starts empty and the tier decides how many are open to roll.
         return TradingCardData.create(items, rolled.definition(), rolled.tier(),
             config.levelling().startLevel(), rolled.quality(), BASE_SIGNATURES,
-            rollBonuses(rolled.tier(), random), false);
+            List.of(), false);
     }
 
     /**
@@ -93,7 +96,7 @@ public final class CardFactory {
         int clampedQuality = Math.max(QualityBand.ROLL_MIN,
             Math.min(QualityBand.ROLL_MAX, quality));
         return TradingCardData.create(items, definition, tier, level, clampedQuality,
-            signatures, rollBonuses(tier, random), bound);
+            signatures, List.of(), bound);
     }
 
     /** The signatures a card of this tier starts with. */

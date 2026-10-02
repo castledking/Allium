@@ -174,7 +174,11 @@ bonus-slot-roll:
   # has one to roll and a FABLED one has all five. An open slot with
   # nothing in it reads "Empty!" and costs this to fill.
   enabled: true
-  cost: 2000.0
+
+  # Low, because a card drops with NO bonus slots filled and the tier pool is
+  # still small — at 2000 the first roll read as a tax rather than a choice. The
+  # escalation is what stops it being a bargain, not the starting figure.
+  cost: 500.0
 
   # Each roll of a slot costs more than the last, the same way a reroll
   # does. The menu always shows the NEXT price, so the player commits
@@ -216,9 +220,13 @@ reroll:
   # starts, so this is the ceiling, not a starting count.
   maximum-signatures: 6
 
-  # Once the signature pool is exhausted, rerolls re-roll bonuses
-  # only. Set false to refuse and refund — kinder, but it turns a
-  # maxed card into a dead item with no remaining value.
+  # Once the signature pool is exhausted, a reroll re-rolls the bonus
+  # boosts the card ALREADY holds. It never fills an empty slot and never
+  # mints a bonus the player has not paid for — those are bought in the
+  # bonus menu — so a card with no bonuses has nothing here to re-roll and
+  # is pointed at that menu instead.
+  #
+  # Set false to refuse and refund outright.
   allow-bonus-only-when-full: true
 
   # The signature pool a reroll may unlock from, per tier.

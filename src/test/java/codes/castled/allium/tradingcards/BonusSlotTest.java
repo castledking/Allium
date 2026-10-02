@@ -84,7 +84,10 @@ class BonusSlotTest {
     @Test
     void theTierDecidesHowManySlotsOpen() {
         var pricing = TradingCardsConfig.BonusSlotRoll.defaults();
-        assertEquals(2000.0, pricing.costFor(0, Tier.SIMPLE), 0.01);
+        // Low first roll on purpose: a card drops with nothing filled and the
+        // pool is still small, so a high opening price reads as a tax. The
+        // escalation is what stops it being a bargain.
+        assertEquals(500.0, pricing.costFor(0, Tier.SIMPLE), 0.01);
         // Escalating, so the next roll always costs more than the last.
         assertTrue(pricing.costFor(1, Tier.SIMPLE) > pricing.costFor(0, Tier.SIMPLE),
             "a flat per-slot fee makes rolling until satisfied free of friction");
@@ -128,7 +131,7 @@ class BonusSlotTest {
         var loaded = TradingCardsConfig.load(new org.bukkit.configuration.MemoryConfiguration());
         assertFalse(loaded.config().bonusSlotRoll() == null,
             "a config predating the block must still load");
-        assertEquals(2000.0, loaded.config().bonusSlotRoll().costFor(0, Tier.SIMPLE), 0.01);
+        assertEquals(500.0, loaded.config().bonusSlotRoll().costFor(0, Tier.SIMPLE), 0.01);
     }
 
     @Test

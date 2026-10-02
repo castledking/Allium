@@ -393,13 +393,22 @@ public final class TradingCardsModule {
         // Exactly one of the two lists moves, and the result says which: an
         // unlock adds a signature and leaves the bonuses alone, a bonus roll
         // replaces the bonuses and leaves the signatures alone.
-        // A bonus-only reroll fills slots that are empty rather than replacing
-        // what is there. Slots are bought with their own money, and a reroll
-        // that overwrote one would make buying it pointless — the cheapest
-        // reroll would undo the most expensive slot.
+        // A bonus-only reroll re-rolls the bonuses the card already holds, in
+        // the slots it already holds them in. It never fills an empty slot and
+        // never mints a bonus: those are bought with real money in the bonus
+        // menu, and a reroll that handed one over free would make the price a
+        // suggestion. A card with nothing bought has nothing to re-roll, so the
+        // player is pointed at the menu instead.
         List<String> bonuses = result.rerolledBonuses()
-            ? fillEmptySlots(player, card, result.bonuses(), held)
+            ? rerolledBonuses(player, card, result.bonuses(), held)
             : card.bonuses();
+        if (bonuses == null) {
+            reroll.refund(player, result.cost());
+            return new RerollService.Result(RerollService.Outcome.DISABLED, 0.0,
+                card.signatures(),
+                "This card has no bonus boosts to re-roll. Buy one in the bonus "
+                    + "slots menu.");
+        }
         TradingCardData updated = card
             .withReroll(card.rerolls() + 1, result.signatures())
             .withBonuses(bonuses);
@@ -414,39 +423,44 @@ public final class TradingCardsModule {
     }
 
     /**
-     * Places rolled bonuses into the slots that are free, leaving bought ones.
+     * Re-rolls the bonuses a card already holds, into the slots it already fills.
      *
-     * <p>A locked slot is skipped even when it is empty: locking is how a player
-     * says "this slot is spoken for", and an empty locked slot is the one case
-     * where honouring that costs nothing to get wrong.
+     * <p>Same count, same slots: the card comes out with the number of bonuses it
+     * went in with, so a reroll cannot quietly change a card's shape. Locked
+     * slots keep what they hold even if they are empty.
+     *
+     * @return null when the card holds no bonuses, so the caller can refund and
+     *         point the player at the menu that actually sells them
      */
-    private List<String> fillEmptySlots(Player player, TradingCardData card,
-                                        List<String> rolled, ItemStack held) {
+    private List<String> rerolledBonuses(Player player, TradingCardData card,
+                                         List<String> rolled, ItemStack held) {
         var service = bonusSlots;
-        if (service == null || rolled.isEmpty()) {
-            return rolled;
+        List<String> held0 = card.bonuses();
+        if (service == null || held0.isEmpty() || rolled.isEmpty()) {
+            return null;
         }
         List<codes.castled.allium.tradingcards.bonus.BonusSlot> slots =
             new ArrayList<>(service.slots(held, card));
-        int next = 0;
-        for (int i = 0; i < slots.size() && next < rolled.size(); i++) {
+
+        // The rolled set is whatever the reroll produced; take as many as the
+        // card already had, so the slot count never changes.
+        List<String> next = new ArrayList<>(held0);
+        int taken = 0;
+        for (int i = 0; i < slots.size() && taken < held0.size(); i++) {
             var slot = slots.get(i);
-            if (!slot.isEmpty() || slot.locked()) {
+            if (slot.isEmpty() || slot.locked() || !service.isTierUnlocked(card, i)) {
                 continue;
             }
-            if (!service.isTierUnlocked(card, i)) {
-                continue;
+            if (taken >= rolled.size()) {
+                break;
             }
-            // The roll was already charged as part of the reroll, so the slot's
-            // own spend is not increased again here.
-            slots.set(i, slot.rolled(rolled.get(next++), 0.0));
+            // Paid for by the reroll already, so the slot's own spend is not
+            // increased again here.
+            slots.set(i, slot.rolled(rolled.get(taken++), 0.0));
+            next.set(i, rolled.get(taken - 1));
         }
         service.writeState(held, slots);
-        List<String> ids = new ArrayList<>(slots.size());
-        for (var slot : slots) {
-            ids.add(slot.id());
-        }
-        return List.copyOf(ids);
+        return taken == 0 ? null : List.copyOf(next);
     }
 
     public RerollService reroll() {

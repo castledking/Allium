@@ -104,9 +104,38 @@ public record TradingCardData(
             pdc.getOrDefault(TradingCardKeys.QUALITY, PersistentDataType.INTEGER, 100),
             readSignatures(pdc.get(TradingCardKeys.SIGNATURES, PersistentDataType.STRING)),
             readSignatures(pdc.get(TradingCardKeys.BONUSES, PersistentDataType.STRING)),
-            pdc.getOrDefault(TradingCardKeys.XP, PersistentDataType.DOUBLE, 0.0D),
+            readXp(pdc),
             pdc.getOrDefault(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, 0),
             pdc.getOrDefault(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) 0) == 1));
+    }
+
+    /**
+     * The card's banked xp, whatever number type it was stored as.
+     *
+     * <p>Written as a string, because Relique stores an equipped card through
+     * AbyssalLib's YAML codec, and that codec reads every number back as an int:
+     * a double went in and an {@code IntTag} came out, truncated. Paper refuses
+     * to read an int tag as a double, so the next read of the card threw — which
+     * broke {@code /cards reload} and the card's right-click menu for any card
+     * that had been through the slot. A string survives the round trip exactly.
+     *
+     * <p>Cards written before that, or mangled by it, still carry a number, so
+     * every numeric type is accepted on the way in.
+     */
+    static double readXp(org.bukkit.persistence.PersistentDataContainer pdc) {
+        var key = TradingCardKeys.XP;
+        if (pdc.has(key, PersistentDataType.STRING)) {
+            try {
+                return Double.parseDouble(pdc.get(key, PersistentDataType.STRING));
+            } catch (NumberFormatException e) {
+                return 0.0;
+            }
+        }
+        if (pdc.has(key, PersistentDataType.DOUBLE)) return pdc.get(key, PersistentDataType.DOUBLE);
+        if (pdc.has(key, PersistentDataType.INTEGER)) return pdc.get(key, PersistentDataType.INTEGER);
+        if (pdc.has(key, PersistentDataType.LONG)) return pdc.get(key, PersistentDataType.LONG);
+        if (pdc.has(key, PersistentDataType.FLOAT)) return pdc.get(key, PersistentDataType.FLOAT);
+        return 0.0;
     }
 
     /**
@@ -188,7 +217,8 @@ public record TradingCardData(
         pdc.set(TradingCardKeys.SIGNATURES, PersistentDataType.STRING,
             String.join(",", data.signatures()));
         pdc.set(TradingCardKeys.BONUSES, PersistentDataType.STRING, writeBonuses(data));
-        pdc.set(TradingCardKeys.XP, PersistentDataType.DOUBLE, data.xp());
+        // A string, not a double: see readXp.
+        pdc.set(TradingCardKeys.XP, PersistentDataType.STRING, Double.toString(data.xp()));
         pdc.set(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, data.rerolls());
         pdc.set(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) (data.bound() ? 1 : 0));
         meta.setMaxStackSize(1);

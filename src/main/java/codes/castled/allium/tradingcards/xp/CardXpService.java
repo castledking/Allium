@@ -146,6 +146,14 @@ public class CardXpService {
         CardProgression.Progression result = progression.award(
             card.level(), card.xp(), xp, maxLevel);
         if (!result.levelled()) {
+            // Banked even though no level was reached. This used to return here
+            // with nothing written, so every award started again from the card's
+            // stored xp: a card only ever levelled when one award covered a whole
+            // level by itself, and with kill xp at 4 against 25 for level 1, none
+            // ever did.
+            TradingCardData banked = card.withXp(result.xp());
+            writer.write(player.getUniqueId(), banked);
+            progression.bank(player, banked);
             return Award.progress(sourceId, xp, 0, progression.progressTowards(
                 card.level(), result.xp(), config.xpForLevel(card.level())));
         }

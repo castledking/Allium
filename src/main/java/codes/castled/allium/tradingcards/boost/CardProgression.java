@@ -247,6 +247,20 @@ public class CardProgression implements Listener {
         }
     }
 
+    /**
+     * Records xp banked on the equipped card without touching its boosts.
+     *
+     * <p>Most awards do not finish a level, and those change nothing a boost is
+     * derived from, so re-applying every boost on every kill would be work for
+     * nothing. The tracker still has to hold the new total, or the next award
+     * starts again from the old one.
+     */
+    public void bank(Player player, TradingCardData updated) {
+        if (player == null || updated == null) return;
+        if (tracker.isEmpty(player.getUniqueId())) return;
+        tracker.set(player.getUniqueId(), updated, tracker.granted(player.getUniqueId()));
+    }
+
     /** Re-applies an equipped card's boosts, after its level changed. */
     public void refreshEquipped(Player player, TradingCardData updated) {
         if (player == null || updated == null) return;

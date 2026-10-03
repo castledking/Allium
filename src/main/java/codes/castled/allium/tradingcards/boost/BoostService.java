@@ -72,6 +72,17 @@ public class BoostService {
         this.aura = aura;
     }
 
+    /**
+     * True when a player's boosts can be applied in full.
+     *
+     * <p>AuraSkills loads a player's data after they join, and a stat applied
+     * before that is dropped without complaint, so anything applying boosts at
+     * join has to wait for this rather than apply and hope.
+     */
+    public boolean ready(UUID player) {
+        return aura == null || !aura.isAvailable() || aura.withUser(player, user -> { });
+    }
+
     /** One applied boost, remembered so it can be undone exactly. */
     public record AppliedBoost(
         String boostId,

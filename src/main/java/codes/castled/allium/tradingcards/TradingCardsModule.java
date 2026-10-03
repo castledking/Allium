@@ -808,6 +808,10 @@ public final class TradingCardsModule {
                 () -> config.levelling().announce().equipMessage()), plugin);
             Bukkit.getPluginManager().registerEvents(
                 new codes.castled.allium.tradingcards.integration.ReliqueMenuListener(this), plugin);
+            var restore = new codes.castled.allium.tradingcards.integration.ReliqueEquipRestore(
+                plugin, service, tracker);
+            Bukkit.getPluginManager().registerEvents(restore, plugin);
+            restore.restoreOnline();
             // Registered once, unconditionally: the listener reads the live boost
             // total per hit, so a player with no disarm card costs one map lookup.
             Bukkit.getPluginManager().registerEvents(new DisarmListener(

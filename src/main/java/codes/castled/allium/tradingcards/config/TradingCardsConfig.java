@@ -81,12 +81,24 @@ public record TradingCardsConfig(
         }
     }
 
-    public record Announce(boolean enabled, boolean broadcast, String message) {
+    /**
+     * Chat lines about a player's card.
+     *
+     * @param equipMessage sent to the owner when the card goes into /reliques;
+     *                     blank sends nothing
+     */
+    public record Announce(boolean enabled, boolean broadcast, String message,
+                           String equipMessage) {
+        public static final String DEFAULT_EQUIP_MESSAGE =
+            "<dark_gray>(<gold><bold>TRADING CARD</bold></dark_gray>) <yellow>Equipped "
+                + "<card><yellow>, its boosts are now active.";
+
         public static Announce defaults() {
             return new Announce(true, false,
                 "<dark_gray>(<gold><bold>TRADING CARD</bold></dark_gray>) <yellow>Your "
                     + "<card> is now level <green><level></green>! <dark_green><previous>"
-                    + "</dark_green> <white>→</white> <green><level></green>");
+                    + "</dark_green> <white>→</white> <green><level></green>",
+                DEFAULT_EQUIP_MESSAGE);
         }
     }
 
@@ -384,8 +396,10 @@ public record TradingCardsConfig(
         if (message == null || message.isBlank()) {
             message = Announce.defaults().message();
         }
+        // Absent means the default, but an explicit empty string turns it off.
+        String equip = section.getString("equip-message", Announce.DEFAULT_EQUIP_MESSAGE);
         return new Announce(section.getBoolean("enabled", true),
-            section.getBoolean("broadcast", false), message);
+            section.getBoolean("broadcast", false), message, equip == null ? "" : equip);
     }
 
     private static List<QualityBand> quality(ConfigurationSection section,

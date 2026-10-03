@@ -1,11 +1,18 @@
 package codes.castled.allium.tradingcards.boost;
 
 import codes.castled.allium.tradingcards.TradingCardsBranding;
+import codes.castled.allium.tradingcards.item.CardFrame;
 import codes.castled.allium.tradingcards.item.TradingCardData;
 import com.github.darksoulq.relique.event.RelicEquipEvent;
 import com.github.darksoulq.relique.event.RelicUnequipEvent;
 import java.util.List;
+import java.util.Locale;
+import java.util.function.Supplier;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -33,12 +40,21 @@ import org.bukkit.event.Listener;
  */
 public class BoostListener implements Listener {
 
+    private static final MiniMessage MM = MiniMessage.miniMessage();
+
     private final BoostService boosts;
     private final EquippedCardTracker tracker;
+    private final Supplier<String> equipMessage;
 
-    public BoostListener(BoostService boosts, EquippedCardTracker tracker) {
+    /**
+     * @param equipMessage the config's equip line, read per equip so a reload
+     *                     reaches it; blank sends nothing
+     */
+    public BoostListener(BoostService boosts, EquippedCardTracker tracker,
+                         Supplier<String> equipMessage) {
         this.boosts = boosts;
         this.tracker = tracker;
+        this.equipMessage = equipMessage;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -57,6 +73,31 @@ public class BoostListener implements Listener {
         }
         List<String> granted = boosts.apply(player, card.get());
         tracker.set(player.getUniqueId(), card.get(), granted);
+        announce(player, event.getItem(), card.get());
+    }
+
+    /**
+     * Tells the owner the card went in.
+     *
+     * <p>Only on a real equip: Relique posts this event from {@code equip} alone,
+     * not from the xp write-back's {@code updateItem} or from re-syncing modifiers
+     * on join, so a levelling card does not repeat it.
+     */
+    private void announce(Player player, ItemStack item, TradingCardData card) {
+        String template = equipMessage == null ? null : equipMessage.get();
+        if (template == null || template.isBlank()) {
+            return;
+        }
+        Component title = CardFrame.title(item.lore());
+        if (title == null) {
+            String mob = card.mob() == null ? "" : card.mob().toLowerCase(Locale.ROOT).replace('_', ' ');
+            title = Component.text(mob.isEmpty() ? "Trading Card"
+                : Character.toUpperCase(mob.charAt(0)) + mob.substring(1) + " Trading Card");
+        }
+        player.sendMessage(MM.deserialize(template,
+            Placeholder.component("card", title),
+            Placeholder.unparsed("tier", card.tier().name().toLowerCase(Locale.ROOT)),
+            Placeholder.unparsed("level", Integer.toString(card.level()))));
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

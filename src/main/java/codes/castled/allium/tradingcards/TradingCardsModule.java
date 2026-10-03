@@ -769,7 +769,8 @@ public final class TradingCardsModule {
                 + "cards drop but cannot be equipped until "
                 + "plugins/Relique/relic/allium/slots/card.json exists");
         } else {
-            Bukkit.getPluginManager().registerEvents(new BoostListener(service, tracker), plugin);
+            Bukkit.getPluginManager().registerEvents(new BoostListener(service, tracker,
+                () -> config.levelling().announce().equipMessage()), plugin);
             Bukkit.getPluginManager().registerEvents(
                 new codes.castled.allium.tradingcards.integration.ReliqueMenuListener(this), plugin);
             // Registered once, unconditionally: the listener reads the live boost

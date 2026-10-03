@@ -109,12 +109,7 @@ public final class CardDefinitionLoader {
         }
         mob = mob.trim().toUpperCase(Locale.ROOT);
 
-        double chance = section.getDouble("chance", 0.0);
-        if (chance <= 0.0 || chance > 1.0) {
-            issues.add(ValidationIssue.error(FILE, base + ".chance",
-                "Drop chance must be in (0,1], got " + chance
-                    + ". Set 0 to stop the mob dropping cards entirely."));
-        }
+        double chance = chance(section.get("chance"), base + ".chance", issues);
 
         Map<Tier, Double> tiers = new EnumMap<>(Tier.class);
         Map<Tier, ItemRef> items = new EnumMap<>(Tier.class);
@@ -200,6 +195,51 @@ public final class CardDefinitionLoader {
 
         return new CardDefinition(id, mob,
             section.getString("colour"), chance, tiers, items, head);
+    }
+
+    /**
+     * The per-kill drop chance, as a probability.
+     *
+     * <p>Each mob's chance stands alone: they are not shares of anything and do
+     * not add up to 100. Written as a probability ({@code 0.0015}, {@code 1.0}
+     * for every kill) or as a percentage string ({@code "0.15%"},
+     * {@code "100%"}). A bare number above 1 can only have meant a percentage,
+     * so it is read as one with a warning rather than dropping the whole card,
+     * which used to leave the card impossible to give as well as to drop.
+     * {@code 0} keeps the card without it ever dropping.
+     */
+    public static double chance(Object raw, String path, List<ValidationIssue> issues) {
+        if (raw == null) {
+            issues.add(ValidationIssue.error(FILE, path,
+                "No drop chance. Write a probability (0.0015, 1.0 for every kill) "
+                    + "or a percentage (\"0.15%\"), or 0 to never drop"));
+            return 0.0;
+        }
+        String text = raw.toString().trim();
+        boolean percent = text.endsWith("%");
+        double value;
+        try {
+            value = Double.parseDouble(percent ? text.substring(0, text.length() - 1).trim() : text);
+        } catch (NumberFormatException e) {
+            issues.add(ValidationIssue.error(FILE, path,
+                "Drop chance '" + text + "' is not a number"));
+            return 0.0;
+        }
+        if (percent) {
+            value /= 100.0;
+        } else if (value > 1.0 && value <= 100.0) {
+            issues.add(ValidationIssue.warning(FILE, path,
+                "Drop chance " + text + " is above 1, so it is read as " + text
+                    + "%. Write \"" + text + "%\" to say so, or " + (value / 100.0)
+                    + " as a probability"));
+            value /= 100.0;
+        }
+        if (value < 0.0 || value > 1.0) {
+            issues.add(ValidationIssue.error(FILE, path,
+                "Drop chance must be between 0 and 1 (or 0% and 100%), got " + text));
+            return 0.0;
+        }
+        return value;
     }
 
     private ItemRef parseItemRef(String raw, String path, List<ValidationIssue> issues) {

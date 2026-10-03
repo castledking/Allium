@@ -12,6 +12,11 @@
 #   2. which tier                          (tiers.*.weight)
 #   3. what condition                      (quality.bands in config.yml)
 #
+# chance is per kill and per mob; mobs do not share it and nothing has
+# to add up to 100. Write it as a probability (0.0015, 1.0 = every kill)
+# or as a percentage in quotes ("0.15%", "100%"). 0 keeps the card in
+# /tradingcards give but stops it dropping.
+#
 # Setting a tier's weight to 0 removes it from that mob's roll but
 # leaves the entry in place, so re-enabling it needs no retyping.
 #

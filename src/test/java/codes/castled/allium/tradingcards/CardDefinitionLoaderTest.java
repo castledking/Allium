@@ -9,6 +9,7 @@ import codes.castled.allium.tradingcards.card.CardDefinition;
 import codes.castled.allium.tradingcards.card.CardDefinitionLoader;
 import codes.castled.allium.tradingcards.card.Tier;
 import codes.castled.allium.tradingcards.config.TradingCardsConfig;
+import codes.castled.allium.tradingcards.config.ValidationIssue;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -202,12 +203,43 @@ class CardDefinitionLoaderTest {
     }
 
     @Test
+    void chanceReadsAsAProbabilityOrAPercentage() {
+        List<ValidationIssue> issues = new java.util.ArrayList<>();
+        assertEquals(0.0015, CardDefinitionLoader.chance(0.0015, "c", issues), 1e-12);
+        assertEquals(1.0, CardDefinitionLoader.chance(1.0, "c", issues), 1e-12);
+        assertEquals(0.0, CardDefinitionLoader.chance(0, "c", issues), 1e-12);
+        assertEquals(0.0015, CardDefinitionLoader.chance("0.15%", "c", issues), 1e-12);
+        assertEquals(1.0, CardDefinitionLoader.chance("100%", "c", issues), 1e-12);
+        assertTrue(issues.isEmpty(), issues.toString());
+    }
+
+    @Test
+    void aChanceAbove1IsAPercentageWithAWarningNotADroppedCard() {
+        // Writing 100 for "every kill" used to fail the whole card, which then
+        // could not be given either.
+        String content = """
+            cards:
+              chicken:
+                mob: CHICKEN
+                chance: 100
+                tiers:
+                  SIMPLE:
+                    weight: 60.0
+                    item: nexo:chicken_trading_card
+            """;
+        CardDefinitionLoader.LoadResult result = loader().load(yaml(content));
+        assertFalse(result.hasErrors(), result.issues().toString());
+        assertEquals(1.0, result.cards().get("chicken").chance(), 1e-12);
+        assertTrue(result.issues().stream().anyMatch(i -> i.path().endsWith(".chance")));
+    }
+
+    @Test
     void anOutOfRangeChanceIsRejected() {
         String content = """
             cards:
               chicken:
                 mob: CHICKEN
-                chance: 5.0
+                chance: 500.0
                 tiers:
                   SIMPLE:
                     weight: 60.0

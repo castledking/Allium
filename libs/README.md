@@ -1,38 +1,48 @@
 # Vendored dependencies
 
-Two `provided`-scope dependencies the trading card module compiles against
-are not published to any reachable Maven repository. Relique publishes no
-`-api` artifact, and the `com/github/darksoulq` path on its author's Maven
-repo (`https://croabeast.github.io/repo/`) now returns 404 for both of these,
-including the directory and the metadata. They are committed here so a clean
-checkout and a CI runner both build, and the build workflow installs them
-into the local repository with `mvn install:install-file` before compiling.
+Three `provided`-scope dependencies are not served by any reachable Maven
+repository, so they are committed here and installed into the local
+repository before a build.
 
-Neither jar is shaded into `Allium.jar` — both stay `provided`, because
-Allium only ever touches them behind an `isPluginEnabled` check. That is what
-lets Allium load and run on a server without them installed.
-
-| File | Coordinate | sha256 (first 16) |
+| File | Coordinate | Why it is vendored |
 |---|---|---|
-| `Relique-2.1.3-mc.26.1.2-alpha.1.jar` | `com.github.darksoulq:Relique:2.1.3-mc.26.1.2-alpha.1` | `55e6b9b3378b89fa` |
-| `AbyssalLib-2.4.0-mc.26.2-alpha.4.jar` | `com.github.darksoulq:AbyssalLib:2.4.0-mc.26.2-alpha.4` | `606f340684264549` |
+| `Relique-2.1.3-mc.26.1.2-alpha.1.jar` | `com.github.darksoulq:Relique:2.1.3-mc.26.1.2-alpha.1` | Relique publishes no `-api` artifact, and its author's repo now 404s for the whole `com/github/darksoulq` path. Used by the trading card equip slot. |
+| `AbyssalLib-2.4.0-mc.26.2-alpha.4.jar` | `com.github.darksoulq:AbyssalLib:2.4.0-mc.26.2-alpha.4` | Relique's own compile dependency. Declared explicitly in the pom because the Relique jar carries no transitive graph, so Relique's registry types would otherwise be invisible to the compiler. |
+| `decentholograms-2.10.2-local.jar` | `eu.decentsoftware.holograms:decentholograms:2.10.2-local` | Not published for 26.x; a local build of DecentHolograms. Used for the kitchen's pie assembly holograms. |
 
-## Upgrading
+All three stay `provided`, so none is shaded into `Allium.jar`. Each is only
+ever touched behind an `isPluginEnabled` check, which is what lets Allium load
+and run on a server without them installed.
 
-The version appears in three places that must agree: the pom coordinate, the
-file name in this directory, and the `install:install-file` arguments in
-`.github/workflows/build.yml`. Renaming a jar without updating the workflow
-fails the build on a missing file, and bumping the pom without renaming fails
-it on an unresolvable coordinate.
+sha256:
 
-1. Drop the new jar in here, named `<artifactId>-<version>.jar`.
-2. Update the `<version>` (and `<artifactId>`, if it changed) in `pom.xml`.
-3. Update the `-Dfile`, `-DgroupId`, `-DartifactId`, `-Dversion` arguments in
-   the workflow's "Install vendored Relique and AbyssalLib" step.
-4. Confirm the sha256 row above is still accurate for the files in this
-   directory.
+```
+55e6b9b3378b89fa8a9b6bc942af717e0bdbfc4b7954f7291e6b81938987ff95  Relique-2.1.3-mc.26.1.2-alpha.1.jar
+606f34068426454954496cb281ffafc643eabab2cc888f3c49fb8df8c5be39dd  AbyssalLib-2.4.0-mc.26.2-alpha.4.jar
+0b27cc7e61174dca6907976d01d4b010a0ff64ee1e146e68010a118a3255cddf  decentholograms-2.10.2-local.jar
+```
 
-AbyssalLib is Relique's own compile dependency. It is declared explicitly in
-the pom because the Relique jar carries no transitive graph of its own, so
-Relique's registry types would otherwise be invisible to the compiler. If you
-swap Relique, check whether the AbyssalLib version has to move with it.
+## How they get into a build
+
+`libs/dependencies.txt` lists the coordinates. `libs/install.sh` reads it and
+runs `mvn install:install-file` for each jar; `.github/workflows/build.yml`
+runs that script before compiling.
+
+Locally, run `./libs/install.sh` after changing anything here — or after
+changing a version — so a bad entry fails on your machine rather than in CI.
+It fails loudly on a missing jar, so a typo in the manifest is caught before
+a push.
+
+## Adding or upgrading a dependency
+
+Three places have to agree: the file in this directory, the coordinate in
+`pom.xml`, and the row in `libs/dependencies.txt`.
+
+1. Drop the new jar in here as `<artifactId>-<version>.jar`.
+2. Add or update the `<dependency>` in `pom.xml` — keep `<scope>provided</scope>`.
+3. Add or update the row in `libs/dependencies.txt`. The file name is
+   relative to the repository root.
+4. Run `./libs/install.sh && mvn install -DskipTests` to confirm.
+5. Update the sha256 list above.
+
+If you swap Relique, check whether the AbyssalLib version has to move with it.

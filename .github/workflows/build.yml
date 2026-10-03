@@ -27,20 +27,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-m2
 
-      - name: Install vendored Relique and AbyssalLib
-        run: |
-          mvn -B -q install:install-file \
-            -Dfile=libs/Relique-2.1.3-mc.26.1.2-alpha.1.jar \
-            -DgroupId=com.github.darksoulq \
-            -DartifactId=Relique \
-            -Dversion=2.1.3-mc.26.1.2-alpha.1 \
-            -Dpackaging=jar
-          mvn -B -q install:install-file \
-            -Dfile=libs/AbyssalLib-2.4.0-mc.26.2-alpha.4.jar \
-            -DgroupId=com.github.darksoulq \
-            -DartifactId=AbyssalLib \
-            -Dversion=2.4.0-mc.26.2-alpha.4 \
-            -Dpackaging=jar
+      - name: Install vendored dependencies
+        run: libs/install.sh
 
       - name: Build with Maven
         run: mvn install -DskipTests -B

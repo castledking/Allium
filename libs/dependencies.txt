@@ -1,0 +1,16 @@
+# Vendored dependencies that no Maven repository serves.
+#
+# Format: <file in libs/> <groupId> <artifactId> <version>
+# Blank lines and lines starting with # are ignored.
+#
+# .github/workflows/build.yml installs each of these into the local repository
+# with mvn install:install-file before compiling. Locally, run:
+#
+#   ./libs/install.sh
+#
+# and the coordinates must also match the <dependency> in pom.xml. All of
+# them are `provided`, so none of these jars is shaded into Allium.jar.
+
+libs/Relique-2.1.3-mc.26.1.2-alpha.1.jar                   com.github.darksoulq         Relique          2.1.3-mc.26.1.2-alpha.1
+libs/AbyssalLib-2.4.0-mc.26.2-alpha.4.jar                  com.github.darksoulq         AbyssalLib       2.4.0-mc.26.2-alpha.4
+libs/decentholograms-2.10.2-local.jar                      eu.decentsoftware.holograms  decentholograms  2.10.2-local

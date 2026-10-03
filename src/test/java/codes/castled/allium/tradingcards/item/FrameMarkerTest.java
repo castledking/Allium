@@ -3,13 +3,16 @@ package codes.castled.allium.tradingcards.item;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import codes.castled.allium.tradingcards.card.Tier;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -83,5 +86,48 @@ class FrameMarkerTest {
         for (Tier tier : Tier.values()) {
             assertEquals(tier, FrameMarker.find(List.of(Component.text(FrameMarker.marker(tier)))).tier());
         }
+    }
+
+    // ==================== hovers ====================
+
+    @Test
+    void hoverTextIsCutIntoLinesThatKeepTheirColour() {
+        List<Component> lines = FrameMarker.lines(LEGACY.deserialize("&7{prefix} &bSteve\n&eClick to message"));
+        assertEquals(2, lines.size());
+        assertEquals("Click to message", PlainTextComponentSerializer.plainText().serialize(lines.get(1)));
+        assertEquals(NamedTextColor.YELLOW, CardTooltipStyle.colourOf(lines.get(1)));
+    }
+
+    @Test
+    void aMarkedHoverIsFramedWithNoBlankLineUnderTheCap() {
+        Component hover = LEGACY.deserialize("&8[frame:elite]\n&7Rank: &bVIP\n&eClick to message");
+        Component framed = FrameMarker.hoverText(hover);
+        List<Component> lines = FrameMarker.lines(framed);
+        // header, two text lines, bottom cap; nothing after it, or the box
+        // would grow past the cap and vanilla's panel would show under it
+        assertEquals(4, lines.size());
+        assertEquals("Rank: VIP", PlainTextComponentSerializer.plainText().serialize(lines.get(1)).substring(3));
+        String bottom = PlainTextComponentSerializer.plainText().serialize(lines.get(3));
+        assertEquals(CardFrame.TRIM, bottom.substring(bottom.length() - 1));
+        assertEquals(CardFrame.HOVER_IN, bottom.substring(0, 1));
+    }
+
+    @Test
+    void anUnmarkedHoverAndAMessageWithoutOneComeBackUntouched() {
+        Component hover = Component.text("Click to message Steve");
+        assertSame(hover, FrameMarker.hoverText(hover));
+        Component message = Component.text("hello").hoverEvent(HoverEvent.showText(hover));
+        assertSame(message, FrameMarker.frameHovers(message));
+    }
+
+    @Test
+    void aHoverDeepInAMessageIsFound() {
+        Component name = Component.text("Steve")
+            .hoverEvent(HoverEvent.showText(Component.text("[frame:fabled]\nClick to message")));
+        Component message = Component.text("<").append(name).append(Component.text("> hi"));
+        Component framed = FrameMarker.frameHovers(message);
+        Component hover = (Component) framed.children().get(0).hoverEvent().value();
+        assertEquals(3, FrameMarker.lines(hover).size());
+        assertEquals("hi", ((TextComponent) framed.children().get(1)).content().substring(2));
     }
 }

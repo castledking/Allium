@@ -38,7 +38,15 @@ Vertical layout, with y the top of the tooltip's first line (the item name):
   either overlaps the name or rises out of the box.
 
 Glyph chars: 0xE100 + tierIndex*0x10 + {0 header, 1 body, 2 bottom}
-Spaces:      \\uE000 = IN,  \\uE001 = OUT
+Spaces:      \\uE000 = IN,  \\uE001 = OUT,  \\uE002 = HOVER_IN,  \\uE003 = TRIM
+
+Chat hovers use the same glyphs on a different layout. A hover tooltip has
+no tooltip style, so vanilla's panel is always drawn behind it, and the frame
+has to cover all of it: the panel's sprite is visible one pixel outside the
+padding, from x - 4. HOVER_IN steps to there instead of x - 3, and TRIM ends
+the bottom line so the tooltip box is exactly the frame's width. Vertically
+the header already covers the panel's top, and the frame's bottom cap covers
+its bottom as long as no blank line follows it.
 
 CardFrame.java hardcodes the font key, the chars, and BOTTOM_EXTRA_LINES; this
 script fails rather than write assets that disagree with it.
@@ -86,6 +94,7 @@ CAP_X = 9          # side border + corner flourish columns kept 1:1 when widenin
 CENTER = 30        # centre ornament columns kept 1:1 when widening
 
 SPACE_IN, SPACE_OUT = "\uE000", "\uE001"
+SPACE_HOVER_IN, SPACE_TRIM = "\uE002", "\uE003"
 HEADER, BODY, BOTTOM = 0, 1, 2
 
 
@@ -251,7 +260,14 @@ def main() -> None:
     # advances by its width plus one.
     advance_in = -PAD
     advance_out = TEXT_X - (width + 1)
-    providers.append({"type": "space", "advances": {SPACE_IN: advance_in, SPACE_OUT: advance_out}})
+    # Hovers: one pixel further left, to cover the panel sprite's outer pixel,
+    # and a bottom line trimmed so the box ends where the frame does. With the
+    # frame from x - 4 to x - 4 + width, the box has to be width - 8 wide.
+    advance_hover_in = -(PAD + 1)
+    advance_trim = (width - 2 * (PAD + 1)) - (advance_hover_in + width + 1)
+    providers.append({"type": "space", "advances": {
+        SPACE_IN: advance_in, SPACE_OUT: advance_out,
+        SPACE_HOVER_IN: advance_hover_in, SPACE_TRIM: advance_trim}})
     (font_dir / f"{FONT_NAME}.json").write_text(json.dumps({"providers": providers}, indent=2) + "\n")
 
     # tooltip_style sf:card: vanilla's panel is replaced by the glyphs, so both
@@ -268,7 +284,8 @@ def main() -> None:
     lang_file.write_text(json.dumps(lang, indent=2, ensure_ascii=False) + "\n")
 
     usable = width - 2 * TEXT_X
-    print(f"  font {NS}:{FONT_NAME}  width {width}  spaces {advance_in} / {advance_out}  "
+    print(f"  font {NS}:{FONT_NAME}  width {width}  spaces {advance_in} / {advance_out}"
+          f" / hover {advance_hover_in} / trim {advance_trim}  "
           f"text column {TEXT_X}..{width - TEXT_X} ({usable}px)"
           + ("  [CALIBRATION BODY]" if args.calibrate else ""))
 

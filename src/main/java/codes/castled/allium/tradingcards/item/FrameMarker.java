@@ -7,6 +7,12 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentLike;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.TranslatableComponent;
+import net.kyori.adventure.text.TranslationArgument;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 /**
@@ -79,6 +85,124 @@ public final class FrameMarker {
             }
         }
         return CardFrame.wrap(match.tier(), lines);
+    }
+
+    // ==================== hovers ====================
+
+    /**
+     * Frames every hover in a message whose text carries a marker line.
+     *
+     * <p>Returns the message itself when nothing changed, so a caller can tell
+     * cheaply whether there is anything to send differently.
+     */
+    public static Component frameHovers(Component message) {
+        if (message == null) {
+            return null;
+        }
+        Component out = message;
+        HoverEvent<?> hover = message.hoverEvent();
+        if (hover != null && hover.action() == HoverEvent.Action.SHOW_TEXT
+            && hover.value() instanceof Component text) {
+            Component framed = hoverText(text);
+            if (framed != text) {
+                out = out.hoverEvent(HoverEvent.showText(framed));
+            }
+        }
+        List<Component> children = message.children();
+        List<Component> next = null;
+        for (int i = 0; i < children.size(); i++) {
+            Component child = children.get(i);
+            Component framed = frameHovers(child);
+            if (framed != child) {
+                if (next == null) {
+                    next = new ArrayList<>(children);
+                }
+                next.set(i, framed);
+            }
+        }
+        if (next != null) {
+            out = out.children(next);
+        }
+        if (out instanceof TranslatableComponent translatable && !translatable.arguments().isEmpty()) {
+            List<ComponentLike> args = new ArrayList<>();
+            boolean changed = false;
+            for (TranslationArgument arg : translatable.arguments()) {
+                if (arg.value() instanceof Component component) {
+                    Component framed = frameHovers(component);
+                    changed |= framed != component;
+                    args.add(framed);
+                } else {
+                    args.add(arg);
+                }
+            }
+            if (changed) {
+                out = translatable.arguments(args);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * A hover's text framed, or the text itself when it carries no marker.
+     *
+     * <p>Hover text is one component with newlines in it, so it is cut into lines
+     * first. A hover has no name line, so the line after the marker is simply
+     * the first line in the frame.
+     */
+    static Component hoverText(Component text) {
+        List<Component> lines = lines(text);
+        Match match = find(lines);
+        if (match == null) {
+            return text;
+        }
+        List<Component> rest = new ArrayList<>(lines);
+        rest.remove(match.line());
+        List<Component> framed = CardFrame.wrapHover(match.tier(), rest);
+        var joined = Component.text();
+        for (int i = 0; i < framed.size(); i++) {
+            if (i > 0) {
+                joined.append(Component.newline());
+            }
+            joined.append(framed.get(i));
+        }
+        return joined.build();
+    }
+
+    /**
+     * Cuts a component into the lines its newlines make, each carrying the
+     * styles it inherited, so a line moved into the frame looks as it did.
+     */
+    static List<Component> lines(Component text) {
+        List<List<Component>> lines = new ArrayList<>();
+        lines.add(new ArrayList<>());
+        split(text, Style.empty(), lines);
+        List<Component> out = new ArrayList<>(lines.size());
+        for (List<Component> runs : lines) {
+            out.add(runs.size() == 1 ? runs.get(0) : Component.text().append(runs).build());
+        }
+        return out;
+    }
+
+    private static void split(Component component, Style inherited, List<List<Component>> lines) {
+        Style style = component.style().merge(inherited, Style.Merge.Strategy.IF_ABSENT_ON_TARGET);
+        if (component instanceof TextComponent text) {
+            String[] parts = text.content().split("\n", -1);
+            for (int i = 0; i < parts.length; i++) {
+                if (i > 0) {
+                    lines.add(new ArrayList<>());
+                }
+                if (!parts[i].isEmpty()) {
+                    lines.get(lines.size() - 1).add(Component.text(parts[i], style));
+                }
+            }
+        } else {
+            // A translation, keybind or score cannot hold a newline of its own;
+            // it moves into its line whole.
+            lines.get(lines.size() - 1).add(component.children(List.of()).style(style));
+        }
+        for (Component child : component.children()) {
+            split(child, style, lines);
+        }
     }
 
     /** The marker line for a tier, as {@code /cards frame} writes it. */

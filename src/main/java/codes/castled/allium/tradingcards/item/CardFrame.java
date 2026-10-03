@@ -63,6 +63,15 @@ public final class CardFrame {
     /** Steps from the end of a frame glyph forward to the text column. */
     static final String OUT = "\uE001";
 
+    /**
+     * IN for a hover: one pixel further left, because vanilla's panel, which a
+     * hover cannot turn off, is drawn from there.
+     */
+    static final String HOVER_IN = "\uE002";
+
+    /** Ends a hover's bottom line so the tooltip box is the frame's width. */
+    static final String TRIM = "\uE003";
+
     private static final int HEADER = 0;
     private static final int BODY = 1;
     private static final int BOTTOM = 2;
@@ -103,6 +112,30 @@ public final class CardFrame {
         for (int i = 0; i < BOTTOM_EXTRA_LINES; i++) {
             out.add(Component.empty());
         }
+        return out;
+    }
+
+    /**
+     * Frames the lines of a hover tooltip.
+     *
+     * <p>A hover has no tooltip style, so vanilla's panel is drawn behind it
+     * whatever the item or text asks for, and the frame hides it by covering it.
+     * The lines step one pixel further left than a tooltip's, the bottom line is
+     * trimmed so the box ends at the frame's right edge, and no blank line
+     * follows the bottom cap, since the box would grow past the cap to hold it.
+     * A line wider than the frame still widens the box, and the panel shows
+     * beside it.
+     *
+     * @param lines the hover's lines, first at the top
+     */
+    public static List<Component> wrapHover(Tier tier, List<Component> lines) {
+        Tier t = tier == null ? Tier.SIMPLE : tier;
+        List<Component> out = new ArrayList<>(lines.size() + 2);
+        out.add(frame(HOVER_IN + glyph(t, HEADER) + OUT));
+        for (Component line : lines) {
+            out.add(Component.text().append(frame(HOVER_IN + glyph(t, BODY) + OUT)).append(line).build());
+        }
+        out.add(frame(HOVER_IN + glyph(t, BOTTOM) + TRIM));
         return out;
     }
 

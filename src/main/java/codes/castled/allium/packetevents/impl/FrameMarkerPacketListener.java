@@ -15,9 +15,11 @@ import com.github.retrooper.packetevents.protocol.item.ItemStack;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.packettype.PacketTypeCommon;
 import com.github.retrooper.packetevents.resources.ResourceLocation;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDisguisedChat;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetCursorItem;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPlayerInventory;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetSlot;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSystemChatMessage;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWindowItems;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -39,7 +41,8 @@ import org.bukkit.plugin.Plugin;
 
 /**
  * Draws the card frame on any item whose lore carries a {@code [frame:...]}
- * marker, by rewriting the copy of the item sent to the player.
+ * marker, and on any chat hover whose text does, by rewriting what is sent to
+ * the player.
  *
  * <p>Only the outgoing copy changes, so a shop or menu plugin that owns the item
  * still reads back exactly what it wrote. The rewrite does what such a plugin
@@ -52,6 +55,11 @@ import org.bukkit.plugin.Plugin;
  * back to the server whole, so a framed copy would be saved over the real one.
  * The inventory is re-sent on a switch into or out of creative so it never holds
  * the wrong version.
+ *
+ * <p>Chat is handled after Allium's own chat tracker, which appends the staff
+ * delete line to hovers, so that line ends up inside the frame rather than
+ * hanging under it. Signed player chat is left alone: changing it would break
+ * its signature, and Allium sends its formatted chat as system messages.
  *
  * <p>Loaded by name only when PacketEvents is installed, like the other
  * listeners in this package.
@@ -82,7 +90,8 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
     private volatile boolean failed;
 
     private FrameMarkerPacketListener(Logger logger) {
-        super(PacketListenerPriority.NORMAL);
+        // After the chat tracker, which runs at NORMAL and edits hovers itself.
+        super(PacketListenerPriority.HIGH);
         this.logger = logger;
     }
 
@@ -96,10 +105,26 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
     @Override
     public void onPacketSend(PacketSendEvent event) {
         PacketTypeCommon type = event.getPacketType();
-        if (failed || (type != PacketType.Play.Server.WINDOW_ITEMS
+        if (failed) {
+            return;
+        }
+        if (type == PacketType.Play.Server.SYSTEM_CHAT_MESSAGE
+            || type == PacketType.Play.Server.DISGUISED_CHAT) {
+            try {
+                if (rewriteChat(event, type)) {
+                    event.markForReEncode(true);
+                }
+            } catch (Throwable t) {
+                // A hover that cannot be framed is still readable; not worth
+                // switching the whole listener off for.
+                logger.fine("Could not frame a chat hover: " + t);
+            }
+            return;
+        }
+        if (type != PacketType.Play.Server.WINDOW_ITEMS
             && type != PacketType.Play.Server.SET_SLOT
             && type != PacketType.Play.Server.SET_CURSOR_ITEM
-            && type != PacketType.Play.Server.SET_PLAYER_INVENTORY)) {
+            && type != PacketType.Play.Server.SET_PLAYER_INVENTORY) {
             return;
         }
         if (!(event.getPlayer() instanceof Player player)
@@ -145,6 +170,31 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
             return frame(new WrapperPlayServerSetCursorItem(event).getStack());
         }
         return frame(new WrapperPlayServerSetPlayerInventory(event).getStack());
+    }
+
+    /** Frames the hovers in a chat message. False when none carried a marker. */
+    private static boolean rewriteChat(PacketSendEvent event, PacketTypeCommon type) {
+        if (type == PacketType.Play.Server.SYSTEM_CHAT_MESSAGE) {
+            WrapperPlayServerSystemChatMessage packet = new WrapperPlayServerSystemChatMessage(event);
+            if (packet.isOverlay()) {
+                return false;
+            }
+            Component message = packet.getMessage();
+            Component framed = FrameMarker.frameHovers(message);
+            if (framed == message) {
+                return false;
+            }
+            packet.setMessage(framed);
+            return true;
+        }
+        WrapperPlayServerDisguisedChat packet = new WrapperPlayServerDisguisedChat(event);
+        Component message = packet.getMessage();
+        Component framed = FrameMarker.frameHovers(message);
+        if (framed == message) {
+            return false;
+        }
+        packet.setMessage(framed);
+        return true;
     }
 
     /** Frames one item in place. False when it carries no marker. */

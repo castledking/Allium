@@ -181,6 +181,11 @@ chat-hover:
   #
   # Note: Players with allium.deletemsg will overwrite your settings
   # with a suggest command of /delmsg <messageId> on click.
+  #
+  # Start a hover with a '[frame:<tier>]' line to draw it inside a trading card
+  # frame (simple, elite, ultimate, legendary or fabled). Needs PacketEvents and
+  # the server resource pack, and works in any plugin's chat hovers, not just
+  # these. Keep framed lines under about 184 pixels wide (roughly 30 characters).
   delete-hover-mode: prefix
   
   groups:

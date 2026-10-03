@@ -6,6 +6,7 @@ import codes.castled.allium.managers.economy.EconomyManager;
 import codes.castled.allium.tradingcards.TradingCardsModule;
 import codes.castled.allium.tradingcards.bonus.BonusSlot;
 import codes.castled.allium.tradingcards.bonus.BonusSlotService;
+import codes.castled.allium.tradingcards.item.CardSlot;
 import codes.castled.allium.tradingcards.item.TradingCardData;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -47,22 +48,22 @@ public final class CardBonusGui extends BaseGUI {
     public static final int SLOT_BACK = 18;
 
     private final TradingCardsModule module;
-    private final int sourceSlot;
+    private final CardSlot source;
 
-    /** Which inventory slot holds the card, so a dropped button can find it. */
-    public int sourceSlot() {
-        return sourceSlot;
+    /** Where the card lives, so a dropped button can find it. */
+    public CardSlot source() {
+        return source;
     }
     private TradingCardData card;
     private ItemStack cardStack;
 
     public CardBonusGui(Player player, TradingCardsModule module,
-                        TradingCardData card, ItemStack cardStack, int sourceSlot) {
+                        TradingCardData card, ItemStack cardStack, CardSlot source) {
         super(player, "Bonus Slots", 3, PluginStart.getInstance());
         this.module = module;
         this.card = card;
         this.cardStack = cardStack.clone();
-        this.sourceSlot = sourceSlot;
+        this.source = source;
     }
 
     @Override
@@ -80,7 +81,7 @@ public final class CardBonusGui extends BaseGUI {
         // Re-read from the stack on every draw. A roll in this menu changes the
         // card, and a menu still showing the pre-roll state would invite a
         // second click on a slot that has already been paid for.
-        ItemStack held = player.getInventory().getItem(sourceSlot);
+        ItemStack held = source.stack(player);
         if (held != null) {
             TradingCardData.read(held).ifPresent(fresh -> this.card = fresh);
         }
@@ -103,8 +104,8 @@ public final class CardBonusGui extends BaseGUI {
         // Right-click locks rather than rolling, because an accidental roll costs
         // real money and an accidental lock costs nothing to undo.
         var result = event.isRightClick()
-            ? module.editBonusSlot(player, sourceSlot, index, false)
-            : module.rollBonusSlot(player, sourceSlot, index);
+            ? module.editBonusSlot(player, source, index, false)
+            : module.rollBonusSlot(player, source, index);
         if (result != null && result.message() != null) {
             player.sendMessage(MM.deserialize("<!italic>"
                 + (result.succeeded() ? "<green>" : "<red>") + result.message()));
@@ -113,7 +114,7 @@ public final class CardBonusGui extends BaseGUI {
     }
 
     private void back() {
-        new CardWorkshopGui(player, module, card, cardStack, sourceSlot).open();
+        new CardWorkshopGui(player, module, card, cardStack, source).open();
     }
 
     private void clearAll() {

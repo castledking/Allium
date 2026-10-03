@@ -17,6 +17,7 @@ import codes.castled.allium.tradingcards.boost.EquippedCardTracker;
 import codes.castled.allium.tradingcards.integration.QuestsBridge;
 import codes.castled.allium.tradingcards.integration.ReliqueIntegration;
 import codes.castled.allium.tradingcards.integration.ReliqueCardWriter;
+import codes.castled.allium.tradingcards.item.CardSlot;
 import codes.castled.allium.tradingcards.merge.MergeRules;
 import codes.castled.allium.tradingcards.morph.DisguiseBridge;
 import codes.castled.allium.tradingcards.morph.MorphService;
@@ -443,12 +444,12 @@ public final class TradingCardsModule {
      *
      * @return the outcome, for the menu to report
      */
-    public RerollService.Result reroll(Player player, TradingCardData presented, int slot) {
+    public RerollService.Result reroll(Player player, TradingCardData presented, CardSlot slot) {
         if (reroll == null) {
             return new RerollService.Result(RerollService.Outcome.DISABLED, 0.0,
                 presented.signatures(), "Rerolling is unavailable.");
         }
-        var held = player.getInventory().getItem(slot);
+        var held = slot.stack(player);
         var current = TradingCardData.read(held);
         if (current.isEmpty()) {
             return new RerollService.Result(RerollService.Outcome.DISABLED, 0.0,
@@ -483,13 +484,24 @@ public final class TradingCardsModule {
             .withReroll(card.rerolls() + 1, result.signatures())
             .withBonuses(bonuses);
         TradingCardData.write(held, updated);
+        slot.save(player, held);
+        refreshIfEquipped(player, slot, updated);
+        return result;
+    }
 
-        if (equipped != null && equipped.card(player.getUniqueId()) != null) {
-            // A card that is currently equipped has just changed; re-apply so
-            // the new signature is live immediately rather than at next equip.
+    /**
+     * Re-applies a changed card's boosts, but only if it is the equipped one.
+     *
+     * <p>Checked against the slot the change was made in, not against whether
+     * some card is equipped. Rerolling a card from the inventory while a
+     * different one sat in /reliques used to hand the inventory card's boosts to
+     * the player and the tracker, and the next xp award then wrote that card's
+     * identity over the equipped one.
+     */
+    private void refreshIfEquipped(Player player, CardSlot slot, TradingCardData updated) {
+        if (slot.equipped() && equipped != null && equipped.card(player.getUniqueId()) != null) {
             progression.refreshEquipped(player, updated);
         }
-        return result;
     }
 
     /**
@@ -542,19 +554,19 @@ public final class TradingCardsModule {
     }
 
     /**
-     * Rolls one bonus slot on a card in the player's inventory, charging for it.
+     * Rolls one bonus slot on a card, charging for it.
      *
      * <p>Read back from the stack rather than trusting the caller, so a stale
      * card cannot be rolled twice from one click, and refunded if the write
      * fails. The charge and the write are deliberately separate steps.
      */
     public codes.castled.allium.tradingcards.bonus.BonusSlotService.Result rollBonusSlot(
-            Player player, int slot, int slotIndex) {
+            Player player, CardSlot slot, int slotIndex) {
         var service = bonusSlots;
         if (service == null) {
             return null;
         }
-        var held = player.getInventory().getItem(slot);
+        var held = slot.stack(player);
         var current = TradingCardData.read(held);
         if (current.isEmpty()) {
             return null;
@@ -566,22 +578,19 @@ public final class TradingCardsModule {
         }
         service.writeBonuses(held, card, result.slots());
         service.writeState(held, result.slots());
-
-        if (equipped != null && equipped.card(player.getUniqueId()) != null) {
-            progression.refreshEquipped(player,
-                TradingCardData.read(held).orElse(card));
-        }
+        slot.save(player, held);
+        refreshIfEquipped(player, slot, TradingCardData.read(held).orElse(card));
         return result;
     }
 
     /** Locks, unlocks or clears a bonus slot. Never charged. */
     public codes.castled.allium.tradingcards.bonus.BonusSlotService.Result editBonusSlot(
-            Player player, int slot, int slotIndex, boolean clear) {
+            Player player, CardSlot slot, int slotIndex, boolean clear) {
         var service = bonusSlots;
         if (service == null) {
             return null;
         }
-        var held = player.getInventory().getItem(slot);
+        var held = slot.stack(player);
         var current = TradingCardData.read(held);
         if (current.isEmpty()) {
             return null;
@@ -595,6 +604,10 @@ public final class TradingCardsModule {
         }
         service.writeBonuses(held, card, result.slots());
         service.writeState(held, result.slots());
+        slot.save(player, held);
+        // A cleared slot takes its boost off the card, so an equipped card
+        // has to lose it now rather than at the next equip.
+        refreshIfEquipped(player, slot, TradingCardData.read(held).orElse(card));
         return result;
     }
 
@@ -757,6 +770,8 @@ public final class TradingCardsModule {
                 + "plugins/Relique/relic/allium/slots/card.json exists");
         } else {
             Bukkit.getPluginManager().registerEvents(new BoostListener(service, tracker), plugin);
+            Bukkit.getPluginManager().registerEvents(
+                new codes.castled.allium.tradingcards.integration.ReliqueMenuListener(this), plugin);
             // Registered once, unconditionally: the listener reads the live boost
             // total per hit, so a player with no disarm card costs one map lookup.
             Bukkit.getPluginManager().registerEvents(new DisarmListener(

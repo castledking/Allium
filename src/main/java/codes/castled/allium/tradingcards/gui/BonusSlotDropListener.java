@@ -52,9 +52,7 @@ public final class BonusSlotDropListener implements Listener {
         if (service == null) {
             return;
         }
-        // The menu does not hand its slot out, so the card's inventory slot has
-        // to be recovered from what the menu is holding rather than trusted.
-        var result = module.editBonusSlot(player, gui.sourceSlot(), index, true);
+        var result = module.editBonusSlot(player, gui.source(), index, true);
         if (result != null && result.message() != null) {
             player.sendMessage(MM.deserialize("<!italic>"
                 + (result.slots() == null ? "<red>" : "<green>") + result.message()));

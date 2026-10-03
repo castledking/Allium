@@ -4,6 +4,9 @@ import codes.castled.allium.inventory.gui.BaseGUI;
 import codes.castled.allium.tradingcards.TradingCardsModule;
 import codes.castled.allium.tradingcards.gui.CardMenuGui;
 import codes.castled.allium.tradingcards.integration.ReliqueIntegration;
+import codes.castled.allium.PluginStart;
+import codes.castled.allium.scheduler.SchedulerAdapter;
+import codes.castled.allium.tradingcards.item.CardSlot;
 import codes.castled.allium.tradingcards.item.TradingCardData;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -12,6 +15,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -66,7 +70,7 @@ public class CardMenuListener implements Listener {
         // are all one-click decisions on a card the player is already holding,
         // so they live in one window with tabs rather than three windows.
         int slot = inventory.getHeldItemSlot();
-        new CardWorkshopGui(event.getPlayer(), module, card.get(), held, slot).open();
+        new CardWorkshopGui(event.getPlayer(), module, card.get(), held, CardSlot.inventory(slot)).open();
     }
 
     /**
@@ -110,6 +114,49 @@ public class CardMenuListener implements Listener {
         }
         // The click would otherwise split the stack, so take it and open instead.
         event.setCancelled(true);
-        new CardWorkshopGui(player, module, card.get(), clicked, event.getSlot()).open();
+        new CardWorkshopGui(player, module, card.get(), clicked, CardSlot.inventory(event.getSlot())).open();
+    }
+
+    /**
+     * Opens the card's menu instead of dropping it.
+     *
+     * <p>A card is worth keeping hold of, and Q is close enough to the movement
+     * keys that a dropped card is far more often a slip than a decision. Anything
+     * a player would drop a card to do — trade it in, merge it — is in the menu.
+     *
+     * <p>Covers every way a player drops an item, Q in the world, Q over a slot,
+     * and a click outside an open window, because all three come through this
+     * event. HIGH, so the bonus menu's own drop handler, which reads a dropped
+     * menu button, has already seen the event; that one never carries a card.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onDrop(PlayerDropItemEvent event) {
+        ItemStack dropped = event.getItemDrop().getItemStack();
+        if (!TradingCardData.isCard(dropped)) {
+            return;
+        }
+        event.setCancelled(true);
+        Player player = event.getPlayer();
+        // Inside our own menus a drop is a stray click, not a request for another
+        // window on top of the one already open.
+        if (player.getOpenInventory().getTopInventory().getHolder() instanceof BaseGUI) {
+            return;
+        }
+        // Next tick: the cancelled drop has to land back in the inventory before
+        // the card has a slot to open on.
+        ItemStack card = dropped.clone();
+        SchedulerAdapter.runEntity(PluginStart.getInstance(), player, () -> {
+            ItemStack[] contents = player.getInventory().getStorageContents();
+            for (int slot = 0; slot < contents.length; slot++) {
+                if (contents[slot] != null && contents[slot].isSimilar(card)) {
+                    var data = TradingCardData.read(contents[slot]);
+                    if (data.isPresent()) {
+                        new CardWorkshopGui(player, module, data.get(), contents[slot],
+                            CardSlot.inventory(slot)).open();
+                    }
+                    return;
+                }
+            }
+        }, null);
     }
 }

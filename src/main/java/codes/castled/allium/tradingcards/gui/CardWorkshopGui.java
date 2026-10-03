@@ -3,6 +3,7 @@ package codes.castled.allium.tradingcards.gui;
 import codes.castled.allium.inventory.gui.BaseGUI;
 import codes.castled.allium.tradingcards.TradingCardsModule;
 import codes.castled.allium.tradingcards.item.CardFrame;
+import codes.castled.allium.tradingcards.item.CardSlot;
 import codes.castled.allium.tradingcards.item.TradingCardData;
 import codes.castled.allium.tradingcards.merge.MergeRules;
 import codes.castled.allium.tradingcards.reroll.RerollService;
@@ -62,7 +63,7 @@ public final class CardWorkshopGui extends BaseGUI {
     private final TradingCardsModule module;
     private TradingCardData card;
     private ItemStack cardStack;
-    private final int sourceSlot;
+    private final CardSlot source;
     private Tab tab = Tab.REROLL;
 
     /** The two cards staged for a merge, null when a slot is empty. */
@@ -70,12 +71,12 @@ public final class CardWorkshopGui extends BaseGUI {
     private ItemStack mergeB;
 
     public CardWorkshopGui(Player player, TradingCardsModule module,
-                           TradingCardData card, ItemStack cardStack, int sourceSlot) {
+                           TradingCardData card, ItemStack cardStack, CardSlot source) {
         super(player, "Trading Card", 5, codes.castled.allium.PluginStart.getInstance());
         this.module = module;
         this.card = card;
         this.cardStack = cardStack.clone();
-        this.sourceSlot = sourceSlot;
+        this.source = source;
     }
 
     @Override
@@ -97,7 +98,7 @@ public final class CardWorkshopGui extends BaseGUI {
             case BONUS -> {
                 // switchTab opens the slot menu instead of rendering here; this
                 // only runs if the window is somehow redrawn while on the tab.
-                new CardBonusGui(player, module, card, cardStack, sourceSlot).open();
+                new CardBonusGui(player, module, card, cardStack, source).open();
             }
             case MERGE -> renderMerge();
             case TRADE -> renderTrade();
@@ -129,7 +130,7 @@ public final class CardWorkshopGui extends BaseGUI {
         // have five buttons and their own click handling, and sharing the slots
         // would mean two things owning the same clicks.
         if (which == Tab.BONUS) {
-            new CardBonusGui(player, module, card, cardStack, sourceSlot).open();
+            new CardBonusGui(player, module, card, cardStack, source).open();
             return;
         }
         this.tab = which;
@@ -180,9 +181,9 @@ public final class CardWorkshopGui extends BaseGUI {
     }
 
     private void onReroll() {
-        // Re-read from the hand: the menu's copy is a snapshot, and the price
+        // Re-read from the slot: the menu's copy is a snapshot, and the price
         // and unlock chance may have been reloaded since it opened.
-        ItemStack held = player.getInventory().getItem(sourceSlot);
+        ItemStack held = source.stack(player);
         var current = TradingCardData.read(held);
         if (current.isEmpty()) {
             player.sendMessage(MM.deserialize(
@@ -190,7 +191,7 @@ public final class CardWorkshopGui extends BaseGUI {
             player.closeInventory();
             return;
         }
-        RerollService.Result result = module.reroll(player, current.get(), sourceSlot);
+        RerollService.Result result = module.reroll(player, current.get(), source);
         if (!result.succeeded()) {
             player.sendMessage(MM.deserialize("<red>" + result.message()));
             player.playSound(player.getLocation(),
@@ -204,10 +205,11 @@ public final class CardWorkshopGui extends BaseGUI {
             org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.3f);
         // Re-render from the card as it now stands, so the signature list and
         // the next price both update without the player reopening the menu.
-        var updated = TradingCardData.read(player.getInventory().getItem(sourceSlot));
+        ItemStack now = source.stack(player);
+        var updated = TradingCardData.read(now);
         if (updated.isPresent()) {
             this.card = updated.get();
-            this.cardStack = player.getInventory().getItem(sourceSlot).clone();
+            this.cardStack = now.clone();
             initialize();
         }
     }
@@ -215,6 +217,13 @@ public final class CardWorkshopGui extends BaseGUI {
     // ==================== merge ====================
 
     private void renderMerge() {
+        if (source.equipped()) {
+            // Merging consumes both cards, and Relique owns this one: taking it
+            // from the slot here would skip its unequip and leave boosts behind.
+            setItem(SLOT_CARD, notice("This card is equipped",
+                "Take it out of /reliques to merge it"), null);
+            return;
+        }
         MergeRules rules = module.mergeRules();
         setItem(SLOT_CARD, notice("Two matching cards merge into the next tier", null), null);
         setItem(SLOT_MERGE_A, mergeA == null ? emptyFrame() : mergeA.clone(), null);
@@ -297,7 +306,7 @@ public final class CardWorkshopGui extends BaseGUI {
         // the hand: it can be opened from anywhere in the inventory now, and a
         // merge that staged the hand's card while working on a different one
         // would consume the wrong stack.
-        ItemStack held = player.getInventory().getItem(sourceSlot);
+        ItemStack held = source.stack(player);
         if (TradingCardData.read(held).isEmpty()) {
             player.sendMessage(MM.deserialize(
                 "<red>The card this window was opened on is gone.</red>"));
@@ -315,6 +324,14 @@ public final class CardWorkshopGui extends BaseGUI {
 
     private void renderTrade() {
         setItem(SLOT_CARD, displayCard(), null);
+        if (source.equipped()) {
+            // The trade window takes cards from the inventory, so an equipped
+            // card has to come out of the slot first, for the same reason a merge
+            // cannot take it.
+            setItem(SLOT_ACTION, notice("This card is equipped",
+                "Take it out of /reliques to trade it in"), null);
+            return;
+        }
         var quote = module.quote(card);
         if (quote.isQuoted()) {
             setItem(SLOT_ACTION, tradeButton(), event -> {

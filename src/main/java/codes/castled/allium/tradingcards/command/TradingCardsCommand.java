@@ -63,6 +63,7 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             case "heads" -> heads(sender);
             case "boosts" -> boosts(sender, args);
             case "status" -> status(sender);
+            case "frame" -> frame(sender, args);
             default -> sendHelp(sender);
         }
         return true;
@@ -316,6 +317,69 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         msg(sender, "<gray>Applied:</gray> <white>" + String.join(", ", granted) + "</white>");
     }
 
+    /**
+     * Puts a frame marker on the held item, or takes it off.
+     *
+     * <p>Writes only the marker line; the frame itself is drawn on the way to
+     * each player, so the item stays an ordinary item to every plugin and the
+     * marker can be written by hand into any other plugin's lore instead.
+     */
+    private void frame(CommandSender sender, String[] args) {
+        if (!can(sender, "frame")) {
+            msg(sender, "<red>You do not have permission for that.</red>");
+            return;
+        }
+        if (!(sender instanceof Player player)) {
+            msg(sender, "<red>Hold the item you want framed.</red>");
+            return;
+        }
+        if (args.length < 2) {
+            msg(sender, "<gray>Usage: /tradingcards frame <simple|elite|ultimate|legendary|fabled|off></gray>");
+            return;
+        }
+        ItemStack held = player.getInventory().getItemInMainHand();
+        if (held.getType().isAir()) {
+            msg(sender, "<red>Hold the item you want framed.</red>");
+            return;
+        }
+        if (codes.castled.allium.tradingcards.item.TradingCardData.isCard(held)) {
+            msg(sender, "<red>Trading cards already have their frame.</red>");
+            return;
+        }
+        boolean off = args[1].equalsIgnoreCase("off");
+        Tier tier = off ? null : CardDefinition.parseTier(args[1]);
+        if (!off && tier == null) {
+            msg(sender, "<red>No frame called '" + args[1]
+                + "'. Use simple, elite, ultimate, legendary or fabled.</red>");
+            return;
+        }
+        List<net.kyori.adventure.text.Component> lore = held.lore() == null
+            ? new ArrayList<>() : new ArrayList<>(held.lore());
+        var existing = codes.castled.allium.tradingcards.item.FrameMarker.find(lore);
+        if (existing != null) {
+            lore.remove(existing.line());
+        }
+        if (off) {
+            if (existing == null) {
+                msg(sender, "<gray>That item has no frame.</gray>");
+                return;
+            }
+        } else {
+            // Dark grey and upright, because the line is seen as written by a
+            // creative player or a client without the pack.
+            lore.add(0, net.kyori.adventure.text.Component.text(
+                    codes.castled.allium.tradingcards.item.FrameMarker.marker(tier),
+                    net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
+                .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
+        }
+        held.lore(lore.isEmpty() ? null : lore);
+        player.getInventory().setItemInMainHand(held);
+        msg(sender, off
+            ? "<green>Frame removed.</green>"
+            : "<green>Framed with the " + tier.name().toLowerCase(Locale.ROOT)
+                + " frame.</green> <dark_gray>Creative players see the marker line instead.</dark_gray>");
+    }
+
     private static void sendHelp(CommandSender sender) {
         msg(sender, "<gray>Usage:</gray>");
         sender.sendMessage(MM.deserialize(
@@ -330,6 +394,8 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             "  <gray>/tradingcards status</gray> <dark_gray>(what is wired and live)</dark_gray>"));
         sender.sendMessage(MM.deserialize(
             "  <gray>/tradingcards boosts [player]</gray> <dark_gray>(what is equipped and applied)</dark_gray>"));
+        sender.sendMessage(MM.deserialize(
+            "  <gray>/tradingcards frame <tier|off></gray> <dark_gray>(card frame on the held item)</dark_gray>"));
         sender.sendMessage(MM.deserialize(
             "  <gray>/tradingcards heads</gray> <dark_gray>(collect heads owed from a closed trade)</dark_gray>"));
     }
@@ -350,10 +416,16 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         List<String> options = new ArrayList<>();
         if (args.length == 1) {
             options.addAll(List.of("reload", "give", "list", "inspect",
-                "boosts", "heads", "status"));
+                "boosts", "heads", "status", "frame"));
         } else if (args.length == 2) {
             switch (args[0].toLowerCase(Locale.ROOT)) {
                 case "give", "boosts" -> Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
+                case "frame" -> {
+                    for (Tier tier : Tier.values()) {
+                        options.add(tier.name().toLowerCase(Locale.ROOT));
+                    }
+                    options.add("off");
+                }
                 default -> { }
             }
         } else if (args.length == 3 && args[0].equalsIgnoreCase("give")) {

@@ -94,16 +94,25 @@ public final class CardTooltipStyle {
         if (stack == null) {
             return;
         }
-        Component plain = title == null ? Component.empty() : title;
         try {
-            stack.setData(DataComponentTypes.ITEM_NAME, Component.translatable()
-                .key(NAME_KEY)
-                .fallback(PlainTextComponentSerializer.plainText().serialize(plain))
-                .color(colourOf(plain))
-                .build());
+            stack.setData(DataComponentTypes.ITEM_NAME, hiddenName(title));
         } catch (Throwable ignored) {
             // As above: a missing component costs the blank line, not the card.
         }
+    }
+
+    /**
+     * The name a framed item carries: blank with the pack, the title without.
+     *
+     * <p>Public for the frame marker, which puts it on items it does not own.
+     */
+    public static Component hiddenName(Component title) {
+        Component plain = title == null ? Component.empty() : title;
+        return Component.translatable()
+            .key(NAME_KEY)
+            .fallback(PlainTextComponentSerializer.plainText().serialize(plain))
+            .color(colourOf(plain))
+            .build();
     }
 
     /** The first colour set anywhere in a component, or null. */

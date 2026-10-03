@@ -207,6 +207,8 @@ public final class TradingCardsModule {
         heldCardNames = new HeldCardNameListener(plugin);
         heldCardNames.start();
 
+        installFrameMarkers();
+
         // BeastTokens is not on the compile classpath, so the bridge is
         // reflection throughout. Optional in the same way as everything else
         // here: a server without it still drops cards and pays xp.
@@ -327,6 +329,30 @@ public final class TradingCardsModule {
         // operator expects it to mean.
         lastReloreRefreshed = refreshOnlineCardLore();
         return issues;
+    }
+
+    /**
+     * Frames any item, from any plugin, whose lore carries a {@code [frame:...]}
+     * marker line.
+     *
+     * <p>Done to the copy sent to the player, so it needs PacketEvents. Without
+     * it the marker line simply shows as text, which is the right failure: the
+     * item is still readable, and the line says what was meant.
+     */
+    private void installFrameMarkers() {
+        if (!codes.castled.allium.packetevents.PacketEventsLoader.isPacketEventsAvailable()) {
+            logger.info("[" + TradingCardsBranding.DISPLAY_NAME
+                + "] PacketEvents is not installed; [frame] markers in lore show as text");
+            return;
+        }
+        try {
+            Class.forName("codes.castled.allium.packetevents.impl.FrameMarkerPacketListener")
+                .getMethod("install", org.bukkit.plugin.Plugin.class)
+                .invoke(null, plugin);
+        } catch (Throwable t) {
+            logger.warning("[" + TradingCardsBranding.DISPLAY_NAME
+                + "] Could not install frame markers: " + t);
+        }
     }
 
     /** Cards re-rendered by the last {@link #reload()}, for it to report. */

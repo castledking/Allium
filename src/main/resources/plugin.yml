@@ -483,7 +483,7 @@ commands:
     aliases: [hf]
   tradingcards:
     description: "Allium Trading Cards — mob cards, levelling and trades"
-    usage: "/tradingcards <reload|give|list|inspect|boosts|heads|status>"
+    usage: "/tradingcards <reload|give|list|inspect|boosts|heads|status|frame>"
     aliases: [tc, cards]
 
   morph:
@@ -1740,6 +1740,9 @@ permissions:
     default: op
   allium.tradingcards.boosts:
     description: "Allows /tradingcards boosts, to see what cards are equipped"
+    default: op
+  allium.tradingcards.frame:
+    description: "Allows /tradingcards frame, to put a card frame on any held item"
     default: op
   allium.harvest.soil.modify:
     description: "Allows /harvest soil restore and forget"

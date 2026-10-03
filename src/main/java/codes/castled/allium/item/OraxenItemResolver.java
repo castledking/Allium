@@ -1,7 +1,5 @@
-package codes.castled.allium.harvest.integration;
+package codes.castled.allium.item;
 
-import codes.castled.allium.harvest.item.ItemRef;
-import codes.castled.allium.harvest.item.ItemResolver;
 import io.th0rgal.oraxen.api.OraxenItems;
 import java.util.Optional;
 import org.bukkit.inventory.ItemStack;

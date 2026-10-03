@@ -1,4 +1,4 @@
-package codes.castled.allium.harvest.item;
+package codes.castled.allium.item;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

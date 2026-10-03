@@ -10,7 +10,7 @@ import codes.castled.allium.harvest.crop.def.FootprintDefinition;
 import codes.castled.allium.harvest.crop.def.HarvestDefinition;
 import codes.castled.allium.harvest.crop.def.RegrowthDefinition;
 import codes.castled.allium.harvest.crop.def.StageDefinition;
-import codes.castled.allium.harvest.item.ItemRef;
+import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.harvest.random.MutableWeightedTable;
 import java.util.HashMap;
 import java.util.List;

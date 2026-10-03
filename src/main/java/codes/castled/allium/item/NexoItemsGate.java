@@ -1,4 +1,4 @@
-package codes.castled.allium.harvest.integration;
+package codes.castled.allium.item;
 
 import com.nexomc.nexo.api.NexoItems;
 import com.nexomc.nexo.api.events.NexoItemsLoadedEvent;

@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import codes.castled.allium.harvest.crop.def.ValidationIssue;
-import codes.castled.allium.harvest.item.ItemRef;
+import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.harvest.kitchen.KitchenConfig;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;

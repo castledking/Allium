@@ -13,10 +13,9 @@ import codes.castled.allium.harvest.crop.CropVisualService;
 import codes.castled.allium.harvest.crop.def.CropDefinitionLoader;
 import codes.castled.allium.harvest.crop.def.CropRegistry;
 import codes.castled.allium.harvest.crop.def.ValidationIssue;
-import codes.castled.allium.harvest.integration.NexoItemResolver;
-import codes.castled.allium.harvest.integration.NexoItemsGate;
-import codes.castled.allium.harvest.integration.OraxenItemResolver;
-import codes.castled.allium.harvest.item.ItemResolverChain;
+import codes.castled.allium.item.NexoItemsGate;
+import codes.castled.allium.item.ItemResolverChain;
+import codes.castled.allium.item.ItemResolvers;
 import codes.castled.allium.harvest.kitchen.KitchenModule;
 import codes.castled.allium.harvest.spawner.SpawnerListeners;
 import codes.castled.allium.harvest.spawner.SpawnerModelRegistry;
@@ -278,24 +277,7 @@ public final class HarvestModule {
     // ==================== internals ====================
 
     private ItemResolverChain buildResolverChain() {
-        ItemResolverChain chain = new ItemResolverChain();
-        if (Bukkit.getPluginManager().isPluginEnabled("Nexo")) {
-            try {
-                chain.register(new NexoItemResolver());
-                logger.info("[" + HarvestBranding.DISPLAY_NAME + "] Nexo item integration enabled");
-            } catch (Throwable t) {
-                logger.warning("[" + HarvestBranding.DISPLAY_NAME + "] Nexo present but API mismatch: " + t);
-            }
-        }
-        if (Bukkit.getPluginManager().isPluginEnabled("Oraxen")) {
-            try {
-                chain.register(new OraxenItemResolver());
-                logger.info("[" + HarvestBranding.DISPLAY_NAME + "] Oraxen item integration enabled");
-            } catch (Throwable t) {
-                logger.warning("[" + HarvestBranding.DISPLAY_NAME + "] Oraxen present but API mismatch: " + t);
-            }
-        }
-        return chain;
+        return ItemResolvers.build(plugin, HarvestBranding.DISPLAY_NAME, logger);
     }
 
     /**

@@ -2,7 +2,7 @@ package codes.castled.allium.harvest.kitchen;
 
 import codes.castled.allium.harvest.HarvestBranding;
 import codes.castled.allium.harvest.crop.def.ValidationIssue;
-import codes.castled.allium.harvest.item.ItemResolverChain;
+import codes.castled.allium.item.ItemResolverChain;
 import java.io.File;
 import java.util.List;
 import java.util.logging.Logger;

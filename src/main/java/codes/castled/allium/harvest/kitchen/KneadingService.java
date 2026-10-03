@@ -1,6 +1,6 @@
 package codes.castled.allium.harvest.kitchen;
 
-import codes.castled.allium.harvest.item.ItemResolverChain;
+import codes.castled.allium.item.ItemResolverChain;
 import java.util.function.Supplier;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.GameMode;

@@ -1,6 +1,6 @@
 package codes.castled.allium.harvest.crop.def;
 
-import codes.castled.allium.harvest.item.ItemRef;
+import codes.castled.allium.item.ItemRef;
 import org.bukkit.entity.ItemDisplay.ItemDisplayTransform;
 import org.jetbrains.annotations.Nullable;
 

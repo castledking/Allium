@@ -15,7 +15,7 @@ import codes.castled.allium.harvest.event.CropDropsGenerateEvent;
 import codes.castled.allium.harvest.event.CropHarvestEvent;
 import codes.castled.allium.harvest.event.CropPreHarvestEvent;
 import codes.castled.allium.harvest.event.CropRemoveEvent;
-import codes.castled.allium.harvest.item.ItemResolverChain;
+import codes.castled.allium.item.ItemResolverChain;
 import codes.castled.allium.harvest.storage.CropStorage;
 import java.util.ArrayList;
 import java.util.List;

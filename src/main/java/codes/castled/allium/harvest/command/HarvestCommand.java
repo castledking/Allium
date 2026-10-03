@@ -6,7 +6,7 @@ import codes.castled.allium.harvest.crop.CropInstance;
 import codes.castled.allium.harvest.crop.CropPlacementService;
 import codes.castled.allium.harvest.crop.def.CropDefinition;
 import codes.castled.allium.harvest.crop.def.ValidationIssue;
-import codes.castled.allium.harvest.item.ItemRef;
+import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.harvest.util.BlockPositionKey;
 import codes.castled.allium.harvest.util.Durations;
 import java.util.ArrayList;

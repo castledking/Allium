@@ -1,4 +1,4 @@
-package codes.castled.allium.harvest.item;
+package codes.castled.allium.item;
 
 import codes.castled.allium.harvest.util.Materials;
 import java.util.Locale;

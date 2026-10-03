@@ -1,4 +1,4 @@
-package codes.castled.allium.harvest.item;
+package codes.castled.allium.item;
 
 import java.util.Optional;
 import org.bukkit.inventory.ItemStack;

@@ -1,8 +1,8 @@
 package codes.castled.allium.harvest.sprinkler;
 
 import codes.castled.allium.harvest.HarvestBranding;
-import codes.castled.allium.harvest.item.ItemRef;
-import codes.castled.allium.harvest.item.ItemResolverChain;
+import codes.castled.allium.item.ItemRef;
+import codes.castled.allium.item.ItemResolverChain;
 import codes.castled.allium.harvest.soil.SoilService;
 import codes.castled.allium.harvest.util.BlockPositionKey;
 import java.util.Optional;

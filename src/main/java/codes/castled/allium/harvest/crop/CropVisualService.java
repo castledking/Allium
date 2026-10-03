@@ -4,7 +4,7 @@ import codes.castled.allium.harvest.config.HarvestConfig;
 import codes.castled.allium.harvest.crop.def.CropDefinition;
 import codes.castled.allium.harvest.crop.def.CropRegistry;
 import codes.castled.allium.harvest.crop.def.StageDefinition;
-import codes.castled.allium.harvest.item.ItemResolverChain;
+import codes.castled.allium.item.ItemResolverChain;
 import codes.castled.allium.harvest.util.BlockPositionKey;
 import codes.castled.allium.harvest.visual.VisualTags;
 import java.util.HashMap;

@@ -1,7 +1,5 @@
-package codes.castled.allium.harvest.integration;
+package codes.castled.allium.item;
 
-import codes.castled.allium.harvest.item.ItemRef;
-import codes.castled.allium.harvest.item.ItemResolver;
 import com.nexomc.nexo.api.NexoItems;
 import com.nexomc.nexo.items.ItemBuilder;
 import java.util.Optional;

@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import codes.castled.allium.harvest.crop.def.DropSpec;
 import codes.castled.allium.harvest.crop.def.FootprintDefinition;
-import codes.castled.allium.harvest.item.ItemRef;
+import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.harvest.random.MutableWeightedTable;
 import codes.castled.allium.harvest.spawner.SpawnerModelRegistry;
 import codes.castled.allium.harvest.util.BlockPositionKey;

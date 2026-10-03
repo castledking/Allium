@@ -1,7 +1,7 @@
 package codes.castled.allium.harvest.sprinkler;
 
 import codes.castled.allium.harvest.crop.def.ValidationIssue;
-import codes.castled.allium.harvest.item.ItemRef;
+import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.harvest.util.Durations;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

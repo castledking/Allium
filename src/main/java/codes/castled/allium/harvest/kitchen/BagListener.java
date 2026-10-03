@@ -1,7 +1,7 @@
 package codes.castled.allium.harvest.kitchen;
 
-import codes.castled.allium.harvest.item.ItemRef;
-import codes.castled.allium.harvest.item.ItemResolverChain;
+import codes.castled.allium.item.ItemRef;
+import codes.castled.allium.item.ItemResolverChain;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

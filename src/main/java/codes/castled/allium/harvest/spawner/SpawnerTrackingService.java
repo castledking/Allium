@@ -4,7 +4,7 @@ import codes.castled.allium.harvest.config.HarvestConfig;
 import codes.castled.allium.harvest.event.SpawnerModelUpdateEvent;
 import codes.castled.allium.harvest.event.SpawnerTrackEvent;
 import codes.castled.allium.harvest.event.SpawnerUntrackEvent;
-import codes.castled.allium.harvest.item.ItemResolverChain;
+import codes.castled.allium.item.ItemResolverChain;
 import codes.castled.allium.harvest.storage.SpawnerStorage;
 import codes.castled.allium.harvest.util.BlockPositionKey;
 import codes.castled.allium.harvest.util.ChunkKey;
@@ -255,7 +255,7 @@ public final class SpawnerTrackingService {
         if (shuttingDown) {
             return null;
         }
-        ItemStack item = items.create(codes.castled.allium.harvest.item.ItemRef.parse(modelRef), 1).orElse(null);
+        ItemStack item = items.create(codes.castled.allium.item.ItemRef.parse(modelRef), 1).orElse(null);
         if (item == null) {
             if (unresolvableModels.add(modelRef)) {
                 logger.warning("[AlliumHarvest] Spawner model item '" + modelRef + "' does not exist"

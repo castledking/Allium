@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import codes.castled.allium.harvest.soil.SoilState;
 import codes.castled.allium.harvest.sprinkler.SprinklerDefinition;
-import codes.castled.allium.harvest.item.ItemRef;
+import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.harvest.util.BlockPositionKey;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;

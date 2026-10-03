@@ -12,7 +12,7 @@ import codes.castled.allium.harvest.crop.def.CropDefinitionLoader;
 import codes.castled.allium.harvest.crop.def.InteractionSettings;
 import codes.castled.allium.harvest.crop.def.LootMode;
 import codes.castled.allium.harvest.crop.def.ValidationIssue;
-import codes.castled.allium.harvest.item.ItemRef;
+import codes.castled.allium.item.ItemRef;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;

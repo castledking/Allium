@@ -23,6 +23,10 @@ bin/
 # Mac OS
 .DS_Store
 
+# Python bytecode from the tools/ generators
+__pycache__/
+*.pyc
+
 # Build output
 /target/
 build/

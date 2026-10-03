@@ -1,6 +1,5 @@
 package codes.castled.allium.tradingcards.gui;
 
-import codes.castled.allium.tradingcards.gui.CardWorkshopGui;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.Test;

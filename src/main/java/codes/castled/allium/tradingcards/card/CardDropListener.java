@@ -19,8 +19,9 @@ import org.bukkit.inventory.ItemStack;
 /**
  * Turns a mob kill into a card, when the mob is configured to drop one.
  *
- * <p>Listens at {@link EventPriority#MONITOR} and does not cancel or alter the
- * death — a card is an addition to the kill's loot, not a replacement for it.
+ * <p>The card is added to the mob's drops, so it falls where the mob died.
+ * Listens at HIGH rather than MONITOR because it changes the drop list, which
+ * MONITOR handlers must not; it still never cancels or alters the death.
  *
  * <p>The killer must be a player. A card is an item, and items belong to
  * players; a card dropped by a dispenser or a farm would be unclaimable. A
@@ -52,7 +53,7 @@ public class CardDropListener implements Listener {
         this.onDrop = onDrop;
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityDeath(EntityDeathEvent event) {
         LivingEntity dead = event.getEntity();
         if (!registry.hasCards()) {
@@ -75,9 +76,9 @@ public class CardDropListener implements Listener {
             return;
         }
         ItemStack stack = card.get();
-        var overflow = killer.getInventory().addItem(stack);
-        overflow.values().forEach(rest ->
-            killer.getWorld().dropItemNaturally(killer.getLocation(), rest));
+        // Into the mob's own drops, so the card falls where it died like the
+        // rest of its loot, and a looting or drop-modifying plugin sees it too.
+        event.getDrops().add(stack);
         onDrop.accept(new DropResult(killer, result.definition(), result.tier(),
             result.quality(), result.band(), stack));
     }

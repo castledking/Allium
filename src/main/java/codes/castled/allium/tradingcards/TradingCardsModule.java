@@ -254,6 +254,9 @@ public final class TradingCardsModule {
             antiFarmSave.cancel();
             antiFarmSave = null;
         }
+        if (dropListener != null) {
+            org.bukkit.event.HandlerList.unregisterAll(dropListener);
+        }
         dropListener = null;
     }
 
@@ -292,7 +295,13 @@ public final class TradingCardsModule {
 
         // The roller and the listener both captured the old tables, so both are
         // rebuilt rather than left pointing at a registry that has since been
-        // replaced.
+        // replaced. The old listener is unregistered first: left in place it
+        // kept rolling with the chances it was built with, so every reload
+        // added another roll per kill, and one built during a test at chance
+        // 1.0 dropped a card on every kill for the rest of the session.
+        if (dropListener != null) {
+            org.bukkit.event.HandlerList.unregisterAll(dropListener);
+        }
         roller = new CardRoller(registry.byId(), config.quality());
         dropListener = new CardDropListener(registry, roller, config, factory,
             java.util.concurrent.ThreadLocalRandom.current(),

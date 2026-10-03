@@ -27,7 +27,8 @@ public record TradingCardsConfig(
     BonusSlotRoll bonusSlotRoll,
     Merge merge,
     Morph morph,
-    Crafting crafting
+    Crafting crafting,
+    Drops drops
 ) {
 
     public static final String FILE = "config.yml";
@@ -40,7 +41,20 @@ public record TradingCardsConfig(
     public static TradingCardsConfig disabled() {
         return new TradingCardsConfig(false, Levelling.defaults(), List.of(),
             Trade.defaults(), Reroll.defaults(), BonusSlotRoll.defaults(),
-            Merge.defaults(), Morph.defaults(), Crafting.defaults());
+            Merge.defaults(), Morph.defaults(), Crafting.defaults(), Drops.defaults());
+    }
+
+    /**
+     * Where a dropped card goes.
+     *
+     * @param toInventory straight into the killer's inventory, falling to the
+     *                    ground only when it is full; otherwise onto the ground
+     *                    where the mob died, with the rest of its loot
+     */
+    public record Drops(boolean toInventory) {
+        public static Drops defaults() {
+            return new Drops(false);
+        }
     }
 
     // ==================== nested blocks ====================
@@ -344,7 +358,8 @@ public record TradingCardsConfig(
             bonusSlotRoll(yaml.getConfigurationSection("bonus-slot-roll"), issues),
             merge(yaml.getConfigurationSection("merge"), issues),
             morph(yaml.getConfigurationSection("morph"), issues),
-            crafting(yaml.getConfigurationSection("crafting"), issues));
+            crafting(yaml.getConfigurationSection("crafting"), issues),
+            drops(yaml.getConfigurationSection("drops"), issues));
         return new LoadResult(config, issues);
     }
 
@@ -388,6 +403,20 @@ public record TradingCardsConfig(
         }
         return new Levelling(start, max, perLevel, perLevelCount, separator, slots,
             barWidth, announce(section.getConfigurationSection("announce")));
+    }
+
+    private static Drops drops(ConfigurationSection section, List<ValidationIssue> issues) {
+        if (section == null) return Drops.defaults();
+        String delivery = section.getString("delivery", "ground").trim().toLowerCase(java.util.Locale.ROOT);
+        return switch (delivery) {
+            case "ground" -> new Drops(false);
+            case "inventory" -> new Drops(true);
+            default -> {
+                issues.add(ValidationIssue.warning(FILE, "drops.delivery",
+                    "Unknown delivery '" + delivery + "'; use ground or inventory. Using ground."));
+                yield Drops.defaults();
+            }
+        };
     }
 
     private static Announce announce(ConfigurationSection section) {

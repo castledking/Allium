@@ -19,7 +19,8 @@ import org.bukkit.inventory.ItemStack;
 /**
  * Turns a mob kill into a card, when the mob is configured to drop one.
  *
- * <p>The card is added to the mob's drops, so it falls where the mob died.
+ * <p>The card goes into the killer's inventory or into the mob's drops,
+ * whichever {@code drops.delivery} in config.yml says.
  * Listens at HIGH rather than MONITOR because it changes the drop list, which
  * MONITOR handlers must not; it still never cancels or alters the death.
  *
@@ -76,9 +77,15 @@ public class CardDropListener implements Listener {
             return;
         }
         ItemStack stack = card.get();
-        // Into the mob's own drops, so the card falls where it died like the
-        // rest of its loot, and a looting or drop-modifying plugin sees it too.
-        event.getDrops().add(stack);
+        if (config.drops().toInventory()) {
+            // A full inventory drops the rest where the mob died, not at the
+            // killer's feet, so it lands with the mob's other loot.
+            killer.getInventory().addItem(stack).values().forEach(event.getDrops()::add);
+        } else {
+            // Into the mob's own drops, so the card falls where it died like the
+            // rest of its loot, and a looting or drop-modifying plugin sees it too.
+            event.getDrops().add(stack);
+        }
         onDrop.accept(new DropResult(killer, result.definition(), result.tier(),
             result.quality(), result.band(), stack));
     }

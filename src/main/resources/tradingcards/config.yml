@@ -11,6 +11,16 @@
 enabled: true
 
 # ------------------------------------------------------------
+# Where a dropped card goes.
+#
+#   ground     - with the mob's loot, where it died          [default]
+#   inventory  - straight into the killer's inventory; a full
+#                inventory drops it where the mob died instead
+# ------------------------------------------------------------
+drops:
+  delivery: ground
+
+# ------------------------------------------------------------
 # Card levels.
 #
 # A dropped card starts at 0 and a merged card lands at 0 too, so

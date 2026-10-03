@@ -90,12 +90,12 @@ public record TradingCardsConfig(
     public record Announce(boolean enabled, boolean broadcast, String message,
                            String equipMessage) {
         public static final String DEFAULT_EQUIP_MESSAGE =
-            "<dark_gray>(<gold><bold>TRADING CARD</bold></dark_gray>) <yellow>Equipped "
+            "<gradient:#d4a04a:#8a5a2a>[Cards]</gradient> <yellow>Equipped "
                 + "<card><yellow>, its boosts are now active.";
 
         public static Announce defaults() {
             return new Announce(true, false,
-                "<dark_gray>(<gold><bold>TRADING CARD</bold></dark_gray>) <yellow>Your "
+                "<gradient:#d4a04a:#8a5a2a>[Cards]</gradient> <yellow>Your "
                     + "<card> is now level <green><level></green>! <dark_green><previous>"
                     + "</dark_green> <white>→</white> <green><level></green>",
                 DEFAULT_EQUIP_MESSAGE);

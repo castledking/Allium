@@ -160,7 +160,7 @@ public class CardXpService {
 
     /** The config's level-up message, which the module supplies. */
     private volatile String announceTemplate =
-        "<dark_gray>(<gold><bold>TRADING CARD</bold></dark_gray>) <yellow>Your <card> is now level <green><level></green>! <dark_green><previous></dark_green> <white>→</white> <green><level></green>";
+        "<gradient:#d4a04a:#8a5a2a>[Cards]</gradient> <yellow>Your <card> is now level <green><level></green>! <dark_green><previous></dark_green> <white>→</white> <green><level></green>";
     private volatile boolean announceBroadcast = false;
 
     public void announcement(String template, boolean broadcast) {

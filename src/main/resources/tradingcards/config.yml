@@ -74,11 +74,11 @@ levelling:
     broadcast: false
     # <card> is the card's own name, so a renamed card announces under
     # the name its owner gave it.
-    message: "<dark_gray>(<gold><bold>TRADING CARD</bold></dark_gray>) <yellow>Your <card> is now level <green><level></green>! <dark_green><previous></dark_green> <white>→</white> <green><level></green>"
+    message: "<gradient:#d4a04a:#8a5a2a>[Cards]</gradient> <yellow>Your <card> is now level <green><level></green>! <dark_green><previous></dark_green> <white>→</white> <green><level></green>"
     # Sent to the owner when a card goes into /reliques. <card> is the card's
     # title as its lore shows it, colour included; <tier> and <level> are plain.
     # Set to "" to send nothing.
-    equip-message: "<dark_gray>(<gold><bold>TRADING CARD</bold></dark_gray>) <yellow>Equipped <card><yellow>, its boosts are now active."
+    equip-message: "<gradient:#d4a04a:#8a5a2a>[Cards]</gradient> <yellow>Equipped <card><yellow>, its boosts are now active."
 
 # ------------------------------------------------------------
 # The 1..100 quality roll.

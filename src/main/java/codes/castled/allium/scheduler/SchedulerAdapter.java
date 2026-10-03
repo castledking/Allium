@@ -310,7 +310,10 @@ public final class SchedulerAdapter {
                 throw new UnsupportedOperationException("Failed to schedule repeating entity task on Folia", t);
             }
         }
-        return new TaskHandle(Bukkit.getScheduler().runTask(plugin, runnable));
+        // runTaskTimer, not runTask: this is the repeating variant. The sibling
+        // repeating methods, runRepeatingGlobal and runAtLocationRepeating, both
+        // pair with runTaskTimer.
+        return new TaskHandle(Bukkit.getScheduler().runTaskTimer(plugin, runnable, safeDelay, safePeriod));
     }
 
     // ====================== LOCATION ======================

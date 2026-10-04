@@ -564,6 +564,30 @@
                                         <exclude>META-INF/maven/**</exclude>
                                         <exclude>META-INF/versions/**</exclude>
                                         <exclude>META-INF/MANIFEST.MF</exclude>
+                                        <!--
+                                            Paper ships SLF4J on its own
+                                            classpath. Bundling a second copy
+                                            unrelocated at org/slf4j/ can only
+                                            shadow it, and nothing in Allium
+                                            imports it - it arrives only as a
+                                            transitive dependency.
+                                        -->
+                                        <exclude>org/slf4j/**</exclude>
+                                        <!--
+                                            H2's web console, TCP server, DDL
+                                            parser and full-text index. Allium
+                                            drives H2 over JDBC, so none of
+                                            these is reachable from the driver,
+                                            and together they are a quarter of
+                                            the jar - enough on its own to
+                                            push it over Hangar's 5MB upload
+                                            limit. Shade filters run before
+                                            relocation, hence org/h2 here.
+                                        -->
+                                        <exclude>org/h2/tools/**</exclude>
+                                        <exclude>org/h2/server/**</exclude>
+                                        <exclude>org/h2/bnf/**</exclude>
+                                        <exclude>org/h2/fulltext/**</exclude>
                                     </excludes>
                                 </filter>
                             </filters>

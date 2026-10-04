@@ -29,6 +29,12 @@ import static codes.castled.allium.managers.core.Text.DebugSeverity.WARN;
  * <p>Recognised legacy forms: {@code &a}, {@code &#RRGGBB}, {@code &x&R&R&G&G&B&B} and the
  * {@code §} equivalents. An ampersand that is not part of a colour code is left alone, so
  * "Tom &amp; Jerry" survives intact.
+ *
+ * <p>Permissions live under a scope, so surfaces that colour differently typed text - chat
+ * ({@link #CHAT}) and signs ({@code allium.sign}) - share one implementation and one set of
+ * rules. Every scope answers to the same shape: {@code <scope>.color[.name|.*]},
+ * {@code <scope>.format[.name|.*]}, {@code <scope>.color.hex} and
+ * {@code <scope>.minimessage[.type]}.
  */
 public final class ChatColorParser {
 
@@ -40,6 +46,9 @@ public final class ChatColorParser {
 
     public static final PermissionCheck ALLOW_ALL = permission -> true;
     public static final PermissionCheck DENY_ALL = permission -> false;
+
+    /** Permission scope of text typed in chat. */
+    public static final String CHAT = "chat";
 
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
 
@@ -54,8 +63,19 @@ public final class ChatColorParser {
      * bracket so ordinary text like "&lt;3" is not mistaken for markup.
      */
     private static final Pattern MINI_TAG_PATTERN = Pattern.compile("</?[a-zA-Z][^<>]*>");
+    /**
+     * Any MiniMessage tag that ends up colouring text, gradient and rainbow included. Kept apart
+     * from the gates in {@link #isMiniMessageAllowed}, which give those two their own permissions.
+     */
+    private static final Pattern MINI_COLOR_PATTERN = Pattern.compile("(?i).*<("
+            + "color:[^>]*|#[0-9A-F]{6}"
+            + "|black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|dark_gray|blue"
+            + "|green|aqua|red|light_purple|yellow|white"
+            + "|gradient(:[^>]*)?|rainbow(:[^>]*)?"
+            + ")>.*");
 
     private static final Map<Character, String> LEGACY_TO_TAG = new HashMap<>();
+    /** Permission suffix per code, resolved against the scope at lookup time. */
     private static final Map<Character, String> LEGACY_TO_PERMISSION = new HashMap<>();
 
     static {
@@ -82,28 +102,28 @@ public final class ChatColorParser {
         LEGACY_TO_TAG.put('o', "<italic>");
         LEGACY_TO_TAG.put('r', "<reset>");
 
-        LEGACY_TO_PERMISSION.put('0', "chat.color.black");
-        LEGACY_TO_PERMISSION.put('1', "chat.color.dark_blue");
-        LEGACY_TO_PERMISSION.put('2', "chat.color.dark_green");
-        LEGACY_TO_PERMISSION.put('3', "chat.color.dark_aqua");
-        LEGACY_TO_PERMISSION.put('4', "chat.color.dark_red");
-        LEGACY_TO_PERMISSION.put('5', "chat.color.dark_purple");
-        LEGACY_TO_PERMISSION.put('6', "chat.color.gold");
-        LEGACY_TO_PERMISSION.put('7', "chat.color.gray");
-        LEGACY_TO_PERMISSION.put('8', "chat.color.dark_gray");
-        LEGACY_TO_PERMISSION.put('9', "chat.color.blue");
-        LEGACY_TO_PERMISSION.put('a', "chat.color.green");
-        LEGACY_TO_PERMISSION.put('b', "chat.color.aqua");
-        LEGACY_TO_PERMISSION.put('c', "chat.color.red");
-        LEGACY_TO_PERMISSION.put('d', "chat.color.light_purple");
-        LEGACY_TO_PERMISSION.put('e', "chat.color.yellow");
-        LEGACY_TO_PERMISSION.put('f', "chat.color.white");
-        LEGACY_TO_PERMISSION.put('k', "chat.format.magic");
-        LEGACY_TO_PERMISSION.put('l', "chat.format.bold");
-        LEGACY_TO_PERMISSION.put('m', "chat.format.strikethrough");
-        LEGACY_TO_PERMISSION.put('n', "chat.format.underline");
-        LEGACY_TO_PERMISSION.put('o', "chat.format.italic");
-        LEGACY_TO_PERMISSION.put('r', "chat.format.reset");
+        LEGACY_TO_PERMISSION.put('0', "color.black");
+        LEGACY_TO_PERMISSION.put('1', "color.dark_blue");
+        LEGACY_TO_PERMISSION.put('2', "color.dark_green");
+        LEGACY_TO_PERMISSION.put('3', "color.dark_aqua");
+        LEGACY_TO_PERMISSION.put('4', "color.dark_red");
+        LEGACY_TO_PERMISSION.put('5', "color.dark_purple");
+        LEGACY_TO_PERMISSION.put('6', "color.gold");
+        LEGACY_TO_PERMISSION.put('7', "color.gray");
+        LEGACY_TO_PERMISSION.put('8', "color.dark_gray");
+        LEGACY_TO_PERMISSION.put('9', "color.blue");
+        LEGACY_TO_PERMISSION.put('a', "color.green");
+        LEGACY_TO_PERMISSION.put('b', "color.aqua");
+        LEGACY_TO_PERMISSION.put('c', "color.red");
+        LEGACY_TO_PERMISSION.put('d', "color.light_purple");
+        LEGACY_TO_PERMISSION.put('e', "color.yellow");
+        LEGACY_TO_PERMISSION.put('f', "color.white");
+        LEGACY_TO_PERMISSION.put('k', "format.magic");
+        LEGACY_TO_PERMISSION.put('l', "format.bold");
+        LEGACY_TO_PERMISSION.put('m', "format.strikethrough");
+        LEGACY_TO_PERMISSION.put('n', "format.underline");
+        LEGACY_TO_PERMISSION.put('o', "format.italic");
+        LEGACY_TO_PERMISSION.put('r', "format.reset");
     }
 
     private ChatColorParser() {
@@ -111,33 +131,52 @@ public final class ChatColorParser {
 
     /** Parses text typed by {@code player}, honouring their colour/format permissions. */
     public static Component parse(Player player, String raw) {
-        return parse(permissionsOf(player), raw);
+        return parse(permissionsOf(player), raw, CHAT);
     }
 
     public static Component parse(PermissionCheck permissions, String raw) {
-        String miniMessageSource = toMiniMessage(permissions, raw);
-        if (miniMessageSource.isEmpty()) {
+        return parse(permissions, raw, CHAT);
+    }
+
+    /** As {@link #parse(PermissionCheck, String)}, for text whose permissions live under {@code scope}. */
+    public static Component parse(PermissionCheck permissions, String raw, String scope) {
+        return deserialize(toMiniMessage(permissions, raw, scope));
+    }
+
+    /**
+     * Deserializes MiniMessage source that {@link #toMiniMessage} produced. Callers that want
+     * to inspect the filtered source first - the sign listener logs it - can take the two steps
+     * separately instead of filtering twice.
+     */
+    public static Component deserialize(String miniMessageSource) {
+        if (miniMessageSource == null || miniMessageSource.isEmpty()) {
             return Component.empty();
         }
         try {
             return MINI_MESSAGE.deserialize(miniMessageSource);
         } catch (Exception e) {
-            Text.sendDebugLog(WARN, "Failed to parse chat colours, falling back to plain text: " + e.getMessage());
-            return Component.text(stripFormatting(raw));
+            Text.sendDebugLog(WARN, "Failed to parse colours, falling back to plain text: " + e.getMessage());
+            return Component.text(stripFormatting(miniMessageSource));
         }
     }
 
     /** Returns the permission-filtered text as MiniMessage source. */
     public static String toMiniMessage(Player player, String raw) {
-        return toMiniMessage(permissionsOf(player), raw);
+        return toMiniMessage(permissionsOf(player), raw, CHAT);
     }
 
     public static String toMiniMessage(PermissionCheck permissions, String raw) {
+        return toMiniMessage(permissions, raw, CHAT);
+    }
+
+    /** As {@link #toMiniMessage(PermissionCheck, String)}, for text under the {@code scope} permission tree. */
+    public static String toMiniMessage(PermissionCheck permissions, String raw, String scope) {
         if (raw == null || raw.isEmpty()) {
             return "";
         }
         PermissionCheck checks = permissions == null ? DENY_ALL : permissions;
-        return legacyToMiniMessage(filterLegacyCodes(checks, filterMiniMessageTags(checks, raw)));
+        String root = scope == null || scope.isEmpty() ? CHAT : scope;
+        return legacyToMiniMessage(filterLegacyCodes(checks, root, filterMiniMessageTags(checks, root, raw)));
     }
 
     /** Removes every legacy code and MiniMessage tag, leaving the visible text. */
@@ -195,6 +234,27 @@ public final class ChatColorParser {
         return text != null && MINI_TAG_PATTERN.matcher(text).find();
     }
 
+    /**
+     * True when the text asks for a colour: a legacy colour code, either hex form, or a
+     * MiniMessage colour tag. Distinct from {@link #containsFormatting}, which also answers true
+     * for format codes - callers that need to tell "coloured" from "slanted" want this one.
+     */
+    public static boolean containsColor(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        if (X_HEX_PATTERN.matcher(text).find() || HEX_PATTERN.matcher(text).find()) {
+            return true;
+        }
+        Matcher matcher = CODE_PATTERN.matcher(text);
+        while (matcher.find()) {
+            if (isColorCode(Character.toLowerCase(matcher.group(1).charAt(0)))) {
+                return true;
+            }
+        }
+        return MINI_COLOR_PATTERN.matcher(text).matches();
+    }
+
     private static PermissionCheck permissionsOf(Player player) {
         return player == null ? DENY_ALL : player::hasPermission;
     }
@@ -204,21 +264,21 @@ public final class ChatColorParser {
      * a player with colour permissions but no MiniMessage permissions still gets their
      * {@code &a} codes - the tags we generate ourselves are never permission checked.
      */
-    private static String filterMiniMessageTags(PermissionCheck permissions, String text) {
+    private static String filterMiniMessageTags(PermissionCheck permissions, String scope, String text) {
         if (!containsMiniMessageTags(text)) {
             return text;
         }
-        if (!permissions.has("chat.minimessage") && !permissions.has("chat.minimessage.*")) {
+        if (!permissions.has(scope + ".minimessage") && !permissions.has(scope + ".minimessage.*")) {
             return MINI_MESSAGE.stripTags(text);
         }
-        return isMiniMessageAllowed(permissions, text) ? text : MINI_MESSAGE.stripTags(text);
+        return isMiniMessageAllowed(permissions, scope, text) ? text : MINI_MESSAGE.stripTags(text);
     }
 
-    private static boolean hasMiniMessagePermission(PermissionCheck permissions, String tagType) {
-        if (permissions.has("chat.minimessage.*")) {
+    private static boolean hasMiniMessagePermission(PermissionCheck permissions, String scope, String tagType) {
+        if (permissions.has(scope + ".minimessage.*")) {
             return true;
         }
-        String permission = "chat.minimessage." + tagType.toLowerCase(Locale.ROOT);
+        String permission = scope + ".minimessage." + tagType.toLowerCase(Locale.ROOT);
         return permissions.has(permission) || permissions.has(permission + ".*");
     }
 
@@ -227,39 +287,39 @@ public final class ChatColorParser {
      * rainbow patterns also cover their argument-less forms, which used to slip through
      * because the old checks required a ':' or '#' right after the tag name.
      */
-    private static boolean isMiniMessageAllowed(PermissionCheck permissions, String text) {
+    private static boolean isMiniMessageAllowed(PermissionCheck permissions, String scope, String text) {
         if (text.matches("(?i).*<(color:[^>]*|#[0-9A-F]{6}|black|dark_blue|dark_green|dark_aqua|dark_red"
                 + "|dark_purple|gold|gray|dark_gray|blue|green|aqua|red|light_purple|yellow|white)>.*")
-                && !hasMiniMessagePermission(permissions, "color")) {
+                && !hasMiniMessagePermission(permissions, scope, "color")) {
             return false;
         }
         if (text.matches("(?i).*<gradient(:[^>]*)?>.*")) {
             String tagType = text.matches("(?i).*<gradient[^>]*:phase-.*?>.*") ? "gradient.animation" : "gradient";
-            if (!hasMiniMessagePermission(permissions, tagType)) {
+            if (!hasMiniMessagePermission(permissions, scope, tagType)) {
                 return false;
             }
         }
-        if (text.matches("(?i).*<rainbow(:[^>]*)?>.*") && !hasMiniMessagePermission(permissions, "rainbow")) {
+        if (text.matches("(?i).*<rainbow(:[^>]*)?>.*") && !hasMiniMessagePermission(permissions, scope, "rainbow")) {
             return false;
         }
-        if (text.matches("(?i).*<click:.*?>.*") && !hasMiniMessagePermission(permissions, "click")) {
+        if (text.matches("(?i).*<click:.*?>.*") && !hasMiniMessagePermission(permissions, scope, "click")) {
             return false;
         }
-        if (text.matches("(?i).*<hover:.*?>.*") && !hasMiniMessagePermission(permissions, "hover")) {
+        if (text.matches("(?i).*<hover:.*?>.*") && !hasMiniMessagePermission(permissions, scope, "hover")) {
             return false;
         }
         return !text.matches("(?i).*<(b|bold|i|italic|u|underlined|st|strikethrough|obf|obfuscated|reset)>.*")
-                || hasMiniMessagePermission(permissions, "format");
+                || hasMiniMessagePermission(permissions, scope, "format");
     }
 
     /**
      * Drops legacy codes the author may not use. Unlike a blind two-character skip this
      * keeps hex codes whole and leaves a lone ampersand as literal text.
      */
-    private static String filterLegacyCodes(PermissionCheck permissions, String text) {
-        boolean allowAnyColor = permissions.has("chat.color") || permissions.has("chat.color.*");
-        boolean allowAnyFormat = permissions.has("chat.format") || permissions.has("chat.format.*");
-        boolean allowHex = allowAnyColor || permissions.has("chat.color.hex");
+    private static String filterLegacyCodes(PermissionCheck permissions, String scope, String text) {
+        boolean allowAnyColor = permissions.has(scope + ".color") || permissions.has(scope + ".color.*");
+        boolean allowAnyFormat = permissions.has(scope + ".format") || permissions.has(scope + ".format.*");
+        boolean allowHex = allowAnyColor || permissions.has(scope + ".color.hex");
 
         StringBuilder filtered = new StringBuilder(text.length());
         int i = 0;
@@ -286,7 +346,7 @@ public final class ChatColorParser {
             int codeLength = matchLength(CODE_PATTERN, text, i);
             if (codeLength > 0) {
                 char code = Character.toLowerCase(text.charAt(i + 1));
-                if (isCodeAllowed(permissions, code, allowAnyColor, allowAnyFormat)) {
+                if (isCodeAllowed(permissions, scope, code, allowAnyColor, allowAnyFormat)) {
                     filtered.append(text, i, i + codeLength);
                 }
                 i += codeLength;
@@ -300,19 +360,20 @@ public final class ChatColorParser {
         return filtered.toString();
     }
 
-    private static boolean isCodeAllowed(PermissionCheck permissions, char code,
+    private static boolean isCodeAllowed(PermissionCheck permissions, String scope, char code,
                                          boolean allowAnyColor, boolean allowAnyFormat) {
-        String permission = LEGACY_TO_PERMISSION.get(code);
-        if (permission == null) {
+        String suffix = LEGACY_TO_PERMISSION.get(code);
+        if (suffix == null) {
             return false;
         }
+        String permission = scope + "." + suffix;
         if (isColorCode(code)) {
             return allowAnyColor || permissions.has(permission);
         }
         // 'k' historically answers to both spellings of the obfuscated permission.
         return allowAnyFormat
                 || permissions.has(permission)
-                || (code == 'k' && permissions.has("chat.format.obfuscated"));
+                || (code == 'k' && permissions.has(scope + ".format.obfuscated"));
     }
 
     /**

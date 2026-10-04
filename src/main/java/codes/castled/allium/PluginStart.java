@@ -88,6 +88,7 @@ import codes.castled.allium.listeners.VoucherRedeemListener;
 import codes.castled.allium.listeners.XpBottleRedeemListener;
 import codes.castled.allium.listeners.chat.FormatChatListener;
 import codes.castled.allium.listeners.chat.SignColorListener;
+import codes.castled.allium.listeners.items.AnvilColorListener;
 import codes.castled.allium.listeners.items.OraxenSmeltingListener;
 import codes.castled.allium.listeners.items.MobDisarmerListener;
 import codes.castled.allium.listeners.items.PhantomObliteratorListener;
@@ -3618,6 +3619,11 @@ public class PluginStart extends JavaPlugin {
         getServer()
             .getPluginManager()
             .registerEvents(new SignColorListener(), this);
+
+        // Anvil rename color listener, same parser under the allium.anvil scope
+        getServer()
+            .getPluginManager()
+            .registerEvents(new AnvilColorListener(), this);
     }
 
     /**

@@ -1201,6 +1201,8 @@ permissions:
     default: op 
   allium.sign.color.dark_green:
     default: op
+  allium.sign.color.dark_aqua:
+    default: op
   allium.sign.color.dark_red:
     default: op
   allium.sign.color.dark_purple:
@@ -1225,6 +1227,8 @@ permissions:
     default: op
   allium.sign.color.white:
     default: op
+  allium.sign.color.hex:
+    default: op
   allium.sign.format.*:
     default: op
   allium.sign.format.italic:
@@ -1237,9 +1241,17 @@ permissions:
     default: op
   allium.sign.format.obfuscated:
     default: op
+  allium.sign.format.magic:
+    default: op
   allium.sign.format.reset:
     default: op 
+  allium.sign.minimessage:
+    default: op
   allium.sign.minimessage.*:
+    default: op
+  allium.sign.minimessage.color:
+    default: op
+  allium.sign.minimessage.color.*:
     default: op
   allium.sign.minimessage.color.black:
     default: op
@@ -1294,6 +1306,55 @@ permissions:
   allium.sign.minimessage.click:
     default: op
   allium.sign.minimessage.hover:
+    default: op
+  allium.sign.placeholderapi:
+    default: op
+
+  # Anvil renaming permissions
+  allium.anvil.color:
+    description: "Allows using any legacy colour code (&c) when renaming at an anvil"
+    default: op
+  allium.anvil.color.*:
+    description: "Allows using every legacy colour code when renaming at an anvil"
+    default: op
+  allium.anvil.color.hex:
+    description: "Allows using hex colours (&#RRGGBB) when renaming at an anvil"
+    default: op
+  allium.anvil.format:
+    description: "Allows using any format code (&l, &o, ...) when renaming at an anvil"
+    default: op
+  allium.anvil.format.*:
+    description: "Allows using every format code when renaming at an anvil"
+    default: op
+  allium.anvil.minimessage:
+    description: "Allows using MiniMessage tags when renaming at an anvil"
+    default: op
+  allium.anvil.minimessage.*:
+    description: "Allows using every MiniMessage tag when renaming at an anvil"
+    default: op
+  allium.anvil.minimessage.color:
+    description: "Allows using colour tags (<red>, <#RRGGBB>) when renaming at an anvil"
+    default: op
+  allium.anvil.minimessage.color.*:
+    description: "Allows using every MiniMessage colour tag when renaming at an anvil"
+    default: op
+  allium.anvil.minimessage.format:
+    description: "Allows using format tags (<bold>) when renaming at an anvil"
+    default: op
+  allium.anvil.minimessage.format.*:
+    description: "Allows using every MiniMessage format tag when renaming at an anvil"
+    default: op
+  allium.anvil.minimessage.gradient:
+    description: "Allows using <gradient:...> when renaming at an anvil"
+    default: op
+  allium.anvil.minimessage.rainbow:
+    description: "Allows using <rainbow> when renaming at an anvil"
+    default: op
+  allium.anvil.minimessage.click:
+    description: "Allows using <click:...> when renaming at an anvil"
+    default: op
+  allium.anvil.minimessage.hover:
+    description: "Allows using <hover:...> when renaming at an anvil"
     default: op
 
   # Auto-restart permissions

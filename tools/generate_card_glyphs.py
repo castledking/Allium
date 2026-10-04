@@ -25,7 +25,7 @@ Vertical layout, with y the top of the tooltip's first line (the item name):
                drawn above it: the client positions the tooltip from its line
                count alone, so art above the box is what gets cut off at the top
                of the screen.
-  y            the item name, blanked by the pack's lang file.
+  y            the item name, blank.
   y + 12       lore 0, the HEADER line. Its glyph is the art's top cap, ornament
                included, and holds no text. It reaches up through the blank name.
   y + 22       lore 1, the title, then one BODY glyph per line.
@@ -73,7 +73,6 @@ NS = "sf"
 FONT_NAME = "card_frame"          # assets/sf/font/card_frame.json  ->  sf:card_frame
 TEX_SUBDIR = "font/card_frame"    # assets/sf/textures/font/card_frame/
 STYLE_ID = "card"                 # tooltip_style sf:card -> tooltip/card_background
-NAME_KEY = "allium.tradingcard.name"
 
 # The client's tooltip metrics. Read off GuiGraphicsExtractor.tooltip and
 # TooltipRenderUtil in the 26.3 client; unchanged since 1.21.2.
@@ -224,8 +223,7 @@ def main() -> None:
     tex_dir = args.out / "assets" / NS / "textures" / TEX_SUBDIR
     font_dir = args.out / "assets" / NS / "font"
     sprite_dir = args.out / "assets" / NS / "textures/gui/sprites/tooltip"
-    lang_dir = args.out / "assets" / NS / "lang"
-    for d in (tex_dir, font_dir, sprite_dir, lang_dir):
+    for d in (tex_dir, font_dir, sprite_dir):
         d.mkdir(parents=True, exist_ok=True)
 
     providers = []
@@ -288,14 +286,6 @@ def main() -> None:
     # sprites are empty. A missing sprite would draw the missing texture instead.
     for part in ("background", "frame"):
         Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(sprite_dir / f"{STYLE_ID}_{part}.png")
-
-    # The item name is a translatable with the card title as its fallback. The
-    # pack maps it to nothing, so the name line is blank with the pack and
-    # readable without it. Merged, so other keys in the file survive.
-    lang_file = lang_dir / "en_us.json"
-    lang = json.loads(lang_file.read_text()) if lang_file.exists() else {}
-    lang[NAME_KEY] = ""
-    lang_file.write_text(json.dumps(lang, indent=2, ensure_ascii=False) + "\n")
 
     usable = width - 2 * TEXT_X
     print(f"  font {NS}:{FONT_NAME}  width {width}  spaces {advance_in} / {advance_out}"

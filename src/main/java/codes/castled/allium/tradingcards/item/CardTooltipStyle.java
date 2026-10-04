@@ -4,7 +4,6 @@ import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.inventory.ItemStack;
 
 /**
@@ -41,13 +40,6 @@ public final class CardTooltipStyle {
      */
     public static final Key STYLE = Key.key(NAMESPACE, "card");
 
-    /**
-     * The name's translation key. The pack maps it to an empty string, so a
-     * client with the pack shows a blank name line and one without it shows the
-     * fallback, which is the card's title.
-     */
-    public static final String NAME_KEY = "allium.tradingcard.name";
-
     private CardTooltipStyle() {}
 
     /**
@@ -71,14 +63,17 @@ public final class CardTooltipStyle {
     }
 
     /**
-     * Sets the tooltip's first line, the item's name, to a name the pack blanks.
+     * Blanks the tooltip's first line, the item's name.
      *
      * <p>The name line has to stay, blank, because {@link CardFrame}'s header
      * reaches up through it. The title itself is in the lore, under the header.
      *
-     * <p>A translation rather than a blank string, so a player without the pack
-     * still sees what the card is called. The fallback is plain text, so the
-     * title's colour is carried on the component instead.
+     * <p>A blank string, not a translation the pack maps to nothing. AbyssalLib
+     * translates item names on the server before they are sent, and for a key it
+     * does not know it substitutes the fallback, so in any container window the
+     * card's title came back as a visible name above the frame. A single space
+     * rather than an empty component, because an empty name is dropped by some
+     * paths and the item falls back to the material's own name.
      *
      * <p>Set as {@code item_name}, not through {@code ItemMeta.displayName}:
      * that writes {@code custom_name}, and {@code item_name} takes precedence
@@ -87,32 +82,26 @@ public final class CardTooltipStyle {
      *
      * <p>Called after the meta is committed, since it is a stack component and
      * {@code setItemMeta} can replace the stack's component set.
-     *
-     * @param title the card's title as rendered into the lore
      */
-    public static void name(ItemStack stack, Component title) {
+    public static void name(ItemStack stack) {
         if (stack == null) {
             return;
         }
         try {
-            stack.setData(DataComponentTypes.ITEM_NAME, hiddenName(title));
+            stack.setData(DataComponentTypes.ITEM_NAME, hiddenName());
         } catch (Throwable ignored) {
             // As above: a missing component costs the blank line, not the card.
         }
     }
 
     /**
-     * The name a framed item carries: blank with the pack, the title without.
+     * The name a framed item carries, blank so the frame's header can reach up
+     * through its line.
      *
      * <p>Public for the frame marker, which puts it on items it does not own.
      */
-    public static Component hiddenName(Component title) {
-        Component plain = title == null ? Component.empty() : title;
-        return Component.translatable()
-            .key(NAME_KEY)
-            .fallback(PlainTextComponentSerializer.plainText().serialize(plain))
-            .color(colourOf(plain))
-            .build();
+    public static Component hiddenName() {
+        return Component.text(" ");
     }
 
     /** The first colour set anywhere in a component, or null. */

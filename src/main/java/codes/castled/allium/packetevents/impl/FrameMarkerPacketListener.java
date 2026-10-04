@@ -213,7 +213,7 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
         }
         Component title = title(item);
         item.setComponent(ComponentTypes.LORE, new ItemLore(FrameMarker.frame(title, lines, match)));
-        item.setComponent(ComponentTypes.ITEM_NAME, CardTooltipStyle.hiddenName(title));
+        item.setComponent(ComponentTypes.ITEM_NAME, CardTooltipStyle.hiddenName());
         item.unsetComponent(ComponentTypes.CUSTOM_NAME);
         item.setComponent(ComponentTypes.TOOLTIP_STYLE, new ItemTooltipStyle(STYLE));
         ItemTooltipDisplay display = item.getComponentOr(ComponentTypes.TOOLTIP_DISPLAY, null);

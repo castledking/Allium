@@ -812,6 +812,12 @@ public final class TradingCardsModule {
                 plugin, service, tracker);
             Bukkit.getPluginManager().registerEvents(restore, plugin);
             restore.restoreOnline();
+            try {
+                codes.castled.allium.tradingcards.integration.CardTooltipGuard.register();
+            } catch (Throwable t) {
+                logger.warning("[" + TradingCardsBranding.DISPLAY_NAME
+                    + "] Could not keep Relique's slot line out of card tooltips: " + t);
+            }
             // Registered once, unconditionally: the listener reads the live boost
             // total per hit, so a player with no disarm card costs one map lookup.
             Bukkit.getPluginManager().registerEvents(new DisarmListener(

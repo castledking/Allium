@@ -222,12 +222,12 @@ public record TradingCardData(
         pdc.set(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, data.rerolls());
         pdc.set(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) (data.bound() ? 1 : 0));
         meta.setMaxStackSize(1);
-        Component title = renderLore(meta, data);
+        renderLore(meta, data);
         stack.setItemMeta(meta);
         // After the meta is committed, because both are stack components and
         // setItemMeta can replace the stack's component set.
         CardTooltipStyle.apply(stack);
-        CardTooltipStyle.name(stack, title);
+        CardTooltipStyle.name(stack);
     }
 
     /**
@@ -245,25 +245,20 @@ public record TradingCardData(
         if (meta == null) {
             return;
         }
-        Component title = renderLore(meta, data);
+        renderLore(meta, data);
         stack.setItemMeta(meta);
         // Both rewritten too, so a card written before the panel moved into the
         // lore stops pointing at the old sprites. See CardTooltipStyle.name for
         // why this is item_name and not displayName.
-        CardTooltipStyle.name(stack, title);
+        CardTooltipStyle.name(stack);
         CardTooltipStyle.apply(stack);
     }
 
-    /**
-     * Writes the card's lore, framed, and returns its title.
-     *
-     * <p>The title goes back to the caller because the item's name is built
-     * from it: a player without the pack sees that name instead of a blank line.
-     */
-    private static Component renderLore(ItemMeta meta, TradingCardData data) {
+    /** Writes the card's lore, framed. */
+    private static void renderLore(ItemMeta meta, TradingCardData data) {
         CardLore renderer = lore;
         if (renderer == null) {
-            return Component.empty();
+            return;
         }
         // Rebuilt from the card every time rather than appended to, so repeated
         // writes replace the level line instead of stacking a new one on top.
@@ -272,7 +267,6 @@ public record TradingCardData(
                 .map(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()::deserialize)
                 .collect(java.util.stream.Collectors.toList());
         meta.lore(CardFrame.wrap(data.tier(), lines));
-        return lines.isEmpty() ? Component.empty() : lines.get(0);
     }
 
     /** A copy of this card at a different level. */

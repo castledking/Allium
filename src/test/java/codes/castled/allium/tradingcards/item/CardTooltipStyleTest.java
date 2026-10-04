@@ -36,11 +36,6 @@ class CardTooltipStyleTest {
     }
 
     @Test
-    void theNameKeyIsTheOneTheGeneratorBlanks() throws Exception {
-        assertEquals(CardTooltipStyle.NAME_KEY, generatorConstant("NAME_KEY"));
-    }
-
-    @Test
     void theNameColourIsReadOffTheTitleWhereverItIsSet() {
         // MiniMessage puts a line's colour on a child, not the root.
         Component title = Component.text().append(

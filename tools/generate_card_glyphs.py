@@ -86,6 +86,11 @@ ASCENT_BASE = 7    # a bitmap glyph's top row lands at line top + 7 - ascent
 TEXT_X = 12        # art column the text starts at, counted from the frame's left edge
 TITLE_ROW = 20     # art row the title's line starts on (FishOnMC's frame uses 20)
 BOTTOM_LEAD = 1    # plain rows between the last text line's slot and the bottom cap
+# Plain rows the header carries past the top of the title's line. A text hover
+# on clients before 26.3 puts 2px after its first line, which is the header
+# line, and without these the panel shows through the gap. Where there is no
+# gap, the title line's own slice is drawn over them, so they cost nothing.
+HEADER_OVERHANG = NAME_GAP
 
 # Mirrored in CardFrame.java. Checked below, not just documented.
 BOTTOM_EXTRA_LINES = 1
@@ -165,6 +170,15 @@ def repeat_row(img: Image.Image, y: int, n: int) -> Image.Image:
     return out
 
 
+def stack(*parts: Image.Image) -> Image.Image:
+    out = Image.new("RGBA", (parts[0].size[0], sum(p.size[1] for p in parts)))
+    y = 0
+    for p in parts:
+        out.paste(p, (0, y))
+        y += p.size[1]
+    return out
+
+
 def calibration_tile(width: int) -> Image.Image:
     """Red top row, blue bottom row: at every line seam red must touch blue exactly."""
     im = Image.new("RGBA", (width, LINE), (40, 40, 40, 255))
@@ -224,14 +238,14 @@ def main() -> None:
         check_layout(top, bot)
         h = art.size[1]
 
-        header = rows(art, 0, TITLE_ROW)
+        header = stack(rows(art, 0, TITLE_ROW), repeat_row(art, plain, HEADER_OVERHANG))
         body = calibration_tile(width) if args.calibrate else repeat_row(art, plain, LINE)
         bottom = rows(art, h - bot - BOTTOM_LEAD, h)
 
         # Each glyph's ascent places its top row; see the module docstring for
         # where each one has to land.
         glyphs = {
-            # Drawn on the HEADER line, ending exactly where the title's line starts.
+            # Drawn on the HEADER line, its art ending where the title's line starts.
             "header": (header, HEADER, ASCENT_BASE + TITLE_ROW - LINE),
             "body": (body, BODY, ASCENT_BASE),
             "bottom": (bottom, BOTTOM, ASCENT_BASE),

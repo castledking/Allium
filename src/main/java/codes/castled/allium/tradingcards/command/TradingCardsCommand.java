@@ -334,7 +334,7 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             return;
         }
         if (args.length < 2) {
-            msg(sender, "<gray>Usage: /tradingcards frame <simple|elite|ultimate|legendary|fabled|off></gray>");
+            msg(sender, "<gray>Usage: /tradingcards frame <frame|auto|off></gray>");
             return;
         }
         ItemStack held = player.getInventory().getItemInMainHand();
@@ -347,10 +347,10 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             return;
         }
         boolean off = args[1].equalsIgnoreCase("off");
-        Tier tier = off ? null : CardDefinition.parseTier(args[1]);
-        if (!off && tier == null) {
-            msg(sender, "<red>No frame called '" + args[1]
-                + "'. Use simple, elite, ultimate, legendary or fabled.</red>");
+        String frame = codes.castled.allium.frames.FramesConfig.name(args[1]);
+        if (!off && !frame.equals("auto")
+            && !codes.castled.allium.frames.FrameService.get().exists(frame)) {
+            msg(sender, "<red>No frame called '" + args[1] + "'. See /frame list.</red>");
             return;
         }
         List<net.kyori.adventure.text.Component> lore = held.lore() == null
@@ -368,7 +368,7 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             // Dark grey and upright, because the line is seen as written by a
             // creative player or a client without the pack.
             lore.add(0, net.kyori.adventure.text.Component.text(
-                    codes.castled.allium.tradingcards.item.FrameMarker.marker(tier),
+                    "[frame:" + frame + "]",
                     net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
                 .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
         }
@@ -376,7 +376,7 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         player.getInventory().setItemInMainHand(held);
         msg(sender, off
             ? "<green>Frame removed.</green>"
-            : "<green>Framed with the " + tier.name().toLowerCase(Locale.ROOT)
+            : "<green>Framed with the " + frame
                 + " frame.</green> <dark_gray>Creative players see the marker line instead.</dark_gray>");
     }
 
@@ -395,7 +395,7 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         sender.sendMessage(MM.deserialize(
             "  <gray>/tradingcards boosts [player]</gray> <dark_gray>(what is equipped and applied)</dark_gray>"));
         sender.sendMessage(MM.deserialize(
-            "  <gray>/tradingcards frame <tier|off></gray> <dark_gray>(card frame on the held item)</dark_gray>"));
+            "  <gray>/tradingcards frame <frame|auto|off></gray> <dark_gray>(lore frame on the held item)</dark_gray>"));
         sender.sendMessage(MM.deserialize(
             "  <gray>/tradingcards heads</gray> <dark_gray>(collect heads owed from a closed trade)</dark_gray>"));
     }
@@ -421,9 +421,8 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             switch (args[0].toLowerCase(Locale.ROOT)) {
                 case "give", "boosts" -> Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
                 case "frame" -> {
-                    for (Tier tier : Tier.values()) {
-                        options.add(tier.name().toLowerCase(Locale.ROOT));
-                    }
+                    options.addAll(codes.castled.allium.frames.FrameService.get().names());
+                    options.add("auto");
                     options.add("off");
                 }
                 default -> { }

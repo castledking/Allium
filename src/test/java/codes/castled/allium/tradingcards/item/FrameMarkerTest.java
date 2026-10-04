@@ -30,7 +30,7 @@ class FrameMarkerTest {
     void aMarkerIsFoundThroughTheColourCodesAroundIt() {
         var match = FrameMarker.find(List.of(LEGACY.deserialize("&8&o[frame:fabled]")));
         assertNotNull(match);
-        assertEquals(Tier.FABLED, match.tier());
+        assertEquals("fabled", match.name());
         assertEquals(0, match.line());
     }
 
@@ -40,14 +40,25 @@ class FrameMarkerTest {
             LEGACY.deserialize("&7All purchasable perks."),
             LEGACY.deserialize("[frame:Legendary]")));
         assertNotNull(match);
-        assertEquals(Tier.LEGENDARY, match.tier());
+        assertEquals("legendary", match.name());
         assertEquals(1, match.line());
     }
 
     @Test
-    void aBareOrUnknownMarkerIsTheSimpleFrame() {
-        assertEquals(Tier.SIMPLE, FrameMarker.find(List.of(Component.text("[frame]"))).tier());
-        assertEquals(Tier.SIMPLE, FrameMarker.find(List.of(Component.text("[frame:gold]"))).tier());
+    void aBareMarkerIsAutoAndAnUnknownNameFallsBackToSimple() {
+        assertEquals("auto", FrameMarker.find(List.of(Component.text("[frame]"))).name());
+        var gold = FrameMarker.find(List.of(Component.text("[frame:gold]")));
+        assertEquals("gold", gold.name());
+        // No frames.yml here, so the fallback is the simple card frame.
+        Component title = Component.text("Perks");
+        assertEquals(CardFrame.wrap(Tier.SIMPLE, List.of(title)),
+            FrameMarker.frame(title, List.of(Component.text("[frame:gold]")), gold, null));
+    }
+
+    @Test
+    void angleBracketsWorkLikeSquareOnes() {
+        assertEquals("epic", FrameMarker.find(List.of(Component.text("<frame:epic>"))).name());
+        assertEquals("auto", FrameMarker.find(List.of(Component.text("<frame>"))).name());
     }
 
     @Test
@@ -74,7 +85,7 @@ class FrameMarkerTest {
             Component.text("[Click to view]"));
         Component title = Component.text("Perks", NamedTextColor.AQUA);
         var match = FrameMarker.find(lore);
-        List<Component> framed = FrameMarker.frame(title, lore, match);
+        List<Component> framed = FrameMarker.frame(title, lore, match, null);
         assertEquals(CardFrame.wrap(Tier.ULTIMATE,
             List.of(title, lore.get(1), lore.get(2))), framed);
         assertEquals("All purchasable perks.",
@@ -84,7 +95,8 @@ class FrameMarkerTest {
     @Test
     void theCommandWritesAMarkerTheFinderReads() {
         for (Tier tier : Tier.values()) {
-            assertEquals(tier, FrameMarker.find(List.of(Component.text(FrameMarker.marker(tier)))).tier());
+            assertEquals(tier.name().toLowerCase(java.util.Locale.ROOT),
+                FrameMarker.find(List.of(Component.text(FrameMarker.marker(tier)))).name());
         }
     }
 
@@ -101,7 +113,7 @@ class FrameMarkerTest {
     @Test
     void aMarkedHoverIsFramedWithNoBlankLineUnderTheCap() {
         Component hover = LEGACY.deserialize("&8[frame:elite]\n&7Rank: &bVIP\n&eClick to message");
-        Component framed = FrameMarker.hoverText(hover);
+        Component framed = FrameMarker.hoverText(hover, null);
         List<Component> lines = FrameMarker.lines(framed);
         // header, two text lines, bottom cap; nothing after it, or the box
         // would grow past the cap and vanilla's panel would show under it
@@ -115,9 +127,9 @@ class FrameMarkerTest {
     @Test
     void anUnmarkedHoverAndAMessageWithoutOneComeBackUntouched() {
         Component hover = Component.text("Click to message Steve");
-        assertSame(hover, FrameMarker.hoverText(hover));
+        assertSame(hover, FrameMarker.hoverText(hover, null));
         Component message = Component.text("hello").hoverEvent(HoverEvent.showText(hover));
-        assertSame(message, FrameMarker.frameHovers(message));
+        assertSame(message, FrameMarker.frameHovers(message, null));
     }
 
     @Test
@@ -125,7 +137,7 @@ class FrameMarkerTest {
         Component name = Component.text("Steve")
             .hoverEvent(HoverEvent.showText(Component.text("[frame:fabled]\nClick to message")));
         Component message = Component.text("<").append(name).append(Component.text("> hi"));
-        Component framed = FrameMarker.frameHovers(message);
+        Component framed = FrameMarker.frameHovers(message, null);
         Component hover = (Component) framed.children().get(0).hoverEvent().value();
         assertEquals(3, FrameMarker.lines(hover).size());
         assertEquals("hi", ((TextComponent) framed.children().get(1)).content().substring(2));

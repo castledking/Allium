@@ -1,0 +1,63 @@
+# ============================================================
+#  Allium lore frames
+# ============================================================
+# A [frame:<name>] line in an item's lore, or in a chat hover, draws that
+# text inside one of these frames. <frame:name> works too. It works in any
+# plugin's items and hovers, since the frame is drawn on the way to the
+# player; needs PacketEvents and the server resource pack.
+#
+# [frame:auto] (or a bare [frame]) is a player's own frame:
+#   1. one set with /frame set <player> <frame>, until /frame reset <player>
+#   2. else the first frame below whose permission they have
+#   3. else fallback-frame
+# In Allium's chat-hover config it is the sender's frame; anywhere else it
+# is the frame of the player looking.
+#
+# Each frame's permission is registered default-false, so operators do not
+# get every frame just for being operators.
+# ------------------------------------------------------------
+
+# The resource pack folder sprites are read from and frames are built into,
+# relative to the server folder.
+pack: plugins/Nexo/pack
+
+fallback-frame: simple
+
+frames:
+  # The trading card frames, drawn from their own art. Listed best first, so
+  # [frame:auto] gives a player the best one they have.
+  fabled:
+    card: fabled
+    permission: allium.frame.fabled
+  legendary:
+    card: legendary
+    permission: allium.frame.legendary
+  ultimate:
+    card: ultimate
+    permission: allium.frame.ultimate
+  elite:
+    card: elite
+    permission: allium.frame.elite
+  simple:
+    card: simple
+    permission: allium.frame.simple
+
+  # A frame from tooltip sprites: any background and any frame, mixed as you
+  # like. Paths are under textures/ in the pack, as namespace:path, and each
+  # sprite's .mcmeta (nine_slice, border, stretch_inner) is honoured. Animated
+  # sprites are drawn from their first frame.
+  #
+  # After adding or changing one: /frame build, then /nexo reload pack.
+  #
+  # width is the frame's width in pixels; text gets 24 less (176 at 200).
+  #
+  # epic:
+  #   background: minecraft:gui/sprites/tooltip/epic_background
+  #   frame: minecraft:gui/sprites/tooltip/epic_frame
+  #   width: 200
+  #   permission: allium.frame.epic
+  #
+  # spooky_epic:
+  #   background: minecraft:gui/sprites/tooltip/epic_background
+  #   frame: minecraft:gui/sprites/tooltip/halloween_1_frame
+  #   permission: allium.frame.spooky_epic

@@ -1049,6 +1049,9 @@ public final class AlliumChannelManager implements Listener {
                         .replace("{prefix}", getPrefix(player))
                         .replace("{group}", group);
                 hover = applyConfigPlaceholders(player, hover);
+                // [frame:auto] in a hover means the sender's frame, and only here
+                // is the sender known; on the way out it would be the viewer's.
+                hover = codes.castled.allium.frames.FrameService.get().substituteAuto(hover, player);
                 updated = updated.hoverEvent(HoverEvent.showText(Text.colorize(hover)));
             }
         }

@@ -490,6 +490,10 @@ commands:
     description: "Turn into the mob on your equipped Fabled trading card"
     usage: "/morph <list|status>"
 
+  frame:
+    description: "Lore frames: which one you get, and building them from frames.yml"
+    usage: "/frame [list|set|reset|build|reload]"
+
 permissions:
   allium.player:
     description: "Gives access to player commands"
@@ -1740,6 +1744,9 @@ permissions:
     default: op
   allium.tradingcards.boosts:
     description: "Allows /tradingcards boosts, to see what cards are equipped"
+    default: op
+  allium.frame.admin:
+    description: "Allows /frame set, reset, build and reload"
     default: op
   allium.tradingcards.frame:
     description: "Allows /tradingcards frame, to put a card frame on any held item"

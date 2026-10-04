@@ -915,6 +915,19 @@ public class PluginStart extends JavaPlugin {
             );
         }
 
+        // Lore frames: frames.yml, the [frame:...] marker's names and /frame.
+        // Loaded before the trading cards, which draw items through it.
+        try {
+            for (String problem : codes.castled.allium.frames.FrameService.load(this)) {
+                getLogger().warning("[Frames] " + problem);
+            }
+            codes.castled.allium.frames.FrameCommand frameCommand =
+                new codes.castled.allium.frames.FrameCommand(this);
+            registerCommand("frame", frameCommand, frameCommand);
+        } catch (Throwable t) {
+            Text.sendDebugLog(ERROR, "Failed to load frames.yml: " + t.getMessage());
+        }
+
         // Trading cards module (mob cards, quality, levelling, trades).
         // Enabled after harvest so it can reuse the shared item resolver
         // chain; it waits on the same Nexo items event.

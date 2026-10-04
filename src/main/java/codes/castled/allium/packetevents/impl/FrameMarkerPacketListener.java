@@ -111,7 +111,7 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
         if (type == PacketType.Play.Server.SYSTEM_CHAT_MESSAGE
             || type == PacketType.Play.Server.DISGUISED_CHAT) {
             try {
-                if (rewriteChat(event, type)) {
+                if (rewriteChat(event, type, event.getPlayer() instanceof Player viewer ? viewer : null)) {
                     event.markForReEncode(true);
                 }
             } catch (Throwable t) {
@@ -132,7 +132,7 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
             return;
         }
         try {
-            if (rewrite(event, type)) {
+            if (rewrite(event, type, player)) {
                 event.markForReEncode(true);
             }
         } catch (Throwable t) {
@@ -144,17 +144,17 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
         }
     }
 
-    private boolean rewrite(PacketSendEvent event, PacketTypeCommon type) {
+    private boolean rewrite(PacketSendEvent event, PacketTypeCommon type, Player viewer) {
         if (type == PacketType.Play.Server.WINDOW_ITEMS) {
             WrapperPlayServerWindowItems packet = new WrapperPlayServerWindowItems(event);
             boolean changed = false;
             List<ItemStack> items = new ArrayList<>(packet.getItems());
             for (ItemStack item : items) {
-                changed |= frame(item);
+                changed |= frame(item, viewer);
             }
             var carried = packet.getCarriedItem();
             if (carried.isPresent()) {
-                changed |= frame(carried.get());
+                changed |= frame(carried.get(), viewer);
             }
             if (changed) {
                 packet.setItems(items);
@@ -164,23 +164,23 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
         }
         if (type == PacketType.Play.Server.SET_SLOT) {
             WrapperPlayServerSetSlot packet = new WrapperPlayServerSetSlot(event);
-            return frame(packet.getItem());
+            return frame(packet.getItem(), viewer);
         }
         if (type == PacketType.Play.Server.SET_CURSOR_ITEM) {
-            return frame(new WrapperPlayServerSetCursorItem(event).getStack());
+            return frame(new WrapperPlayServerSetCursorItem(event).getStack(), viewer);
         }
-        return frame(new WrapperPlayServerSetPlayerInventory(event).getStack());
+        return frame(new WrapperPlayServerSetPlayerInventory(event).getStack(), viewer);
     }
 
     /** Frames the hovers in a chat message. False when none carried a marker. */
-    private static boolean rewriteChat(PacketSendEvent event, PacketTypeCommon type) {
+    private static boolean rewriteChat(PacketSendEvent event, PacketTypeCommon type, Player viewer) {
         if (type == PacketType.Play.Server.SYSTEM_CHAT_MESSAGE) {
             WrapperPlayServerSystemChatMessage packet = new WrapperPlayServerSystemChatMessage(event);
             if (packet.isOverlay()) {
                 return false;
             }
             Component message = packet.getMessage();
-            Component framed = FrameMarker.frameHovers(message);
+            Component framed = FrameMarker.frameHovers(message, viewer);
             if (framed == message) {
                 return false;
             }
@@ -189,7 +189,7 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
         }
         WrapperPlayServerDisguisedChat packet = new WrapperPlayServerDisguisedChat(event);
         Component message = packet.getMessage();
-        Component framed = FrameMarker.frameHovers(message);
+        Component framed = FrameMarker.frameHovers(message, viewer);
         if (framed == message) {
             return false;
         }
@@ -198,7 +198,7 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
     }
 
     /** Frames one item in place. False when it carries no marker. */
-    private static boolean frame(ItemStack item) {
+    private static boolean frame(ItemStack item, Player viewer) {
         if (item == null || item.isEmpty()) {
             return false;
         }
@@ -212,7 +212,7 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
             return false;
         }
         Component title = title(item);
-        item.setComponent(ComponentTypes.LORE, new ItemLore(FrameMarker.frame(title, lines, match)));
+        item.setComponent(ComponentTypes.LORE, new ItemLore(FrameMarker.frame(title, lines, match, viewer)));
         item.setComponent(ComponentTypes.ITEM_NAME, CardTooltipStyle.hiddenName());
         item.unsetComponent(ComponentTypes.CUSTOM_NAME);
         item.setComponent(ComponentTypes.TOOLTIP_STYLE, new ItemTooltipStyle(STYLE));

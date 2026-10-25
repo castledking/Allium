@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -25,9 +26,9 @@ import org.bukkit.permissions.PermissionAttachment;
  *       modifiers are keyed, and a boost whose removal is skipped outlives the
  *       card. Every apply records exactly what it added, and the teardown reads
  *       that record rather than recomputing it.
- *   <li><b>Attribute modifiers are engine-owned.</b> A Bukkit attribute
- *       modifier disappears with the entity, so unequip only has to null out our
- *       references; AuraSkills state has to be removed explicitly.
+ *   <li><b>Attribute modifiers require removal too.</b> Scale and flight speed
+ *       live on the player until explicitly removed, even after a card leaves
+ *       its slot. Forgetting the record does not revoke the modifier.
  *   <li><b>Apply is idempotent.</b> Re-equipping a card, reloading the config,
  *       or re-logging must not stack two copies of the same boost. Every apply
  *       removes the previous one first.
@@ -37,6 +38,7 @@ public class BoostService {
 
     private final Logger logger;
     private final AuraSkillsBridge aura;
+    private final Function<String, Attribute> attributeLookup;
     private final Map<String, BoostCatalog.LoadResult> catalogHolder = new LinkedHashMap<>();
 
     /**
@@ -48,6 +50,7 @@ public class BoostService {
      * catalogue amount, so a card is never left without a value.
      */
     private volatile StartingBoosts startingBoosts;
+    private volatile BonusStrength bonusStrength = BonusStrength.defaults();
     private volatile List<codes.castled.allium.tradingcards.card.QualityBand> bands =
         List.of();
 
@@ -68,8 +71,14 @@ public class BoostService {
     private volatile double scaleMax = 1.9;
 
     public BoostService(Logger logger, AuraSkillsBridge aura) {
+        this(logger, aura, BoostService::resolve);
+    }
+
+    /** Keeps registry access at the boundary so modifier lifecycles can be tested without a server. */
+    BoostService(Logger logger, AuraSkillsBridge aura, Function<String, Attribute> attributeLookup) {
         this.logger = logger;
         this.aura = aura;
+        this.attributeLookup = attributeLookup;
     }
 
     /**
@@ -97,6 +106,11 @@ public class BoostService {
                             UUID modifierId, String auraModifierName, String permission) {
             this(boostId, mechanism, attribute, modifierId, auraModifierName, permission, 0.0);
         }
+    }
+
+    /** Installs the strength range, so a bonus applies the value its lore shows. */
+    public void bonusStrength(BonusStrength range) {
+        this.bonusStrength = range == null ? BonusStrength.defaults() : range;
     }
 
     /** Installs the starting-boost derivation, so applied values match the lore. */
@@ -172,14 +186,20 @@ public class BoostService {
         // grows the card's identity rather than its loot. They are read by
         // consumers rather than applied here, so a bonus boost whose source
         // plugin is absent costs the player nothing they would otherwise have.
-        for (String bonusId : card.bonuses()) {
+        int unlockedBonuses = Math.min(card.bonuses().size(), card.tier().ordinal() + 1);
+        for (int i = 0; i < unlockedBonuses; i++) {
+            String bonusId = card.bonusAt(i);
+            if (bonusId.isBlank() || card.signatures().contains(bonusId)) continue;
             BoostDefinition boost = boosts.get(bonusId);
             if (boost == null) {
                 logger.fine("[tradingcards] Card " + card.cardId() + " names unknown "
                     + "bonus '" + bonusId + "'; skipped");
                 continue;
             }
-            double value = boost.totalAt(0, boostPerLevel, scaleMin, scaleMax);
+            double value = bonusStrength.valueOf(boost, card.bonusStrengthAt(i));
+            if (boost.mechanism() == BoostMechanism.CARD_SCALE) {
+                value = Math.max(scaleMin, Math.min(scaleMax, value));
+            }
             if (applyOne(player, boost, value)) {
                 granted.add(boost.id());
             }
@@ -233,7 +253,7 @@ public class BoostService {
                 yield true;
             }
             case ATTRIBUTE -> {
-                Attribute attribute = resolve(boost.option("attribute", ""));
+                Attribute attribute = attributeLookup.apply(boost.option("attribute", ""));
                 if (attribute == null || value <= 0) {
                     yield false;
                 }
@@ -259,21 +279,25 @@ public class BoostService {
                     yield false;
                 }
                 double clamped = Math.max(scaleMin, Math.min(scaleMax, value));
-                AttributeInstance instance = player.getAttribute(Attribute.SCALE);
+                Attribute attribute = attributeLookup.apply("scale");
+                if (attribute == null) yield false;
+                AttributeInstance instance = player.getAttribute(attribute);
                 if (instance == null) {
                     yield false;
                 }
                 UUID modifierId = modifierId(player, boost.id());
                 instance.addModifier(new AttributeModifier(modifierId, "tradingcard", clamped,
                     AttributeModifier.Operation.MULTIPLY_SCALAR_1));
-                record(player, new AppliedBoost(boost.id(), boost.mechanism(), Attribute.SCALE,
+                record(player, new AppliedBoost(boost.id(), boost.mechanism(), attribute,
                     modifierId, null, null, clamped));
                 yield true;
             }
             case CARD_FLIGHT_SPEED -> {
                 // Only meaningful while flying, but FLYING_SPEED is an ordinary
                 // attribute and holds its value, so no listener is needed.
-                AttributeInstance instance = player.getAttribute(Attribute.FLYING_SPEED);
+                Attribute attribute = attributeLookup.apply("flying_speed");
+                if (attribute == null) yield false;
+                AttributeInstance instance = player.getAttribute(attribute);
                 if (instance == null || value <= 0.0) {
                     yield false;
                 }
@@ -281,7 +305,7 @@ public class BoostService {
                 instance.addModifier(new AttributeModifier(modifierId, "tradingcard", value,
                     AttributeModifier.Operation.ADD_SCALAR));
                 record(player, new AppliedBoost(boost.id(), boost.mechanism(),
-                    Attribute.FLYING_SPEED, modifierId, null, null, value));
+                    attribute, modifierId, null, null, value));
                 yield true;
             }
             case CARD_PERMISSION -> {
@@ -324,30 +348,47 @@ public class BoostService {
     /**
      * Removes every boost this plugin applied to a player.
      *
-     * <p>Safe to call when nothing is applied, and safe to call twice: the
-     * second call finds an empty record and does nothing. That matters because
-     * unequip, quit and module disable can all fire for the same player.
+     * <p>Safe to call twice, including after the old version lost its record:
+     * deterministic modifier IDs let us repair orphaned card attributes too.
      */
     public void remove(Player player) {
         if (player == null) return;
         UUID id = player.getUniqueId();
-        Map<String, AppliedBoost> boosts = applied.remove(id);
-        if (boosts == null || boosts.isEmpty()) {
-            return;
+        Map<String, AppliedBoost> boosts = applied.get(id);
+        if (boosts != null) {
+            for (AppliedBoost boost : boosts.values()) {
+                removeOne(player, boost);
+            }
+            applied.remove(id);
         }
-        for (AppliedBoost boost : boosts.values()) {
-            removeOne(player, boost);
+        removeOrphanedAttributes(player);
+    }
+
+    private void removeOrphanedAttributes(Player player) {
+        // These shipped IDs may remain even if an operator removed their catalogue entries.
+        removeAttribute(player, attributeLookup.apply("scale"), modifierId(player, "scale"));
+        removeAttribute(player, attributeLookup.apply("flying_speed"), modifierId(player, "flight-speed"));
+        for (BoostDefinition boost : catalog.boosts().values()) {
+            Attribute attribute = switch (boost.mechanism()) {
+                case CARD_SCALE -> attributeLookup.apply("scale");
+                case CARD_FLIGHT_SPEED -> attributeLookup.apply("flying_speed");
+                case ATTRIBUTE -> attributeLookup.apply(boost.option("attribute", ""));
+                default -> null;
+            };
+            removeAttribute(player, attribute, modifierId(player, boost.id()));
         }
+    }
+
+    private static void removeAttribute(Player player, Attribute attribute, UUID modifierId) {
+        if (attribute == null || modifierId == null) return;
+        AttributeInstance instance = player.getAttribute(attribute);
+        if (instance != null) instance.removeModifier(modifierId);
     }
 
     private void removeOne(Player player, AppliedBoost boost) {
         switch (boost.mechanism()) {
-            case ATTRIBUTE -> {
-                if (boost.attribute() == null || boost.modifierId() == null) return;
-                AttributeInstance instance = player.getAttribute(boost.attribute());
-                if (instance == null) return;
-                instance.removeModifier(boost.modifierId());
-            }
+            case ATTRIBUTE, CARD_SCALE, CARD_FLIGHT_SPEED ->
+                removeAttribute(player, boost.attribute(), boost.modifierId());
             case AURASKILL_STAT -> {
                 if (boost.auraModifierName() != null) {
                     aura.removeStat(player.getUniqueId(), boost.boostId());

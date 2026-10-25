@@ -1,8 +1,10 @@
 package codes.castled.allium.util;
 
+import io.papermc.paper.entity.Shearable;
 import org.bukkit.GameRule;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.entity.LivingEntity;
 
 import java.lang.reflect.Field;
 
@@ -18,6 +20,41 @@ import java.lang.reflect.Field;
 public final class ApiCompat {
 
     private ApiCompat() {}
+
+    /**
+     * The sulfur cube entity type, or {@code null} on a server old enough not to have it.
+     *
+     * <p>Resolved by name because naming the type directly compiles cleanly against a newer
+     * Paper API and then throws {@link NoClassDefFoundError} on an older one — and this sits in
+     * the middle of the mob disarmer's path, so every mob the player points it at would fail.
+     */
+    private static final Class<?> SULFUR_CUBE = classOrNull("org.bukkit.entity.SulfurCube");
+
+    private static Class<?> classOrNull(String name) {
+        try {
+            return Class.forName(name);
+        } catch (ClassNotFoundException | LinkageError ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * The entity as something shearable, but only when it really is a sulfur cube.
+     *
+     * <p>Sheep are {@link Shearable} too, so testing the interface alone would quietly start
+     * shearing them for a charge — a change to what the item does rather than a version fix, so
+     * the mob list is gated on the named type and left as it was.
+     *
+     * <p>The shear itself goes through {@link Shearable}, whose shape is identical on every
+     * supported server, so nothing past that one class lookup is reflective.
+     *
+     * @return the shearable, or {@code null} when the entity is not a sulfur cube, or the
+     *         server has no such mob
+     */
+    public static Shearable sulfurCube(LivingEntity entity) {
+        if (SULFUR_CUBE == null || entity == null || !SULFUR_CUBE.isInstance(entity)) return null;
+        return entity instanceof Shearable shearable ? shearable : null;
+    }
 
     /** {@code locatorBar} game rule, added in 1.21.6. */
     private static final GameRule<Boolean> LOCATOR_BAR = booleanGameRule("locatorBar");

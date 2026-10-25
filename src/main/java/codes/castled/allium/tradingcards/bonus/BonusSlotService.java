@@ -1,6 +1,7 @@
 package codes.castled.allium.tradingcards.bonus;
 
 import codes.castled.allium.managers.economy.EconomyManager;
+import codes.castled.allium.tradingcards.boost.BonusStrength;
 import codes.castled.allium.tradingcards.boost.BoostCatalog;
 import codes.castled.allium.tradingcards.card.Tier;
 import codes.castled.allium.tradingcards.config.TradingCardsConfig;
@@ -16,29 +17,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
 /**
- * Buying and managing a card's bonus slots.
- *
- * <p>Separate from {@link codes.castled.allium.tradingcards.reroll.RerollService}
- * because the two answer different questions. A reroll is a lottery on the card
- * as a whole: it may unlock a signature, and once the signature pool is spent it
- * re-rolls the bonuses as a consolation. A slot is a purchase — the player picks
- * the slot, sees the price, pays, and the slot is filled. Each roll of a slot
- * costs more than the last, and the money spent is kept so the card can show a
- * player what they have put into it.
- *
- * <p>Which is why a reroll must never touch a locked slot, and should only fill
- * slots that are empty. A slot costs real money; letting a reroll quietly
- * overwrite one would make buying it pointless.
- *
- * <p>Slot state lives on the stack's PDC rather than in
- * {@link TradingCardData}, because the card record is written by every path
- * that touches a card and threading roll counts through all of them would make
- * every write a chance to lose a player's spending. Only this class reads or
- * writes it.
- *
- * <p>Nothing here writes the card. The caller writes the bonuses and the state
- * and refunds if that fails, keeping the charge and the write separable the same
- * way the reroll does it.
+ * Rolls the tier's unlocked bonus slots, with persisted prices and optional locks.
+ * Signature boosts are fixed by tier and never belong to this service.
  */
 public final class BonusSlotService {
 
@@ -111,19 +91,24 @@ public final class BonusSlotService {
         return slot >= 0 && slot < unlockedSlots(card.tier());
     }
 
-    /** What the next roll of this slot costs, escalating with the rolls so far. */
-    public double costFor(TradingCardData card, int slot) {
-        BonusSlot s = slot >= 0 && slot < slotCount ? slots(card, slot).get(slot)
-            : BonusSlot.EMPTY;
-        return pricing.costFor(s.rolls(), card.tier());
+    /** The next price, including this item's persisted roll history. */
+    public double costFor(TradingCardData card, int slot, ItemStack stack) {
+        List<BonusSlot> current = slots(stack, card);
+        BonusSlot state = slot >= 0 && slot < slotCount ? current.get(slot) : BonusSlot.EMPTY;
+        return pricing.costFor(state.rolls(), card.tier());
     }
 
-    /** True when this exact slot can be rolled right now, ignoring money. */
+    public double costFor(TradingCardData card, int slot) {
+        return costFor(card, slot, null);
+    }
+
+    public boolean canRoll(TradingCardData card, int slot, ItemStack stack) {
+        if (!pricing.enabled() || !isTierUnlocked(card, slot)) return false;
+        return !slots(stack, card).get(slot).locked() && !availablePool(card).isEmpty();
+    }
+
     public boolean canRoll(TradingCardData card, int slot) {
-        if (!pricing.enabled() || slot < 0 || slot >= slotCount) return false;
-        if (!isTierUnlocked(card, slot)) return false;
-        BonusSlot s = slots(card, slot).get(slot);
-        return !s.locked() && !availablePool(card).isEmpty();
+        return canRoll(card, slot, null);
     }
 
     /** The card's slots, padded to the configured slot count. */
@@ -145,7 +130,8 @@ public final class BonusSlotService {
         List<BonusSlot> out = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             BonusSlot st = i < state.size() ? state.get(i) : BonusSlot.EMPTY;
-            out.add(new BonusSlot(card.bonusAt(i), st.rolls(), st.spent(), st.locked()));
+            out.add(new BonusSlot(card.bonusAt(i), st.rolls(), st.spent(), st.locked(),
+                card.bonusStrengthAt(i)));
         }
         return List.copyOf(out);
     }
@@ -183,7 +169,7 @@ public final class BonusSlotService {
                 "This card already holds every bonus its tier can roll.");
         }
 
-        double cost = costFor(card, slot);
+        double cost = costFor(card, slot, stack);
         if (economy == null) {
             return fail(Outcome.DISABLED, card, slot,
                 "The economy is unavailable, so a bonus slot cannot be charged for.");
@@ -199,10 +185,16 @@ public final class BonusSlotService {
         }
 
         String rolled = pool.get(random.nextInt(pool.size()));
+        // A strength only for a boost with a magnitude: a permission has no
+        // weak or strong roll, so it gets no bar rather than a meaningless one.
+        var definition = catalog.boosts().get(rolled);
+        Integer strength = definition != null && BonusStrength.rolls(definition.mechanism())
+            ? pricing.strength().roll(random) : null;
         List<BonusSlot> next = new ArrayList<>(current);
-        next.set(slot, target.rolled(rolled, cost));
+        next.set(slot, target.rolled(rolled, strength, cost));
         return new Result(Outcome.ROLLED, cost, slot, rolled, List.copyOf(next),
-            "Rolled " + rolled + " into bonus slot " + (slot + 1) + ".");
+            "Rolled " + rolled + (strength == null ? "" : " at " + strength + "% strength")
+                + " into bonus slot " + (slot + 1) + ".");
     }
 
     /** Locks or unlocks a slot. Refused for a slot the tier has not opened. */
@@ -254,18 +246,26 @@ public final class BonusSlotService {
         economy.deposit(player, BigDecimal.valueOf(cost));
     }
 
-    /** Writes the boost ids back onto the card. */
+    /** Writes the boost ids, and the strength each rolled at, back onto the card. */
     public void writeBonuses(ItemStack stack, TradingCardData card, List<BonusSlot> slots) {
         List<String> ids = new ArrayList<>(slots.size());
+        List<Integer> strengths = new ArrayList<>(slots.size());
         for (BonusSlot s : slots) {
             ids.add(s.id());
+            strengths.add(s.strength());
         }
-        TradingCardData.write(stack, card.withBonuses(List.copyOf(ids)));
+        TradingCardData.write(stack, card.withBonuses(List.copyOf(ids), strengths));
+    }
+
+    /** The strength range rolls are drawn against. */
+    public BonusStrength strength() {
+        return pricing.strength();
     }
 
     /** Writes roll count, spend and lock flags. Removes the key when all default. */
     public void writeState(ItemStack stack, List<BonusSlot> slots) {
-        var pdc = stack.getItemMeta().getPersistentDataContainer();
+        var meta = stack.getItemMeta();
+        var pdc = meta.getPersistentDataContainer();
         List<String> parts = new ArrayList<>(slots.size());
         boolean any = false;
         for (BonusSlot s : slots) {
@@ -275,12 +275,12 @@ public final class BonusSlotService {
         }
         if (!any) {
             pdc.remove(TradingCardKeys.SLOT_STATE);
-            stack.setItemMeta(stack.getItemMeta());
+            stack.setItemMeta(meta);
             return;
         }
         pdc.set(TradingCardKeys.SLOT_STATE, PersistentDataType.STRING,
             String.join(";", parts));
-        stack.setItemMeta(stack.getItemMeta());
+        stack.setItemMeta(meta);
     }
 
     private List<BonusSlot> readState(ItemStack stack) {
@@ -304,7 +304,9 @@ public final class BonusSlotService {
     private List<String> availablePool(TradingCardData card) {
         List<String> pool = new ArrayList<>(catalog.bonusPool()
             .getOrDefault(card.tier() == null ? Tier.SIMPLE : card.tier(), List.of()));
-        pool.removeIf(id -> id == null || id.isBlank() || card.bonuses().contains(id));
+        List<String> active = card.bonuses().stream().limit(unlockedSlots(card.tier())).toList();
+        pool.removeIf(id -> id == null || id.isBlank() || active.contains(id)
+            || card.signatures().contains(id));
         return pool;
     }
 

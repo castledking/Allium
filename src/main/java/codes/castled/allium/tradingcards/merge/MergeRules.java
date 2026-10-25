@@ -9,7 +9,8 @@ import java.util.Optional;
  * Whether two cards may be merged, and what the result would be.
  *
  * <p>A merge is two cards of the <b>same mob</b> at <b>maximum level</b> of the
- * <b>same tier</b> becoming one card of the next tier at level 0.
+ * <b>same tier</b> becoming one card of the next tier at level 0, carrying the
+ * higher of the two qualities.
  *
  * <p>Level 0 is deliberate. A dropped card also starts at level 0, so a merged
  * card is worth exactly what a fresh drop of the next tier would be worth.
@@ -25,13 +26,11 @@ import java.util.Optional;
 public final class MergeRules {
 
     private final boolean enabled;
-    private final boolean requireSameMob;
     private final int maximumLevel;
     private final int targetLevel;
 
-    public MergeRules(boolean enabled, boolean requireSameMob, int maximumLevel, int targetLevel) {
+    public MergeRules(boolean enabled, int maximumLevel, int targetLevel) {
         this.enabled = enabled;
-        this.requireSameMob = requireSameMob;
         this.maximumLevel = maximumLevel;
         this.targetLevel = targetLevel;
     }
@@ -80,7 +79,7 @@ public final class MergeRules {
         if (first == null || second == null) {
             return Verdict.no(Denial.DIFFERENT_MOBS, "Put two trading cards in the slots.");
         }
-        if (requireSameMob && !first.mob().equalsIgnoreCase(second.mob())) {
+        if (!first.mob().equalsIgnoreCase(second.mob())) {
             return Verdict.no(Denial.DIFFERENT_MOBS,
                 "Those are different mobs — " + display(first.mob()) + " and "
                     + display(second.mob()) + ".");
@@ -92,9 +91,8 @@ public final class MergeRules {
         }
         if (!isMaximum(first) || !isMaximum(second)) {
             return Verdict.no(Denial.NOT_MAXIMUM,
-                "Both cards must be level " + maximumLevel + " first — "
-                    + first.tier().name().toLowerCase(java.util.Locale.ROOT)
-                    + " is at " + first.level() + " and level " + second.level() + ".");
+                "Both cards must be level " + maximumLevel + " first — they are level "
+                    + first.level() + " and " + second.level() + ".");
         }
         Optional<Tier> next = nextTier(first.tier());
         if (next.isEmpty()) {
@@ -124,15 +122,18 @@ public final class MergeRules {
     }
 
     /**
-     * The signature list a merged card starts with.
+     * The quality a merged card carries: the better of the two.
      *
-     * <p>The three every card drops with, not the union of both inputs: a merge
-     * produces a card of a higher tier, and its signatures are that tier's
-     * identity. Carrying a FABLED card's lucky unlock into an ELITE card would
-     * give the merged card a signature its own tier's pool could not roll.
+     * <p>Both inputs are spent, so averaging or keeping the first card's
+     * quality would punish whoever opened the menu from the worse card.
      */
-    public List<String> mergedSignatures() {
-        return codes.castled.allium.tradingcards.card.CardFactory.BASE_SIGNATURES;
+    public int mergedQuality(TradingCardData first, TradingCardData second) {
+        return Math.max(first.quality(), second.quality());
+    }
+
+    /** Fixed signatures for the tier the merge produces. */
+    public List<String> mergedSignatures(Tier resultTier) {
+        return codes.castled.allium.tradingcards.card.CardFactory.startingSignatures(resultTier);
     }
 
     /** The level a merged card lands at. */

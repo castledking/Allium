@@ -6,7 +6,6 @@ import codes.castled.allium.tradingcards.card.CardDefinition;
 import codes.castled.allium.tradingcards.card.QualityBand;
 import codes.castled.allium.tradingcards.card.Tier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,8 +37,27 @@ public record TradingCardData(
     List<String> bonuses,
     double xp,
     int rerolls,
-    boolean bound
+    boolean bound,
+    List<Integer> bonusStrengths
 ) {
+
+    /**
+     * {@code bonusStrengths} runs parallel to {@code bonuses}; a null or missing
+     * entry is a bonus rolled before strengths existed. Nulls are allowed, so it
+     * is not a {@code List.copyOf}.
+     */
+    public TradingCardData {
+        bonusStrengths = bonusStrengths == null ? List.of()
+            : java.util.Collections.unmodifiableList(new ArrayList<>(bonusStrengths));
+    }
+
+    /** A card whose bonuses carry no rolled strength. */
+    public TradingCardData(String mob, String cardId, Tier tier, int level, int quality,
+                           List<String> signatures, List<String> bonuses, double xp,
+                           int rerolls, boolean bound) {
+        this(mob, cardId, tier, level, quality, signatures, bonuses, xp, rerolls, bound,
+            List.of());
+    }
 
     /** A card with nothing but its three starting signatures and no banked xp. */
     public TradingCardData(String mob, String cardId, Tier tier, int level, int quality,
@@ -102,11 +120,12 @@ public record TradingCardData(
             tier,
             pdc.getOrDefault(TradingCardKeys.LEVEL, PersistentDataType.INTEGER, 0),
             pdc.getOrDefault(TradingCardKeys.QUALITY, PersistentDataType.INTEGER, 100),
-            readSignatures(pdc.get(TradingCardKeys.SIGNATURES, PersistentDataType.STRING)),
-            readSignatures(pdc.get(TradingCardKeys.BONUSES, PersistentDataType.STRING)),
+            codes.castled.allium.tradingcards.card.CardFactory.startingSignatures(tier),
+            readBonuses(pdc.get(TradingCardKeys.BONUSES, PersistentDataType.STRING)),
             readXp(pdc),
             pdc.getOrDefault(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, 0),
-            pdc.getOrDefault(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) 0) == 1));
+            pdc.getOrDefault(TradingCardKeys.BOUND, PersistentDataType.BYTE, (byte) 0) == 1,
+            readStrengths(pdc.get(TradingCardKeys.BONUS_STRENGTHS, PersistentDataType.STRING))));
     }
 
     /**
@@ -203,6 +222,8 @@ public record TradingCardData(
      * {@link #isCard} recognises it.
      */
     public static void write(ItemStack stack, TradingCardData data) {
+        data = data.withReroll(data.rerolls(),
+            codes.castled.allium.tradingcards.card.CardFactory.startingSignatures(data.tier()));
         ItemMeta meta = stack.getItemMeta();
         if (meta == null) return;
         var pdc = meta.getPersistentDataContainer();
@@ -217,6 +238,12 @@ public record TradingCardData(
         pdc.set(TradingCardKeys.SIGNATURES, PersistentDataType.STRING,
             String.join(",", data.signatures()));
         pdc.set(TradingCardKeys.BONUSES, PersistentDataType.STRING, writeBonuses(data));
+        String strengths = writeStrengths(data);
+        if (strengths.isEmpty()) {
+            pdc.remove(TradingCardKeys.BONUS_STRENGTHS);
+        } else {
+            pdc.set(TradingCardKeys.BONUS_STRENGTHS, PersistentDataType.STRING, strengths);
+        }
         // A string, not a double: see readXp.
         pdc.set(TradingCardKeys.XP, PersistentDataType.STRING, Double.toString(data.xp()));
         pdc.set(TradingCardKeys.REROLLS, PersistentDataType.INTEGER, data.rerolls());
@@ -272,19 +299,19 @@ public record TradingCardData(
     /** A copy of this card at a different level. */
     public TradingCardData withLevel(int newLevel) {
         return new TradingCardData(mob, cardId, tier, newLevel, quality, signatures, bonuses,
-            xp, rerolls, bound);
+            xp, rerolls, bound, bonusStrengths);
     }
 
     /** A copy of this card with a different banked xp toward its next level. */
     public TradingCardData withXp(double newXp) {
         return new TradingCardData(mob, cardId, tier, level, quality, signatures, bonuses,
-            newXp, rerolls, bound);
+            newXp, rerolls, bound, bonusStrengths);
     }
 
     /** A copy of this card one reroll further on. */
     public TradingCardData withReroll(int newRerolls, List<String> newSignatures) {
         return new TradingCardData(mob, cardId, tier, level, quality, newSignatures, bonuses,
-            xp, newRerolls, bound);
+            xp, newRerolls, bound, bonusStrengths);
     }
 
     /**
@@ -296,6 +323,12 @@ public record TradingCardData(
     public TradingCardData withBonuses(List<String> newBonuses) {
         return new TradingCardData(mob, cardId, tier, level, quality, signatures,
             List.copyOf(newBonuses), xp, rerolls, bound);
+    }
+
+    /** A copy with different bonus boosts and the strength each rolled at. */
+    public TradingCardData withBonuses(List<String> newBonuses, List<Integer> newStrengths) {
+        return new TradingCardData(mob, cardId, tier, level, quality, signatures,
+            List.copyOf(newBonuses), xp, rerolls, bound, newStrengths);
     }
 
     /** True when the card has reached the level at which it can be merged. */
@@ -329,6 +362,11 @@ public record TradingCardData(
         return slot >= 0 && slot < bonuses.size() ? bonuses.get(slot) : "";
     }
 
+    /** The strength the bonus in a slot rolled at, or null when it predates strengths. */
+    public Integer bonusStrengthAt(int slot) {
+        return slot >= 0 && slot < bonusStrengths.size() ? bonusStrengths.get(slot) : null;
+    }
+
     /** A copy with one bonus slot set. An empty id clears the slot. */
     public TradingCardData withBonusAt(int slot, String boostId, int slotCount) {
         List<String> next = new ArrayList<>();
@@ -338,18 +376,11 @@ public record TradingCardData(
         if (slot >= 0 && slot < next.size()) {
             next.set(slot, boostId == null ? "" : boostId);
         }
+        // The slot's old strength belonged to the old bonus, so it goes with it.
+        List<Integer> strengths = new ArrayList<>(bonusStrengths);
+        if (slot >= 0 && slot < strengths.size()) strengths.set(slot, null);
         return new TradingCardData(mob, cardId, tier, level, quality, signatures,
-            List.copyOf(next), xp, rerolls, bound);
-    }
-
-    private static List<String> readSignatures(String raw) {
-        if (raw == null || raw.isBlank()) return List.of();
-        List<String> out = new ArrayList<>();
-        for (String part : Arrays.asList(raw.split(","))) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) out.add(trimmed);
-        }
-        return List.copyOf(out);
+            List.copyOf(next), xp, rerolls, bound, strengths);
     }
 
     /** Serialises bonuses keeping empty slots in place. See {@link #EMPTY_SLOT}. */
@@ -359,6 +390,34 @@ public record TradingCardData(
             parts.add(bonus == null || bonus.isBlank() ? EMPTY_SLOT : bonus);
         }
         return String.join(",", parts);
+    }
+
+    /** Serialises strengths in slot order, {@link #EMPTY_SLOT} where none was rolled. */
+    private static String writeStrengths(TradingCardData data) {
+        List<String> parts = new ArrayList<>();
+        boolean any = false;
+        for (int i = 0; i < data.bonuses().size(); i++) {
+            Integer strength = data.bonusStrengthAt(i);
+            boolean held = strength != null && !data.bonusAt(i).isBlank();
+            any |= held;
+            parts.add(held ? strength.toString() : EMPTY_SLOT);
+        }
+        return any ? String.join(",", parts) : "";
+    }
+
+    static List<Integer> readStrengths(String raw) {
+        if (raw == null || raw.isBlank()) return List.of();
+        List<Integer> out = new ArrayList<>();
+        for (String part : raw.split(",", -1)) {
+            try {
+                out.add(Integer.parseInt(part.trim()));
+            } catch (NumberFormatException e) {
+                // The placeholder, or a hand-edit: either way no strength, so
+                // the bonus reads at the value it had before strengths.
+                out.add(null);
+            }
+        }
+        return out;
     }
 
     /**

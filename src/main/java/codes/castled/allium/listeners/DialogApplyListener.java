@@ -94,7 +94,11 @@ public class DialogApplyListener implements Listener {
             return;
         }
         if (!plugin.getNicknameManager().isValidNickname(nickname)) {
-            player.sendMessage("§cInvalid nickname.");
+            if (plugin.getNicknameManager().isPlayerName(nickname)) {
+                player.sendMessage("§cYou aren't allowed to use that name.");
+            } else {
+                player.sendMessage("§cInvalid nickname.");
+            }
             return;
         }
         if (plugin.getNicknameManager().isOnCooldown(player)) {

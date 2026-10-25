@@ -3,6 +3,7 @@ package codes.castled.allium.tradingcards.item;
 import codes.castled.allium.frames.FrameService;
 import codes.castled.allium.frames.FramesConfig;
 import codes.castled.allium.tradingcards.card.Tier;
+import codes.castled.allium.util.ComponentCompat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -11,6 +12,7 @@ import java.util.regex.Pattern;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentLike;
+import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.TranslationArgument;
@@ -171,14 +173,7 @@ public final class FrameMarker {
         List<Component> rest = new ArrayList<>(lines);
         rest.remove(match.line());
         List<Component> framed = FrameService.get().frame(match.name(), viewer).hover(rest);
-        var joined = Component.text();
-        for (int i = 0; i < framed.size(); i++) {
-            if (i > 0) {
-                joined.append(Component.newline());
-            }
-            joined.append(framed.get(i));
-        }
-        return joined.build();
+        return ComponentCompat.join(JoinConfiguration.newlines(), framed);
     }
 
     /**
@@ -191,7 +186,9 @@ public final class FrameMarker {
         split(text, Style.empty(), lines);
         List<Component> out = new ArrayList<>(lines.size());
         for (List<Component> runs : lines) {
-            out.add(runs.size() == 1 ? runs.get(0) : Component.text().append(runs).build());
+            // join hands a lone run straight back rather than wrapping it, which is
+            // what this line wants: one run needs no parent.
+            out.add(ComponentCompat.join(runs));
         }
         return out;
     }

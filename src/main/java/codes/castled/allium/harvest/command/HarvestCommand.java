@@ -137,6 +137,20 @@ public final class HarvestCommand implements CommandExecutor, TabCompleter {
         msg(sender, "<green>Gave " + amount + "× " + ref + " to " + target.getName() + ".</green>");
     }
 
+    private void inspectBlockStage(Player player, CropInstance crop) {
+        module.registry().crop(crop.cropId())
+            .flatMap(definition -> definition.path(crop.pathId())
+                .map(path -> path.stage(crop.stage())))
+            .filter(stage -> stage.isBlockStage())
+            .ifPresent(stage -> {
+                var state = module.visuals().blockStateOf(player.getWorld(), crop, stage);
+                msg(player, "<gray>Block:</gray> <white>" + state.wanted() + "</white>"
+                    + " <gray>wants=</gray>" + state.wantedState()
+                    + " <gray>has=</gray>" + state.actualState()
+                    + (state.matches() ? " <green>(ok)</green>" : " <red>(mismatch)</red>"));
+            });
+    }
+
     private void crop(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
             msg(sender, "<red>Crop commands are player-only.</red>");
@@ -158,6 +172,7 @@ public final class HarvestCommand implements CommandExecutor, TabCompleter {
                             + "</gray>");
                     }
                     msg(player, "<gray>Instance " + crop.instanceId() + ", cells=" + crop.cells().size() + "</gray>");
+                    inspectBlockStage(player, crop);
                 }, () -> msg(player, "<red>No crop in sight (look at the crop or its soil).</red>"));
             }
             case "plant" -> {

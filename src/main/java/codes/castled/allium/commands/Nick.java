@@ -27,7 +27,7 @@ public class Nick implements CommandExecutor {
         // Check basic nick permission (for using /nick at all)
         boolean hasNickPerm = isPlayer && ((Player) sender).hasPermission("allium.nick");
         boolean hasGuiPerm = isPlayer && ((Player) sender).hasPermission("allium.nick.gui");
-        boolean hasOthersPerm = isPlayer && ((Player) sender).hasPermission("allium.nick.others");
+        boolean hasOthersPerm = isPlayer && ((Player) sender).hasPermission("allium.nick.other");
         boolean hasAdminPerm = isPlayer && ((Player) sender).hasPermission("allium.admin");
         
         // Check for -p (pass-through) or -c (command mode) flags
@@ -78,7 +78,7 @@ public class Nick implements CommandExecutor {
                 if (plugin.getServer().getPlayerExact(stripped) != null || 
                     (plugin.getServer().getOfflinePlayer(stripped) != null && 
                      plugin.getServer().getOfflinePlayer(stripped).hasPlayedBefore())) {
-                    target.sendMessage("§cThat nickname is already in use by a player.");
+                    target.sendMessage("§cYou aren't allowed to use that name.");
                 } else {
                     target.sendMessage("§cInvalid nickname.");
                 }
@@ -102,7 +102,7 @@ public class Nick implements CommandExecutor {
             }
             Player player = (Player) sender;
             if (hasNickPerm || hasGuiPerm) {
-                sender.sendMessage("§cUsage: /nick <name>");
+                sender.sendMessage("§cUsage: /nick <name|off>");
             } else {
                 Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "set your nickname.", true);
             }
@@ -121,6 +121,10 @@ public class Nick implements CommandExecutor {
                 return true;
             }
             String firstArg = actualArgs[0];
+            // /nick off - reset own nickname back to real name
+            if (firstArg.equalsIgnoreCase("off")) {
+                return resetNickname(sender, player);
+            }
             // Always check permissions when args are provided (no dialog bypass)
             if (!hasColorPermission(player, firstArg)) {
                 Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "use those colors/formats.", true);
@@ -161,6 +165,10 @@ public class Nick implements CommandExecutor {
                 nickname = actualArgs[1];
             }
             
+            if (nickname.equalsIgnoreCase("off")) {
+                return resetNickname(sender, target);
+            }
+            
             return setNickname(sender, target, nickname);
         }
         
@@ -176,6 +184,9 @@ public class Nick implements CommandExecutor {
                     return true;
                 }
                 String nickname = actualArgs[1];
+                if (nickname.equalsIgnoreCase("off")) {
+                    return resetNickname(sender, target);
+                }
                 return setNickname(sender, target, nickname);
             }
             
@@ -195,6 +206,9 @@ public class Nick implements CommandExecutor {
             
             // /nick <player> <name> - set directly without GUI
             String nickname = actualArgs[1];
+            if (nickname.equalsIgnoreCase("off")) {
+                return resetNickname(player, target);
+            }
             if (!hasColorPermission(player, nickname)) {
                 Text.sendErrorMessage(player, "no-permission", plugin.getLangManager(), "use /{cmd}", "use those colors/formats.", true);
                 return true;
@@ -286,9 +300,29 @@ public class Nick implements CommandExecutor {
                 sender.sendMessage(PrismaticAPI.colorize("&aSet " + target.getName() + "'s nickname to: " + nickname));
             }
         } else {
-            sender.sendMessage(PrismaticAPI.colorize("&cInvalid nickname! Must be " + 
-                plugin.getNicknameManager().getMinNickLength() + "-" + 
-                plugin.getNicknameManager().getMaxNickLength() + " characters."));
+            // Distinguish impersonation (name belongs to a player) from other validation failures
+            if (plugin.getNicknameManager().isPlayerName(nickname)) {
+                sender.sendMessage("§cYou aren't allowed to use that name.");
+            } else {
+                sender.sendMessage(PrismaticAPI.colorize("&cInvalid nickname! Must be " +
+                    plugin.getNicknameManager().getMinNickLength() + "-" +
+                    plugin.getNicknameManager().getMaxNickLength() + " characters."));
+            }
+        }
+        
+        return true;
+    }
+    
+    private boolean resetNickname(CommandSender sender, Player target) {
+        if (plugin.getNicknameManager() == null) {
+            Text.sendErrorMessage(sender, "feature-disabled", plugin.getLangManager(), "nicknames", "are not available", true);
+            return true;
+        }
+        
+        plugin.getNicknameManager().resetNickname(target);
+        
+        if (!sender.equals(target)) {
+            sender.sendMessage(PrismaticAPI.colorize("&aReset " + target.getName() + "'s nickname."));
         }
         
         return true;

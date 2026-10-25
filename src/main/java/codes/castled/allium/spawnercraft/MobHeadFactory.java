@@ -42,7 +42,7 @@ public final class MobHeadFactory {
         String entityName = SpawnerCoreManager.formatEntityName(entityType);
         meta.setDisplayName(SpawnerCoreManager.hexColor(hexColor) + "§l" + entityName + " Head");
         List<String> lore = new ArrayList<>();
-        lore.add("§7Used to craft " + entityName + " Spawners");
+        lore.add("§7Used to craft " + entityName + " Spawners, Cards & Plushies");
         meta.setLore(lore);
         try {
             PlayerProfile profile = Bukkit.createPlayerProfile(profileId(entityType));

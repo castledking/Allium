@@ -2,7 +2,7 @@ package codes.castled.allium.tradingcards.integration;
 
 import codes.castled.allium.tradingcards.TradingCardsBranding;
 import codes.castled.allium.tradingcards.TradingCardsModule;
-import codes.castled.allium.tradingcards.gui.CardWorkshopGui;
+import codes.castled.allium.tradingcards.gui.CardMenuGui;
 import codes.castled.allium.tradingcards.item.CardSlot;
 import codes.castled.allium.tradingcards.item.TradingCardData;
 import com.github.darksoulq.abyssallib.world.gui.GuiManager;
@@ -95,7 +95,7 @@ public final class ReliqueMenuListener implements Listener {
             take(event, view);
             int slot = event.getSlot();
             TradingCardData.read(current).ifPresent(card ->
-                new CardWorkshopGui(player, module, card, current, CardSlot.inventory(slot)).open());
+                new CardMenuGui(player, module, card, current, CardSlot.inventory(slot)).open());
         } else if (click == ClickType.LEFT
             && (event.getCursor() == null || event.getCursor().isEmpty())) {
             if (equip(player, event, view)) {
@@ -130,7 +130,7 @@ public final class ReliqueMenuListener implements Listener {
         }
         ItemStack stack = slot.stack(player);
         TradingCardData.read(stack).ifPresent(card ->
-            new CardWorkshopGui(player, module, card, stack, slot).open());
+            new CardMenuGui(player, module, card, stack, slot).open());
     }
 
     /**

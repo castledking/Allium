@@ -1,6 +1,7 @@
 package codes.castled.allium.tradingcards;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,10 +41,19 @@ class BonusSlotTest {
 
     @Test
     void rollingASlotCountsTheRollAndTheMoney() {
-        var slot = BonusSlot.EMPTY.rolled("crop_yield", 2000.0);
+        var slot = BonusSlot.EMPTY.rolled("crop_yield", 64, 2000.0);
         assertEquals(1, slot.rolls());
         assertEquals(2000.0, slot.spent(), 0.001);
         assertEquals("crop_yield", slot.id());
+        assertEquals(64, slot.strength());
+    }
+
+    @Test
+    void clearingASlotDropsItsStrengthButLockingKeepsIt() {
+        var slot = BonusSlot.EMPTY.rolled("crop_yield", 64, 2000.0);
+        assertEquals(64, slot.withLocked(true).strength());
+        assertNull(slot.cleared().strength(),
+            "an empty slot holding a strength would hand it to the next bonus rolled in");
     }
 
     @Test

@@ -40,13 +40,16 @@ public class GradientNameManager {
     private static final BigDecimal PHASE_NEGATE = new BigDecimal("-1.0");
 
     /**
-     * GradientPlus owns {@code %gradientdisplayname%} and {@code %gradient_...%}; we only ever
-     * read them. {@code %gradient_<text>%} paints arbitrary text in the player's colour and so
-     * works regardless of GradientPlus' {@code name_source_placeholder}, which is why it is the
-     * first source we ask. The token deliberately carries no underscore: GradientPlus reads
-     * {@code %gradient_<color>_<text>%} as well and would otherwise split it.
+     * The one and only source: GradientPlus' own display-name gradient, i.e. the colour the
+     * player picked under "NAME COLORS".
+     *
+     * <p>{@code %gradient_<text>%} - which used to be tried first as a fallback for setups
+     * without a {@code name_source_placeholder} - paints its text in the player's <em>chat</em>
+     * gradient and also runs it through their chat formats. Reading it here meant a player who
+     * picked nothing for their name still got their chat colour painted across the tab list, and
+     * that re-picking a chat colour reshuffled their name. The name gradient is the only one the
+     * tab list has any business showing, so it is the only one asked for.
      */
-    private static final String GRADIENT_PROBE = "%gradient_AlliumGradientProbe%";
     private static final String GRADIENT_DISPLAY_NAME = "%gradient_displayname%";
     /** Colours change only when a player runs /gradient; the phase changes every tick. */
     private static final long COLOR_CACHE_TTL_MS = 1_000L;
@@ -160,12 +163,8 @@ public class GradientNameManager {
 
         resolvingColors.set(Boolean.TRUE);
         try {
-            List<String> colors = colorsFrom(player, GRADIENT_PROBE);
-            if (!colors.isEmpty()) {
-                return new ColorLookup(colors, GRADIENT_PROBE);
-            }
-            colors = colorsFrom(player, GRADIENT_DISPLAY_NAME);
-            return new ColorLookup(colors, colors.isEmpty() ? "neither placeholder" : GRADIENT_DISPLAY_NAME);
+            List<String> colors = colorsFrom(player, GRADIENT_DISPLAY_NAME);
+            return new ColorLookup(colors, colors.isEmpty() ? "no name colour" : GRADIENT_DISPLAY_NAME);
         } finally {
             resolvingColors.set(Boolean.FALSE);
         }

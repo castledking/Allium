@@ -218,56 +218,44 @@ bonus-slot-roll:
     LEGENDARY: 3.0
     FABLED: 5.0
 
+  # Every roll also rolls a strength, 0-100, shown as a red-to-green bar
+  # under the bonus in the bonus menu. It scales the boost's boosts.yml
+  # amount between these two factors: at the defaults a +250 Quest Bounty
+  # rolls between +187.5 and +312.5, and the configured amount is the
+  # average roll. Multipliers scale only their gain, so x1.25 Experience
+  # rolls x1.19 to x1.31 and a weak roll is never a penalty.
+  #
+  # Strength is stored as a position in this range, so changing it moves
+  # every existing card with it. A bonus rolled before strengths existed
+  # keeps the exact value it had.
+  strength:
+    minimum: 0.75
+    maximum: 1.25
+
 # ------------------------------------------------------------
+# Legacy settings are parsed for old installations; whole-card rerolls are retired.
+# Only bonus-slot-roll above charges for rolls. Signatures are fixed by tier.
 reroll:
-  enabled: true
+  enabled: false
   base-cost: 2000.0
   escalation: 1.6
   round-to: 100
   maximum-cost: 500000.0
-
-  # A tier multiplier on top, so a FABLED reroll isn't merely the
-  # same price one step further along the ladder.
   tier-multipliers:
     SIMPLE: 1.0
     ELITE: 1.5
     ULTIMATE: 2.0
     LEGENDARY: 3.0
     FABLED: 5.0
-
-  # Chance a reroll unlocks a new signature rather than re-rolling
-  # bonuses. 0.35 means roughly 3 unlocks across 10 rerolls.
-  signature-unlock-chance: 0.35
-
-  # How many signatures a card may ever hold. 3 is where every card
-  # starts, so this is the ceiling, not a starting count.
-  maximum-signatures: 6
-
-  # Once the signature pool is exhausted, a reroll re-rolls the bonus
-  # boosts the card ALREADY holds. It never fills an empty slot and never
-  # mints a bonus the player has not paid for — those are bought in the
-  # bonus menu — so a card with no bonuses has nothing here to re-roll and
-  # is pointed at that menu instead.
-  #
-  # Set false to refuse and refund outright.
-  allow-bonus-only-when-full: true
-
-  # The signature pool a reroll may unlock from, per tier.
-  #
-  # ONLY integer-incrementable boosts belong here. Levelling adds
-  # +1 to one signature per level, so every signature needs a unit
-  # that +1 means something in. `transmit-range` qualifies because
-  # it is literally blocks; `scale` does not, because "+0.1x player
-  # scale" is not a quantity and its 0.6-1.9 clamp means nothing
-  # under flat addition.
+  signature-unlock-chance: 0.0
+  maximum-signatures: 5
+  allow-bonus-only-when-full: false
   signature-pool:
-    SIMPLE:    [ health, toughness, wisdom ]
-    ELITE:     [ health, toughness, wisdom, crit-chance ]
-    ULTIMATE:  [ health, toughness, wisdom, crit-chance, regeneration, armor ]
-    LEGENDARY: [ health, toughness, wisdom, crit-chance, regeneration, armor,
-                 crit-damage, haste, knockback ]
-    FABLED:    [ health, toughness, wisdom, crit-chance, regeneration, armor,
-                 crit-damage, haste, knockback, transmit-range, jump-height ]
+    SIMPLE:    [ luck, strength, speed ]
+    ELITE:     [ luck, strength, speed ]
+    ULTIMATE:  [ luck, strength, speed, health ]
+    LEGENDARY: [ luck, strength, speed, health ]
+    FABLED:    [ luck, strength, speed, health, wisdom ]
 
   # Amounts for boosts a reroll can unlock, and the three every card
   # drops with. The "(+n)" in a card's lore is its total minus this.
@@ -298,14 +286,14 @@ reroll:
 # would make merging a better source than killing the mob, and
 # players would farm duplicates instead of playing.
 #
-# All three conditions are checked — same mob, same tier, both at
-# maximum — and a refusal names which one failed. A vague refusal is
+# All three conditions are always checked — same mob, same tier, both
+# at maximum — and a refusal names which one failed. The merged card
+# keeps the higher quality of the two. A vague refusal is
 # how a merge feature loses player trust: someone merges two cards,
 # gets a confusing result, and never tries again.
 # ------------------------------------------------------------
 merge:
   enabled: true
-  require-same-mob: true
   target-level: 0
 
 # ------------------------------------------------------------
@@ -318,11 +306,9 @@ merge:
 # flight, breaking at low health — is implemented by Allium and
 # governed by the fields below.
 #
-# LibsDisguises is premium, so Allium talks to it reflectively and
-# needs nothing on the classpath. On the free version the disguise
-# is visible to you only, which is still worth having; premium
-# shows it to everyone, which is what makes the mob aggro below
-# legible to the mobs involved.
+# Allium uses console commands: disguiseplayer <player> <mob> and
+# undisguiseplayer <player>. No LibsDisguises API jar is needed.
+# Morph visibility is enabled with LibsDisguises' setSelfDisguiseVisible option.
 # ------------------------------------------------------------
 morph:
   enabled: true

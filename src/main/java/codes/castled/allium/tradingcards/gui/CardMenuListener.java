@@ -2,7 +2,6 @@ package codes.castled.allium.tradingcards.gui;
 
 import codes.castled.allium.inventory.gui.BaseGUI;
 import codes.castled.allium.tradingcards.TradingCardsModule;
-import codes.castled.allium.tradingcards.gui.CardMenuGui;
 import codes.castled.allium.tradingcards.integration.ReliqueIntegration;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.scheduler.SchedulerAdapter;
@@ -33,8 +32,7 @@ import org.bukkit.inventory.PlayerInventory;
  *
  * <p>Inside a GUI there is no such contest for the world click, and right-clicking
  * the card in the inventory is the unambiguous way to ask for the card's own menu.
- * The card must be the one in the main hand, because the workshop stages and
- * consumes from the hand.
+ * Every menu addresses the clicked inventory slot or equipped Relique slot.
  */
 public class CardMenuListener implements Listener {
 
@@ -66,11 +64,8 @@ public class CardMenuListener implements Listener {
         // block or swing at whatever is behind the card.
         event.setCancelled(true);
 
-        // The workshop, not the read-only card menu: reroll, merge and trade
-        // are all one-click decisions on a card the player is already holding,
-        // so they live in one window with tabs rather than three windows.
         int slot = inventory.getHeldItemSlot();
-        new CardWorkshopGui(event.getPlayer(), module, card.get(), held, CardSlot.inventory(slot)).open();
+        new CardMenuGui(event.getPlayer(), module, card.get(), held, CardSlot.inventory(slot)).open();
     }
 
     /**
@@ -95,7 +90,7 @@ public class CardMenuListener implements Listener {
             return;
         }
         // Only the player's own belongings, so this cannot fire from inside
-        // another plugin's menu or reopen the workshop from within the workshop.
+        // another plugin's menu or reopen the card menu from within the card menu.
         if (event.getClickedInventory() == null
             || !event.getClickedInventory().equals(player.getInventory())) {
             return;
@@ -103,7 +98,7 @@ public class CardMenuListener implements Listener {
         if (event.getView().getTopInventory().getHolder() instanceof BaseGUI) {
             return;
         }
-        // Any card, not just the held one. The workshop addresses the card by
+        // Any card, not just the held one. The card menu addresses the card by
         // inventory slot, so it works from anywhere in the inventory, and
         // requiring the card in the main hand meant the click did nothing
         // whenever the card was in the rows above the hotbar.
@@ -114,7 +109,7 @@ public class CardMenuListener implements Listener {
         }
         // The click would otherwise split the stack, so take it and open instead.
         event.setCancelled(true);
-        new CardWorkshopGui(player, module, card.get(), clicked, CardSlot.inventory(event.getSlot())).open();
+        new CardMenuGui(player, module, card.get(), clicked, CardSlot.inventory(event.getSlot())).open();
     }
 
     /**
@@ -151,7 +146,7 @@ public class CardMenuListener implements Listener {
                 if (contents[slot] != null && contents[slot].isSimilar(card)) {
                     var data = TradingCardData.read(contents[slot]);
                     if (data.isPresent()) {
-                        new CardWorkshopGui(player, module, data.get(), contents[slot],
+                        new CardMenuGui(player, module, data.get(), contents[slot],
                             CardSlot.inventory(slot)).open();
                     }
                     return;

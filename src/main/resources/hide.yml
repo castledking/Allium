@@ -6,9 +6,28 @@
 # Here you can configure the hidden commands.
 # You can use the following formats:
 # - command
+# - command subcommand (or deeper paths, e.g. "party admin invite")
 # - <plugin>:*
 # - ^ (uses commands list)
 # - * (all commands)
+#
+# commands controls execution; tabcompletes independently controls suggestions.
+# whitelist: true allows only listed paths; false blocks listed paths.
+# A path includes its descendants: "party invite" also matches "party invite Steve",
+# but not "party kick" or "party invited". A root entry such as "party" includes
+# ALL its subcommands. Completion whitelists also show the ancestors needed to
+# reach a listed path ("party" for "party invite"); that does not allow execution.
+# An entry only in commands can be typed manually but is hidden from completion.
+# An entry only in tabcompletes can be suggested but is still blocked on execution.
+# Normal command permissions still apply. Use ^ in tabcompletes only when you
+# want it to follow commands. Blacklist groups take priority over whitelist matches.
+#
+# /core hide group <group> add [-c|-t|-tc] <command> [subcommand ...]
+# -c changes commands only; -t changes tabcompletes only; -tc (default) changes both.
+# remove and check accept the same syntax. Commas separate multiple full paths:
+# /core hide group default add -t party invite,party leave
+# Subcommand completion rules require PacketEvents for filtering client-cached
+# command trees. Affected roots use server suggestions and a generic <args> hint.
 # Vault is required.
 # For more information, visit: https://github.com/castledking/Allium
 
@@ -60,8 +79,10 @@ settings:
   #   - EVERY namespaced suggestion ("plugin:command") is stripped unless listed
   #     in allow-namespaced-suggestions below - unknown namespaces such as
   #     "jbt:*" can never leak regardless of this blocklist.
-  #   - Plain suggestions additionally respect command-suggestion-filters and
-  #     the group visibility rules below (groups -> tabcompletes).
+  #   - Plain command-name suggestions additionally respect
+  #     command-suggestion-filters and the group visibility rules below
+  #     (groups -> tabcompletes). Argument suggestions such as player names
+  #     follow the group rules for the full command/subcommand path being completed.
   #   - If filtering removes every suggestion, the empty response is cancelled
   #     instead of being sent.
   filter-command-suggestions: true

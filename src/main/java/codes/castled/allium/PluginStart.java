@@ -73,6 +73,7 @@ import codes.castled.allium.inventory.OfflineInventoryManager;
 import codes.castled.allium.items.CustomItemRegistry;
 import codes.castled.allium.items.stored.StoredItemRegistry;
 import codes.castled.allium.items.commands.Handcuffs;
+import codes.castled.allium.items.impl.BongItem;
 import codes.castled.allium.items.impl.ItemRenamerItem;
 import codes.castled.allium.items.impl.ItemRenamerManager;
 import codes.castled.allium.items.impl.MobDisarmerItem;
@@ -89,7 +90,7 @@ import codes.castled.allium.listeners.XpBottleRedeemListener;
 import codes.castled.allium.listeners.chat.FormatChatListener;
 import codes.castled.allium.listeners.chat.SignColorListener;
 import codes.castled.allium.listeners.items.AnvilColorListener;
-import codes.castled.allium.listeners.items.OraxenSmeltingListener;
+import codes.castled.allium.listeners.items.BongListener;
 import codes.castled.allium.listeners.items.MobDisarmerListener;
 import codes.castled.allium.listeners.items.PhantomObliteratorListener;
 import codes.castled.allium.listeners.items.SwordToolDurabilityListener;
@@ -98,7 +99,6 @@ import codes.castled.allium.listeners.items.TreeAxeListener;
 import codes.castled.allium.listeners.jobs.CreeperExplosion;
 import codes.castled.allium.listeners.jobs.Death;
 import codes.castled.allium.listeners.jobs.FireballExplosion;
-import codes.castled.allium.listeners.jobs.LootTableListener;
 import codes.castled.allium.listeners.jobs.MailManager;
 import codes.castled.allium.listeners.jobs.SlimeJump;
 import codes.castled.allium.listeners.jobs.WitherSpawnBlocker;
@@ -148,7 +148,6 @@ import codes.castled.allium.managers.migration.MigrationManager;
 import codes.castled.allium.managers.permissions.DynamicPermissionManager;
 import codes.castled.allium.managers.time.TimePauseManager;
 import codes.castled.allium.managers.warp.WarpManager;
-import codes.castled.allium.managers.world.OreGenerationManager;
 import codes.castled.allium.packetevents.ChatPacketTracker;
 import codes.castled.allium.packetevents.CommandSuggestionsListener;
 import codes.castled.allium.packetevents.CrowBarDataSender;
@@ -259,7 +258,6 @@ public class PluginStart extends JavaPlugin {
     private Freeze freezeCommand;
     private AutoRestartCommand autoRestartCommand;
     private Tab tabCompleter;
-    private OreGenerationManager oreGenerationManager;
     private SpawnerCoreManager spawnerCoreManager;
     private codes.castled.allium.harvest.HarvestModule harvestModule;
     private codes.castled.allium.tradingcards.TradingCardsModule tradingCardsModule;
@@ -2809,6 +2807,7 @@ public class PluginStart extends JavaPlugin {
             customItemRegistry.register(new ItemRenamerItem(this));
             customItemRegistry.register(new MobDisarmerItem(this));
             customItemRegistry.register(new PhantomObliteratorItem(this));
+            customItemRegistry.register(new BongItem(this));
 
             // Stored items load after the built-ins so the registry can reject any stored file whose
             // id collides with one of them, rather than shadowing it.
@@ -2863,12 +2862,15 @@ public class PluginStart extends JavaPlugin {
             getServer()
                 .getPluginManager()
                 .registerEvents(
-                    new SwordToolDurabilityListener(this, customItemRegistry),
+                    new BongListener(this, customItemRegistry),
                     this
                 );
             getServer()
                 .getPluginManager()
-                .registerEvents(new OraxenSmeltingListener(), this);
+                .registerEvents(
+                    new SwordToolDurabilityListener(this, customItemRegistry),
+                    this
+                );
             codes.castled.allium.spawnercraft.SpawnerHeadConfig.reload(this);
             spawnerCoreManager = new SpawnerCoreManager(this);
             getServer()
@@ -3009,34 +3011,6 @@ public class PluginStart extends JavaPlugin {
      */
     private void registerNonVaultListeners() {
         PluginManager pm = getServer().getPluginManager();
-
-        // Initialize ore generation manager
-        getLogger().severe(
-            "[OreGen-INIT] Initializing OreGenerationManager..."
-        );
-        try {
-            oreGenerationManager = new OreGenerationManager(this);
-            getLogger().severe(
-                "[OreGen-INIT] OreGenerationManager initialized SUCCESSFULLY"
-            );
-            if (isDebugMode()) {
-                getLogger().info(
-                    "Successfully initialized OreGenerationManager"
-                );
-            }
-        } catch (Throwable t) {
-            getLogger().severe(
-                "[OreGen-INIT] FAILED to initialize OreGenerationManager: " +
-                    t.getMessage()
-            );
-            getLogger().warning(
-                "Failed to initialize OreGenerationManager: " + t.getMessage()
-            );
-            if (isDebugMode()) {
-                t.printStackTrace();
-            }
-            oreGenerationManager = null;
-        }
 
         // Initialize SpectatorTeleport with proper error handling
         if (spectatorTeleport == null) {
@@ -3252,63 +3226,6 @@ public class PluginStart extends JavaPlugin {
                 "WolfBehaviorListener",
                 WolfBehaviorListener::new
             );
-            registerListenerWithErrorHandling(pm, "LootTableListener", () ->
-                new LootTableListener(this)
-            );
-
-            // Ore generation listener
-            getLogger().severe(
-                "[OreGen-REGISTER] Attempting to register OreGenerationListener..."
-            );
-            getLogger().severe(
-                "[OreGen-REGISTER] oreGenerationManager is " +
-                    (oreGenerationManager != null ? "NOT null" : "NULL")
-            );
-            try {
-                if (oreGenerationManager != null) {
-                    getLogger().severe(
-                        "[OreGen-REGISTER] Calling registerListenerSafely for OreGenerationListener"
-                    );
-                    registerListenerSafely(
-                        pm,
-                        "OreGenerationListener",
-                        new codes.castled.allium.listeners.world.OreGenerationListener(
-                            this,
-                            oreGenerationManager
-                        )
-                    );
-                    getLogger().severe(
-                        "[OreGen-REGISTER] OreGenerationListener registration completed!"
-                    );
-                } else {
-                    getLogger().severe(
-                        "[OreGen-REGISTER] SKIPPING registration - oreGenerationManager is null!"
-                    );
-                }
-            } catch (Throwable t) {
-                getLogger().severe(
-                    "[OreGen-REGISTER] FAILED to register OreGenerationListener: " +
-                        t.toString()
-                );
-                t.printStackTrace();
-            }
-
-            // Register NoteBlockPhysicsListener for Resource world ore protection
-            try {
-                registerListenerSafely(
-                    pm,
-                    "NoteBlockPhysicsListener",
-                    new codes.castled.allium.listeners.world.NoteBlockPhysicsListener()
-                );
-                getLogger().info(
-                    "[OreGen] NoteBlockPhysicsListener registered for 'Resource' world"
-                );
-            } catch (Throwable t) {
-                getLogger().warning(
-                    "[OreGen] Failed to register NoteBlockPhysicsListener: " +
-                        t.toString()
-                );
-            }
 
             // Register EndGatewayListener for safe End Gateway teleports near main island
             try {

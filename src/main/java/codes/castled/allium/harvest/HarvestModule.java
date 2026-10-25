@@ -3,6 +3,7 @@ package codes.castled.allium.harvest;
 import codes.castled.allium.harvest.api.AlliumHarvestApi;
 import codes.castled.allium.harvest.api.HarvestApiImpl;
 import codes.castled.allium.harvest.config.HarvestConfig;
+import codes.castled.allium.harvest.crop.CropBlockRenderer;
 import codes.castled.allium.harvest.crop.CropGrowthEngine;
 import codes.castled.allium.harvest.crop.CropHarvestService;
 import codes.castled.allium.harvest.crop.CropInstanceService;
@@ -10,9 +11,13 @@ import codes.castled.allium.harvest.crop.CropLiquidListeners;
 import codes.castled.allium.harvest.crop.CropListeners;
 import codes.castled.allium.harvest.crop.CropPlacementService;
 import codes.castled.allium.harvest.crop.CropVisualService;
+import codes.castled.allium.harvest.crop.NoopCropBlockRenderer;
+import codes.castled.allium.harvest.crop.craftengine.CraftEngineSupport;
 import codes.castled.allium.harvest.crop.def.CropDefinitionLoader;
 import codes.castled.allium.harvest.crop.def.CropRegistry;
 import codes.castled.allium.harvest.crop.def.ValidationIssue;
+import codes.castled.allium.item.CraftEngineItemResolver;
+import codes.castled.allium.item.CraftEngineItemsGate;
 import codes.castled.allium.item.NexoItemsGate;
 import codes.castled.allium.item.ItemResolverChain;
 import codes.castled.allium.item.ItemResolvers;
@@ -75,6 +80,11 @@ public final class HarvestModule {
     private KitchenModule kitchen;
     private TaskHandle spawnerSweepTask;
     private boolean enabled;
+    private int pendingProviders;
+    private boolean providersChecked;
+    private CropBlockRenderer blocks = NoopCropBlockRenderer.INSTANCE;
+    private boolean blockProviderReady;
+    private java.util.Set<String> craftEngineNamespaces = java.util.Set.of();
 
     public HarvestModule(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -88,26 +98,72 @@ public final class HarvestModule {
     // ==================== lifecycle ====================
 
     /**
-     * Enables the module, or — with Nexo installed — schedules it for when
-     * Nexo has registered its items. See {@link NexoItemsGate} for why loading
+     * Enables the module, or — with a custom-item plugin installed — schedules
+     * it for when that plugin has registered its items. See
+     * {@link NexoItemsGate} and {@code CraftEngineItemsGate} for why loading
      * any earlier is unsafe.
      */
     public void enable() {
-        if (Bukkit.getPluginManager().isPluginEnabled("Nexo")) {
+        boolean nexo = Bukkit.getPluginManager().isPluginEnabled("Nexo");
+        boolean craftEngine = Bukkit.getPluginManager().isPluginEnabled("CraftEngine");
+        int providers = (nexo ? 1 : 0) + (craftEngine ? 1 : 0);
+        if (providers == 0) {
+            enableNow();
+            return;
+        }
+        pendingProviders = providers;
+        if (nexo) {
             try {
-                NexoItemsGate.await(plugin, this::enableNow, () -> {
-                    if (enabled) reload();
-                });
-                if (!enabled) {
-                    logger.info("[" + HarvestBranding.DISPLAY_NAME + "] Waiting for Nexo to load its items");
-                }
-                return;
+                NexoItemsGate.await(plugin, this::providerReady, this::providerReloaded);
             } catch (Throwable t) {
                 logger.warning("[" + HarvestBranding.DISPLAY_NAME
                     + "] Could not wait for Nexo items, loading now: " + t);
+                providerReady();
             }
         }
+        if (craftEngine) {
+            try {
+                CraftEngineItemsGate.await(plugin, this::providerReady, this::providerReloaded);
+            } catch (Throwable t) {
+                logger.warning("[" + HarvestBranding.DISPLAY_NAME
+                    + "] Could not wait for CraftEngine items, loading now: " + t);
+                providerReady();
+            }
+        }
+        providersChecked = true;
+        maybeEnable();
+        if (!enabled) {
+            logger.info("[" + HarvestBranding.DISPLAY_NAME
+                + "] Waiting for item providers to load");
+        }
+    }
+
+    /** One item provider became ready; the module starts once all of them are. */
+    private void providerReady() {
+        if (pendingProviders > 0) {
+            pendingProviders--;
+        }
+        maybeEnable();
+    }
+
+    private void maybeEnable() {
+        if (!providersChecked || pendingProviders > 0 || enabled) {
+            return;
+        }
         enableNow();
+    }
+
+    /** An item provider reloaded: pick up its new items and reload everything. */
+    private void providerReloaded() {
+        if (!enabled) {
+            return;
+        }
+        if (Bukkit.getPluginManager().isPluginEnabled("CraftEngine")) {
+            craftEngineNamespaces.forEach(items::unregister);
+            craftEngineNamespaces = ItemResolvers.registerCraftEngine(
+                items, HarvestBranding.DISPLAY_NAME, logger);
+        }
+        reload();
     }
 
     private void enableNow() {
@@ -141,6 +197,10 @@ public final class HarvestModule {
         soilStorage = new SoilStorage(database);
         sprinklerStorage = new SprinklerStorage(database);
 
+        setupBlockProvider();
+        if (blockProviderReady) {
+            buildCraftEnginePack();
+        }
         items = buildResolverChain();
         registry = new CropRegistry();
         List<ValidationIssue> issues = loadDefinitions(dataFolder);
@@ -151,11 +211,12 @@ public final class HarvestModule {
         reportIssues(loadSprinklers(dataFolder));
         sprinklers = new SprinklerService(sprinklerModels, sprinklerStorage, soils, config.sprinklers());
 
-        visuals = new CropVisualService(logger, registry, items, config.visuals());
+        visuals = new CropVisualService(logger, registry, items, config.visuals(), blocks);
         instances = new CropInstanceService(plugin, registry, cropStorage, visuals);
         placement = new CropPlacementService(registry, instances, cropStorage, visuals,
             soils, sprinklers, ThreadLocalRandom.current());
-        harvests = new CropHarvestService(registry, instances, cropStorage, visuals, items, ThreadLocalRandom.current());
+        harvests = new CropHarvestService(logger, registry, instances, cropStorage, visuals, items,
+            ThreadLocalRandom.current());
         growthEngine = new CropGrowthEngine(plugin, registry, instances, cropStorage, visuals, config.growthEngine());
 
         spawnerModels = new SpawnerModelRegistry();
@@ -165,6 +226,15 @@ public final class HarvestModule {
         Bukkit.getPluginManager().registerEvents(
             new CropListeners(registry, instances, placement, harvests, cropStorage, items,
                 soils, sprinklers), plugin);
+        if (blockProviderReady) {
+            try {
+                Bukkit.getPluginManager().registerEvents(
+                    CraftEngineSupport.createCropListener(instances, registry), plugin);
+            } catch (Throwable t) {
+                logger.warning("[" + HarvestBranding.DISPLAY_NAME
+                    + "] CraftEngine crop listener could not be registered: " + t);
+            }
+        }
         if (config.liquids().enabled()) {
             Bukkit.getPluginManager().registerEvents(
                 new CropLiquidListeners(instances, harvests, config.liquids()), plugin);
@@ -276,8 +346,63 @@ public final class HarvestModule {
 
     // ==================== internals ====================
 
+    /**
+     * Sets up the renderer that draws crop stages as real blocks, if a block
+     * provider is installed.
+     */
+    private void setupBlockProvider() {
+        blocks = NoopCropBlockRenderer.INSTANCE;
+        blockProviderReady = false;
+        if (!Bukkit.getPluginManager().isPluginEnabled("CraftEngine")) {
+            return;
+        }
+        try {
+            blocks = CraftEngineSupport.createBlockRenderer(logger);
+            blockProviderReady = true;
+        } catch (Throwable t) {
+            logger.warning("[" + HarvestBranding.DISPLAY_NAME
+                + "] CraftEngine present but API mismatch: " + t);
+        }
+    }
+
+    /**
+     * Asks CraftEngine to build its resource pack.
+     *
+     * <p>CraftEngine only writes its pack when its packs are reloaded, so a
+     * server that restarts without a reload keeps serving the pack it built
+     * last time — which is stale the moment a pack file changed on disk. The
+     * pack is what carries the crop models and textures, so a stale one means
+     * crops that render as the wrong stage, or as nothing at all.
+     *
+     * <p>There is no configuration switch for this: the only trigger
+     * CraftEngine fires itself is {@code reload_pack}, which the reload
+     * command raises. The workflow has to be run, and running it is what this
+     * does — a tick later, so the rest of the startup has finished first.</p>
+     */
+    private void buildCraftEnginePack() {
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            try {
+                boolean done = Bukkit.dispatchCommand(
+                    Bukkit.getConsoleSender(), "ce workflow default");
+                logger.info("[" + HarvestBranding.DISPLAY_NAME + "] CraftEngine pack build "
+                    + (done ? "finished" : "could not be started"));
+            } catch (Throwable t) {
+                logger.warning("[" + HarvestBranding.DISPLAY_NAME
+                    + "] Could not build the CraftEngine pack: " + t);
+            }
+        }, 40L);
+    }
+
     private ItemResolverChain buildResolverChain() {
-        return ItemResolvers.build(plugin, HarvestBranding.DISPLAY_NAME, logger);
+        ItemResolverChain chain = ItemResolvers.build(plugin, HarvestBranding.DISPLAY_NAME, logger);
+        if (Bukkit.getPluginManager().isPluginEnabled("CraftEngine")) {
+            try {
+                craftEngineNamespaces = CraftEngineItemResolver.loadedNamespaces();
+            } catch (Throwable t) {
+                craftEngineNamespaces = java.util.Set.of();
+            }
+        }
+        return chain;
     }
 
     /**
@@ -296,7 +421,8 @@ public final class HarvestModule {
                 new File(dataFolder, "config.yml"))).cropDefaults();
         CropDefinitionLoader loader = new CropDefinitionLoader(
             items::hasNamespace, items::exists,
-            defaults.interaction(), defaults.growthRandomness());
+            defaults.interaction(), defaults.growthRandomness(),
+            blocks::exists, () -> blockProviderReady);
         CropDefinitionLoader.LoadResult result = loader.load(
             new File(dataFolder, "crops"), new File(dataFolder, "fertilizers.yml"));
         registry.swap(result.crops(), result.fertilizers());

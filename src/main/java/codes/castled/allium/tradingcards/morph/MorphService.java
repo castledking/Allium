@@ -60,8 +60,8 @@ public class MorphService {
      * @param deactivateBelowHealth 0 to disable; 10 for half of vanilla 20
      * @param allowFlight  whether fliers may take flight at all
      * @param stealthUntilAttacked cancel targeting until the player strikes
-     * @param mobsTargetDisguised pass through to LibsDisguises; false makes the
-     *                            morphed player invisible to mob AI entirely
+     * @param mobsTargetDisguised whether the morph's mob form may be targeted
+     *                            by matching mobs
      */
     public record Config(
         boolean enabled,
@@ -271,6 +271,7 @@ public class MorphService {
 
     /** Clears a player on quit, so nothing outlives the session. */
     public void handleQuit(Player player) {
+        clear(player);
         morphed.remove(player.getUniqueId());
         provoked.remove(player.getUniqueId());
         flown.remove(player.getUniqueId());

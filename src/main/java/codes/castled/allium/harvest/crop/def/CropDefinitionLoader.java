@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -42,6 +43,8 @@ public final class CropDefinitionLoader {
     private final Predicate<ItemRef> itemExists;
     private final InteractionSettings interactionDefaults;
     private final double randomnessDefault;
+    private final Predicate<BlockRef> blockExists;
+    private final BooleanSupplier blockProviderReady;
 
     /**
      * @param knownNamespace whether a namespace has a resolver available
@@ -64,11 +67,33 @@ public final class CropDefinitionLoader {
         InteractionSettings interactionDefaults,
         double randomnessDefault
     ) {
+        this(knownNamespace, itemExists, interactionDefaults, randomnessDefault, ref -> true, () -> false);
+    }
+
+    /**
+     * @param interactionDefaults global {@code harvest/config.yml} defaults a
+     *                            crop file may override key by key
+     * @param randomnessDefault global default growth spread
+     * @param blockExists whether a block reference resolves to a real block
+     * @param blockProviderReady whether the block provider can answer that
+     *                           question at all; while it is still loading the
+     *                           existence of a block cannot be judged
+     */
+    public CropDefinitionLoader(
+        Predicate<String> knownNamespace,
+        Predicate<ItemRef> itemExists,
+        InteractionSettings interactionDefaults,
+        double randomnessDefault,
+        Predicate<BlockRef> blockExists,
+        BooleanSupplier blockProviderReady
+    ) {
         this.knownNamespace = knownNamespace;
         this.itemExists = itemExists;
         this.interactionDefaults = interactionDefaults == null
             ? InteractionSettings.DEFAULT : interactionDefaults;
         this.randomnessDefault = randomnessDefault;
+        this.blockExists = blockExists == null ? ref -> true : blockExists;
+        this.blockProviderReady = blockProviderReady == null ? () -> false : blockProviderReady;
     }
 
     public LoadResult load(File cropsDir, File fertilizersFile) {
@@ -295,7 +320,21 @@ public final class CropDefinitionLoader {
                     issues.add(ValidationIssue.error(file, stagePath, "Stage is not a mapping"));
                     continue;
                 }
-                ItemRef model = parseItemRef(asString(map.get("model")), file, stagePath + ".model", issues);
+                ItemRef model = null;
+                BlockRef block = null;
+                String modelRaw = asString(map.get("model"));
+                String blockRaw = asString(map.get("block"));
+                if (isPresent(blockRaw)) {
+                    block = parseBlockRef(blockRaw, file, stagePath + ".block", issues);
+                }
+                if (isPresent(modelRaw)) {
+                    model = parseItemRef(modelRaw, file, stagePath + ".model", issues);
+                }
+                if (block == null && model == null) {
+                    issues.add(ValidationIssue.error(file, stagePath,
+                        "Stage defines neither 'model' nor 'block'"));
+                }
+                Map<String, String> state = parseStageState(map.get("state"), file, stagePath + ".state", issues);
                 long duration = 60_000L;
                 Object durationRaw = map.get("duration");
                 if (durationRaw == null) {
@@ -315,8 +354,22 @@ public final class CropDefinitionLoader {
                 FootprintDefinition footprint = parseFootprint(map.get("footprint"), file, stagePath, issues);
                 StageDefinition.VisualOverride visual =
                     parseVisualOverride(map.get("visual"), file, stagePath + ".visual", issues);
-                if (model != null) {
-                    stages.add(new StageDefinition(i, model, duration, footprint, visual));
+                if (block != null && model == null && !visual.isEmpty()) {
+                    // A block on its own is drawn by the block provider, in
+                    // the cell, as a block. There is no display entity to
+                    // move, scale or turn, so these settings would do
+                    // nothing — better to say so than to let them be
+                    // believed. A stage with a model as well does have a
+                    // display entity, and there they apply.
+                    issues.add(ValidationIssue.warning(file, stagePath + ".visual",
+                        "A block stage is drawn as a real block, so 'visual' (transform, "
+                            + "scale, y-offset) is ignored. The offset belongs in the "
+                            + "block's model, in the block provider's pack — or the stage "
+                            + "can name a 'model' as well, and be drawn as a block with "
+                            + "a model standing in it."));
+                }
+                if (model != null || block != null) {
+                    stages.add(new StageDefinition(i, model, block, state, duration, footprint, visual));
                 }
             }
         }
@@ -799,6 +852,51 @@ public final class CropDefinitionLoader {
 
     private static String capitalize(String s) {
         return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    private BlockRef parseBlockRef(String raw, String file, String path, List<ValidationIssue> issues) {
+        BlockRef ref;
+        try {
+            ref = BlockRef.parse(raw);
+        } catch (IllegalArgumentException e) {
+            issues.add(ValidationIssue.error(file, path, e.getMessage()));
+            return null;
+        }
+        if (blockProviderReady.getAsBoolean() && !blockExists.test(ref)) {
+            issues.add(ValidationIssue.error(file, path,
+                "Block '" + ref + "' does not exist"));
+        }
+        return ref;
+    }
+
+    private Map<String, String> parseStageState(Object raw, String file, String path, List<ValidationIssue> issues) {
+        if (raw == null) {
+            return Map.of();
+        }
+        if (!(raw instanceof Map<?, ?> map)) {
+            issues.add(ValidationIssue.error(file, path, "Stage state must be a mapping of property names to values"));
+            return Map.of();
+        }
+        Map<String, String> state = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            String key = asString(entry.getKey());
+            Object value = entry.getValue();
+            if (key == null || key.isBlank()) {
+                issues.add(ValidationIssue.error(file, path, "Stage state has a property without a name"));
+                continue;
+            }
+            if (value == null) {
+                issues.add(ValidationIssue.error(file, path,
+                    "Stage state property '" + key + "' has no value"));
+                continue;
+            }
+            state.put(key, asString(value));
+        }
+        return state;
+    }
+
+    private static boolean isPresent(String s) {
+        return s != null && !s.isBlank();
     }
 
     private static String asString(Object o) {

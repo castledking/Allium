@@ -55,10 +55,8 @@ public final class MorphCommand implements CommandExecutor, TabCompleter {
         }
         MorphService morphs = module.morphs();
         if (morphs == null || !module.isMorphAvailable()) {
-            // Distinguished from "disabled": one is a server decision, the other
-            // is a missing plugin, and the player can act on the second.
-            msg(player, "<red>Morphing needs LibsDisguises, which is not "
-                + "available on this server.</red>");
+            msg(player, "<red>Morphing is unavailable. It must be enabled and the "
+                + "LibsDisguises disguiseplayer/undisguiseplayer commands must be available.</red>");
             return true;
         }
 
@@ -90,9 +88,7 @@ public final class MorphCommand implements CommandExecutor, TabCompleter {
             + (morphs.isProvoked(player.getUniqueId()) ? "yes" : "no — you are unseen")
             + "</white>");
         MorphService.Config config = morphs.config();
-        msg(player, "<gray>LibsDisguises:</gray> <white>"
-            + (morphs.disguises().isFree() ? "free (self view only)" : "premium")
-            + "</white>");
+        msg(player, "<gray>LibsDisguises:</gray> <white>console commands</white>");
         msg(player, "<gray>Stealth until attacked:</gray> <white>"
             + (config.stealthUntilAttacked() ? "on" : "off") + "</white>");
         int remaining = morphs.secondsRemaining(player);

@@ -1,5 +1,6 @@
 package codes.castled.allium.items.impl;
 
+import io.papermc.paper.entity.Shearable;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -10,7 +11,6 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Enderman;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.SulfurCube;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.inventory.EntityEquipment;
@@ -23,6 +23,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import codes.castled.allium.items.CustomItem;
+import codes.castled.allium.util.ApiCompat;
 import codes.castled.allium.util.SchedulerAdapter;
 
 import java.util.ArrayList;
@@ -188,8 +189,8 @@ public class MobDisarmerItem extends CustomItem {
         final boolean hasEquipment = equipment != null && hasEquipment(equipment);
         final boolean hasCarriedBlock = target instanceof Enderman enderman
                 && enderman.getCarriedBlock() != null;
-        final boolean hasShearableContent = target instanceof SulfurCube sulfurCube
-                && sulfurCube.readyToBeSheared();
+        final Shearable sulfurCube = ApiCompat.sulfurCube(target);
+        final boolean hasShearableContent = sulfurCube != null && sulfurCube.readyToBeSheared();
         if (!hasEquipment && !hasCarriedBlock && !hasShearableContent) {
             return false;
         }
@@ -227,8 +228,7 @@ public class MobDisarmerItem extends CustomItem {
         // Paper's shear contract performs the complete vanilla sulfur-cube ejection behavior,
         // including the 100% content drop and sound/effects. Readiness means the cube currently
         // contains something that natural shears could eject; empty cubes are left untouched.
-        final boolean shearedSulfur = target instanceof SulfurCube sulfurCube
-                && shearSulfurCube(sulfurCube);
+        final boolean shearedSulfur = sulfurCube != null && shearSulfurCube(sulfurCube);
         if (stripped.isEmpty() && !shearedSulfur) {
             return false; // lost a race with something else clearing the mob; no charge spent
         }
@@ -497,7 +497,7 @@ public class MobDisarmerItem extends CustomItem {
     }
 
     /** Uses Paper's vanilla shearing path, but only when natural shears would currently work. */
-    static boolean shearSulfurCube(final SulfurCube sulfurCube) {
+    static boolean shearSulfurCube(final Shearable sulfurCube) {
         if (!sulfurCube.readyToBeSheared()) return false;
         sulfurCube.shear();
         return true;

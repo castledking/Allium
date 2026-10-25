@@ -48,6 +48,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -471,7 +472,8 @@ public class CommandManager implements Listener {
                     }
                 }
             } else {
-                String fullCommandName = resolveFullCommandName(command);
+                String root = CommandPath.root(command);
+                String fullCommandName = resolveFullCommandName(root) + command.substring(root.length());
                 expandedCommands.add(command);
                 if (!command.equals(fullCommandName)) {
                     expandedCommands.add(fullCommandName);
@@ -723,7 +725,8 @@ public class CommandManager implements Listener {
 
         Player player = event.getPlayer();
         String message = event.getMessage().substring(1);
-        String fullCommand = message.split(" ")[0].toLowerCase();
+        String commandPath = CommandPath.normalize(message);
+        String fullCommand = CommandPath.root(commandPath);
         boolean isNamespacedCommand = fullCommand.contains(":");
 
         // alt account check - if player is in alt group and not exempted, flag for alt-specific messages
@@ -743,7 +746,7 @@ public class CommandManager implements Listener {
 
         boolean blacklisted = false;
         for (CommandGroup group : playerGroups) {
-            if (!group.whitelist() && group.hasCommandInOwnList(fullCommand)) {
+            if (!group.whitelist() && group.hasCommandInOwnList(commandPath)) {
                 blacklisted = true;
                 break;
             }
@@ -759,7 +762,7 @@ public class CommandManager implements Listener {
             return;
         }
 
-        boolean canUseCommand = playerGroups.stream().anyMatch(group -> group.isCommandAllowed(fullCommand));
+        boolean canUseCommand = playerGroups.stream().anyMatch(group -> group.isCommandAllowed(commandPath));
         if (!canUseCommand) {
             event.setCancelled(true);
             sendUnknownCommandMessage(player, playerGroups, fullCommand, isNamespacedCommand);
@@ -938,7 +941,41 @@ public class CommandManager implements Listener {
     }
 
     public boolean shouldAllowTabComplete(Player player, String commandName) {
-        return shouldAllowTabComplete(getPlayerGroups(player), commandName);
+        return !enabled || player.hasPermission("allium.hide.bypass")
+                || shouldAllowTabComplete(getPlayerGroups(player), commandName);
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    /** Capture group membership once for a completion response or command tree. */
+    public Predicate<String> tabCompletionFilter(Player player) {
+        if (!enabled || player.hasPermission("allium.hide.bypass")) {
+            return path -> true;
+        }
+        List<CommandGroup> groups = getPlayerGroups(player);
+        return path -> shouldAllowTabComplete(groups, path);
+    }
+
+    /** Roots with path rules must request suggestions instead of using cached client literals. */
+    public Set<String> subcommandCompletionRoots(Player player) {
+        if (!enabled || player.hasPermission("allium.hide.bypass")) {
+            return Set.of();
+        }
+        Set<String> roots = new HashSet<>();
+        for (CommandGroup group : getPlayerGroups(player)) {
+            for (String path : group.tabCompletes()) {
+                if (path.contains(" ")) {
+                    String root = CommandPath.root(path);
+                    roots.add(root);
+                    if (root.contains(":")) {
+                        roots.add(root.substring(root.indexOf(':') + 1));
+                    }
+                }
+            }
+        }
+        return roots;
     }
 
     static boolean shouldAllowTabComplete(List<CommandGroup> groups, String commandName) {
@@ -1024,7 +1061,7 @@ public class CommandManager implements Listener {
         return filteredCommands;
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onTabComplete(TabCompleteEvent event) {
         if (event.isCancelled() || !enabled) return;
         if (!(event.getSender() instanceof Player)) {
@@ -1046,7 +1083,7 @@ public class CommandManager implements Listener {
             return;
         }
 
-        String commandString = buffer.substring(1).split(" ")[0];
+        String commandString = CommandPath.root(buffer);
 
         // Filter out namespaced commands for non-bypass players
         if (commandString.contains(":")) {
@@ -1061,9 +1098,12 @@ public class CommandManager implements Listener {
             }
         }
 
-        if (!shouldAllowTabComplete(player, commandString)) {
-            event.setCompletions(new ArrayList<>());
-        }
+        Predicate<String> visible = tabCompletionFilter(player);
+        int replacementStart = CommandPath.completionStart(buffer);
+        event.setCompletions(event.getCompletions().stream()
+                .filter(completion -> visible.test(
+                        CommandPath.suggestion(buffer, completion, replacementStart)))
+                .toList());
     }
 
     /**
@@ -1099,19 +1139,19 @@ public class CommandManager implements Listener {
             this.name = name;
             this.whitelist = whitelist;
             this.commands = commands.stream()
-                    .map(String::toLowerCase)
+                    .map(CommandPath::normalize)
                     .toList();
             this.inheritedAllowedCommands = inheritedAllowedCommands.stream()
-                    .map(String::toLowerCase)
+                    .map(CommandPath::normalize)
                     .toList();
             this.tabCompletes = tabCompletes.stream()
-                    .map(String::toLowerCase)
+                    .map(CommandPath::normalize)
                     .toList();
             this.hideNamespacedCommandsForBypass = hideNamespacedCommandsForBypass;
         }
 
         public boolean isCommandAllowed(String commandName) {
-            commandName = commandName.toLowerCase();
+            commandName = CommandPath.normalize(commandName);
             if (hasCommandInList(commands, commandName)) {
                 return whitelist;
             }
@@ -1128,27 +1168,12 @@ public class CommandManager implements Listener {
         }
 
         public boolean isTabCompletionAllowed(String commandName) {
-            commandName = commandName.toLowerCase();
-            if (hasCommandInList(tabCompletes, commandName)) {
-                return whitelist;
-            }
-            if (tabCompletes.contains("*")) {
-                return whitelist;
-            }
-            return !whitelist;
+            boolean matched = CommandPath.matches(tabCompletes, commandName, whitelist);
+            return whitelist ? matched : !matched;
         }
 
         private static boolean hasCommandInList(List<String> commands, String commandName) {
-            if (commands.contains("*")) {
-                return true;
-            }
-            if (commands.contains(commandName)) {
-                return true;
-            }
-            String baseCommand = commandName.contains(":")
-                    ? commandName.substring(commandName.indexOf(':') + 1)
-                    : commandName;
-            return commands.contains(baseCommand);
+            return CommandPath.matches(commands, commandName, false);
         }
     }
 
@@ -1173,7 +1198,7 @@ public class CommandManager implements Listener {
 
             return values.stream()
                     .filter(Objects::nonNull)
-                    .map(value -> value.toLowerCase(Locale.ROOT))
+                    .map(CommandPath::normalize)
                     .toList();
         }
     }

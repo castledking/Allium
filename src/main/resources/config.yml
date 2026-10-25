@@ -17,46 +17,6 @@
 # the server swaps it while nothing is using it.
 preload-classes: true
 
-# World generation settings
-ore-generation:
-  # Silver ore configuration
-  silver:
-    # Oraxen block ID for silver ore (noteblock state)
-    oraxen-id: "silver_ore"
-    # Maximum vein size (radius from center block)
-    vein-size: 8
-    # Minimum Y level for generation
-    min-height: -64
-    # Maximum Y level for generation
-    max-height: 16
-    # Chance per chunk to generate (0.0 - 1.0)
-    chance-per-chunk: 0.15
-    # Number of ores to try placing per vein
-    ores-per-vein: 4
-  
-  # Galena (lead) ore configuration
-  galena:
-    # Oraxen block ID for galena ore (noteblock state)
-    oraxen-id: "galena_ore"
-    # Maximum vein size
-    vein-size: 8
-    # Height range
-    min-height: -64
-    max-height: 16
-    # Slightly rarer than silver
-    chance-per-chunk: 0.10
-    ores-per-vein: 4
-
-# Pregeneration settings
-pregen:
-  # Max chunks to generate per tick (higher = faster but more lag)
-  chunks-per-tick: 4
-  # Delay between chunk generations in ticks
-  delay-ticks: 1
-  # Whether to generate ores during pregen
-  generate-ores: true
-  bot_avatar: ""
-
 ############################################################
 # +------------------------------------------------------+ #
 # |                 Maintenance Settings                 | #
@@ -406,6 +366,8 @@ spawnercraft:
 
   # Craft spawners from vanilla skulls. false means a vanilla skull can never be one of
   # the 8 heads around a spawner core, so spawners cost the mob's rare drop.
+  # Also governs trading cards (8 heads around paper -> a Simple card of that mob),
+  # so a plain skull never makes a card when it can't make a spawner.
   vanilla-heads-craft-spawners: false
 
 # Creeper explosion regen speed (0 = disabled, 1 = slowest, 10 = fastest)

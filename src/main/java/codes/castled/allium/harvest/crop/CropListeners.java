@@ -3,8 +3,10 @@ package codes.castled.allium.harvest.crop;
 import codes.castled.allium.harvest.HarvestBranding;
 import codes.castled.allium.harvest.crop.def.CropDefinition;
 import codes.castled.allium.harvest.crop.def.CropRegistry;
+import codes.castled.allium.harvest.crop.def.GrowthRequirements;
 import codes.castled.allium.harvest.crop.def.HarvestSource;
 import codes.castled.allium.harvest.crop.def.InteractionSettings;
+import codes.castled.allium.harvest.crop.def.StageDefinition;
 import codes.castled.allium.harvest.event.CropRemoveEvent;
 import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.item.ItemResolverChain;
@@ -21,6 +23,7 @@ import java.util.Optional;
 import java.util.Set;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.GameMode;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
@@ -29,10 +32,12 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
@@ -314,6 +319,12 @@ public final class CropListeners implements Listener {
             .or(() -> instances.at(key.offset(0, 1, 0)))
             .orElse(null);
         if (crop == null) return;
+        // A crop drawn as a block is a real block, and a real block has to be
+        // allowed to break. Cancelling the event makes the client put the
+        // block straight back — it restores a break that was cancelled — so
+        // the player would be hitting a crop that never breaks. The harvest
+        // decides what the player gets; the block provider is told not to
+        // drop the block on top of that.
         breakCrop(event.getPlayer(), crop);
     }
 
@@ -380,6 +391,93 @@ public final class CropListeners implements Listener {
         if (instances.isOccupied(keyOf(event.getBlock()))) {
             event.setCancelled(true);
         }
+    }
+
+    // ==================== trampling and soil loss ====================
+
+    /**
+     * A player jumping or falling on the farmland a crop is rooted in pops the
+     * crop the way vanilla crops pop when their farmland is destroyed, and the
+     * event is cancelled so the farmland itself stays farmland.
+     *
+     * <p>Trampling fires no BlockBreakEvent — the farmland simply turns to dirt
+     * underneath — so without this a crop would survive standing on ground it
+     * is no longer rootable in. Only farmland is considered: vanilla tramples
+     * nothing else, and PHYSICAL also fires for pressure plates and tripwire,
+     * which must be left alone.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerTrample(PlayerInteractEvent event) {
+        if (event.getAction() != Action.PHYSICAL) {
+            return;
+        }
+        Block block = event.getClickedBlock();
+        if (block == null || block.getType() != Material.FARMLAND) {
+            return;
+        }
+        CropInstance crop = cropAnchoredOn(block);
+        if (crop == null) {
+            return;
+        }
+        event.setCancelled(true);
+        if (crop.state() == CropState.REMOVED) {
+            return;
+        }
+        breakCrop(event.getPlayer(), crop);
+    }
+
+    /**
+     * The same treatment for non-player entities: ravagers, pigs and anything
+     * else with mob griefing on. {@code EntityInteractEvent} is what CraftBukkit
+     * fires for mob trampling; no player context exists here, so the crop is
+     * always removed through its break drops rather than the harvest path.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityTrample(EntityInteractEvent event) {
+        Block block = event.getBlock();
+        if (block.getType() != Material.FARMLAND) {
+            return;
+        }
+        CropInstance crop = cropAnchoredOn(block);
+        if (crop == null) {
+            return;
+        }
+        event.setCancelled(true);
+        if (crop.state() == CropState.REMOVED) {
+            return;
+        }
+        harvests.removeCrop(crop, CropRemoveEvent.Reason.BROKEN);
+    }
+
+    /**
+     * Safety net for every other way farmland stops being farmland: drying out,
+     * or any conversion CraftBukkit routes through BlockFadeEvent. If the block
+     * the crop is rooted in turns into something it can no longer grow on, the
+     * crop is removed with its break drops.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onSoilFade(BlockFadeEvent event) {
+        CropInstance crop = cropAnchoredOn(event.getBlock());
+        if (crop == null) {
+            return;
+        }
+        boolean stillValid = registry.crop(crop.cropId())
+            .map(CropDefinition::requirements)
+            .map(GrowthRequirements::validSoils)
+            .map(soils -> soils.contains(event.getNewState().getType()))
+            .orElse(true);
+        if (stillValid || crop.state() == CropState.REMOVED) {
+            return;
+        }
+        harvests.removeCrop(crop, CropRemoveEvent.Reason.BROKEN);
+    }
+
+    /** The crop rooted directly on top of this block, if any. */
+    private CropInstance cropAnchoredOn(Block soil) {
+        BlockPositionKey above = keyOf(soil).offset(0, 1, 0);
+        return instances.at(above)
+            .filter(crop -> crop.position().equals(above))
+            .orElse(null);
     }
 
     /**

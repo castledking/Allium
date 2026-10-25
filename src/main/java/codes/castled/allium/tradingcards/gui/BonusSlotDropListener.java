@@ -2,7 +2,6 @@ package codes.castled.allium.tradingcards.gui;
 
 import codes.castled.allium.tradingcards.TradingCardsModule;
 import codes.castled.allium.tradingcards.item.TradingCardKeys;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -22,12 +21,7 @@ import org.bukkit.persistence.PersistentDataType;
  */
 public final class BonusSlotDropListener implements Listener {
 
-    private static final MiniMessage MM = MiniMessage.miniMessage();
-
-    private final TradingCardsModule module;
-
     public BonusSlotDropListener(TradingCardsModule module) {
-        this.module = module;
     }
 
     // 26.3 has no InventoryDropItemEvent; a Q-drop from a GUI surfaces here
@@ -48,15 +42,7 @@ public final class BonusSlotDropListener implements Listener {
         if (index == null) {
             return;
         }
-        var service = module.bonusSlots();
-        if (service == null) {
-            return;
-        }
-        var result = module.editBonusSlot(player, gui.source(), index, true);
-        if (result != null && result.message() != null) {
-            player.sendMessage(MM.deserialize("<!italic>"
-                + (result.slots() == null ? "<red>" : "<green>") + result.message()));
-        }
-        gui.initialize();
+        event.setCancelled(true);
+        gui.clearSlot(index);
     }
 }

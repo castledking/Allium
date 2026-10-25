@@ -19,6 +19,7 @@ import codes.castled.allium.item.ItemResolverChain;
 import codes.castled.allium.harvest.storage.CropStorage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.random.RandomGenerator;
 import org.bukkit.Bukkit;
@@ -49,10 +50,12 @@ public final class CropHarvestService {
     private final CropStorage storage;
     private final CropVisualService visuals;
     private final ItemResolverChain items;
+    private final Logger logger;
     private final RandomGenerator random;
     private final List<HarvestWeightModifier> modifiers = new CopyOnWriteArrayList<>();
 
     public CropHarvestService(
+        Logger logger,
         CropRegistry registry,
         CropInstanceService instances,
         CropStorage storage,
@@ -60,6 +63,7 @@ public final class CropHarvestService {
         ItemResolverChain items,
         RandomGenerator random
     ) {
+        this.logger = logger;
         this.registry = registry;
         this.instances = instances;
         this.storage = storage;
@@ -198,7 +202,11 @@ public final class CropHarvestService {
             // governs the base spread and the fertilizer only shifts it.
             int amount = yield.apply(drop.rollAmount(random));
             if (amount <= 0) continue;
-            items.create(drop.item(), amount).ifPresent(drops::add);
+            // A drop that cannot be built is worth saying out loud: the
+            // player would otherwise see a plant that gave them nothing.
+            items.create(drop.item(), amount).ifPresentOrElse(drops::add, () ->
+                logger.warning("[AlliumHarvest] Drop " + drop.item()
+                    + " does not resolve and was not given"));
         }
         commands.addAll(outcome.commands());
     }

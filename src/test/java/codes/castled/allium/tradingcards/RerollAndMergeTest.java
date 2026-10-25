@@ -117,7 +117,7 @@ class RerollAndMergeTest {
     // ==================== merge ====================
 
     private static MergeRules rules() {
-        return new MergeRules(true, true, 100, 0);
+        return new MergeRules(true, 100, 0);
     }
 
     @Test
@@ -195,12 +195,22 @@ class RerollAndMergeTest {
         // tier, and carrying a FABLED unlock into an ELITE card would give it a
         // signature its own tier's pool could not roll.
         var rules = rules();
-        assertEquals(List.of("luck", "strength", "speed"), rules.mergedSignatures());
+        assertEquals(List.of("luck", "strength", "speed"), rules.mergedSignatures(Tier.ELITE));
+    }
+
+    @Test
+    void theMergedCardKeepsTheHigherQualityWhicheverSlotItIsIn() {
+        var worse = new codes.castled.allium.tradingcards.item.TradingCardData(
+            "CHICKEN", "chicken", Tier.SIMPLE, 100, 41, List.of("luck"), 0, false);
+        var better = new codes.castled.allium.tradingcards.item.TradingCardData(
+            "CHICKEN", "chicken", Tier.SIMPLE, 100, 88, List.of("luck"), 0, false);
+        assertEquals(88, rules().mergedQuality(worse, better));
+        assertEquals(88, rules().mergedQuality(better, worse));
     }
 
     @Test
     void aDisabledMergeRefusesEverything() {
-        var disabled = new MergeRules(false, true, 100, 0);
+        var disabled = new MergeRules(false, 100, 0);
         var verdict = disabled.check(
             card(Tier.SIMPLE, 100, List.of("luck"), 0),
             card(Tier.SIMPLE, 100, List.of("luck"), 0));

@@ -7,21 +7,16 @@
 #
 # Two families, and they are not interchangeable:
 #
-#   SIGNATURE  The three every card drops with. Hard-strapped to
+#   SIGNATURE  Fixed by tier: 3 / 3 / 4 / 4 / 5. Hard-strapped to
 #              AuraSkills stats, and they are what levelling grows.
-#   BONUS      Everything else. Rolled at drop, then frozen.
+#   BONUS      Paid rolls in tier-unlocked bonus slots (1 through 5).
 #
 # Reload with /tradingcards reload.
 
-# How many signature boosts a card may ever hold. 3 is where every
-# card starts, so this is the ceiling, not a starting count.
-maximum-signatures: 6
-
-# Chance a reroll unlocks a new signature rather than re-rolling
-# bonuses. 0.35 means roughly 3 unlocks across 10 rerolls.
-signature-unlock-chance: 0.35
-
-# How many bonus boosts a card rolls at drop.
+# Legacy roll settings are retained for config compatibility only.
+# Signature unlocks and whole-card rerolls are disabled in code.
+maximum-signatures: 5
+signature-unlock-chance: 0.0
 roll:
   count: 3
 
@@ -43,7 +38,7 @@ signature-amounts:
   luck: 5.0
   strength: 5.0
   speed: 3.0
-  # Unlockable by rerolling, smallest pools first.
+  # Health joins at ULTIMATE; Wisdom joins at FABLED. Other stats stay in the catalogue.
   health: 2.0
   toughness: 2.0
   wisdom: 3.0
@@ -56,30 +51,21 @@ signature-amounts:
   haste: 0.2
 
 # ------------------------------------------------------------
-# The signature pool a reroll may unlock from, per tier.
-#
-# ONLY AURASKILL_STAT mechanisms are accepted here, and the loader
-# rejects anything else with an explanation. A signature is the one
-# thing levelling grows, so it has to be something "+1" means
-# something in — a flat attribute bonus or a percentage does not
-# qualify, and putting one here would show a meaningless number on
-# the card rather than failing loudly.
-#
-# That leaves the remaining six of AuraSkills' nine stats. Haste,
-# armour and knockback resistance look like they belong: they do not,
-# and they are bonus boosts below.
+# Fixed signature identities, documented here for catalogue validation.
+# Creation, reading old cards and merges all enforce the same tier rule.
+# SIMPLE/ELITE: Luck, Strength, Speed. ULTIMATE/LEGENDARY add Health.
+# FABLED adds Wisdom. No payment or random roll can change these.
 # ------------------------------------------------------------
 signature-pool:
-  SIMPLE:    [ health, toughness, wisdom ]
-  ELITE:     [ health, toughness, wisdom, crit-chance ]
-  ULTIMATE:  [ health, toughness, wisdom, crit-chance, regeneration ]
-  LEGENDARY: [ health, toughness, wisdom, crit-chance, regeneration, crit-damage ]
-  FABLED:    [ health, toughness, wisdom, crit-chance, regeneration, crit-damage ]
+  SIMPLE:    [ luck, strength, speed ]
+  ELITE:     [ luck, strength, speed ]
+  ULTIMATE:  [ luck, strength, speed, health ]
+  LEGENDARY: [ luck, strength, speed, health ]
+  FABLED:    [ luck, strength, speed, health, wisdom ]
 
 # ------------------------------------------------------------
-# The bonus pool each tier draws its rolled boosts from. Rolled at
-# drop and frozen: levelling never touches these, so a card can
-# never grow a boost the drop did not award it.
+# The bonus pool used by paid, individual slot rolls. Fresh cards have
+# empty slots. One slot unlocks per tier; levelling never changes bonuses.
 # ------------------------------------------------------------
 bonus:
   SIMPLE:    [ crop-boost, xp-drop-boost ]
@@ -131,7 +117,7 @@ boosts:
     mechanism: AURASKILL_STAT
     stat: SPEED
 
-  # ---------------- unlockable signatures ----------------
+  # ---------------- additional AuraSkills stats ----------------
   # The other six of AuraSkills' nine stats, so no stat is quietly
   # unreachable through cards. AuraSkills has exactly nine: STRENGTH,
   # HEALTH, REGENERATION, LUCK, WISDOM, TOUGHNESS, CRIT_CHANCE,

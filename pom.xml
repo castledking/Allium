@@ -11,7 +11,7 @@
 
     <groupId>codes.castled</groupId>
     <artifactId>Allium</artifactId>
-    <version>0.2.18a</version>
+    <version>0.2.19a</version>
     <name>Allium</name>
     <description>A secure, modern Essentials solution.</description>
 
@@ -33,6 +33,7 @@
         <gson.version>2.10.1</gson.version>
         <slf4j.version>2.0.16</slf4j.version>
         <log4j.version>2.24.1</log4j.version>
+        <craftengine.version>26.9.1</craftengine.version>
 
         <!-- Build Output -->
         <project.build.finalName>Allium</project.build.finalName>
@@ -94,16 +95,16 @@
             <url>https://repo.onarandombox.com/content/groups/public/</url>
         </repository>
 
-        <!-- Oraxen Repository -->
-        <repository>
-            <id>oraxen</id>
-            <url>https://repo.oraxen.com/releases/</url>
-        </repository>
-
         <!-- Nexo Repository -->
         <repository>
             <id>nexomc-releases</id>
             <url>https://repo.nexomc.com/releases/</url>
+        </repository>
+
+        <!-- CraftEngine Repository (optional block/item provider) -->
+        <repository>
+            <id>momirealms-releases</id>
+            <url>https://repo.momirealms.net/releases/</url>
         </repository>
 
         <!-- PaperMC Repository -->
@@ -428,20 +429,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Oraxen API -->
-        <dependency>
-            <groupId>io.th0rgal</groupId>
-            <artifactId>oraxen</artifactId>
-            <version>1.211.0</version>
-            <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>me.gabytm.util</groupId>
-                    <artifactId>actions-spigot</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
         <!-- Nexo API (optional integration for Allium Harvest custom items/models) -->
         <dependency>
             <groupId>com.nexomc</groupId>
@@ -454,6 +441,27 @@
                     <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <!--
+            CraftEngine API (optional integration: crop stages drawn as real
+            CraftEngine blocks, and crop seeds/harvests as CraftEngine items).
+
+            The published bukkit artifact has no dependencies of its own, so
+            the core artifact is declared separately: it holds the Key, Block,
+            Property and NBT types the API is written in terms of.
+        -->
+        <dependency>
+            <groupId>net.momirealms</groupId>
+            <artifactId>craft-engine-bukkit</artifactId>
+            <version>${craftengine.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.momirealms</groupId>
+            <artifactId>craft-engine-core</artifactId>
+            <version>${craftengine.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- DecentHolograms API (optional: kitchen pie assembly holograms).

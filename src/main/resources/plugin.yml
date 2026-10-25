@@ -5,14 +5,14 @@ api-version: 1.21
 folia-supported: true
 author: castledking
 description: "A secure, modern Essentials solution."
-softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens, Nexo, Oraxen, ItemEdit, ItemTag, TAB, GPExpansion, GriefPrevention]
+softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens, Nexo, Oraxen, CraftEngine, ItemEdit, ItemTag, TAB, GPExpansion, GriefPrevention, LibsDisguises]
 # Write the unknown-command lang pack into ResourcePackManager's mixer before it merges.
 loadbefore: [ResourcePackManager]
 
 commands:
   nickname:
     description: "Open the nickname customization GUI"
-    usage: "/nickname"
+    usage: "/nickname [name|off] [player]"
     permission: allium.nick.gui
     aliases: [nick]
   editnick:
@@ -882,6 +882,14 @@ permissions:
     default: op
     
   # Nickname permissions
+  allium.nick:
+    description: "Allows setting your own nickname via /nick"
+    default: true
+    
+  allium.nick.other:
+    description: "Allows setting and resetting other players' nicknames"
+    default: op
+    
   allium.nick.gui:
     description: "Allows access to the nickname GUI"
     default: true

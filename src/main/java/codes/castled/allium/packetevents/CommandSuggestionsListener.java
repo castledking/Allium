@@ -4,6 +4,7 @@ import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.listeners.security.CommandManager;
+import codes.castled.allium.listeners.security.CommandPath;
 import codes.castled.allium.managers.core.Text;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
@@ -34,7 +35,9 @@ import org.bukkit.entity.Player;
  *  - Strips every namespaced ("plugin:command") suggestion unless explicitly
  *    allowlisted, so unknown namespaces (jbt:*, someplugin:*) can never leak.
  *  - Applies the configured blocklist prefixes and Allium's own group-based
- *    tab-completion visibility rules (hide.yml groups) to plain suggestions.
+ *    tab-completion visibility rules (hide.yml groups) to command-name
+ *    suggestions. Argument suggestions (player names and the like) are
+ *    checked as complete paths, including the subcommand being completed.
  *  - Cancels the response entirely if filtering removes every suggestion,
  *    instead of sending an empty list.
  *
@@ -50,7 +53,9 @@ public class CommandSuggestionsListener extends PacketListenerAbstract {
     private final PluginStart plugin;
     private final Set<String> unsafePrefixes = ConcurrentHashMap.newKeySet();
     private final Set<String> allowedNamespaced = ConcurrentHashMap.newKeySet();
-    private final Map<Integer, TrackedRequest> pendingRequests = new ConcurrentHashMap<>();
+    private record RequestKey(java.util.UUID playerId, int transactionId) {}
+
+    private final Map<RequestKey, TrackedRequest> pendingRequests = new ConcurrentHashMap<>();
     private volatile boolean enabled;
     private volatile boolean cancelBareSlashRequest;
     private volatile boolean cancelUnknownResponses;
@@ -96,7 +101,7 @@ public class CommandSuggestionsListener extends PacketListenerAbstract {
 
     @Override
     public void onPacketReceive(PacketReceiveEvent event) {
-        if (!enabled) {
+        if (!enabled && (plugin.getCommandManager() == null || !plugin.getCommandManager().isEnabled())) {
             return;
         }
         if (event.getPacketType() != PacketType.Play.Client.TAB_COMPLETE) {
@@ -111,13 +116,13 @@ public class CommandSuggestionsListener extends PacketListenerAbstract {
 
         String text = wrapper.getText();
         pruneTrackedRequests();
-        pendingRequests.put(transactionId, new TrackedRequest(text == null ? "" : text,
+        pendingRequests.put(new RequestKey(event.getUser().getUUID(), transactionId), new TrackedRequest(text == null ? "" : text,
             System.currentTimeMillis()));
     }
 
     @Override
     public void onPacketSend(PacketSendEvent event) {
-        if (!enabled) {
+        if (!enabled && (plugin.getCommandManager() == null || !plugin.getCommandManager().isEnabled())) {
             return;
         }
         if (event.getPacketType() != PacketType.Play.Server.TAB_COMPLETE) {
@@ -138,11 +143,12 @@ public class CommandSuggestionsListener extends PacketListenerAbstract {
         boolean bypass = player.hasPermission("allium.hide.bypass");
         Integer transactionId = wrapper.getTransactionId().orElse(null);
         TrackedRequest request =
-            transactionId == null ? null : pendingRequests.remove(transactionId);
+            transactionId == null ? null : pendingRequests.remove(
+                    new RequestKey(event.getUser().getUUID(), transactionId));
 
         // A response nobody asked for is dropped: it cannot be legitimate
         // completion and may be a probe relayed through a modified client.
-        if (!bypass && cancelUnknownResponses && request == null) {
+        if (enabled && !bypass && cancelUnknownResponses && request == null) {
             debug(player, "cancelled untracked TAB_COMPLETE response (transactionId="
                 + transactionId + ", matches=" + matches.size() + ")");
             event.setCancelled(true);
@@ -152,7 +158,7 @@ public class CommandSuggestionsListener extends PacketListenerAbstract {
         // Bare "/" (or any single-character input): the signature of the
         // LiquidBounce plugin-enumeration probe. Cancel so the client's
         // detection times out rather than receiving a command listing.
-        if (!bypass && cancelBareSlashRequest && request != null
+        if (enabled && !bypass && cancelBareSlashRequest && request != null
                 && request.text().length() < 2) {
             debug(player, "cancelled TAB_COMPLETE response to bare '/' probe ("
                 + matches.size() + " matches withheld)");
@@ -172,6 +178,17 @@ public class CommandSuggestionsListener extends PacketListenerAbstract {
         }
 
         CommandManager commandManager = plugin.getCommandManager();
+        java.util.function.Predicate<String> visible = commandManager == null
+                ? path -> true : commandManager.tabCompletionFilter(player);
+
+        // Evaluate each suggestion as a full path. A root rule such as "msg"
+        // includes player-name arguments, while "party invite" excludes sibling
+        // subcommands without requiring player names in the whitelist.
+        boolean completingArguments = commandBeingCompleted(typedText) != null;
+        int replacementStart = wrapper.getCommandRange()
+                .map(WrapperPlayServerTabComplete.CommandRange::getBegin)
+                .orElseGet(() -> CommandPath.completionStart(typedText));
+
         List<WrapperPlayServerTabComplete.CommandMatch> filtered = new ArrayList<>(matches.size());
         int removedNamespaced = 0;
 
@@ -185,25 +202,18 @@ public class CommandSuggestionsListener extends PacketListenerAbstract {
             }
             String lower = text.toLowerCase(Locale.ROOT);
 
-            // Namespaced suggestions are the enumeration vector: strip every
-            // one unless it is explicitly allowlisted.
-            if (lower.indexOf(':') >= 0) {
-                if (!allowedNamespaced.contains(lower)) {
-                    removedNamespaced++;
-                    continue;
-                }
-                filtered.add(match);
+            // Keep the existing namespace protection, including unknown namespaces.
+            if (enabled && lower.indexOf(':') >= 0 && !allowedNamespaced.contains(lower)) {
+                removedNamespaced++;
                 continue;
             }
 
-            // Extra configured prefix blocklist.
-            if (matchesPrefixBlocklist(lower)) {
+            if (enabled && !completingArguments && lower.indexOf(':') < 0 && matchesPrefixBlocklist(lower)) {
                 continue;
             }
 
-            // Enforce Allium's own group visibility rules so hidden commands
-            // are equally absent from suggestions regardless of namespace.
-            if (commandManager != null && !commandManager.shouldAllowTabComplete(player, lower)) {
+            String candidate = CommandPath.suggestion(typedText, text, replacementStart);
+            if (!visible.test(candidate)) {
                 continue;
             }
 
@@ -226,6 +236,18 @@ public class CommandSuggestionsListener extends PacketListenerAbstract {
         debug(player, "filtered TAB_COMPLETE response: kept " + filtered.size()
             + "/" + matches.size() + " suggestions (removed " + removedNamespaced
             + " namespaced)");
+    }
+
+    /**
+     * The command whose arguments {@code typedText} is completing, lowercased, or null
+     * while the command name itself is still being typed.
+     */
+    static String commandBeingCompleted(String typedText) {
+        if (typedText == null || !typedText.startsWith("/")) {
+            return null;
+        }
+        int space = typedText.indexOf(' ');
+        return space < 0 ? null : typedText.substring(1, space).toLowerCase(Locale.ROOT);
     }
 
     private boolean matchesPrefixBlocklist(String lowerSuggestion) {

@@ -71,6 +71,15 @@ public final class TradingCardKeys {
     public static final NamespacedKey SLOT_STATE = key("slot_state");
 
     /**
+     * Per bonus slot: the strength the bonus rolled at, 0-100.
+     *
+     * <p>Beside {@link #BONUSES} rather than inside it, so a card written before
+     * strengths existed still reads its bonus ids unchanged; its absent strengths
+     * read as the strength that keeps the value it always had.
+     */
+    public static final NamespacedKey BONUS_STRENGTHS = key("bonus_strengths");
+
+    /**
      * Marks a bonus menu button with the slot index it acts on.
      *
      * <p>Only on the menu's own buttons, never on a card, so a drop handler can

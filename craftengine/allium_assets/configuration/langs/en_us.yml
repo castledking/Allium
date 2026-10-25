@@ -1,0 +1,16 @@
+# Client-side translations, the same way Nexo does it: the names live in the
+# resource pack, so a player's client shows them in the language the client
+# is set to. The items below name their label with
+# <lang:item.ce.tomato> and the key has to be written out in full here:
+# the ${__NAMESPACE__} placeholder is substituted inside an item's own
+# configuration, but not inside a lang file, so the two would not match.
+lang#items:
+  en_us:
+    item.ce.crop: Crop
+    item.ce.tomato: Tomato
+    item.ce.tomato_seeds: Tomato Seeds
+    item.ce.tomato_silver_star: Tomato (Silver Star)
+    item.ce.tomato_golden_star: Tomato (Golden Star)
+    item.ce.golden_tomato: Golden Tomato
+    item.ce.gigantic_tomato: Gigantic Tomato
+    item.ce.tomato_crop: Tomato Plant

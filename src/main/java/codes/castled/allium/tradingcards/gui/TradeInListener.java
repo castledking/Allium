@@ -19,8 +19,7 @@ import org.bukkit.inventory.Inventory;
  * visit. Heads are never dropped on close — a full inventory is the only case
  * where dropping happens, and that is handled at delivery time.
  *
- * <p>A card that was deposited but never confirmed is returned too, since
- * confirming is what consumes it.
+ * <p>The card preview stays in its source until confirmation; it is never returned as loot.
  */
 public class TradeInListener implements Listener {
 
@@ -51,15 +50,13 @@ public class TradeInListener implements Listener {
     }
 
     /**
-     * Blocks dragging into the trade window.
+     * Blocks dragging into any card menu.
      *
-     * <p>A shift-click or drag could otherwise move an item into the deposit
-     * or payout slot without the player intending to trade, and the payout slot
-     * in particular is read by the confirm handler.
+     * <p>Display cards and transparent navigation buttons must never be overwritten.
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onDrag(InventoryDragEvent event) {
-        if (event.getView().getTopInventory().getHolder() instanceof TradeInGui) {
+        if (event.getView().getTopInventory().getHolder() instanceof CardGui) {
             event.setCancelled(true);
         }
     }

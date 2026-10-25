@@ -169,6 +169,7 @@ public final class TradingCardsModule {
         }
 
         items = ItemResolvers.build(plugin, TradingCardsBranding.DISPLAY_NAME, logger);
+        items.register(new codes.castled.allium.tradingcards.item.CardHeadItemResolver(plugin));
         registry = new CardRegistry();
         if (pending == null) {
             pending = new PendingPayoutStore(dataFolder);
@@ -194,6 +195,9 @@ public final class TradingCardsModule {
             new codes.castled.allium.tradingcards.gui.BonusSlotDropListener(this), plugin);
         Bukkit.getPluginManager().registerEvents(new TradeInListener(this), plugin);
         Bukkit.getPluginManager().registerEvents(new PendingPayoutListener(this), plugin);
+        // Reads registry/config/factory at event time, so a reload's table swap needs no re-registration.
+        Bukkit.getPluginManager().registerEvents(
+            new codes.castled.allium.tradingcards.card.CardCraftListener(this), plugin);
         reportIssues(issues);
         applyTradeConfig();
         initBoosts(dataFolder);
@@ -285,6 +289,7 @@ public final class TradingCardsModule {
 
         if (items == null) {
             items = ItemResolvers.build(plugin, TradingCardsBranding.DISPLAY_NAME, logger);
+            items.register(new codes.castled.allium.tradingcards.item.CardHeadItemResolver(plugin));
         }
         CardDefinitionLoader loader = new CardDefinitionLoader(
             items::hasNamespace, items::exists);
@@ -320,8 +325,12 @@ public final class TradingCardsModule {
             boosts.configure(reloaded, config.levelling().boostPerLevel(),
                 scaleMinimum(), scaleMaximum());
             boosts.startingBoosts(startingBoosts(), config.quality());
+            boosts.bonusStrength(config.bonusSlotRoll().strength());
             removeAllBoosts();
             factory.bonuses(reloaded.bonusPool(), reloaded.bonusRollCount());
+            // Rebuilt rather than kept: it holds the catalogue and the pricing,
+            // and a kept one rolled the old pool at the old prices after a reload.
+            bonusSlots = newBonusSlotService(reloaded);
         }
         // The lore renderer is rebuilt from the new config before anything is
         // re-rendered. LoreData captures the separator, the bonus slot count and
@@ -496,31 +505,7 @@ public final class TradingCardsModule {
             return result;
         }
 
-        // Exactly one of the two lists moves, and the result says which: an
-        // unlock adds a signature and leaves the bonuses alone, a bonus roll
-        // replaces the bonuses and leaves the signatures alone.
-        // A bonus-only reroll re-rolls the bonuses the card already holds, in
-        // the slots it already holds them in. It never fills an empty slot and
-        // never mints a bonus: those are bought with real money in the bonus
-        // menu, and a reroll that handed one over free would make the price a
-        // suggestion. A card with nothing bought has nothing to re-roll, so the
-        // player is pointed at the menu instead.
-        List<String> bonuses = result.rerolledBonuses()
-            ? rerolledBonuses(player, card, result.bonuses(), held)
-            : card.bonuses();
-        if (bonuses == null) {
-            reroll.refund(player, result.cost());
-            return new RerollService.Result(RerollService.Outcome.DISABLED, 0.0,
-                card.signatures(),
-                "This card has no bonus boosts to re-roll. Buy one in the bonus "
-                    + "slots menu.");
-        }
-        TradingCardData updated = card
-            .withReroll(card.rerolls() + 1, result.signatures())
-            .withBonuses(bonuses);
-        TradingCardData.write(held, updated);
-        slot.save(player, held);
-        refreshIfEquipped(player, slot, updated);
+        // Whole-card rolls are retired; RerollService always refuses legacy calls.
         return result;
     }
 
@@ -537,47 +522,6 @@ public final class TradingCardsModule {
         if (slot.equipped() && equipped != null && equipped.card(player.getUniqueId()) != null) {
             progression.refreshEquipped(player, updated);
         }
-    }
-
-    /**
-     * Re-rolls the bonuses a card already holds, into the slots it already fills.
-     *
-     * <p>Same count, same slots: the card comes out with the number of bonuses it
-     * went in with, so a reroll cannot quietly change a card's shape. Locked
-     * slots keep what they hold even if they are empty.
-     *
-     * @return null when the card holds no bonuses, so the caller can refund and
-     *         point the player at the menu that actually sells them
-     */
-    private List<String> rerolledBonuses(Player player, TradingCardData card,
-                                         List<String> rolled, ItemStack held) {
-        var service = bonusSlots;
-        List<String> held0 = card.bonuses();
-        if (service == null || held0.isEmpty() || rolled.isEmpty()) {
-            return null;
-        }
-        List<codes.castled.allium.tradingcards.bonus.BonusSlot> slots =
-            new ArrayList<>(service.slots(held, card));
-
-        // The rolled set is whatever the reroll produced; take as many as the
-        // card already had, so the slot count never changes.
-        List<String> next = new ArrayList<>(held0);
-        int taken = 0;
-        for (int i = 0; i < slots.size() && taken < held0.size(); i++) {
-            var slot = slots.get(i);
-            if (slot.isEmpty() || slot.locked() || !service.isTierUnlocked(card, i)) {
-                continue;
-            }
-            if (taken >= rolled.size()) {
-                break;
-            }
-            // Paid for by the reroll already, so the slot's own spend is not
-            // increased again here.
-            slots.set(i, slot.rolled(rolled.get(taken++), 0.0));
-            next.set(i, rolled.get(taken - 1));
-        }
-        service.writeState(held, slots);
-        return taken == 0 ? null : List.copyOf(next);
     }
 
     public RerollService reroll() {
@@ -611,10 +555,19 @@ public final class TradingCardsModule {
         if (!result.succeeded()) {
             return result;
         }
-        service.writeBonuses(held, card, result.slots());
-        service.writeState(held, result.slots());
-        slot.save(player, held);
-        refreshIfEquipped(player, slot, TradingCardData.read(held).orElse(card));
+        ItemStack updated = held.clone();
+        try {
+            service.writeBonuses(updated, card, result.slots());
+            service.writeState(updated, result.slots());
+            slot.save(player, updated);
+        } catch (RuntimeException failure) {
+            service.refund(player.getUniqueId(), result.cost());
+            logger.log(Level.WARNING, "Could not save a paid card bonus roll; refunded the player", failure);
+            return new codes.castled.allium.tradingcards.bonus.BonusSlotService.Result(
+                codes.castled.allium.tradingcards.bonus.BonusSlotService.Outcome.CHARGE_FAILED,
+                0, slotIndex, "", null, "Could not save that roll. Your payment was refunded.");
+        }
+        refreshIfEquipped(player, slot, TradingCardData.read(updated).orElse(card));
         return result;
     }
 
@@ -660,59 +613,47 @@ public final class TradingCardsModule {
      *
      * @return the merged card, or null when the merge was refused
      */
-    public ItemStack mergeCards(Player player, ItemStack first, ItemStack second,
-                                MergeRules rules, MergeRules.Verdict verdict) {
-        if (!verdict.allowed() || first == null || second == null) {
+    public ItemStack mergeCards(Player player, ItemStack first, ItemStack second) {
+        if (first == null || second == null) return null;
+        var contents = player.getInventory().getStorageContents();
+        int firstSlot = -1;
+        int secondSlot = -1;
+        for (int i = 0; i < contents.length; i++) {
+            if (contents[i] == null || contents[i].getAmount() < 1) continue;
+            if (firstSlot < 0 && contents[i].isSimilar(first)) firstSlot = i;
+            else if (secondSlot < 0 && contents[i].isSimilar(second)) secondSlot = i;
+        }
+        if (firstSlot < 0 || secondSlot < 0) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize(
+                "<red>Both original cards must still be in your inventory.</red>"));
             return null;
         }
-        TradingCardData a = TradingCardData.read(first).orElse(null);
-        TradingCardData b = TradingCardData.read(second).orElse(null);
-        if (a == null || b == null) {
+        var a = TradingCardData.read(contents[firstSlot]).orElse(null);
+        var b = TradingCardData.read(contents[secondSlot]).orElse(null);
+        var verdict = mergeRules.check(a, b);
+        if (!verdict.allowed()) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>" + verdict.message()));
             return null;
         }
         var definition = registry.byId(a.cardId());
-        if (definition.isEmpty()) {
-            // The source card's config has gone; there is no item to mint.
-            player.sendMessage(MiniMessage.miniMessage().deserialize(
-                "<red>No card definition exists for '" + a.cardId()
-                    + "', so it cannot be merged.</red>"));
-            return null;
-        }
+        if (definition.isEmpty()) return null;
         var result = factory.create(definition.get(), verdict.resultTier(),
-            rules.targetLevel(), a.quality(), rules.mergedSignatures(), a.bound(),
-            config, java.util.concurrent.ThreadLocalRandom.current());
+            mergeRules.targetLevel(), mergeRules.mergedQuality(a, b),
+            CardFactory.startingSignatures(verdict.resultTier()),
+            a.bound() || b.bound(), config, java.util.concurrent.ThreadLocalRandom.current());
         if (result.isEmpty()) {
             player.sendMessage(MiniMessage.miniMessage().deserialize(
-                "<red>The merged card's item does not exist. Is Nexo loaded?</red>"));
+                "<red>The merged card's item is unavailable. Your cards have not been consumed.</red>"));
             return null;
         }
-        // Only now are the inputs consumed.
-        removeFromInventory(player, first);
-        removeFromInventory(player, second);
-        return result.get();
-    }
-
-    /**
-     * Removes one specific stack from a player's inventory.
-     *
-     * <p>Matched by identity rather than by slot, because the merge window
-     * holds copies and the player may have moved the originals since staging.
-     */
-    private void removeFromInventory(Player player, ItemStack target) {
-        var contents = player.getInventory().getStorageContents();
-        for (int slot = 0; slot < contents.length; slot++) {
-            ItemStack stack = contents[slot];
-            if (stack == null || stack.getType().isAir()) continue;
-            if (!stack.isSimilar(target)) continue;
-            if (stack.getAmount() <= target.getAmount()) {
-                contents[slot] = null;
-            } else {
-                stack.setAmount(stack.getAmount() - target.getAmount());
-                contents[slot] = stack;
-            }
-            player.getInventory().setStorageContents(contents);
-            return;
+        // Two distinct originals, revalidated against the live rules. Consume exactly one each.
+        for (int slot : new int[] { firstSlot, secondSlot }) {
+            ItemStack remaining = contents[slot].clone();
+            remaining.setAmount(remaining.getAmount() - 1);
+            contents[slot] = remaining.getAmount() == 0 ? null : remaining;
         }
+        player.getInventory().setStorageContents(contents);
+        return result.get();
     }
 
     /** Re-points the trade quoter at the freshly loaded band table. */
@@ -747,6 +688,7 @@ public final class TradingCardsModule {
         service.configure(loaded, config.levelling().boostPerLevel(),
             scaleMinimum(), scaleMaximum());
         service.startingBoosts(startingBoosts(), config.quality());
+        service.bonusStrength(config.bonusSlotRoll().strength());
         // Bonus rolls are the catalogue's, but the cards that carry them are
         // built by the factory, so the pool is handed over once it is known.
         factory.bonuses(loaded.bonusPool(), loaded.bonusRollCount());
@@ -774,12 +716,8 @@ public final class TradingCardsModule {
                 codes.castled.allium.PluginStart.getInstance().getEconomyManager(),
                 java.util.concurrent.ThreadLocalRandom.current());
         this.reroll = booster;
-        this.bonusSlots = new codes.castled.allium.tradingcards.bonus.BonusSlotService(
-            loaded, config.bonusSlotRoll(), config.levelling().loreBonusSlots(),
-            codes.castled.allium.PluginStart.getInstance().getEconomyManager(),
-            java.util.concurrent.ThreadLocalRandom.current());
+        this.bonusSlots = newBonusSlotService(loaded);
         this.mergeRules = new MergeRules(config.merge().enabled(),
-            config.merge().requireSameMob(),
             config.levelling().maximumLevel(),
             config.merge().targetLevel());
 
@@ -932,7 +870,36 @@ public final class TradingCardsModule {
                 var boost = defs.get(id);
                 return boost == null ? id : boost.display();
             },
-            config.levelling().xpBarWidth())));
+            config.levelling().xpBarWidth(),
+            // The strength range is read live from config, like the curve above,
+            // so a reload's new range reaches the lore it re-renders.
+            (id, strength) -> {
+                var boost = defs.get(id);
+                if (boost == null) {
+                    return "<red>" + id + "</red>";
+                }
+                double value = bonusValue(boost, strength);
+                String amount = boost.mechanism().isMultiplier()
+                    ? "x" + trim(value)
+                    : "+" + trim(value);
+                return boost.display() + " <white>" + amount + "</white>";
+            },
+            (id, strength) -> {
+                var boost = defs.get(id);
+                return boost == null
+                    || !codes.castled.allium.tradingcards.boost.BonusStrength.rolls(boost.mechanism())
+                    ? null
+                    : config.bonusSlotRoll().strength().resolve(strength);
+            })));
+    }
+
+    /** A bonus boost's value at a rolled strength: what the lore shows and equip applies. */
+    private double bonusValue(codes.castled.allium.tradingcards.boost.BoostDefinition boost,
+                              Integer strength) {
+        double value = config.bonusSlotRoll().strength().valueOf(boost, strength);
+        return boost.mechanism() == codes.castled.allium.tradingcards.boost.BoostMechanism.CARD_SCALE
+            ? Math.max(scaleMinimum(), Math.min(scaleMaximum(), value))
+            : value;
     }
 
     /**
@@ -958,6 +925,14 @@ public final class TradingCardsModule {
         }
         return startingBoosts().valueAt(card, config.quality(), index)
             .total(startingBoosts().rules());
+    }
+
+    private codes.castled.allium.tradingcards.bonus.BonusSlotService newBonusSlotService(
+            BoostCatalog.LoadResult catalog) {
+        return new codes.castled.allium.tradingcards.bonus.BonusSlotService(
+            catalog, config.bonusSlotRoll(), config.levelling().loreBonusSlots(),
+            codes.castled.allium.PluginStart.getInstance().getEconomyManager(),
+            java.util.concurrent.ThreadLocalRandom.current());
     }
 
     /** Trims a boost value to something a lore line should carry. */
@@ -1201,8 +1176,8 @@ public final class TradingCardsModule {
         if (!bridge.initialise()) {
             if (Bukkit.getPluginManager().isPluginEnabled("LibsDisguises")) {
                 issues.add(ValidationIssue.warning(TradingCardsConfig.FILE, "morph",
-                    "Enabled, but LibsDisguises is installed and its API does not "
-                        + "match. /morph will report itself unavailable."));
+                    "Enabled, but LibsDisguises disguiseplayer/undisguiseplayer commands are "
+                        + "unavailable. /morph will report itself unavailable."));
             }
             return;
         }
@@ -1243,7 +1218,7 @@ public final class TradingCardsModule {
         }
         logger.info("[" + TradingCardsBranding.DISPLAY_NAME + "] Morphing enabled: needs a "
             + morphConfig.minimumTier() + " card, "
-            + (bridge.isFree() ? "free LibsDisguises (self view only)" : "premium")
+            + "LibsDisguises console commands"
             + ", stealth-until-attacked " + (morphConfig.stealthUntilAttacked() ? "on" : "off"));
     }
 
@@ -1333,7 +1308,19 @@ public final class TradingCardsModule {
 
     /** Values a card without trading it, for the menu. */
     public TradeQuote.Result quote(TradingCardData card) {
-        return tradeQuote.quote(card);
+        TradeQuote.Result result = tradeQuote.quote(card);
+        if (!result.isQuoted()) return result;
+        EntityType mob;
+        try {
+            mob = EntityType.valueOf(card.mob());
+        } catch (IllegalArgumentException invalid) {
+            return TradeQuote.Result.denied(TradeQuote.Denial.NO_HEAD);
+        }
+        var configuredHead = registry.byMob(card.mob()).map(d -> d.head()).orElse(null);
+        boolean available = config.trade().headSource() == TradingCardsConfig.HeadSource.CARD_ITEM
+            ? configuredHead != null && items.exists(configuredHead)
+            : HeadResolver.isAvailable(items, mob, configuredHead);
+        return available ? result : TradeQuote.Result.denied(TradeQuote.Denial.NO_HEAD);
     }
 
     /** Heads a player is owed from a window they closed early. */
@@ -1418,34 +1405,9 @@ public final class TradingCardsModule {
      * delivered directly instead.
      */
     private ItemRef referenceFor(ItemStack stack) {
-        if (stack.getType() != org.bukkit.Material.PLAYER_HEAD) {
-            return null;
-        }
-        for (var definition : registry.all()) {
-            EntityType type;
-            try {
-                type = EntityType.valueOf(definition.mob());
-            } catch (IllegalArgumentException e) {
-                continue;
-            }
-            if (!codes.castled.allium.spawnercraft.MobHeadRegistry
-                    .getMobKey(stack, false).equalsIgnoreCase(definition.mob())) {
-                continue;
-            }
-            var configured = definition.head();
-            if (configured != null) {
-                return configured;
-            }
-            var head = HeadResolver.resolve(plugin, items, type, null);
-            if (head.isEmpty()) return null;
-            return refOf(head.get());
-        }
-        return null;
-    }
-
-    private ItemRef refOf(ItemStack stack) {
-        var id = items.identify(stack);
-        return id.orElse(null);
+        // A vanilla player_head reference loses its skin and mob identity. The
+        // cardhead resolver records the actual mob for deferred payouts instead.
+        return items.identify(stack).filter(ref -> !ref.isVanilla()).orElse(null);
     }
 
     // ==================== accessors ====================

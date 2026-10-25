@@ -1,6 +1,7 @@
 package codes.castled.allium.tradingcards.item;
 
 import codes.castled.allium.tradingcards.card.Tier;
+import codes.castled.allium.util.ComponentCompat;
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.key.Key;
@@ -104,7 +105,7 @@ public final class CardFrame {
         List<Component> out = new ArrayList<>(lines.size() + 2 + BOTTOM_EXTRA_LINES);
         out.add(frame(IN + glyph(t, HEADER) + OUT));
         for (Component line : lines) {
-            out.add(Component.text().append(frame(IN + glyph(t, BODY) + OUT)).append(line).build());
+            out.add(ComponentCompat.join(frame(IN + glyph(t, BODY) + OUT), line));
         }
         // No OUT: the line's width is then the frame's, which is what vanilla
         // measures the tooltip by when it keeps it on screen.
@@ -133,7 +134,7 @@ public final class CardFrame {
         List<Component> out = new ArrayList<>(lines.size() + 2);
         out.add(frame(HOVER_IN + glyph(t, HEADER) + OUT));
         for (Component line : lines) {
-            out.add(Component.text().append(frame(HOVER_IN + glyph(t, BODY) + OUT)).append(line).build());
+            out.add(ComponentCompat.join(frame(HOVER_IN + glyph(t, BODY) + OUT), line));
         }
         out.add(frame(HOVER_IN + glyph(t, BOTTOM) + TRIM));
         return out;
@@ -190,7 +191,7 @@ public final class CardFrame {
         if (children.isEmpty() || !FONT.equals(children.get(0).font())) {
             return line;
         }
-        return Component.text().append(children.subList(1, children.size())).build();
+        return ComponentCompat.wrap(children.subList(1, children.size()));
     }
 
     /**

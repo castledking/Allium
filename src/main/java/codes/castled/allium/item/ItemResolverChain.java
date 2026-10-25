@@ -20,6 +20,14 @@ public final class ItemResolverChain {
         resolvers.put(resolver.namespace(), resolver);
     }
 
+    /**
+     * Drops the resolver of a namespace, e.g. when the plugin behind it
+     * reloaded and the namespace no longer exists.
+     */
+    public void unregister(String namespace) {
+        resolvers.remove(namespace);
+    }
+
     public boolean hasNamespace(String namespace) {
         return ItemRef.NS_MINECRAFT.equals(namespace) || resolvers.containsKey(namespace);
     }

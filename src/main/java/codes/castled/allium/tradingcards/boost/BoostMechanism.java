@@ -3,11 +3,9 @@ package codes.castled.allium.tradingcards.boost;
 /**
  * What actually implements a boost.
  *
- * <p>The distinction that matters is ownership of cleanup. {@code ATTRIBUTE}
- * modifiers are torn down by the engine along with the modifier itself, so
- * nothing needs to remember them. The three {@code AURASKILL_*} and
- * {@code CARD_PERMISSION} mechanisms are not: they are held by another plugin
- * and must be removed explicitly, or the boost outlives the card.
+ * <p>Attribute modifiers, including scale and flight speed, must be removed
+ * explicitly on unequip, just like AuraSkills and permission modifiers.
+ * Removing only the tracking record leaves the boost on the player.
  */
 public enum BoostMechanism {
 
@@ -25,7 +23,7 @@ public enum BoostMechanism {
     AURASKILL_TRAIT,
 
     /**
-     * A vanilla Bukkit attribute modifier. Engine-owned: no cleanup needed.
+     * A vanilla Bukkit attribute modifier, explicitly removed on unequip.
      */
     ATTRIBUTE,
 
@@ -98,6 +96,19 @@ public enum BoostMechanism {
             || this == CARD_WAYPOINT_MULTIPLIER
             || this == CARD_TOKEN_MULTIPLIER
             || this == AURASKILL_TRAIT;
+    }
+
+    /**
+     * True when the amount is a factor whose gain is the part above 1.
+     *
+     * <p>Narrower than {@link #isMultiplier()}: a trait is written as a
+     * multiplier but its amount is a percentage, so all of it is gain.
+     */
+    public boolean growsFromOne() {
+        return this == CARD_XP_MULTIPLIER
+            || this == CARD_SELL_MULTIPLIER
+            || this == CARD_WAYPOINT_MULTIPLIER
+            || this == CARD_TOKEN_MULTIPLIER;
     }
 
     /** True when this mechanism holds state that must be removed on unequip. */

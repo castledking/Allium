@@ -13,9 +13,11 @@ package codes.castled.allium.tradingcards.bonus;
  *               escalating price is based on
  * @param spent  total money paid into this slot, shown so the player can see
  *               what a slot has cost them
- * @param locked when set, the slot keeps whatever it holds
+ * @param locked   when set, the slot keeps whatever it holds
+ * @param strength how hard the held bonus rolled, 0-100, or null when it was
+ *                 rolled before strengths existed or the slot is empty
  */
-public record BonusSlot(String id, int rolls, double spent, boolean locked) {
+public record BonusSlot(String id, int rolls, double spent, boolean locked, Integer strength) {
 
     public static final BonusSlot EMPTY = new BonusSlot("", 0, 0.0, false);
 
@@ -23,24 +25,30 @@ public record BonusSlot(String id, int rolls, double spent, boolean locked) {
         id = id == null ? "" : id.trim();
         rolls = Math.max(0, rolls);
         spent = Math.max(0.0, spent);
+        if (id.isEmpty()) strength = null;
+    }
+
+    /** A slot with no rolled strength. */
+    public BonusSlot(String id, int rolls, double spent, boolean locked) {
+        this(id, rolls, spent, locked, null);
     }
 
     public boolean isEmpty() {
         return id.isEmpty();
     }
 
-    /** A copy with the boost set, counting the roll that put it there. */
-    public BonusSlot rolled(String boostId, double cost) {
-        return new BonusSlot(boostId, rolls + 1, spent + cost, locked);
+    /** A copy with the boost and its strength set, counting the roll that put them there. */
+    public BonusSlot rolled(String boostId, Integer rolledStrength, double cost) {
+        return new BonusSlot(boostId, rolls + 1, spent + cost, locked, rolledStrength);
     }
 
     /** A copy with the boost removed. The roll count and the money stay spent. */
     public BonusSlot cleared() {
-        return new BonusSlot("", rolls, spent, locked);
+        return new BonusSlot("", rolls, spent, locked, null);
     }
 
     public BonusSlot withLocked(boolean value) {
-        return new BonusSlot(id, rolls, spent, value);
+        return new BonusSlot(id, rolls, spent, value, strength);
     }
 
     /**

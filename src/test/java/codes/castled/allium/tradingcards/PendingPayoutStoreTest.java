@@ -83,6 +83,16 @@ class PendingPayoutStoreTest {
     }
 
     @Test
+    void mobSpecificCardHeadReferencesSurviveRestartWithoutBecomingPlainSkulls() {
+        UUID player = UUID.randomUUID();
+        ItemRef fox = ItemRef.parse("cardhead:fox");
+        new PendingPayoutStore(dataFolder).add(player, fox, 8);
+        var payout = new PendingPayoutStore(dataFolder).takeAll(player).get(0);
+        assertEquals(fox, payout.item());
+        assertEquals(8, payout.amount());
+    }
+
+    @Test
     void theItemReferenceIsStoredNotTheRawItemData() {
         // Held as a reference, so a retexture changes what a player is owed
         // rather than freezing them on last season's head.

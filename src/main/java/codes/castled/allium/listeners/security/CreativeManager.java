@@ -2,6 +2,7 @@ package codes.castled.allium.listeners.security;
 
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -789,51 +790,55 @@ public class CreativeManager implements Listener {
         }
     }
 
-    private void checkAndApplyGameModeReset(Player player) {
+    /**
+     * Restores the gamemode saved by ConnectionManager when the player quit, so staff keep
+     * creative/spectator across sessions even where vanilla does not persist it (e.g.
+     * force-gamemode=true) and no per-world gamemode plugin like Multiverse is installed.
+     * Players with the creative.inventory permission keep untouched vanilla behavior.
+     */
+    private void restoreGamemodeFromDatabase(Player player) {
+        if (player.hasPermission("allium.gamemode.creative.inventory")) {
+            return;
+        }
         UUID playerId = player.getUniqueId();
-        GameMode lastKnownGamemode = getLastKnownGamemode(playerId);
-        GameMode currentGamemode = player.getGameMode();
-
-        if (lastKnownGamemode != currentGamemode) {
-            // Skip spectator restoration if player joins in survival - they should stay in survival (vanilla behavior)
-            if (lastKnownGamemode == GameMode.SPECTATOR && currentGamemode == GameMode.SURVIVAL) {
-                // Update the known gamemode to survival to prevent future conflicts
-                lastKnownGamemodes.put(playerId, GameMode.SURVIVAL);
+        GameMode joinedGamemode = player.getGameMode();
+        if (joinedGamemode != GameMode.SURVIVAL && joinedGamemode != GameMode.ADVENTURE) {
+            return;
+        }
+        Bukkit.getAsyncScheduler().runNow(plugin, task -> {
+            if (!player.isOnline()) return;
+            GameMode savedGamemode;
+            try {
+                savedGamemode = database.getPlayerGameMode(playerId);
+            } catch (SQLException e) {
+                Text.sendDebugLog(ERROR, "Failed to load saved gamemode for " + player.getName(), e);
                 return;
             }
-            
-            if ((lastKnownGamemode == GameMode.CREATIVE && player.hasPermission("allium.gamemode.creative")) ||
-                    (lastKnownGamemode == GameMode.SPECTATOR && player.hasPermission("allium.gamemode.spectator")) &&
-                    player.hasPermission("allium.gamemode")) {
-                // Player has permission - restore their previous gamemode
-                SchedulerAdapter.runAtEntityLater(player, () -> {
-                    if (!player.isOnline()) return;
-                    player.setGameMode(lastKnownGamemode);
-                    // Skip inventory management for players with creative.inventory permission (vanilla behavior)
-                    if (!player.hasPermission("allium.gamemode.creative.inventory")) {
-                        clearInventory(player); // Clear to prevent item duplication
-                        loadInventory(player, lastKnownGamemode);
-                    }
-                }, 2L);
-            } else if ((lastKnownGamemode == GameMode.CREATIVE && !player.hasPermission("allium.gamemode.creative")) ||
-                       (lastKnownGamemode == GameMode.SPECTATOR && !player.hasPermission("allium.gamemode.spectator"))) {
-                // Player doesn't have permission for their last known gamemode - fix their inventory
-                if (!player.hasPermission("allium.gamemode.creative.inventory")) {
-                    SchedulerAdapter.runAtEntityLater(player, () -> {
-                        if (!player.isOnline()) return;
-                        // Clear their current inventory (which is from the unauthorized gamemode)
-                        clearInventory(player);
-                        // Load the inventory for their current gamemode (survival)
-                        loadInventory(player, currentGamemode);
-                        Text.sendDebugLog(INFO, "Fixed inventory for " + player.getName() + 
-                                " who was in unauthorized gamemode " + lastKnownGamemode + 
-                                ", now in " + currentGamemode);
-                    }, 2L);
-                }
-                // Update the known gamemode to prevent future conflicts
-                lastKnownGamemodes.put(playerId, currentGamemode);
+            if (savedGamemode != GameMode.CREATIVE && savedGamemode != GameMode.SPECTATOR) {
+                return;
             }
-        }
+            if (savedGamemode == GameMode.CREATIVE && !player.hasPermission("allium.gamemode.creative")) {
+                return;
+            }
+            if (savedGamemode == GameMode.SPECTATOR && !player.hasPermission("allium.gamemode.spectator")) {
+                return;
+            }
+            SchedulerAdapter.runAtEntityLater(player, () -> {
+                if (!player.isOnline()) return;
+                // The player joined with the inventory from their saved session, so skip the
+                // inventory save/clear/load pass this mode change would normally trigger —
+                // otherwise the joined inventory is written into the old gamemode's slot.
+                bypassInventoryManagement.add(playerId);
+                try {
+                    lastKnownGamemodes.put(playerId, savedGamemode);
+                    player.setGameMode(savedGamemode);
+                } finally {
+                    bypassInventoryManagement.remove(playerId);
+                }
+                Text.sendDebugLog(INFO, "Restored " + player.getName() + " to " + savedGamemode.name() +
+                        " from their last session (joined in " + joinedGamemode.name() + ")");
+            }, 5L);
+        });
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -842,7 +847,9 @@ public class CreativeManager implements Listener {
         cachePlayerPermissions(player);
         lastKnownGamemodes.put(player.getUniqueId(), player.getGameMode());
         auditJoinCreative(player);
-        checkAndApplyGameModeReset(player);
+        if (player.hasPermission("allium.gamemode")) {
+            restoreGamemodeFromDatabase(player);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

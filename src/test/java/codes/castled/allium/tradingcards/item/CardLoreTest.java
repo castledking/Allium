@@ -79,7 +79,7 @@ class CardLoreTest {
         // title therefore has to arrive as lore line 0 or the card shows nothing.
         var lines = lore(5, "---").render(card(Tier.FABLED, 3, 90, 0,
             List.of("luck"), List.of(), 12.0), 12.0);
-        assertTrue(lines.get(0).contains("Axolotl Trading Card"),
+        assertTrue(lines.get(0).contains(CardText.smallCaps("Axolotl Trading Card")),
             "line 0 should be the title, was: " + lines.get(0));
     }
 
@@ -87,7 +87,7 @@ class CardLoreTest {
     void theTitleTakesTheMobsColour() {
         var lines = lore(5, "").render(card(Tier.SIMPLE, 1, 90, 0,
             List.of("luck"), List.of(), 0.0), 0.0);
-        assertTrue(lines.get(0).endsWith("<aqua>Axolotl Trading Card</aqua>"),
+        assertTrue(lines.get(0).endsWith(CardText.smallCaps("<aqua>Axolotl Trading Card</aqua>")),
             lines.get(0));
     }
 
@@ -286,8 +286,8 @@ class CardLoreTest {
             card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), 0.0), 0.0);
         assertFalse(narrow.equals(wide),
             "two renderers built from different separators rendered identically");
-        assertTrue(wide.stream().anyMatch(l -> l.contains("BBBB")));
-        assertFalse(narrow.stream().anyMatch(l -> l.contains("BBBB")));
+        assertTrue(wide.stream().anyMatch(l -> l.contains(CardText.smallCaps("BBBB"))));
+        assertFalse(narrow.stream().anyMatch(l -> l.contains(CardText.smallCaps("BBBB"))));
     }
 
     @Test
@@ -408,7 +408,7 @@ class CardLoreTest {
         var none = lore(5, "").body(
             card(Tier.SIMPLE, 0, 15, 0, List.of("luck"), List.of(), 0.0), Tier.SIMPLE, 0.0);
         String row = String.join("\n", none);
-        assertTrue(row.contains("<green><strikethrough></strikethrough></green>"),
+        assertTrue(row.contains("<dark_red><strikethrough></strikethrough></dark_red>"),
             "no bar filled yet, was: " + row);
         // Ten characters, from the fixture's bar width rather than a constant,
         // so retuning the bar does not fail a test about something else.
@@ -417,6 +417,29 @@ class CardLoreTest {
             "but the empty bar is still drawn, was: " + row);
         assertTrue(!row.contains("\u2500".repeat(BAR_WIDTH + 1)),
             "the bar must be exactly the configured width, was: " + row);
+    }
+
+    @Test
+    void progressUsesAllSixColoursAndKeepsAConstantWidth() {
+        String[] colours = {"dark_red", "red", "gold", "yellow", "dark_green", "green"};
+        for (int i = 0; i < colours.length; i++) {
+            var lines = lore(5, "").body(
+                card(Tier.SIMPLE, 0, 90, 0, List.of("luck"), List.of(), i * 5.0),
+                Tier.SIMPLE, i * 5.0);
+            String bar = lines.stream().filter(l -> l.contains("<strikethrough>"))
+                .findFirst().orElseThrow();
+            assertTrue(bar.startsWith("<" + colours[i] + "><strikethrough>"), bar);
+            assertEquals(BAR_WIDTH, plain(bar).chars().filter(c -> c == '─').count());
+            assertTrue(bar.contains("<dark_gray><strikethrough>"));
+        }
+    }
+
+    @Test
+    void maximumLevelShowsAFullGreenBar() {
+        var lines = lore(5, "").render(
+            card(Tier.FABLED, 100, 90, 0, List.of("luck"), List.of(), 0.0), 0.0);
+        assertTrue(lines.stream().anyMatch(l -> l.contains("<green><strikethrough>"
+            + "─".repeat(BAR_WIDTH)) && l.contains(CardText.smallCaps("Max Level"))));
     }
 
     @Test

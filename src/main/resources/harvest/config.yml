@@ -136,22 +136,19 @@ crop-visuals:
 
   # Lifts the model clear of the block it stands on.
   #
-  # GROUND is the dropped-item context, and a dropped item is drawn
-  # CENTRED on its position — so at y-offset 0.0 a crop has roughly its
-  # lower half buried in the soil. 0.43 sits it on the surface.
+  # This is a CORRECTION, not a height: zero means "as the model was
+  # authored", and Allium adds the lift a crop needs on top of it (an
+  # eighth of a block, so a model drawn in block space stands on the
+  # soil instead of in it). 0.0 therefore already puts a crop on the
+  # ground; a negative value sinks it, a positive one raises it.
   #
-  # This value belongs to the TRANSFORM, not to any one model: it is
-  # right for GROUND and wrong for NONE, which applies no transform of
-  # its own and so needs little or no correction. Change transform and
-  # this number changes with it.
+  # A stage can correct this for itself with `visual: y-offset:` in the
+  # crop file, which is relative to the same zero.
   #
-  # Nexo's own furniture takes the other route — transform NONE, scale
-  # 1.0, and a per-item translation — which renders the model exactly as
-  # authored in the pack's 16x16x16 block space with no fudge factor. If
-  # your crop models are drawn as full-size block geometry rather than
-  # as dropped items, try `display-transform: NONE` with `y-offset: 0.0`
-  # before reaching for a correction here.
-  y-offset: 0.43
+  # The value belongs to the TRANSFORM, not to any one model: a model
+  # drawn as a dropped item is centred on its position and wants no
+  # correction, while a model drawn in block space wants the lift.
+  y-offset: 0.0
 
   # Crops render as display entities, which have NO hitbox of their own —
   # a click aimed at one passes straight through. `clickable` pairs each

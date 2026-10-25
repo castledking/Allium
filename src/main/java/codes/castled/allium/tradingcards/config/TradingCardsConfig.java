@@ -170,16 +170,27 @@ public record TradingCardsConfig(
      *
      * <p>The tier multiplier still applies, so filling every slot on a Fabled
      * card costs more than on a SIMPLE one — which is the point of the ladder.
+     *
+     * @param strength the factor range a rolled bonus's strength spans
      */
     public record BonusSlotRoll(
         boolean enabled,
         double cost,
         double escalation,
         long roundTo,
-        java.util.Map<Tier, Double> tierMultipliers
+        java.util.Map<Tier, Double> tierMultipliers,
+        codes.castled.allium.tradingcards.boost.BonusStrength strength
     ) {
         public BonusSlotRoll {
             tierMultipliers = java.util.Map.copyOf(tierMultipliers);
+            strength = strength == null
+                ? codes.castled.allium.tradingcards.boost.BonusStrength.defaults() : strength;
+        }
+
+        /** Pricing with the default strength range. */
+        public BonusSlotRoll(boolean enabled, double cost, double escalation, long roundTo,
+                             java.util.Map<Tier, Double> tierMultipliers) {
+            this(enabled, cost, escalation, roundTo, tierMultipliers, null);
         }
 
         public static BonusSlotRoll defaults() {
@@ -269,11 +280,10 @@ public record TradingCardsConfig(
      */
     public record Merge(
         boolean enabled,
-        boolean requireSameMob,
         int targetLevel
     ) {
         public static Merge defaults() {
-            return new Merge(true, true, 0);
+            return new Merge(true, 0);
         }
     }
 
@@ -573,8 +583,19 @@ public record TradingCardsConfig(
                 "Below 1, so each roll would cost less than the last. Using 1."));
             escalation = 1.0;
         }
+        var fallback = codes.castled.allium.tradingcards.boost.BonusStrength.defaults();
+        double low = section.getDouble("strength.minimum", fallback.low());
+        double high = section.getDouble("strength.maximum", fallback.high());
+        if (low < 0 || high < low) {
+            issues.add(ValidationIssue.warning(FILE, "bonus-slot-roll.strength",
+                "minimum must be 0 or more and no higher than maximum. Using "
+                    + fallback.low() + "-" + fallback.high() + "."));
+            low = fallback.low();
+            high = fallback.high();
+        }
         return new BonusSlotRoll(section.getBoolean("enabled", true), cost, escalation,
-            section.getLong("round-to", 100L), multipliers);
+            section.getLong("round-to", 100L), multipliers,
+            new codes.castled.allium.tradingcards.boost.BonusStrength(low, high));
     }
 
     private static Merge merge(ConfigurationSection section, List<ValidationIssue> issues) {
@@ -585,8 +606,7 @@ public record TradingCardsConfig(
                 "Negative; a merged card cannot start below 0. Using 0."));
             target = 0;
         }
-        return new Merge(section.getBoolean("enabled", true),
-            section.getBoolean("require-same-mob", true), target);
+        return new Merge(section.getBoolean("enabled", true), target);
     }
 
     private static Morph morph(ConfigurationSection section, List<ValidationIssue> issues) {

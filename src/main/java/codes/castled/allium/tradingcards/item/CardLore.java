@@ -47,6 +47,10 @@ public final class CardLore {
      * @param boostLine   renders one boost for a boost id at a card level
      * @param bonusSlots  how many bonus slots a card has in total
      * @param headLabel   what the card trades for, plural
+     * @param bonusLine   renders a bonus boost at the strength it rolled, null
+     *                    for one rolled before strengths existed
+     * @param bonusStrength the strength to draw a bonus's bar at, or null when
+     *                    that boost has no magnitude to roll
      */
     public record LoreData(
         List<QualityBand> bands,
@@ -60,7 +64,9 @@ public final class CardLore {
         StartingBoosts startingBoosts,
         java.util.function.BiFunction<String, Double, String> startingBoostValue,
         java.util.function.Function<String, String> boostLabel,
-        int xpBarWidth
+        int xpBarWidth,
+        BiFunction<String, Integer, String> bonusLine,
+        BiFunction<String, Integer, Integer> bonusStrength
     ) {
         public LoreData {
             bands = bands == null ? List.of() : List.copyOf(bands);
@@ -73,6 +79,22 @@ public final class CardLore {
             startingBoostValue = startingBoostValue == null ? (id, v) -> String.valueOf(v) : startingBoostValue;
             boostLabel = boostLabel == null ? id -> id : boostLabel;
             xpBarWidth = Math.max(1, xpBarWidth);
+            BiFunction<String, Integer, String> levelled = boostLine;
+            bonusLine = bonusLine == null ? (id, strength) -> levelled.apply(id, 0) : bonusLine;
+            bonusStrength = bonusStrength == null ? (id, strength) -> null : bonusStrength;
+        }
+
+        /** Lore without rolled bonus strengths: bonuses read at their base value, with no bar. */
+        public LoreData(List<QualityBand> bands, BiFunction<String, Integer, String> boostLine,
+                        String headLabel, int maximumLevel, int bonusSlots, String separator,
+                        IntFunction<Double> xpForLevel,
+                        java.util.function.Function<String, String> titleColour,
+                        StartingBoosts startingBoosts,
+                        java.util.function.BiFunction<String, Double, String> startingBoostValue,
+                        java.util.function.Function<String, String> boostLabel, int xpBarWidth) {
+            this(bands, boostLine, headLabel, maximumLevel, bonusSlots, separator, xpForLevel,
+                titleColour, startingBoosts, startingBoostValue, boostLabel, xpBarWidth,
+                null, null);
         }
     }
 
@@ -103,7 +125,7 @@ public final class CardLore {
         // The pack's font ships italic glyphs only, so an unstyled line inherits
         // the italic and the whole card reads as slanted. Reset per line, since
         // lore lines are independent components rather than one nested tree.
-        return lines.stream().map(CardLore::notItalic).toList();
+        return lines.stream().map(CardText::smallCaps).map(CardLore::notItalic).toList();
     }
 
     /**
@@ -125,8 +147,26 @@ public final class CardLore {
      * <p>Public so the bonus menu can label a slot with exactly what the card
      * will show, rather than a second formatting path that can drift from it.
      */
-    public String bonusLineFor(String boostId, int level) {
-        return data.boostLine().apply(boostId, level);
+    public String bonusLineFor(String boostId, Integer strength) {
+        return CardText.smallCaps(data.bonusLine().apply(boostId, strength));
+    }
+
+    /**
+     * How hard a bonus rolled, as the level bar's red-to-green rule: one dark
+     * red segment at the weakest roll, all green only at the strongest.
+     *
+     * <p>Empty for a boost with no magnitude, such as a permission, where a bar
+     * would claim a weak or strong roll that does not exist.
+     */
+    public String strengthBarFor(String boostId, Integer strength) {
+        Integer shown = data.bonusStrength().apply(boostId, strength);
+        if (shown == null) return "";
+        double ratio = Math.max(0, Math.min(100, shown)) / 100.0;
+        int width = data.xpBarWidth();
+        // Floored, so only a perfect roll fills the bar, and never below one
+        // segment, so the weakest roll still shows the red it landed on.
+        int filled = Math.max(1, (int) Math.floor(width * ratio));
+        return bar(filled, ratio) + " <gray>" + shown + "%</gray>";
     }
 
     /** The card's title, e.g. {@code Allay Trading Card}, in the mob's colour. */
@@ -220,9 +260,8 @@ public final class CardLore {
     /**
      * The bonus slots, in order.
      *
-     * <p>Slots unlock one per reroll, so a card's bonus slots fill in as it is
-     * rerolled rather than all at once. That is what makes a reroll worth
-     * something on a card whose signature pool is already full.
+     * <p>One slot unlocks per tier. Individual paid rolls fill unlocked slots;
+     * locked slots stay inactive even on cards issued under the older rules.
      *
      * <p>Shows {@code Empty!} for an unlocked slot holding nothing and
      * {@code Locked} for one not yet reached, so the card always shows its full
@@ -238,14 +277,14 @@ public final class CardLore {
         int unlocked = Math.min(data.bonusSlots(), tier.ordinal() + 1);
         for (int i = 0; i < data.bonusSlots(); i++) {
             String held = card.bonusAt(i);
-            if (!held.isEmpty()) {
-                out.add(data.boostLine().apply(held, card.level()));
-            } else if (i < unlocked) {
+            if (i >= unlocked) {
+                out.add("<gray>Bonus:</gray> <#F15A45>Locked 🔒</#F15A45>");
+            } else if (!held.isEmpty()) {
+                out.add(data.bonusLine().apply(held, card.bonusStrengthAt(i)));
+            } else {
                 // Rolled for a fee, so it reads as available rather than as a
                 // value the drop already gave. Grey, matching the pips.
                 out.add("<gray>Bonus:</gray> <#777777>Empty!</#777777>");
-            } else {
-                out.add("<gray>Bonus:</gray> <#F15A45>Locked 🔒</#F15A45>");
             }
         }
         return out;
@@ -303,18 +342,21 @@ public final class CardLore {
 
     /** The progress row, or empty when there is nothing to show. */
     private String progressLine(int level, double xp) {
+        if (level >= data.maximumLevel()) {
+            return bar(data.xpBarWidth(), 1.0) + " <green>Max Level</green>";
+        }
         double needed = data.xpForLevel().apply(level);
         if (needed <= 0.0) {
             return "";
         }
         double ratio = xp <= 0.0 ? 0.0 : Math.max(0.0, Math.min(1.0, xp / needed));
         int filled = (int) Math.round(data.xpBarWidth() * ratio);
-        return bar(filled) + " "
+        return bar(filled, ratio) + " "
             + "<gray>" + (long) xp + "</gray><dark_gray>/" + (long) needed + " XP</dark_gray>";
     }
 
     /**
-     * The XP bar: a strikethrough rule, filled in green and the rest dark grey.
+     * The XP bar: a strikethrough rule warming from red to green as it fills.
      *
      * <p>Strikethrough rather than a row of {@code |} because the rest of the
      * card draws its rules the same way — {@code lore-separator} is a
@@ -326,10 +368,14 @@ public final class CardLore {
      * and would render them literally, and a bar that needs another plugin to
      * draw is worse than one that does not.
      */
-    private String bar(int filled) {
+    private String bar(int filled, double ratio) {
         int width = data.xpBarWidth();
         int f = Math.max(0, Math.min(width, filled));
-        return "<green><strikethrough>" + BAR_CHAR.repeat(f) + "</strikethrough></green>"
+        String colour = ratio >= 0.95 ? "green" : ratio >= 0.8 ? "dark_green"
+            : ratio >= 0.6 ? "yellow" : ratio >= 0.4 ? "gold"
+            : ratio >= 0.2 ? "red" : "dark_red";
+        return "<" + colour + "><strikethrough>" + BAR_CHAR.repeat(f)
+            + "</strikethrough></" + colour + ">"
             + "<dark_gray><strikethrough>" + BAR_CHAR.repeat(width - f)
             + "</strikethrough></dark_gray>";
     }

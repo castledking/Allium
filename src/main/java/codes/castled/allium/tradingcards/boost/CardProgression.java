@@ -282,6 +282,7 @@ public class CardProgression implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
+        boosts.remove(event.getPlayer());
         boosts.detachAll(id);
         tracker.clear(id);
     }

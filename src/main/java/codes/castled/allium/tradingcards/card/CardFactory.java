@@ -80,7 +80,7 @@ public final class CardFactory {
         // a drop that handed one over for free made the price a suggestion. Every
         // slot starts empty and the tier decides how many are open to roll.
         return TradingCardData.create(items, rolled.definition(), rolled.tier(),
-            config.levelling().startLevel(), rolled.quality(), BASE_SIGNATURES,
+            config.levelling().startLevel(), rolled.quality(), startingSignatures(rolled.tier()),
             List.of(), false);
     }
 
@@ -96,11 +96,20 @@ public final class CardFactory {
         int clampedQuality = Math.max(QualityBand.ROLL_MIN,
             Math.min(QualityBand.ROLL_MAX, quality));
         return TradingCardData.create(items, definition, tier, level, clampedQuality,
-            signatures, List.of(), bound);
+            startingSignatures(tier), List.of(), bound);
     }
 
     /** The signatures a card of this tier starts with. */
     public static List<String> startingSignatures() {
+        return BASE_SIGNATURES;
+    }
+
+    /** Fixed tier identity: three, three, four, four, five. Never rolled. */
+    public static List<String> startingSignatures(Tier tier) {
+        if (tier == Tier.FABLED) return List.of("luck", "strength", "speed", "health", "wisdom");
+        if (tier == Tier.ULTIMATE || tier == Tier.LEGENDARY) {
+            return List.of("luck", "strength", "speed", "health");
+        }
         return BASE_SIGNATURES;
     }
 }

@@ -72,9 +72,11 @@ public final class ReliqueEquipRestore implements Listener {
         }
         ReliqueCardSlot slot = ReliqueCardSlot.find(player);
         if (slot == null) {
+            boosts.remove(player);
             return;
         }
-        TradingCardData.read(slot.stack(player)).ifPresent(card ->
-            tracker.set(player.getUniqueId(), card, boosts.apply(player, card)));
+        TradingCardData.read(slot.stack(player)).ifPresentOrElse(card ->
+            tracker.set(player.getUniqueId(), card, boosts.apply(player, card)),
+            () -> boosts.remove(player));
     }
 }

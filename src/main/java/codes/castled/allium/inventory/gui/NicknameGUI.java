@@ -364,9 +364,13 @@ public class NicknameGUI extends BaseGUI {
             }
 
             if (!nicknameManager.isValidNickname(currentNickname)) {
-                player.sendMessage(ChatColor.RED + "Invalid nickname! Must be between " + 
-                    nicknameManager.getMinNickLength() + " and " + 
-                    nicknameManager.getMaxNickLength() + " characters and only contain letters, numbers, and underscores.");
+                if (nicknameManager.isPlayerName(currentNickname)) {
+                    player.sendMessage(ChatColor.RED + "You aren't allowed to use that name.");
+                } else {
+                    player.sendMessage(ChatColor.RED + "Invalid nickname! Must be between " + 
+                        nicknameManager.getMinNickLength() + " and " + 
+                        nicknameManager.getMaxNickLength() + " characters and only contain letters, numbers, and underscores.");
+                }
                 return;
             }
 

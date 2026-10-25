@@ -1,6 +1,7 @@
 package codes.castled.allium.harvest.crop;
 
 import codes.castled.allium.harvest.config.HarvestConfig;
+import codes.castled.allium.harvest.crop.def.BlockRef;
 import codes.castled.allium.harvest.crop.def.CropDefinition;
 import codes.castled.allium.harvest.crop.def.CropRegistry;
 import codes.castled.allium.harvest.crop.def.StageDefinition;
@@ -17,6 +18,7 @@ import java.util.logging.Logger;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
@@ -39,19 +41,33 @@ import org.joml.Vector3f;
  */
 public final class CropVisualService {
 
+    /**
+     * How far above the cell's floor a model is drawn when its stage says
+     * nothing about its height: an eighth of a block, which is what clears
+     * the soil for a model drawn in block space.
+     */
+    public static final double DISPLAY_Y_BASELINE = 0.125;
+
     private final Logger logger;
     private final CropRegistry registry;
     private final ItemResolverChain items;
     private final HarvestConfig.Visuals settings;
+    private final CropBlockRenderer blocks;
 
     private long duplicatesRemoved;
     private long orphansRemoved;
 
     public CropVisualService(Logger logger, CropRegistry registry, ItemResolverChain items, HarvestConfig.Visuals settings) {
+        this(logger, registry, items, settings, NoopCropBlockRenderer.INSTANCE);
+    }
+
+    public CropVisualService(Logger logger, CropRegistry registry, ItemResolverChain items,
+                             HarvestConfig.Visuals settings, CropBlockRenderer blocks) {
         this.logger = logger;
         this.registry = registry;
         this.items = items;
         this.settings = settings;
+        this.blocks = blocks == null ? NoopCropBlockRenderer.INSTANCE : blocks;
     }
 
     /**
@@ -71,18 +87,127 @@ public final class CropVisualService {
             removeVisual(world, crop);
             return;
         }
-        String modelRef = stage.get().model().toString();
+        if (stage.get().isBlockStage()) {
+            ensureBlockVisual(world, crop, stage.get());
+        }
+        if (stage.get().hasModel()) {
+            ensureModelVisual(world, crop, stage.get());
+        }
+    }
+
+    /**
+     * Draws the stage as a real block standing in the crop's cell.
+     *
+     * <p>Block stages need no display entity and no hitbox: the block itself
+     * is what the player sees and clicks.</p>
+     */
+    /**
+     * What the block standing in the crop's cell looks like right now.
+     *
+     * <p>For diagnostics: the wanted block and state come from the stage, the
+     * actual ones from the provider, so a crop that renders the wrong stage
+     * says so instead of just looking wrong.</p>
+     */
+    public BlockState blockStateOf(World world, CropInstance crop, StageDefinition stage) {
+        BlockPositionKey anchor = crop.position();
+        Block block = world.getBlockAt(anchor.x(), anchor.y(), anchor.z());
+        return new BlockState(stage.block(), stage.state(),
+            blocks.stateOf(block), blocks.matches(block, stage.block(), stage.state()));
+    }
+
+    /**
+     * The wanted and the actual state of a crop's block.
+     *
+     * @param wanted the block the stage asks for
+     * @param wantedState the state the stage asks for
+     * @param actualState the state the block in the world actually has
+     * @param matches whether the world already shows what the stage wants
+     */
+    public record BlockState(BlockRef wanted, Map<String, String> wantedState,
+                             Map<String, String> actualState, boolean matches) {
+    }
+
+    private void ensureBlockVisual(World world, CropInstance crop, StageDefinition stage) {
+        BlockPositionKey anchor = crop.position();
+        Block block = world.getBlockAt(anchor.x(), anchor.y(), anchor.z());
+        // A block stage needs neither a display nor a hitbox: the block is
+        // what the player sees and clicks. If this crop used to be a model
+        // stage, its leftovers have to go.
+        ItemDisplay display = findDisplay(world, crop);
+        if (display != null) {
+            display.remove();
+            crop.setVisualEntityId(null);
+        }
+        Interaction hitbox = findHitbox(world, crop);
+        if (hitbox != null) {
+            hitbox.remove();
+            crop.setHitboxEntityId(null);
+        }
+        if (blocks.matches(block, stage.block(), stage.state())) {
+            return;
+        }
+        if (!block.getType().isAir() && !blocks.isCustomBlock(block)) {
+            logger.warning("[AlliumHarvest] Cannot render crop " + crop.cropId()
+                + ": cell " + anchor + " is occupied by " + block.getType());
+            return;
+        }
+        if (!blocks.apply(block, stage.block(), stage.state())) {
+            logger.warning("[AlliumHarvest] Cannot render crop " + crop.cropId()
+                + ": block " + stage.block() + " was not placed");
+        }
+    }
+
+    private void ensureModelVisual(World world, CropInstance crop, StageDefinition stage) {
+        String modelRef = stage.model().toString();
+
+        // A crop drawn as a block leaves that block standing in its cell. If
+        // the stage is now a model, the block has to go: the display would
+        // otherwise be spawned inside it, and a plant that is never seen. A
+        // stage that has both keeps its block — that is the point of it.
+        if (!stage.isBlockStage()) {
+            removeBlockVisual(world, crop);
+        }
 
         ItemDisplay display = findDisplay(world, crop);
         if (display != null) {
-            if (!modelRef.equals(VisualTags.modelRefOf(display).orElse(null))) {
-                applyItem(display, stage.get(), crop);
+            // Re-apply whenever the drawing no longer matches the stage, not
+            // only when the model changed. A reload that moves a crop's
+            // height, scale or transform has to reach the plants that are
+            // already standing there, or the configuration only ever applies
+            // to what is planted afterwards.
+            if (!modelRef.equals(VisualTags.modelRefOf(display).orElse(null))
+                || !matchesVisual(display, stage, crop)) {
+                applyItem(display, stage, crop);
             }
             crop.setVisualEntityId(display.getUniqueId());
         } else {
-            spawnDisplay(world, crop, stage.get());
+            spawnDisplay(world, crop, stage);
         }
-        ensureHitbox(world, crop, stage.get());
+        ensureHitbox(world, crop, stage);
+    }
+
+    /**
+     * Whether the display is already drawn the way the stage asks for.
+     *
+     * <p>Compared by value and not by identity: the height, the transform
+     * the model is shown in, and the scale. A display that matches is left
+     * alone, because re-applying it means rebuilding the item.</p>
+     */
+    private boolean matchesVisual(ItemDisplay display, StageDefinition stage, CropInstance crop) {
+        StageDefinition.VisualOverride visual = stage.visual();
+        double expectedHeight = crop.position().y() + displayHeight(visual);
+        if (Math.abs(display.getLocation().getY() - expectedHeight) > 1.0E-6) {
+            return false;
+        }
+        if (display.getItemDisplayTransform()
+            != visual.transformOr(settings.displayTransform())) {
+            return false;
+        }
+        Vector3f scale = display.getTransformation().getScale();
+        float wanted = visual.scaleOr(settings.scale());
+        return Math.abs(scale.x() - wanted) < 1.0E-4
+            && Math.abs(scale.y() - wanted) < 1.0E-4
+            && Math.abs(scale.z() - wanted) < 1.0E-4;
     }
 
     /**
@@ -128,6 +253,7 @@ public final class CropVisualService {
     }
 
     public void removeVisual(World world, CropInstance crop) {
+        removeBlockVisual(world, crop);
         ItemDisplay display = findDisplay(world, crop);
         if (display != null) {
             display.remove();
@@ -138,6 +264,22 @@ public final class CropVisualService {
             hitbox.remove();
         }
         crop.setHitboxEntityId(null);
+    }
+
+    /**
+     * Takes the block out of the crop's cell.
+     *
+     * <p>The cell belongs to the crop, so whatever stands there is removed
+     * along with it. A crop that is drawn with a model has nothing to remove,
+     * and a cell that holds a foreign block is left alone.</p>
+     */
+    private void removeBlockVisual(World world, CropInstance crop) {
+        BlockPositionKey anchor = crop.position();
+        Block block = world.getBlockAt(anchor.x(), anchor.y(), anchor.z());
+        if (!blocks.isCustomBlock(block)) {
+            return;
+        }
+        blocks.remove(block);
     }
 
     private ItemDisplay findDisplay(World world, CropInstance crop) {
@@ -156,7 +298,7 @@ public final class CropVisualService {
         StageDefinition.VisualOverride visual = stage.visual();
         Location location = new Location(world,
             anchor.x() + 0.5D,
-            anchor.y() + visual.yOffsetOr(settings.yOffset()),
+            anchor.y() + displayHeight(visual),
             anchor.z() + 0.5D);
         ItemStack item = items.create(stage.model(), 1).orElse(null);
         if (item == null) {
@@ -184,6 +326,19 @@ public final class CropVisualService {
         crop.setVisualEntityId(display.getUniqueId());
     }
 
+    /**
+     * The height a stage's model is drawn at, above the cell's floor.
+     *
+     * <p>The model's own y-offset is a correction, not a height: zero means
+     * "as the model was authored", and a model authored in block space wants
+     * to sit a little above the floor to clear the soil. The baseline is that
+     * little lift, so a stage that says nothing about its height gets a crop
+     * standing on the ground rather than in it.</p>
+     */
+    private double displayHeight(StageDefinition.VisualOverride visual) {
+        return DISPLAY_Y_BASELINE + visual.yOffsetOr(settings.yOffset());
+    }
+
     private void applyItem(ItemDisplay display, StageDefinition stage, CropInstance crop) {
         ItemStack item = items.create(stage.model(), 1).orElse(null);
         if (item == null) {
@@ -202,9 +357,9 @@ public final class CropVisualService {
             scaleVector(visual.scaleOr(settings.scale())),
             new org.joml.Quaternionf()));
 
-        double yOffset = visual.yOffsetOr(settings.yOffset());
         Location expected = new Location(display.getWorld(),
-            crop.position().x() + 0.5D, crop.position().y() + yOffset, crop.position().z() + 0.5D);
+            crop.position().x() + 0.5D, crop.position().y() + displayHeight(visual),
+            crop.position().z() + 0.5D);
         if (display.getLocation().getY() != expected.getY()) {
             display.teleport(expected);
         }

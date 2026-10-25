@@ -1,5 +1,7 @@
 package codes.castled.allium.item;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
@@ -40,14 +42,37 @@ public final class ItemResolvers {
                 logger.warning("[" + label + "] Nexo present but API mismatch: " + t);
             }
         }
-        if (Bukkit.getPluginManager().isPluginEnabled("Oraxen")) {
-            try {
-                chain.register(new OraxenItemResolver());
-                logger.info("[" + label + "] Oraxen item integration enabled");
-            } catch (Throwable t) {
-                logger.warning("[" + label + "] Oraxen present but API mismatch: " + t);
-            }
-        }
+        registerCraftEngine(chain, label, logger);
         return chain;
+    }
+
+    /**
+     * Registers a resolver for every CraftEngine pack namespace.
+     *
+     * <p>CraftEngine names its ids after the pack that defines them, so one
+     * resolver per namespace is what makes {@code default:tomato_seeds}
+     * resolvable.</p>
+     *
+     * @return the namespaces that were registered
+     */
+    public static Set<String> registerCraftEngine(ItemResolverChain chain, String label, Logger logger) {
+        Set<String> namespaces = new LinkedHashSet<>();
+        if (!Bukkit.getPluginManager().isPluginEnabled("CraftEngine")) {
+            return namespaces;
+        }
+        try {
+            namespaces.addAll(CraftEngineItemResolver.loadedNamespaces());
+            for (String namespace : namespaces) {
+                chain.register(new CraftEngineItemResolver(namespace));
+            }
+            if (!namespaces.isEmpty()) {
+                logger.info("[" + label + "] CraftEngine item integration enabled ("
+                    + String.join(", ", namespaces) + ")");
+            }
+        } catch (Throwable t) {
+            logger.warning("[" + label + "] CraftEngine present but API mismatch: " + t);
+            namespaces.clear();
+        }
+        return namespaces;
     }
 }

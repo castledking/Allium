@@ -1,0 +1,45 @@
+# The crop block: the physical presence of a crop.
+#
+# Allium Harvest owns the crop — its clock, its stages, its drops — and this
+# block is what stands in the cell while it does. It carries no model of its
+# own: the stage's model is drawn by Allium as a display entity, which is
+# what makes 'visual' (transform, scale, y-offset) work for a CraftEngine
+# crop the way it does for a Nexo one.
+#
+# The backing state is the state the block really is in the world:
+# CraftEngine reserves a vanilla state per appearance and replaces its model
+# with ours, so the backing is invisible. It still decides the block's shape,
+# its hardness and whether it can soak up water.
+#
+# Tripwire is the backing because it does not absorb water: a block that
+# absorbs water never fires the flow event Allium's fluid listener watches,
+# so the crop would stand in the water and live. The block takes the
+# replaceable flag from its settings and lets the fluid in.
+items:
+  ce:tomato_crop:
+    data:
+      item_name: <!i><lang:item.ce.tomato_crop>
+    texture: ce:item/crops/tomato/tomato
+    behavior:
+      type: block_item
+      block:
+        settings:
+          template:
+            - default:hardness/none
+            - default:sound/grass
+          overrides:
+            push_reaction: popped
+            map_color: 60
+            # Replaceable means a fluid may flow into the cell and take the
+            # block's place. That is what makes water destroy a crop the way
+            # it destroys one drawn as a model: Allium's fluid listener only
+            # sees a crop when a fluid flows *into* its cell, and a cell with
+            # a solid block in it is never flowed into.
+            replaceable: true
+        state:
+          appearances:
+            crop:
+              auto_state: lower_tripwire
+              # No model: the stage's model is drawn by Allium. The block is
+              # only there to be a real block.
+              transparent: true

@@ -1904,11 +1904,11 @@ public class Core implements CommandExecutor, TabCompleter {
                     case "add": {
                         HideScope scope = parseHideScope(args, 4);
                         if (scope.nextArgIndex() >= args.length) {
-                            sender.sendMessage("§cUsage: /core hide group <name> add [-c|-t|-tc] <cmd[,cmd2,...]>");
+                            sender.sendMessage("§cUsage: /core hide group <name> add [-c|-t|-tc] <command [subcommand ...][,command2 ...]>");
                             return;
                         }
 
-                        List<String> targets = parseHideTargets(args[scope.nextArgIndex()]);
+                        List<String> targets = parseHideTargets(args, scope.nextArgIndex());
                         if (targets.isEmpty()) {
                             sender.sendMessage("§cNo valid commands were provided.");
                             return;
@@ -1949,11 +1949,11 @@ public class Core implements CommandExecutor, TabCompleter {
                     case "remove": {
                         HideScope scope = parseHideScope(args, 4);
                         if (scope.nextArgIndex() >= args.length) {
-                            sender.sendMessage("§cUsage: /core hide group <name> remove [-c|-t|-tc] <cmd[,cmd2,...]>");
+                            sender.sendMessage("§cUsage: /core hide group <name> remove [-c|-t|-tc] <command [subcommand ...][,command2 ...]>");
                             return;
                         }
 
-                        List<String> targets = parseHideTargets(args[scope.nextArgIndex()]);
+                        List<String> targets = parseHideTargets(args, scope.nextArgIndex());
                         if (targets.isEmpty()) {
                             sender.sendMessage("§cNo valid commands were provided.");
                             return;
@@ -2021,11 +2021,11 @@ public class Core implements CommandExecutor, TabCompleter {
                     case "check": {
                         HideScope scope = parseHideScope(args, 4);
                         if (scope.nextArgIndex() >= args.length) {
-                            sender.sendMessage("§cUsage: /core hide group <name> check [-c|-t|-tc] <cmd[,cmd2,...]>");
+                            sender.sendMessage("§cUsage: /core hide group <name> check [-c|-t|-tc] <command [subcommand ...][,command2 ...]>");
                             return;
                         }
 
-                        List<String> targets = parseHideTargets(args[scope.nextArgIndex()]);
+                        List<String> targets = parseHideTargets(args, scope.nextArgIndex());
                         if (targets.isEmpty()) {
                             sender.sendMessage("§cNo valid commands were provided.");
                             return;
@@ -2182,15 +2182,15 @@ public class Core implements CommandExecutor, TabCompleter {
         return "tabcompletes";
     }
 
-    private List<String> parseHideTargets(String rawValue) {
-        if (rawValue == null || rawValue.isBlank()) {
+    static List<String> parseHideTargets(String[] args, int startIndex) {
+        String rawValue = String.join(" ", Arrays.copyOfRange(args, startIndex, args.length));
+        if (rawValue.isBlank()) {
             return List.of();
         }
 
         return Arrays.stream(rawValue.split(","))
-                .map(String::trim)
+                .map(codes.castled.allium.listeners.security.CommandPath::normalize)
                 .filter(value -> !value.isEmpty())
-                .map(value -> value.toLowerCase(Locale.ROOT))
                 .distinct()
                 .toList();
     }

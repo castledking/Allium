@@ -3,6 +3,7 @@ package codes.castled.allium.packetevents;
 import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.listeners.security.CommandManager;
 import codes.castled.allium.managers.core.Text;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
@@ -10,7 +11,7 @@ import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDeclareCommands;
 import com.github.retrooper.packetevents.protocol.chat.Node;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -48,10 +49,6 @@ public class DeclareCommandsListener extends PacketListenerAbstract {
 
     @Override
     public void onPacketSend(PacketSendEvent event) {
-        if (!enabled || unsafeCommands.isEmpty()) {
-            return;
-        }
-
         if (event.getPacketType() != PacketType.Play.Server.DECLARE_COMMANDS) {
             return;
         }
@@ -83,31 +80,20 @@ public class DeclareCommandsListener extends PacketListenerAbstract {
                 return;
             }
 
-            // Collect indices of nodes to remove
-            List<Integer> nodesToRemove = new ArrayList<>();
-            collectNodesToRemove(rootNode, nodes, nodesToRemove, "");
-
-            if (!nodesToRemove.isEmpty()) {
-                // Sort in descending order to remove from the end first (preserves indices)
-                nodesToRemove.sort((a, b) -> Integer.compare(b, a));
-                
-                for (int index : nodesToRemove) {
-                    if (index >= 0 && index < nodes.size()) {
-                        nodes.remove(index);
-                    }
-                }
-
-                // Rebuild the nodes list with updated indices
-                List<Node> newNodes = new ArrayList<>(nodes);
-                declareCommandsPacket.setNodes(newNodes);
-                declareCommandsPacket.setRootIndex(0);
-                
-                event.markForReEncode(true);
-
-                if (plugin.getConfig().getBoolean("debug-mode", false)) {
-                    Text.sendDebugLog(INFO, "DeclareCommandsListener: Removed " + nodesToRemove.size() + " unsafe command nodes for " + player.getName());
-                }
+            Set<Integer> nodesToRemove = new HashSet<>();
+            if (enabled && !unsafeCommands.isEmpty()) {
+                collectNodesToRemove(rootNode, nodes, nodesToRemove, "", new HashSet<>());
             }
+            CommandManager commandManager = plugin.getCommandManager();
+            if (nodesToRemove.isEmpty() && (commandManager == null || !commandManager.isEnabled())) {
+                return;
+            }
+            CommandTreeFilter.Result filtered = CommandTreeFilter.filter(nodes, rootIndex, nodesToRemove,
+                    commandManager == null ? path -> true : commandManager.tabCompletionFilter(player),
+                    commandManager == null ? Set.of() : commandManager.subcommandCompletionRoots(player));
+            declareCommandsPacket.setNodes(filtered.nodes());
+            declareCommandsPacket.setRootIndex(filtered.rootIndex());
+            event.markForReEncode(true);
         } catch (Exception e) {
             Text.sendDebugLog(WARN, "DeclareCommandsListener: Failed to process DECLARE_COMMANDS packet: " + e.getMessage());
             if (plugin.getConfig().getBoolean("debug-mode", false)) {
@@ -119,8 +105,9 @@ public class DeclareCommandsListener extends PacketListenerAbstract {
     /**
      * Recursively collects node indices that match unsafe commands.
      */
-    private void collectNodesToRemove(Node node, List<Node> allNodes, List<Integer> nodesToRemove, String currentPath) {
-        if (node == null) {
+    private void collectNodesToRemove(Node node, List<Node> allNodes, Set<Integer> nodesToRemove,
+                                      String currentPath, Set<Node> visited) {
+        if (node == null || !visited.add(node)) {
             return;
         }
 
@@ -139,7 +126,7 @@ public class DeclareCommandsListener extends PacketListenerAbstract {
         for (Integer childIndex : node.getChildren()) {
             if (childIndex >= 0 && childIndex < allNodes.size()) {
                 Node childNode = allNodes.get(childIndex);
-                collectNodesToRemove(childNode, allNodes, nodesToRemove, fullPath);
+                collectNodesToRemove(childNode, allNodes, nodesToRemove, fullPath, visited);
             }
         }
     }

@@ -1,6 +1,7 @@
 package codes.castled.allium.frames;
 
 import com.google.gson.JsonObject;
+import codes.castled.allium.util.ComponentCompat;
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.key.Key;
@@ -50,8 +51,7 @@ final class SpriteFrame implements LineFrame {
         List<Component> result = new ArrayList<>(n + 2);
         result.add(frame(in + cut.header() + out));
         for (int k = 0; k < n; k++) {
-            result.add(Component.text().append(frame(in + cut.lines().charAt(k) + out))
-                .append(lines.get(k)).build());
+            result.add(ComponentCompat.join(frame(in + cut.lines().charAt(k) + out), lines.get(k)));
         }
         // The panel's last rows, on a blank line of their own. No OUT, so the
         // line is the frame's width and vanilla keeps the tooltip on screen by it.
@@ -70,8 +70,7 @@ final class SpriteFrame implements LineFrame {
         // that panel when it sits 12 pixels around them.
         for (int k = 0; k < n; k++) {
             char strip = k == 0 ? cut.header() : k < n - 1 ? cut.lines().charAt(k - 1) : cut.last();
-            result.add(Component.text().append(frame(hoverIn + strip + out))
-                .append(lines.get(k)).build());
+            result.add(ComponentCompat.join(frame(hoverIn + strip + out), lines.get(k)));
         }
         return result;
     }

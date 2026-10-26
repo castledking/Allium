@@ -161,7 +161,7 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         msg(sender, "<gray>Relique card slot:</gray> "
             + (module.isReliqueSlotInstalled() ? "<green>installed" : "<red>not installed"));
         msg(sender, "<gray>Quest completions:</gray> " + live(module.isQuestListenerLive(),
-            "needs the patched ExcellentQuests"));
+            "needs LMBishop Quests or the patched ExcellentQuests"));
         msg(sender, "<gray>LiteFish catches:</gray> " + live(module.isFishingListenerLive(),
             "needs LiteFish 5.10.5 or later"));
         msg(sender, "<gray>EcoJobs work:</gray> " + live(module.isJobsListenerLive(),
@@ -244,6 +244,10 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
             + "</yellow> " + card.tier().pipsWithPosition());
         msg(sender, "<gray>Level:</gray> <green>" + card.level()
             + "</green> <gray>/ " + module.config().levelling().maximumLevel() + "</gray>");
+        if (module.xpConfig() != null) {
+            msg(sender, "<gray>XP:</gray> <green>" + card.xp() + "</green> <gray>/ "
+                + module.xpConfig().xpForLevel(card.level()) + " to the next level</gray>");
+        }
         msg(sender, "<gray>Quality:</gray> "
             + (band == null ? "<red>unknown (" + card.quality() + "%)"
                             : band.colour() + QualityBandDisplay.text(card, band))
@@ -309,6 +313,10 @@ public final class TradingCardsCommand implements CommandExecutor, TabCompleter 
         msg(sender, "<gray>" + target.getName() + "'s card:</gray> <yellow>"
             + card.tier().name() + " " + card.mob() + "</yellow> <gray>level "
             + card.level() + ", " + card.signatures().size() + " signature(s)</gray>");
+        if (module.xpConfig() != null) {
+            msg(sender, "<gray>XP:</gray> <green>" + card.xp() + "</green> <gray>/ "
+                + module.xpConfig().xpForLevel(card.level()) + " to the next level</gray>");
+        }
         var granted = module.appliedBoosts(target.getUniqueId());
         if (granted.isEmpty()) {
             msg(sender, "<gray>No boosts applied. AuraSkills may be unavailable.</gray>");

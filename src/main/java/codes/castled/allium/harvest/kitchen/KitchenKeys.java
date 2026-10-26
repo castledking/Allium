@@ -17,6 +17,8 @@ final class KitchenKeys {
     static final NamespacedKey PIE_STEP = key("pie_step");
     static final NamespacedKey PIE_PROGRESS = key("pie_progress");
     static final NamespacedKey PIE_TYPE = key("pie_type");
+    /** Actual crust placed by the player, even if an ingredient selects another recipe path. */
+    static final NamespacedKey PIE_CRUST = key("pie_crust");
     static final NamespacedKey PIE_REFUNDS = key("pie_refunds");
     static final NamespacedKey PIE_BAKED = key("pie_baked");
     static final NamespacedKey PIE_BITES = key("pie_bites");

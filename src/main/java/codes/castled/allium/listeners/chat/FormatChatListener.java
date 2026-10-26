@@ -913,7 +913,7 @@ public class FormatChatListener implements Listener {
                         effectiveMode = "name";
                     }
                     if ("none".equals(effectiveMode)) {
-                        return baseBroadcast;
+                        return chatMessageManager.withMessageId(messageId, baseBroadcast);
                     }
 
                     // Helper to extend hover text and set suggest-command on a single component
@@ -1011,10 +1011,10 @@ public class FormatChatListener implements Listener {
                                 .matchLiteral("{SUFFIX_COMPONENT}")
                                 .replacement(viewerSuffixFinal)
                         );
-                    return viewerMessage;
+                    return chatMessageManager.withMessageId(messageId, viewerMessage);
                 }
             }
-            return baseBroadcast;
+            return chatMessageManager.withMessageId(messageId, baseBroadcast);
         });
     }
 

@@ -3450,6 +3450,9 @@ public class Database {
             }
         } catch (SQLException e) {
             Text.sendDebugLog(ERROR, "Error loading inventory snapshots for player: " + playerId, e);
+            // A failed SELECT is not an empty history: let the caller retry it
+            // instead of caching a missing result until the next plugin reload.
+            throw new IllegalStateException("Unable to load inventory snapshots for " + playerId, e);
         }
         
         return snapshots;

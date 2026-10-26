@@ -20,6 +20,11 @@ enabled: true
 drops:
   delivery: ground
 
+# Card menu behavior. When enabled, Q drops cards normally instead of opening
+# the card menu. Right-click still opens the menu.
+card-menu:
+  allow-drop: false
+
 # ------------------------------------------------------------
 # Card levels.
 #
@@ -223,7 +228,9 @@ bonus-slot-roll:
   # amount between these two factors: at the defaults a +250 Quest Bounty
   # rolls between +187.5 and +312.5, and the configured amount is the
   # average roll. Multipliers scale only their gain, so x1.25 Experience
-  # rolls x1.19 to x1.31 and a weak roll is never a penalty.
+  # rolls x1.19 to x1.31 and a weak roll is never a penalty. Player Scale
+  # ignores this range: its strength picks the size itself, x0.6 to x2.0,
+  # from its minimum/maximum in boosts.yml.
   #
   # Strength is stored as a position in this range, so changing it moves
   # every existing card with it. A bonus rolled before strengths existed
@@ -364,6 +371,10 @@ morph:
 # the next one's cost.
 # ------------------------------------------------------------
 xp:
+  # LiteFish's synthetic Bukkit catch event has zero XP. Give EcoJobs' normal
+  # catch_fish trigger a positive VALUE (20 job XP with the default fisherman
+  # multiplier of 20). This does not grant job XP directly. Set 0 to opt out.
+  litefish-ecojobs-catch-value: 1
   curve:
     10: 25
     25: 120
@@ -406,13 +417,26 @@ xp:
       enabled: true
       xp: 20
 
-    # Needs the patched ExcellentQuests build in tradingcardjars/ — the
-    # released plugin has no quest-completion event at all, so this source
-    # cannot fire against it. Allium registers reflectively, so it loads
-    # fine without ExcellentQuests; the source simply never triggers.
+    # LMBishop Quests and the patched ExcellentQuests completion event.
+    # Quests has no difficulty API. Explicit quest/category overrides win,
+    # then a difficulty word in the ID, then its trailing stage number.
+    # E.g. activities-00-milk-4 pays 25 * 8 = 200 XP.
     quest-complete:
       enabled: true
       xp: 25
+      default-difficulty: easy
+      difficulty-multipliers:
+        easy: 1
+        medium: 2
+        hard: 4
+        expert: 8
+      stage-difficulties:
+        '1': easy
+        '2': medium
+        '3': hard
+        '4': expert
+      quest-difficulties: {}
+      category-difficulties: {}
 
     # Fires on ACTIVATION, not on effect, so an ability that misses still
     # pays. The card is paying for practice with the skill, not for damage
@@ -437,7 +461,13 @@ xp:
       # AFK and creative are already filtered by EcoJobs before the event
       # fires, so they are not re-checked here.
 
-    # LiteFish has no isLarge() — its bands are a percentage within a species'
+    # Every successful vanilla or LiteFish catch, including unweighted species.
+    # LiteFish's later Bukkit event does not award a duplicate.
+    fish-catch:
+      enabled: true
+      xp: 4
+
+    # An extra reward on top of fish-catch. LiteFish has no isLarge() — its bands are a percentage within a species'
     # OWN range, so a 12.4kg cod and a 12.4kg salmon are not the same
     # achievement, and the boundaries live in a config this plugin would have
     # to parse. So "large" is measured against the player's own recent catches

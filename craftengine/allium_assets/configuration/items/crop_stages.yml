@@ -1,0 +1,1929 @@
+# Plant displays with plain crop names and growth-stage GUI icons.
+items:
+  ce:banana_stage_1:
+    data:
+      item_name: <!i>Banana
+      nbt:
+        $jade:stack:
+          id: ce:banana_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/banana_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/banana/stage_1
+  ce:banana_stage_2:
+    data:
+      item_name: <!i>Banana
+      nbt:
+        $jade:stack:
+          id: ce:banana_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/banana_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/banana/stage_2
+  ce:banana_stage_3:
+    data:
+      item_name: <!i>Banana
+      nbt:
+        $jade:stack:
+          id: ce:banana_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/banana_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/banana/stage_3
+  ce:banana_stage_4:
+    data:
+      item_name: <!i>Banana
+      nbt:
+        $jade:stack:
+          id: ce:banana_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/banana_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/banana/stage_4
+  ce:banana_stage_5:
+    data:
+      item_name: <!i>Banana
+      nbt:
+        $jade:stack:
+          id: ce:banana_stage_5
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/banana_stage_5
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/banana/stage_5
+  ce:blackberry_bush_1:
+    data:
+      item_name: <!i>Blackberry
+      nbt:
+        $jade:stack:
+          id: ce:blackberry_bush_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/blackberry_bush_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/blackberry/blackberry_bush_1
+  ce:blackberry_bush_2:
+    data:
+      item_name: <!i>Blackberry
+      nbt:
+        $jade:stack:
+          id: ce:blackberry_bush_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/blackberry_bush_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/blackberry/blackberry_bush_2
+  ce:blackberry_bush_3:
+    data:
+      item_name: <!i>Blackberry
+      nbt:
+        $jade:stack:
+          id: ce:blackberry_bush_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/blackberry_bush_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/blackberry/blackberry_bush_3
+  ce:blackberry_bush_4:
+    data:
+      item_name: <!i>Blackberry
+      nbt:
+        $jade:stack:
+          id: ce:blackberry_bush_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/blackberry_bush_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/blackberry/blackberry_bush_4
+  ce:blueberry_bush_1:
+    data:
+      item_name: <!i>Blueberry
+      nbt:
+        $jade:stack:
+          id: ce:blueberry_bush_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/blueberry_bush_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/blueberry/blueberry_bush_1
+  ce:blueberry_bush_2:
+    data:
+      item_name: <!i>Blueberry
+      nbt:
+        $jade:stack:
+          id: ce:blueberry_bush_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/blueberry_bush_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/blueberry/blueberry_bush_2
+  ce:blueberry_bush_3:
+    data:
+      item_name: <!i>Blueberry
+      nbt:
+        $jade:stack:
+          id: ce:blueberry_bush_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/blueberry_bush_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/blueberry/blueberry_bush_3
+  ce:blueberry_bush_4:
+    data:
+      item_name: <!i>Blueberry
+      nbt:
+        $jade:stack:
+          id: ce:blueberry_bush_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/blueberry_bush_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/blueberry/blueberry_bush_4
+  ce:cabbage_stage_1:
+    data:
+      item_name: <!i>Cabbage
+      nbt:
+        $jade:stack:
+          id: ce:cabbage_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cabbage_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cabbage/stage_1
+  ce:cabbage_stage_2:
+    data:
+      item_name: <!i>Cabbage
+      nbt:
+        $jade:stack:
+          id: ce:cabbage_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cabbage_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cabbage/stage_2
+  ce:cabbage_stage_3:
+    data:
+      item_name: <!i>Cabbage
+      nbt:
+        $jade:stack:
+          id: ce:cabbage_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cabbage_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cabbage/stage_3
+  ce:cabbage_stage_4:
+    data:
+      item_name: <!i>Cabbage
+      nbt:
+        $jade:stack:
+          id: ce:cabbage_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cabbage_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cabbage/stage_4
+  ce:corn_stage_1:
+    data:
+      item_name: <!i>Corn
+      nbt:
+        $jade:stack:
+          id: ce:corn_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/corn_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/corn/stage_1
+  ce:corn_stage_2:
+    data:
+      item_name: <!i>Corn
+      nbt:
+        $jade:stack:
+          id: ce:corn_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/corn_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/corn/stage_2
+  ce:corn_stage_3:
+    data:
+      item_name: <!i>Corn
+      nbt:
+        $jade:stack:
+          id: ce:corn_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/corn_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/corn/stage_3
+  ce:corn_stage_4:
+    data:
+      item_name: <!i>Corn
+      nbt:
+        $jade:stack:
+          id: ce:corn_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/corn_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/corn/stage_4
+  ce:cotton_stage_1:
+    data:
+      item_name: <!i>Cotton
+      nbt:
+        $jade:stack:
+          id: ce:cotton_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cotton_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cotton/cotton_stage_1
+  ce:cotton_stage_2:
+    data:
+      item_name: <!i>Cotton
+      nbt:
+        $jade:stack:
+          id: ce:cotton_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cotton_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cotton/cotton_stage_2
+  ce:cotton_stage_3:
+    data:
+      item_name: <!i>Cotton
+      nbt:
+        $jade:stack:
+          id: ce:cotton_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cotton_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cotton/cotton_stage_3
+  ce:cranberry_bush_1:
+    data:
+      item_name: <!i>Cranberry
+      nbt:
+        $jade:stack:
+          id: ce:cranberry_bush_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cranberry_bush_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cranberry/cranberry_bush_1
+  ce:cranberry_bush_2:
+    data:
+      item_name: <!i>Cranberry
+      nbt:
+        $jade:stack:
+          id: ce:cranberry_bush_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cranberry_bush_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cranberry/cranberry_bush_2
+  ce:cranberry_bush_3:
+    data:
+      item_name: <!i>Cranberry
+      nbt:
+        $jade:stack:
+          id: ce:cranberry_bush_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cranberry_bush_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cranberry/cranberry_bush_3
+  ce:cranberry_bush_4:
+    data:
+      item_name: <!i>Cranberry
+      nbt:
+        $jade:stack:
+          id: ce:cranberry_bush_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/cranberry_bush_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cranberry/cranberry_bush_4
+  ce:eggplant_stage_1:
+    data:
+      item_name: <!i>Eggplant
+      nbt:
+        $jade:stack:
+          id: ce:eggplant_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/eggplant_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/eggplant/stage_1
+  ce:eggplant_stage_2:
+    data:
+      item_name: <!i>Eggplant
+      nbt:
+        $jade:stack:
+          id: ce:eggplant_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/eggplant_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/eggplant/stage_2
+  ce:eggplant_stage_3:
+    data:
+      item_name: <!i>Eggplant
+      nbt:
+        $jade:stack:
+          id: ce:eggplant_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/eggplant_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/eggplant/stage_3
+  ce:eggplant_stage_4:
+    data:
+      item_name: <!i>Eggplant
+      nbt:
+        $jade:stack:
+          id: ce:eggplant_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/eggplant_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/eggplant/stage_4
+  ce:elderberry_bush_1:
+    data:
+      item_name: <!i>Elderberry
+      nbt:
+        $jade:stack:
+          id: ce:elderberry_bush_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/elderberry_bush_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/elderberry/elderberry_bush_1
+  ce:elderberry_bush_2:
+    data:
+      item_name: <!i>Elderberry
+      nbt:
+        $jade:stack:
+          id: ce:elderberry_bush_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/elderberry_bush_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/elderberry/elderberry_bush_2
+  ce:elderberry_bush_3:
+    data:
+      item_name: <!i>Elderberry
+      nbt:
+        $jade:stack:
+          id: ce:elderberry_bush_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/elderberry_bush_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/elderberry/elderberry_bush_3
+  ce:elderberry_bush_4:
+    data:
+      item_name: <!i>Elderberry
+      nbt:
+        $jade:stack:
+          id: ce:elderberry_bush_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/elderberry_bush_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/elderberry/elderberry_bush_4
+  ce:garlic_stage_1:
+    data:
+      item_name: <!i>Garlic
+      nbt:
+        $jade:stack:
+          id: ce:garlic_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/garlic_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/garlic/stage_1
+  ce:garlic_stage_2:
+    data:
+      item_name: <!i>Garlic
+      nbt:
+        $jade:stack:
+          id: ce:garlic_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/garlic_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/garlic/stage_2
+  ce:garlic_stage_3:
+    data:
+      item_name: <!i>Garlic
+      nbt:
+        $jade:stack:
+          id: ce:garlic_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/garlic_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/garlic/stage_3
+  ce:garlic_stage_4:
+    data:
+      item_name: <!i>Garlic
+      nbt:
+        $jade:stack:
+          id: ce:garlic_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/garlic_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/garlic/stage_4
+  ce:gigantic_cabbage_stage:
+    data:
+      item_name: <!i>Cabbage
+      nbt:
+        $jade:stack:
+          id: ce:gigantic_cabbage_stage
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/gigantic_cabbage_stage
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/cabbage/gigantic_cabbage_stage
+  ce:gigantic_tomato_stage:
+    data:
+      item_name: <!i>Tomato
+      nbt:
+        $jade:stack:
+          id: ce:gigantic_tomato_stage
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/gigantic_tomato_stage
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/tomato/gigantic_tomato_stage
+  ce:grape_stage_1:
+    data:
+      item_name: <!i>Grape
+      nbt:
+        $jade:stack:
+          id: ce:grape_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/grape_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/grape/stage_1
+  ce:grape_stage_2:
+    data:
+      item_name: <!i>Grape
+      nbt:
+        $jade:stack:
+          id: ce:grape_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/grape_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/grape/stage_2
+  ce:grape_stage_3:
+    data:
+      item_name: <!i>Grape
+      nbt:
+        $jade:stack:
+          id: ce:grape_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/grape_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/grape/stage_3
+  ce:grape_stage_4:
+    data:
+      item_name: <!i>Grape
+      nbt:
+        $jade:stack:
+          id: ce:grape_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/grape_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/grape/stage_4
+  ce:grape_stage_5:
+    data:
+      item_name: <!i>Grape
+      nbt:
+        $jade:stack:
+          id: ce:grape_stage_5
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/grape_stage_5
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/grape/stage_5
+  ce:grape_stage_6:
+    data:
+      item_name: <!i>Grape
+      nbt:
+        $jade:stack:
+          id: ce:grape_stage_6
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/grape_stage_6
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/grape/stage_6
+  ce:hop_stage_1:
+    data:
+      item_name: <!i>Hop
+      nbt:
+        $jade:stack:
+          id: ce:hop_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/hop_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/hop/stage_1
+  ce:hop_stage_2:
+    data:
+      item_name: <!i>Hop
+      nbt:
+        $jade:stack:
+          id: ce:hop_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/hop_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/hop/stage_2
+  ce:hop_stage_3:
+    data:
+      item_name: <!i>Hop
+      nbt:
+        $jade:stack:
+          id: ce:hop_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/hop_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/hop/stage_3
+  ce:hop_stage_4:
+    data:
+      item_name: <!i>Hop
+      nbt:
+        $jade:stack:
+          id: ce:hop_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/hop_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/hop/stage_4
+  ce:lemon_stage_1:
+    data:
+      item_name: <!i>Lemon
+      nbt:
+        $jade:stack:
+          id: ce:lemon_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/lemon_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/lemon/stage_1
+  ce:lemon_stage_2:
+    data:
+      item_name: <!i>Lemon
+      nbt:
+        $jade:stack:
+          id: ce:lemon_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/lemon_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/lemon/stage_2
+  ce:lemon_stage_3:
+    data:
+      item_name: <!i>Lemon
+      nbt:
+        $jade:stack:
+          id: ce:lemon_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/lemon_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/lemon/stage_3
+  ce:lemon_stage_4:
+    data:
+      item_name: <!i>Lemon
+      nbt:
+        $jade:stack:
+          id: ce:lemon_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/lemon_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/lemon/stage_4
+  ce:lemon_stage_5:
+    data:
+      item_name: <!i>Lemon
+      nbt:
+        $jade:stack:
+          id: ce:lemon_stage_5
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/lemon_stage_5
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/lemon/stage_5
+  ce:lettuce_stage_1:
+    data:
+      item_name: <!i>Lettuce
+      nbt:
+        $jade:stack:
+          id: ce:lettuce_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/lettuce_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/lettuce/stage_1
+  ce:lettuce_stage_2:
+    data:
+      item_name: <!i>Lettuce
+      nbt:
+        $jade:stack:
+          id: ce:lettuce_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/lettuce_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/lettuce/stage_2
+  ce:lettuce_stage_3:
+    data:
+      item_name: <!i>Lettuce
+      nbt:
+        $jade:stack:
+          id: ce:lettuce_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/lettuce_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/lettuce/stage_3
+  ce:onion_stage_1:
+    data:
+      item_name: <!i>Onion
+      nbt:
+        $jade:stack:
+          id: ce:onion_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/onion_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/onion/onion_stage_1
+  ce:onion_stage_2:
+    data:
+      item_name: <!i>Onion
+      nbt:
+        $jade:stack:
+          id: ce:onion_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/onion_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/onion/onion_stage_2
+  ce:onion_stage_3:
+    data:
+      item_name: <!i>Onion
+      nbt:
+        $jade:stack:
+          id: ce:onion_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/onion_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/onion/onion_stage_3
+  ce:onion_stage_4:
+    data:
+      item_name: <!i>Onion
+      nbt:
+        $jade:stack:
+          id: ce:onion_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/onion_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/onion/onion_stage_4
+  ce:orange_stage_1:
+    data:
+      item_name: <!i>Orange
+      nbt:
+        $jade:stack:
+          id: ce:orange_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/orange_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/orange/stage_1
+  ce:orange_stage_2:
+    data:
+      item_name: <!i>Orange
+      nbt:
+        $jade:stack:
+          id: ce:orange_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/orange_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/orange/stage_2
+  ce:orange_stage_3:
+    data:
+      item_name: <!i>Orange
+      nbt:
+        $jade:stack:
+          id: ce:orange_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/orange_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/orange/stage_3
+  ce:orange_stage_4:
+    data:
+      item_name: <!i>Orange
+      nbt:
+        $jade:stack:
+          id: ce:orange_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/orange_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/orange/stage_4
+  ce:orange_stage_5:
+    data:
+      item_name: <!i>Orange
+      nbt:
+        $jade:stack:
+          id: ce:orange_stage_5
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/orange_stage_5
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/orange/stage_5
+  ce:pepper_stage_1:
+    data:
+      item_name: <!i>Pepper
+      nbt:
+        $jade:stack:
+          id: ce:pepper_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pepper_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pepper/stage_1
+  ce:pepper_stage_2:
+    data:
+      item_name: <!i>Pepper
+      nbt:
+        $jade:stack:
+          id: ce:pepper_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pepper_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pepper/stage_2
+  ce:pepper_stage_3:
+    data:
+      item_name: <!i>Pepper
+      nbt:
+        $jade:stack:
+          id: ce:pepper_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pepper_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pepper/stage_3
+  ce:pepper_stage_4:
+    data:
+      item_name: <!i>Pepper
+      nbt:
+        $jade:stack:
+          id: ce:pepper_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pepper_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pepper/stage_4
+  ce:pepper_stage_5:
+    data:
+      item_name: <!i>Pepper
+      nbt:
+        $jade:stack:
+          id: ce:pepper_stage_5
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pepper_stage_5
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pepper/stage_5
+  ce:pineapple_stage_1:
+    data:
+      item_name: <!i>Pineapple
+      nbt:
+        $jade:stack:
+          id: ce:pineapple_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pineapple_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pineapple/stage_1
+  ce:pineapple_stage_2:
+    data:
+      item_name: <!i>Pineapple
+      nbt:
+        $jade:stack:
+          id: ce:pineapple_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pineapple_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pineapple/stage_2
+  ce:pineapple_stage_3:
+    data:
+      item_name: <!i>Pineapple
+      nbt:
+        $jade:stack:
+          id: ce:pineapple_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pineapple_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pineapple/stage_3
+  ce:pineapple_stage_4:
+    data:
+      item_name: <!i>Pineapple
+      nbt:
+        $jade:stack:
+          id: ce:pineapple_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pineapple_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pineapple/stage_4
+  ce:pitaya_stage_1:
+    data:
+      item_name: <!i>Pitaya
+      nbt:
+        $jade:stack:
+          id: ce:pitaya_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pitaya_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pitaya/stage_1
+  ce:pitaya_stage_2:
+    data:
+      item_name: <!i>Pitaya
+      nbt:
+        $jade:stack:
+          id: ce:pitaya_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pitaya_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pitaya/stage_2
+  ce:pitaya_stage_3:
+    data:
+      item_name: <!i>Pitaya
+      nbt:
+        $jade:stack:
+          id: ce:pitaya_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pitaya_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pitaya/stage_3
+  ce:pitaya_stage_4:
+    data:
+      item_name: <!i>Pitaya
+      nbt:
+        $jade:stack:
+          id: ce:pitaya_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pitaya_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pitaya/stage_4
+  ce:pitaya_stage_5:
+    data:
+      item_name: <!i>Pitaya
+      nbt:
+        $jade:stack:
+          id: ce:pitaya_stage_5
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pitaya_stage_5
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pitaya/stage_5
+  ce:pitaya_stage_6:
+    data:
+      item_name: <!i>Pitaya
+      nbt:
+        $jade:stack:
+          id: ce:pitaya_stage_6
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pitaya_stage_6
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pitaya/stage_6
+  ce:pomegranate_stage_1:
+    data:
+      item_name: <!i>Pomegranate
+      nbt:
+        $jade:stack:
+          id: ce:pomegranate_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pomegranate_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pomegranate/stage_1
+  ce:pomegranate_stage_2:
+    data:
+      item_name: <!i>Pomegranate
+      nbt:
+        $jade:stack:
+          id: ce:pomegranate_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pomegranate_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pomegranate/stage_2
+  ce:pomegranate_stage_3:
+    data:
+      item_name: <!i>Pomegranate
+      nbt:
+        $jade:stack:
+          id: ce:pomegranate_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pomegranate_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pomegranate/stage_3
+  ce:pomegranate_stage_4:
+    data:
+      item_name: <!i>Pomegranate
+      nbt:
+        $jade:stack:
+          id: ce:pomegranate_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pomegranate_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pomegranate/stage_4
+  ce:pomegranate_stage_5:
+    data:
+      item_name: <!i>Pomegranate
+      nbt:
+        $jade:stack:
+          id: ce:pomegranate_stage_5
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/pomegranate_stage_5
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/pomegranate/stage_5
+  ce:raspberry_bush_1:
+    data:
+      item_name: <!i>Raspberry
+      nbt:
+        $jade:stack:
+          id: ce:raspberry_bush_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/raspberry_bush_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/raspberry/raspberry_bush_1
+  ce:raspberry_bush_2:
+    data:
+      item_name: <!i>Raspberry
+      nbt:
+        $jade:stack:
+          id: ce:raspberry_bush_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/raspberry_bush_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/raspberry/raspberry_bush_2
+  ce:raspberry_bush_3:
+    data:
+      item_name: <!i>Raspberry
+      nbt:
+        $jade:stack:
+          id: ce:raspberry_bush_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/raspberry_bush_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/raspberry/raspberry_bush_3
+  ce:raspberry_bush_4:
+    data:
+      item_name: <!i>Raspberry
+      nbt:
+        $jade:stack:
+          id: ce:raspberry_bush_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/raspberry_bush_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/raspberry/raspberry_bush_4
+  ce:soybean_stage_1:
+    data:
+      item_name: <!i>Soybean
+      nbt:
+        $jade:stack:
+          id: ce:soybean_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/soybean_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/soybean/soybean_stage_1
+  ce:soybean_stage_2:
+    data:
+      item_name: <!i>Soybean
+      nbt:
+        $jade:stack:
+          id: ce:soybean_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/soybean_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/soybean/soybean_stage_2
+  ce:soybean_stage_3:
+    data:
+      item_name: <!i>Soybean
+      nbt:
+        $jade:stack:
+          id: ce:soybean_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/soybean_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/soybean/soybean_stage_3
+  ce:soybean_stage_4:
+    data:
+      item_name: <!i>Soybean
+      nbt:
+        $jade:stack:
+          id: ce:soybean_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/soybean_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/soybean/soybean_stage_4
+  ce:spinach_stage_1:
+    data:
+      item_name: <!i>Spinach
+      nbt:
+        $jade:stack:
+          id: ce:spinach_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/spinach_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/spinach/stage_1
+  ce:spinach_stage_2:
+    data:
+      item_name: <!i>Spinach
+      nbt:
+        $jade:stack:
+          id: ce:spinach_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/spinach_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/spinach/stage_2
+  ce:spinach_stage_3:
+    data:
+      item_name: <!i>Spinach
+      nbt:
+        $jade:stack:
+          id: ce:spinach_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/spinach_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/spinach/stage_3
+  ce:spinach_stage_4:
+    data:
+      item_name: <!i>Spinach
+      nbt:
+        $jade:stack:
+          id: ce:spinach_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/spinach_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/spinach/stage_4
+  ce:strawberry_stage_1:
+    data:
+      item_name: <!i>Strawberry
+      nbt:
+        $jade:stack:
+          id: ce:strawberry_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/strawberry_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/strawberry/stage_1
+  ce:strawberry_stage_2:
+    data:
+      item_name: <!i>Strawberry
+      nbt:
+        $jade:stack:
+          id: ce:strawberry_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/strawberry_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/strawberry/stage_2
+  ce:strawberry_stage_3:
+    data:
+      item_name: <!i>Strawberry
+      nbt:
+        $jade:stack:
+          id: ce:strawberry_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/strawberry_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/strawberry/stage_3
+  ce:tomato_stage_1:
+    data:
+      item_name: <!i>Tomato
+      nbt:
+        $jade:stack:
+          id: ce:tomato_stage_1
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/tomato_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/tomato/stage_1
+  ce:tomato_stage_2:
+    data:
+      item_name: <!i>Tomato
+      nbt:
+        $jade:stack:
+          id: ce:tomato_stage_2
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/tomato_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/tomato/stage_2
+  ce:tomato_stage_3:
+    data:
+      item_name: <!i>Tomato
+      nbt:
+        $jade:stack:
+          id: ce:tomato_stage_3
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/tomato_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/tomato/stage_3
+  ce:tomato_stage_4:
+    data:
+      item_name: <!i>Tomato
+      nbt:
+        $jade:stack:
+          id: ce:tomato_stage_4
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/tomato_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/tomato/stage_4
+  ce:weed_stage_1:
+    data:
+      item_name: <!i>Weed
+      nbt:
+        $jade:stack:
+          id: ce:weed_stage_1
+      profile: &id001
+        base64: eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjNhOGNiN2YwNGRhMGNmMjI4ZTE1ZWMzMmY3MTBiNTY0NmMwNGFjNWQ4ZWZhNDIyMWNjNDMzZDkyZmU3ZTYxMyJ9fX0=
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/weed_stage_1
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/weed/stage_1
+  ce:weed_stage_2:
+    data:
+      item_name: <!i>Weed
+      nbt:
+        $jade:stack:
+          id: ce:weed_stage_2
+      profile: *id001
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/weed_stage_2
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/weed/stage_2
+  ce:weed_stage_3:
+    data:
+      item_name: <!i>Weed
+      nbt:
+        $jade:stack:
+          id: ce:weed_stage_3
+      profile: *id001
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/weed_stage_3
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/weed/stage_3
+  ce:weed_stage_4:
+    data:
+      item_name: <!i>Weed
+      nbt:
+        $jade:stack:
+          id: ce:weed_stage_4
+      profile: *id001
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/weed_stage_4
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/weed/stage_4
+  ce:weed_stage_5:
+    data:
+      item_name: <!i>Weed
+      nbt:
+        $jade:stack:
+          id: ce:weed_stage_5
+      profile: *id001
+    model:
+      type: minecraft:select
+      property: minecraft:display_context
+      cases:
+      - when: gui
+        model:
+          type: minecraft:model
+          path: ce:item/crop_stage_icons/weed_stage_5
+      fallback:
+        type: minecraft:model
+        path: ce:item/crops/weed/stage_5

@@ -1,79 +1,102 @@
-# Allium Assets — CraftEngine pack
+# Allium crop stages for CraftEngine
 
-The CraftEngine pack that lets Allium Harvest draw a crop stage as a real
-block instead of a display entity.
+Allium owns planting, growth, harvests and display entities. CraftEngine owns
+plant-stage items/models and the invisible `ce:crop` / `ce:tomato_crop` block
+carriers. The carriers use lower tripwire so fluids can replace them.
 
-## What is in here
+`configuration/items/crop_stages.yml` contains the plant displays. Every stage
+of a crop has the same plain crop name, including Tomato. Existing seed and
+produce references stay in their current providers. Giant produce used as a
+plant gets a separate display item, so its harvested item keeps its name/model.
 
+## Import existing stage art
+
+The server's art is not committed here. Take a backup of these directories
+before migrating:
+
+- `Nexo/items/sf/crops/`
+- `Nexo/pack/assets/`
+- `Allium/harvest/crops/`
+- `CraftEngine/resources/allium_assets/`
+
+Run the importer against that pre-migration plugins snapshot:
+
+```sh
+python3 craftengine/allium_assets/import_nexo_crops.py /path/to/backup/plugins \
+  --output /tmp/allium-crop-migration
+python3 -m unittest discover -s craftengine/allium_assets -p 'test_*.py'
 ```
-pack.yml                          the pack (namespace: ce)
-configuration/blocks/tomato.yml   the crop block: one id, four looks by age
-configuration/items/tomato.yml    the seeds and the fruit
-sync_art.sh                       copies the tomato art out of the Nexo pack
-```
 
-## The crop block
+The output must be empty. The script stages files without modifying the input:
 
-`ce:tomato_crop` has an `age` property (0–3). Each age value points at an
-appearance, and each appearance has its own model — the four growth stages.
-Allium Harvest owns the growth and writes the age when the stage changes, so
-the block itself has no growth behaviour.
+- CE stage definitions, models, parent models and unchanged texture copies;
+- Allium crop configs with only stage models and visual settings changed;
+- Nexo crop item files with stage entries and their old planting/evolution
+  furniture mechanics removed;
+- `migration.json`, listing measured model alignment and Nexo assets to archive.
 
-A crop stage in Allium looks like this:
+Nexo seed/produce item definitions remain, including their models, names and
+custom model data. Shared art stays in Nexo if a retained model uses it.
+
+Stages which use a vanilla block texture, such as pitaya's spruce support,
+copy their custom sprites into `textures/block/` too. Each baked model must
+use one atlas, including inherited textures. Physical paths keep a later
+Nexo overlay from undoing the repair by replacing CE's atlas filter.
+
+## Model placement
+
+An item display renders model geometry around its center, then applies the
+model's selected item-context transform. Different authors use different
+translations, scales and rotated element origins. One shared Y offset cannot
+correct all of them.
+
+The importer measures inherited geometry after element rotation and the
+GROUND context transform. It adjusts that context's Y translation so the
+rendered base is zero, while preserving scale and orientation. Allium then
+anchors that base to the actual supporting block's top:
 
 ```yaml
-- block: ce:tomato_crop
-  state:
-    age: 2
-  duration: 60m
+- model: ce:onion_stage_1
+  duration: 30m
+  visual:
+    transform: GROUND
+    scale: 1.0
+    y-offset: 0.001
+    align-to-soil: true
 ```
 
-`state:` names the block's own properties, so the block has to declare them
-(see `configuration/blocks/tomato.yml`).
+The small offset avoids coplanar faces flickering against the soil. Farmland's
+lower surface is respected. Unmigrated configs retain the old baseline unless
+`align-to-soil` is enabled. The normalized base stays put when display scale
+changes. `sync_art.sh` refreshes retained tomato seed/produce art only; it does
+not clear the pack or overwrite normalized plant models.
 
-## The art
+Stages use a native CraftEngine item display and Allium's interaction entity;
+there is no tripwire block carrier. `add_crop_hud.py` removes the legacy
+`ce:crop`/`ce:tomato_crop` carrier entries from fresh crop configs while keeping
+their seeds, drops and growth settings. The entity anchor stays inside the
+crop cell and model translation keeps its base aligned with the soil. Each
+stage has a plain crop name and Jade identity; GUI context previews that same
+growth stage with a fitted transform while world rendering stays unchanged.
+The pack supplies `jade.modName.ce: Crops` for Jade's blue source label.
 
-The models and textures are the ones the server's **Nexo pack** already ships
-(`crops/tomato`), copied into this pack so the CE crop looks exactly like the
-Nexo one. That art belongs to the server's resource pack, so it is not
-committed here — `sync_art.sh` copies it in:
+## Deployment order
 
-```bash
-./sync_art.sh /path/to/plugins
-```
+1. Merge the staged CE files into `CraftEngine/resources/allium_assets/` and
+   reload CE configuration, making the new item IDs available.
+2. Install the Allium JAR with soil alignment, replace its staged crop configs,
+   and reload Allium. Crop IDs, paths and stage indexes stay the same, so
+   existing crops reconcile to their new models.
+3. Install the staged Nexo item files. Archive the exact asset paths listed in
+   `migration.json` outside Nexo's loaded pack and reload Nexo items/pack.
+4. Regenerate the CE pack, then rebuild ResourcePackManager's combined pack.
 
-### The item/ and block/ split
+## One pack sent to clients
 
-A sprite's path decides which atlas it lands in, and an item model can only
-use sprites from the item atlas. A texture under `textures/crops/tomato/...`
-is a block-atlas sprite, so an item model that names it renders **untextured**
-while the block model next to it looks perfect. Hence the split:
-
-```
-textures/item/crops/tomato/...    the seeds and the fruit
-textures/block/crops/tomato/...   the four growth stages
-```
-
-The same picture is needed in both atlases when a block model and an item
-model both use it, so `sync_art.sh` copies every texture a model names into
-the atlas that model is drawn in.
-
-## Deploying
-
-1. Copy this folder to `plugins/CraftEngine/resources/allium_assets/`.
-2. Run `sync_art.sh` against the server's plugins folder.
-3. `/ce reload all` — CraftEngine only regenerates its resource pack when the
-   packs reload.
-
-## One pack for clients
-
-CraftEngine writes its own resource pack to
-`plugins/CraftEngine/generated/resource_pack.zip`. ResourcePackManager mixes
-that zip into the single pack the server sends, so clients download one pack
-instead of one plus CraftEngine's:
+ResourcePackManager merges `CraftEngine/generated/resource_pack.zip` using:
 
 ```yaml
-# plugins/ResourcePackManager/compatible_plugins/craftengine.yml
+# ResourcePackManager/compatible_plugins/craftengine.yml
 isEnabled: true
 pluginName: CraftEngine
 zips: true
@@ -81,6 +104,31 @@ localPath: CraftEngine/generated/resource_pack.zip
 cluster: false
 ```
 
-Because of that, CraftEngine's own `send_pack` step is disabled in
-`plugins/CraftEngine/config.yml` — the merged pack already contains
-everything, including CraftEngine's vanilla blockstate overrides.
+CraftEngine has two independent automatic delivery paths. Disable both:
+
+```yaml
+# CraftEngine/config.yml
+resource-pack:
+  delivery:
+    send-on-join: false
+  supported-version:
+    min: 26.1.2
+    max: latest
+  workflows:
+    default:
+      trigger: reload_pack
+      steps:
+        - type: generate
+        - type: validate
+        - type: zip
+          path: ./generated/resource_pack.zip
+          store-png: false
+        - type: upload
+          pack: default
+          path: ./generated/resource_pack.zip
+```
+
+There is no `send_pack` step. Uploading does not deliver a pack to players.
+The login flag also disables CE's separate configuration-phase send. Keep
+Nexo's pack server disabled and Allium's resource pack disabled when using
+ResourcePackManager as the sender.

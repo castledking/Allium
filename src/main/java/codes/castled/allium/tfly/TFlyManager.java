@@ -4,6 +4,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.DB.Database;
 import codes.castled.allium.util.SchedulerAdapter;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
@@ -19,6 +20,7 @@ public class TFlyManager {
     private final PluginStart alliumPlugin;
     private final Map<UUID, Long> tflyTime = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> tflyEnabled = new ConcurrentHashMap<>();
+    private final Set<UUID> initializedPlayers = ConcurrentHashMap.newKeySet();
     private SchedulerAdapter.TaskHandle tickTask;
 
     public TFlyManager(Plugin plugin) {
@@ -30,6 +32,13 @@ public class TFlyManager {
 
     public void start() {
         if (tickTask != null) tickTask.cancel();
+        // A plugin load/reload does not fire PlayerJoinEvent for connected
+        // players. Rehydrate them before the first tick or any shutdown save.
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!initializedPlayers.contains(player.getUniqueId())) {
+                loadPlayerState(player, true);
+            }
+        }
         tickTask = SchedulerAdapter.runTimer(this::tickFlightTime, 20L, 20L);
     }
 
@@ -38,6 +47,9 @@ public class TFlyManager {
             tickTask.cancel();
             tickTask = null;
         }
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            savePlayerState(player);
+        }
     }
 
     public long getTFlyTime(UUID uuid) {
@@ -45,6 +57,7 @@ public class TFlyManager {
     }
 
     public void setTFlyTime(UUID uuid, long seconds) {
+        initializedPlayers.add(uuid);
         if (seconds <= 0) tflyTime.remove(uuid);
         else tflyTime.put(uuid, seconds);
     }
@@ -107,6 +120,9 @@ public class TFlyManager {
         Database database = alliumPlugin.getDatabase();
         if (database == null) return;
         UUID uuid = player.getUniqueId();
+        // Never replace a stored balance with the default zero of a manager
+        // whose load failed or did not run (including a partial enable).
+        if (!initializedPlayers.contains(uuid)) return;
         database.savePlayerTFlyState(
             uuid,
             player.getName(),
@@ -116,7 +132,12 @@ public class TFlyManager {
     }
 
     public void loadPlayerState(Player player) {
+        loadPlayerState(player, false);
+    }
+
+    private void loadPlayerState(Player player, boolean alreadyConnected) {
         if (player == null || alliumPlugin == null) return;
+        if (!alreadyConnected) setTFlyEnabled(player.getUniqueId(), false);
         Database database = alliumPlugin.getDatabase();
         if (database == null) return;
         Database.PlayerTFlyData tflyData = database.getPlayerTFlyStatus(
@@ -130,11 +151,13 @@ public class TFlyManager {
         } else {
             tflyTime.remove(player.getUniqueId());
         }
+        initializedPlayers.add(player.getUniqueId());
 
-        // Never restore tflyEnabled on join — the player must re-enable with /fly.
-        // Another plugin (e.g. Multiverse) may forcibly set allowFlight=false on join,
-        // which would desync the command state from the actual flight state.
-        tflyEnabled.remove(player.getUniqueId());
+        // A reload continues the same session; keep an enabled toggle only if
+        // flight is still allowed. A real login still requires /fly, because
+        // world managers may reset allowFlight while joining.
+        setTFlyEnabled(player.getUniqueId(), alreadyConnected && timeSeconds > 0L
+            && tflyData.enabled() && player.getAllowFlight());
     }
 
     /**

@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
+import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventPriority;
 import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.Plugin;
@@ -65,12 +66,13 @@ public final class EcoJobsBridge {
         if (registered) {
             return true;
         }
-        if (!isAvailable()) {
+        Plugin dependency = plugin.getServer().getPluginManager().getPlugin("EcoJobs");
+        if (dependency == null || !dependency.isEnabled()) {
             return false;
         }
         Class<?> eventClass;
         try {
-            eventClass = Class.forName(EVENT_CLASS);
+            eventClass = Class.forName(EVENT_CLASS, true, dependency.getClass().getClassLoader());
         } catch (Throwable t) {
             logger.info("[" + codes.castled.allium.tradingcards.TradingCardsBranding.DISPLAY_NAME
                 + "] EcoJobs is installed but has no " + EVENT_CLASS
@@ -90,12 +92,14 @@ public final class EcoJobsBridge {
                     if (!typed.isInstance(event)) {
                         return;
                     }
+                    if (event instanceof Cancellable cancelled && cancelled.isCancelled()) return;
                     Object player = getPlayer.invoke(event);
                     if (!(player instanceof Player p)) {
                         return;
                     }
                     Object amount = getAmount.invoke(event);
-                    if (!(amount instanceof Number number)) {
+                    if (!(amount instanceof Number number) || !Double.isFinite(number.doubleValue())
+                        || number.doubleValue() <= 0) {
                         return;
                     }
                     Object job = getJob.invoke(event);
@@ -107,9 +111,9 @@ public final class EcoJobsBridge {
                     logger.warning("[tradingcards] EcoJobs handler failed: " + t);
                 }
             };
-            Bukkit.getPluginManager().registerEvent(
-                typed, new org.bukkit.event.Listener() { }, EventPriority.NORMAL,
-                executor, plugin, false);
+            plugin.getServer().getPluginManager().registerEvent(
+                typed, new org.bukkit.event.Listener() { }, EventPriority.MONITOR,
+                executor, plugin, true);
             registered = true;
             logger.info("[" + codes.castled.allium.tradingcards.TradingCardsBranding.DISPLAY_NAME
                 + "] Listening for EcoJobs work");

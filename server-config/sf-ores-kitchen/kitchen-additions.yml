@@ -1,0 +1,39 @@
+# Merge each section into Allium/harvest/kitchen.yml.
+crafting:
+  tomato_sauce:
+    ingredients:
+      - [nexo:tomato, nexo:tomato_silver_star, nexo:tomato_golden_star]
+      - [nexo:tomato, nexo:tomato_silver_star, nexo:tomato_golden_star]
+      - minecraft:bowl
+    result: {item: nexo:tomato_sauce, amount: 1}
+  cheese:
+    ingredients: [minecraft:milk_bucket, sf:salt]
+    result: {item: nexo:cheese, amount: 1}
+  pizza_base:
+    ingredients: [nexo:dough, nexo:dough, nexo:dough]
+    result: {item: nexo:pizza_base, amount: 1}
+smelting:
+  bake_deep_dish_pizza:
+    ingredient: nexo:cold_deep_dish_pizza
+    result: {item: nexo:baked_deep_dish_pizza, amount: 1}
+    type: furnace
+    time: 200
+    experience: 0.35
+pies:
+  types:
+    deep_dish_pizza:
+      filling: nexo:spinach
+      filling-name: Spinach
+      crust-item: nexo:pizza_base
+      crust-model: nexo:pizza_base_placed
+      opens-on-standard-crust: true
+      cold-item: nexo:cold_deep_dish_pizza
+      baked-item: nexo:baked_deep_dish_pizza
+      filled-model: nexo:deep_dish_pizza_filled
+      progress-models: [nexo:deep_dish_pizza_spinach, nexo:deep_dish_pizza_cheese]
+      cold-models: [nexo:cold_deep_dish_pizza_placed, nexo:cold_deep_dish_pizza_placed_slice1, nexo:cold_deep_dish_pizza_placed_slice2, nexo:cold_deep_dish_pizza_placed_slice3]
+      baked-models: [nexo:baked_deep_dish_pizza_placed, nexo:baked_deep_dish_pizza_placed_slice1, nexo:baked_deep_dish_pizza_placed_slice2, nexo:baked_deep_dish_pizza_placed_slice3]
+      steps:
+        - {item: nexo:spinach, name: Spinach}
+        - {item: nexo:cheese, name: Cheese}
+        - {item: nexo:tomato_sauce, name: Tomato Sauce}

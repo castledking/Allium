@@ -42,9 +42,9 @@ import org.joml.Vector3f;
 public final class CropVisualService {
 
     /**
-     * How far above the cell's floor a model is drawn when its stage says
-     * nothing about its height: an eighth of a block, which is what clears
-     * the soil for a model drawn in block space.
+     * Legacy lift for stages without soil alignment. A model's own origin
+     * and display transform determine its base; this is not a universal
+     * correction for item models.
      */
     public static final double DISPLAY_Y_BASELINE = 0.125;
 
@@ -130,18 +130,19 @@ public final class CropVisualService {
     private void ensureBlockVisual(World world, CropInstance crop, StageDefinition stage) {
         BlockPositionKey anchor = crop.position();
         Block block = world.getBlockAt(anchor.x(), anchor.y(), anchor.z());
-        // A block stage needs neither a display nor a hitbox: the block is
-        // what the player sees and clicks. If this crop used to be a model
-        // stage, its leftovers have to go.
-        ItemDisplay display = findDisplay(world, crop);
-        if (display != null) {
-            display.remove();
-            crop.setVisualEntityId(null);
-        }
-        Interaction hitbox = findHitbox(world, crop);
-        if (hitbox != null) {
-            hitbox.remove();
-            crop.setHitboxEntityId(null);
+        // Only block-only stages discard an old display/hitbox. A hybrid
+        // stage keeps both while its invisible block carrier is reconciled.
+        if (!stage.hasModel()) {
+            ItemDisplay display = findDisplay(world, crop);
+            if (display != null) {
+                display.remove();
+                crop.setVisualEntityId(null);
+            }
+            Interaction hitbox = findHitbox(world, crop);
+            if (hitbox != null) {
+                hitbox.remove();
+                crop.setHitboxEntityId(null);
+            }
         }
         if (blocks.matches(block, stage.block(), stage.state())) {
             return;
@@ -195,12 +196,16 @@ public final class CropVisualService {
      */
     private boolean matchesVisual(ItemDisplay display, StageDefinition stage, CropInstance crop) {
         StageDefinition.VisualOverride visual = stage.visual();
-        double expectedHeight = crop.position().y() + displayHeight(visual);
+        double expectedHeight = crop.position().y() + 0.5D;
         if (Math.abs(display.getLocation().getY() - expectedHeight) > 1.0E-6) {
             return false;
         }
         if (display.getItemDisplayTransform()
             != visual.transformOr(settings.displayTransform())) {
+            return false;
+        }
+        if (Math.abs(display.getTransformation().getTranslation().y()
+                - (displayHeight(display.getWorld(), crop, visual) - 0.5D)) > 1.0E-6) {
             return false;
         }
         Vector3f scale = display.getTransformation().getScale();
@@ -298,7 +303,7 @@ public final class CropVisualService {
         StageDefinition.VisualOverride visual = stage.visual();
         Location location = new Location(world,
             anchor.x() + 0.5D,
-            anchor.y() + displayHeight(visual),
+            anchor.y() + 0.5D,
             anchor.z() + 0.5D);
         ItemStack item = items.create(stage.model(), 1).orElse(null);
         if (item == null) {
@@ -314,11 +319,7 @@ public final class CropVisualService {
             entity.setBillboard(Display.Billboard.FIXED);
             entity.setViewRange(settings.viewRange() / 64.0F);
             entity.setShadowStrength(0.0F);
-            entity.setTransformation(new Transformation(
-                new Vector3f(0.0F, 0.0F, 0.0F),
-                new org.joml.Quaternionf(),
-                scaleVector(visual.scaleOr(settings.scale())),
-                new org.joml.Quaternionf()));
+            applyGeometry(entity, crop, visual);
             entity.setInterpolationDuration(0);
             entity.setTeleportDuration(0);
             VisualTags.tagCrop(entity, crop.instanceId(), crop.cropId(), anchor, stage.model().toString());
@@ -327,16 +328,25 @@ public final class CropVisualService {
     }
 
     /**
-     * The height a stage's model is drawn at, above the cell's floor.
-     *
-     * <p>The model's own y-offset is a correction, not a height: zero means
-     * "as the model was authored", and a model authored in block space wants
-     * to sit a little above the floor to clear the soil. The baseline is that
-     * little lift, so a stage that says nothing about its height gets a crop
-     * standing on the ground rather than in it.</p>
+     * Soil-aligned models have their base at the display origin in the
+     * chosen item context. Anchor that origin to the actual supporting
+     * block's top, rather than adding a guessed lift. In particular,
+     * farmland is 1/16 lower than a full dirt block.
      */
-    private double displayHeight(StageDefinition.VisualOverride visual) {
-        return DISPLAY_Y_BASELINE + visual.yOffsetOr(settings.yOffset());
+    private double displayHeight(World world, CropInstance crop, StageDefinition.VisualOverride visual) {
+        double soilTop = 0;
+        if (visual.alignToSoil()) {
+            BlockPositionKey anchor = crop.position();
+            Block soil = world.getBlockAt(anchor.x(), anchor.y() - 1, anchor.z());
+            if (!soil.getType().isAir()) {
+                soilTop = soil.getBoundingBox().getMaxY() - anchor.y();
+            }
+        }
+        return heightAboveCell(visual, settings.yOffset(), soilTop);
+    }
+
+    static double heightAboveCell(StageDefinition.VisualOverride visual, double fallbackOffset, double soilTop) {
+        return (visual.alignToSoil() ? soilTop : DISPLAY_Y_BASELINE) + visual.yOffsetOr(fallbackOffset);
     }
 
     private void applyItem(ItemDisplay display, StageDefinition stage, CropInstance crop) {
@@ -351,19 +361,28 @@ public final class CropVisualService {
         // leave the new model rendering with the previous stage's settings.
         StageDefinition.VisualOverride visual = stage.visual();
         display.setItemDisplayTransform(visual.transformOr(settings.displayTransform()));
-        display.setTransformation(new Transformation(
-            new Vector3f(0.0F, 0.0F, 0.0F),
-            new org.joml.Quaternionf(),
-            scaleVector(visual.scaleOr(settings.scale())),
-            new org.joml.Quaternionf()));
+        applyGeometry(display, crop, visual);
 
         Location expected = new Location(display.getWorld(),
-            crop.position().x() + 0.5D, crop.position().y() + displayHeight(visual),
+            crop.position().x() + 0.5D, crop.position().y() + 0.5D,
             crop.position().z() + 0.5D);
         if (display.getLocation().getY() != expected.getY()) {
             display.teleport(expected);
         }
         VisualTags.tagCrop(display, crop.instanceId(), crop.cropId(), crop.position(), stage.model().toString());
+    }
+
+    private void applyGeometry(ItemDisplay display, CropInstance crop, StageDefinition.VisualOverride visual) {
+        // Jade looks up displays by their entity bounds, which are a point.
+        // Farmland's lowered surface puts that point in the soil cell. Keep
+        // it inside the crop cell and move only the model back to the soil.
+        // Display width/height control culling, not these lookup bounds; keep
+        // their defaults so short seedlings are not clipped by the frustum.
+        display.setTransformation(new Transformation(
+            new Vector3f(0f, (float) (displayHeight(display.getWorld(), crop, visual) - 0.5D), 0f),
+            new org.joml.Quaternionf(),
+            scaleVector(visual.scaleOr(settings.scale())),
+            new org.joml.Quaternionf()));
     }
 
     private static Vector3f scaleVector(float scale) {

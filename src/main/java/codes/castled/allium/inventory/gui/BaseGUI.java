@@ -3,6 +3,7 @@ package codes.castled.allium.inventory.gui;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -53,7 +54,9 @@ public abstract class BaseGUI implements InventoryHolder {
     }
 
     public void handleClick(InventoryClickEvent event) {
-        event.setCancelled(true);
+        if (shouldCancelClick(event)) {
+            event.setCancelled(true);
+        }
         int slot = event.getRawSlot();
         if (clickHandlers.containsKey(slot)) {
             // Run click handler on the main thread
@@ -62,6 +65,27 @@ public abstract class BaseGUI implements InventoryHolder {
             );
         }
     }
+
+    /**
+     * Whether vanilla's click response should be refused at this slot. Every
+     * panel cancels, so a staff chat GUI never has its icons lifted; one that
+     * wants to hand slots to the player instead — an editor trading through a
+     * snapshot panel — returns false for them. Cancelling from this method
+     * keeps a button's own handler running, so the return value never hides a
+     * slot the clickHandlers map owns.
+     */
+    protected boolean shouldCancelClick(InventoryClickEvent event) {
+        return true;
+    }
+
+    /**
+     * A drag down the raw slots of this panel. The stock answer is nothing:
+     * the families here have lived without a drag rule this long, and only the
+     * GUIs that need the strictness off — a panel whose state becomes a
+     * restore — override it, since a drag can scatter items past exactly the
+     * slots a click handler or restore reads.
+     */
+    public void handleDrag(InventoryDragEvent event) {}
 
     @Override
     public Inventory getInventory() {

@@ -5,11 +5,17 @@ api-version: 1.21
 folia-supported: true
 author: castledking
 description: "A secure, modern Essentials solution."
-softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens, Nexo, Oraxen, CraftEngine, ItemEdit, ItemTag, TAB, GPExpansion, GriefPrevention, LibsDisguises]
+softdepend: [Vault, PlaceholderAPI, packetevents, PacketEvents, floodgate, mcMMO, LuckPerms, DiscordSRV, Citizens, Nexo, Oraxen, CraftEngine, ItemEdit, ItemTag, TAB, GPExpansion, GriefPrevention, LibsDisguises, LiteFish, EcoJobs, Quests, ExcellentQuests, AuraSkills]
+# Relique is detected at runtime. Ordering Allium after it would cycle through
+# Relique -> AbyssalLib -> ResourcePackManager -> Allium on a full server start.
 # Write the unknown-command lang pack into ResourcePackManager's mixer before it merges.
 loadbefore: [ResourcePackManager]
 
 commands:
+  pregen:
+    description: "Pre-generate chunks with configured CraftEngine ores"
+    usage: "/pregen <start|world|pause|resume|stop|status>"
+    permission: allium.pregen
   nickname:
     description: "Open the nickname customization GUI"
     usage: "/nickname [name|off] [player]"
@@ -495,6 +501,16 @@ commands:
     usage: "/frame [list|set|reset|build|reload]"
 
 permissions:
+  allium.pregen:
+    description: "Manage custom ore pre-generation"
+    default: op
+    children:
+      allium.pregen.start: true
+      allium.pregen.world: true
+      allium.pregen.pause: true
+      allium.pregen.resume: true
+      allium.pregen.stop: true
+      allium.pregen.status: true
   allium.player:
     description: "Gives access to player commands"
     default: true
@@ -1711,6 +1727,10 @@ permissions:
     
   allium.restore.others:
     description: "Allows restoring other players' inventories"
+    default: op
+
+  allium.restore.edit:
+    description: "Allows taking items out of and placing items into a /restore session panel; the panel as edited is what gets restored"
     default: op
 
   allium.dispose:

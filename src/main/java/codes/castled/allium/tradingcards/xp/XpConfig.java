@@ -21,7 +21,9 @@ import org.bukkit.configuration.ConfigurationSection;
  */
 public record XpConfig(
     Map<String, Source> sources,
-    Map<Integer, Double> curveBreakpoints
+    Map<Integer, Double> curveBreakpoints,
+    QuestXpRules quests,
+    int liteFishCatchValue
 ) {
 
     public static final String SECTION = "xp";
@@ -29,6 +31,10 @@ public record XpConfig(
     public XpConfig {
         sources = Map.copyOf(sources);
         curveBreakpoints = Map.copyOf(curveBreakpoints);
+    }
+
+    public XpConfig(Map<String, Source> sources, Map<Integer, Double> curveBreakpoints) {
+        this(sources, curveBreakpoints, QuestXpRules.defaults(), 1);
     }
 
     /**
@@ -79,7 +85,8 @@ public record XpConfig(
         sources.put("farm-crop", Source.flat(2));
         sources.put("auraskills-ability", Source.flat(3));
         sources.put("quest-complete", Source.flat(25));
-        sources.put("fish-large", Source.flat(12));
+        sources.put("fish-catch", Source.flat(4));
+        sources.put("fish-large", new Source(true, 12, 0.0, 0L, false, 0L, 40, 0.75, 8));
         // EcoJobs pays a multiple of the job's own experience rather than a
         // flat amount: the event fires per counter, not per action, so counting
         // events would pay more for a job that merely has more triggers.
@@ -244,7 +251,13 @@ public record XpConfig(
         // file does not silently disable sources.
         defaults.sources().forEach((id, value) -> sources.putIfAbsent(id, value));
 
-        return new LoadResult(new XpConfig(sources, curve), issues);
+        int catchValue = yaml == null ? 1 : yaml.getInt("xp.litefish-ecojobs-catch-value", 1);
+        if (catchValue < 0) {
+            issues.add(ValidationIssue.warning(FILE, "xp.litefish-ecojobs-catch-value",
+                "Must be non-negative; using 1. Set 0 to disable compatibility."));
+            catchValue = 1;
+        }
+        return new LoadResult(new XpConfig(sources, curve, QuestXpRules.load(yaml), catchValue), issues);
     }
 
     public record LoadResult(XpConfig config, List<ValidationIssue> issues) {}

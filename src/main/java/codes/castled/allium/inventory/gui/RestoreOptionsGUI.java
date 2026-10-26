@@ -1,29 +1,29 @@
 package codes.castled.allium.inventory.gui;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.inventory.ItemStack;
-
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.inventory.InventorySnapshot;
 import codes.castled.allium.inventory.OfflineInventoryData;
+import codes.castled.allium.inventory.SnapshotEditSession;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.util.ItemBuilder;
 import codes.castled.allium.util.SchedulerAdapter;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
 
-import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
-
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class RestoreOptionsGUI extends BaseGUI {
+import static codes.castled.allium.managers.core.Text.DebugSeverity.ERROR;
+
+public class RestoreOptionsGUI extends SnapshotEditorGUI {
     private final InventorySnapshot snapshot;
     private final RestoreGUI previousGUI;
     private final UUID targetId;
+    private SnapshotEditSession session;
+    private boolean manualSavePending;
 
     public RestoreOptionsGUI(Player player, InventorySnapshot snapshot, RestoreGUI previousGUI, PluginStart plugin) {
         super(player, "Restore Options - " + snapshot.getReason(), 6, plugin);
@@ -33,269 +33,195 @@ public class RestoreOptionsGUI extends BaseGUI {
     }
 
     @Override
-    public void initialize() {
-        // Load data asynchronously
-        SchedulerAdapter.runAsync(() -> {
-            try {
-                // Get the snapshot data
-                ItemStack[] contents = snapshot.getInventoryContents();
-                ItemStack[] armor = snapshot.getArmorContents();
-                
-                // Get target player info
-                Player target = Bukkit.getPlayer(targetId);
-                boolean targetOnline = target != null;
-                String targetName = resolveTargetName();
-                String restoreTargetLabel = targetName + (targetOnline ? "" : " (offline)");
-                
-                // Create restore buttons
-                ItemStack restoreSelfBtn = new ItemBuilder(Material.CHEST)
-                    .name("&aRestore to Self")
-                    .lore(
-                        "&7Click to restore this inventory to yourself",
-                        "",
-                        "&eIncludes:",
-                        "&7- Main inventory",
-                        "&7- Armor & offhand",
-                        "&7- Experience",
-                        "&7- Ender chest"
-                    )
-                    .build();
-
-                ItemStack restoreTargetBtn = new ItemBuilder(Material.PLAYER_HEAD)
-                    .skullOwner(targetName)
-                    .name("&aRestore to " + restoreTargetLabel)
-                    .lore(
-                        targetOnline ? "&7Click to restore to " + targetName : "&7Click to queue a restore for " + targetName,
-                        "",
-                        "&eIncludes:",
-                        "&7- Main inventory",
-                        "&7- Armor & offhand",
-                        "&7- Experience",
-                        "&7- Ender chest",
-                        targetOnline ? "" : "&7Applies the next time they join"
-                    )
-                    .build();
-
-                ItemStack restoreInvBtn = new ItemBuilder(Material.CHEST_MINECART)
-                    .name("&bRestore Inventory Only")
-                    .lore(
-                        "&7Click to restore only the main inventory",
-                        "&7(Excludes armor and offhand)"
-                    )
-                    .build();
-
-                ItemStack restoreArmorBtn = new ItemBuilder(Material.IRON_CHESTPLATE)
-                    .name("&bRestore Armor Only")
-                    .lore(
-                        "&7Click to restore only armor and offhand",
-                        "&7(Excludes main inventory)"
-                    )
-                    .build();
-
-                ItemStack restoreExpBtn = new ItemBuilder(Material.EXPERIENCE_BOTTLE)
-                    .name("&eRestore Experience Only")
-                    .lore(
-                        "&7Click to restore only experience",
-                        "&7(Excludes inventory and armor)"
-                    )
-                    .build();
-
-                ItemStack enderChestBtn = new ItemBuilder(Material.ENDER_CHEST)
-                    .name("&bEnder Chest Options")
-                    .lore(
-                        "&7Click to view and restore the saved",
-                        "&7ender chest contents"
-                    )
-                    .build();
-
-                ItemStack teleportBtn = new ItemBuilder(Material.ENDER_PEARL)
-                    .name("&dTeleport to Location")
-                    .lore(
-                        "&7World: &f" + snapshot.getWorldName(),
-                        "&7X: &f" + (int) snapshot.getLocation().getX(),
-                        "&7Y: &f" + (int) snapshot.getLocation().getY(),
-                        "&7Z: &f" + (int) snapshot.getLocation().getZ(),
-                        "",
-                        "&eClick to teleport to this location"
-                    )
-                    .build();
-
-                ItemStack backBtn = new ItemBuilder(Material.ARROW)
-                    .name("&cBack")
-                    .lore("&7Click to go back")
-                    .build();
-
-                // Update on main thread
-                SchedulerAdapter.runAtEntity(player, () -> {
-                    try {
-                        // Display the inventory
-                        displayInventory(contents, armor);
-                        
-                        // Add action buttons
-                        setItem(45, restoreSelfBtn, this::handleRestoreSelf);
-                        setItem(47, restoreInvBtn, this::handleRestoreInventory);
-                        setItem(48, restoreArmorBtn, this::handleRestoreArmor);
-                        setItem(49, restoreExpBtn, this::handleRestoreExp);
-                        setItem(50, teleportBtn, this::handleTeleport);
-                        setItem(51, enderChestBtn, this::handleOpenEnderChest);
-                        
-                        // Only show restore to target if target is not the viewer
-                        if (!targetId.equals(player.getUniqueId())) {
-                            setItem(46, restoreTargetBtn, this::handleRestoreTarget);
-                        }
-                        
-                        setItem(53, backBtn, e -> previousGUI.open());
-                        
-                        // Play open sound
-                        player.playSound(player.getLocation(), Sound.BLOCK_CHEST_OPEN, 0.5f, 1.0f);
-                    } catch (Exception e) {
-                        handleError("Error initializing GUI", e);
-                    }
-                });
-                
-            } catch (Exception e) {
-                handleError("Error loading snapshot data", e);
-            }
-        });
+    protected int storageSlots() {
+        return 36;
     }
 
-    private void displayInventory(ItemStack[] contents, ItemStack[] armor) {
-        if (contents == null || armor == null) {
-            handleError("Inventory data is null", new NullPointerException("Contents or armor is null"), player);
+    @Override
+    protected boolean isSnapshotSlot(int rawSlot) {
+        return rawSlot >= 0 && rawSlot <= 40;
+    }
+
+    @Override
+    public void initialize() {
+        // BaseGUI opens us on the viewer's entity thread. Deserialize item
+        // metadata there too, and never redraw the source over session edits.
+        if (session != null) {
             return;
         }
         try {
-            // Display main inventory (3 rows = 27 slots)
-            for (int i = 0; i < Math.min(contents.length, 27); i++) {
-                setItem(i, contents[i], null);
-            }
-
-            // Display armor and offhand
-            if (armor.length > 3) setItem(39, armor[3], null); // Helmet
-            if (armor.length > 2) setItem(38, armor[2], null); // Chestplate
-            if (armor.length > 1) setItem(37, armor[1], null); // Leggings
-            if (armor.length > 0) setItem(36, armor[0], null); // Boots
-            if (armor.length > 4) setItem(40, armor[4], null); // Offhand
+            session = new SnapshotEditSession(snapshot);
+            session.displayInventory(inventory);
+            addControls();
+            player.playSound(player.getLocation(), "minecraft:block.chest.open", 0.5f, 1.0f);
         } catch (Exception e) {
-            handleError("Error displaying inventory", e);
+            handleError("Error loading snapshot", e);
+        }
+    }
+
+    private void addControls() {
+        Player target = Bukkit.getPlayer(targetId);
+        String targetName = resolveTargetName();
+        boolean targetOnline = target != null;
+        String targetLabel = targetName + (targetOnline ? "" : " (offline)");
+        List<String> includes = new ArrayList<>(List.of(
+            "&7Main inventory, armor & offhand,",
+            "&7experience and ender chest"));
+        if (canEditSession()) {
+            includes.add("");
+            includes.add("&aUses the items currently in this session");
+            includes.add("&7History changes only when you save a Manual copy");
+        }
+
+        putControl(45, new ItemBuilder(Material.CHEST)
+            .name("&aRestore to Self").lore(includes).build(), this::handleRestoreSelf);
+        if (canEditSession()) {
+            putControl(46, new ItemBuilder(Material.WRITABLE_BOOK)
+                .name("&eSave as Manual Snapshot")
+                .lore("&7Save this session as a new &fMANUAL &7snapshot",
+                    "&7for &f" + targetName,
+                    "&7Keeps the original snapshot unchanged",
+                    "", "&7Move items between this panel and your inventory",
+                    "&7Restore uses your edits even without saving",
+                    "&7Close the viewer to discard unsaved panel edits")
+                .build(), this::handleSaveManual);
+        }
+        putControl(47, new ItemBuilder(Material.CHEST_MINECART)
+            .name("&bRestore Inventory Only")
+            .lore("&7Restore all 36 storage slots from this session",
+                "&7Excludes armor and offhand").build(), event -> restoreInventory(player, true, false, false, false));
+        putControl(48, new ItemBuilder(Material.IRON_CHESTPLATE)
+            .name("&bRestore Armor Only")
+            .lore("&7Restore armor and offhand from this session",
+                "&7Excludes main inventory").build(), event -> restoreInventory(player, false, true, false, false));
+        putControl(49, new ItemBuilder(Material.EXPERIENCE_BOTTLE)
+            .name("&eRestore Experience Only")
+            .lore("&7Restore the saved experience").build(), event -> restoreInventory(player, false, false, true, false));
+        putControl(50, new ItemBuilder(Material.ENDER_PEARL)
+            .name("&dTeleport to Location")
+            .lore("&7World: &f" + snapshot.getWorldName(),
+                "&7X: &f" + (int) snapshot.getLocation().getX(),
+                "&7Y: &f" + (int) snapshot.getLocation().getY(),
+                "&7Z: &f" + (int) snapshot.getLocation().getZ(),
+                "", "&eClick to teleport to this location").build(), this::handleTeleport);
+        putControl(51, new ItemBuilder(Material.ENDER_CHEST)
+            .name("&bEnder Chest Options")
+            .lore("&7View, edit and restore this session's ender chest").build(), this::handleOpenEnderChest);
+        if (!targetId.equals(player.getUniqueId())) {
+            List<String> targetLore = new ArrayList<>(includes);
+            if (!targetOnline) {
+                targetLore.add("&7Applies the next time they join");
+            }
+            putControl(52, new ItemBuilder(Material.PLAYER_HEAD).skullOwner(targetName)
+                .name("&aRestore to " + targetLabel).lore(targetLore).build(), this::handleRestoreTarget);
+        }
+        putControl(53, new ItemBuilder(Material.ARROW)
+            .name("&cBack").lore("&7Return to saved history", "&7Discards unsaved panel edits").build(),
+            event -> previousGUI.open());
+    }
+
+    private InventorySnapshot sessionSnapshot() {
+        session.captureInventory(inventory);
+        return session.snapshot();
+    }
+
+    private void handleSaveManual(InventoryClickEvent event) {
+        session.captureInventory(inventory);
+        saveManualCopy();
+    }
+
+    /** The ender chest editor captures its panel before using this same save action. */
+    void saveManualCopy() {
+        if (!canEditSession() || manualSavePending) {
+            return;
+        }
+        try {
+            InventorySnapshot manual = session.manualSnapshot();
+            manualSavePending = true;
+            plugin.getInventoryManager().saveSnapshot(manual).whenComplete((success, error) ->
+                SchedulerAdapter.runAtEntity(player, () -> {
+                    manualSavePending = false;
+                    if (error != null || !Boolean.TRUE.equals(success)) {
+                        player.sendMessage("§cCould not save the Manual snapshot. Your session edits are still available.");
+                        return;
+                    }
+                    player.sendMessage("§aSaved a new MANUAL snapshot for " + resolveTargetName() + ".");
+                }));
+        } catch (Exception e) {
+            manualSavePending = false;
+            handleError("Error saving Manual snapshot", e);
         }
     }
 
     private void handleRestoreSelf(InventoryClickEvent event) {
-        Player player = (Player) event.getWhoClicked();
-        player.sendMessage("§aRestoring your full inventory...");
         restoreInventory(player, true, true, true, true);
     }
 
     private void handleRestoreTarget(InventoryClickEvent event) {
         Player target = Bukkit.getPlayer(targetId);
-        if (target != null) {
-            player.sendMessage("§aRestoring " + target.getName() + "'s inventory...");
-            restoreInventory(target, true, true, true, true);
+        if (target == null) {
+            queueOfflineRestore(resolveTargetName(), sessionSnapshot());
         } else {
-            String targetName = resolveTargetName();
-            player.sendMessage("§aQueueing a restore for " + targetName + " while they are offline...");
-            queueOfflineRestore(targetName, true, true, true, true);
+            restoreInventory(target, true, true, true, true);
         }
     }
 
-    private void handleRestoreInventory(InventoryClickEvent event) {
-        Player player = (Player) event.getWhoClicked();
-        player.sendMessage("§aRestoring your main inventory...");
-        restoreInventory(player, true, false, false, false);
-    }
-
-    private void handleRestoreArmor(InventoryClickEvent event) {
-        Player player = (Player) event.getWhoClicked();
-        player.sendMessage("§aRestoring your armor and offhand...");
-        restoreInventory(player, false, true, false, false);
-    }
-
-    private void handleRestoreExp(InventoryClickEvent event) {
-        Player player = (Player) event.getWhoClicked();
-        player.sendMessage("§aRestoring your experience...");
-        restoreInventory(player, false, false, true, false);
-    }
-
     private void handleOpenEnderChest(InventoryClickEvent event) {
-        new EnderChestRestoreGUI(player, snapshot, this, plugin).open();
+        session.captureInventory(inventory);
+        new EnderChestRestoreGUI(player, snapshot, session, this, plugin).open();
     }
 
     private void handleTeleport(InventoryClickEvent event) {
-        Player player = (Player) event.getWhoClicked();
-        SchedulerAdapter.runAtEntity(player, () -> {
-            try {
-                player.teleport(snapshot.getLocation());
-                player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
-                player.sendMessage("§aYou have been teleported to the saved location!");
-            } catch (Exception e) {
-                handleError("Failed to teleport", e, player);
-            }
-        });
+        try {
+            player.teleport(snapshot.getLocation());
+            player.playSound(player.getLocation(), "minecraft:entity.enderman.teleport", 1.0f, 1.0f);
+            player.sendMessage("§aYou have been teleported to the saved location!");
+        } catch (Exception e) {
+            handleError("Failed to teleport", e);
+        }
     }
 
-    private void restoreInventory(Player target, boolean restoreInv, boolean restoreArmor, boolean restoreExp, boolean restoreEnderChest) {
+    private void restoreInventory(Player target, boolean restoreInv, boolean restoreArmor,
+                                  boolean restoreExp, boolean restoreEnderChest) {
+        // Freeze the viewer's panel before moving to another player's thread.
+        InventorySnapshot selected = sessionSnapshot();
         SchedulerAdapter.runAtEntity(target, () -> {
             try {
                 OfflineInventoryData override = OfflineInventoryData.fromSnapshot(
-                    snapshot,
-                    restoreInv,
-                    restoreArmor,
-                    restoreExp,
-                    restoreEnderChest
-                );
+                    selected, restoreInv, restoreArmor, restoreExp, restoreEnderChest);
                 plugin.getOfflineInventoryManager().applyToOnlinePlayer(target, override);
-                target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.0f);
-
-                String message = "§aSuccessfully restored ";
-                List<String> parts = new java.util.ArrayList<>();
-                if (restoreInv) parts.add("inventory");
-                if (restoreArmor) parts.add("armor");
-                if (restoreExp) parts.add("experience");
-                if (restoreEnderChest) parts.add("ender chest");
-
-                message += String.join(", ", parts) + "!";
-                target.sendMessage(message);
-
-                // If restoring someone else's inventory, notify both players
+                target.playSound(target.getLocation(), "minecraft:entity.player.levelup", 0.5f, 1.0f);
+                String restored = restoredParts(restoreInv, restoreArmor, restoreExp, restoreEnderChest);
+                target.sendMessage("§aSuccessfully restored " + restored + "!");
                 if (!target.getUniqueId().equals(player.getUniqueId())) {
-                    player.sendMessage("§aSuccessfully restored " + target.getName() + "'s " +
-                        String.join(", ", parts) + "!");
+                    SchedulerAdapter.runAtEntity(player, () -> player.sendMessage(
+                        "§aSuccessfully restored " + target.getName() + "'s " + restored + "!"));
                 }
-
             } catch (Exception e) {
-                handleError("Error restoring inventory", e, target);
+                handleError("Error restoring inventory", e);
             }
         });
     }
 
-    private void queueOfflineRestore(String targetName,
-                                     boolean restoreInv,
-                                     boolean restoreArmor,
-                                     boolean restoreExp,
-                                     boolean restoreEnderChest) {
+    private void queueOfflineRestore(String targetName, InventorySnapshot selected) {
         plugin.getOfflineInventoryManager().queueOfflineSnapshotRestore(
-            targetId,
-            targetName,
-            snapshot,
-            restoreInv,
-            restoreArmor,
-            restoreExp,
-            restoreEnderChest
+            targetId, targetName, selected, true, true, true, true
         ).whenComplete((ignored, error) -> SchedulerAdapter.runAtEntity(player, () -> {
             if (error != null) {
-                handleError("Error queueing offline restore", new RuntimeException(error), player);
-                return;
+                handleError("Error queueing offline restore", new RuntimeException(error));
+            } else {
+                player.sendMessage("§aQueued " + targetName + "'s edited snapshot restore for their next login.");
             }
-
-            List<String> parts = new java.util.ArrayList<>();
-            if (restoreInv) parts.add("inventory");
-            if (restoreArmor) parts.add("armor");
-            if (restoreExp) parts.add("experience");
-            if (restoreEnderChest) parts.add("ender chest");
-
-            player.sendMessage("§aQueued " + targetName + "'s " + String.join(", ", parts) + " restore for their next login.");
         }));
+    }
+
+    private static String restoredParts(boolean inventory, boolean armor, boolean exp, boolean enderChest) {
+        List<String> parts = new ArrayList<>();
+        if (inventory) parts.add("inventory");
+        if (armor) parts.add("armor and offhand");
+        if (exp) parts.add("experience");
+        if (enderChest) parts.add("ender chest");
+        return String.join(", ", parts);
     }
 
     private String resolveTargetName() {
@@ -303,21 +229,14 @@ public class RestoreOptionsGUI extends BaseGUI {
         if (target != null) {
             return target.getName();
         }
-
-        String offlineName = Bukkit.getOfflinePlayer(targetId).getName();
-        return offlineName != null ? offlineName : "Unknown";
+        String name = Bukkit.getOfflinePlayer(targetId).getName();
+        return name == null ? "Unknown" : name;
     }
 
     private void handleError(String message, Exception e) {
-        handleError(message, e, player);
-    }
-
-    private void handleError(String message, Exception e, Player target) {
-        Text.sendDebugLog(ERROR, message + ": " + e.getMessage());
-        e.printStackTrace();
-        if (target != null && target.isOnline()) {
-            target.sendMessage("§cAn error occurred: " + e.getMessage());
+        Text.sendDebugLog(ERROR, message, e);
+        if (player.isOnline()) {
+            player.sendMessage("§c" + message + ". Please check the server log.");
         }
     }
-
 }

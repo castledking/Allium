@@ -83,13 +83,13 @@ class XpConfigTest {
 
     @Test
     void everySourceShipsEnabledOnceItsBridgeExists() {
-        // All eight sources are wired now. Each is still independently
+        // All nine sources are wired now. Each is still independently
         // switchable, and each reports itself as not-listening when its plugin
         // is absent, which is different from a source that never fires silently.
         XpConfig config = shipped();
         for (String id : new String[] {"kill-mob", "breed-mob", "farm-crop", "advancement",
                                        "quest-complete", "auraskills-ability",
-                                       "ecojobs-work", "fish-large"}) {
+                                       "ecojobs-work", "fish-large", "fish-catch"}) {
             assertTrue(config.isEnabled(id), id + " ships disabled");
         }
     }

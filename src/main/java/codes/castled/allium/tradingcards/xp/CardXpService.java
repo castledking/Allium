@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.LongSupplier;
+import java.util.function.Consumer;
 import org.bukkit.entity.Player;
 
 /**
@@ -56,6 +57,11 @@ public class CardXpService {
 
     private CardWriter writer = (player, card) -> { };
     private CardMultiplier multiplier = player -> 1.0;
+    private Consumer<LevelUp> announcementSink = this::announceNow;
+
+    /** One completed progression change; several changes may share a chat announcement. */
+    public record LevelUp(Player owner, TradingCardData card, int previous, int current,
+                          String template, boolean broadcast) { }
 
     public CardXpService(XpConfig config, XpAntiFarmStore antiFarm,
                           CardProgression progression, EquippedCardLookup equipped,
@@ -76,6 +82,16 @@ public class CardXpService {
         this.multiplier = multiplier == null ? player -> 1.0 : multiplier;
     }
 
+    public void announcementSink(Consumer<LevelUp> sink) {
+        this.announcementSink = sink == null ? this::announceNow : sink;
+    }
+
+    /** Delivers an announcement after any burst has been combined. */
+    public void announceNow(LevelUp levelUp) {
+        progression.announce(levelUp.owner(), cardLabel(levelUp.card()), levelUp.previous(),
+            levelUp.current(), levelUp.template(), levelUp.broadcast());
+    }
+
     /**
      * Awards xp from a named source, applying every gate for it.
      *
@@ -94,6 +110,12 @@ public class CardXpService {
      */
     public Award award(Player player, String sourceId, double amount,
                        String mobKey, String claimKey) {
+        return awardScaled(player, sourceId, amount, mobKey, claimKey, 1.0);
+    }
+
+    /** Applies a difficulty factor on top of the configured source and card bonuses. */
+    public Award awardScaled(Player player, String sourceId, double amount,
+                             String mobKey, String claimKey, double rewardMultiplier) {
         XpConfig.Source source = config.source(sourceId);
         if (!source.enabled()) {
             return Award.skipped(sourceId, "disabled");
@@ -101,6 +123,13 @@ public class CardXpService {
         var card = equipped.equipped(player.getUniqueId());
         if (card.isEmpty()) {
             return Award.skipped(sourceId, "no card equipped");
+        }
+        double cardMultiplier = Math.max(1.0, multiplier.multiplierFor(player.getUniqueId()));
+        double xp = (source.usesMultiplier() ? amount * source.multiplier() : source.xp())
+            * cardMultiplier * rewardMultiplier;
+        // Invalid plugin amounts must not corrupt the card or consume claims.
+        if (!Double.isFinite(amount) || amount <= 0 || !Double.isFinite(xp) || xp <= 0) {
+            return Award.skipped(sourceId, "awards nothing");
         }
         long now = clock.getAsLong();
 
@@ -120,15 +149,6 @@ public class CardXpService {
             return Award.skipped(sourceId, "already paid for this one");
         }
 
-        // The card's own bonus applies on top of the source's multiplier, and
-        // is floored at 1x so a card can never make levelling slower than doing
-        // nothing at all.
-        double cardMultiplier = Math.max(1.0, multiplier.multiplierFor(player.getUniqueId()));
-        double xp = (source.usesMultiplier() ? amount * source.multiplier() : source.xp())
-            * cardMultiplier;
-        if (xp <= 0.0) {
-            return Award.skipped(sourceId, "awards nothing");
-        }
         return apply(player, card.get(), xp, sourceId);
     }
 
@@ -160,8 +180,8 @@ public class CardXpService {
         TradingCardData updated = card.withLevel(result.level()).withXp(result.xp());
         writer.write(player.getUniqueId(), updated);
         progression.refreshEquipped(player, updated);
-        progression.announce(player, cardLabel(card), card.level(), updated.level(),
-            announceTemplate, announceBroadcast);
+        announcementSink.accept(new LevelUp(player, card, card.level(), updated.level(),
+            announceTemplate, announceBroadcast));
         return Award.progress(sourceId, xp, result.levels(), progression.progressTowards(
             updated.level(), result.xp(), config.xpForLevel(updated.level())));
     }

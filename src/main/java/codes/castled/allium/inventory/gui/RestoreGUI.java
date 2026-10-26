@@ -167,6 +167,8 @@ public class RestoreGUI extends BaseGUI {
                 return new ItemBuilder(Material.ENDER_PEARL);
             case "FREEZE":
                 return new ItemBuilder(Material.ICE);
+            case "MANUAL":
+                return new ItemBuilder(Material.WRITABLE_BOOK);
             case "WORLD CHANGE":
                 return new ItemBuilder(Material.NETHER_PORTAL);
             default:

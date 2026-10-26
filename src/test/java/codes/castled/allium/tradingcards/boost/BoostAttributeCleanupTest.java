@@ -111,6 +111,26 @@ class BoostAttributeCleanupTest {
         assertTrue(tracker.isEmpty(playerId));
     }
 
+    @Test
+    void theScaleModifierMakesThePlayerTheRolledSize() {
+        // MULTIPLY_SCALAR_1 multiplies by (1 + modifier), so a size is applied as size - 1.
+        var service = service();
+        service.configure(service.catalog(), 1, BonusStrength.SCALE_MIN, BonusStrength.SCALE_MAX);
+        assertEquals(-0.4, scaleModifier(service, 0), 1e-9, "the weakest roll is x0.6");
+        assertEquals(1.0, scaleModifier(service, 100), 1e-9, "the strongest roll is x2.0");
+        assertEquals(1.0, scaleModifier(service, null), 1e-9,
+            "a scale bonus from before strengths keeps the x2.0 it gave");
+    }
+
+    private double scaleModifier(BoostService service, Integer strength) {
+        var card = new TradingCardData("ALLAY", "allay", Tier.FABLED, 1, 100, List.of(),
+            List.of("scale"), 0.0, 0, false, java.util.Arrays.asList(strength));
+        service.apply(player, card);
+        var modifiers = attributes.get(scale).values();
+        assertEquals(1, modifiers.size());
+        return modifiers.iterator().next().getAmount();
+    }
+
     private Attribute attribute(String name) {
         return switch (name) { case "scale" -> scale; case "flying_speed" -> flight; default -> null; };
     }

@@ -29,7 +29,9 @@ import codes.castled.allium.tradingcards.xp.CardXpListener;
 import codes.castled.allium.tradingcards.xp.EcoJobsBridge;
 import codes.castled.allium.tradingcards.xp.FishSizeTracker;
 import codes.castled.allium.tradingcards.xp.LiteFishBridge;
+import codes.castled.allium.tradingcards.xp.FishingXpListener;
 import codes.castled.allium.tradingcards.xp.CardXpService;
+import codes.castled.allium.tradingcards.xp.CardLevelAnnouncements;
 import codes.castled.allium.tradingcards.xp.XpAntiFarmStore;
 import codes.castled.allium.tradingcards.xp.XpConfig;
 import codes.castled.allium.tradingcards.card.CardDefinitionLoader;
@@ -107,6 +109,7 @@ public final class TradingCardsModule {
     private MorphService morphs;
     private XpAntiFarmStore antiFarm;
     private CardXpService cardXp;
+    private CardLevelAnnouncements levelAnnouncements;
     private codes.castled.allium.scheduler.TaskHandle antiFarmSave;
     private int lastReloreRefreshed;
     private RerollService reroll;
@@ -239,6 +242,10 @@ public final class TradingCardsModule {
     public void disable() {
         if (!enabled) return;
         enabled = false;
+        if (levelAnnouncements != null) {
+            levelAnnouncements.close();
+            levelAnnouncements = null;
+        }
         // Quiesce first: an AuraSkills modifier that outlives its card is
         // written to disk on logout and becomes a permanent invisible buff.
         removeAllBoosts();
@@ -248,6 +255,17 @@ public final class TradingCardsModule {
         if (heldCardNames != null) {
             heldCardNames.stop();
             heldCardNames = null;
+        }
+        // PacketEvents listeners sit in the PacketEvents plugin's event manager
+        // and survive this plugin's classloader on a hot reload; the frame marker
+        // is taken down by name, before the classloader is torn away.
+        try {
+            Class.forName("codes.castled.allium.packetevents.impl.FrameMarkerPacketListener")
+                .getMethod("shutdown")
+                .invoke(null);
+        } catch (Throwable t) {
+            logger.fine("[" + TradingCardsBranding.DISPLAY_NAME
+                + "] Could not unregister frame markers: " + t);
         }
         // Saved on the way down rather than left to the timer: a cooldown that
         // is lost on shutdown is a gate that is not there.
@@ -743,7 +761,8 @@ public final class TradingCardsModule {
                 + "plugins/Relique/relic/allium/slots/card.json exists");
         } else {
             Bukkit.getPluginManager().registerEvents(new BoostListener(service, tracker,
-                () -> config.levelling().announce().equipMessage()), plugin);
+                () -> config.levelling().announce().equipMessage(),
+                this::cardSlotChanged), plugin);
             Bukkit.getPluginManager().registerEvents(
                 new codes.castled.allium.tradingcards.integration.ReliqueMenuListener(this), plugin);
             var restore = new codes.castled.allium.tradingcards.integration.ReliqueEquipRestore(
@@ -879,7 +898,10 @@ public final class TradingCardsModule {
                     return "<red>" + id + "</red>";
                 }
                 double value = bonusValue(boost, strength);
-                String amount = boost.mechanism().isMultiplier()
+                String amount = boost.mechanism()
+                        == codes.castled.allium.tradingcards.boost.BoostMechanism.CARD_SCALE
+                    ? size(value)
+                    : boost.mechanism().isMultiplier()
                     ? "x" + trim(value)
                     : "+" + trim(value);
                 return boost.display() + " <white>" + amount + "</white>";
@@ -889,7 +911,7 @@ public final class TradingCardsModule {
                 return boost == null
                     || !codes.castled.allium.tradingcards.boost.BonusStrength.rolls(boost.mechanism())
                     ? null
-                    : config.bonusSlotRoll().strength().resolve(strength);
+                    : config.bonusSlotRoll().strength().resolve(boost, strength);
             })));
     }
 
@@ -933,6 +955,12 @@ public final class TradingCardsModule {
             catalog, config.bonusSlotRoll(), config.levelling().loreBonusSlots(),
             codes.castled.allium.PluginStart.getInstance().getEconomyManager(),
             java.util.concurrent.ThreadLocalRandom.current());
+    }
+
+    /** A player size as it is advertised: 0.6x, 1.37x, 2.0x. */
+    static String size(double value) {
+        String two = String.format(java.util.Locale.ROOT, "%.2f", value);
+        return (two.endsWith("0") ? two.substring(0, two.length() - 1) : two) + "x";
     }
 
     /** Trims a boost value to something a lore line should carry. */
@@ -1006,6 +1034,13 @@ public final class TradingCardsModule {
             System::currentTimeMillis);
         service.announcement(config.levelling().announce().message(),
             config.levelling().announce().broadcast());
+        this.levelAnnouncements = new CardLevelAnnouncements((owner, task, delay) -> {
+            var scheduled = codes.castled.allium.scheduler.SchedulerAdapter.runLaterEntity(
+                plugin, owner, task, delay);
+            return scheduled::cancel;
+        }, service::announceNow);
+        service.announcementSink(levelAnnouncements::queue);
+        Bukkit.getPluginManager().registerEvents(levelAnnouncements, plugin);
         // The card's xp bonus is read from the applied boosts, so it only counts
         // while the card is actually equipped and the boosts are live.
         BoostService boostService = boosts;
@@ -1034,44 +1069,35 @@ public final class TradingCardsModule {
                 if (antiFarm != null) antiFarm.save();
             }, 12000L, 12000L);
 
-        // Quest completions arrive reflectively: Allium must not compile
-        // against ExcellentQuests, or the trading card module would fail to load
-        // on a server without it. The event is a plain Bukkit event, so
-        // registerEvent takes its class as a parameter and that is a supported
-        // API rather than a workaround.
+        // Each quest plugin is optional and uses its own completion contract.
         if (xpConfig != null && xpConfig.isEnabled("quest-complete")) {
             QuestsBridge quests = new QuestsBridge(logger, TradingCardsBranding.NAMESPACE);
-            if (quests.register(plugin, (player, questId) -> {
-                if (questId == null) {
-                    return;
-                }
-                // Keyed by the quest id and the player's daily record, so a
-                // quest that can be completed more than once a day pays each
-                // time and the same completion is never counted twice.
-                service.award(player, "quest-complete", 1.0, null,
-                    questId + ":" + java.time.LocalDate.now());
-                payQuestBonuses(player);
+            if (quests.registerDetailed(plugin, (player, completion) -> {
+                var award = service.awardScaled(player, "quest-complete", 1.0, null,
+                    completion.claimKey(), xpConfig.quests().multiplier(completion.questId(), completion.category()));
+                if (award.paid()) payQuestBonuses(player);
             })) {
                 questsLive = true;
-            } else if (Bukkit.getPluginManager().isPluginEnabled("ExcellentQuests")) {
+            } else if (Bukkit.getPluginManager().isPluginEnabled("ExcellentQuests")
+                || Bukkit.getPluginManager().isPluginEnabled("Quests")) {
                 issues.add(ValidationIssue.warning(TradingCardsConfig.FILE,
                     "xp.sources.quest-complete",
-                    "Enabled, but this ExcellentQuests build has no "
-                        + "QuestCompleteEvent. Replace it with the patched jar "
-                        + "from tradingcardjars/, or the source will never fire."));
+                    "Enabled, but no compatible quest completion listener could register. "
+                        + "Check the Quests/ExcellentQuests integration warning in the log."));
             }
         }
 
         // Fishing. LiteFish is premium, so there is no api artifact and no
         // way to compile against it; the bridge is reflection plus the two PDC
         // keys LiteFish already writes onto the caught stack.
-        if (xpConfig.isEnabled("fish-large")) {
+        if (xpConfig.isEnabled("fish-catch") || xpConfig.isEnabled("fish-large")) {
             fishSizes = new FishSizeTracker(new FishSizeTracker.Rules(
                 loaded.config().source("fish-large").maxSamples(),
                 xpConfig.source("fish-large").percentile(),
                 xpConfig.source("fish-large").minimumSamples()));
             LiteFishBridge fishing = new LiteFishBridge(logger);
             if (fishing.register(plugin, (player, species, weight) -> {
+                service.award(player, "fish-catch", 1.0, species, null);
                 if (!fishSizes.record(player.getUniqueId(), species, weight)) {
                     return;
                 }
@@ -1086,6 +1112,8 @@ public final class TradingCardsModule {
                         + "api.CatchEvent."));
             }
         }
+        Bukkit.getPluginManager().registerEvents(new FishingXpListener(service,
+            xpConfig.liteFishCatchValue(), fishingLive), plugin);
 
         // EcoJobs. Also reflective: its API is Kotlin top-level functions with
         // no interface, so there is nothing to implement and no artifact to
@@ -1226,6 +1254,20 @@ public final class TradingCardsModule {
         return morphs;
     }
 
+    /**
+     * Ends a morph the card slot no longer backs.
+     *
+     * <p>Reads the field at call time: morphing is set up after the Relique
+     * listener is registered, and a reload can replace it.
+     */
+    private void cardSlotChanged(Player player, TradingCardData card) {
+        MorphService service = morphs;
+        if (service != null && service.cardChanged(player, card)) {
+            player.sendMessage(MiniMessage.miniMessage().deserialize(
+                "<gray>Your card left its slot, so you are yourself again.</gray>"));
+        }
+    }
+
     public DisguiseBridge disguises() {
         return disguises;
     }
@@ -1237,11 +1279,11 @@ public final class TradingCardsModule {
 
     /** The scale clamp, from the catalogue's own scale entry. */
     private double scaleMinimum() {
-        return 0.6;
+        return codes.castled.allium.tradingcards.boost.BonusStrength.SCALE_MIN;
     }
 
     private double scaleMaximum() {
-        return 1.9;
+        return codes.castled.allium.tradingcards.boost.BonusStrength.SCALE_MAX;
     }
 
     // ==================== trading ====================

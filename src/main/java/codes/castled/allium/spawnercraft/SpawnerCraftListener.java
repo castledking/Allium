@@ -10,6 +10,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.block.Action;
@@ -60,9 +62,8 @@ public class SpawnerCraftListener implements Listener {
             return;
         }
         EntityType headType = guideEntityType(item);
-        if (headType != null) {
+        if (headType != null && SpawnerCraftGuideGui.openHead(event.getPlayer(), headType, item)) {
             event.setCancelled(true);
-            SpawnerCraftGuideGui.open(event.getPlayer(), headType);
         }
     }
 
@@ -83,32 +84,47 @@ public class SpawnerCraftListener implements Listener {
             return;
         }
         EntityType headType = guideEntityType(item);
-        if (headType != null) {
+        if (headType != null && SpawnerCraftGuideGui.openHead(event.getPlayer(), headType, item)) {
             event.setCancelled(true);
-            SpawnerCraftGuideGui.open(event.getPlayer(), headType);
         }
     }
 
     /**
-     * The mob a head is worth as a spawner ingredient, or null if it isn't one. A
-     * vanilla skull that can't craft spawners is left alone, so it still places as a
-     * block head instead of opening the guide.
+     * Classify recognized heads independently of the spawner drop list. The guide
+     * decides which recipes this head can actually make under each feature's rules.
      */
     private EntityType guideEntityType(ItemStack item) {
-        if (!MobHeadRegistry.isMobHeadForPlacement(item, vanillaHeadsCraftSpawners)) return null;
-        EntityType headType = MobHeadRegistry.getEntityType(item, vanillaHeadsCraftSpawners);
-        return headType != null && MobHeadDropListener.handlesMobType(headType) ? headType : null;
+        return MobHeadRegistry.getEntityType(item, true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onGuiClick(InventoryClickEvent event) {
-        if (event.getView().getTitle().equals(SpawnerCraftGuideGui.getGuiTitle())) {
+        if (SpawnerCraftGuideGui.isGuide(event.getView().getTopInventory())) {
             event.setCancelled(true);
+            if (event.getRawSlot() >= 0 && event.getRawSlot() < event.getView().getTopInventory().getSize()
+                && (event.isLeftClick() || event.isRightClick()) && !event.isShiftClick()) {
+                var inventory = event.getView().getTopInventory();
+                SchedulerAdapter.runAtEntity(event.getWhoClicked(), () -> {
+                    var current = event.getWhoClicked().getOpenInventory();
+                    if (current.getTopInventory() == inventory) SpawnerCraftGuideGui.advance(current);
+                });
+            }
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
+    public void onGuiDrag(InventoryDragEvent event) {
+        if (SpawnerCraftGuideGui.isGuide(event.getView().getTopInventory())) event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onGuiClose(InventoryCloseEvent event) {
+        SpawnerCraftGuideGui.close(event.getInventory());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareCraft(PrepareItemCraftEvent event) {
+        if (SpawnerCraftGuideGui.isGuide(event.getInventory())) return;
         CraftingInventory inventory = event.getInventory();
         ItemStack[] matrix = inventory.getMatrix();
         EntityType entityType = getValidSpawnerCraft(matrix);
@@ -121,6 +137,7 @@ public class SpawnerCraftListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onInventoryClick(InventoryClickEvent event) {
+        if (SpawnerCraftGuideGui.isGuide(event.getInventory())) return;
         if (!(event.getInventory() instanceof CraftingInventory)) return;
         if (event.getSlotType() != org.bukkit.event.inventory.InventoryType.SlotType.RESULT) return;
         ItemStack clickedItem = event.getCurrentItem();

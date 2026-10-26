@@ -5,6 +5,7 @@ import codes.castled.allium.tradingcards.TradingCardsModule;
 import java.util.Locale;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -41,16 +42,24 @@ public class CardXpListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDeath(EntityDeathEvent event) {
-        if (!(event.getEntity().getKiller() instanceof Player player)) {
-            return;
-        }
         // A player killing another player is not mob xp. There is deliberately
         // no player-kill source at all: it is the easiest xp on the server to
         // farm with two accounts, and it turns a collectible into a reason to
         // start a fight.
-        if (event.getEntity() instanceof Player) {
+        if (event.isCancelled() || event.getEntity() instanceof Player) {
             return;
         }
+        Player player = event.getEntity().getKiller() instanceof Player killer ? killer : null;
+        // Custom damage and projectile deaths can retain the responsible
+        // player in DamageSource without populating the legacy killer field.
+        if (player == null && event.getDamageSource().getCausingEntity() instanceof Player causing) {
+            player = causing;
+        }
+        if (player == null && event.getDamageSource().getDirectEntity() instanceof Projectile projectile
+            && projectile.getShooter() instanceof Player shooter) {
+            player = shooter;
+        }
+        if (player == null) return;
         xp.award(player, "kill-mob", 1.0,
             event.getEntity().getType().name(), null);
     }

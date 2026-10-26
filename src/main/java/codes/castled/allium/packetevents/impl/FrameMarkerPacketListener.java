@@ -9,6 +9,7 @@ import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.component.ComponentType;
 import com.github.retrooper.packetevents.protocol.component.ComponentTypes;
 import com.github.retrooper.packetevents.protocol.component.builtin.item.ItemLore;
+import com.github.retrooper.packetevents.protocol.component.builtin.item.ItemProfile;
 import com.github.retrooper.packetevents.protocol.component.builtin.item.ItemTooltipDisplay;
 import com.github.retrooper.packetevents.protocol.component.builtin.item.ItemTooltipStyle;
 import com.github.retrooper.packetevents.protocol.item.ItemStack;
@@ -95,11 +96,38 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
         this.logger = logger;
     }
 
+    /** The registered listener, for {@link #shutdown()} to take back down. */
+    private static FrameMarkerPacketListener installed;
+
     /** Registers the listener. Called by name, so this class only loads when needed. */
     public static void install(Plugin plugin) {
+        shutdown();
         FrameMarkerPacketListener listener = new FrameMarkerPacketListener(plugin.getLogger());
+        installed = listener;
         plugin.getServer().getPluginManager().registerEvents(listener, plugin);
         PacketEvents.getAPI().getEventManager().registerListener(listener);
+    }
+
+    /**
+     * Unregisters the listener from PacketEvents. Called by name during the
+     * module's disable, so the class only loads when PacketEvents is present.
+     *
+     * <p>Done compulsorily, not for tidiness: PacketEvents' event manager sits
+     * in the PacketEvents plugin and outlives this plugin's classloader on a hot
+     * reload. An unregistered listener leaves the previous build intercepting
+     * packets after the reload, framing items before the new build ever sees
+     * them — which is exactly what it did not fix, so the reload looked like it
+     * had changed nothing however often it was run.
+     */
+    public static void shutdown() {
+        if (installed == null) {
+            return;
+        }
+        try {
+            PacketEvents.getAPI().getEventManager().unregisterListener(installed);
+        } finally {
+            installed = null;
+        }
     }
 
     @Override
@@ -216,6 +244,20 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
         item.setComponent(ComponentTypes.ITEM_NAME, CardTooltipStyle.hiddenName());
         item.unsetComponent(ComponentTypes.CUSTOM_NAME);
         item.setComponent(ComponentTypes.TOOLTIP_STYLE, new ItemTooltipStyle(STYLE));
+        // A player head composes the tooltip's name line as "{owner}'s Head"
+        // on the client — the name even when it holds an empty string, reading
+        // just "'s Head" — and the composed name takes its line back from the
+        // blanked one this rewrite writes. An empty owner comes from the copy's
+        // profile id: the client asks Mojang who owns that uuid, a mob head's
+        // profile uuid names nobody, and the empty result is composed anyway.
+        // So the framed copy's profile keeps only what draws the head — the
+        // baked texture properties and the skin patch — and drops the name and
+        // the id so there is nothing left to resolve or compose from. Only the copy
+        // changes; the stack on the server still carries the profile whole.
+        ItemProfile profile = item.getComponentOr(ComponentTypes.PROFILE, null);
+        if (profile != null && (profile.getName() != null || profile.getId() != null)) {
+            item.setComponent(ComponentTypes.PROFILE, skinOnlyProfile(profile));
+        }
         ItemTooltipDisplay display = item.getComponentOr(ComponentTypes.TOOLTIP_DISPLAY, null);
         Set<ComponentType<?>> hidden = new HashSet<>(HIDDEN);
         if (display != null) {
@@ -224,6 +266,20 @@ public final class FrameMarkerPacketListener extends PacketListenerAbstract impl
         item.setComponent(ComponentTypes.TOOLTIP_DISPLAY,
             new ItemTooltipDisplay(display != null && display.isHideTooltip(), hidden));
         return true;
+    }
+
+    /**
+     * The profile with the name and the id taken out, so the client cannot
+     * compose a head's name line from either.
+     *
+     * <p>The texture properties survive: the head model is drawn from their
+     * base64 payloads alone. The profile's name field and the id (on 1.21.9+
+     * either may be present alone; both encode as optionals) are what the name
+     * resolution composes the line from, so both go.
+     */
+    static ItemProfile skinOnlyProfile(ItemProfile profile) {
+        return new ItemProfile(null, null,
+            new ArrayList<>(profile.getProperties()), profile.getSkinPatch());
     }
 
     /**

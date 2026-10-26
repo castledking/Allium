@@ -1,11 +1,4 @@
-# The items the Allium tomato crop hands out: seeds to plant with, the fruit
-# that comes off a ripe plant, and the four stage models the crop is drawn
-# with.
-#
-# The textures are the ones the server's Nexo pack already ships
-# (crops/tomato), copied into this pack so the crop looks exactly like the
-# Nexo one. That art belongs to the server's resource pack, not to Allium, so
-# it is not committed here — sync_art.sh copies it in.
+# Existing tomato seeds and produce. Plant displays are in crop_stages.yml.
 items:
   ce:tomato_seeds:
     data:
@@ -42,30 +35,3 @@ items:
   # The four growth stages, drawn as models rather than as blocks: Allium
   # puts them on a display entity, so 'visual' (transform, scale, y-offset)
   # applies to them the way it does to a Nexo crop.
-  ce:tomato_stage_1:
-    data:
-      item_name: <!i><green>Tomato Sprout
-    model:
-      type: minecraft:model
-      path: ce:item/crops/tomato/stage_1
-
-  ce:tomato_stage_2:
-    data:
-      item_name: <!i><green>Tomato Plant
-    model:
-      type: minecraft:model
-      path: ce:item/crops/tomato/stage_2
-
-  ce:tomato_stage_3:
-    data:
-      item_name: <!i><yellow>Tomato Budding
-    model:
-      type: minecraft:model
-      path: ce:item/crops/tomato/stage_3
-
-  ce:tomato_stage_4:
-    data:
-      item_name: <!i><red>Tomato Ripe
-    model:
-      type: minecraft:model
-      path: ce:item/crops/tomato/stage_4

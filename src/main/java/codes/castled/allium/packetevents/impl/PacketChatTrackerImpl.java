@@ -4,6 +4,7 @@ import static codes.castled.allium.managers.core.Text.DebugSeverity.*;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.chat.ChatMessageManager;
+import codes.castled.allium.managers.chat.ChatHistoryClear;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.packetevents.ChatPacketTracker;
 import codes.castled.allium.util.SchedulerAdapter;
@@ -35,40 +36,18 @@ public class PacketChatTrackerImpl
 {
 
     private static final UUID SYSTEM_UUID = new UUID(0, 0);
-    private static final long RESEND_DUPLICATE_WINDOW_MS = 3000L;
-
     private final PluginStart plugin;
     private final ChatMessageManager chatMessageManager;
     private final Set<UUID> playersBeingResent = ConcurrentHashMap.newKeySet();
     /** Guard so clear+resend runs only once even if scheduler fires twice (e.g. Purpur with Folia APIs). */
     private final AtomicBoolean resendAllInProgress = new AtomicBoolean(false);
-    /** Global suppression of packet tracking during resend broadcast. */
-    private final AtomicBoolean suppressPacketTracking = new AtomicBoolean(false);
+    private final AtomicBoolean resendAllRequested = new AtomicBoolean(false);
+    private final org.bukkit.event.Listener interactiveChatListener = new org.bukkit.event.Listener() {};
 
-    private boolean shouldIgnoreTracking(Player player) {
-        return suppressPacketTracking.get()
-            || player == null
-            || playersBeingResent.contains(player.getUniqueId());
+    private boolean shouldIgnoreTracking(Player player, Component message) {
+        return player == null || chatMessageManager.isReplay(message)
+            || ChatHistoryClear.isWhitespace(message);
     }
-
-    /**
-     * Invisible Unicode characters for clearing chat. Each resend uses a random permutation
-     * of these (no repeat until all used) to make it harder for clients to detect or filter.
-     */
-    private static final char[] INVISIBLE_UNICODE = {
-        ' ', // Regular space
-        '\u2000',
-        '\u2001',
-        '\u2002',
-        '\u2003', // En quad, Em quad, En space, Em space
-        '\u2004',
-        '\u2005',
-        '\u2006',
-        '\u2007',
-        '\u2008',
-        '\u2009',
-        '\u200A', // Various spaces
-    };
 
     public PacketChatTrackerImpl(
         PluginStart plugin,
@@ -88,6 +67,7 @@ public class PacketChatTrackerImpl
         SchedulerAdapter.runLater(() -> {
             try {
                 PacketEvents.getAPI().getEventManager().registerListener(this);
+                registerInteractiveChatGuard();
             } catch (Throwable e) {
                 Text.sendDebugLog(
                     WARN,
@@ -100,6 +80,7 @@ public class PacketChatTrackerImpl
 
     @Override
     public void onPacketSend(PacketSendEvent event) {
+        if (event.isCancelled()) return;
         if (
             event.getPacketType() == PacketType.Play.Server.SYSTEM_CHAT_MESSAGE
         ) {
@@ -131,7 +112,8 @@ public class PacketChatTrackerImpl
             if (messageComponent == null) return;
 
             Player player = event.getPlayer();
-            if (shouldIgnoreTracking(player)) return;
+            if (chatMessageManager.isDeletedMessage(messageComponent)) { event.setCancelled(true); return; }
+            if (shouldIgnoreTracking(player, messageComponent)) return;
 
             UUID systemUUID = new UUID(0, 0);
             ChatMessageManager.ChatMessage chatMessage =
@@ -167,7 +149,8 @@ public class PacketChatTrackerImpl
             if (messageComponent == null) return;
 
             Player player = event.getPlayer();
-            if (shouldIgnoreTracking(player)) return;
+            if (chatMessageManager.isDeletedMessage(messageComponent)) { event.setCancelled(true); return; }
+            if (shouldIgnoreTracking(player, messageComponent)) return;
 
             UUID systemUUID = new UUID(0, 0);
             ChatMessageManager.ChatMessage chatMessage =
@@ -202,14 +185,14 @@ public class PacketChatTrackerImpl
         try {
             WrapperPlayServerSystemChatMessage systemChatPacket =
                 new WrapperPlayServerSystemChatMessage(event);
+            // Action bars are not part of chat history or chat moderation.
+            if (systemChatPacket.isOverlay()) return;
             Component messageComponent = systemChatPacket.getMessage();
             if (messageComponent == null) return;
 
             Player player = event.getPlayer();
-            if (shouldIgnoreTracking(player)) return;
-
-            // Skip overlay (action bar / title) messages — these are not chat.
-            if (systemChatPacket.isOverlay()) return;
+            if (chatMessageManager.isDeletedMessage(messageComponent)) { event.setCancelled(true); return; }
+            if (shouldIgnoreTracking(player, messageComponent)) return;
 
             UUID systemUUID = new UUID(0, 0);
             ChatMessageManager.ChatMessage chatMessage =
@@ -247,277 +230,108 @@ public class PacketChatTrackerImpl
 
     @Override
     public void resendChatHistoryToPlayer(Player player) {
+        if (player == null) return;
         UUID playerId = player.getUniqueId();
-        playersBeingResent.add(playerId);
+        if (!playersBeingResent.add(playerId)) return;
         try {
+            int clearEntries = plugin.getConfig().getInt("chat.deletion_resend.clear_lines", 500);
+            ChatHistoryClear.send(clearEntries, entry -> sendClearEntry(player, entry));
 
-            int configuredClearLines = Math.max(
-                0,
-                plugin
-                    .getConfig()
-                    .getInt("chat.deletion_resend.clear_lines", 500)
-            );
-            int clearLines = Math.min(configuredClearLines, 180);
-
-            // Batch clear: pack multiple invisible chars per message to minimize
-            // packets.  180 single-char msgs → ~9 batched msgs.
-            int batchSize = 20;
-            for (int batch = 0; batch < clearLines; batch += batchSize) {
-                int end = Math.min(batch + batchSize, clearLines);
-                StringBuilder sb = new StringBuilder();
-                for (int i = batch; i < end; i++) {
-                    if (sb.length() > 0) sb.append('\n');
-                    sb.append(INVISIBLE_UNICODE[i % INVISIBLE_UNICODE.length]);
-                }
-                player.sendMessage(Component.text(sb.toString()));
+            if (plugin.getConfig().getBoolean("chat.deletion_resend.header_enabled", true)) {
+                String header = plugin.getConfig().getString("chat.deletion_resend.header",
+                    "Chat re-synced by staff; a message was deleted");
+                player.sendMessage(chatMessageManager.asReplay(Text.colorize(header)));
             }
 
-            if (
-                plugin
-                    .getConfig()
-                    .getBoolean("chat.deletion_resend.header_enabled", true)
-            ) {
-                String header = plugin
-                    .getConfig()
-                    .getString(
-                        "chat.deletion_resend.header",
-                        "Chat re-synced by staff; a message was deleted"
-                    );
-                player.sendMessage(Text.colorize(header));
+            // Replay only what this viewer received. An empty history is not
+            // permission to substitute the global (possibly private) history.
+            var byId = new java.util.LinkedHashMap<Long, ChatMessageManager.ChatMessage>();
+            for (var entry : chatMessageManager.getPlayerChatHistory(playerId)) {
+                if (!entry.isDeleted()) byId.put(entry.getMessageId(), entry);
             }
-
-            // Build resend history from per-player chat history (packet-tracked).
-            // For each entry, prefer the formatted message from playerMessages
-            // (built by FormatChatListener) over the raw packet component, since
-            // the formatted message has proper prefix/name coloring without
-            // raw §x hex encoding artifacts.
-            List<ChatMessageManager.ChatMessage> rawHistory =
-                chatMessageManager.getPlayerChatHistory(player.getUniqueId());
-            if (rawHistory.isEmpty()) {
-                rawHistory = chatMessageManager.getRecentGlobalChatHistory(50);
-            }
-
-            // Build a lookup of messageId -> formatted ChatMessage from playerMessages
-            // so we can substitute the properly-formatted component for each entry.
-            java.util.Map<Long, ChatMessageManager.ChatMessage> formattedById =
-                new java.util.HashMap<>();
-            java.util.Map<
-                String,
-                java.util.List<ChatMessageManager.ChatMessage>
-            > formattedBySender = new java.util.HashMap<>();
-            for (java.util.Deque<
-                ChatMessageManager.ChatMessage
-            > q : chatMessageManager.getPlayerMessagesMap().values()) {
-                for (ChatMessageManager.ChatMessage cm : q) {
-                    if (cm.isDeleted()) continue;
-                    formattedById.put(cm.getMessageId(), cm);
-                    formattedBySender
-                        .computeIfAbsent(
-                            cm.getSenderName() != null
-                                ? cm.getSenderName()
-                                : "",
-                            k -> new java.util.ArrayList<>()
-                        )
-                        .add(cm);
-                }
-            }
-
-            List<ChatMessageManager.ChatMessage> chatHistory =
-                dedupeResendHistory(rawHistory);
-            int maxMessages = 50;
-            int startIndex = Math.max(0, chatHistory.size() - maxMessages);
-
-            for (int i = startIndex; i < chatHistory.size(); i++) {
-                ChatMessageManager.ChatMessage message = chatHistory.get(i);
+            List<ChatMessageManager.ChatMessage> history = new ArrayList<>(byId.values());
+            int start = Math.max(0, history.size() - 50);
+            boolean canDelete = player.hasPermission("allium.staff")
+                || player.hasPermission("allium.deletemsg") || player.hasPermission("allium.delmsg");
+            for (int i = start; i < history.size(); i++) {
+                var message = history.get(i);
                 if (message.isDeleted()) continue;
-
-                // Prefer the formatted message if we have a matching entry.
-                // Match by messageId first, then by sender+content proximity.
                 Component toSend = message.getOriginalMessage();
-                boolean isPlayerMessage =
-                    message.getSenderId() != null &&
-                    !message.getSenderId().equals(SYSTEM_UUID);
-
-                if (isPlayerMessage) {
-                    // Try to find the formatted version of this message
-                    ChatMessageManager.ChatMessage formatted =
-                        findFormattedMessage(
-                            message,
-                            formattedById,
-                            formattedBySender
-                        );
-                    if (formatted != null) {
-                        toSend = formatted.getOriginalMessage();
-                    }
-                }
-
-                boolean canDelete =
-                    player.hasPermission("allium.staff") ||
-                    player.hasPermission("allium.deletemsg") ||
-                    player.hasPermission("allium.delmsg");
-
-                if (canDelete && isPlayerMessage) {
-                    String mode = plugin
-                        .getConfig()
-                        .getString("chat-hover.delete-hover-mode", "prefix")
-                        .toLowerCase();
+                var logical = chatMessageManager.getMessage(message.getMessageId());
+                if (canDelete && logical != null && !SYSTEM_UUID.equals(logical.getSenderId())) {
+                    String mode = plugin.getConfig().getString("chat-hover.delete-hover-mode", "prefix")
+                        .toLowerCase(java.util.Locale.ROOT);
                     if (!"none".equals(mode)) {
-                        toSend = applyStaffAugmentByMode(
-                            toSend,
-                            mode,
-                            message.getSenderName(),
-                            message.getMessageId()
-                        );
+                        toSend = applyStaffAugmentByMode(toSend, mode, logical.getSenderName(), message.getMessageId());
                     }
                 }
-                // Tracking is suppressed for the duration of a resend, but that guard is
-                // released on a timer and the packets leave on the netty thread. Re-claim
-                // the id first so that if a copy does get tracked it belongs to the same
-                // logical message, instead of becoming an untracked twin that survives
-                // the next /delmsg.
-                chatMessageManager.registerLogicalMessage(
-                    message.getMessageId(),
-                    toSend
-                );
-                player.sendMessage(toSend);
+                // IC can deliver this asynchronously, well after the main-thread
+                // replay returns. The marker, not a timer, suppresses recapture.
+                player.sendMessage(chatMessageManager.asReplay(toSend));
             }
         } catch (Exception e) {
-            Text.sendDebugLog(
-                WARN,
-                "Failed to resend chat history to " +
-                    player.getName() +
-                    ": " +
-                    e.getMessage()
-            );
+            Text.sendDebugLog(WARN, "Failed to resend chat history to " + player.getName() + ": " + e.getMessage());
         } finally {
-            // Delay removal so PacketEvents has time to process the outgoing
-            // resend packets before we stop suppressing their tracking.
-            SchedulerAdapter.runLater(
-                () -> playersBeingResent.remove(playerId),
-                1L
-            );
+            playersBeingResent.remove(playerId);
         }
     }
 
-    private List<ChatMessageManager.ChatMessage> dedupeResendHistory(
-        List<ChatMessageManager.ChatMessage> history
-    ) {
-        if (history == null || history.isEmpty()) {
-            return List.of();
+    private void sendClearEntry(Player player, Component entry) {
+        // Blank clearing packets need no glyph/item/chat formatting. Sending
+        // directly also avoids queuing hundreds of IC formatting jobs and keeps
+        // the clear ahead of the history on the player's connection.
+        var api = PacketEvents.getAPI();
+        if (api != null && api.getPlayerManager() != null) {
+            api.getPlayerManager().sendPacketSilently(player, new WrapperPlayServerSystemChatMessage(false, entry));
+        } else {
+            player.sendMessage(chatMessageManager.asReplay(entry));
         }
-
-        List<ChatMessageManager.ChatMessage> deduped = new ArrayList<>(
-            history.size()
-        );
-        for (ChatMessageManager.ChatMessage candidate : history) {
-            if (candidate == null || candidate.isDeleted()) {
-                continue;
-            }
-
-            if (deduped.isEmpty()) {
-                deduped.add(candidate);
-                continue;
-            }
-
-            ChatMessageManager.ChatMessage previous = deduped.get(
-                deduped.size() - 1
-            );
-            if (isDuplicateForResend(previous, candidate)) {
-                if (preferSecond(previous, candidate)) {
-                    deduped.set(deduped.size() - 1, candidate);
-                }
-            } else {
-                deduped.add(candidate);
-            }
-        }
-
-        return deduped;
     }
 
-    private boolean isDuplicateForResend(
-        ChatMessageManager.ChatMessage first,
-        ChatMessageManager.ChatMessage second
-    ) {
-        long diff = Math.abs(first.getTimestamp() - second.getTimestamp());
-        if (diff > RESEND_DUPLICATE_WINDOW_MS) {
-            return false;
+    @SuppressWarnings("unchecked")
+    private void registerInteractiveChatGuard() {
+        var manager = plugin.getServer().getPluginManager();
+        var interactiveChat = manager.getPlugin("InteractiveChat");
+        if (interactiveChat == null || !interactiveChat.isEnabled()) return;
+        try {
+            Class<? extends org.bukkit.event.Event> type = Class.forName(
+                "com.loohp.interactivechat.api.events.PreChatPacketSendEvent", false,
+                interactiveChat.getClass().getClassLoader()).asSubclass(org.bukkit.event.Event.class);
+            var component = type.getMethod("getComponent");
+            // InteractiveChat shades Adventure in its release JAR. Traverse
+            // its public component interface instead of casting it to ours.
+            var insertion = component.getReturnType().getMethod("insertion");
+            var children = component.getReturnType().getMethod("children");
+            var sendOriginal = type.getMethod("setSendOriginalIfCancelled", boolean.class);
+            manager.registerEvent(type, interactiveChatListener, org.bukkit.event.EventPriority.HIGHEST,
+                (listener, event) -> {
+                    try {
+                        Object rendered = component.invoke(event);
+                        if (isDeletedExternalMessage(rendered, insertion, children)
+                            && event instanceof org.bukkit.event.Cancellable cancellable) {
+                            // Stop a message already queued in IC from arriving
+                            // after deletion, including IC's original-packet fallback.
+                            sendOriginal.invoke(event, false);
+                            cancellable.setCancelled(true);
+                        }
+                    } catch (ReflectiveOperationException error) {
+                        throw new org.bukkit.event.EventException(error);
+                    }
+                }, plugin, false);
+        } catch (ReflectiveOperationException error) {
+            plugin.getLogger().warning("Could not register InteractiveChat's delayed-deletion guard: " + error.getMessage());
         }
-
-        String firstPlain = plain(first.getOriginalMessage()).trim();
-        String secondPlain = plain(second.getOriginalMessage()).trim();
-        if (firstPlain.isEmpty() || secondPlain.isEmpty()) {
-            return false;
-        }
-
-        return (
-            firstPlain.equals(secondPlain) ||
-            firstPlain.contains(secondPlain) ||
-            secondPlain.contains(firstPlain)
-        );
     }
 
-    private boolean preferSecond(
-        ChatMessageManager.ChatMessage first,
-        ChatMessageManager.ChatMessage second
-    ) {
-        boolean firstSystem = SYSTEM_UUID.equals(first.getSenderId());
-        boolean secondSystem = SYSTEM_UUID.equals(second.getSenderId());
-        if (firstSystem != secondSystem) {
-            return !secondSystem;
+    private boolean isDeletedExternalMessage(Object node, java.lang.reflect.Method insertion,
+                                             java.lang.reflect.Method children)
+            throws ReflectiveOperationException {
+        if (node == null) return false;
+        if (chatMessageManager.isDeletedIdentity((String) insertion.invoke(node))) return true;
+        for (Object child : (List<?>) children.invoke(node)) {
+            if (isDeletedExternalMessage(child, insertion, children)) return true;
         }
-        return second.getTimestamp() >= first.getTimestamp();
-    }
-
-    /**
-     * Try to find the FormatChatListener-formatted version of a packet-tracked
-     * message. Matches by messageId first, then falls back to sender-name +
-     * content proximity (same plain text within a short time window).
-     */
-    private ChatMessageManager.ChatMessage findFormattedMessage(
-        ChatMessageManager.ChatMessage raw,
-        java.util.Map<Long, ChatMessageManager.ChatMessage> byId,
-        java.util.Map<
-            String,
-            java.util.List<ChatMessageManager.ChatMessage>
-        > bySender
-    ) {
-        // Direct ID match
-        if (raw.getMessageId() > 0) {
-            ChatMessageManager.ChatMessage exact = byId.get(raw.getMessageId());
-            if (exact != null) return exact;
-        }
-
-        // Match by sender name + content proximity
-        String senderName = raw.getSenderName();
-        if (senderName == null) return null;
-        java.util.List<ChatMessageManager.ChatMessage> candidates =
-            bySender.get(senderName);
-        if (candidates == null || candidates.isEmpty()) return null;
-
-        String rawPlain = plain(raw.getOriginalMessage()).trim();
-        long rawTime = raw.getTimestamp();
-
-        ChatMessageManager.ChatMessage best = null;
-        long bestDiff = Long.MAX_VALUE;
-        for (ChatMessageManager.ChatMessage candidate : candidates) {
-            String candPlain = plain(candidate.getOriginalMessage()).trim();
-            // Content must match (one contains the other)
-            if (!rawPlain.isEmpty() && !candPlain.isEmpty()) {
-                if (
-                    !rawPlain.contains(candPlain) &&
-                    !candPlain.contains(rawPlain)
-                ) {
-                    continue;
-                }
-            }
-            long diff = Math.abs(candidate.getTimestamp() - rawTime);
-            if (diff < bestDiff) {
-                bestDiff = diff;
-                best = candidate;
-            }
-        }
-        // Only accept if within 3 seconds
-        return (bestDiff <= 3000L) ? best : null;
+        return false;
     }
 
     private Component applyStaffAugmentByMode(
@@ -746,25 +560,26 @@ public class PacketChatTrackerImpl
     @Override
     public void resendChatHistoryToAllPlayers() {
         if (!resendAllInProgress.compareAndSet(false, true)) {
+            resendAllRequested.set(true);
             return;
         }
-        suppressPacketTracking.set(true);
         try {
             for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
                 resendChatHistoryToPlayer(onlinePlayer);
             }
         } finally {
-            // Delay releasing both guards so PacketEvents has time to process
-            // the outgoing resend packets before we resume tracking.
+            // Coalesce another deletion that arrived while this pass was being
+            // built; never silently drop the requested follow-up rebuild.
             SchedulerAdapter.runLater(() -> {
-                suppressPacketTracking.set(false);
                 resendAllInProgress.set(false);
+                if (resendAllRequested.getAndSet(false)) resendChatHistoryToAllPlayers();
             }, 1L);
         }
     }
 
     @Override
     public void shutdown() {
+        org.bukkit.event.HandlerList.unregisterAll(interactiveChatListener);
         try {
             PacketEvents.getAPI().getEventManager().unregisterListener(this);
         } catch (Exception e) {

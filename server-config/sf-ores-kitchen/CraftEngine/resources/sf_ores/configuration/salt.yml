@@ -1,0 +1,57 @@
+items:
+  sf:salt:
+    data:
+      item_name: <!i><white>Salt
+    texture: sf:item/salt
+  sf:salt_ore:
+    data:
+      item_name: <!i><white>Salt Ore
+    model: sf:block/salt_ore
+    behavior:
+      type: block_item
+      block: sf:salt_ore
+  sf:deepslate_salt_ore:
+    data:
+      item_name: <!i><white>Deepslate Salt Ore
+    model: sf:block/deepslate_salt_ore
+    behavior:
+      type: block_item
+      block: sf:deepslate_salt_ore
+blocks:
+  sf:salt_ore:
+    loot:
+      template: default:loot_table/ore
+      arguments:
+        ore_drop: sf:salt
+        ore_block: sf:salt_ore
+        ore_drop_count: 2
+    settings:
+      template: default:settings/ore
+      arguments:
+        break_power: 1
+      overrides:
+        require_correct_tools: true
+        destroy_stages:
+          template: internal:destroy_stages
+    state:
+      # CE allocates a spare mushroom state, avoiding Nexo's note-block states.
+      auto_state: mushroom
+      model: sf:block/salt_ore
+  sf:deepslate_salt_ore:
+    loot:
+      template: default:loot_table/ore
+      arguments:
+        ore_drop: sf:salt
+        ore_block: sf:deepslate_salt_ore
+        ore_drop_count: 2
+    settings:
+      template: default:settings/deepslate_ore
+      arguments:
+        break_power: 1
+      overrides:
+        require_correct_tools: true
+        destroy_stages:
+          template: internal:destroy_stages
+    state:
+      auto_state: mushroom
+      model: sf:block/deepslate_salt_ore

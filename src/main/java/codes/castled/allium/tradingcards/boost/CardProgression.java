@@ -53,10 +53,8 @@ public class CardProgression implements Listener {
     /**
      * Awards xp to a card, levelling it as many times as that xp covers.
      *
-     * <p>Multiple levels in one award are applied in order, each announcing
-     * itself, because a single large payout (a breeding cooldown expiring, a
-     * quest) should read as the same progression a player would have seen one
-     * level at a time.
+     * <p>Multiple levels in one award are applied in order. The XP service
+     * announces the resulting range and combines nearby awards into one message.
      *
      * @return how many levels were gained
      */

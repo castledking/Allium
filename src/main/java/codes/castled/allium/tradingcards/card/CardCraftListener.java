@@ -2,6 +2,7 @@ package codes.castled.allium.tradingcards.card;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.spawnercraft.MobHeadRegistry;
+import codes.castled.allium.spawnercraft.SpawnerCraftGuideGui;
 import codes.castled.allium.tradingcards.TradingCardsModule;
 import codes.castled.allium.tradingcards.item.TradingCardData;
 import java.util.HashMap;
@@ -71,6 +72,7 @@ public final class CardCraftListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareCraft(PrepareItemCraftEvent event) {
+        if (SpawnerCraftGuideGui.isGuide(event.getInventory())) return;
         if (!(event.getView().getPlayer() instanceof Player player)) return;
         ItemStack card = buildCard(player.getUniqueId(), headsAroundPaper(
             event.getInventory().getMatrix(), vanillaHeads, heads));
@@ -81,6 +83,7 @@ public final class CardCraftListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onResultClick(InventoryClickEvent event) {
+        if (SpawnerCraftGuideGui.isGuide(event.getInventory())) return;
         if (!(event.getInventory() instanceof CraftingInventory inventory)) return;
         if (event.getSlotType() != InventoryType.SlotType.RESULT) return;
         if (!(event.getWhoClicked() instanceof Player player)) return;

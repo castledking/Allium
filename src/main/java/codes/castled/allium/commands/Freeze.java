@@ -9,7 +9,6 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import codes.castled.allium.PluginStart;
-import codes.castled.allium.inventory.InventorySnapshot;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.managers.lang.Lang;
 import codes.castled.allium.util.PlayerMatcher;
@@ -180,11 +179,13 @@ public class Freeze implements CommandExecutor, TabCompleter {
     public void freezePlayer(CommandSender freezer, Player target) {
         UUID targetUUID = target.getUniqueId();
 
-        // Create inventory snapshot
+        // Only InventoryManager knows how to both save a snapshot and keep
+        // /restore's cache in step: a bare new InventorySnapshot was built and
+        // dropped on the floor, so freeze snapshots never reached the menu.
         try {
-            new InventorySnapshot(target, "FREEZE");
+            plugin.getInventoryManager().saveSnapshot(target, "FREEZE");
         } catch (Exception e) {
-            Text.sendDebugLog(Text.DebugSeverity.ERROR, "Failed to create freeze snapshot for " + target.getName(), e);
+            Text.sendDebugLog(Text.DebugSeverity.ERROR, "Failed to save freeze snapshot for " + target.getName(), e);
         }
 
         // Apply freeze effects

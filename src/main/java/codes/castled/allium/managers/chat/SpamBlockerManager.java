@@ -197,7 +197,9 @@ public final class SpamBlockerManager implements Listener {
         Evaluation evaluation = evaluate(player.getUniqueId(), content, SpamContext.PLAYER_COMMAND, baseCommand);
         if (!evaluation.blocked()) {
             if (evaluation.rewritten() != null && !evaluation.rewritten().equals(content)) {
-                event.setMessage(baseCommand + " " + evaluation.rewritten());
+                // Slashless synthetic events (ItemTag actions) are dispatched verbatim; don't add a slash.
+                String label = raw.startsWith("/") ? baseCommand : baseCommand.substring(1);
+                event.setMessage(label + " " + evaluation.rewritten());
             }
             recordMessage(player.getUniqueId(), evaluation.normalized());
             return;

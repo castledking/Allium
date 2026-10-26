@@ -74,18 +74,25 @@ public record StageDefinition(
      * sprout drawn as a flat cross and a mature plant drawn as a small block
      * want different display contexts, and often different sizes. Any field
      * left null falls back to the global {@code crop-visuals} setting, so a
-     * stage only has to state what it needs to differ on.
+     * stage only has to state what it needs to differ on. Soil alignment is
+     * opt-in for models whose rendered base has been normalized to zero in
+     * the chosen item context; their offset is measured from the soil top.
      */
     public record VisualOverride(
         @Nullable ItemDisplayTransform transform,
         @Nullable Float scale,
-        @Nullable Double yOffset
+        @Nullable Double yOffset,
+        boolean alignToSoil
     ) {
 
-        public static final VisualOverride NONE = new VisualOverride(null, null, null);
+        public static final VisualOverride NONE = new VisualOverride(null, null, null, false);
+
+        public VisualOverride(ItemDisplayTransform transform, Float scale, Double yOffset) {
+            this(transform, scale, yOffset, false);
+        }
 
         public boolean isEmpty() {
-            return transform == null && scale == null && yOffset == null;
+            return transform == null && scale == null && yOffset == null && !alignToSoil;
         }
 
         public ItemDisplayTransform transformOr(ItemDisplayTransform fallback) {

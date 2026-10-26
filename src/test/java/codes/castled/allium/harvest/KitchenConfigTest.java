@@ -203,4 +203,75 @@ class KitchenConfigTest {
         assertFalse(result.config().enabled());
         assertTrue(result.issues().isEmpty());
     }
+
+    @Test
+    void pizzaUsesItsOwnCrustAndStepsWithoutChangingSweetPies() {
+        var source = shipped();
+        source.set("pies.types.pizza.filling", "nexo:tomato_sauce");
+        source.set("pies.types.pizza.crust-item", "nexo:pizza_base");
+        source.set("pies.types.pizza.crust-model", "nexo:pizza_base_placed");
+        source.set("pies.types.pizza.steps", java.util.List.of(
+            java.util.Map.of("item", "nexo:tomato_sauce"),
+            java.util.Map.of("item", "nexo:cheese"),
+            java.util.Map.of("item", "nexo:spinach")));
+        var result = load(source, id -> true);
+        assertTrue(result.issues().isEmpty(), result.issues().toString());
+        var pies = result.config().pies();
+        assertEquals("pizza", pies.typeByCrust(new ItemRef("nexo", "pizza_base")).orElseThrow().id());
+        assertEquals(new ItemRef("nexo", "tomato_sauce"), pies.stepsFor("pizza").getFirst().item());
+        assertEquals(3, pies.stepsFor("pizza").size());
+        assertEquals(new ItemRef("nexo", "pizza_base"), pies.crustFor("pizza"));
+        assertEquals(new ItemRef("nexo", "pie_crust"), pies.crustFor("apple"));
+        assertEquals(4, pies.stepsFor("apple").size());
+        assertTrue(pies.typeByFilling(new ItemRef("nexo", "tomato_sauce")).isEmpty(), "pizza cannot switch a normal pie halfway through assembly");
+    }
+
+    @Test
+    void customStepsNeedUsableIngredients() {
+        var source = shipped();
+        source.set("pies.types.apple.crust-item", "nexo:pie_crust");
+        source.set("pies.types.apple.crust-model", "nexo:pie_crust_placed");
+        source.set("pies.types.apple.steps", java.util.List.of(java.util.Map.of("item", "nexo:cheese", "amount", 0)));
+        var result = load(source, id -> true);
+        assertTrue(result.config().pies().type("apple").isEmpty());
+        assertTrue(result.issues().stream().anyMatch(issue -> issue.path().endsWith(".steps")));
+    }
+
+    @Test
+    void distinctCustomCrustsCannotSelectTwoRecipes() {
+        var source = shipped();
+        for (String id : java.util.List.of("pizza_a", "pizza_b")) {
+            source.set("pies.types." + id + ".filling", "nexo:spinach");
+            source.set("pies.types." + id + ".crust-item", "nexo:pizza_base");
+            source.set("pies.types." + id + ".crust-model", "nexo:pizza_base_placed");
+            source.set("pies.types." + id + ".steps", java.util.List.of(java.util.Map.of("item", "nexo:spinach")));
+        }
+        var result = load(source, id -> true);
+        assertTrue(result.config().pies().type("pizza_a").isPresent());
+        assertTrue(result.config().pies().type("pizza_b").isEmpty());
+        assertTrue(result.issues().stream().anyMatch(issue -> issue.path().endsWith(".crust-item")));
+    }
+
+    @Test
+    void sharedCrustPizzaBranchesOnSpinachAndFinishesOnSauce() {
+        var source = shipped();
+        source.set("pies.types.pizza.filling", "nexo:spinach");
+        source.set("pies.types.pizza.crust-item", "nexo:pie_crust");
+        source.set("pies.types.pizza.crust-model", "nexo:pie_crust_placed");
+        source.set("pies.types.pizza.opens-on-standard-crust", true);
+        source.set("pies.types.pizza.steps", java.util.List.of(
+            java.util.Map.of("item", "nexo:spinach"), java.util.Map.of("item", "nexo:cheese"),
+            java.util.Map.of("item", "nexo:tomato_sauce")));
+        source.set("pies.types.pizza.progress-models", java.util.List.of(
+            "nexo:deep_dish_pizza_spinach", "nexo:deep_dish_pizza_cheese"));
+        var result = load(source, id -> true);
+        assertTrue(result.issues().isEmpty(), result.issues().toString());
+        var pies = result.config().pies();
+        assertEquals("pizza", pies.typeByOpeningIngredient(new ItemRef("nexo", "spinach")).orElseThrow().id());
+        assertTrue(pies.typeByCrust(new ItemRef("nexo", "pie_crust")).isEmpty());
+        assertEquals(3, pies.stepsFor("pizza").size());
+        assertEquals(new ItemRef("nexo", "tomato_sauce"), pies.stepsFor("pizza").getLast().item());
+        assertEquals(2, pies.type("pizza").orElseThrow().progressModels().size());
+        assertEquals(4, pies.stepsFor("apple").size());
+    }
 }

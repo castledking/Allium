@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "side": "sf:block/deepslate_galena_ore",
+    "end": "sf:block/deepslate_galena_ore_top"
+  }
+}

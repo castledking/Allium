@@ -260,6 +260,11 @@ public class PluginStart extends JavaPlugin {
     private Tab tabCompleter;
     private SpawnerCoreManager spawnerCoreManager;
     private codes.castled.allium.harvest.HarvestModule harvestModule;
+    private codes.castled.allium.managers.world.OreGenerationModule oreGenerationModule;
+
+    public codes.castled.allium.managers.world.OreGenerationModule getOreGenerationModule() {
+        return oreGenerationModule;
+    }
     private codes.castled.allium.tradingcards.TradingCardsModule tradingCardsModule;
     private TFlyManager tflyManager;
     private VouchersConfig vouchersConfig;
@@ -914,6 +919,9 @@ public class PluginStart extends JavaPlugin {
             );
         }
 
+        oreGenerationModule = new codes.castled.allium.managers.world.OreGenerationModule(this);
+        registerCommand("pregen", oreGenerationModule.command(), oreGenerationModule.command());
+
         // Lore frames: frames.yml, the [frame:...] marker's names and /frame.
         // Loaded before the trading cards, which draw items through it.
         try {
@@ -1211,6 +1219,13 @@ public class PluginStart extends JavaPlugin {
      */
     @Override
     public void onDisable() {
+        codes.castled.allium.spawnercraft.SpawnerCraftGuideGui.closeAll();
+        // Checkpoint player balances before optional modules tear down. A failure
+        // in a later cleanup must not skip the flight save or leave its timer live.
+        if (tflyManager != null) {
+            tflyManager.stop();
+        }
+        if (oreGenerationModule != null) oreGenerationModule.close();
         // Stop the time-pause re-assertion task first so it does not try to
         // touch a world that is being unloaded alongside the plugin shutdown.
         if (timePauseManager != null) {
@@ -1286,15 +1301,6 @@ public class PluginStart extends JavaPlugin {
             Text.sendDebugLog(INFO, "HandcuffsListener cleaned up.", true);
         }
 
-        // Stop TFly tick task
-        if (tflyManager != null) {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                tflyManager.savePlayerState(player);
-            }
-            tflyManager.stop();
-            Text.sendDebugLog(INFO, "TFlyManager stopped.", true);
-        }
-
         // Shutdown packet-based trackers (unregister from PacketEvents when applicable)
         try {
             if (chatPacketTracker != null) {
@@ -1332,6 +1338,11 @@ public class PluginStart extends JavaPlugin {
                 WARN,
                 "Failed to shutdown packet listeners: " + t.getMessage()
             );
+        }
+
+        // Flush snapshot writes and stop periodic saves before their pool closes.
+        if (inventoryManager != null) {
+            inventoryManager.shutdown();
         }
 
         // Close database connection pool and deregister JDBC driver

@@ -28,7 +28,8 @@ public record TradingCardsConfig(
     Merge merge,
     Morph morph,
     Crafting crafting,
-    Drops drops
+    Drops drops,
+    CardMenu cardMenu
 ) {
 
     public static final String FILE = "config.yml";
@@ -41,7 +42,8 @@ public record TradingCardsConfig(
     public static TradingCardsConfig disabled() {
         return new TradingCardsConfig(false, Levelling.defaults(), List.of(),
             Trade.defaults(), Reroll.defaults(), BonusSlotRoll.defaults(),
-            Merge.defaults(), Morph.defaults(), Crafting.defaults(), Drops.defaults());
+            Merge.defaults(), Morph.defaults(), Crafting.defaults(), Drops.defaults(),
+            CardMenu.defaults());
     }
 
     /**
@@ -54,6 +56,13 @@ public record TradingCardsConfig(
     public record Drops(boolean toInventory) {
         public static Drops defaults() {
             return new Drops(false);
+        }
+    }
+
+    /** Whether Q-drops should release a card instead of opening its menu. */
+    public record CardMenu(boolean allowDrop) {
+        public static CardMenu defaults() {
+            return new CardMenu(false);
         }
     }
 
@@ -369,7 +378,8 @@ public record TradingCardsConfig(
             merge(yaml.getConfigurationSection("merge"), issues),
             morph(yaml.getConfigurationSection("morph"), issues),
             crafting(yaml.getConfigurationSection("crafting"), issues),
-            drops(yaml.getConfigurationSection("drops"), issues));
+            drops(yaml.getConfigurationSection("drops"), issues),
+            cardMenu(yaml.getConfigurationSection("card-menu")));
         return new LoadResult(config, issues);
     }
 
@@ -427,6 +437,10 @@ public record TradingCardsConfig(
                 yield Drops.defaults();
             }
         };
+    }
+
+    private static CardMenu cardMenu(ConfigurationSection section) {
+        return new CardMenu(section != null && section.getBoolean("allow-drop", false));
     }
 
     private static Announce announce(ConfigurationSection section) {

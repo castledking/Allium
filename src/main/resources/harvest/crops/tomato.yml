@@ -20,7 +20,7 @@ id: tomato
 display-name: "<red>Tomato"
 
 seed:
-  item: nexo:tomato_seeds
+  item: ce:tomato_seeds
 
 placement:
   valid-soils:
@@ -126,7 +126,7 @@ paths:
             seeds:
               chance: 1.0
               drops:
-                - item: nexo:tomato_seeds
+                - item: ce:tomato_seeds
                   amount:
                     min: 1
                     max: 2
@@ -145,14 +145,14 @@ paths:
           entries:
             seeds:
               drops:
-                - item: nexo:tomato_seeds
+                - item: ce:tomato_seeds
                   amount: 1
         mature:                    # broken on the final stage
           mode: GUARANTEED_ALL
           entries:
             seeds:
               drops:
-                - item: nexo:tomato_seeds
+                - item: ce:tomato_seeds
                   amount: 2
 
       # What happens to the PLANT after a harvest. Picking and uprooting
@@ -223,14 +223,14 @@ paths:
           entries:
             seeds:
               drops:
-                - item: nexo:tomato_seeds
+                - item: ce:tomato_seeds
                   amount: 1
         mature:                    # broken on the final stage
           mode: GUARANTEED_ALL
           entries:
             seeds:
               drops:
-                - item: nexo:tomato_seeds
+                - item: ce:tomato_seeds
                   amount: 2
       regrowth:
         enabled: false
@@ -279,7 +279,7 @@ paths:
             seeds:
               chance: 0.85
               drops:
-                - item: nexo:tomato_seeds
+                - item: ce:tomato_seeds
                   amount:
                     min: 2
                     max: 4
@@ -297,14 +297,14 @@ paths:
           entries:
             seeds:
               drops:
-                - item: nexo:tomato_seeds
+                - item: ce:tomato_seeds
                   amount: 1
         mature:                    # broken on the final stage
           mode: GUARANTEED_ALL
           entries:
             seeds:
               drops:
-                - item: nexo:tomato_seeds
+                - item: ce:tomato_seeds
                   amount: 2
       regrowth:
         enabled: false

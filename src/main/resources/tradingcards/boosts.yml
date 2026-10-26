@@ -31,7 +31,7 @@ roll:
 # blocks — and it does, which is why its mechanism would have to be
 # incrementable. It is a CARD_* mechanism, so it stays a bonus boost.
 # `scale` does not qualify at all: "+0.1x player scale" is not a
-# quantity, and its 0.6-1.9 clamp means nothing under flat addition.
+# quantity, and its 0.6-2.0 clamp means nothing under flat addition.
 # ------------------------------------------------------------
 signature-amounts:
   # The three every card drops with.
@@ -195,18 +195,20 @@ boosts:
 
   # ---------------- fully implemented by Allium ----------------
 
-  # Player scale, as a factor on the player's own size.
+  # Player scale: the size a card makes its wearer, rolled with the
+  # slot's strength from `minimum` (strength 0) to `maximum` (strength
+  # 100) and shown as a multiplier, x0.6 to x2.0. Not a signature:
+  # "+0.1x player scale" is not a quantity levelling could grow.
   #
-  # NOT a signature: levelling adds +1, and "+0.1x player scale" is
-  # not a quantity. Clamped to 0.6-1.9 at every read rather than
-  # rejected, so a card that rolled a large factor grants the
-  # strongest legal version of it instead of nothing.
+  # `amount` only matters to a scale bonus rolled before strengths
+  # existed: it kept the size it had, 1 + amount (x2.0). Whatever is
+  # rolled is clamped to 0.6-2.0, so no card can go past that.
   scale:
     display: "<gold>Player Scale"
     mechanism: CARD_SCALE
     amount: 1.0
     minimum: 0.6
-    maximum: 1.9
+    maximum: 2.0
 
   flight-speed:
     display: "<aqua>Flight Speed"

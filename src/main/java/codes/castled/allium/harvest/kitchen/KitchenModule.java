@@ -28,12 +28,14 @@ public final class KitchenModule {
     private volatile KitchenConfig config = KitchenConfig.disabled();
     private PieHolograms holograms = PieHolograms.NONE;
     private StoveService stoves;
+    private final KitchenRecipes recipes;
 
     public KitchenModule(JavaPlugin plugin, ItemResolverChain items, File dataFolder) {
         this.plugin = plugin;
         this.logger = plugin.getLogger();
         this.items = items;
         this.dataFolder = dataFolder;
+        this.recipes = new KitchenRecipes(plugin, items);
     }
 
     public List<ValidationIssue> enable() {
@@ -82,6 +84,7 @@ public final class KitchenModule {
     }
 
     public void disable() {
+        recipes.close();
         holograms.removeAll();
         if (stoves != null) {
             stoves.shutdown();
@@ -90,7 +93,9 @@ public final class KitchenModule {
 
     private List<ValidationIssue> load() {
         File file = new File(dataFolder, KitchenConfig.FILE);
-        KitchenConfig.LoadResult result = KitchenConfig.load(YamlConfiguration.loadConfiguration(file), items);
+        YamlConfiguration raw = YamlConfiguration.loadConfiguration(file);
+        KitchenConfig.LoadResult result = KitchenConfig.load(raw, items);
+        recipes.reload(raw);
         config = result.config();
         if (config.enabled()) {
             logger.info("[" + HarvestBranding.DISPLAY_NAME + "] Kitchen: " + config.bags().size() + " bag(s), kneading "

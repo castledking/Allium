@@ -91,7 +91,8 @@ public enum BoostMechanism {
      * whether that is 1.25 times their xp or 1.25 more of it.
      */
     public boolean isMultiplier() {
-        return this == CARD_XP_MULTIPLIER
+        return this == CARD_SCALE
+            || this == CARD_XP_MULTIPLIER
             || this == CARD_SELL_MULTIPLIER
             || this == CARD_WAYPOINT_MULTIPLIER
             || this == CARD_TOKEN_MULTIPLIER

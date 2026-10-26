@@ -7,6 +7,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
@@ -25,7 +26,11 @@ public class ChatMessageManager {
     // Thread-safe storage for chat messages
     private final Map<UUID, Deque<ChatMessage>> playerMessages =
         new ConcurrentHashMap<>();
-    private final AtomicLong messageIdCounter = new AtomicLong(0);
+    // Old hover commands remain in clients after a plugin reload. Start each
+    // runtime in a new range so those commands cannot delete a newer line.
+    private static final AtomicLong MESSAGE_IDS = new AtomicLong(System.currentTimeMillis() * 1000L);
+    private final AtomicLong messageIdCounter = MESSAGE_IDS;
+    private final String markerPrefix = "allium:chat:" + UUID.randomUUID() + ":";
 
     // Per-player chat history for packet-based deletion
     private final Map<UUID, Deque<ChatMessage>> playerChatHistory =
@@ -44,7 +49,7 @@ public class ChatMessageManager {
     /** How long a rendered message stays claimable by its per-viewer packet copies. */
     private static final long LOGICAL_LINK_TTL_MS = 10_000;
 
-    private record LogicalMessageRef(long messageId, long registeredAt) {}
+    private record LogicalMessageRef(ChatMessage message, long registeredAt) {}
 
     // Global chat history (ordered by timestamp)
     private final Deque<ChatMessage> globalChatHistory =
@@ -60,7 +65,7 @@ public class ChatMessageManager {
         private final String senderName;
         private final Component originalMessage;
         private final long timestamp;
-        private volatile boolean deleted;
+        private final AtomicBoolean deleted;
 
         public ChatMessage(
             long messageId,
@@ -68,12 +73,17 @@ public class ChatMessageManager {
             String senderName,
             Component originalMessage
         ) {
+            this(messageId, senderId, senderName, originalMessage, new AtomicBoolean());
+        }
+
+        private ChatMessage(long messageId, UUID senderId, String senderName,
+                            Component originalMessage, AtomicBoolean deleted) {
             this.messageId = messageId;
             this.senderId = senderId;
             this.senderName = senderName;
             this.originalMessage = originalMessage;
             this.timestamp = System.currentTimeMillis();
-            this.deleted = false;
+            this.deleted = deleted;
         }
 
         public long getMessageId() {
@@ -97,11 +107,11 @@ public class ChatMessageManager {
         }
 
         public boolean isDeleted() {
-            return deleted;
+            return deleted.get();
         }
 
         public void setDeleted(boolean deleted) {
-            this.deleted = deleted;
+            this.deleted.set(deleted);
         }
     }
 
@@ -165,16 +175,15 @@ public class ChatMessageManager {
     ) {
         // If this is a per-viewer copy of a message we already stored, reuse that
         // message's id so a single /delmsg removes every copy of it.
-        long messageId = claimLogicalId(message);
-        if (messageId == 0) {
-            messageId = messageIdCounter.incrementAndGet();
-        }
+        ChatMessage logical = findLogicalMessage(message);
+        long messageId = logical == null ? messageIdCounter.incrementAndGet() : logical.getMessageId();
 
         ChatMessage chatMessage = new ChatMessage(
             messageId,
             senderId,
             senderName,
-            message
+            message,
+            logical == null ? new AtomicBoolean() : logical.deleted
         );
 
         Deque<ChatMessage> messages = playerMessages.computeIfAbsent(
@@ -212,77 +221,122 @@ public class ChatMessageManager {
         long now = System.currentTimeMillis();
         logicalIdsByPlainText.values()
             .removeIf(ref -> now - ref.registeredAt() > LOGICAL_LINK_TTL_MS);
-        logicalIdsByPlainText.put(plain, new LogicalMessageRef(messageId, now));
+        ChatMessage logical = getMessage(messageId);
+        if (logical != null) logicalIdsByPlainText.put(plain, new LogicalMessageRef(logical, now));
     }
 
-    /** Returns the logical id registered for this text, or 0 if there is none. */
-    private long claimLogicalId(Component message) {
-        if (message == null || logicalIdsByPlainText.isEmpty()) {
-            return 0;
+    /**
+     * Invisible, non-interactive identity metadata on an empty translation. It never
+     * changes the text, hover, click action, or shift-click behavior of visible
+     * components. IDs survive glyph/formatting changes and identical chat lines.
+     */
+    public Component withMessageId(long messageId, Component message) {
+        return message.append(marker(markerPrefix + "id:" + messageId));
+    }
+
+    /** Replay identity replaces the old one-tick global tracking suppression. */
+    public Component asReplay(Component message) {
+        return message.append(marker(markerPrefix + "replay"));
+    }
+
+    private Component marker(String identity) {
+        // An empty text node is removed by Adventure/InteractiveChat compaction.
+        // An empty translation with an empty fallback has no visible output,
+        // but remains intact through those optimizers and JSON serialization.
+        return Component.translatable("").fallback("").insertion(identity);
+    }
+
+    public boolean isReplay(Component message) {
+        return findMarker(message, markerPrefix + "replay") != null;
+    }
+
+    public boolean isDeletedMessage(Component message) {
+        // Packet cancellation needs an explicit identity. A new unrelated line
+        // with coincidentally identical text must never be blocked.
+        return isDeletedIdentity(findMarker(message, markerPrefix + "id:"));
+    }
+
+    /** Also usable by bridges whose component classes are relocated/shaded. */
+    public boolean isDeletedIdentity(String identity) {
+        String prefix = markerPrefix + "id:";
+        if (identity == null || !identity.startsWith(prefix)) return false;
+        try {
+            ChatMessage logical = getMessage(Long.parseLong(identity.substring(prefix.length())));
+            return logical != null && logical.isDeleted();
+        } catch (NumberFormatException ignored) {
+            return false;
         }
+    }
+
+    private String findMarker(Component message, String prefix) {
+        if (message == null) return null;
+        String insertion = message.insertion();
+        if (insertion != null && insertion.startsWith(prefix)) return insertion;
+        for (Component child : message.children()) {
+            String found = findMarker(child, prefix);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    private ChatMessage findLogicalMessage(Component message) {
+        if (message == null) return null;
+        String prefix = markerPrefix + "id:";
+        String marker = findMarker(message, prefix);
+        if (marker != null) {
+            try {
+                ChatMessage logical = getMessage(Long.parseLong(marker.substring(prefix.length())));
+                if (logical != null) return logical;
+            } catch (NumberFormatException ignored) { }
+        }
+        if (logicalIdsByPlainText.isEmpty()) return null;
         String plain = PlainTextComponentSerializer.plainText()
             .serialize(message)
             .trim();
         if (plain.isEmpty()) {
-            return 0;
+            return null;
         }
 
         LogicalMessageRef ref = logicalIdsByPlainText.get(plain);
         if (ref == null) {
-            return 0;
+            return null;
         }
         if (System.currentTimeMillis() - ref.registeredAt() > LOGICAL_LINK_TTL_MS) {
             logicalIdsByPlainText.remove(plain, ref);
-            return 0;
+            return null;
         }
-        return ref.messageId();
+        return ref.message();
     }
-
-    /** Time window (ms) in which an orphaned packet copy may be matched by content. */
-    private static final long DUPLICATE_TIME_MS = 3000;
 
     /**
      * Mark a message as deleted by message ID in all collections.
      * Per-viewer packet copies adopt the id of the message they were rendered from
-     * (see {@link #storeMessageObject}), so id matching removes them too. Only copies that
-     * failed to adopt an id fall back to content matching - see {@link #isOrphanedCopy}.
+     * (see {@link #storeMessageObject}), so id matching removes them too without
+     * deleting a different message just because its text happens to overlap.
      */
     public boolean deleteMessage(long messageId) {
         ChatMessage target = getMessage(messageId);
         if (target == null) return false;
 
-        String targetPlain = PlainTextComponentSerializer.plainText()
-            .serialize(target.getOriginalMessage())
-            .trim();
-        long targetTime = target.getTimestamp();
-        if (targetPlain.isEmpty()) targetPlain = null;
-
-        Set<Long> adoptedIds = collectSenderOwnedIds();
+        // Set the shared flag before sweeping collections. A packet capture
+        // created concurrently but inserted later already shares this state.
+        target.setDeleted(true);
         boolean found = false;
 
         found |= markMatching(
             playerMessages.values(),
-            messageId,
-            targetPlain,
-            targetTime,
-            adoptedIds
+            messageId
         );
         // Per-player chat histories and the global history (both used for resend) hold the
         // same ChatMessage instances, but sweep them anyway so nothing is missed if a copy
         // was trimmed out of playerMessages already.
         found |= markMatching(
             playerChatHistory.values(),
-            messageId,
-            targetPlain,
-            targetTime,
-            adoptedIds
+            messageId
         );
         found |= markMatching(
             List.of(globalChatHistory),
-            messageId,
-            targetPlain,
-            targetTime,
-            adoptedIds
+            messageId
         );
 
         return found;
@@ -290,17 +344,13 @@ public class ChatMessageManager {
 
     private boolean markMatching(
         Collection<? extends Collection<ChatMessage>> collections,
-        long messageId,
-        String targetPlain,
-        long targetTime,
-        Set<Long> adoptedIds
+        long messageId
     ) {
         boolean found = false;
         for (Collection<ChatMessage> messages : collections) {
             for (ChatMessage message : messages) {
                 if (
-                    message.getMessageId() == messageId ||
-                    isOrphanedCopy(message, targetPlain, targetTime, adoptedIds)
+                    message.getMessageId() == messageId
                 ) {
                     message.setDeleted(true);
                     found = true;
@@ -308,45 +358,6 @@ public class ChatMessageManager {
             }
         }
         return found;
-    }
-
-    /** Ids of messages stored under a real sender, i.e. ids a packet copy can adopt. */
-    private Set<Long> collectSenderOwnedIds() {
-        Set<Long> ids = new HashSet<>();
-        for (Deque<ChatMessage> messages : playerMessages.values()) {
-            for (ChatMessage message : messages) {
-                if (!SYSTEM_SENDER_ID.equals(message.getSenderId())) {
-                    ids.add(message.getMessageId());
-                }
-            }
-        }
-        return ids;
-    }
-
-    /**
-     * True for a packet-captured copy that never adopted the id of the message it was
-     * rendered from and whose content and timing line up with the message being deleted.
-     * Those orphans are the only copies id matching cannot reach, so they are the only ones
-     * content matching may touch - widening it any further makes deleting one message also
-     * delete an identical message sent moments later.
-     */
-    private boolean isOrphanedCopy(
-        ChatMessage message,
-        String targetPlain,
-        long targetTime,
-        Set<Long> adoptedIds
-    ) {
-        if (targetPlain == null) return false;
-        if (!SYSTEM_SENDER_ID.equals(message.getSenderId())) return false;
-        if (adoptedIds.contains(message.getMessageId())) return false;
-        String plain = PlainTextComponentSerializer.plainText()
-            .serialize(message.getOriginalMessage())
-            .trim();
-        if (plain.isEmpty()) return false;
-        long diff = Math.abs(message.getTimestamp() - targetTime);
-        if (diff > DUPLICATE_TIME_MS) return false;
-        // One contains the other so we match both "Prefix Name: hello" and "hello"
-        return plain.contains(targetPlain) || targetPlain.contains(plain);
     }
 
     /**
@@ -474,6 +485,15 @@ public class ChatMessageManager {
                 }
             }
         }
+        // A packet's shared sender queue may have trimmed its entry while a
+        // viewer still has it. Such messages must remain deletable by their ID.
+        if (fallback == null) {
+            for (Deque<ChatMessage> history : playerChatHistory.values()) {
+                for (ChatMessage message : history) {
+                    if (message.getMessageId() == messageId) return message;
+                }
+            }
+        }
         return fallback;
     }
 
@@ -517,7 +537,8 @@ public class ChatMessageManager {
         }
 
         matches.sort(
-            Comparator.comparingLong(ChatMessage::getTimestamp).reversed()
+            Comparator.comparingLong(ChatMessage::getTimestamp)
+                .thenComparingLong(ChatMessage::getMessageId).reversed()
         );
         if (matches.size() > amount) {
             return new ArrayList<>(matches.subList(0, amount));

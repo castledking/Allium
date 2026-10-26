@@ -724,7 +724,9 @@ public class CommandManager implements Listener {
         if (event.isCancelled() || !enabled) return;
 
         Player player = event.getPlayer();
-        String message = event.getMessage().substring(1);
+        // Synthetic events (e.g. ItemTag command actions) carry the bare command line with no slash.
+        String raw = event.getMessage();
+        String message = raw.startsWith("/") ? raw.substring(1) : raw;
         String commandPath = CommandPath.normalize(message);
         String fullCommand = CommandPath.root(commandPath);
         boolean isNamespacedCommand = fullCommand.contains(":");

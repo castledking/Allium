@@ -43,6 +43,7 @@ public class PlushieCraftListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareCraft(PrepareItemCraftEvent event) {
+        if (SpawnerCraftGuideGui.isGuide(event.getInventory())) return;
         String plushieId = plushieFor(event.getInventory().getMatrix(), vanillaHeadsCraftPlushies);
         if (plushieId == null) return;
         ItemStack plushie = createPlushie(plushieId);
@@ -53,6 +54,7 @@ public class PlushieCraftListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onResultClick(InventoryClickEvent event) {
+        if (SpawnerCraftGuideGui.isGuide(event.getInventory())) return;
         if (!(event.getInventory() instanceof CraftingInventory inventory)) return;
         if (event.getSlotType() != InventoryType.SlotType.RESULT) return;
         if (!(event.getWhoClicked() instanceof Player player)) return;
@@ -96,7 +98,7 @@ public class PlushieCraftListener implements Listener {
         return PLUSHIE_ALIASES.getOrDefault(mob, mob) + "_plushie";
     }
 
-    private static ItemStack createPlushie(String id) {
+    static ItemStack createPlushie(String id) {
         ItemBuilder builder = NexoItems.itemFromId(id);
         return builder == null ? null : builder.build();
     }

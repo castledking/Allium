@@ -285,8 +285,10 @@ public class BoostService {
                 if (instance == null) {
                     yield false;
                 }
+                // The value is the whole size, 0.6x to 2.0x. MULTIPLY_SCALAR_1
+                // multiplies by (1 + modifier), so the modifier is the size less one.
                 UUID modifierId = modifierId(player, boost.id());
-                instance.addModifier(new AttributeModifier(modifierId, "tradingcard", clamped,
+                instance.addModifier(new AttributeModifier(modifierId, "tradingcard", clamped - 1.0,
                     AttributeModifier.Operation.MULTIPLY_SCALAR_1));
                 record(player, new AppliedBoost(boost.id(), boost.mechanism(), attribute,
                     modifierId, null, null, clamped));

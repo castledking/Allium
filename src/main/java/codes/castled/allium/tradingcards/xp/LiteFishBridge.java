@@ -2,8 +2,6 @@ package codes.castled.allium.tradingcards.xp;
 
 import java.lang.reflect.Method;
 import java.util.List;
-import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
@@ -78,12 +76,13 @@ public final class LiteFishBridge {
         if (registered) {
             return true;
         }
-        if (!isAvailable()) {
+        Plugin dependency = plugin.getServer().getPluginManager().getPlugin("LiteFish");
+        if (dependency == null || !dependency.isEnabled()) {
             return false;
         }
         Class<?> eventClass;
         try {
-            eventClass = Class.forName(CATCH_EVENT);
+            eventClass = Class.forName(CATCH_EVENT, true, dependency.getClass().getClassLoader());
         } catch (Throwable t) {
             logger.warning("[" + codes.castled.allium.tradingcards.TradingCardsBranding.DISPLAY_NAME
                 + "] LiteFish is installed but has no " + CATCH_EVENT
@@ -129,7 +128,7 @@ public final class LiteFishBridge {
                     logger.warning("[tradingcards] LiteFish catch handler failed: " + t);
                 }
             };
-            Bukkit.getPluginManager().registerEvent(
+            plugin.getServer().getPluginManager().registerEvent(
                 typed, new org.bukkit.event.Listener() { }, EventPriority.MONITOR,
                 executor, plugin, false);
             registered = true;
@@ -147,14 +146,12 @@ public final class LiteFishBridge {
         var meta = stack.getItemMeta();
         if (meta == null) return;
         var pdc = meta.getPersistentDataContainer();
-        Double weight = pdc.get(WEIGHT, PersistentDataType.DOUBLE);
-        if (weight == null || weight <= 0.0) {
-            // Not a LiteFish fish, or a species with no weight range. Either
-            // way there is nothing to size.
-            return;
-        }
         String species = pdc.get(DROP_ID, PersistentDataType.STRING);
-        onCatch.accept(player, species == null ? "unknown" : species, weight);
+        if (species == null || species.isBlank()) return;
+        Double weight = pdc.get(WEIGHT, PersistentDataType.DOUBLE);
+        // Species without a weight range still count as landed catches.
+        onCatch.accept(player, species,
+            weight == null || !Double.isFinite(weight) || weight <= 0 ? 0.0 : weight);
     }
 
     /** Receives a landed fish. */
@@ -179,7 +176,4 @@ public final class LiteFishBridge {
             : meta.getPersistentDataContainer().get(DROP_ID, PersistentDataType.STRING);
     }
 
-    static UUID noop() {
-        return null;
-    }
 }

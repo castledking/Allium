@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Copies the tomato art out of the server's Nexo pack and into this
-# CraftEngine pack, so the CE crop looks exactly like the Nexo one.
+# Refreshes retained tomato seed/produce art. Plant-stage art is migrated
+# separately by import_nexo_crops.py and must keep its measured alignment.
 #
 # The art belongs to the server's resource pack, not to Allium, so it is not
 # committed to this repository — run this on the server (or against a copy of
@@ -39,8 +39,6 @@ if [ -d "$HERE/configuration" ]; then
     PACK="$HERE"
 fi
 
-rm -rf "$PACK/resourcepack/assets/ce/textures" "$PACK/resourcepack/assets/ce/models"
-
 # Copies a model into one atlas and copies every texture it names into that
 # same atlas, rewriting the references as it goes.
 sync_model() {
@@ -54,18 +52,6 @@ sync_model() {
            "$PACK/resourcepack/assets/ce/textures/$atlas/$path.png"
     done
 }
-
-# The four growth stages, drawn on a display entity: item models, item atlas.
-for stage in 1 2 3 4; do
-    sync_model "$NEXO/models/crops/tomato/stage_$stage.json" "item" \
-        "$PACK/resourcepack/assets/ce/models/item/crops/tomato/stage_$stage.json"
-done
-
-# The same stages as block models, for a crop that is drawn as a real block.
-for stage in 1 2 3 4; do
-    sync_model "$NEXO/models/crops/tomato/stage_$stage.json" "block" \
-        "$PACK/resourcepack/assets/ce/models/block/crops/tomato/stage_$stage.json"
-done
 
 # The gigantic tomato is a three dimensional item model.
 sync_model "$NEXO/models/crops/tomato/gigantic_tomato.json" "item" \

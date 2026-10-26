@@ -1823,7 +1823,7 @@ public class TP implements CommandExecutor, TabCompleter {
                     continue;
                 }
 
-                if (!bypassToggle && targetPlayers.size() == 1 && teleportToggled.contains(targetPlayers.get(0).getUniqueId())) {
+                if (!bypassToggle && targetPlayers.size() == 1 && isTeleportToggled(targetPlayers.get(0).getUniqueId())) {
                     Text.sendErrorMessage(sender, "teleport-toggled-other", lang,
                             "{player}", player1.getName(),
                             "{target}", targetPlayers.get(0).getName());
@@ -2151,7 +2151,7 @@ public class TP implements CommandExecutor, TabCompleter {
         }
 
         // Check if target has teleport requests toggled off
-        if (teleportToggled.contains(target.getUniqueId()) && !player.hasPermission("allium.tpo")) {
+        if (isTeleportToggled(target.getUniqueId()) && !player.hasPermission("allium.tpo")) {
             player.sendMessage(lang.get("tp.blocked").replace("{name}", target.getName()));
             return true;
         }
@@ -2879,8 +2879,8 @@ public class TP implements CommandExecutor, TabCompleter {
             boolean isSelf = (sender instanceof Player) && ((Player) sender).getUniqueId().equals(targetUUID);
 
             // Toggle teleport status for target player
-            if (teleportToggled.contains(targetUUID)) {
-                teleportToggled.remove(targetUUID);
+            if (isTeleportToggled(targetUUID)) {
+                setTeleportToggled(targetUUID, false);
 
                 // Prefix for other player
                 String namePrefix = isSelf ? "" : "for ";
@@ -2891,7 +2891,7 @@ public class TP implements CommandExecutor, TabCompleter {
                         "{state}", enabledStyle + "enabled" + lang.getFirstColorCode("tp.toggle"),
                         "{name}", isSelf ? "" : namePrefix + targetPlayer.getName());
             } else {
-                teleportToggled.add(targetUUID);
+                setTeleportToggled(targetUUID, true);
 
                 // Prefix for other player
                 String namePrefix = isSelf ? "" : "for ";
@@ -2922,14 +2922,14 @@ public class TP implements CommandExecutor, TabCompleter {
         UUID playerUUID = player.getUniqueId();
 
         // Toggle teleport status for self
-        if (teleportToggled.contains(playerUUID)) {
-            teleportToggled.remove(playerUUID);
+        if (isTeleportToggled(playerUUID)) {
+            setTeleportToggled(playerUUID, false);
             String enabledStyle = lang.get("styles.state.true");
             lang.sendMessage(player, "tp.toggle", 
                     "{state}", enabledStyle + "enabled" + lang.getFirstColorCode("tp.toggle"),
                     "{name}", "");
         } else {
-            teleportToggled.add(playerUUID);
+            setTeleportToggled(playerUUID, true);
             String disabledStyle = lang.get("styles.state.false");
             lang.sendMessage(player, "tp.toggle", 
                     "{state}", disabledStyle + "disabled" + lang.getFirstColorCode("tp.toggle"),

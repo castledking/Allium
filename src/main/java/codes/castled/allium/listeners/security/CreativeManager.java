@@ -659,17 +659,20 @@ public class CreativeManager implements Listener {
                 case SPECTATOR:
                     break;
             }
-            // Save inventory using InventorySnapshot
+            // A creative switch's snapshot goes through InventoryManager, not
+            // straight into the database: the manager is where /restore's own
+            // snapshot cache lives, and a save it never sees would sit out of
+            // that menu until a reload cleared the cache. Autosave, login, death
+            // and every other writer already go this way.
             String reason = "gamemode_change_" + gameMode.name().toLowerCase();
-            InventorySnapshot snapshot = new InventorySnapshot(player, reason);
-            boolean success = database.saveInventorySnapshot(snapshot);
-            
-            if (success) {
-                Text.sendDebugLog(INFO, "Successfully saved inventory snapshot for " + player.getName() + 
+            plugin.getInventoryManager().saveSnapshot(player, reason).whenComplete((saved, error) -> {
+                if (error != null || !Boolean.TRUE.equals(saved)) {
+                    Text.sendDebugLog(ERROR, "Failed to save inventory snapshot for " + player.getName());
+                    return;
+                }
+                Text.sendDebugLog(INFO, "Successfully saved inventory snapshot for " + player.getName() +
                     " (" + player.getUniqueId() + ") with reason: " + reason);
-            } else {
-                Text.sendDebugLog(ERROR, "Failed to save inventory snapshot for " + player.getName());
-            }
+            });
             
             PlayerInventories updated = new PlayerInventories(
                 survivalInventory,

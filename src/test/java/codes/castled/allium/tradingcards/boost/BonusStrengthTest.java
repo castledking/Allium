@@ -41,13 +41,36 @@ class BonusStrengthTest {
     }
 
     @Test
-    void aPermissionOrASizeHasNoMagnitudeToRoll() {
+    void aPermissionHasNoMagnitudeToRoll() {
         assertFalse(BonusStrength.rolls(BoostMechanism.CARD_PERMISSION));
-        assertFalse(BonusStrength.rolls(BoostMechanism.CARD_SCALE));
         assertTrue(BonusStrength.rolls(BoostMechanism.ATTRIBUTE));
-        var scale = boost(BoostMechanism.CARD_SCALE, 1.1);
-        assertEquals(1.1, RANGE.valueOf(scale, 0), 1e-9);
-        assertEquals(1.1, RANGE.valueOf(scale, 100), 1e-9);
+        assertTrue(BonusStrength.rolls(BoostMechanism.CARD_SCALE));
+        var token = boost(BoostMechanism.CARD_PERMISSION, 1.0);
+        assertEquals(1.0, RANGE.valueOf(token, 0), 1e-9);
+    }
+
+    @Test
+    void playerScaleRollsTheWholeSizeFromPointSixToTwo() {
+        var scale = boost(BoostMechanism.CARD_SCALE, 1.0);
+        assertEquals(0.6, RANGE.valueOf(scale, 0), 1e-9);
+        assertEquals(1.3, RANGE.valueOf(scale, 50), 1e-9);
+        assertEquals(2.0, RANGE.valueOf(scale, 100), 1e-9);
+    }
+
+    @Test
+    void aScaleBonusFromBeforeStrengthsKeepsTheDoubleSizeItGave() {
+        // It was applied as +amount on the player's own size: 1 + 1.0 = x2.0.
+        var scale = boost(BoostMechanism.CARD_SCALE, 1.0);
+        assertEquals(100, RANGE.resolve(scale, null));
+        assertEquals(2.0, RANGE.valueOf(scale, null), 1e-9);
+    }
+
+    @Test
+    void theScaleRangeComesFromTheBoostsOwnMinimumAndMaximum() {
+        var scale = new BoostDefinition("scale", "Scale", BoostMechanism.CARD_SCALE, 1.0, 0.0,
+            false, Map.of("minimum", "0.8", "maximum", "1.6"));
+        assertEquals(0.8, RANGE.valueOf(scale, 0), 1e-9);
+        assertEquals(1.6, RANGE.valueOf(scale, 100), 1e-9);
     }
 
     @Test

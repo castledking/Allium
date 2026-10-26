@@ -127,6 +127,14 @@ public class Core implements CommandExecutor, TabCompleter {
                 handleReloadCommand(sender, null);
                 break;
 
+            case "pregen":
+                if (plugin.getOreGenerationModule() != null) {
+                    return plugin.getOreGenerationModule().command().onCommand(sender, command, label,
+                        Arrays.copyOfRange(args, 1, args.length));
+                }
+                sender.sendMessage("§cOre generation is unavailable.");
+                break;
+
             case "modguard":
                 handleModGuardCommand(sender, args);
                 break;
@@ -150,6 +158,9 @@ public class Core implements CommandExecutor, TabCompleter {
 
             case "restore":
                 handleRestoreCommand(sender, args);
+                break;
+            case "purge":
+                handlePurgeCommand(sender, args);
                 break;
             case "alerts":
                 handleAlertsCommand(sender, args);
@@ -549,6 +560,51 @@ public class Core implements CommandExecutor, TabCompleter {
         new codes.castled.allium.inventory.gui.RestoreGUI(player, targetId, inventoryManager, plugin).open();
     }
 
+    /**
+     * {@code /core purge restoresnapshots}: purges every inventory snapshot
+     * older than {@code restore.snapshot-retention-days} from the database
+     * right now — the same cutoff the daily cleanup pass uses, without waiting
+     * for it. One purge covers every player; the cache drops what it deleted
+     * with, so the restore GUI never shows a purged snapshot again.
+     */
+    private void handlePurgeCommand(@NotNull CommandSender sender, String[] args) {
+        if (!sender.hasPermission("allium.admin")) {
+            Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core purge");
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage("§cUsage: /core purge restoresnapshots");
+            return;
+        }
+        if (!args[1].equalsIgnoreCase("restoresnapshots")) {
+            sender.sendMessage("§cUnknown purge target: §4" + args[1]);
+            sender.sendMessage("§7Available targets: §erestoresnapshots");
+            return;
+        }
+
+        int days = inventoryManager.retentionDays();
+        if (days <= 0) {
+            sender.sendMessage("§cRestore snapshot retention is switched off (restore.snapshot-retention-days <= 0)."
+                + " §7Set a day count before purging.");
+            return;
+        }
+
+        String cutoffDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm")
+            .format(new java.util.Date(System.currentTimeMillis() - (long) days * 24L * 60L * 60L * 1000L));
+        sender.sendMessage("§7Purging restore snapshots older than " + days + " days (before " + cutoffDate + ")...");
+        inventoryManager.purgeExpiredSnapshotsNow().whenComplete((purged, error) ->
+            SchedulerAdapter.run(() -> {
+                if (error != null) {
+                    Text.sendDebugLog(WARN, "Error purging restore snapshots", error);
+                    sender.sendMessage("§cPurge failed: " + error.getMessage());
+                    return;
+                }
+                sender.sendMessage("§aPurged §e" + purged + "§a restore snapshot" + (purged == 1 ? "" : "s")
+                    + " older than " + days + " days.");
+            }));
+    }
+
     private void handleHideUpdateCommand(@NotNull CommandSender sender, String[] args) {
         if(!sender.hasPermission("allium.admin")) {
             Text.sendErrorMessage(sender, "no-permission", lang, "{cmd}", "core");
@@ -614,6 +670,7 @@ public class Core implements CommandExecutor, TabCompleter {
             sender.sendMessage("§eescalate §7- Escalate an issue to staff.");
             sender.sendMessage("§emigrate §7- Migrate Essentials userdata (homes, economy, warps).");
             sender.sendMessage("§esethomes §7- Show or set a player's max homes (staff override).");
+            sender.sendMessage("§epurge restoresnapshots §7- Purge restore snapshots older than the retention date.");
         }
         if (canRestore) {
             sender.sendMessage("§erestore §7- Open inventory restoration GUI.");
@@ -972,6 +1029,8 @@ public class Core implements CommandExecutor, TabCompleter {
 
             // Reload the main config
             plugin.reloadConfig();
+
+            if (plugin.getOreGenerationModule() != null) plugin.getOreGenerationModule().reload();
 
             // Reload the command manager
             commandManager.reload();
@@ -2226,6 +2285,10 @@ public class Core implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
+        if (args.length > 1 && args[0].equalsIgnoreCase("pregen") && plugin.getOreGenerationModule() != null) {
+            return plugin.getOreGenerationModule().command().onTabComplete(sender, command, alias,
+                Arrays.copyOfRange(args, 1, args.length));
+        }
         if (!command.getName().equalsIgnoreCase("core")) {
             return null;
         }
@@ -2240,6 +2303,7 @@ public class Core implements CommandExecutor, TabCompleter {
             // Suggest subcommands for /core
             if (sender.hasPermission("allium.admin")) {
                 suggestions.add("reload");
+                suggestions.add("pregen");
                 suggestions.add("debug");
                 suggestions.add("hideupdate");
                 suggestions.add("hide");
@@ -2387,6 +2451,10 @@ public class Core implements CommandExecutor, TabCompleter {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     suggestions.add(player.getName());
                 }
+            }
+        } else if (args.length > 1 && args[0].equalsIgnoreCase("purge")) {
+            if (args.length == 2) {
+                suggestions.add("restoresnapshots");
             }
         } else if (args.length > 1 && args[0].equalsIgnoreCase("migrate")) {
             if (args.length == 2) {

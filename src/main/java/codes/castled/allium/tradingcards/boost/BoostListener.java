@@ -7,6 +7,7 @@ import com.github.darksoulq.relique.event.RelicEquipEvent;
 import com.github.darksoulq.relique.event.RelicUnequipEvent;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -45,16 +46,22 @@ public class BoostListener implements Listener {
     private final BoostService boosts;
     private final EquippedCardTracker tracker;
     private final Supplier<String> equipMessage;
+    private final BiConsumer<Player, TradingCardData> slotChanged;
 
     /**
      * @param equipMessage the config's equip line, read per equip so a reload
      *                     reaches it; blank sends nothing
+     * @param slotChanged  told what the card slot holds after every equip and
+     *                     unequip, null when empty, so state granted by the old
+     *                     card (a morph) can end with it
      */
     public BoostListener(BoostService boosts, EquippedCardTracker tracker,
-                         Supplier<String> equipMessage) {
+                         Supplier<String> equipMessage,
+                         BiConsumer<Player, TradingCardData> slotChanged) {
         this.boosts = boosts;
         this.tracker = tracker;
         this.equipMessage = equipMessage;
+        this.slotChanged = slotChanged == null ? (player, card) -> {} : slotChanged;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -69,10 +76,12 @@ public class BoostListener implements Listener {
             // if one got in, make sure nothing is left applied.
             boosts.remove(player);
             tracker.clear(player.getUniqueId());
+            slotChanged.accept(player, null);
             return;
         }
         List<String> granted = boosts.apply(player, card.get());
         tracker.set(player.getUniqueId(), card.get(), granted);
+        slotChanged.accept(player, card.get());
         announce(player, event.getItem(), card.get());
     }
 
@@ -109,5 +118,6 @@ public class BoostListener implements Listener {
         // post this event, and in each case whatever was applied must go.
         boosts.remove(player);
         tracker.clear(player.getUniqueId());
+        slotChanged.accept(player, null);
     }
 }

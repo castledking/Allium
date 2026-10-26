@@ -245,6 +245,32 @@ public class MorphService {
         return false;
     }
 
+    /**
+     * Ends a morph the card slot can no longer back.
+     *
+     * <p>Called whenever the slot changes, with whatever is in it now: null
+     * after an unequip, the new card after an equip. A morph is the equipped
+     * card's ability, so taking the card off, or swapping it for one that could
+     * not have granted this form, takes the form away with it.
+     *
+     * @return true when a morph was ended
+     */
+    public boolean cardChanged(Player player, TradingCardData card) {
+        if (!isMorphed(player) || keepsForm(formOf(player), card, config.minimumTier())) {
+            return false;
+        }
+        clear(player);
+        return true;
+    }
+
+    /** Whether a card in the slot could still grant the form a player is in. */
+    static boolean keepsForm(EntityType form, TradingCardData card,
+                             codes.castled.allium.tradingcards.card.Tier minimumTier) {
+        return form != null && card != null && card.tier() != null
+            && card.tier().atLeast(minimumTier)
+            && form == MorphRules.resolve(card.mob());
+    }
+
     /** Ends a morph and restores the player. */
     public void clear(Player player) {
         if (morphed.remove(player.getUniqueId()) == null && !disguises.isDisguised(player)) {

@@ -114,6 +114,17 @@ class CropDefinitionLoaderTest {
     }
 
     @Test
+    void soilAlignmentAloneIsAVisualOverride() {
+        List<ValidationIssue> issues = new ArrayList<>();
+        CropDefinition crop = loader().parseCrop(yaml(withStageVisual(
+            "          visual:\n            align-to-soil: true")),
+            "tomato.yml", issues);
+        assertNotNull(crop);
+        assertFalse(crop.paths().get("normal").stage(0).visual().isEmpty(),
+            "soil alignment must be retained rather than silently ignored");
+    }
+
+    @Test
     void missingSeedIsFatal() {
         List<ValidationIssue> issues = new ArrayList<>();
         CropDefinition crop = loader().parseCrop(

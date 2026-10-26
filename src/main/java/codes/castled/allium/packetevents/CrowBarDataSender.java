@@ -118,10 +118,12 @@ public class CrowBarDataSender implements Listener {
             if (PluginStart.getInstance().isCitizensNpc(player)) {
                 continue;
             }
-            // Use party/locator visibility rules but ignore distance — CrowBar's
-            // whole purpose is showing players beyond the configured radius.
+            // Same dots as the vanilla bar: party members, staff locator mode and
+            // forced shows reach past the radius, everyone else stops at the
+            // viewer's (card-widened) radius.
             PartyManager pm = PluginStart.getInstance().getPartyManager();
-            if (pm != null && !pm.shouldBeVisibleIgnoreDistance(recipient, player)) {
+            if (pm != null && (!pm.shouldBeVisibleIgnoreDistance(recipient, player)
+                    || !pm.isOnLocatorFor(recipient, player))) {
                 continue;
             }
 

@@ -41,9 +41,7 @@ public final class MobHeadFactory {
         String hexColor = SpawnerCoreManager.getMobColor(entityType);
         String entityName = SpawnerCoreManager.formatEntityName(entityType);
         meta.setDisplayName(SpawnerCoreManager.hexColor(hexColor) + "§l" + entityName + " Head");
-        List<String> lore = new ArrayList<>();
-        lore.add("§7Used to craft " + entityName + " Spawners, Cards & Plushies");
-        meta.setLore(lore);
+        meta.setLore(craftingLore());
         try {
             PlayerProfile profile = Bukkit.createPlayerProfile(profileId(entityType));
             PlayerTextures textures = profile.getTextures();
@@ -59,6 +57,17 @@ public final class MobHeadFactory {
         setNoteBlockSound(plugin, meta, headData.sound());
         head.setItemMeta(meta);
         return head;
+    }
+
+    static List<String> craftingLore() {
+        return List.of(
+            "§7Used to craft:",
+            "§7 - §fSpawners",
+            "§7 - §fPlushies",
+            "§7 - §fTrading Cards",
+            "",
+            "§x§5§5§5§5§5§5ʀɪɢʜᴛ ᴄʟɪᴄᴋ ᴛᴏ ᴠɪᴇᴡ ɢᴜɪᴅᴇs"
+        );
     }
 
     /**

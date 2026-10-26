@@ -86,7 +86,12 @@ public record KitchenConfig(
         ItemRef filledModel,
         List<ItemRef> coldModels,
         List<ItemRef> bakedModels,
-        Set<Integer> skipSteps
+        Set<Integer> skipSteps,
+        ItemRef crustItem,
+        ItemRef crustModel,
+        List<Step> assemblySteps,
+        List<ItemRef> progressModels,
+        boolean opensOnStandardCrust
     ) {
         /** Whether this pie leaves out the assembly step at the given (0-based) index. */
         public boolean skips(int step) {
@@ -133,8 +138,30 @@ public record KitchenConfig(
         }
 
         public Optional<PieType> typeByFilling(ItemRef filling) {
-            return types.values().stream().filter(t -> t.fillings().contains(filling)).findFirst();
+            return types.values().stream().filter(t -> t.crustItem() == null && t.fillings().contains(filling)).findFirst();
         }
+
+        public Optional<PieType> typeByCrust(ItemRef item) {
+            return types.values().stream().filter(t -> item.equals(t.crustItem())
+                && !item.equals(crust)).findFirst();
+        }
+
+        /** A shared crust can branch into one custom recipe on its first ingredient. */
+        public List<PieType> openingTypes() {
+            return types.values().stream().filter(t -> t.opensOnStandardCrust()
+                && !t.assemblySteps().isEmpty()).toList();
+        }
+
+        public Optional<PieType> typeByOpeningIngredient(ItemRef item) {
+            return openingTypes().stream().filter(t -> t.assemblySteps().getFirst().item().equals(item)).findFirst();
+        }
+
+        public List<Step> stepsFor(String id) {
+            return type(id).filter(t -> !t.assemblySteps().isEmpty()).map(PieType::assemblySteps).orElse(steps);
+        }
+
+        public ItemRef crustFor(String id) { return type(id).map(PieType::crustItem).orElse(crust); }
+        public ItemRef crustModelFor(String id) { return type(id).map(PieType::crustModel).orElse(crustModel); }
 
         /** The pie type and baked flag of a whole-pie item, if it is one. */
         public Optional<Map.Entry<PieType, Boolean>> byItem(ItemRef ref) {
@@ -369,6 +396,40 @@ public record KitchenConfig(
                     ItemRef filled = item(t.getString("filled-model", fill(filledPattern, "cold", id, 0)), base + ".filled-model");
                     List<ItemRef> coldModels = models(t, "cold-models", placedPattern, "cold", id, base);
                     List<ItemRef> bakedModels = models(t, "baked-models", placedPattern, "baked", id, base);
+                    ItemRef ownCrust = null, ownCrustModel = null;
+                    List<Step> ownSteps = new ArrayList<>();
+                    if (t.contains("crust-item") || t.contains("steps")) {
+                        ownCrust = item(t.getString("crust-item"), base + ".crust-item");
+                        ownCrustModel = item(t.getString("crust-model"), base + ".crust-model");
+                        ItemRef selectedCrust = ownCrust;
+                        if (ownCrust != null && !ownCrust.equals(crust) && types.values().stream()
+                            .anyMatch(other -> selectedCrust.equals(other.crustItem())))
+                            error(base + ".crust-item", "A custom assembly needs a unique crust item");
+                        for (Map<?, ?> raw : t.getMapList("steps")) {
+                            ItemRef ingredient = item(raw.get("item") == null ? null : raw.get("item").toString(), base + ".steps.item");
+                            int amount = raw.get("amount") instanceof Number n ? n.intValue() : 1;
+                            if (ingredient == null || amount < 1 || amount > 64 || Boolean.TRUE.equals(raw.get("filling"))) {
+                                error(base + ".steps", "Custom steps need an item and amount 1..64; the crust already selects the type");
+                                continue;
+                            }
+                            ownSteps.add(new Step(ingredient, amount, raw.get("name") == null ? displayName(ingredient) : raw.get("name").toString()));
+                        }
+                        if (ownSteps.isEmpty()) error(base + ".steps", "Custom assembly needs at least one step");
+                    }
+                    List<ItemRef> progressModels = new ArrayList<>();
+                    if (t.isList("progress-models")) {
+                        for (int i = 0; i < t.getStringList("progress-models").size(); i++) {
+                            ItemRef model = item(t.getStringList("progress-models").get(i),
+                                base + ".progress-models[" + i + "]");
+                            if (model != null) progressModels.add(model);
+                        }
+                        if (ownSteps.isEmpty() || progressModels.size() >= ownSteps.size())
+                            error(base + ".progress-models", "Progress models must map to incomplete assembly steps");
+                    }
+                    boolean opensOnStandardCrust = t.getBoolean("opens-on-standard-crust", false);
+                    if (opensOnStandardCrust && (ownSteps.isEmpty() || ownSteps.getFirst().item().equals(steps.getFirst().item()))) {
+                        error(base + ".opens-on-standard-crust", "A shared-crust branch needs custom steps with a distinct first ingredient");
+                    }
                     // skip-steps uses the step numbers as listed (1-based). Only
                     // steps after the filling can be skipped: before it, nothing
                     // yet says which pie this is.
@@ -384,17 +445,27 @@ public record KitchenConfig(
                     if (errorCount() > before) {
                         continue;
                     }
-                    PieType duplicate = types.values().stream()
-                        .filter(other -> other.fillings().stream().anyMatch(fillings::contains))
+                    PieType duplicate = ownCrust != null && !ownCrust.equals(crust) ? null : types.values().stream()
+                        .filter(other -> other.crustItem() == null && other.fillings().stream().anyMatch(fillings::contains))
                         .findFirst().orElse(null);
                     if (duplicate != null) {
                         error(base + ".filling", "A filling here is already used by pie type '"
                             + duplicate.id() + "'");
                         continue;
                     }
+                    if (ownCrust != null && ownCrust.equals(crust) && !ownSteps.isEmpty()) {
+                        ItemRef opening = ownSteps.getFirst().item();
+                        if (steps.getFirst().item().equals(opening) || types.values().stream()
+                            .filter(other -> crust.equals(other.crustItem()) && !other.assemblySteps().isEmpty())
+                            .anyMatch(other -> other.assemblySteps().getFirst().item().equals(opening))) {
+                            error(base + ".steps[0]", "A shared-crust branch needs a unique first ingredient");
+                            continue;
+                        }
+                    }
                     types.put(id, new PieType(id, List.copyOf(fillings),
                         t.getString("filling-name", displayName(fillings.get(0))),
-                        cold, baked, filled, coldModels, bakedModels, Set.copyOf(skipSteps)));
+                        cold, baked, filled, coldModels, bakedModels, Set.copyOf(skipSteps),
+                        ownCrust, ownCrustModel, List.copyOf(ownSteps), List.copyOf(progressModels), opensOnStandardCrust));
                 }
             }
             if (types.isEmpty()) {

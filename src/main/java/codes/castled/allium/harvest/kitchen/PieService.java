@@ -56,6 +56,7 @@ final class PieService {
         int step;
         int progress;
         String type;
+        String crustItem;
         List<String> refunds;
         boolean baked;
         int bites;
@@ -69,6 +70,7 @@ final class PieService {
             this.step = pdc.getOrDefault(KitchenKeys.PIE_STEP, PersistentDataType.INTEGER, 0);
             this.progress = pdc.getOrDefault(KitchenKeys.PIE_PROGRESS, PersistentDataType.INTEGER, 0);
             this.type = pdc.get(KitchenKeys.PIE_TYPE, PersistentDataType.STRING);
+            this.crustItem = pdc.get(KitchenKeys.PIE_CRUST, PersistentDataType.STRING);
             String refundRaw = pdc.get(KitchenKeys.PIE_REFUNDS, PersistentDataType.STRING);
             this.refunds = new ArrayList<>(refundRaw == null || refundRaw.isEmpty()
                 ? List.of() : List.of(refundRaw.split(";")));
@@ -84,6 +86,8 @@ final class PieService {
             pdc.set(KitchenKeys.PIE_PROGRESS, PersistentDataType.INTEGER, progress);
             if (type == null) pdc.remove(KitchenKeys.PIE_TYPE);
             else pdc.set(KitchenKeys.PIE_TYPE, PersistentDataType.STRING, type);
+            if (crustItem == null) pdc.remove(KitchenKeys.PIE_CRUST);
+            else pdc.set(KitchenKeys.PIE_CRUST, PersistentDataType.STRING, crustItem);
             pdc.set(KitchenKeys.PIE_REFUNDS, PersistentDataType.STRING, String.join(";", refunds));
             pdc.set(KitchenKeys.PIE_BAKED, PersistentDataType.BYTE, (byte) (baked ? 1 : 0));
             pdc.set(KitchenKeys.PIE_BITES, PersistentDataType.INTEGER, bites);
@@ -91,7 +95,7 @@ final class PieService {
         }
 
         boolean assemblyDone(KitchenConfig.Pies pies) {
-            return phase == Phase.ASSEMBLY && step >= pies.steps().size();
+            return phase == Phase.ASSEMBLY && step >= pies.stepsFor(type).size();
         }
 
         Location blockCenter() {
@@ -160,8 +164,14 @@ final class PieService {
 
     /** Spawns an empty crust, ready for its first ingredient. */
     Pie placeCrust(Block cell, float yaw) {
+        return placeCrust(cell, yaw, null);
+    }
+
+    Pie placeCrust(Block cell, float yaw, KitchenConfig.PieType type) {
         Pie pie = spawn(cell, yaw);
         pie.phase = Phase.ASSEMBLY;
+        pie.type = type == null ? null : type.id();
+        pie.crustItem = (type == null ? pies().crust() : type.crustItem()).toString();
         pie.save();
         refresh(pie);
         return pie;
@@ -230,6 +240,11 @@ final class PieService {
             return type.models(pie.baked).get(Math.min(pie.bites, KitchenConfig.Pies.SLICES - 1));
         }
         if (type == null) return pies.crustModel();
+        if (pie.step == 0 && type.crustModel() != null) return type.crustModel();
+        int completed = pie.step + (pie.progress > 0 ? 1 : 0);
+        if (completed > 0 && completed <= type.progressModels().size()) {
+            return type.progressModels().get(completed - 1);
+        }
         return pie.assemblyDone(pies) ? type.coldModels().get(0) : type.filledModel();
     }
 
@@ -244,14 +259,20 @@ final class PieService {
             holograms.show(id, at, List.of(pies.hologram().doneLines()));
             return;
         }
-        KitchenConfig.Step step = pies.steps().get(pie.step);
+        KitchenConfig.Step step = pies.stepsFor(pie.type).get(pie.step);
         int remaining = step.amount() - pie.progress;
         List<List<String>> frames = new ArrayList<>();
-        if (step.isFilling()) {
+        if (pie.type == null && pie.step == 0 && pie.progress == 0 && !pies.openingTypes().isEmpty()) {
+            frames.add(lines(pies.hologram().stepLines(), step.item(), step.name(), remaining));
+            for (KitchenConfig.PieType type : pies.openingTypes()) {
+                KitchenConfig.Step first = type.assemblySteps().getFirst();
+                frames.add(lines(pies.hologram().stepLines(), first.item(), first.name(), first.amount()));
+            }
+        } else if (step.isFilling()) {
             // Before any filling is in, cycle through every flavour; after the
             // first one, the rest of the step has to match it.
             List<KitchenConfig.PieType> options = pie.type == null
-                ? List.copyOf(pies.types().values())
+                ? pies.types().values().stream().filter(type -> type.crustItem() == null).toList()
                 : pies.type(pie.type).map(List::of).orElse(List.of());
             for (KitchenConfig.PieType type : options) {
                 frames.add(lines(pies.hologram().stepLines(), type.filling(),
@@ -288,9 +309,12 @@ final class PieService {
         if (pie.phase != Phase.ASSEMBLY || pie.assemblyDone(pies) || held == null || held.getType().isAir()) {
             return false;
         }
-        KitchenConfig.Step step = pies.steps().get(pie.step);
         ItemRef ref = items.identify(held).orElse(null);
         if (ref == null) return false;
+        if (pie.type == null && pie.step == 0 && pie.progress == 0) {
+            pie.type = pies.typeByOpeningIngredient(ref).map(KitchenConfig.PieType::id).orElse(null);
+        }
+        KitchenConfig.Step step = pies.stepsFor(pie.type).get(pie.step);
         if (step.isFilling()) {
             KitchenConfig.PieType chosen = pies.typeByFilling(ref).orElse(null);
             if (chosen == null) return false;
@@ -312,7 +336,7 @@ final class PieService {
             // Some pies leave out later steps (e.g. no dough top on a
             // chocolate pie); the type is known once the filling is in.
             KitchenConfig.PieType type = pies.type(pie.type).orElse(null);
-            while (type != null && pie.step < pies.steps().size() && type.skips(pie.step)) {
+            while (type != null && pie.step < pies.stepsFor(pie.type).size() && type.skips(pie.step)) {
                 pie.step++;
             }
         }
@@ -343,7 +367,7 @@ final class PieService {
     String currentNeed(Pie pie) {
         KitchenConfig.Pies pies = pies();
         if (pie.assemblyDone(pies)) return null;
-        KitchenConfig.Step step = pies.steps().get(pie.step);
+        KitchenConfig.Step step = pies.stepsFor(pie.type).get(pie.step);
         int remaining = step.amount() - pie.progress;
         if (!step.isFilling()) return remaining + "x " + step.name();
         if (pie.type != null) {
@@ -400,7 +424,7 @@ final class PieService {
         if (pie.phase == Phase.ASSEMBLY && pie.assemblyDone(pies)) {
             pies.type(pie.type).flatMap(type -> items.create(type.coldItem(), 1)).ifPresent(give::add);
         } else if (pie.phase == Phase.ASSEMBLY) {
-            items.create(pies.crust(), 1).ifPresent(give::add);
+            items.create(crustFor(pie, pies), 1).ifPresent(give::add);
             for (String refund : pie.refunds) {
                 int star = refund.lastIndexOf('*');
                 if (star < 0) continue;
@@ -434,6 +458,17 @@ final class PieService {
         return true;
     }
 
+    private ItemRef crustFor(Pie pie, KitchenConfig.Pies pies) {
+        if (pie.crustItem != null && !pie.crustItem.isBlank()) {
+            try {
+                return ItemRef.parse(pie.crustItem);
+            } catch (IllegalArgumentException ignored) {
+                // Old or malformed entity data falls back to the configured recipe crust.
+            }
+        }
+        return pies.crustFor(pie.type);
+    }
+
     /** Removes a pie's entities and hologram without giving anything back. */
     void remove(Pie pie) {
         holograms.remove(pie.display.getUniqueId());
@@ -454,7 +489,7 @@ final class PieService {
             if (pie.assemblyDone(pies)) {
                 pies.type(pie.type).ifPresent(type -> drops.add(type.coldItem()));
             } else {
-                drops.add(pies.crust());
+                drops.add(crustFor(pie, pies));
             }
         } else if (pie.bites == 0) {
             pies.type(pie.type).ifPresent(type -> drops.add(type.coldItem()));

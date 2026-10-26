@@ -673,7 +673,15 @@ public final class CropDefinitionLoader {
             issues.add(ValidationIssue.error(file, path + ".y-offset", "Expected a number"));
         }
 
-        return new StageDefinition.VisualOverride(transform, scale, yOffset);
+        boolean alignToSoil = false;
+        Object soilRaw = map.get("align-to-soil");
+        if (soilRaw instanceof Boolean enabled) {
+            alignToSoil = enabled;
+        } else if (soilRaw != null) {
+            issues.add(ValidationIssue.error(file, path + ".align-to-soil", "Expected a boolean"));
+        }
+
+        return new StageDefinition.VisualOverride(transform, scale, yOffset, alignToSoil);
     }
 
     // ==================== fertilizers ====================

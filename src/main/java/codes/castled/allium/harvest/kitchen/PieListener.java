@@ -73,7 +73,8 @@ final class PieListener implements Listener {
 
         ItemRef ref = items.identify(held).orElse(null);
         if (ref == null) return;
-        boolean crust = ref.equals(config.crust());
+        var crustType = config.typeByCrust(ref).orElse(null);
+        boolean crust = ref.equals(config.crust()) || crustType != null;
         Optional<Map.Entry<KitchenConfig.PieType, Boolean>> whole = crust ? Optional.empty() : config.byItem(ref);
         if (!crust && whole.isEmpty()) return;
 
@@ -87,7 +88,7 @@ final class PieListener implements Listener {
 
         float yaw = Math.round((player.getYaw() + 180.0F) / 90.0F) * 90.0F;
         if (crust) {
-            pies.placeCrust(cell, yaw);
+            pies.placeCrust(cell, yaw, crustType);
             player.sendActionBar(MINI.deserialize("<green>Crust down. Follow the steps above it.</green>"));
         } else {
             KitchenConfig.PieType type = whole.get().getKey();

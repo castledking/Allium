@@ -100,6 +100,10 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
 
             if (event.getPacketType() == PacketType.Play.Server.PLAYER_INFO_UPDATE) {
                 WrapperPlayServerPlayerInfoUpdate packet = new WrapperPlayServerPlayerInfoUpdate(event);
+                EnumSet<WrapperPlayServerPlayerInfoUpdate.Action> trimmed = FarPlayerReAddPolicy.trim(packet.getActions());
+                if (trimmed != null && allOnlinePlayers(packet.getEntries())) {
+                    packet.setActions(trimmed);
+                }
                 List<WrapperPlayServerPlayerInfoUpdate.PlayerInfo> entries = new ArrayList<>(packet.getEntries());
                 boolean touchedListed = false;
 
@@ -132,12 +136,32 @@ public class TabListManagerPacketEventsImpl extends PacketListenerAbstract imple
         }
     }
 
+    /** Real online players only: NPC plugins send unlisted entries with names of their own. */
+    private boolean allOnlinePlayers(List<WrapperPlayServerPlayerInfoUpdate.PlayerInfo> entries) {
+        if (entries.isEmpty()) {
+            return false;
+        }
+        for (WrapperPlayServerPlayerInfoUpdate.PlayerInfo entry : entries) {
+            Player player = plugin.getServer().getPlayer(entry.getProfileId());
+            if (player == null || !player.isOnline() || plugin.isCitizensNpc(player)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public boolean shouldBeVisibleInTabList(Player viewer, Player target) {
         if (viewer.equals(target)) {
             return false;
         }
         if (vanishManager.isVanished(target)) {
+            return false;
+        }
+        // Locator filtering never hides anyone from Bukkit, so there is no entry to
+        // keep: leave removals and updates for distant players as the server and TAB sent them.
+        codes.castled.allium.packetevents.LocatorVisibility locator = plugin.getLocatorVisibility();
+        if (locator != null && locator.isActive()) {
             return false;
         }
         if (target.getGameMode() == org.bukkit.GameMode.SPECTATOR

@@ -126,6 +126,9 @@ public class CardMenuListener implements Listener {
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onDrop(PlayerDropItemEvent event) {
+        if (module.config().cardMenu().allowDrop()) {
+            return;
+        }
         ItemStack dropped = event.getItemDrop().getItemStack();
         if (!TradingCardData.isCard(dropped)) {
             return;

@@ -884,7 +884,8 @@ public final class AlliumChannelManager implements Listener {
                 }
             }
 
-            recipient.sendMessage(applyStaffHoverForViewer(recipient, sender, messageId, rendered));
+            recipient.sendMessage(plugin.getChatMessageManager().withMessageId(messageId,
+                applyStaffHoverForViewer(recipient, sender, messageId, rendered)));
         }
         
         // Track if we're in staff-chat mode so we can suppress DiscordSRV global relay
@@ -1893,7 +1894,7 @@ public final class AlliumChannelManager implements Listener {
                     continue;
                 }
                 recipientCount++;
-                recipient.sendMessage(rendered);
+                recipient.sendMessage(plugin.getChatMessageManager().withMessageId(messageId, rendered));
             }
             // Mirror to console as well. We cancel DiscordSRV's PreProcess/PostProcess events
             // (see onDiscordGuildMessagePreProcess / onDiscordGuildMessagePostProcess) so DiscordSRV

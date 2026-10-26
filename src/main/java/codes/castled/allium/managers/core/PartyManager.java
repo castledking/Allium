@@ -816,6 +816,17 @@ public class PartyManager {
         return hiddenPlayers.getOrDefault(viewer.getUniqueId(), Collections.emptySet()).contains(target.getUniqueId());
     }
 
+    /**
+     * Whether {@code target} currently has a locator dot for {@code viewer}.
+     *
+     * <p>Reads the decision the radius task last applied to the vanilla bar, so
+     * other locator HUDs (CrowBar) follow the same party, staff mode, override
+     * and card-widened radius rules instead of seeing the whole world.
+     */
+    public boolean isOnLocatorFor(Player viewer, Player target) {
+        return !partyLocatorBar || !isHiddenFrom(viewer, target);
+    }
+
     private void markVisible(Player viewer, Player target) {
         visiblePlayers.computeIfAbsent(viewer.getUniqueId(), k -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
                 .add(target.getUniqueId());

@@ -1,0 +1,215 @@
+items:
+  sf:raw_silver:
+    data:
+      item_name: <!i><white>Raw Silver
+    texture: sf:item/raw_silver
+  sf:silver_ingot:
+    data:
+      item_name: <!i><white>Silver Ingot
+    texture: sf:item/silver_ingot
+  sf:silver_ore:
+    data:
+      item_name: <!i><white>Silver Ore
+    model: sf:block/silver_ore
+    behavior:
+      type: block_item
+      block: sf:silver_ore
+  sf:deepslate_silver_ore:
+    data:
+      item_name: <!i><white>Deepslate Silver Ore
+    model: sf:block/deepslate_silver_ore
+    behavior:
+      type: block_item
+      block: sf:deepslate_silver_ore
+  sf:raw_galena:
+    data:
+      item_name: <!i><white>Raw Galena
+    texture: sf:item/raw_galena
+  sf:galena_ingot:
+    data:
+      item_name: <!i><white>Galena Ingot
+    texture: sf:item/galena_ingot
+  sf:galena_ore:
+    data:
+      item_name: <!i><white>Galena Ore
+    model: sf:block/galena_ore
+    behavior:
+      type: block_item
+      block: sf:galena_ore
+  sf:deepslate_galena_ore:
+    data:
+      item_name: <!i><white>Deepslate Galena Ore
+    model: sf:block/deepslate_galena_ore
+    behavior:
+      type: block_item
+      block: sf:deepslate_galena_ore
+blocks:
+  sf:silver_ore:
+    loot:
+      template: default:loot_table/ore
+      arguments:
+        ore_drop: sf:raw_silver
+        ore_block: sf:silver_ore
+    settings:
+      template: default:settings/ore
+      arguments:
+        break_power: 3
+      overrides:
+        hardness: 4
+        require_correct_tools: true
+        destroy_stages:
+          template: internal:destroy_stages
+    state:
+      auto_state: mushroom
+      model: sf:block/silver_ore
+  sf:deepslate_silver_ore:
+    loot:
+      template: default:loot_table/ore
+      arguments:
+        ore_drop: sf:raw_silver
+        ore_block: sf:deepslate_silver_ore
+    settings:
+      template: default:settings/deepslate_ore
+      arguments:
+        break_power: 3
+      overrides:
+        hardness: 5
+        require_correct_tools: true
+        destroy_stages:
+          template: internal:destroy_stages
+    state:
+      auto_state: mushroom
+      model: sf:block/deepslate_silver_ore
+  sf:galena_ore:
+    loot:
+      template: default:loot_table/ore
+      arguments:
+        ore_drop: sf:raw_galena
+        ore_block: sf:galena_ore
+    settings:
+      template: default:settings/ore
+      arguments:
+        break_power: 3
+      overrides:
+        hardness: 4
+        require_correct_tools: true
+        destroy_stages:
+          template: internal:destroy_stages
+    state:
+      auto_state: mushroom
+      model: sf:block/galena_ore
+  sf:deepslate_galena_ore:
+    loot:
+      template: default:loot_table/ore
+      arguments:
+        ore_drop: sf:raw_galena
+        ore_block: sf:deepslate_galena_ore
+    settings:
+      template: default:settings/deepslate_ore
+      arguments:
+        break_power: 3
+      overrides:
+        hardness: 5
+        require_correct_tools: true
+        destroy_stages:
+          template: internal:destroy_stages
+    state:
+      auto_state: mushroom
+      model: sf:block/deepslate_galena_ore
+recipes:
+  sf:silver_from_smelting_raw_silver:
+    type: smelting
+    experience: 0.7
+    time: 200
+    ingredient: sf:raw_silver
+    result:
+      id: sf:silver_ingot
+      count: 1
+  sf:silver_from_blasting_raw_silver:
+    type: blasting
+    experience: 0.7
+    time: 100
+    ingredient: sf:raw_silver
+    result:
+      id: sf:silver_ingot
+      count: 1
+  sf:silver_from_smelting_silver_ore:
+    type: smelting
+    experience: 0.7
+    time: 200
+    ingredient: sf:silver_ore
+    result:
+      id: sf:silver_ingot
+      count: 1
+  sf:silver_from_blasting_silver_ore:
+    type: blasting
+    experience: 0.7
+    time: 100
+    ingredient: sf:silver_ore
+    result:
+      id: sf:silver_ingot
+      count: 1
+  sf:silver_from_smelting_deepslate_silver_ore:
+    type: smelting
+    experience: 0.7
+    time: 200
+    ingredient: sf:deepslate_silver_ore
+    result:
+      id: sf:silver_ingot
+      count: 1
+  sf:silver_from_blasting_deepslate_silver_ore:
+    type: blasting
+    experience: 0.7
+    time: 100
+    ingredient: sf:deepslate_silver_ore
+    result:
+      id: sf:silver_ingot
+      count: 1
+  sf:galena_from_smelting_raw_galena:
+    type: smelting
+    experience: 0.7
+    time: 200
+    ingredient: sf:raw_galena
+    result:
+      id: sf:galena_ingot
+      count: 1
+  sf:galena_from_blasting_raw_galena:
+    type: blasting
+    experience: 0.7
+    time: 100
+    ingredient: sf:raw_galena
+    result:
+      id: sf:galena_ingot
+      count: 1
+  sf:galena_from_smelting_galena_ore:
+    type: smelting
+    experience: 0.7
+    time: 200
+    ingredient: sf:galena_ore
+    result:
+      id: sf:galena_ingot
+      count: 1
+  sf:galena_from_blasting_galena_ore:
+    type: blasting
+    experience: 0.7
+    time: 100
+    ingredient: sf:galena_ore
+    result:
+      id: sf:galena_ingot
+      count: 1
+  sf:galena_from_smelting_deepslate_galena_ore:
+    type: smelting
+    experience: 0.7
+    time: 200
+    ingredient: sf:deepslate_galena_ore
+    result:
+      id: sf:galena_ingot
+      count: 1
+  sf:galena_from_blasting_deepslate_galena_ore:
+    type: blasting
+    experience: 0.7
+    time: 100
+    ingredient: sf:deepslate_galena_ore
+    result:
+      id: sf:galena_ingot
+      count: 1

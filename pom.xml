@@ -11,7 +11,7 @@
 
     <groupId>codes.castled</groupId>
     <artifactId>Allium</artifactId>
-    <version>0.2.19a</version>
+    <version>0.2.20a</version>
     <name>Allium</name>
     <description>A secure, modern Essentials solution.</description>
 
@@ -489,6 +489,12 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.12.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.23.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

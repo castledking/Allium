@@ -1,9 +1,3 @@
-# Client-side translations, the same way Nexo does it: the names live in the
-# resource pack, so a player's client shows them in the language the client
-# is set to. The items below name their label with
-# <lang:item.ce.tomato> and the key has to be written out in full here:
-# the ${__NAMESPACE__} placeholder is substituted inside an item's own
-# configuration, but not inside a lang file, so the two would not match.
 lang#items:
   en_us:
     item.ce.crop: Crop
@@ -13,4 +7,24 @@ lang#items:
     item.ce.tomato_golden_star: Tomato (Golden Star)
     item.ce.golden_tomato: Golden Tomato
     item.ce.gigantic_tomato: Gigantic Tomato
-    item.ce.tomato_crop: Tomato Plant
+    item.ce.tomato_crop: Tomato
+    item.ce.banana_seeds: Banana Seeds
+    item.ce.cabbage_seeds: Cabbage Seeds
+    item.ce.corn_seeds: Corn Seeds
+    item.ce.cotton_seeds: Cotton Seeds
+    item.ce.eggplant_seeds: Eggplant Seeds
+    item.ce.garlic_seeds: Garlic Seeds
+    item.ce.grape_seeds: Grape Seeds
+    item.ce.hop_seeds: Hop Seeds
+    item.ce.lemon_seeds: Lemon Seeds
+    item.ce.lettuce_seeds: Lettuce Seeds
+    item.ce.onion_seeds: Onion Seeds
+    item.ce.orange_seeds: Orange Seeds
+    item.ce.pepper_seeds: Pepper Seeds
+    item.ce.pineapple_seeds: Pineapple Seeds
+    item.ce.pitaya_seeds: Pitaya Seeds
+    item.ce.pomegranate_seeds: Pomegranate Seeds
+    item.ce.soybean_seeds: Soybean Seeds
+    item.ce.spinach_seeds: Spinach Seeds
+    item.ce.strawberry_seeds: Strawberry Seeds
+    jade.modName.ce: Crops

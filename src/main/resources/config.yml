@@ -17,6 +17,51 @@
 # the server swaps it while nothing is using it.
 preload-classes: true
 
+# Real CraftEngine ore blocks. Only fresh chunks in these worlds are automatic;
+# /pregen can explicitly process existing unmarked chunks. Never starts a pregen
+# job at plugin startup. Keep disabled until the referenced CE pack is installed.
+ore-generation:
+  enabled: false
+  auto-generate: true
+  worlds: [Resource]
+  jade:
+    enabled: true
+  ores:
+    salt:
+      enabled: true
+      block: sf:salt_ore
+      deepslate-block: sf:deepslate_salt_ore
+      vein-size: 8
+      min-height: 0
+      max-height: 64
+      chance-per-chunk: 0.35
+      veins-per-chunk: 2
+    silver:
+      enabled: true
+      block: sf:silver_ore
+      deepslate-block: sf:deepslate_silver_ore
+      vein-size: 8
+      min-height: -56
+      max-height: 118
+      lowland-max-height: 56
+      single-above: 59
+      chance-per-chunk: 0.15
+      veins-per-chunk: 2
+    galena:
+      enabled: true
+      block: sf:galena_ore
+      deepslate-block: sf:deepslate_galena_ore
+      vein-size: 8
+      min-height: -56
+      max-height: 8
+      chance-per-chunk: 0.10
+      veins-per-chunk: 2
+
+pregen:
+  chunks-per-tick: 2
+  delay-ticks: 1
+  generate-ores: true
+
 ############################################################
 # +------------------------------------------------------+ #
 # |                 Maintenance Settings                 | #
@@ -82,7 +127,10 @@ block-unicode: true # Set to false to allow Unicode symbols
 
 chat:
   deletion_resend:
-    clear_lines: 500  # Number of invisible unicode lines to send before header (clears chat)
+    # Separate invisible message entries, not batched newlines. Positive values
+    # are bounded to 100..4096; 0 disables clearing. Clients with extended chat
+    # history may retain entries beyond this configured clearing window.
+    clear_lines: 500
     header_enabled: true
     header: "&8&oChat re-synced by staff; a message was deleted"
   channels:
@@ -545,6 +593,16 @@ end-gateway:
 # Format: "player_name": "#RRGGBB"
 player-colors:
   ggpots: '#f44336'
+
+# Restore Settings
+# Inventory snapshots saved for /restore (login, death, autosave, ...)
+restore:
+  # How many days the restore snapshots keep before they are purged.
+  # The daily cleanup pass enforces this, and
+  # /core purge restoresnapshots purges everything older right now.
+  # Set to 0 or less to keep every snapshot for ever.
+  # Default: 30
+  snapshot-retention-days: 30
 
 # Version of the config file (do not modify)
 version: 0.1.5a

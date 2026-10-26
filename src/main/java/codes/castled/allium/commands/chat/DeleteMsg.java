@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.managers.chat.ChatMessageManager;
+import codes.castled.allium.managers.chat.ChatHistoryClear;
 import codes.castled.allium.managers.core.Text;
 import codes.castled.allium.util.SchedulerAdapter;
 
@@ -26,15 +27,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class DeleteMsg implements CommandExecutor {
 
-    private static final char[] CLEAR_CHARS = {
-            ' ',
-            '\u2000', '\u2001', '\u2002', '\u2003',
-            '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200A'
-    };
-    
     private final PluginStart plugin;
     private final ChatMessageManager chatMessageManager;
     private final AtomicBoolean resendInProgress = new AtomicBoolean(false);
+    private final AtomicBoolean resendRequested = new AtomicBoolean(false);
     
     public DeleteMsg(PluginStart plugin, ChatMessageManager chatMessageManager) {
         this.plugin = plugin;
@@ -85,7 +81,7 @@ public class DeleteMsg implements CommandExecutor {
                     return true;
                 }
 
-                if (!deleteMessageIds(List.of(messageId))) {
+                if (deleteMessageIds(List.of(messageId)) == 0) {
                     player.sendMessage(Component.text("§cFailed to delete message."));
                     return true;
                 }
@@ -121,7 +117,7 @@ public class DeleteMsg implements CommandExecutor {
             List<Long> ids = matches.stream()
                     .map(ChatMessageManager.ChatMessage::getMessageId)
                     .toList();
-            int deleted = deleteMessageIds(ids) ? ids.size() : 0;
+            int deleted = deleteMessageIds(ids);
             if (deleted == 0) {
                 player.sendMessage(Component.text("§cFailed to delete messages."));
                 return true;
@@ -148,24 +144,25 @@ public class DeleteMsg implements CommandExecutor {
         }
     }
 
-    private boolean deleteMessageIds(List<Long> messageIds) {
-        boolean any = false;
-        for (Long messageId : messageIds) {
+    private int deleteMessageIds(List<Long> messageIds) {
+        int deleted = 0;
+        for (Long messageId : new java.util.LinkedHashSet<>(messageIds)) {
             if (messageId == null) {
                 continue;
             }
             if (chatMessageManager.deleteMessage(messageId)) {
-                any = true;
+                deleted++;
                 if (plugin.getDiscordSrvMessageBridge() != null) {
                     plugin.getDiscordSrvMessageBridge().requestDiscordDelete(messageId);
                 }
             }
         }
-        return any;
+        return deleted;
     }
 
     private void queueResend() {
         if (!resendInProgress.compareAndSet(false, true)) {
+            resendRequested.set(true);
             return;
         }
         SchedulerAdapter.runLater(() -> {
@@ -182,10 +179,10 @@ public class DeleteMsg implements CommandExecutor {
                     }
                 }
             } finally {
-                // Delay release so successive /delmsg commands within 1 tick
-                // don't schedule overlapping resends while PacketEvents is still
-                // processing the outgoing packets from the current resend.
-                SchedulerAdapter.runLater(() -> resendInProgress.set(false), 1L);
+                SchedulerAdapter.runLater(() -> {
+                    resendInProgress.set(false);
+                    if (resendRequested.getAndSet(false)) queueResend();
+                }, 1L);
             }
         }, 1L);
     }
@@ -204,22 +201,12 @@ public class DeleteMsg implements CommandExecutor {
      */
     private void clearChatFallback() {
         try {
-            int configured = Math.max(0, plugin.getConfig().getInt("chat.deletion_resend.clear_lines", 500));
-            int clearLines = Math.min(configured, 120);
-            int batchSize = 20;
+            int configured = plugin.getConfig().getInt("chat.deletion_resend.clear_lines", 500);
             for (Player p : plugin.getServer().getOnlinePlayers()) {
                 if (p == null || !p.isOnline()) {
                     continue;
                 }
-                for (int batch = 0; batch < clearLines; batch += batchSize) {
-                    int end = Math.min(batch + batchSize, clearLines);
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = batch; i < end; i++) {
-                        if (sb.length() > 0) sb.append('\n');
-                        sb.append(CLEAR_CHARS[i % CLEAR_CHARS.length]);
-                    }
-                    p.sendMessage(Component.text(sb.toString()));
-                }
+                ChatHistoryClear.send(configured, entry -> p.sendMessage(chatMessageManager.asReplay(entry)));
             }
         } catch (Exception e) {
             Text.sendDebugLog(WARN, "Error clearing chat in fallback path: " + e.getMessage());

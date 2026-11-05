@@ -56,7 +56,7 @@ public final class GamemodeCommand implements CommandExecutor, TabCompleter {
             }
         } else {
             if (!(sender instanceof Player)) {
-                sender.sendMessage("Console must specify a player: /gamemode <mode> <player>");
+                plugin.getMessageManager().send(sender, Messages.INVALID_ARGS, "{usage}", "/gamemode <mode> <player>");
                 return true;
             }
             target = (Player) sender;

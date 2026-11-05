@@ -1,10 +1,11 @@
 # Allium implementation checklist
 
 [Roadmap and behavior contracts](docs/roadmap.md) are authoritative; see also the
-[Give and Item Library design](docs/give-item-design.md). Checked items below mean
-code/scaffolding exists, not that production verification is complete. All remaining
-items are planned. Keep work in independently reviewable vertical slices; run checks
-appropriate to each slice.
+[Give and Item Library design](docs/give-item-design.md) and the
+[Text Formatting and Animation design](docs/text-formatting-design.md). Checked items
+below mean code/scaffolding exists, not that production verification is complete. All
+remaining items are planned. Keep work in independently reviewable vertical slices; run
+checks appropriate to each slice.
 
 ## Existing code
 
@@ -13,7 +14,8 @@ appropriate to each slice.
 - [x] Config loading, backups, schema migration scaffolding and missing-key sync.
 - [x] Message enum, locale files, language fallback and message manager.
 - [x] Database setup and economy/Vault scaffolding.
-- [x] Heal, feed, fly, god and gamemode executors.
+- [x] Heal, feed, fly, god and gamemode executors (verified across `self`, `other`, and
+      `console` on Spigot 1.20.1, Paper 1.20, Paper 1.20.6, Spigot 26.3, and Paper 26.3).
 
 ## First implementation queue
 
@@ -23,19 +25,31 @@ result and must preserve the existing uncommitted work.
 - [x] **S01 / M0 — Baseline:** pin Gradle/build JDK and Java toolchains; compile
       shared code against Spigot 1.20/Java 17; audit Takion/InvUI/HikariCP and Shadow
       minimization; correct plugin API metadata; retire pre-1.20 scope. Gate: clean
-      check/build/package and no-provider boot on minimum and maximum server lanes.
-- [ ] **S01.5 / M1 — Text formatting and animation module (retire Takion):**
-      implement Allium's own text formatting (`&`/`§` legacy, `#RRGGBB`/`§x` hex,
-      multi-stop gradients, rainbows, MiniMessage on Paper behind an Adventure adapter,
-      Spigot legacy fallback) and deterministic animation engine (`pulse`, `shift`,
-      `sparkle`, and `phase-scroll` gradient/rainbow using pure
+      check/build/package, no-provider boot, and `/heal`, `/feed`, `/fly`, `/god`,
+      `/gamemode` (`self`, `other`, `console`) smoke tests on Spigot 1.20.1/Java 17,
+      Paper 1.20/Java 17, Paper 1.20.6/Java 21, Spigot 26.3/Java 25, and Paper 26.3/Java 25.
+- [ ] **S01.5a / M1 — Static text formatting + retire Takion:**
+      implement Allium's static text formatter (`&`/`§` legacy codes, `&#RRGGBB`/`§x`
+      hex, multi-stop `<gradient:...>` and `<rainbow:...>` tags, nested/reset
+      formatting, and a `GlyphColorSource` hook ready for `S01.5b`
+      `color(glyphIndex, length, timeMs, seed)`); output Adventure `Component`s on
+      Paper (behind an isolated adapter with no Paper types in shared signatures) and
+      legacy `§x` strings on Spigot with identical visible results; route
+      `MessageManager` and locale delivery through the formatter with Allium-owned
+      sound playback; replace all remaining Takion call sites and remove
+      `me.croabeast.takion:shaded` from `build.gradle.kts` and `minimize()` exclusions.
+      Gate: jar contains no `me.croabeast` classes; unit tests pin 2-stop/multi-stop
+      gradients, rainbow, legacy, hex, nested/reset, empty and 1-char strings on both
+      Adventure and legacy paths; boot + localized message on min/max lanes; record jar
+      size before and after.
+- [ ] **S01.5b — Animated text engine (deferred until the first animated target: tab, nametag, boss bar, or display entity):**
+      implement deterministic per-glyph animation effects (`pulse`, `shift`, `sparkle`,
+      and `phase-scroll` gradient/rainbow) using pure
       `color(glyphIndex, length, timeMs, seed) -> RGB`, optional OKLab interpolation,
       frame caching per `(text, effect, frame)`, delta-only pushes, and a single shared
-      clock/scheduler across tab, nametag/scoreboard team, boss bar and display entities);
-      then remove `me.croabeast.takion:shaded` from `build.gradle.kts`. Gate: deterministic
-      frame output in unit tests; one scheduler for N animated players; no main-thread
-      spikes at the measured SF player count; Spigot legacy and Paper Adventure output
-      match.
+      clock/scheduler. Gate: deterministic frame output in unit tests; one scheduler for
+      N animated players; no main-thread spikes at the measured SF player count; Spigot
+      legacy and Paper Adventure output match.
 - [ ] **S02 / M1 — Command families:** canonical/alias/namespace policy and
       `disabled-commands: []`. Gate: disabling a family blocks all Allium aliases
       and lets another plugin own the label after restart; no command interception
@@ -70,15 +84,16 @@ result and must preserve the existing uncommitted work.
       volume/toggle/reset. Gate: zero, finite ranges, independent defaults,
       restoration and config changes; Allium owns message sound playback directly.
 
-S01.5, S02–S03 and S04–S05 can proceed after S01 with separate file ownership.
-S06 depends on S04–S05; S07–S08 depend on S01.5, S03 and the message pipeline.
+S01.5a, S02–S03 and S04–S05 can proceed after S01 with separate file ownership.
+S06 depends on S04–S05; S07–S08 depend on S01.5a, S03 and the message pipeline.
 
 ## S01 Audit: Shaded Dependencies & Takion Retirement Plan
 
 ### Bytecode & Shadow Minimization Findings
 - **Allium shared classes:** Compiled against `org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT` with `--release 17` (class version 61 / Java 17).
 - **HikariCP 5.1.0 (`com.zaxxer:HikariCP`):** Class version 55 (Java 11). Excluded from Shadow `minimize()` because pool and proxy classes are loaded reflectively.
-- **InvUI 1.49 (`xyz.xenondevs.invui`):** `invui-core`, `inventory-access`, and `inventory-access-r16..r18` (1.20.0–1.20.4) are class version 55–61 (Java 11–17). `inventory-access-r19..r26` (1.20.5–1.21.11) are class version 65 (Java 21), loaded reflectively via `InventoryAccessRevision` only on 1.20.5+ servers (which require Java 21+). Excluded from Shadow `minimize()` so `Class.forName` lookups succeed.
+- **InvUI 1.49 (`xyz.xenondevs.invui`):** `invui-core`, `inventory-access`, and `inventory-access-r16..r18` (1.20.0–1.20.4) are class version 55–61 (Java 11–17). `inventory-access-r19..r26` (1.20.5–1.21.11) are class version 65 (Java 21), loaded reflectively via `InventoryAccessRevision` only on 1.20.5+ servers (which require Java 21+, verified on Paper 1.20.6 / OpenJDK 21). Excluded from Shadow `minimize()` so `Class.forName` lookups succeed.
+  - **Open M4 Risk (InvUI on 26.x):** `InventoryAccessRevision` matches `26 > 1` and selects `R26` (compiled against `1.21.11` NMS internals) on `26.x`. Matching `26 > 1` is **not** real `26.x` support. Before any GUI slice in M4/M5, check upstream InvUI for `26.x` support; if none exists, place the GUI layer behind an adapter with a plain Bukkit inventory implementation.
 - **Adventure Legacy Serializer 4.17.0:** Class version 52 (Java 8).
 
 ### Takion (`me.croabeast.takion:shaded:1.4`) Inventory & Findings
@@ -89,10 +104,9 @@ S06 depends on S04–S05; S07–S08 depend on S01.5, S03 and the message pipelin
 2. **Takion jar grep for animation APIs:**
    - `me.croabeast.prismatic.PrismaticAPI` and `me.croabeast.prismatic.color.MultiColor` (`$Gradient`, `$Rainbow`) provide **static** string/component colorization only (`applyGradient`, `applyRainbow`, `colorize`). There is **no** per-frame or phase-scroll text animation API in Takion's Prismatic package.
    - `me.croabeast.takion.bossbar.AnimatedBossbar` only cycles through a `List<String>` of bossbar titles/colors/styles on a timer.
-3. **Replacement Plan (S01.5):**
-   - Implement `codes.castled.allium.text` (legacy/hex/gradient/rainbow/MiniMessage formatter + pure deterministic `pulse`/`shift`/`sparkle`/`phase-scroll` animation engine with single shared clock and frame cache).
-   - Route `MessageManager` through the new formatter and sound player.
-   - Remove `implementation("me.croabeast.takion:shaded:1.4")` and its relocation rule from `build.gradle.kts` once S01.5 unit and parity checks pass.
+3. **Replacement Plan (S01.5a / S01.5b):**
+   - **S01.5a (now):** Implement static formatter in `codes.castled.allium.text`, route `MessageManager` and sound playback through it, and remove `me.croabeast.takion:shaded:1.4` and its relocation/minimization rules from `build.gradle.kts`.
+   - **S01.5b (deferred to first animated target):** Add `pulse`/`shift`/`sparkle`/`phase-scroll` animation evaluators, shared clock/scheduler, and frame cache.
 
 ## M0 — Foundation and migration inventory
 
@@ -114,6 +128,7 @@ S06 depends on S04–S05; S07–S08 depend on S01.5, S03 and the message pipelin
 
 ## M4 — Complete core
 
+- [ ] **Open Risk — GUI / InvUI on 26.x:** before any GUI slice (inspection/restore, kits, warps, or addon menus), check upstream InvUI for real `26.x` support (`26 > 1` matching `R26` / `1.21.11` is not support); if unavailable, implement the GUI layer behind an adapter with a plain Bukkit inventory implementation.
 - [ ] Handcuffs: moderation and optional claims bridge; complete state restoration.
 - [ ] Phantom Obliterator: bounded search, named-mob exclusion, configurable charge policy.
 - [ ] Rename service and token consumption committed together; no temporary permissions.

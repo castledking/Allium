@@ -18,19 +18,28 @@ public final class FlyCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("This command can only be used by players.");
-            return true;
-        }
-        if (!player.hasPermission("allium.fly")) {
+        if (!sender.hasPermission("allium.fly")) {
             plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "fly");
             return true;
         }
 
-        Player target = args.length > 0 ? plugin.getServer().getPlayer(args[0]) : player;
-        if (target == null) {
-            plugin.getMessageManager().send(sender, Messages.PLAYER_NOT_FOUND, "{player}", args[0]);
-            return true;
+        Player target;
+        if (args.length > 0) {
+            if (!sender.hasPermission("allium.fly.others")) {
+                plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "fly for others");
+                return true;
+            }
+            target = plugin.getServer().getPlayer(args[0]);
+            if (target == null) {
+                plugin.getMessageManager().send(sender, Messages.PLAYER_NOT_FOUND, "{player}", args[0]);
+                return true;
+            }
+        } else {
+            if (!(sender instanceof Player player)) {
+                plugin.getMessageManager().send(sender, Messages.INVALID_ARGS, "{usage}", "/fly <player>");
+                return true;
+            }
+            target = player;
         }
 
         boolean enabled = !target.getAllowFlight();
@@ -39,6 +48,9 @@ public final class FlyCommand implements CommandExecutor {
 
         String state = enabled ? "&aenabled" : "&cdisabled";
         plugin.getMessageManager().send(sender, Messages.FLY_TOGGLE, "{state}", state, "{player}", target.getName());
+        if (target != sender) {
+            plugin.getMessageManager().send(target, Messages.FLY_TOGGLE, "{state}", state, "{player}", target.getName());
+        }
         return true;
     }
 }

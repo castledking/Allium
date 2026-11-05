@@ -2,7 +2,7 @@ name: Allium
 version: '${version}'
 main: codes.castled.allium.PluginStart
 api-version: '1.20'
-description: A modern essentials suite built on Takion
+description: A modern essentials suite
 authors: [castledking]
 softdepend: [Vault, PlaceholderAPI]
 
@@ -35,23 +35,39 @@ permissions:
     default: op
     children:
       allium.heal: true
+      allium.heal.others: true
       allium.feed: true
+      allium.feed.others: true
       allium.fly: true
+      allium.fly.others: true
       allium.god: true
+      allium.god.others: true
       allium.gamemode: true
       allium.gamemode.others: true
       allium.economy.*: true
   allium.heal:
     description: Allows use of /heal
     default: op
+  allium.heal.others:
+    description: Allows healing other players
+    default: op
   allium.feed:
     description: Allows use of /feed
+    default: op
+  allium.feed.others:
+    description: Allows feeding other players
     default: op
   allium.fly:
     description: Allows use of /fly
     default: op
+  allium.fly.others:
+    description: Allows toggling flight for other players
+    default: op
   allium.god:
     description: Allows use of /god
+    default: op
+  allium.god.others:
+    description: Allows toggling god mode for other players
     default: op
   allium.gamemode:
     description: Allows use of /gamemode

@@ -49,8 +49,8 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   across `self`, `other`, and `console` execution on all tested 1.20–26.3 lanes).
 - Economy/Vault scaffolding exists, but SQL is synchronous and balance updates
   use read/modify/write. It is not a safe transaction foundation for `/pay` yet.
-- `allium-core` is currently a build subproject with no Java sources. Its name
-  does not mean a stable public API or a completed domain layer exists.
+- `allium-core` houses the platform-neutral domain model and command specification
+  with zero Bukkit/Spigot/Paper dependencies, enforced by the Gradle build.
 - **S01 baseline (completed):** Gradle 9.5.1 is pinned with Java toolchains; shared
   code compiles against Spigot `1.20-R0.1-SNAPSHOT` with Java 17 bytecode (class
   version 61); `plugin.yml` declares `api-version: '1.20'`; pre-1.20 compatibility
@@ -60,6 +60,17 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   placeholders; do not count them as working features.
 
 ## Architecture decisions
+
+### Platform-neutral module rule (`allium-core`)
+
+Domain logic, value objects, cryptographic item verification, and the command
+specification (tree, arguments, permission nodes, suggestion sources, message keys,
+and `disabled-commands` family policy) live in `allium-core` with **no Bukkit,
+Spigot, or Paper dependency**, enforced by `allium-core/build.gradle.kts`.
+`ProviderKey`, `ItemRef` (minus `ItemStack`-bound code), `ResolutionStatus`,
+`ProviderStatus`, `ItemHmacSigner`, and `LegacyItemMetadata` live in `allium-core`;
+Bukkit `ItemStack`/PDC adapters and command executor/completer renderers live in
+the plugin module.
 
 ### Runtime and compatibility
 
@@ -75,20 +86,20 @@ behind narrow adapters. Do not use NMS or reflection as the default architecture
 Retire pre-1.20 compatibility work after preserving any reusable behavior.
 
 Runtime lanes to verify are Java 17 for early 1.20, Java 21 for 1.20.5/1.20.6 and
-1.21, and Java 25 for 26.x. Paper currently recommends Java 21 for its 1.20–1.21
+1.21, and Java 25 for 26.1+. Paper currently recommends Java 21 for its 1.20–1.21
 line and requires Java 25 for 26.1+; see [Paper's requirements][paper-java].
 Verify exact Spigot/server requirements when pinning the matrix. Java 17 output
 does not imply newer servers can run on Java 17.
 
-#### Recorded S01 Server/JDK Baseline & Command Smoke-Test Matrix
+#### Recorded S01 / S04 Server/JDK Baseline & Smoke-Test Matrix
 
-| Lane | Server Build | Runtime JDK | No-Provider Boot & Lifecycle | `/heal`, `/feed`, `/fly`, `/god`, `/gamemode` (`self`, `other`, `console`) |
-| --- | --- | --- | --- | --- |
-| Minimum (Spigot 1.20.1) | Spigot `3871-Spigot-d2eba2c-3f9263b` (MC 1.20.1) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** |
-| Minimum (Paper 1.20) | Paper `git-Paper-17` (`c287e92`, MC 1.20) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** |
-| Intermediate (Paper 1.20.6, InvUI `r19+` boundary) | Paper `1.20.6-151-a4f0f5c` (MC 1.20.6) | OpenJDK 21 (`java-21-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** |
-| Maximum (Spigot 26.3) | Spigot `4660-Spigot-766de51-bd6d9dc` (MC 26.3) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** |
-| Maximum (Paper 26.3) | Paper `26.3-141-54024d3` (`world_version: 5023`, protocol 777) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** |
+| Lane | Server Build | Runtime JDK | No-Provider Boot & Lifecycle | `/heal`, `/feed`, `/fly`, `/god`, `/gamemode` (`self`, `other`, `console`) | S04 Item Contract & HMAC Verification |
+| --- | --- | --- | --- | --- | --- |
+| Minimum (Spigot 1.20.1) | Spigot `3871-Spigot-d2eba2c-3f9263b` (MC 1.20.1) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** |
+| Minimum (Paper 1.20) | Paper `git-Paper-17` (`c287e92`, MC 1.20) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** |
+| Intermediate (Paper 1.20.6, NBT-to-component & InvUI `r19+` boundary) | Paper `1.20.6-151-a4f0f5c` (MC 1.20.6) | OpenJDK 21 (`java-21-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** (`s04:create-identify`, `s04:no-carrier-match`, `s04:no-air-fallback`, `s04:privileged-hmac-valid`, `s04:privileged-hmac-tamper-rejected`) |
+| Maximum (Spigot 26.3) | Spigot `4660-Spigot-766de51-bd6d9dc` (MC 26.3) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** |
+| Maximum (Paper 26.3) | Paper `26.3-141-54024d3` (`world_version: 5023`, protocol 777) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** |
 
 #### Open M4 Risk: InvUI on 26.x
 
@@ -176,13 +187,27 @@ Canonical references are `minecraft:stone`, `allium:handcuffs`,
 `craftengine:sf_ores:silver_ingot`. Split at the first colon so CraftEngine retains
 its namespace and local ID. Import legacy `vanilla:`, `ce:` and known CE pack
 namespace forms explicitly; ambiguous old references require a mapping report.
-The existing resolver in legacy Allium supports Nexo and CraftEngine but does
-not have an active Oraxen implementation; Oraxen needs a real adapter.
+At runtime, deprecated `ce:` input warns **once per distinct reference per startup
+or reload** rather than on every resolution. The existing resolver in legacy Allium
+supports Nexo and CraftEngine but does not have an active Oraxen implementation;
+Oraxen needs a real adapter.
 
 Separate stable **Allium behavior identity** from the provider reference supplying
 its appearance. Selecting `nexo:handcuffs` must not require a second implementation
 of restraint logic. Preserve provider metadata and Allium state during provider
 updates. Names/lore/model data alone never grant privileged item behavior.
+Because PDC tags are forgeable by creative clients and `/give` component syntax,
+stamped PDC and serialized `ItemRef`s carry an explicit `schema_version` (`1`),
+and `AlliumItemDefinition` declares `privileged = true|false` (`handcuffs` and
+`phantom_obliterator` are privileged). Privileged behaviors require a valid
+server-secret `HmacSHA256` signature over `(provider, itemId, behaviorId, instanceUuid)`
+stored in PDC (`allium:instance_uuid`, `allium:signature`), using a secret generated
+on first run and stored outside `config.yml` (`plugins/Allium/.item-hmac-secret`)
+so it is never shared when configs are posted. Unsigned or invalidly signed items
+claiming a privileged behavior resolve as plain vanilla items and log a bounded
+diagnostic; unprivileged items skip signing. Legacy `allium:custom_item_id` and
+`alliumcards` PDC tags are read-only for the importer (`ItemService#readLegacyMetadata`)
+and never grant runtime privileged behavior prior to migration.
 
 Providers report absent/loading/ready/failed states. Wait for their item-ready and
 reload events, invalidate caches, and keep persisted state when definitions are
@@ -213,8 +238,10 @@ Allium owns its text formatting, color parsing, sound playback and animated text
 subsystem in core, retiring Takion (`me.croabeast.takion:shaded`) as a dependency.
 Static formatting (`S01.5a`) covers legacy `&`/`§` codes, `&#RRGGBB`/`§x` hex, and
 multi-stop `<gradient:...>` and `<rainbow:...>` tags, emitting Adventure
-`Component`s on Paper (behind an isolated adapter with no Paper types in shared
-signatures) and legacy `§x` strings on Spigot with identical visible results.
+`Component`s on Paper (compiled against Paper's bundled `net.kyori:adventure-api`
+as `compileOnly`, never shaded or relocated; `Allium.jar` contains **zero**
+`net.kyori` classes) and legacy `§x` strings on Spigot (via Allium's own
+`FormattedText#toLegacy`) with identical visible results.
 Animated text (`S01.5b`, deferred until the first animated target) evaluates
 `pulse`, `shift`, `sparkle`, and `phase-scroll` effects as pure deterministic
 functions `color(glyphIndex, length, timeMs, seed) -> RGB` on one shared clock and
@@ -348,7 +375,7 @@ committing a rename and consuming exactly one token. Cancel/no-op/invalid input
 spends nothing. Handle inventory swaps, disconnects, full inventories and provider
 item refreshes. A permanent rename permission bypasses the token explicitly.
 No polling inventory scans, temporary ItemEdit permission grants or delayed guesses
-at another command's success. A provider adapter can integrate with supported
+nat another command's success. A provider adapter can integrate with supported
 ItemEdit APIs later; core renaming works without ItemEdit or dialogs.
 
 Staff CrowBar is the `crowbar:player_data` locator feed, **not a crowbar item**.

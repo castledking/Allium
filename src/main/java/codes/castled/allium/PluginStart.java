@@ -6,6 +6,7 @@ import codes.castled.allium.config.ConfigManager;
 import codes.castled.allium.core.ModuleManager;
 import codes.castled.allium.database.DatabaseManager;
 import codes.castled.allium.item.AlliumItemDefinition;
+import codes.castled.allium.item.ItemHmacSigner;
 import codes.castled.allium.item.ItemService;
 import codes.castled.allium.listener.ListenerManager;
 import codes.castled.allium.message.LanguageManager;
@@ -14,6 +15,8 @@ import codes.castled.allium.util.AlliumLogger;
 import org.bukkit.Material;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Map;
 
 public final class PluginStart extends JavaPlugin {
@@ -47,14 +50,23 @@ public final class PluginStart extends JavaPlugin {
 
         GodModeCompatProvider.init(this);
 
-        itemService = new ItemService();
+        ItemHmacSigner hmacSigner;
+        try {
+            Path secretFile = getDataFolder().toPath().resolve(".item-hmac-secret");
+            hmacSigner = ItemHmacSigner.loadOrGenerate(secretFile);
+        } catch (IOException e) {
+            logger.severe("Failed to initialize item HMAC secret: " + e.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        itemService = new ItemService(hmacSigner, logger::warning);
         registerCoreItems(itemService);
 
         try {
             databaseManager = new DatabaseManager(this);
             databaseManager.connect();
         } catch (Exception e) {
-            logger.severe("Failed to initialize database: " + e.getMessage());
+            logger.severe("Failed to initialize database: \" + e.getMessage()");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
@@ -73,13 +85,13 @@ public final class PluginStart extends JavaPlugin {
 
     private static void registerCoreItems(ItemService service) {
         service.registerAlliumItem(new AlliumItemDefinition(
-                "handcuffs", Material.IRON_SHOVEL, "allium:handcuffs", 1001, "§fHandcuffs", Map.of()));
+                "handcuffs", Material.IRON_SHOVEL, "allium:handcuffs", true, 1001, "§fHandcuffs", Map.of()));
         service.registerAlliumItem(new AlliumItemDefinition(
-                "mob_disarmer", Material.GOLDEN_HOE, "allium:mob_disarmer", 1002, "§6Mob Disarmer", Map.of("charges", "3")));
+                "mob_disarmer", Material.GOLDEN_HOE, "allium:mob_disarmer", false, 1002, "§6Mob Disarmer", Map.of("charges", "3")));
         service.registerAlliumItem(new AlliumItemDefinition(
-                "phantom_obliterator", Material.BLAZE_ROD, "allium:phantom_obliterator", 1003, "§bPhantom Obliterator", Map.of("charges", "3")));
+                "phantom_obliterator", Material.BLAZE_ROD, "allium:phantom_obliterator", true, 1003, "§bPhantom Obliterator", Map.of("charges", "3")));
         service.registerAlliumItem(new AlliumItemDefinition(
-                "item_renamer", Material.NAME_TAG, "allium:item_renamer", 1004, "§eItem Renamer", Map.of()));
+                "item_renamer", Material.NAME_TAG, "allium:item_renamer", false, 1004, "§eItem Renamer", Map.of()));
     }
 
     @Override

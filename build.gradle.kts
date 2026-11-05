@@ -83,15 +83,14 @@ tasks {
         archiveClassifier.set("")
         archiveVersion.set("")
 
-        // Preserve reflectively loaded InvUI version modules and HikariCP internals
+        // Preserve reflectively loaded InvUI version modules and HikariCP internals, and all allium-core classes
         minimize {
+            exclude(project(":allium-core"))
             exclude(dependency("xyz.xenondevs.invui:.*:.*"))
             exclude(dependency("com.zaxxer:HikariCP:.*"))
         }
 
-        dependsOn(coreProject.tasks.named("classes"))
         mergeServiceFiles()
-        from(coreProject.layout.buildDirectory.dir("classes/java/main"))
 
         relocate("com.zaxxer.hikari", "codes.castled.allium.lib.hikari")
         relocate("xyz.xenondevs.invui", "codes.castled.allium.lib.invui")

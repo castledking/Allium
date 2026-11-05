@@ -38,35 +38,38 @@ All item references across commands, kits, signs, recipes, loot, and addons reso
 3. **Never Fallback to Carrier or AIR:** A custom or provider item must never silently match or degrade to its vanilla carrier material or `Material.AIR`.
 4. **Legacy Prefixes (`ce:`, `vanilla:`, `ci:`):**
    - `ci:` and `custom:` are **removed** from the runtime grammar; the legacy Allium importer converts them to `allium:<id>` with a migration report.
-   - `ce:` and `vanilla:` are converted by the config/data importer into `craftengine:<namespace>:<id>` and `minecraft:<id>` (emitting a mapping report for any ambiguous namespace). At runtime, `ce:` may at most be accepted in a deprecated compatibility mode that logs an explicit warning.
+   - `ce:` and `vanilla:` are converted by the config/data importer into `craftengine:<namespace>:<id>` and `minecraft:<id>` (emitting a mapping report for any ambiguous namespace). At runtime, `ce:` is accepted only in deprecated compatibility mode (`ProviderKey.parseAllowingDeprecatedAliases`), firing a deprecation warning **once per distinct reference per startup or reload** (`ProviderKey.resetDeprecationWarnings()`).
 5. **Legacy Shorthands (`dhelmet`, `dboots`, etc.):**
    - Hardcoded material shorthands are **not** built into the core `ItemParser`.
    - Instead, the legacy importer converts old config/kit references to canonical `minecraft:diamond_helmet` IDs. Optional command-level item aliases, if enabled by the server operator in config, live in a command-layer alias table that resolves to canonical `ItemRef` strings before invoking the library.
 
 ---
 
-## 3. Behavior Identity vs. Appearance Provider (M1 Gate)
+## 3. Behavior Identity, Schema Version & HMAC Signing (M1 Gate)
 
-`ItemRef` strictly decouples **Allium behavior identity** (`behaviorId`) from the **appearance provider reference** (`provider` + `providerItemId`).
+`ItemRef` lives in `allium-core` (zero Bukkit/Spigot/Paper dependencies) and strictly decouples **Allium behavior identity** (`behaviorId`) from the **appearance provider reference** (`provider` + `providerItemId`).
 
 ```text
-ItemRef
+ItemRef (schema-version: 1)
  ├── appearance: ProviderKey (e.g. "nexo" -> "mob_disarmer", or "allium" -> "mob_disarmer")
- ├── behaviorId: Optional<NamespacedKey> (e.g. "allium:mob_disarmer")
+ ├── behaviorId: Optional<String> (e.g. "allium:mob_disarmer")
  ├── amount: int
- └── modifiers: ItemModifiers (enchants, name, lore, skull, potion, rawComponents, state)
+ └── state: Map<String, Integer> (e.g. charges)
 ```
 
-### How the Registry Binds Behavior and Appearance
-1. **Behavior Registration:** Core tools (Handcuffs, Mob Disarmer, Phantom Obliterator, Item Renamer) and addons register their behavior logic under a canonical `behaviorId` (e.g., `allium:mob_disarmer`).
-2. **Appearance Binding:** In configuration, the server operator binds `allium:mob_disarmer` to a visual source—by default the built-in Allium resource pack model (`allium:mob_disarmer`), or an external provider item (`nexo:mob_disarmer`, `oraxen:mob_disarmer`, `craftengine:sf_tools:mob_disarmer`).
-3. **Unified State & Identification:**
-   - When an item is created for `allium:mob_disarmer` or `nexo:mob_disarmer` (when bound), the `ItemService` constructs the visual stack via the configured provider adapter and stamps Allium's authoritative PDC keys (`allium:behavior_id = "allium:mob_disarmer"`, plus stateful data such as `allium:charges`).
-   - When a player interacts with an item, listeners query `ItemService.identifyBehavior(ItemStack)`:
-     - It checks Allium's server-owned PDC `behavior_id` (and verifies registered provider bindings).
-     - Both `allium:mob_disarmer` and `nexo:mob_disarmer` resolve to the exact same `allium:mob_disarmer` behavior handler and charge state.
-     - Display names, lore, and `CustomModelData` alone **never** grant privileged behavior.
-     - Provider reloads/updates preserve Allium's PDC charge/state metadata while refreshing the visual carrier.
+### How the Registry Binds Behavior, Appearance, and Signatures
+1. **Behavior Registration & Privilege Flag:** Core tools and addons register their definitions (`AlliumItemDefinition`) under a canonical `behaviorId` (e.g., `allium:mob_disarmer`, `allium:handcuffs`, `allium:phantom_obliterator`) and declare `privileged = true|false`. `handcuffs` and `phantom_obliterator` declare `privileged = true`.
+2. **Appearance Binding:** In configuration, the server operator binds a behavior ID to a visual source—by default the built-in Allium resource pack model (`allium:<id>`), or an external provider item (`nexo:<id>`, `oraxen:<id>`, `craftengine:<ns>:<id>`).
+3. **Schema Version & Server-Secret HMAC Signing:**
+   - Stamped PDC carries `allium:schema_version = 1` (`INTEGER`), `allium:provider`, `allium:item_id`, and `allium:behavior_id`.
+   - `ItemRef.serialize()` writes `"schema-version": 1` and `ItemRef.deserialize()` validates it.
+   - Because PDC tags are forgeable by creative clients and `/give` component syntax, `ItemService` signs privileged items (`privileged = true`) using `ItemHmacSigner` (`HmacSHA256` over `(provider, itemId, behaviorId, instanceUuid)`), stamping `allium:instance_uuid` and `allium:signature`.
+   - The 256-bit HMAC secret is generated on first run and stored outside `config.yml` at `plugins/Allium/.item-hmac-secret` (with `0600` POSIX permissions where supported) so it is never leaked when operators post configs.
+   - When `ItemService.identify(ItemStack)` inspects an item whose claimed behavior is `privileged = true`, it verifies the HMAC signature. If `instance_uuid` or `signature` is missing, forged, or tampered (e.g., `item_id` or `behavior_id` altered in PDC), `identify` logs a bounded diagnostic and resolves the stack as a plain vanilla item (`minecraft:<carrier>`, `behaviorId = Optional.empty()`).
+   - Signatures survive `cloneItem` and `swapOrRefreshAppearance` (which preserves `instance_uuid` and re-signs with the updated appearance key).
+   - Unprivileged items (`privileged = false`, such as `mob_disarmer`) may skip signing.
+4. **Read-Only Legacy Tags for Importer:**
+   - `ItemService#readLegacyMetadata(ItemStack)` reads legacy `allium:custom_item_id` (`STRING`) and `alliumcards` (`STRING` or `TAG_CONTAINER`) PDC keys into `LegacyItemMetadata` for the migration importer. Legacy tags alone never grant runtime privileged behavior prior to migration.
 
 ---
 
@@ -131,7 +134,7 @@ Component and NBT strings routinely contain commas, semicolons, colons, and spac
 `ItemDeliveryService` handles all inventory mutations and returns `CompletableFuture<DeliveryOutcome>`.
 
 ### Asynchronous Preparation & Main-Thread Mutation
-1. **Off-Thread Profile Resolution:** If an item spec includes `owner:<name>` and the profile is not in the local bounded cache, `SkullAdapter` resolves the profile asynchronously on Allium's bounded executor with an explicit timeout (e.g., 3 seconds).On timeout or lookup failure, it returns an explicit partial/warning state in `DeliveryOutcome` rather than blocking the server thread.
+1. **Off-Thread Profile Resolution:** If an item spec includes `owner:<name>` and the profile is not in the local bounded cache, `SkullAdapter` resolves the profile asynchronously on Allium's bounded executor with an explicit timeout (e.g., 3 seconds). On timeout or lookup failure, it returns an explicit partial/warning state in `DeliveryOutcome` rather than blocking the server thread.
 2. **Target Revalidation:** When the async stage completes and hops back to the server thread (or entity scheduler), `ItemDeliveryService` revalidates that the target `Player` is still online and valid before mutating inventory. If the player disconnected, the outcome records `TARGET_OFFLINE`.
 
 ### Cancellable `ItemGiveEvent`
@@ -148,39 +151,3 @@ When a player's inventory cannot hold all remaining items, `ItemDeliveryService`
 - `DROP`: Drops leftover stacks naturally at the player's location.
 - `REFUSE`: Aborts the delivery (atomic check before mutation) so nothing is partially given.
 - `QUEUE` (or partial): Gives what fits (or queues to claim storage when enabled) and reports the exact leftover count.
-- `DeliveryOutcome` always reports `requestedCount`, `givenCount`, `equippedCount`, `droppedCount`, `refusedCount`, and `status`—never a silent drop.
-
----
-
-## 8. Selectors, Permissions & Command Layer Boundary
-
-### Architectural Boundary (`allium-core` vs. Plugin Command Layer)
-- **`allium-core` (`codes.castled.allium.items.*`):** Pure item domain library. Contains `ItemRef`, `ItemProviderRegistry`, `ItemParser`, `ItemBuilder`, adapters, and `ItemDeliveryService`. Has **no** dependency on command senders, selector syntax, or command permissions.
-- **Plugin Command Layer (`src/main/java/codes/castled/allium/command/...`):**
-  - **`Selectors.java`:** Ported from legacy Allium into the plugin command layer (`codes.castled.allium.command.selector.Selectors`).
-  - **Player-Only Targeting for `/give`:** `/give` only delivers to `Player` targets. If a selector like `@e` is used, the executor either restricts/filters to `type=player` or rejects non-player matches with a clear error message.
-  - **Permission Gating in Executor:**
-    - `allium.give` / `allium.item` (base command)
-    - `allium.give.other` (giving to other players)
-    - `allium.give.unsafe-enchants` (allowing enchantment levels above vanilla max)
-    - `allium.give.raw-components` (allowing raw `[...]` / `{...}` input)
-    - `allium.command.selector.all` (`@a`) and `allium.command.selector.entities` (`@e`)
-    - Per-item or per-provider spawn restrictions if configured.
-  - **Command Family & Collisions:**
-    - `/give` and `/i` (`/item`) belong to the `give` / `item` command families and obey `disabled-commands: []`.
-    - Tested explicitly alongside vanilla `minecraft:give` and `allium:give` to verify Bukkit command-map ownership and fallback behavior.
-    - Position-aware tab completion suggests:
-      1. Target position: visible online players + permitted selectors (`@p`, `@a`, `@r`, `@s`, `@e[type=player`).
-      2. Item position: `minecraft:`, `allium:`, and active provider namespaces (`nexo:`, `oraxen:`, `craftengine:`) plus vanilla materials.
-      3. Amount position: `1`, `16`, `64`.
-      4. Modifier position: `name:`, `lore:`, `unbreakable`, `cmd:`, `-e`, enchant keys (`sharpness:`, `unbreaking:`), and context-aware keys (`owner:` for skulls, `effect:`/`potion:` for potions, `color:` for leather/potions).
-
----
-
-## 9. Sequencing: M1 vs. M4
-
-1. **M1 (`S04`, `S04 follow-up`, `S05`, `S06`):**
-   - Implement the core `ItemRef` contract, `ItemProviderRegistry` (with readiness states and behavior-ID binding), `ItemParser`, `EnchantmentAdapter`, `SkullAdapter`, `PotionAdapter`, `ComponentAdapter`, and `ItemDeliveryService`.
-   - Include a **minimal `GiveCommand` test harness** in M1 strictly to exercise provider resolution, behavior identity (`allium:mob_disarmer` vs `nexo:mob_disarmer`), and item delivery during M1 verification.
-2. **M4 (Full Essentials Utility Completion):**
-   - Expand `/give`, `/i`, and `/enchant` with full selector integration (`Selectors.java`), multi-item batching, `-e` equipment handling, rich tab completion, unsafe-enchant/component permission gates, and legacy config/command alias support.

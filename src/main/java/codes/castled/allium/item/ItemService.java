@@ -14,48 +14,73 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Central S04 item contract service for parsing, creating, identifying, matching,
- * cloning, refreshing, and serializing vanilla, Allium, and external-provider items.
- *
- * <p>Enforces:
- * <ul>
- *   <li>No silent fallback to {@link Material#AIR} or a vanilla carrier material.</li>
- *   <li>Strict separation of {@link ItemRef#behaviorId()} from {@link ItemRef#appearance()}.</li>
- *   <li>Server-owned PDC identity ({@code allium:provider}, {@code allium:item_id},
- *       {@code allium:behavior_id}, {@code allium:state_<key>}); display names, lore,
- *       and CustomModelData alone never grant item identity or behavior.</li>
- * </ul>
+ * Central S04 item contract service for parsing, creating, signing, identifying,
+ * matching, cloning, refreshing, and serializing vanilla, Allium, and external-provider items.
  */
 @SuppressWarnings("deprecation")
 public final class ItemService {
 
     public static final String NAMESPACE = "allium";
+    public static final String LEGACY_CARDS_NAMESPACE = "alliumcards";
+
+    public static final NamespacedKey KEY_SCHEMA_VERSION = new NamespacedKey(NAMESPACE, "schema_version");
     public static final NamespacedKey KEY_PROVIDER = new NamespacedKey(NAMESPACE, "provider");
     public static final NamespacedKey KEY_ITEM_ID = new NamespacedKey(NAMESPACE, "item_id");
     public static final NamespacedKey KEY_BEHAVIOR_ID = new NamespacedKey(NAMESPACE, "behavior_id");
+    public static final NamespacedKey KEY_INSTANCE_UUID = new NamespacedKey(NAMESPACE, "instance_uuid");
+    public static final NamespacedKey KEY_SIGNATURE = new NamespacedKey(NAMESPACE, "signature");
+    public static final NamespacedKey KEY_LEGACY_CUSTOM_ITEM_ID = new NamespacedKey(NAMESPACE, "custom_item_id");
     public static final String STATE_KEY_PREFIX = "state_";
 
     private final Map<String, ItemProviderAdapter> providers = new ConcurrentHashMap<>();
     private final Map<String, AlliumItemDefinition> alliumDefinitions = new ConcurrentHashMap<>();
     private final Map<ProviderKey, String> appearanceToBehavior = new ConcurrentHashMap<>();
     private final Map<String, ProviderKey> behaviorPreferredAppearance = new ConcurrentHashMap<>();
+    private final Set<String> privilegedBehaviors = ConcurrentHashMap.newKeySet();
+    private final Set<String> warnedDiagnostics = ConcurrentHashMap.newKeySet();
+
     private final Function<Material, ItemStack> itemStackFactory;
+    private final ItemHmacSigner hmacSigner;
+    private final Consumer<String> diagnosticLogger;
 
     public ItemService() {
-        this(ItemStack::new);
+        this(ItemStack::new, ItemHmacSigner.randomEphemeral(), msg -> {});
     }
 
-    /**
-     * Constructor allowing tests to supply an {@link ItemStack} factory with pre-wired mock {@link ItemMeta}.
-     */
+    public ItemService(ItemHmacSigner hmacSigner, Consumer<String> diagnosticLogger) {
+        this(ItemStack::new, hmacSigner, diagnosticLogger);
+    }
+
     public ItemService(Function<Material, ItemStack> itemStackFactory) {
+        this(itemStackFactory, ItemHmacSigner.randomEphemeral(), msg -> {});
+    }
+
+    public ItemService(
+            Function<Material, ItemStack> itemStackFactory,
+            ItemHmacSigner hmacSigner,
+            Consumer<String> diagnosticLogger
+    ) {
         this.itemStackFactory = Objects.requireNonNull(itemStackFactory, "itemStackFactory");
+        this.hmacSigner = Objects.requireNonNull(hmacSigner, "hmacSigner");
+        this.diagnosticLogger = Objects.requireNonNull(diagnosticLogger, "diagnosticLogger");
         registerProvider(new VanillaItemProviderAdapter());
         registerProvider(new BuiltInAlliumProviderAdapter());
+    }
+
+    public ItemHmacSigner getHmacSigner() {
+        return hmacSigner;
+    }
+
+    public void resetDiagnosticsOnReload() {
+        warnedDiagnostics.clear();
+        ProviderKey.resetDeprecationWarnings();
     }
 
     public void registerProvider(ItemProviderAdapter adapter) {
@@ -74,7 +99,22 @@ public final class ItemService {
         if (definition.behaviorId() != null) {
             appearanceToBehavior.put(definition.providerKey(), definition.behaviorId());
             behaviorPreferredAppearance.putIfAbsent(definition.behaviorId(), definition.providerKey());
+            if (definition.privileged()) {
+                privilegedBehaviors.add(definition.behaviorId());
+            }
         }
+    }
+
+    public void registerPrivilegedBehavior(String behaviorId) {
+        String normalized = ItemRef.normalizeBehaviorId(behaviorId);
+        if (normalized != null) {
+            privilegedBehaviors.add(normalized);
+        }
+    }
+
+    public boolean isPrivilegedBehavior(@Nullable String behaviorId) {
+        String normalized = ItemRef.normalizeBehaviorId(behaviorId);
+        return normalized != null && privilegedBehaviors.contains(normalized);
     }
 
     public Optional<AlliumItemDefinition> getAlliumItem(String id) {
@@ -118,7 +158,12 @@ public final class ItemService {
      * behavior binding and default state for that item.
      */
     public ItemRef parseRef(String rawReference) {
-        ProviderKey key = ProviderKey.parse(rawReference);
+        ProviderKey key = ProviderKey.parse(rawReference, false, this::warnDiagnosticOnce);
+        return refForKey(key);
+    }
+
+    public ItemRef parseRef(String rawReference, boolean allowDeprecatedCe) {
+        ProviderKey key = ProviderKey.parse(rawReference, allowDeprecatedCe, this::warnDiagnosticOnce);
         return refForKey(key);
     }
 
@@ -167,9 +212,14 @@ public final class ItemService {
 
     /**
      * Creates an {@link ItemStack} for the given {@link ItemRef}, checking provider readiness
-     * and stamping authoritative PDC identity, behavior ID, and state metadata.
+     * and stamping authoritative PDC identity, schema version, behavior ID, HMAC signature
+     * (when privileged), and state metadata.
      */
     public ResolutionResult create(ItemRef ref) {
+        return createInternal(ref, null);
+    }
+
+    private ResolutionResult createInternal(ItemRef ref, @Nullable String preservedInstanceUuid) {
         Objects.requireNonNull(ref, "ref");
         ProviderKey appearance = ref.appearance();
         ItemProviderAdapter adapter = providers.get(appearance.provider());
@@ -204,7 +254,6 @@ public final class ItemService {
 
         stack.setAmount(ref.amount());
 
-        // Determine effective behaviorId and default state if not explicitly set on ref
         String effectiveBehaviorId = ref.behaviorId().orElseGet(() -> appearanceToBehavior.get(appearance));
         Map<String, String> mergedState = new LinkedHashMap<>();
         if (effectiveBehaviorId != null && effectiveBehaviorId.startsWith(ProviderKey.ALLIUM + ":")) {
@@ -216,39 +265,61 @@ public final class ItemService {
         }
         mergedState.putAll(ref.stateData());
 
-        stampMetadata(stack, appearance, effectiveBehaviorId, mergedState);
+        stampMetadata(stack, ref.schemaVersion(), appearance, effectiveBehaviorId, mergedState, preservedInstanceUuid);
         return ResolutionResult.resolved(appearance, stack);
     }
 
     /**
      * Identifies an {@link ItemStack} as a canonical {@link ItemRef}.
      *
-     * <p>Never trusts display name, lore, or CustomModelData alone for custom item or
-     * behavior identification; requires server-owned PDC or an active provider adapter match.
+     * <p>Enforces:
+     * <ul>
+     *   <li>Display name, lore, and CustomModelData alone never grant item identity or behavior.</li>
+     *   <li>Privileged behaviors require a valid HMAC-SHA256 signature over
+     *       {@code (provider, itemId, behaviorId, instanceUuid)}; unsigned or invalid items
+     *       resolve as plain vanilla items of their carrier material and log a bounded diagnostic.</li>
+     * </ul>
      */
     public Optional<ItemRef> identify(@Nullable ItemStack stack) {
         if (stack == null || stack.getType() == Material.AIR || stack.getType().isAir()) {
             return Optional.empty();
         }
 
+        String vanillaId = stack.getType().name().toLowerCase(Locale.ROOT);
+        ProviderKey plainVanillaKey = ProviderKey.minecraft(vanillaId);
+
+        int schemaVersion = ItemRef.CURRENT_SCHEMA_VERSION;
         ProviderKey appearance = null;
         String behaviorId = null;
+        String instanceUuid = null;
+        String signature = null;
         Map<String, String> state = new LinkedHashMap<>();
 
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
             PersistentDataContainer pdc = meta.getPersistentDataContainer();
             if (pdc != null) {
+                Integer storedSchema = pdc.get(KEY_SCHEMA_VERSION, PersistentDataType.INTEGER);
+                if (storedSchema != null && storedSchema >= 1 && storedSchema <= ItemRef.CURRENT_SCHEMA_VERSION) {
+                    schemaVersion = storedSchema;
+                }
                 String storedProvider = pdc.get(KEY_PROVIDER, PersistentDataType.STRING);
                 String storedId = pdc.get(KEY_ITEM_ID, PersistentDataType.STRING);
                 if (storedProvider != null && !storedProvider.isBlank()
                         && storedId != null && !storedId.isBlank()) {
-                    appearance = ProviderKey.of(storedProvider, storedId);
+                    try {
+                        appearance = ProviderKey.of(storedProvider, storedId);
+                    } catch (IllegalArgumentException ignored) {
+                        appearance = null;
+                    }
                 }
                 String storedBehavior = pdc.get(KEY_BEHAVIOR_ID, PersistentDataType.STRING);
                 if (storedBehavior != null && !storedBehavior.isBlank()) {
                     behaviorId = ItemRef.normalizeBehaviorId(storedBehavior);
                 }
+                instanceUuid = pdc.get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
+                signature = pdc.get(KEY_SIGNATURE, PersistentDataType.STRING);
+
                 for (NamespacedKey key : pdc.getKeys()) {
                     if (NAMESPACE.equals(key.getNamespace()) && key.getKey().startsWith(STATE_KEY_PREFIX)) {
                         String stateName = key.getKey().substring(STATE_KEY_PREFIX.length());
@@ -279,16 +350,77 @@ public final class ItemService {
         }
 
         if (appearance == null) {
-            String vanillaId = stack.getType().name().toLowerCase(Locale.ROOT);
-            appearance = ProviderKey.minecraft(vanillaId);
+            appearance = plainVanillaKey;
         }
 
-        // Only bind behavior if appearance is non-vanilla or explicitly stamped in server-owned PDC
         if (behaviorId == null && !appearance.isVanilla()) {
             behaviorId = appearanceToBehavior.get(appearance);
         }
 
-        return Optional.of(new ItemRef(appearance, behaviorId, stack.getAmount(), state));
+        // Verify signature whenever a privileged behavior is claimed OR a signature is present
+        boolean privileged = isPrivilegedBehavior(behaviorId);
+        if (privileged || signature != null) {
+            boolean validSig = behaviorId != null && hmacSigner.verify(
+                    appearance.provider(),
+                    appearance.id(),
+                    behaviorId,
+                    instanceUuid,
+                    signature
+            );
+            if (!validSig) {
+                String reason = (signature == null || instanceUuid == null) ? "missing signature" : "invalid/tampered signature";
+                warnDiagnosticOnce("Rejected item claiming behavior '" + behaviorId
+                        + "' on appearance '" + appearance + "' (" + reason + "); resolving as plain " + plainVanillaKey);
+                return Optional.of(new ItemRef(
+                        ItemRef.CURRENT_SCHEMA_VERSION,
+                        plainVanillaKey,
+                        null,
+                        stack.getAmount(),
+                        Collections.emptyMap()
+                ));
+            }
+        }
+
+        return Optional.of(new ItemRef(schemaVersion, appearance, behaviorId, stack.getAmount(), state));
+    }
+
+    /**
+     * Reads legacy {@code allium:custom_item_id} and {@code alliumcards} PDC tags
+     * (strictly read-only for the data/world importer).
+     */
+    public LegacyItemMetadata readLegacyMetadata(@Nullable ItemStack stack) {
+        if (stack == null || stack.getType() == Material.AIR || stack.getType().isAir()) {
+            return LegacyItemMetadata.EMPTY;
+        }
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null || meta.getPersistentDataContainer() == null) {
+            return LegacyItemMetadata.EMPTY;
+        }
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        String legacyCustomId = pdc.get(KEY_LEGACY_CUSTOM_ITEM_ID, PersistentDataType.STRING);
+        Optional<String> customIdOpt = (legacyCustomId != null && !legacyCustomId.isBlank())
+                ? Optional.of(legacyCustomId.trim())
+                : Optional.empty();
+
+        Map<String, String> cardsTags = new LinkedHashMap<>();
+        for (NamespacedKey key : pdc.getKeys()) {
+            if (LEGACY_CARDS_NAMESPACE.equals(key.getNamespace())) {
+                String val = pdc.get(key, PersistentDataType.STRING);
+                if (val != null) {
+                    cardsTags.put(key.getKey(), val);
+                }
+            } else if (NAMESPACE.equals(key.getNamespace()) && key.getKey().startsWith(LEGACY_CARDS_NAMESPACE)) {
+                String val = pdc.get(key, PersistentDataType.STRING);
+                if (val != null) {
+                    cardsTags.put(key.getKey(), val);
+                }
+            }
+        }
+
+        if (customIdOpt.isEmpty() && cardsTags.isEmpty()) {
+            return LegacyItemMetadata.EMPTY;
+        }
+        return new LegacyItemMetadata(customIdOpt, cardsTags);
     }
 
     /**
@@ -301,10 +433,6 @@ public final class ItemService {
 
     /**
      * Strictly checks whether {@code stack} matches {@code target}.
-     *
-     * <p>A provider or Allium item <b>never</b> matches as its vanilla carrier material,
-     * and a vanilla item <b>never</b> matches a provider/Allium reference even if renamed
-     * or given matching CustomModelData.
      */
     public boolean matches(@Nullable ItemStack stack, ItemRef target) {
         Objects.requireNonNull(target, "target");
@@ -329,8 +457,8 @@ public final class ItemService {
     }
 
     /**
-     * Checks whether {@code stack} carries the given canonical behavior ID
-     * (e.g. {@code "allium:mob_disarmer"}), matching across all bound appearance providers.
+     * Checks whether {@code stack} carries the given canonical behavior ID,
+     * matching across all bound appearance providers.
      */
     public boolean matchesBehavior(@Nullable ItemStack stack, String expectedBehaviorId) {
         String normalized = ItemRef.normalizeBehaviorId(expectedBehaviorId);
@@ -376,7 +504,7 @@ public final class ItemService {
 
     /**
      * Clones an {@link ItemStack} with a new stack size while preserving all provider,
-     * behavior, and state metadata.
+     * behavior, signature, and state metadata.
      */
     public ItemStack cloneItem(ItemStack stack, int newAmount) {
         Objects.requireNonNull(stack, "stack");
@@ -390,27 +518,42 @@ public final class ItemService {
 
     /**
      * Rebuilds an item's visual stack from {@code newAppearance} while preserving its
-     * authoritative {@code behaviorId}, stack size, and all persisted {@code allium:state_*} values.
+     * verified {@code behaviorId}, {@code instanceUuid} (re-signed for the new appearance),
+     * stack size, and all persisted {@code allium:state_*} values.
      */
     public ResolutionResult swapOrRefreshAppearance(ItemStack existingStack, ProviderKey newAppearance) {
         Objects.requireNonNull(existingStack, "existingStack");
         Objects.requireNonNull(newAppearance, "newAppearance");
         ItemRef current = identify(existingStack)
                 .orElseThrow(() -> new IllegalArgumentException("Cannot refresh empty or AIR stack"));
+
+        String existingInstanceUuid = null;
+        ItemMeta meta = existingStack.getItemMeta();
+        if (meta != null && meta.getPersistentDataContainer() != null) {
+            existingInstanceUuid = meta.getPersistentDataContainer().get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
+        }
+
+        // Only carry over bound behavior if the existing stack had a valid behavior or was non-vanilla
+        String nextBehavior = current.behaviorId()
+                .orElseGet(() -> current.appearance().isVanilla() ? null : appearanceToBehavior.get(newAppearance));
+
         ItemRef updatedRef = new ItemRef(
+                current.schemaVersion(),
                 newAppearance,
-                current.behaviorId().orElseGet(() -> appearanceToBehavior.get(newAppearance)),
+                nextBehavior,
                 existingStack.getAmount(),
                 current.stateData()
         );
-        return create(updatedRef);
+        return createInternal(updatedRef, existingInstanceUuid);
     }
 
     private void stampMetadata(
             ItemStack stack,
+            int schemaVersion,
             ProviderKey appearance,
             @Nullable String behaviorId,
-            Map<String, String> stateData
+            Map<String, String> stateData,
+            @Nullable String preservedInstanceUuid
     ) {
         if (appearance.isVanilla() && behaviorId == null && stateData.isEmpty()) {
             return;
@@ -421,12 +564,26 @@ public final class ItemService {
         }
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         if (pdc != null) {
-            if (!appearance.isVanilla()) {
+            pdc.set(KEY_SCHEMA_VERSION, PersistentDataType.INTEGER, schemaVersion);
+            if (!appearance.isVanilla() || behaviorId != null) {
                 pdc.set(KEY_PROVIDER, PersistentDataType.STRING, appearance.provider());
                 pdc.set(KEY_ITEM_ID, PersistentDataType.STRING, appearance.id());
             }
             if (behaviorId != null && !behaviorId.isBlank()) {
                 pdc.set(KEY_BEHAVIOR_ID, PersistentDataType.STRING, behaviorId);
+                if (isPrivilegedBehavior(behaviorId)) {
+                    String instanceUuid = (preservedInstanceUuid != null && !preservedInstanceUuid.isBlank())
+                            ? preservedInstanceUuid
+                            : UUID.randomUUID().toString();
+                    String signature = hmacSigner.sign(
+                            appearance.provider(),
+                            appearance.id(),
+                            behaviorId,
+                            instanceUuid
+                    );
+                    pdc.set(KEY_INSTANCE_UUID, PersistentDataType.STRING, instanceUuid);
+                    pdc.set(KEY_SIGNATURE, PersistentDataType.STRING, signature);
+                }
             }
             for (Map.Entry<String, String> entry : stateData.entrySet()) {
                 NamespacedKey stateKey = new NamespacedKey(NAMESPACE, STATE_KEY_PREFIX + entry.getKey());
@@ -434,6 +591,12 @@ public final class ItemService {
             }
         }
         stack.setItemMeta(meta);
+    }
+
+    private void warnDiagnosticOnce(String message) {
+        if (warnedDiagnostics.add(message)) {
+            diagnosticLogger.accept(message);
+        }
     }
 
     private final class VanillaItemProviderAdapter implements ItemProviderAdapter {
@@ -468,11 +631,7 @@ public final class ItemService {
 
         @Nullable
         private Material resolveVanillaMaterial(String id) {
-            if (id == null || id.isBlank()) {
-                return null;
-            }
-            // Reject any legacy prefix or namespace inside local vanilla id
-            if (id.contains(":")) {
+            if (id == null || id.isBlank() || id.contains(":")) {
                 return null;
             }
             try {

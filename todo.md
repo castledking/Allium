@@ -9,7 +9,7 @@ checks appropriate to each slice.
 
 ## Existing code
 
-- [x] Gradle/Shadow build and module structure.
+- [x] Gradle/Shadow build and module structure (`allium-core` enforced free of Bukkit/Spigot/Paper dependencies).
 - [x] Plugin entry point, module/command/listener managers and logger.
 - [x] Config loading, backups, schema migration scaffolding and missing-key sync.
 - [x] Message enum, locale files, language fallback and message manager.
@@ -33,15 +33,18 @@ result and must preserve the existing uncommitted work.
       hex, multi-stop `<gradient:...>` and `<rainbow:...>` tags, nested/reset
       formatting, and a `GlyphColorSource` hook ready for `S01.5b`
       `color(glyphIndex, length, timeMs, seed)`); output Adventure `Component`s on
-      Paper (behind an isolated adapter with no Paper types in shared signatures) and
-      legacy `§x` strings on Spigot with identical visible results; route
+      Paper (compiled against Paper's bundled `net.kyori:adventure-api:4.17.0` via
+      `compileOnly`, never shaded or relocated; `Allium.jar` contains **zero**
+      `net.kyori` classes) and legacy `§x` strings on Spigot (via Allium's own
+      `FormattedText#toLegacy`) with identical visible results; route
       `MessageManager` and locale delivery through the formatter with Allium-owned
       sound playback; replace all remaining Takion call sites and remove
       `me.croabeast.takion:shaded` from `build.gradle.kts` and `minimize()` exclusions.
-      Gate: jar contains zero `me.croabeast` classes; unit tests pin 2-stop/multi-stop
-      gradients, rainbow, legacy, hex, nested/reset, empty and 1-char strings on both
-      Adventure and legacy paths; boot + localized message on min/max lanes; jar size
-      reduced from **1,684,657 bytes** (before) to **1,395,353 bytes** (after, -289,304 bytes).
+      Gate: jar contains zero `me.croabeast` and zero `net.kyori` classes; unit tests
+      pin 2-stop/multi-stop gradients, rainbow, legacy, hex, nested/reset, empty and
+      1-char strings on both Adventure and legacy paths; boot + localized message on
+      min/max lanes; jar size reduced from **1,684,657 bytes** (before) to
+      **1,395,353 bytes** (after, -289,304 bytes).
 - [ ] **S01.5b — Animated text engine (deferred until the first animated target: tab, nametag, boss bar, or display entity):**
       implement deterministic per-glyph animation effects (`pulse`, `shift`, `sparkle`,
       and `phase-scroll` gradient/rainbow) using pure
@@ -50,17 +53,33 @@ result and must preserve the existing uncommitted work.
       clock/scheduler. Gate: deterministic frame output in unit tests; one scheduler for
       N animated players; no main-thread spikes at the measured SF player count; Spigot
       legacy and Paper Adventure output match.
-- [ ] **S02 / M1 — Command families:** canonical/alias/namespace policy and
-      `disabled-commands: []`. Gate: disabling a family blocks all Allium aliases
-      and lets another plugin own the label after restart; no command interception
-      leaks, clear restart diagnostics and permission-aware completion.
+- [ ] **S02 / M1 — Command families:** platform-neutral command spec in `allium-core`
+      (tree, arguments, permission nodes, suggestion sources, message keys) rendered to
+      Bukkit executors and completers; canonical/alias/namespace policy and
+      `disabled-commands: []`; port `/heal`, `/feed`, `/fly`, `/god`, and `/gamemode`
+      onto the neutral command spec as proof. Gate: disabling a family blocks all Allium
+      aliases and lets another plugin own the label after restart; no command
+      interception leaks, clear restart diagnostics and permission-aware completion;
+      the five ported commands behave identically before and after the port on the
+      5-lane matrix.
 - [ ] **S03 / M1 — Preferences:** UUID repository, schema migrations, defaults,
       bounded asynchronous storage and safe session loading. Gate: SQLite/MySQL
       round-trip and reconnect/restart behavior without accidental default overwrite.
 - [x] **S04 / M1 — Item contract:** parse, create, identify, match, clone and
       serialize vanilla/Allium references; first-colon namespace split (`craftengine:<ns>:<id>`);
-      bare names resolve to vanilla only; behavior ID separate from appearance.
-      Gate: metadata round-trip, strict provider-carrier matching and no AIR fallback.
+      bare names resolve to vanilla only; behavior ID separate from appearance;
+      once-per-reload `ce:` deprecation warning; `schema_version` (`1`) in stamped PDC
+      and `ItemRef.serialize()`; server-secret `HmacSHA256` signature over
+      `(provider, itemId, behaviorId, instanceUuid)` stored outside `config.yml`
+      (`plugins/Allium/.item-hmac-secret`) required for `privileged = true` definitions
+      (`handcuffs`, `phantom_obliterator`); read-only legacy `allium:custom_item_id`
+      and `alliumcards` tag inspection (`ItemService#readLegacyMetadata`);
+      platform-neutral `ProviderKey`, `ItemRef`, `ResolutionStatus`, `ProviderStatus`,
+      `ItemHmacSigner`, and `LegacyItemMetadata` in `allium-core`. Gate: metadata
+      round-trip, forged/missing/tampered/valid signature verification (surviving clone
+      and appearance swap), strict provider-carrier matching and no AIR fallback across
+      Spigot 1.20.1, Paper 1.20, Paper 1.20.6 (NBT-to-component boundary), Spigot 26.3,
+      and Paper 26.3.
 - [ ] **S04 follow-up — Item library:** shared Give/Enchant/Skull/Potion builders,
       bracket/brace/quote-aware grammar, `ItemFactory#createItemStack` / `ComponentAdapter`
       validation, cancellable `ItemGiveEvent`, configurable overflow policy, non-destructive
@@ -90,11 +109,12 @@ S06 depends on S04–S05; S07–S08 depend on S01.5a, S03 and the message pipeli
 ## S01 Audit: Shaded Dependencies & Takion Retirement Plan
 
 ### Bytecode & Shadow Minimization Findings
-- **Allium shared classes:** Compiled against `org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT` with `--release 17` (class version 61 / Java 17).
+- **Allium shared classes:** Compiled against `org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT` with `--release 17` (class version 61 / Java 17). `allium-core` compiles with zero Bukkit/Spigot/Paper dependencies.
 - **HikariCP 5.1.0 (`com.zaxxer:HikariCP`):** Class version 55 (Java 11). Excluded from Shadow `minimize()` because pool and proxy classes are loaded reflectively.
 - **InvUI 1.49 (`xyz.xenondevs.invui`):** `invui-core`, `inventory-access`, and `inventory-access-r16..r18` (1.20.0–1.20.4) are class version 55–61 (Java 11–17). `inventory-access-r19..r26` (1.20.5–1.21.11) are class version 65 (Java 21), loaded reflectively via `InventoryAccessRevision` only on 1.20.5+ servers (which require Java 21+, verified on Paper 1.20.6 / OpenJDK 21). Excluded from Shadow `minimize()` so `Class.forName` lookups succeed.
   - **Open M4 Risk (InvUI on 26.x):** `InventoryAccessRevision` matches `26 > 1` and selects `R26` (compiled against `1.21.11` NMS internals) on `26.x`. Matching `26 > 1` is **not** real `26.x` support. Before any GUI slice in M4/M5, check upstream InvUI for `26.x` support; if none exists, place the GUI layer behind an adapter with a plain Bukkit inventory implementation.
-- **Adventure API 4.17.0:** `compileOnly` (provided natively by Paper at runtime; isolated behind `AdventureTextBridge`).
+- **Adventure API 4.17.0 (`net.kyori:adventure-api:4.17.0`):** Declared strictly as `compileOnly` in `build.gradle.kts` (not `implementation`, never shaded or relocated). At runtime on Paper, `AdventureTextBridge` links directly against Paper's bundled `net.kyori.adventure.*` classes; on Spigot, `TextSender` uses Allium's own `FormattedText#toLegacy` (`§x` hex + legacy formatting) without loading `AdventureTextBridge`.
+  - **Jar audit for `net.kyori` classes:** `jar tf build/libs/Allium.jar | grep -i kyori` returns **0 classes** (`build/libs/Allium.jar` contains no `net.kyori.*` classes at all).
 
 ### Takion (`me.croabeast.takion:shaded:1.4`) Inventory & Retirement (Completed in S01.5a)
 1. **Call sites in recode:**
@@ -105,7 +125,7 @@ S06 depends on S04–S05; S07–S08 depend on S01.5a, S03 and the message pipeli
    - `me.croabeast.takion.bossbar.AnimatedBossbar` only cycles through a `List<String>` of bossbar titles/colors/styles on a timer.
 3. **Retirement Result (S01.5a):**
    - Implemented `codes.castled.allium.text` (`TextFormatter`, `FormattedText`, `GlyphColorSource`, `TextSender`, `AdventureTextBridge`), routed `MessageManager` and sound playback through it, and removed `me.croabeast.takion:shaded:1.4` and its relocation/minimization rules from `build.gradle.kts`.
-   - `build/libs/Allium.jar` contains **zero** `me.croabeast` classes; jar size dropped from **1,684,657 bytes** to **1,395,353 bytes** (-289,304 bytes).
+   - `build/libs/Allium.jar` contains **zero** `me.croabeast` classes and **zero** `net.kyori` classes; jar size dropped from **1,684,657 bytes** to **1,395,353 bytes** (-289,304 bytes).
 
 ## M0 — Foundation and migration inventory
 
@@ -178,14 +198,3 @@ S06 depends on S04–S05; S07–S08 depend on S01.5a, S03 and the message pipeli
       bounded main-thread swap and targeted updates. Profile at peak SF player
       counts, preserve transactions, coalesce reloads and report timing/restart needs.
 - [ ] Conservative core jar budget < 5,000,000 bytes; verify host limits independently.
-- [ ] Release assets/hashes, API compatibility metadata, license notices and upgrade guide.
-
-## Scope decisions
-
-- No Allium dialog framework/datapacks; CommandPanels owns dialogs.
-- Shared Nexo/CraftEngine/Oraxen support and staple tools are core.
-- Allium owns its text formatting, sound playback and animation engine; Takion is retired.
-- Kitchen is separate from Harvest; SpawnerCraft is always its own addon.
-- Addons use Bukkit loading, not a custom nested-jar classloader.
-- Automatic downloads stay off and are deferred.
-- Client companion and Fabric/Quilt/Forge/NeoForge work is deferred beyond this roadmap.

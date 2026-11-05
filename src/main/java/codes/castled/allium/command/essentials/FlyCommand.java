@@ -1,14 +1,13 @@
 package codes.castled.allium.command.essentials;
 
 import codes.castled.allium.PluginStart;
-import codes.castled.allium.message.Messages;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
+import codes.castled.allium.command.BukkitCommandContext;
+import codes.castled.allium.command.SpecCommandHandler;
+import codes.castled.allium.command.spec.CommandSpec;
+import codes.castled.allium.command.spec.CoreCommandSpecs;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
 
-public final class FlyCommand implements CommandExecutor {
+public final class FlyCommand implements SpecCommandHandler {
 
     private final PluginStart plugin;
 
@@ -17,29 +16,15 @@ public final class FlyCommand implements CommandExecutor {
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!sender.hasPermission("allium.fly")) {
-            plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "fly");
-            return true;
-        }
+    public CommandSpec spec() {
+        return CoreCommandSpecs.FLY;
+    }
 
-        Player target;
-        if (args.length > 0) {
-            if (!sender.hasPermission("allium.fly.others")) {
-                plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "fly for others");
-                return true;
-            }
-            target = plugin.getServer().getPlayer(args[0]);
-            if (target == null) {
-                plugin.getMessageManager().send(sender, Messages.PLAYER_NOT_FOUND, "{player}", args[0]);
-                return true;
-            }
-        } else {
-            if (!(sender instanceof Player player)) {
-                plugin.getMessageManager().send(sender, Messages.INVALID_ARGS, "{usage}", "/fly <player>");
-                return true;
-            }
-            target = player;
+    @Override
+    public void execute(BukkitCommandContext context) {
+        Player target = context.resolveSelfOrTarget(0);
+        if (target == null) {
+            return;
         }
 
         boolean enabled = !target.getAllowFlight();
@@ -47,10 +32,9 @@ public final class FlyCommand implements CommandExecutor {
         target.setFlying(enabled);
 
         String state = enabled ? "&aenabled" : "&cdisabled";
-        plugin.getMessageManager().send(sender, Messages.FLY_TOGGLE, "{state}", state, "{player}", target.getName());
-        if (target != sender) {
-            plugin.getMessageManager().send(target, Messages.FLY_TOGGLE, "{state}", state, "{player}", target.getName());
+        context.sendOutcome(context.sender(), "toggle", "{state}", state, "{player}", target.getName());
+        if (target != context.sender()) {
+            context.sendOutcome(target, "toggle", "{state}", state, "{player}", target.getName());
         }
-        return true;
     }
 }

@@ -39,6 +39,13 @@ public final class MessageManager {
         }
     }
 
+    public void sendByKey(CommandSender sender, String key, String... replacements) {
+        Messages message = Messages.fromKey(key);
+        if (message != null) {
+            send(sender, message, replacements);
+        }
+    }
+
     public void broadcast(Messages message, String... replacements) {
         String text = resolve(message, replacements);
         FormattedText formatted = text.isEmpty() ? FormattedText.EMPTY : TextFormatter.parse(text);

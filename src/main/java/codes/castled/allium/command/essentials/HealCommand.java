@@ -1,16 +1,15 @@
 package codes.castled.allium.command.essentials;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.BukkitCommandContext;
+import codes.castled.allium.command.SpecCommandHandler;
+import codes.castled.allium.command.spec.CommandSpec;
+import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.compat.EntityCompatProvider;
 import codes.castled.allium.compat.HealthCompatProvider;
-import codes.castled.allium.message.Messages;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
 
-public final class HealCommand implements CommandExecutor {
+public final class HealCommand implements SpecCommandHandler {
 
     private final PluginStart plugin;
 
@@ -19,29 +18,15 @@ public final class HealCommand implements CommandExecutor {
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!sender.hasPermission("allium.heal")) {
-            plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "heal");
-            return true;
-        }
+    public CommandSpec spec() {
+        return CoreCommandSpecs.HEAL;
+    }
 
-        Player target;
-        if (args.length > 0) {
-            if (!sender.hasPermission("allium.heal.others")) {
-                plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "heal for others");
-                return true;
-            }
-            target = plugin.getServer().getPlayer(args[0]);
-            if (target == null) {
-                plugin.getMessageManager().send(sender, Messages.PLAYER_NOT_FOUND, "{player}", args[0]);
-                return true;
-            }
-        } else {
-            if (!(sender instanceof Player player)) {
-                plugin.getMessageManager().send(sender, Messages.INVALID_ARGS, "{usage}", "/heal <player>");
-                return true;
-            }
-            target = player;
+    @Override
+    public void execute(BukkitCommandContext context) {
+        Player target = context.resolveSelfOrTarget(0);
+        if (target == null) {
+            return;
         }
 
         double maxHealth = HealthCompatProvider.current().getMaxHealth(target);
@@ -54,10 +39,9 @@ public final class HealCommand implements CommandExecutor {
         EntityCompatProvider.current().clearArrows(target);
         EntityCompatProvider.current().clearFreeze(target);
 
-        if (target != sender) {
-            plugin.getMessageManager().send(sender, Messages.HEAL_OTHER, "{player}", target.getName());
+        if (target != context.sender()) {
+            context.sendOutcome(context.sender(), "other", "{player}", target.getName());
         }
-        plugin.getMessageManager().send(target, Messages.HEAL);
-        return true;
+        context.sendOutcome(target, "self");
     }
 }

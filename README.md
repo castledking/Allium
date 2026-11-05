@@ -1,118 +1,131 @@
 # Allium
 
-A modern, modular Essentials replacement for Spigot/Paper servers. This is a full recode of the original Allium plugin -- rebuilt from scratch with a cleaner architecture, better tooling, and a focus on maintainability.
+A configurable essentials suite for Bukkit/Spigot and Paper. This repository is
+the recode of [the current Allium](../Allium), with shared item-provider support
+and separately installed gameplay addons.
 
-> **Status:** Recode in progress. Foundation and infrastructure systems are in place; module implementation is underway.
+**Status:** foundation and five basic commands exist. The target is Minecraft
+**1.20–26.3**; that range is a release goal, not a verified compatibility claim.
 
----
+Start with the [implementation roadmap](docs/roadmap.md) and
+[working checklist](todo.md). They distinguish existing code, planned behavior,
+implementation order and acceptance gates.
 
-## What's Different in the Recode
+## Core and addons
 
-- **Gradle Kotlin DSL** replaces the old Maven build. Shadow plugin handles fat-jar packaging with dependency relocation.
-- **Modular architecture.** Every feature group (homes, warps, economy, moderation, etc.) is a self-contained module that can be toggled on/off in `config.yml`.
-- **Takion-powered messaging.** Rich chat formatting, gradients, placeholders, titles, and channel routing via [Takion](https://github.com/CroaBeast/Takion) instead of hand-rolled text processing.
-- **Production-grade config management.** Automatic migrations, backup-before-upgrade, and missing-key insertion so server owners never lose their settings on update.
-- **Full i18n from day one.** Every user-facing string lives in a `Messages` enum with locale-specific YAML files and automatic fallback.
-- **MySQL + SQLite** via HikariCP connection pooling. One config toggle to switch.
-- **InvUI-based GUIs** for commands like `/nick`, `/warps`, and kit selection.
-- **JAR size target: < 5 MB** with all dependencies shaded.
+Core includes essentials commands, permissions, config migrations, messages and
+sounds, player preferences, storage, signs, optional timed broadcasts, and the
+shared item/resource-pack services. Handcuffs, Mob Disarmer, Phantom Obliterator,
+renaming and the staff CrowBar locator feed remain core features. The default
+distribution includes a resource pack for core tools and works without an external
+item plugin. Nexo, CraftEngine and Oraxen are optional providers used consistently
+wherever a feature accepts or produces items.
 
----
+Give, Enchant, Skull and Potion will share a reusable item-building library bundled
+inside core. Commands and addons use one API; Allium remains the only required
+plugin, with no separate library plugin or required item editor.
 
-## Libraries
+Gameplay systems ship separately:
 
-| Library | Purpose | Bundled |
-|---------|---------|---------|
-| [Takion](https://github.com/CroaBeast/Takion) 1.4 | Chat formatting, placeholders, titles, scheduling, channel routing. Bundles PrismaticAPI, GlobalScheduler, YAML-API. | Yes (shaded) |
-| [InvUI](https://github.com/NichtStudioCode/InvUI) 1.49 | Inventory GUI framework for in-game menus. | Yes (shaded) |
-| [HikariCP](https://github.com/brettwooldridge/HikariCP) 5.1.0 | JDBC connection pooling for MySQL/SQLite. | Yes (shaded) |
-| [Vault](https://github.com/MilkBowl/VaultAPI) | Economy and permissions bridge. | No (soft-depend) |
-| [PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI) | External placeholder expansion. | No (soft-depend) |
+- Fun Items: configurable actions, cooldowns and novelty items inspired by ItemTag.
+- Reliques: equipment, slots and effects.
+- Harvest: crops, soil, growth, fertilizers and sprinklers.
+- Kitchen: cooking and preparation; depends on Harvest.
+- Pregen Ores: generation jobs and ore placement.
+- SpawnerCraft: head/core recipes and typed spawners.
+- Trading Cards: collection, boosts and upgrades.
+- Party Locator: parties and the locator bar.
 
-All shaded dependencies are relocated under `net.survivalfun.allium.lib.*` to avoid classpath conflicts.
+The planned installation uses ordinary Bukkit plugins, each depending on Allium:
 
----
-
-## Versioning
-
-Allium uses a **`config-version`** key in `config.yml` to track schema changes across releases.
-
-**How it works:**
-
-1. On startup, `ConfigVersionManager` reads the installed `config-version` and compares it to the expected version.
-2. If behind, `BackupManager` creates a timestamped snapshot of all config and language files under `plugins/Allium/backups/`.
-3. Registered migrations run sequentially (v1 -> v2 -> v3, etc.), each modifying the config as needed.
-4. `ResourceSyncManager` then deep-merges any new keys from the bundled defaults into the installed files -- existing values are never overwritten.
-5. Old backups are auto-pruned (keeps the last 10).
-
-Server owners can update the plugin JAR and restart without worrying about broken configs or lost customizations.
-
----
-
-## Translations
-
-Every user-facing message is defined in the `Messages` enum -- a single source of truth with a YAML key path and a default English value. Language files live in `plugins/Allium/lang/`:
-
-```
-lang/
-  en_US.yml   (English - default/fallback)
-  es_ES.yml   (Spanish)
+```text
+plugins/
+  Allium-<version>.jar
+  Addon-Harvest-<version>.jar
+  Addon-Kitchen-<version>.jar
+  Addon-FunItems-<version>.jar
 ```
 
-**On startup:**
-- `LanguageManager` loads the locale specified in `settings.locale` from `config.yml`.
-- If a key is missing from the active locale file, it falls back to `en_US`.
-- If a key is missing from *all* locale files, it gets auto-inserted from the `Messages` enum defaults.
-- Locale files for unknown codes are auto-generated from the enum defaults.
+Other addons follow the same naming. Publish them as assets on the same GitHub
+release, with compatible API metadata. This replaces the earlier custom
+`plugins/Allium/addons/` loader proposal. Addon loading is not implemented yet;
+the existing runtime config still contains older placeholder keys. Automatic
+downloads remain deferred and off by default.
 
-Adding a new language is as simple as copying `en_US.yml`, renaming it (e.g., `fr_FR.yml`), translating the values, and setting `settings.locale: fr_FR`.
+Allium will not build a dialog system; CommandPanels handles dialogs.
+Mod-loader builds and a client companion are deferred
+outside the server-plugin roadmap. The [Harvest design](docs/harvest-addon-plan.md)
+retains the crop-rendering investigation, with Kitchen separated into its own addon.
 
----
+## Implementation order
+
+1. **M0:** reproducible build, Spigot baseline, dependency audit and compatibility checks.
+2. **M1:** minimal shared API, player storage, command ownership, all item providers,
+   default pack and a working Mob Disarmer through the shared service.
+3. **M2:** private messages, persistent preferences, language sound defaults and `/mfx`.
+4. **M3:** teleportation/homes/warps, atomic economy, `/paytoggle`, `/tptoggle` and kits.
+5. **M4:** complete core utilities, staple tools, renamer, CrowBar, signs and timed broadcasts.
+6. **M5:** extract and ship addons against proven APIs.
+7. **M6:** migration rehearsal, profiling, full compatibility validation and release.
+
+The roadmap defines command semantics, data contracts and completion gates. Core
+alpha does not wait for every addon. Import planning starts with M0.
+
+## Existing foundation
+
+- Gradle Kotlin DSL with Shadow packaging.
+- Module, command and listener managers.
+- Config loading, backup-before-upgrade, migrations and missing-key insertion.
+- Locale files in `lang/`, a `Messages` enum and English fallback.
+- Takion messaging integration; rich delivery still needs consistent use across paths.
+- HikariCP database setup for MySQL/SQLite and economy/Vault scaffolding.
+- Implementations of `/heal`, `/feed`, `/fly`, `/god` and `/gamemode`.
+
+These are scaffolding and implemented code paths, not a production-readiness claim.
+Transactions, asynchronous persistence, provider readiness and lifecycle cleanup
+need the verification described in M0–M4.
 
 ## Building
 
 ```bash
-git clone https://github.com/castledking/Allium-recode.git
-cd Allium-recode
 ./gradlew clean build
 ```
 
-Output JAR: `build/libs/Allium-<version>.jar`
+The current build compiles against **Paper 1.21.8**, emits **Java 21** bytecode and
+packages `build/libs/Allium.jar`. Its legacy compatibility sources target Bukkit
+1.8.8/Java 8. Those settings are existing implementation details, not the intended
+support matrix. No fresh successful build is claimed by the documentation update.
 
-Requires **Java 17+** to build. Targets Spigot API 1.20+.
+M0 will pin toolchains, compile shared code against Spigot 1.20 with Java 17
+bytecode, remove pre-1.20 scope, and isolate newer APIs. Servers still need the
+Java version required by their own release; newer runtime lanes include Java 21
+and Java 25. See the [compatibility plan](docs/roadmap.md#runtime-and-compatibility).
 
----
+Current dependencies include Takion 1.4, InvUI 1.49 and HikariCP 5.1.0 (bundled),
+plus optional Vault and PlaceholderAPI (provided). Dependency versions, bytecode,
+relocation and reflective resources need review before releasing for the full range.
 
-## Project Structure
+## Source layout
 
+```text
+src/main/java/codes/castled/allium/
+  PluginStart.java
+  command/                 Command registration and current essentials executors
+  core/                    Module lifecycle
+  module/                  Essentials and economy modules
+  config/                  Loading, backup, migrations and default-key sync
+  database/                JDBC setup and economy table
+  message/                 Message keys, locales and delivery
+  listener/                Listener registration and god-mode handling
+  compat/                  Compatibility interfaces/providers
+src/compat/                Existing legacy and modern implementations
+src/main/resources/        plugin.yml, config.yml and lang/
+allium-core/               Build subproject; public API extraction is planned
 ```
-src/main/java/net/survivalfun/allium/
-  Allium.java              Main plugin entry point
-  core/
-    AbstractModule.java    Base class for feature modules
-    ModuleManager.java     Module lifecycle management
-  config/
-    ConfigManager.java     Config loading/saving orchestrator
-    BackupManager.java     Timestamped file backups
-    ConfigVersionManager.java  Migration pipeline
-    ResourceSyncManager.java   Missing-key deep merge
-  database/
-    DatabaseManager.java   HikariCP pooling, MySQL/SQLite
-    DatabaseType.java      Enum for DB backend selection
-  message/
-    Messages.java          Source-of-truth message enum
-    LanguageManager.java   Multi-locale loading + fallback
-    MessageManager.java    Takion MessageSender integration
-  command/
-    CommandManager.java    Command registration
-  listener/
-    ListenerManager.java   Event listener registration
-  util/
-    AlliumLogger.java      Debug-aware logging wrapper
-```
-
----
 
 ## License
 
-TBD
+Project license remains undecided. Essentials and ItemTag are GPLv3 reference
+projects; resolve licensing and attribution before directly incorporating their
+source or configuration prose. Server asset exports must retain provenance and
+redistribution permissions.

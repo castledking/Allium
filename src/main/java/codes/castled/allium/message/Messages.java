@@ -1,5 +1,9 @@
 package codes.castled.allium.message;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 public enum Messages {
 
     // -- Core --
@@ -104,6 +108,16 @@ public enum Messages {
     NEAR("utility.near", "{prefix} &fNearby players: &d{players}"),
     NEAR_NONE("utility.near-none", "{prefix} &cNo players nearby.");
 
+    private static final Map<String, Messages> BY_KEY;
+
+    static {
+        Map<String, Messages> map = new HashMap<>();
+        for (Messages msg : values()) {
+            map.put(msg.key, msg);
+        }
+        BY_KEY = Collections.unmodifiableMap(map);
+    }
+
     private final String key;
     private final String defaultValue;
 
@@ -118,5 +132,9 @@ public enum Messages {
 
     public String getDefault() {
         return defaultValue;
+    }
+
+    public static Messages fromKey(String key) {
+        return key == null ? null : BY_KEY.get(key);
     }
 }

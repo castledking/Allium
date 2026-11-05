@@ -1,6 +1,9 @@
 package codes.castled.allium.command.essentials;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.BukkitCommandRenderer;
+import codes.castled.allium.command.spec.CommandFamilyPolicy;
+import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.compat.GodModeCompatProvider;
 import codes.castled.allium.message.LanguageManager;
 import codes.castled.allium.message.MessageManager;
@@ -18,7 +21,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 class EssentialsCommandsTest {
@@ -26,6 +31,7 @@ class EssentialsCommandsTest {
     private PluginStart plugin;
     private Server server;
     private MessageManager messageManager;
+    private CommandFamilyPolicy policy;
     private Command command;
     private Player self;
     private Player other;
@@ -46,6 +52,10 @@ class EssentialsCommandsTest {
         }
         messageManager = new MessageManager(plugin, langManager);
         when(plugin.getMessageManager()).thenReturn(messageManager);
+
+        policy = new CommandFamilyPolicy();
+        policy.registerSpecs(CoreCommandSpecs.ESSENTIALS_PROOF_SPECS);
+        policy.initializeStartup(List.of());
 
         GodModeCompatProvider.init(plugin);
 
@@ -70,7 +80,7 @@ class EssentialsCommandsTest {
 
     @Test
     void healSelfOtherAndConsole() {
-        HealCommand heal = new HealCommand(plugin);
+        BukkitCommandRenderer heal = new BukkitCommandRenderer(plugin, policy, new HealCommand(plugin));
         when(self.hasPermission("allium.heal")).thenReturn(true);
         when(self.hasPermission("allium.heal.others")).thenReturn(true);
         when(console.hasPermission("allium.heal")).thenReturn(true);
@@ -92,7 +102,7 @@ class EssentialsCommandsTest {
 
     @Test
     void feedSelfOtherAndConsole() {
-        FeedCommand feed = new FeedCommand(plugin);
+        BukkitCommandRenderer feed = new BukkitCommandRenderer(plugin, policy, new FeedCommand(plugin));
         when(self.hasPermission("allium.feed")).thenReturn(true);
         when(self.hasPermission("allium.feed.others")).thenReturn(true);
         when(console.hasPermission("allium.feed")).thenReturn(true);
@@ -113,7 +123,7 @@ class EssentialsCommandsTest {
 
     @Test
     void flySelfOtherAndConsole() {
-        FlyCommand fly = new FlyCommand(plugin);
+        BukkitCommandRenderer fly = new BukkitCommandRenderer(plugin, policy, new FlyCommand(plugin));
         when(self.hasPermission("allium.fly")).thenReturn(true);
         when(self.hasPermission("allium.fly.others")).thenReturn(true);
         when(console.hasPermission("allium.fly")).thenReturn(true);
@@ -135,7 +145,7 @@ class EssentialsCommandsTest {
 
     @Test
     void godSelfOtherAndConsole() {
-        GodCommand god = new GodCommand(plugin);
+        BukkitCommandRenderer god = new BukkitCommandRenderer(plugin, policy, new GodCommand(plugin));
         when(self.hasPermission("allium.god")).thenReturn(true);
         when(self.hasPermission("allium.god.others")).thenReturn(true);
         when(console.hasPermission("allium.god")).thenReturn(true);
@@ -156,7 +166,7 @@ class EssentialsCommandsTest {
 
     @Test
     void gamemodeSelfOtherAndConsole() {
-        GamemodeCommand gm = new GamemodeCommand(plugin);
+        BukkitCommandRenderer gm = new BukkitCommandRenderer(plugin, policy, new GamemodeCommand(plugin));
         when(self.hasPermission("allium.gamemode")).thenReturn(true);
         when(self.hasPermission("allium.gamemode.others")).thenReturn(true);
         when(console.hasPermission("allium.gamemode")).thenReturn(true);
@@ -173,5 +183,17 @@ class EssentialsCommandsTest {
 
         gm.onCommand(console, command, "gamemode", new String[]{"survival"});
         verify(console).sendMessage(contains("/gamemode <mode> <player>"));
+    }
+
+    @Test
+    void reloadDisablingBlocksExecutionAndTabCompletionAcrossAliases() {
+        BukkitCommandRenderer gm = new BukkitCommandRenderer(plugin, policy, new GamemodeCommand(plugin));
+        when(self.hasPermission("allium.gamemode")).thenReturn(true);
+
+        policy.applyReload(List.of("gm"));
+
+        gm.onCommand(self, command, "gm", new String[]{"creative"});
+        verify(self, never()).setGameMode(any());
+        assertEquals(List.of(), gm.onTabComplete(self, command, "gm", new String[]{"c"}));
     }
 }

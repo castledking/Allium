@@ -5,6 +5,11 @@
 # Internal version tracker - do not modify
 config-version: 1
 
+# Commands disabled in Allium (canonical name or alias, e.g. [heal, gm]).
+# Disabling a command family blocks its canonical label, all aliases, and allium:<label>
+# forms, and yields its labels in Bukkit's CommandMap on startup so another plugin can own them.
+disabled-commands: []
+
 # Database settings
 database:
   # Type: MYSQL or SQLITE

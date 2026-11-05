@@ -1,23 +1,17 @@
 package codes.castled.allium.command.essentials;
 
 import codes.castled.allium.PluginStart;
-import codes.castled.allium.message.Messages;
+import codes.castled.allium.command.BukkitCommandContext;
+import codes.castled.allium.command.SpecCommandHandler;
+import codes.castled.allium.command.spec.CommandSpec;
+import codes.castled.allium.command.spec.CoreCommandSpecs;
 import org.bukkit.GameMode;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Locale;
 
-public final class GamemodeCommand implements CommandExecutor, TabCompleter {
-
-    private static final List<String> GAMEMODE_COMPLETIONS = Arrays.asList("survival", "creative", "adventure", "spectator");
+public final class GamemodeCommand implements SpecCommandHandler {
 
     private final PluginStart plugin;
 
@@ -26,71 +20,48 @@ public final class GamemodeCommand implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!sender.hasPermission("allium.gamemode")) {
-            plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "gamemode");
-            return true;
-        }
+    public CommandSpec spec() {
+        return CoreCommandSpecs.GAMEMODE;
+    }
 
+    @Override
+    public void execute(BukkitCommandContext context) {
+        String[] args = context.args();
         if (args.length == 0) {
-            plugin.getMessageManager().send(sender, Messages.INVALID_ARGS, "{usage}", "/gamemode <mode> [player]");
-            return true;
+            context.sendInvalidArgs(spec().selfUsage());
+            return;
         }
 
         GameMode mode = parseGamemode(args[0]);
         if (mode == null) {
-            plugin.getMessageManager().send(sender, Messages.INVALID_ARGS, "{usage}", "/gamemode <survival|creative|adventure|spectator> [player]");
-            return true;
+            context.sendInvalidArgs("/gamemode <survival|creative|adventure|spectator> [player]");
+            return;
         }
 
-        Player target;
-        if (args.length >= 2) {
-            if (!sender.hasPermission("allium.gamemode.others")) {
-                plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "gamemode for others");
-                return true;
-            }
-            target = plugin.getServer().getPlayer(args[1]);
-            if (target == null) {
-                plugin.getMessageManager().send(sender, Messages.PLAYER_NOT_FOUND, "{player}", args[1]);
-                return true;
-            }
-        } else {
-            if (!(sender instanceof Player)) {
-                plugin.getMessageManager().send(sender, Messages.INVALID_ARGS, "{usage}", "/gamemode <mode> <player>");
-                return true;
-            }
-            target = (Player) sender;
+        Player target = context.resolveSelfOrTarget(1);
+        if (target == null) {
+            return;
         }
 
         target.setGameMode(mode);
-        if (target != sender) {
-            plugin.getMessageManager().send(sender, Messages.GAMEMODE_OTHER, "{player}", target.getName(), "{mode}", mode.name().toLowerCase());
+        String modeName = mode.name().toLowerCase(Locale.ROOT);
+        if (target != context.sender()) {
+            context.sendOutcome(context.sender(), "other", "{player}", target.getName(), "{mode}", modeName);
         }
-        plugin.getMessageManager().send(target, Messages.GAMEMODE_SELF, "{mode}", mode.name().toLowerCase());
-        return true;
+        context.sendOutcome(target, "self", "{mode}", modeName);
     }
 
-    private GameMode parseGamemode(String input) {
-        switch (input.toLowerCase()) {
-            case "0": case "s": case "survival": return GameMode.SURVIVAL;
-            case "1": case "c": case "creative": return GameMode.CREATIVE;
-            case "2": case "a": case "adventure": return GameMode.ADVENTURE;
-            case "3": case "sp": case "spectator": return GameMode.SPECTATOR;
-            default: return null;
-        }
-    }
-
-    @Override
-    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) {
-            String prefix = args[0].toLowerCase();
-            return GAMEMODE_COMPLETIONS.stream()
-                .filter(g -> g.startsWith(prefix))
-                .collect(Collectors.toList());
-        }
-        if (args.length == 2) {
+    @Nullable
+    public static GameMode parseGamemode(String input) {
+        if (input == null) {
             return null;
         }
-        return List.of();
+        return switch (input.toLowerCase(Locale.ROOT)) {
+            case "0", "s", "survival" -> GameMode.SURVIVAL;
+            case "1", "c", "creative" -> GameMode.CREATIVE;
+            case "2", "a", "adventure" -> GameMode.ADVENTURE;
+            case "3", "sp", "spectator" -> GameMode.SPECTATOR;
+            default -> null;
+        };
     }
 }

@@ -21,11 +21,11 @@ public final class EssentialsModule extends AbstractModule {
 
     @Override
     public void onEnable() {
-        plugin.getCommandManager().register("heal", new HealCommand(plugin));
-        plugin.getCommandManager().register("feed", new FeedCommand(plugin));
-        plugin.getCommandManager().register("fly", new FlyCommand(plugin));
-        plugin.getCommandManager().register("god", new GodCommand(plugin));
-        plugin.getCommandManager().register("gamemode", new GamemodeCommand(plugin));
+        plugin.getCommandManager().register(new HealCommand(plugin));
+        plugin.getCommandManager().register(new FeedCommand(plugin));
+        plugin.getCommandManager().register(new FlyCommand(plugin));
+        plugin.getCommandManager().register(new GodCommand(plugin));
+        plugin.getCommandManager().register(new GamemodeCommand(plugin));
     }
 
     @Override

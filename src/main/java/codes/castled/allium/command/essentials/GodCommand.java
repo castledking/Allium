@@ -1,15 +1,14 @@
 package codes.castled.allium.command.essentials;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.BukkitCommandContext;
+import codes.castled.allium.command.SpecCommandHandler;
+import codes.castled.allium.command.spec.CommandSpec;
+import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.compat.GodModeCompatProvider;
-import codes.castled.allium.message.Messages;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
 
-public final class GodCommand implements CommandExecutor {
+public final class GodCommand implements SpecCommandHandler {
 
     private final PluginStart plugin;
 
@@ -18,38 +17,23 @@ public final class GodCommand implements CommandExecutor {
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!sender.hasPermission("allium.god")) {
-            plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "god");
-            return true;
-        }
+    public CommandSpec spec() {
+        return CoreCommandSpecs.GOD;
+    }
 
-        Player target;
-        if (args.length > 0) {
-            if (!sender.hasPermission("allium.god.others")) {
-                plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "god for others");
-                return true;
-            }
-            target = plugin.getServer().getPlayer(args[0]);
-            if (target == null) {
-                plugin.getMessageManager().send(sender, Messages.PLAYER_NOT_FOUND, "{player}", args[0]);
-                return true;
-            }
-        } else {
-            if (!(sender instanceof Player player)) {
-                plugin.getMessageManager().send(sender, Messages.INVALID_ARGS, "{usage}", "/god <player>");
-                return true;
-            }
-            target = player;
+    @Override
+    public void execute(BukkitCommandContext context) {
+        Player target = context.resolveSelfOrTarget(0);
+        if (target == null) {
+            return;
         }
 
         boolean enabled = !GodModeCompatProvider.current().isGodMode(target);
         GodModeCompatProvider.current().setGodMode(target, enabled);
         String state = enabled ? "&aenabled" : "&cdisabled";
-        plugin.getMessageManager().send(sender, Messages.GOD_TOGGLE, "{state}", state, "{player}", target.getName());
-        if (target != sender) {
-            plugin.getMessageManager().send(target, Messages.GOD_TOGGLE, "{state}", state, "{player}", target.getName());
+        context.sendOutcome(context.sender(), "toggle", "{state}", state, "{player}", target.getName());
+        if (target != context.sender()) {
+            context.sendOutcome(target, "toggle", "{state}", state, "{player}", target.getName());
         }
-        return true;
     }
 }

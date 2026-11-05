@@ -14,8 +14,7 @@ checks appropriate to each slice.
 - [x] Config loading, backups, schema migration scaffolding and missing-key sync.
 - [x] Message enum, locale files, language fallback and message manager.
 - [x] Database setup and economy/Vault scaffolding.
-- [x] Heal, feed, fly, god and gamemode executors (verified across `self`, `other`, and
-      `console` on Spigot 1.20.1, Paper 1.20, Paper 1.20.6, Spigot 26.3, and Paper 26.3).
+- [x] Heal, feed, fly, god and gamemode executors (ported onto platform-neutral `CommandSpec` + `BukkitCommandRenderer` and verified across `self`, `other`, and `console` on Spigot 1.20.1, Paper 1.20, Paper 1.20.6, Spigot 26.3, and Paper 26.3).
 
 ## First implementation queue
 
@@ -53,15 +52,17 @@ result and must preserve the existing uncommitted work.
       clock/scheduler. Gate: deterministic frame output in unit tests; one scheduler for
       N animated players; no main-thread spikes at the measured SF player count; Spigot
       legacy and Paper Adventure output match.
-- [ ] **S02 / M1 — Command families:** platform-neutral command spec in `allium-core`
+- [x] **S02 / M1 — Command families:** platform-neutral command spec in `allium-core`
       (tree, arguments, permission nodes, suggestion sources, message keys) rendered to
-      Bukkit executors and completers; canonical/alias/namespace policy and
-      `disabled-commands: []`; port `/heal`, `/feed`, `/fly`, `/god`, and `/gamemode`
+      Bukkit executors and completers (`BukkitCommandRenderer`, `CommandMapBridge`);
+      canonical/alias/namespace policy (`CommandFamilyPolicy`) and
+      `disabled-commands: []`; ported `/heal`, `/feed`, `/fly`, `/god`, and `/gamemode`
       onto the neutral command spec as proof. Gate: disabling a family blocks all Allium
-      aliases and lets another plugin own the label after restart; no command
-      interception leaks, clear restart diagnostics and permission-aware completion;
-      the five ported commands behave identically before and after the port on the
-      5-lane matrix.
+      aliases (`gm`, `allium:gamemode`, `allium:gm`) and yields labels in Bukkit's
+      `CommandMap` so another plugin owns the label; no command interception leaks,
+      clear restart diagnostics on reload, and permission/visibility-aware completion;
+      the five ported commands behave identically before and after the port across all
+      5 lanes (Spigot 1.20.1, Paper 1.20, Paper 1.20.6, Spigot 26.3, Paper 26.3).
 - [ ] **S03 / M1 — Preferences:** UUID repository, schema migrations, defaults,
       bounded asynchronous storage and safe session loading. Gate: SQLite/MySQL
       round-trip and reconnect/restart behavior without accidental default overwrite.

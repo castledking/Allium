@@ -18,7 +18,6 @@ repositories {
     maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://oss.sonatype.org/content/repositories/snapshots/")
-    maven("https://croabeast.github.io/repo/")
     maven("https://repo.xenondevs.xyz/releases")
     maven("https://repo.extendedclip.com/releases/")
     maven("https://jitpack.io")
@@ -36,13 +35,13 @@ dependencies {
     // Shared baseline server API: Spigot 1.20
     compileOnly("org.spigotmc:spigot-api:$spigotApiVersion")
 
-    // Provided optional integrations
+    // Provided optional runtime APIs (Paper Adventure is provided by Paper at runtime; isolated behind AdventureTextBridge)
+    compileOnly("net.kyori:adventure-api:4.17.0")
     compileOnly("org.jetbrains:annotations:26.0.2")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
     compileOnly("me.clip:placeholderapi:2.11.6")
 
     // Shaded runtime dependencies (audited for Java 17 bytecode compatibility)
-    implementation("me.croabeast.takion:shaded:1.4")
     implementation("com.zaxxer:HikariCP:5.1.0")
     implementation("xyz.xenondevs.invui:invui-core:1.49")
     implementation("xyz.xenondevs.invui:inventory-access:1.49") {
@@ -55,10 +54,11 @@ dependencies {
             isTransitive = false
         }
     }
-    implementation("net.kyori:adventure-text-serializer-legacy:4.17.0")
 
     // Testing
     testImplementation("org.spigotmc:spigot-api:$spigotApiVersion")
+    testImplementation("net.kyori:adventure-api:4.17.0")
+    testImplementation("net.kyori:adventure-text-serializer-legacy:4.17.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
     testImplementation("org.mockito:mockito-junit-jupiter:5.16.0")
@@ -87,7 +87,6 @@ tasks {
         minimize {
             exclude(dependency("xyz.xenondevs.invui:.*:.*"))
             exclude(dependency("com.zaxxer:HikariCP:.*"))
-            exclude(dependency("me.croabeast.takion:.*:.*"))
         }
 
         dependsOn(coreProject.tasks.named("classes"))
@@ -95,10 +94,8 @@ tasks {
         from(coreProject.layout.buildDirectory.dir("classes/java/main"))
 
         relocate("com.zaxxer.hikari", "codes.castled.allium.lib.hikari")
-        relocate("me.croabeast", "codes.castled.allium.lib.croabeast")
         relocate("xyz.xenondevs.invui", "codes.castled.allium.lib.invui")
         relocate("xyz.xenondevs.inventoryaccess", "codes.castled.allium.lib.inventoryaccess")
-        relocate("net.kyori.adventure", "codes.castled.allium.lib.adventure")
     }
 
     build {

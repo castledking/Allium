@@ -2,8 +2,10 @@ package codes.castled.allium.message;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.config.ResourceSyncManager;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -97,18 +99,70 @@ public final class LanguageManager {
 
     public String get(Messages message) {
         FileConfiguration active = loadedLocales.get(activeLocale);
-        if (active != null) {
-            String value = active.getString(message.getKey());
-            if (value != null) return value;
+        String value = readText(active, message.getKey());
+        if (value != null) {
+            return value;
         }
 
         FileConfiguration fallback = loadedLocales.get(DEFAULT_LOCALE);
-        if (fallback != null) {
-            String value = fallback.getString(message.getKey());
-            if (value != null) return value;
+        value = readText(fallback, message.getKey());
+        if (value != null) {
+            return value;
         }
 
         return message.getDefault();
+    }
+
+    @Nullable
+    public MessageSoundSpec getSound(Messages message) {
+        FileConfiguration active = loadedLocales.get(activeLocale);
+        MessageSoundSpec spec = readSound(active, message.getKey());
+        if (spec != null) {
+            return spec;
+        }
+
+        FileConfiguration fallback = loadedLocales.get(DEFAULT_LOCALE);
+        return readSound(fallback, message.getKey());
+    }
+
+    @Nullable
+    private static String readText(@Nullable FileConfiguration config, String key) {
+        if (config == null) {
+            return null;
+        }
+        if (config.isConfigurationSection(key)) {
+            ConfigurationSection section = config.getConfigurationSection(key);
+            if (section == null) {
+                return null;
+            }
+            if (section.contains("text")) {
+                return section.getString("text", "");
+            }
+            if (section.contains("sound")) {
+                // Sound-only entry is valid and has empty text
+                return "";
+            }
+            return null;
+        }
+        return config.getString(key);
+    }
+
+    @Nullable
+    private static MessageSoundSpec readSound(@Nullable FileConfiguration config, String key) {
+        if (config == null || !config.isConfigurationSection(key)) {
+            return null;
+        }
+        ConfigurationSection section = config.getConfigurationSection(key);
+        if (section == null) {
+            return null;
+        }
+        String soundId = section.getString("sound");
+        if (soundId == null || soundId.isBlank()) {
+            return null;
+        }
+        Double volume = section.contains("volume") ? section.getDouble("volume") : null;
+        Double pitch = section.contains("pitch") ? section.getDouble("pitch") : null;
+        return new MessageSoundSpec(soundId, volume, pitch);
     }
 
     public String getRaw(Messages message) {

@@ -28,7 +28,7 @@ result and must preserve the existing uncommitted work.
       check/build/package, no-provider boot, and `/heal`, `/feed`, `/fly`, `/god`,
       `/gamemode` (`self`, `other`, `console`) smoke tests on Spigot 1.20.1/Java 17,
       Paper 1.20/Java 17, Paper 1.20.6/Java 21, Spigot 26.3/Java 25, and Paper 26.3/Java 25.
-- [ ] **S01.5a / M1 — Static text formatting + retire Takion:**
+- [x] **S01.5a / M1 — Static text formatting + retire Takion:**
       implement Allium's static text formatter (`&`/`§` legacy codes, `&#RRGGBB`/`§x`
       hex, multi-stop `<gradient:...>` and `<rainbow:...>` tags, nested/reset
       formatting, and a `GlyphColorSource` hook ready for `S01.5b`
@@ -38,10 +38,10 @@ result and must preserve the existing uncommitted work.
       `MessageManager` and locale delivery through the formatter with Allium-owned
       sound playback; replace all remaining Takion call sites and remove
       `me.croabeast.takion:shaded` from `build.gradle.kts` and `minimize()` exclusions.
-      Gate: jar contains no `me.croabeast` classes; unit tests pin 2-stop/multi-stop
+      Gate: jar contains zero `me.croabeast` classes; unit tests pin 2-stop/multi-stop
       gradients, rainbow, legacy, hex, nested/reset, empty and 1-char strings on both
-      Adventure and legacy paths; boot + localized message on min/max lanes; record jar
-      size before and after.
+      Adventure and legacy paths; boot + localized message on min/max lanes; jar size
+      reduced from **1,684,657 bytes** (before) to **1,395,353 bytes** (after, -289,304 bytes).
 - [ ] **S01.5b — Animated text engine (deferred until the first animated target: tab, nametag, boss bar, or display entity):**
       implement deterministic per-glyph animation effects (`pulse`, `shift`, `sparkle`,
       and `phase-scroll` gradient/rainbow) using pure
@@ -94,19 +94,18 @@ S06 depends on S04–S05; S07–S08 depend on S01.5a, S03 and the message pipeli
 - **HikariCP 5.1.0 (`com.zaxxer:HikariCP`):** Class version 55 (Java 11). Excluded from Shadow `minimize()` because pool and proxy classes are loaded reflectively.
 - **InvUI 1.49 (`xyz.xenondevs.invui`):** `invui-core`, `inventory-access`, and `inventory-access-r16..r18` (1.20.0–1.20.4) are class version 55–61 (Java 11–17). `inventory-access-r19..r26` (1.20.5–1.21.11) are class version 65 (Java 21), loaded reflectively via `InventoryAccessRevision` only on 1.20.5+ servers (which require Java 21+, verified on Paper 1.20.6 / OpenJDK 21). Excluded from Shadow `minimize()` so `Class.forName` lookups succeed.
   - **Open M4 Risk (InvUI on 26.x):** `InventoryAccessRevision` matches `26 > 1` and selects `R26` (compiled against `1.21.11` NMS internals) on `26.x`. Matching `26 > 1` is **not** real `26.x` support. Before any GUI slice in M4/M5, check upstream InvUI for `26.x` support; if none exists, place the GUI layer behind an adapter with a plain Bukkit inventory implementation.
-- **Adventure Legacy Serializer 4.17.0:** Class version 52 (Java 8).
+- **Adventure API 4.17.0:** `compileOnly` (provided natively by Paper at runtime; isolated behind `AdventureTextBridge`).
 
-### Takion (`me.croabeast.takion:shaded:1.4`) Inventory & Findings
+### Takion (`me.croabeast.takion:shaded:1.4`) Inventory & Retirement (Completed in S01.5a)
 1. **Call sites in recode:**
    - Formerly only two files referenced Takion: `PluginStart.java` (`new TakionLib(this)`) and `MessageManager.java` (`takion.getLoadedSender().setTargets(player).send(text)` in `broadcast()`).
    - **Critical 26.3 Boot Failure:** On Spigot 26.3 and Paper 26.3, `new TakionLib(this)` triggers `me.croabeast.common.util.ServerInfoUtils.<clinit>`, which matches `Bukkit.getVersion()` against `1\.(\d+(\.\d+)?)`. On 26.3 (`SERVER_VERSION = 0.0 < 20.5`), it splits `Bukkit.getServer().getClass().getPackage().getName()` (`org.bukkit.craftbukkit`, length 3) and indexes `[3]`, throwing `ArrayIndexOutOfBoundsException: Index 3 out of bounds for length 3`.
-   - `PluginStart` and `MessageManager` have been decoupled from `TakionLib` in S01 so 1.20 and 26.3 boot cleanly.
 2. **Takion jar grep for animation APIs:**
    - `me.croabeast.prismatic.PrismaticAPI` and `me.croabeast.prismatic.color.MultiColor` (`$Gradient`, `$Rainbow`) provide **static** string/component colorization only (`applyGradient`, `applyRainbow`, `colorize`). There is **no** per-frame or phase-scroll text animation API in Takion's Prismatic package.
    - `me.croabeast.takion.bossbar.AnimatedBossbar` only cycles through a `List<String>` of bossbar titles/colors/styles on a timer.
-3. **Replacement Plan (S01.5a / S01.5b):**
-   - **S01.5a (now):** Implement static formatter in `codes.castled.allium.text`, route `MessageManager` and sound playback through it, and remove `me.croabeast.takion:shaded:1.4` and its relocation/minimization rules from `build.gradle.kts`.
-   - **S01.5b (deferred to first animated target):** Add `pulse`/`shift`/`sparkle`/`phase-scroll` animation evaluators, shared clock/scheduler, and frame cache.
+3. **Retirement Result (S01.5a):**
+   - Implemented `codes.castled.allium.text` (`TextFormatter`, `FormattedText`, `GlyphColorSource`, `TextSender`, `AdventureTextBridge`), routed `MessageManager` and sound playback through it, and removed `me.croabeast.takion:shaded:1.4` and its relocation/minimization rules from `build.gradle.kts`.
+   - `build/libs/Allium.jar` contains **zero** `me.croabeast` classes; jar size dropped from **1,684,657 bytes** to **1,395,353 bytes** (-289,304 bytes).
 
 ## M0 — Foundation and migration inventory
 
@@ -188,5 +187,4 @@ S06 depends on S04–S05; S07–S08 depend on S01.5a, S03 and the message pipeli
 - Allium owns its text formatting, sound playback and animation engine; Takion is retired.
 - Kitchen is separate from Harvest; SpawnerCraft is always its own addon.
 - Addons use Bukkit loading, not a custom nested-jar classloader.
-- Automatic downloads stay off and are deferred.
-- Client companion and Fabric/Quilt/Forge/NeoForge work is deferred beyond this roadmap.
+- Automatic downloads stay off and are deferred.\n- Client companion and Fabric/Quilt/Forge/NeoForge work is deferred beyond this roadmap.

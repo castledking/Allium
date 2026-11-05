@@ -28,6 +28,9 @@ dependencies {
     testImplementation("org.spigotmc:spigot-api:$spigotApiVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.16.0")
+    testImplementation("org.mockito:mockito-inline:5.2.0")
+    testImplementation("org.jetbrains:annotations:26.0.2")
 }
 
 tasks.withType<JavaCompile>().configureEach {
@@ -37,4 +40,5 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
+    jvmArgs("-Xshare:off", "-Dnet.bytebuddy.experimental=true")
 }

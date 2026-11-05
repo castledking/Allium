@@ -57,7 +57,7 @@ result and must preserve the existing uncommitted work.
 - [ ] **S03 / M1 — Preferences:** UUID repository, schema migrations, defaults,
       bounded asynchronous storage and safe session loading. Gate: SQLite/MySQL
       round-trip and reconnect/restart behavior without accidental default overwrite.
-- [ ] **S04 / M1 — Item contract:** parse, create, identify, match, clone and
+- [x] **S04 / M1 — Item contract:** parse, create, identify, match, clone and
       serialize vanilla/Allium references; first-colon namespace split (`craftengine:<ns>:<id>`);
       bare names resolve to vanilla only; behavior ID separate from appearance.
       Gate: metadata round-trip, strict provider-carrier matching and no AIR fallback.
@@ -187,4 +187,5 @@ S06 depends on S04–S05; S07–S08 depend on S01.5a, S03 and the message pipeli
 - Allium owns its text formatting, sound playback and animation engine; Takion is retired.
 - Kitchen is separate from Harvest; SpawnerCraft is always its own addon.
 - Addons use Bukkit loading, not a custom nested-jar classloader.
-- Automatic downloads stay off and are deferred.\n- Client companion and Fabric/Quilt/Forge/NeoForge work is deferred beyond this roadmap.
+- Automatic downloads stay off and are deferred.
+- Client companion and Fabric/Quilt/Forge/NeoForge work is deferred beyond this roadmap.

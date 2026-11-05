@@ -6,12 +6,15 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.EnumSet;
 
 public final class BackupManager {
 
     private static final SimpleDateFormat DIR_FORMAT = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+    public static final String HMAC_SECRET_FILENAME = ".item-hmac-secret";
 
     private final PluginStart plugin;
     private final File backupRoot;
@@ -36,6 +39,15 @@ public final class BackupManager {
 
         try {
             Files.copy(file.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            if (HMAC_SECRET_FILENAME.equals(file.getName())) {
+                try {
+                    Files.setPosixFilePermissions(
+                            destination.toPath(),
+                            EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)
+                    );
+                } catch (UnsupportedOperationException ignored) {
+                }
+            }
             plugin.logger().debug("Backed up " + file.getName() + " -> " + destination.getAbsolutePath());
             return destination;
         } catch (IOException e) {
@@ -48,12 +60,18 @@ public final class BackupManager {
         File dataFolder = plugin.getDataFolder();
         if (!dataFolder.exists()) return;
 
-        File[] ymlFiles = dataFolder.listFiles((dir, name) -> name.endsWith(".yml"));
-        if (ymlFiles == null) return;
-
         int count = 0;
-        for (File file : ymlFiles) {
-            if (backup(file) != null) count++;
+
+        File[] ymlFiles = dataFolder.listFiles((dir, name) -> name.endsWith(".yml"));
+        if (ymlFiles != null) {
+            for (File file : ymlFiles) {
+                if (backup(file) != null) count++;
+            }
+        }
+
+        File secretFile = new File(dataFolder, HMAC_SECRET_FILENAME);
+        if (secretFile.isFile() && backup(secretFile) != null) {
+            count++;
         }
 
         File langDir = new File(dataFolder, "lang");

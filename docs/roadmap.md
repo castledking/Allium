@@ -91,15 +91,15 @@ line and requires Java 25 for 26.1+; see [Paper's requirements][paper-java].
 Verify exact Spigot/server requirements when pinning the matrix. Java 17 output
 does not imply newer servers can run on Java 17.
 
-#### Recorded S01 / S04 Server/JDK Baseline & Smoke-Test Matrix
+#### Recorded S01 / S02 / S04 Server/JDK Baseline & Smoke-Test Matrix
 
-| Lane | Server Build | Runtime JDK | No-Provider Boot & Lifecycle | `/heal`, `/feed`, `/fly`, `/god`, `/gamemode` (`self`, `other`, `console`) | S04 Item Contract & HMAC Verification |
-| --- | --- | --- | --- | --- | --- |
-| Minimum (Spigot 1.20.1) | Spigot `3871-Spigot-d2eba2c-3f9263b` (MC 1.20.1) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** |
-| Minimum (Paper 1.20) | Paper `git-Paper-17` (`c287e92`, MC 1.20) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** |
-| Intermediate (Paper 1.20.6, NBT-to-component & InvUI `r19+` boundary) | Paper `1.20.6-151-a4f0f5c` (MC 1.20.6) | OpenJDK 21 (`java-21-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** (`s04:create-identify`, `s04:no-carrier-match`, `s04:no-air-fallback`, `s04:privileged-hmac-valid`, `s04:privileged-hmac-tamper-rejected`) |
-| Maximum (Spigot 26.3) | Spigot `4660-Spigot-766de51-bd6d9dc` (MC 26.3) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** |
-| Maximum (Paper 26.3) | Paper `26.3-141-54024d3` (`world_version: 5023`, protocol 777) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** |
+| Lane | Server Build | Runtime JDK | No-Provider Boot & Lifecycle | `/heal`, `/feed`, `/fly`, `/god`, `/gamemode` (`self`, `other`, `console`) | S02 Client Tab-Complete & `knownCommands` Access | S04 Item Contract, State HMAC & Keyring |
+| --- | --- | --- | --- | --- | --- | --- |
+| Minimum (Spigot 1.20.1) | Spigot `3871-Spigot-d2eba2c-3f9263b` (MC 1.20.1) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** (`Server#getCommandMap()` -> `v1_20_R1.command.CraftCommandMap#getKnownCommands()`, `syncCommands()` + `player.updateCommands()`) | **PASS** (`s04:privileged-hmac-valid`, `s04:privileged-hmac-resigned-on-setState`, `s04:privileged-hmac-state-tamper-rejected`) |
+| Minimum (Paper 1.20) | Paper `git-Paper-17` (`c287e92`, MC 1.20) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** | **PASS** |
+| Intermediate (Paper 1.20.6, NBT-to-component & InvUI `r19+` boundary) | Paper `1.20.6-151-a4f0f5c` (MC 1.20.6) | OpenJDK 21 (`java-21-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** (`Server#getCommandMap()` -> `craftbukkit.command.CraftCommandMap#getKnownCommands()`, Paper Brigadier `BukkitCommandNode` updated via `syncCommands()` + `player.updateCommands()`) | **PASS** (`s04:privileged-hmac-valid`, `s04:privileged-hmac-resigned-on-setState`, `s04:privileged-hmac-state-tamper-rejected`) |
+| Maximum (Spigot 26.3) | Spigot `4660-Spigot-766de51-bd6d9dc` (MC 26.3) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** | **PASS** |
+| Maximum (Paper 26.3) | Paper `26.3-141-54024d3` (`world_version: 5023`, protocol 777) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** (`Server#getCommandMap()` -> `craftbukkit.command.CraftCommandMap#getKnownCommands()`, Paper Brigadier `BukkitCommandNode` updated via `syncCommands()` + `player.updateCommands()`) | **PASS** (`s04:privileged-hmac-valid`, `s04:privileged-hmac-resigned-on-setState`, `s04:privileged-hmac-state-tamper-rejected`) |
 
 #### Open M4 Risk: InvUI on 26.x
 
@@ -200,12 +200,20 @@ Because PDC tags are forgeable by creative clients and `/give` component syntax,
 stamped PDC and serialized `ItemRef`s carry an explicit `schema_version` (`1`),
 and `AlliumItemDefinition` declares `privileged = true|false` (`handcuffs` and
 `phantom_obliterator` are privileged). Privileged behaviors require a valid
-server-secret `HmacSHA256` signature over `(provider, itemId, behaviorId, instanceUuid)`
-stored in PDC (`allium:instance_uuid`, `allium:signature`), using a secret generated
-on first run and stored outside `config.yml` (`plugins/Allium/.item-hmac-secret`)
-so it is never shared when configs are posted. Unsigned or invalidly signed items
-claiming a privileged behavior resolve as plain vanilla items and log a bounded
-diagnostic; unprivileged items skip signing. Legacy `allium:custom_item_id` and
+server-secret `HmacSHA256` signature (`<keyId>:<64-char-hex>`) over
+`(provider, itemId, behaviorId, instanceUuid, canonicalState)` stored in PDC
+(`allium:instance_uuid`, `allium:signature`), where `canonicalState` is a
+lexicographically key-sorted encoding of `allium:state_*` (`ItemHmacSigner#encodeCanonicalState`).
+Every state mutation (`ItemService#setState`) re-signs the stack automatically, and
+editing `allium:state_*` in PDC invalidates verification. Keyring secrets (`active`
+key for signing plus `retired` keys valid for verification) are generated on first
+run and stored outside `config.yml` (`plugins/Allium/.item-hmac-secret`, `0600`
+permissions) so they are never leaked when configs are posted; multi-server networks
+that share inventories share the same `.item-hmac-secret` file. Items carrying an
+unknown `keyId` log a loud `CRITICAL HMAC KEY MISMATCH` diagnostic instead of
+degrading silently. Signing prevents minting and editing of privileged items and
+their state, **not** creative-mode stack duplication (granting privileged items in
+creative mode is a permission concern). Legacy `allium:custom_item_id` and
 `alliumcards` PDC tags are read-only for the importer (`ItemService#readLegacyMetadata`)
 and never grant runtime privileged behavior prior to migration.
 
@@ -258,9 +266,13 @@ as `msg` disables its aliases and `allium:msg` forms too. Normalize case and str
 an optional slash; reject unknown entries with diagnostics. Allium must neither
 execute a disabled family nor reserve its usable labels from another plugin.
 Test Bukkit's command-map ownership and collisions on real Spigot and Paper.
-Keep disabled-command registration changes restart-scoped initially; config reload
-can immediately guard dispatch but must report when a restart is needed to yield
-labels. Do not implement a global command blocker by accident.
+After `CommandMapBridge` mutates `knownCommands`, it invokes `CraftServer#syncCommands()`
+and calls `player.updateCommands()` for all online players so client-side Brigadier
+tab completion updates immediately. All reflection in `CommandMapBridge` is isolated
+in a single guarded accessor (`CommandMapBridge.GuardedAccessor`) with a clear
+diagnostic on failure. Keep disabled-command registration changes restart-scoped
+initially; config reload can immediately guard dispatch but must report when a
+restart is needed to yield labels. Do not implement a global command blocker by accident.
 
 Every player-target argument has position-aware tab completion, including
 `/mail gift <player>` and subsequent gift arguments. Filter by sender permission,
@@ -375,7 +387,7 @@ committing a rename and consuming exactly one token. Cancel/no-op/invalid input
 spends nothing. Handle inventory swaps, disconnects, full inventories and provider
 item refreshes. A permanent rename permission bypasses the token explicitly.
 No polling inventory scans, temporary ItemEdit permission grants or delayed guesses
-nat another command's success. A provider adapter can integrate with supported
+at another command's success. A provider adapter can integrate with supported
 ItemEdit APIs later; core renaming works without ItemEdit or dialogs.
 
 Staff CrowBar is the `crowbar:player_data` locator feed, **not a crowbar item**.
@@ -482,6 +494,10 @@ checkpoints, repeat-run idempotency and conflict decisions. Leave source data
 untouched and produce a skipped/unmapped report. Remove no existing world content
 merely because an addon or provider is absent. Stage on a full world/database copy;
 rollback restores the complete pre-cutover snapshot, not just the plugin jar.
+`BackupManager` and all migration/cutover snapshots must include
+`plugins/Allium/.item-hmac-secret` (preserving `0600` POSIX permissions) alongside
+YAML and database backups so existing signed privileged items in player inventories,
+ender chests, and containers continue to verify after restore or server migration.
 Migrate required features before cutover; never run both plugins as simultaneous
 owners of balances, item use or crop growth. Excluded features remain unimported.
 

@@ -21,7 +21,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Central S04 item contract service for parsing, creating, signing, identifying,
+ * Central S04/S05 item contract service for parsing, creating, signing, identifying,
  * matching, cloning, refreshing, and serializing vanilla, Allium, and external-provider items.
  */
 @SuppressWarnings("deprecation")
@@ -213,7 +213,7 @@ public final class ItemService {
     /**
      * Creates an {@link ItemStack} for the given {@link ItemRef}, checking provider readiness
      * and stamping authoritative PDC identity, schema version, behavior ID, HMAC signature
-     * (when privileged), and state metadata.
+     * (including canonical sorted state when privileged), and state metadata.
      */
     public ResolutionResult create(ItemRef ref) {
         return createInternal(ref, null);
@@ -275,9 +275,13 @@ public final class ItemService {
      * <p>Enforces:
      * <ul>
      *   <li>Display name, lore, and CustomModelData alone never grant item identity or behavior.</li>
-     *   <li>Privileged behaviors require a valid HMAC-SHA256 signature over
-     *       {@code (provider, itemId, behaviorId, instanceUuid)}; unsigned or invalid items
-     *       resolve as plain vanilla items of their carrier material and log a bounded diagnostic.</li>
+     *   <li>External provider adapters are queried via {@link ItemProviderAdapter#identifyItemId(ItemStack)}.
+     *       If an external provider's native API and Allium's PDC stamp disagree, an explicit diagnostic
+     *       is logged and the ready provider's native API is authoritative for appearance.</li>
+     *   <li>Privileged behaviors require a valid keyed HMAC-SHA256 signature over
+     *       {@code (provider, itemId, behaviorId, instanceUuid, canonicalState)}; unsigned,
+     *       unknown-key, or tampered items resolve as plain vanilla items of their carrier material
+     *       and log a diagnostic (with a loud diagnostic for unknown key IDs).</li>
      * </ul>
      */
     public Optional<ItemRef> identify(@Nullable ItemStack stack) {
@@ -289,7 +293,7 @@ public final class ItemService {
         ProviderKey plainVanillaKey = ProviderKey.minecraft(vanillaId);
 
         int schemaVersion = ItemRef.CURRENT_SCHEMA_VERSION;
-        ProviderKey appearance = null;
+        ProviderKey pdcAppearance = null;
         String behaviorId = null;
         String instanceUuid = null;
         String signature = null;
@@ -308,9 +312,9 @@ public final class ItemService {
                 if (storedProvider != null && !storedProvider.isBlank()
                         && storedId != null && !storedId.isBlank()) {
                     try {
-                        appearance = ProviderKey.of(storedProvider, storedId);
+                        pdcAppearance = ProviderKey.of(storedProvider, storedId);
                     } catch (IllegalArgumentException ignored) {
-                        appearance = null;
+                        pdcAppearance = null;
                     }
                 }
                 String storedBehavior = pdc.get(KEY_BEHAVIOR_ID, PersistentDataType.STRING);
@@ -319,37 +323,61 @@ public final class ItemService {
                 }
                 instanceUuid = pdc.get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
                 signature = pdc.get(KEY_SIGNATURE, PersistentDataType.STRING);
-
-                for (NamespacedKey key : pdc.getKeys()) {
-                    if (NAMESPACE.equals(key.getNamespace()) && key.getKey().startsWith(STATE_KEY_PREFIX)) {
-                        String stateName = key.getKey().substring(STATE_KEY_PREFIX.length());
-                        String val = pdc.get(key, PersistentDataType.STRING);
-                        if (!stateName.isEmpty() && val != null) {
-                            state.put(stateName, val);
-                        }
-                    }
-                }
+                state.putAll(extractStateMap(pdc));
             }
         }
 
-        // If not stamped in PDC, query external provider adapters (never vanilla/allium by visual heuristics)
-        if (appearance == null) {
-            for (ItemProviderAdapter adapter : providers.values()) {
-                String pName = adapter.providerName();
-                if (ProviderKey.MINECRAFT.equals(pName) || ProviderKey.ALLIUM.equals(pName)) {
-                    continue;
-                }
-                if (adapter.status() == ProviderStatus.READY) {
-                    Optional<String> externalId = adapter.identifyItemId(stack);
-                    if (externalId.isPresent()) {
-                        appearance = ProviderKey.of(pName, externalId.get());
+        // Query external provider adapters using their native item-ID APIs
+        ProviderKey nativeAppearance = null;
+        for (ItemProviderAdapter adapter : providers.values()) {
+            String pName = adapter.providerName();
+            if (ProviderKey.MINECRAFT.equals(pName) || ProviderKey.ALLIUM.equals(pName)) {
+                continue;
+            }
+            if (adapter.status() == ProviderStatus.READY) {
+                Optional<String> externalId = adapter.identifyItemId(stack);
+                if (externalId.isPresent() && !externalId.get().isBlank()) {
+                    try {
+                        nativeAppearance = ProviderKey.of(pName, externalId.get());
                         break;
+                    } catch (IllegalArgumentException ignored) {
                     }
                 }
             }
         }
 
-        if (appearance == null) {
+        ProviderKey appearance;
+        if (nativeAppearance != null) {
+            if (pdcAppearance != null && !pdcAppearance.equals(nativeAppearance)) {
+                warnDiagnosticOnce("Identity mismatch on item stack: provider API reported '"
+                        + nativeAppearance + "' while Allium PDC stamp reported '" + pdcAppearance
+                        + "'; resolving appearance to authoritative provider API '" + nativeAppearance + "'.");
+                // If an unprivileged behavior was bound only to the old PDC appearance, re-resolve for nativeAppearance
+                if (behaviorId != null && !isPrivilegedBehavior(behaviorId) && signature == null) {
+                    behaviorId = appearanceToBehavior.get(nativeAppearance);
+                }
+            }
+            appearance = nativeAppearance;
+        } else if (pdcAppearance != null) {
+            ItemProviderAdapter claimedAdapter = providers.get(pdcAppearance.provider());
+            if (!pdcAppearance.isVanilla()
+                    && !pdcAppearance.isAllium()
+                    && claimedAdapter != null
+                    && claimedAdapter.status() == ProviderStatus.READY
+                    && claimedAdapter.hasAuthoritativeNativeIdCheck()) {
+                warnDiagnosticOnce("Identity mismatch on item stack: Allium PDC stamp reported '"
+                        + pdcAppearance + "' but ready provider '" + pdcAppearance.provider()
+                        + "' did not recognize the stack; resolving as plain " + plainVanillaKey + ".");
+                return Optional.of(new ItemRef(
+                        ItemRef.CURRENT_SCHEMA_VERSION,
+                        plainVanillaKey,
+                        null,
+                        stack.getAmount(),
+                        Collections.emptyMap()
+                ));
+            }
+            appearance = pdcAppearance;
+        } else {
             appearance = plainVanillaKey;
         }
 
@@ -360,17 +388,31 @@ public final class ItemService {
         // Verify signature whenever a privileged behavior is claimed OR a signature is present
         boolean privileged = isPrivilegedBehavior(behaviorId);
         if (privileged || signature != null) {
-            boolean validSig = behaviorId != null && hmacSigner.verify(
-                    appearance.provider(),
-                    appearance.id(),
-                    behaviorId,
-                    instanceUuid,
-                    signature
-            );
-            if (!validSig) {
-                String reason = (signature == null || instanceUuid == null) ? "missing signature" : "invalid/tampered signature";
-                warnDiagnosticOnce("Rejected item claiming behavior '" + behaviorId
-                        + "' on appearance '" + appearance + "' (" + reason + "); resolving as plain " + plainVanillaKey);
+            ItemHmacSigner.VerificationOutcome outcome = behaviorId == null
+                    ? new ItemHmacSigner.VerificationOutcome(ItemHmacSigner.VerificationStatus.MISSING, null)
+                    : hmacSigner.verifyDetailed(
+                            appearance.provider(),
+                            appearance.id(),
+                            behaviorId,
+                            instanceUuid,
+                            state,
+                            signature
+                    );
+            if (!outcome.isValid()) {
+                if (outcome.status() == ItemHmacSigner.VerificationStatus.UNKNOWN_KEY_ID) {
+                    warnDiagnosticOnce("CRITICAL HMAC KEY MISMATCH: Item claiming behavior '" + behaviorId
+                            + "' on appearance '" + appearance + "' is signed with unknown key ID '"
+                            + outcome.keyId() + "' (active/retired key IDs: " + hmacSigner.keyIds()
+                            + "). If you rotated keys or migrated servers, add 'retired="
+                            + outcome.keyId() + ":<hexSecret>' to plugins/Allium/.item-hmac-secret; resolving as plain "
+                            + plainVanillaKey);
+                } else {
+                    String reason = outcome.status() == ItemHmacSigner.VerificationStatus.MISSING
+                            ? "missing signature"
+                            : "invalid/tampered signature or state";
+                    warnDiagnosticOnce("Rejected item claiming behavior '" + behaviorId
+                            + "' on appearance '" + appearance + "' (" + reason + "); resolving as plain " + plainVanillaKey);
+                }
                 return Optional.of(new ItemRef(
                         ItemRef.CURRENT_SCHEMA_VERSION,
                         plainVanillaKey,
@@ -484,7 +526,8 @@ public final class ItemService {
     }
 
     /**
-     * Updates a persisted state value (e.g. {@code "charges"}) in the stack's server-owned PDC.
+     * Updates a persisted state value (e.g. {@code "charges"}) in the stack's server-owned PDC
+     * and re-signs the HMAC signature if the item is privileged or signed.
      */
     public void setState(ItemStack stack, String stateKey, String value) {
         Objects.requireNonNull(stack, "stack");
@@ -498,6 +541,29 @@ public final class ItemService {
         if (pdc != null) {
             NamespacedKey key = new NamespacedKey(NAMESPACE, STATE_KEY_PREFIX + stateKey.trim().toLowerCase(Locale.ROOT));
             pdc.set(key, PersistentDataType.STRING, value);
+
+            String storedBehavior = pdc.get(KEY_BEHAVIOR_ID, PersistentDataType.STRING);
+            String existingSig = pdc.get(KEY_SIGNATURE, PersistentDataType.STRING);
+            if (storedBehavior != null && (isPrivilegedBehavior(storedBehavior) || existingSig != null)) {
+                String storedProvider = pdc.get(KEY_PROVIDER, PersistentDataType.STRING);
+                String storedId = pdc.get(KEY_ITEM_ID, PersistentDataType.STRING);
+                if (storedProvider != null && storedId != null) {
+                    String instanceUuid = pdc.get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
+                    if (instanceUuid == null || instanceUuid.isBlank()) {
+                        instanceUuid = UUID.randomUUID().toString();
+                        pdc.set(KEY_INSTANCE_UUID, PersistentDataType.STRING, instanceUuid);
+                    }
+                    Map<String, String> updatedState = extractStateMap(pdc);
+                    String newSig = hmacSigner.sign(
+                            storedProvider,
+                            storedId,
+                            ItemRef.normalizeBehaviorId(storedBehavior),
+                            instanceUuid,
+                            updatedState
+                    );
+                    pdc.set(KEY_SIGNATURE, PersistentDataType.STRING, newSig);
+                }
+            }
             stack.setItemMeta(meta);
         }
     }
@@ -547,6 +613,20 @@ public final class ItemService {
         return createInternal(updatedRef, existingInstanceUuid);
     }
 
+    private static Map<String, String> extractStateMap(PersistentDataContainer pdc) {
+        Map<String, String> state = new LinkedHashMap<>();
+        for (NamespacedKey key : pdc.getKeys()) {
+            if (NAMESPACE.equals(key.getNamespace()) && key.getKey().startsWith(STATE_KEY_PREFIX)) {
+                String stateName = key.getKey().substring(STATE_KEY_PREFIX.length());
+                String val = pdc.get(key, PersistentDataType.STRING);
+                if (!stateName.isEmpty() && val != null) {
+                    state.put(stateName, val);
+                }
+            }
+        }
+        return state;
+    }
+
     private void stampMetadata(
             ItemStack stack,
             int schemaVersion,
@@ -569,6 +649,10 @@ public final class ItemService {
                 pdc.set(KEY_PROVIDER, PersistentDataType.STRING, appearance.provider());
                 pdc.set(KEY_ITEM_ID, PersistentDataType.STRING, appearance.id());
             }
+            for (Map.Entry<String, String> entry : stateData.entrySet()) {
+                NamespacedKey stateKey = new NamespacedKey(NAMESPACE, STATE_KEY_PREFIX + entry.getKey());
+                pdc.set(stateKey, PersistentDataType.STRING, entry.getValue());
+            }
             if (behaviorId != null && !behaviorId.isBlank()) {
                 pdc.set(KEY_BEHAVIOR_ID, PersistentDataType.STRING, behaviorId);
                 if (isPrivilegedBehavior(behaviorId)) {
@@ -579,15 +663,12 @@ public final class ItemService {
                             appearance.provider(),
                             appearance.id(),
                             behaviorId,
-                            instanceUuid
+                            instanceUuid,
+                            stateData
                     );
                     pdc.set(KEY_INSTANCE_UUID, PersistentDataType.STRING, instanceUuid);
                     pdc.set(KEY_SIGNATURE, PersistentDataType.STRING, signature);
                 }
-            }
-            for (Map.Entry<String, String> entry : stateData.entrySet()) {
-                NamespacedKey stateKey = new NamespacedKey(NAMESPACE, STATE_KEY_PREFIX + entry.getKey());
-                pdc.set(stateKey, PersistentDataType.STRING, entry.getValue());
             }
         }
         stack.setItemMeta(meta);

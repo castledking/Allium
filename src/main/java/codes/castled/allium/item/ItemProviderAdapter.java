@@ -28,8 +28,18 @@ public interface ItemProviderAdapter {
     ResolutionResult createItem(String id);
 
     /**
-     * Inspects an {@link ItemStack} to determine whether it belongs to this provider,
-     * returning the provider-local ID if recognized.
+     * Inspects an {@link ItemStack} using the provider's own item-ID API to determine
+     * whether it belongs to this provider, returning the provider-local ID if recognized.
      */
     Optional<String> identifyItemId(ItemStack stack);
+
+    /**
+     * Returns true if {@link #identifyItemId(ItemStack)} is backed by the external provider's
+     * authoritative item-ID API when {@link #status()} is {@link ProviderStatus#READY}, so that
+     * an {@link ItemStack} claiming this provider in PDC without a matching native provider ID
+     * is flagged as a provider/PDC disagreement.
+     */
+    default boolean hasAuthoritativeNativeIdCheck() {
+        return false;
+    }
 }

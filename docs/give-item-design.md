@@ -59,16 +59,30 @@ ItemRef (schema-version: 1)
 
 ### How the Registry Binds Behavior, Appearance, and Signatures
 1. **Behavior Registration & Privilege Flag:** Core tools and addons register their definitions (`AlliumItemDefinition`) under a canonical `behaviorId` (e.g., `allium:mob_disarmer`, `allium:handcuffs`, `allium:phantom_obliterator`) and declare `privileged = true|false`. `handcuffs` and `phantom_obliterator` declare `privileged = true`.
-2. **Appearance Binding:** In configuration, the server operator binds a behavior ID to a visual source—by default the built-in Allium resource pack model (`allium:<id>`), or an external provider item (`nexo:<id>`, `oraxen:<id>`, `craftengine:<ns>:<id>`).
-3. **Schema Version & Server-Secret HMAC Signing:**
+2. **Appearance Binding & Authoritative Native ID Resolution:**
+   - In configuration, the server operator binds a behavior ID to a visual source—by default the built-in Allium resource pack model (`allium:<id>`), or an external provider item (`nexo:<id>`, `oraxen:<id>`, `craftengine:<ns>:<id>`).
+   - When `ItemService.identify(ItemStack)` inspects a stack whose external provider (`nexo`, `oraxen`, `craftengine`) is `READY`, it queries the provider adapter's own native item-ID API (`ItemProviderAdapter#identify`). If the provider's native ID and Allium's PDC stamp (`allium:provider` / `allium:item_id`) disagree, `ItemService` logs an explicit diagnostic and resolves appearance using one deterministic rule: **the ready provider's native API is authoritative for visual appearance** (and if the provider's native API reports the stack is no longer a valid provider item, it degrades to `minecraft:<carrier>` with no privileged behavior).
+3. **Schema Version, Canonical `allium:state_*` Encoding & Server-Secret HMAC Signing:**
    - Stamped PDC carries `allium:schema_version = 1` (`INTEGER`), `allium:provider`, `allium:item_id`, and `allium:behavior_id`.
    - `ItemRef.serialize()` writes `"schema-version": 1` and `ItemRef.deserialize()` validates it.
-   - Because PDC tags are forgeable by creative clients and `/give` component syntax, `ItemService` signs privileged items (`privileged = true`) using `ItemHmacSigner` (`HmacSHA256` over `(provider, itemId, behaviorId, instanceUuid)`), stamping `allium:instance_uuid` and `allium:signature`.
-   - The 256-bit HMAC secret is generated on first run and stored outside `config.yml` at `plugins/Allium/.item-hmac-secret` (with `0600` POSIX permissions where supported) so it is never leaked when operators post configs.
-   - When `ItemService.identify(ItemStack)` inspects an item whose claimed behavior is `privileged = true`, it verifies the HMAC signature. If `instance_uuid` or `signature` is missing, forged, or tampered (e.g., `item_id` or `behavior_id` altered in PDC), `identify` logs a bounded diagnostic and resolves the stack as a plain vanilla item (`minecraft:<carrier>`, `behaviorId = Optional.empty()`).
-   - Signatures survive `cloneItem` and `swapOrRefreshAppearance` (which preserves `instance_uuid` and re-signs with the updated appearance key).
-   - Unprivileged items (`privileged = false`, such as `mob_disarmer`) may skip signing.
-4. **Read-Only Legacy Tags for Importer:**
+   - Because PDC tags are forgeable by creative clients and `/give` component syntax, `ItemService` signs privileged items (`privileged = true`) using `ItemHmacSigner` (`HmacSHA256` over `(provider, itemId, behaviorId, instanceUuid, canonicalState)`), stamping `allium:instance_uuid` and `allium:signature = <keyId>:<64-char-hex>`.
+   - `canonicalState` (`ItemHmacSigner#encodeCanonicalState`) encodes all `allium:state_*` entries in lexicographical key order (`key1=val1\0key2=val2`). Every state mutation through `ItemService#setState(ItemStack, key, value)` automatically re-computes and updates `allium:signature` over the new state map while preserving `allium:instance_uuid`. Directly editing `allium:state_*` (such as `allium:state_charges`) in PDC invalidates the MAC and causes verification to fail.
+   - Signatures survive `cloneItem`, `setState`, and `swapOrRefreshAppearance` (which preserves `instance_uuid` and `allium:state_*` and re-signs with the updated appearance key).
+   - Unprivileged items (`privileged = false`, such as `mob_disarmer`) skip signing.
+4. **Key ID (`<kid>:<hex>`), Keyring Rotation, Network Shared Secret & Backup Policy:**
+   - The keyring is stored outside `config.yml` at `plugins/Allium/.item-hmac-secret` (with `0600` POSIX permissions where supported) so secrets are never leaked when operators share configs:
+     ```ini
+     active=k2:<64-char-hex-secret>
+     retired=k1:<64-char-hex-secret>
+     ```
+   - **Key Rotation:** To rotate keys without invalidating existing items in player inventories, move the current `active=<oldKid>:<hex>` line to `retired=<oldKid>:<hex>` and add a new `active=<newKid>:<new-hex>`. All new items and `setState` mutations sign with `active`, while items carrying a `retired` key ID remain valid and transparently re-sign under the `active` key the next time their state or appearance is updated.
+   - **Shared Secret for Multi-Server Networks:** Backend servers that transfer player inventories or serialized `ItemRef`/ItemStack data across proxies must share the same `.item-hmac-secret` keyring file so signatures with `<keyId>` verify on every node.
+   - **Loud Unknown-Key Diagnostic:** If `ItemService.identify(ItemStack)` encounters a privileged item whose signature carries an unknown `keyId` (`VerificationStatus.UNKNOWN_KEY_ID`, e.g., after restoring a world/playerdata backup without `.item-hmac-secret` or misconfiguring a network node), it logs a loud `CRITICAL HMAC KEY MISMATCH` warning identifying the unknown `keyId`, configured keyring IDs, and remediation steps instead of failing silently.
+   - **Backups & Migration:** `BackupManager` automatically includes `.item-hmac-secret` (preserving `0600` permissions) in `plugins/Allium/backups/<timestamp>/`. Staging cutover and rollback snapshots must preserve `.item-hmac-secret` alongside world and database state.
+5. **Security Scope (Minting & Editing vs. Creative Duplication):**
+   - Server-secret HMAC signing prevents creative clients and unauthorized `/give` component syntax from **minting** new privileged items or **editing** `allium:*` identity and `allium:state_*` tags (such as charges).
+   - Signing does **not** prevent creative-mode stack duplication (cloning an already-signed item in creative mode duplicates its `instance_uuid` and valid signature). Granting privileged items to creative-mode players is an operator permission concern.
+6. **Read-Only Legacy Tags for Importer:**
    - `ItemService#readLegacyMetadata(ItemStack)` reads legacy `allium:custom_item_id` (`STRING`) and `alliumcards` (`STRING` or `TAG_CONTAINER`) PDC keys into `LegacyItemMetadata` for the migration importer. Legacy tags alone never grant runtime privileged behavior prior to migration.
 
 ---

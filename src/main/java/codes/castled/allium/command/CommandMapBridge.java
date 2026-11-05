@@ -7,46 +7,96 @@ import org.bukkit.command.CommandMap;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.command.PluginIdentifiableCommand;
 import org.bukkit.command.SimpleCommandMap;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Bridges Bukkit/Spigot/Paper {@link CommandMap} internals so disabled command families
- * yield their canonical labels, aliases, and {@code allium:<label>} forms cleanly.
+ * yield their canonical labels, aliases, and {@code allium:<label>} forms cleanly, and refreshes
+ * Brigadier/client command trees via {@code CraftServer#syncCommands()} and
+ * {@link Player#updateCommands()}.
+ *
+ * <p>All reflective access is isolated inside {@link GuardedAccessor} with explicit diagnostics
+ * on failure.
  */
 public final class CommandMapBridge {
+
+    public record AccessReport(
+            String serverClass,
+            String commandMapClass,
+            String commandMapResolution,
+            String knownCommandsResolution,
+            boolean syncCommandsSupported,
+            CommandMap commandMap,
+            Map<String, Command> knownCommands
+    ) {
+    }
 
     private CommandMapBridge() {
     }
 
     /**
      * Unregisters Allium's ownership of the specified {@link CommandSpec} from the server's
-     * {@link CommandMap} and promotes any shadowed plugin or vanilla command to the bare label.
+     * {@link CommandMap}, promotes any shadowed plugin or vanilla command to the bare label,
+     * synchronizes server Brigadier commands, and calls {@link Player#updateCommands()} for all
+     * online players.
      *
      * @return true if the server's knownCommands map was accessed and updated
      */
     public static boolean yieldCommandFamily(Server server, Plugin plugin, CommandSpec spec) {
-        CommandMap commandMap = resolveCommandMap(server);
-        if (commandMap == null) {
-            return false;
-        }
-        Map<String, Command> knownCommands = resolveKnownCommands(commandMap);
-        if (knownCommands == null) {
+        return yieldCommandFamily(server, plugin, spec, msg -> {
+            if (plugin != null && plugin.getLogger() != null) {
+                plugin.getLogger().warning(msg);
+            }
+        });
+    }
+
+    public static boolean yieldCommandFamily(
+            Server server,
+            Plugin plugin,
+            CommandSpec spec,
+            Consumer<String> diagnosticLogger
+    ) {
+        AccessReport access = GuardedAccessor.inspectAndResolve(server, diagnosticLogger);
+        if (access == null || access.commandMap() == null || access.knownCommands() == null) {
             return false;
         }
 
         PluginCommand alliumCommand = plugin instanceof JavaPlugin jp
                 ? jp.getCommand(spec.canonicalName())
                 : null;
-        yieldFromKnownCommands(knownCommands, commandMap, plugin, alliumCommand, spec);
-        syncServerCommands(server);
+        yieldFromKnownCommands(access.knownCommands(), access.commandMap(), plugin, alliumCommand, spec);
+        GuardedAccessor.syncAndRefreshPlayerCommands(server, diagnosticLogger);
         return true;
+    }
+
+    /**
+     * Inspects and reports how {@link CommandMap} and {@code knownCommands} are accessed on the
+     * current server platform.
+     */
+    @Nullable
+    public static AccessReport inspectPlatformAccess(Server server, Consumer<String> diagnosticLogger) {
+        return GuardedAccessor.inspectAndResolve(server, diagnosticLogger);
+    }
+
+    @Nullable
+    public static CommandMap resolveCommandMap(Server server) {
+        AccessReport report = GuardedAccessor.inspectAndResolve(server, msg -> {});
+        return report != null ? report.commandMap() : null;
+    }
+
+    @Nullable
+    public static Map<String, Command> resolveKnownCommands(CommandMap commandMap) {
+        return GuardedAccessor.resolveKnownCommandsOnly(commandMap, msg -> {});
     }
 
     /**
@@ -131,81 +181,167 @@ public final class CommandMapBridge {
         return false;
     }
 
-    @Nullable
-    public static CommandMap resolveCommandMap(Server server) {
-        if (server == null) {
-            return null;
-        }
-        try {
-            Method method = server.getClass().getMethod("getCommandMap");
-            method.setAccessible(true);
-            Object result = method.invoke(server);
-            if (result instanceof CommandMap map) {
-                return map;
-            }
-        } catch (ReflectiveOperationException ignored) {
-        }
+    /**
+     * Single guarded reflective accessor for {@link CommandMap}, {@code knownCommands}, and
+     * {@code syncCommands()}, emitting a clear diagnostic if any lookup fails.
+     */
+    private static final class GuardedAccessor {
 
-        Class<?> current = server.getClass();
-        while (current != null) {
+        @Nullable
+        static AccessReport inspectAndResolve(Server server, Consumer<String> diagnosticLogger) {
+            if (server == null) {
+                diagnosticLogger.accept("CommandMapBridge failed: Server instance is null.");
+                return null;
+            }
+
+            CommandMap commandMap = null;
+            String commandMapWay = null;
             try {
-                Field field = current.getDeclaredField("commandMap");
-                field.setAccessible(true);
-                Object result = field.get(server);
+                Method method = server.getClass().getMethod("getCommandMap");
+                method.setAccessible(true);
+                Object result = method.invoke(server);
                 if (result instanceof CommandMap map) {
-                    return map;
+                    commandMap = map;
+                    commandMapWay = "Server#getCommandMap()";
                 }
             } catch (ReflectiveOperationException ignored) {
             }
-            current = current.getSuperclass();
-        }
-        return null;
-    }
 
-    @SuppressWarnings("unchecked")
-    @Nullable
-    public static Map<String, Command> resolveKnownCommands(CommandMap commandMap) {
-        if (commandMap == null) {
+            if (commandMap == null) {
+                Class<?> current = server.getClass();
+                while (current != null) {
+                    try {
+                        Field field = current.getDeclaredField("commandMap");
+                        field.setAccessible(true);
+                        Object result = field.get(server);
+                        if (result instanceof CommandMap map) {
+                            commandMap = map;
+                            commandMapWay = current.getName() + ".commandMap field";
+                            break;
+                        }
+                    } catch (ReflectiveOperationException ignored) {
+                    }
+                    current = current.getSuperclass();
+                }
+            }
+
+            if (commandMap == null) {
+                diagnosticLogger.accept("CommandMapBridge failed to access CommandMap on server class "
+                        + server.getClass().getName() + "; disabled-commands cannot yield labels.");
+                return null;
+            }
+
+            KnownCommandsResolution kc = resolveKnownCommandsWithMethod(commandMap, diagnosticLogger);
+            if (kc == null) {
+                return null;
+            }
+
+            boolean syncSupported = false;
+            try {
+                server.getClass().getMethod("syncCommands");
+                syncSupported = true;
+            } catch (NoSuchMethodException ignored) {
+            }
+
+            return new AccessReport(
+                    server.getClass().getName(),
+                    commandMap.getClass().getName(),
+                    commandMapWay,
+                    kc.resolutionMethod(),
+                    syncSupported,
+                    commandMap,
+                    kc.knownCommands()
+            );
+        }
+
+        @Nullable
+        static Map<String, Command> resolveKnownCommandsOnly(CommandMap commandMap, Consumer<String> diagnosticLogger) {
+            KnownCommandsResolution kc = resolveKnownCommandsWithMethod(commandMap, diagnosticLogger);
+            return kc != null ? kc.knownCommands() : null;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Nullable
+        private static KnownCommandsResolution resolveKnownCommandsWithMethod(
+                CommandMap commandMap,
+                Consumer<String> diagnosticLogger
+        ) {
+            if (commandMap == null) {
+                return null;
+            }
+            // 1. Public getKnownCommands() method (Paper CommandMap / newer SimpleCommandMap)
+            try {
+                Method method = commandMap.getClass().getMethod("getKnownCommands");
+                method.setAccessible(true);
+                Object result = method.invoke(commandMap);
+                if (result instanceof Map<?, ?> map) {
+                    return new KnownCommandsResolution(
+                            (Map<String, Command>) map,
+                            commandMap.getClass().getSimpleName() + "#getKnownCommands()"
+                    );
+                }
+            } catch (ReflectiveOperationException ignored) {
+            }
+
+            // 2. Protected/private knownCommands field on SimpleCommandMap hierarchy (Spigot 1.20)
+            Class<?> current = commandMap.getClass();
+            while (current != null) {
+                try {
+                    Field field = current.getDeclaredField("knownCommands");
+                    field.setAccessible(true);
+                    Object result = field.get(commandMap);
+                    if (result instanceof Map<?, ?> map) {
+                        return new KnownCommandsResolution(
+                                (Map<String, Command>) map,
+                                current.getName() + ".knownCommands field"
+                        );
+                    }
+                } catch (ReflectiveOperationException ignored) {
+                }
+                if (current == SimpleCommandMap.class) {
+                    break;
+                }
+                current = current.getSuperclass();
+            }
+
+            diagnosticLogger.accept("CommandMapBridge failed to access knownCommands on CommandMap class "
+                    + commandMap.getClass().getName() + "; disabled-commands cannot yield labels.");
             return null;
         }
-        try {
-            Method method = commandMap.getClass().getMethod("getKnownCommands");
-            method.setAccessible(true);
-            Object result = method.invoke(commandMap);
-            if (result instanceof Map<?, ?> map) {
-                return (Map<String, Command>) map;
-            }
-        } catch (ReflectiveOperationException ignored) {
-        }
 
-        Class<?> current = commandMap.getClass();
-        while (current != null) {
+        static void syncAndRefreshPlayerCommands(Server server, Consumer<String> diagnosticLogger) {
+            if (server == null) {
+                return;
+            }
             try {
-                Field field = current.getDeclaredField("knownCommands");
-                field.setAccessible(true);
-                Object result = field.get(commandMap);
-                if (result instanceof Map<?, ?> map) {
-                    return (Map<String, Command>) map;
-                }
-            } catch (ReflectiveOperationException ignored) {
+                Method syncMethod = server.getClass().getMethod("syncCommands");
+                syncMethod.setAccessible(true);
+                syncMethod.invoke(server);
+            } catch (NoSuchMethodException ignored) {
+            } catch (ReflectiveOperationException e) {
+                diagnosticLogger.accept("CommandMapBridge failed to invoke CraftServer#syncCommands() on "
+                        + server.getClass().getName() + ": " + e.getMessage());
             }
-            if (current == SimpleCommandMap.class) {
-                break;
-            }
-            current = current.getSuperclass();
-        }
-        return null;
-    }
 
-    private static void syncServerCommands(Server server) {
-        if (server == null) {
-            return;
+            Collection<? extends Player> onlinePlayers = server.getOnlinePlayers();
+            if (onlinePlayers != null) {
+                for (Player player : onlinePlayers) {
+                    if (player != null) {
+                        try {
+                            player.updateCommands();
+                        } catch (Throwable t) {
+                            diagnosticLogger.accept("CommandMapBridge failed to call updateCommands() for player "
+                                    + player.getName() + ": " + t.getMessage());
+                        }
+                    }
+                }
+            }
         }
-        try {
-            Method syncMethod = server.getClass().getMethod("syncCommands");
-            syncMethod.setAccessible(true);
-            syncMethod.invoke(server);
-        } catch (ReflectiveOperationException ignored) {
+
+        private record KnownCommandsResolution(
+                Map<String, Command> knownCommands,
+                String resolutionMethod
+        ) {
         }
     }
 }

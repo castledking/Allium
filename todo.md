@@ -1,9 +1,10 @@
 # Allium implementation checklist
 
-[Roadmap and behavior contracts](docs/roadmap.md) are authoritative. Checked items
-below mean code/scaffolding exists, not that production verification is complete.
-All remaining items are planned. Keep work in independently reviewable vertical
-slices; run checks appropriate to each slice.
+[Roadmap and behavior contracts](docs/roadmap.md) are authoritative; see also the
+[Give and Item Library design](docs/give-item-design.md). Checked items below mean
+code/scaffolding exists, not that production verification is complete. All remaining
+items are planned. Keep work in independently reviewable vertical slices; run checks
+appropriate to each slice.
 
 ## Existing code
 
@@ -31,12 +32,16 @@ result and must preserve the existing uncommitted work.
       bounded asynchronous storage and safe session loading. Gate: SQLite/MySQL
       round-trip and reconnect/restart behavior without accidental default overwrite.
 - [ ] **S04 / M1 — Item contract:** parse, create, identify, match, clone and
-      serialize vanilla/Allium references; behavior ID separate from appearance.
+      serialize vanilla/Allium references; first-colon namespace split (`craftengine:<ns>:<id>`);
+      bare names resolve to vanilla only; behavior ID separate from appearance.
       Gate: metadata round-trip, strict provider-carrier matching and no AIR fallback.
 - [ ] **S04 follow-up — Item library:** shared Give/Enchant/Skull/Potion builders,
-      validation/serialization/delivery outcomes and async head resolution; bundle
-      the module in core and expose its API to addons. No extra required plugin,
-      duplicate shaded API, internal command dispatch or duplicated item parsers.
+      bracket/brace/quote-aware grammar, `ItemFactory#createItemStack` / `ComponentAdapter`
+      validation, cancellable `ItemGiveEvent`, configurable overflow policy, non-destructive
+      `-e` equip, and async head resolution with target revalidation; bundle in core
+      and expose API to addons (with an optional minimal M1 `GiveCommand` test harness).
+      No extra required plugin, duplicate shaded API, internal command dispatch or
+      duplicated item parsers.
 - [ ] **S05 / M1 — Provider adapters:** Nexo, CraftEngine and Oraxen with ready/reload
       states, isolated optional classes and diagnostics. Gate: each present/absent,
       delayed readiness and reload; CE namespace preserved; no persisted-state loss.
@@ -84,7 +89,7 @@ S06 depends on S04–S05; S07–S08 depend on S03 and the message pipeline.
 - [ ] Signs: kit/balance/heal/repair/disposal/workbench/anvil/mail/info.
 - [ ] Buy/sell/trade signs after transaction and stock recovery design.
 - [ ] Timed broadcasts, **disabled by default**, filtered audiences and reload cleanup.
-- [ ] AFK, seen/whois/near, speed/time/weather, give/item/enchant and nicknames.
+- [ ] AFK, seen/whois/near, speed/time/weather, give/item/enchant (porting `Selectors.java` to the command layer, player-only `/give` targeting, `minecraft:give` collision checks, and full modifier completion) and nicknames.
 - [ ] Moderation, vanish/freeze, staff notes, inventory/ender-chest inspection and restore.
 - [ ] Mail, chat channels, formatting, social spy and per-player locale.
 - [ ] Home/warp access, economy bounds, command costs/cooldowns and other config parity.

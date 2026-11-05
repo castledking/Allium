@@ -1,21 +1,26 @@
 package codes.castled.allium.message;
 
 import codes.castled.allium.PluginStart;
-import org.bukkit.ChatColor;
+import codes.castled.allium.text.FormattedText;
+import codes.castled.allium.text.TextFormatter;
+import codes.castled.allium.text.TextSender;
+import org.bukkit.Location;
+import org.bukkit.Sound;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class MessageManager {
 
-    private static final Pattern HEX_PATTERN = Pattern.compile("(?i)&?#([0-9a-f]{6})");
-
     private final PluginStart plugin;
     private final LanguageManager langManager;
+    private final Set<String> warnedSoundIds = ConcurrentHashMap.newKeySet();
 
     public MessageManager(PluginStart plugin, LanguageManager langManager) {
         this.plugin = plugin;
@@ -24,21 +29,30 @@ public final class MessageManager {
 
     public void send(CommandSender sender, Messages message, String... replacements) {
         String text = resolve(message, replacements);
-        if (text.isEmpty()) return;
+        if (!text.isEmpty()) {
+            FormattedText formatted = TextFormatter.parse(text);
+            TextSender.send(sender, formatted);
+        }
 
-        sender.sendMessage(colorize(text));
+        if (sender instanceof Player player) {
+            playSoundIfPresent(player, message);
+        }
     }
 
     public void broadcast(Messages message, String... replacements) {
         String text = resolve(message, replacements);
-        if (text.isEmpty()) return;
+        FormattedText formatted = text.isEmpty() ? FormattedText.EMPTY : TextFormatter.parse(text);
 
-        String colored = colorize(text);
         for (Player player : plugin.getServer().getOnlinePlayers()) {
-            player.sendMessage(colored);
+            if (!formatted.isEmpty()) {
+                TextSender.send(player, formatted);
+            }
+            playSoundIfPresent(player, message);
         }
 
-        plugin.getServer().getConsoleSender().sendMessage(stripColor(colored));
+        if (!formatted.isEmpty()) {
+            plugin.getServer().getConsoleSender().sendMessage(formatted.toPlainText());
+        }
     }
 
     public void sendToPlayer(Player player, Messages message, String... replacements) {
@@ -47,11 +61,18 @@ public final class MessageManager {
 
     public String resolve(Messages message, String... replacements) {
         String text = langManager.get(message);
+        if (text == null) {
+            return "";
+        }
 
         String prefix = langManager.get(Messages.PREFIX);
-        text = text.replace("{prefix}", prefix);
+        if (prefix != null) {
+            text = text.replace("{prefix}", prefix);
+        }
 
-        text = text.replace("{version}", plugin.getDescription().getVersion());
+        if (plugin.getDescription() != null && plugin.getDescription().getVersion() != null) {
+            text = text.replace("{version}", plugin.getDescription().getVersion());
+        }
 
         if (replacements.length % 2 == 0) {
             for (int i = 0; i < replacements.length; i += 2) {
@@ -62,30 +83,65 @@ public final class MessageManager {
         return text;
     }
 
+    /**
+     * Formats input using {@link TextFormatter#toLegacy(String)}.
+     */
     public static String colorize(String input) {
-        if (input == null || input.isEmpty()) {
-            return "";
+        return TextFormatter.toLegacy(input);
+    }
+
+    /**
+     * Plays a message's configured sound directly using Bukkit's sound API.
+     */
+    public void playSoundIfPresent(Player player, Messages message) {
+        MessageSoundSpec spec = langManager.getSound(message);
+        if (spec != null) {
+            playSound(player, spec);
         }
-        Matcher matcher = HEX_PATTERN.matcher(input);
-        StringBuilder sb = new StringBuilder(input.length() + 32);
-        while (matcher.find()) {
-            String hex = matcher.group(1);
-            StringBuilder replacement = new StringBuilder("§x");
-            for (int i = 0; i < 6; i++) {
-                replacement.append('§').append(Character.toLowerCase(hex.charAt(i)));
+    }
+
+    public void playSound(Player player, MessageSoundSpec spec) {
+        if (player == null || spec == null) {
+            return;
+        }
+        FileConfiguration config = plugin.getConfig();
+        double defaultVol = config != null ? config.getDouble("sounds.defaults.volume", 1.0) : 1.0;
+        double defaultPitch = config != null ? config.getDouble("sounds.defaults.pitch", 1.0) : 1.0;
+
+        double rawVol = spec.volume() != null ? spec.volume() : defaultVol;
+        double rawPitch = spec.pitch() != null ? spec.pitch() : defaultPitch;
+
+        if (!Double.isFinite(rawVol) || rawVol <= 0.0) {
+            return;
+        }
+        if (!Double.isFinite(rawPitch) || rawPitch <= 0.0) {
+            rawPitch = 1.0;
+        }
+        float volume = (float) rawVol;
+        float pitch = (float) Math.max(0.5, Math.min(2.0, rawPitch));
+
+        Location loc = player.getLocation();
+        if (loc == null) {
+            return;
+        }
+
+        String soundId = spec.soundId();
+        try {
+            if (soundId.contains(":") || soundId.contains(".")) {
+                player.playSound(loc, soundId.toLowerCase(Locale.ROOT), volume, pitch);
+            } else {
+                Sound bukkitSound = Sound.valueOf(soundId.toUpperCase(Locale.ROOT));
+                player.playSound(loc, bukkitSound, volume, pitch);
             }
-            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement.toString()));
+        } catch (IllegalArgumentException e) {
+            if (warnedSoundIds.add(soundId)) {
+                plugin.logger().warning("Invalid message sound ID '" + soundId + "': " + e.getMessage());
+            }
         }
-        matcher.appendTail(sb);
-        return ChatColor.translateAlternateColorCodes('&', sb.toString());
     }
 
     public Builder builder(Messages message) {
         return new Builder(message);
-    }
-
-    private String stripColor(String text) {
-        return ChatColor.stripColor(text);
     }
 
     public final class Builder {

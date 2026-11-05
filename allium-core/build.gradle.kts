@@ -5,25 +5,34 @@ plugins {
 group = rootProject.group
 version = rootProject.version
 
+val targetJavaVersion = providers.gradleProperty("targetJavaVersion").get().toInt()
+val spigotApiVersion = providers.gradleProperty("spigotApiVersion").get()
+
 java {
-    val javaVersion = JavaVersion.toVersion(providers.gradleProperty("targetJavaVersion").get())
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(targetJavaVersion))
+    }
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
+    maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
+    maven("https://oss.sonatype.org/content/repositories/snapshots/")
 }
 
 dependencies {
+    compileOnly("org.spigotmc:spigot-api:$spigotApiVersion")
     compileOnly("org.jetbrains:annotations:26.0.2")
+
+    testImplementation("org.spigotmc:spigot-api:$spigotApiVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
 }
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
-    options.release.set(providers.gradleProperty("targetJavaVersion").get().toInt())
+    options.release.set(targetJavaVersion)
 }
 
 tasks.test {

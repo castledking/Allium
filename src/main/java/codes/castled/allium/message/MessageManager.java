@@ -1,14 +1,18 @@
 package codes.castled.allium.message;
 
-import me.croabeast.takion.TakionLib;
 import codes.castled.allium.PluginStart;
+import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class MessageManager {
+
+    private static final Pattern HEX_PATTERN = Pattern.compile("(?i)&?#([0-9a-f]{6})");
 
     private final PluginStart plugin;
     private final LanguageManager langManager;
@@ -22,21 +26,19 @@ public final class MessageManager {
         String text = resolve(message, replacements);
         if (text.isEmpty()) return;
 
-        sender.sendMessage(text);
+        sender.sendMessage(colorize(text));
     }
 
     public void broadcast(Messages message, String... replacements) {
         String text = resolve(message, replacements);
         if (text.isEmpty()) return;
 
-        TakionLib takion = plugin.getTakion();
+        String colored = colorize(text);
         for (Player player : plugin.getServer().getOnlinePlayers()) {
-            var loaded = takion.getLoadedSender();
-            loaded.setTargets(player);
-            loaded.send(text);
+            player.sendMessage(colored);
         }
 
-        plugin.getServer().getConsoleSender().sendMessage(stripColor(text));
+        plugin.getServer().getConsoleSender().sendMessage(stripColor(colored));
     }
 
     public void sendToPlayer(Player player, Messages message, String... replacements) {
@@ -60,13 +62,30 @@ public final class MessageManager {
         return text;
     }
 
+    public static String colorize(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+        Matcher matcher = HEX_PATTERN.matcher(input);
+        StringBuilder sb = new StringBuilder(input.length() + 32);
+        while (matcher.find()) {
+            String hex = matcher.group(1);
+            StringBuilder replacement = new StringBuilder("§x");
+            for (int i = 0; i < 6; i++) {
+                replacement.append('§').append(Character.toLowerCase(hex.charAt(i)));
+            }
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement.toString()));
+        }
+        matcher.appendTail(sb);
+        return ChatColor.translateAlternateColorCodes('&', sb.toString());
+    }
+
     public Builder builder(Messages message) {
         return new Builder(message);
     }
 
     private String stripColor(String text) {
-        return text.replaceAll("&[0-9a-fk-or]", "")
-                   .replaceAll("§[0-9a-fk-or]", "");
+        return ChatColor.stripColor(text);
     }
 
     public final class Builder {

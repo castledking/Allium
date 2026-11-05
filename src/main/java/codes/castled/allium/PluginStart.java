@@ -1,6 +1,5 @@
 package codes.castled.allium;
 
-import me.croabeast.takion.TakionLib;
 import codes.castled.allium.command.CommandManager;
 import codes.castled.allium.compat.GodModeCompatProvider;
 import codes.castled.allium.config.ConfigManager;
@@ -16,7 +15,6 @@ public final class PluginStart extends JavaPlugin {
 
     private static PluginStart instance;
 
-    private TakionLib takion;
     private AlliumLogger logger;
     private ConfigManager configManager;
     private LanguageManager languageManager;
@@ -32,8 +30,6 @@ public final class PluginStart extends JavaPlugin {
 
         logger = new AlliumLogger(this);
         logger.info("Starting Allium...");
-
-        takion = new TakionLib(this);
 
         configManager = new ConfigManager(this);
         configManager.loadAll();
@@ -77,10 +73,6 @@ public final class PluginStart extends JavaPlugin {
 
     public static PluginStart getInstance() {
         return instance;
-    }
-
-    public TakionLib getTakion() {
-        return takion;
     }
 
     public AlliumLogger logger() {

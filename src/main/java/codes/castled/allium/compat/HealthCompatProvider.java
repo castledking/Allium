@@ -1,73 +1,56 @@
 package codes.castled.allium.compat;
 
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 
 public final class HealthCompatProvider {
 
-    private static final String MODERN_CLASS = "codes.castled.allium.compat.modern.ModernHealthCompat";
-    private static final String LEGACY_CLASS = "codes.castled.allium.compat.legacy.LegacyHealthCompat";
-
-    private static volatile HealthCompat current;
+    private static final HealthCompat INSTANCE = new StandardHealthCompat();
 
     private HealthCompatProvider() {
     }
 
     public static HealthCompat current() {
-        HealthCompat selected = current;
-        if (selected == null) {
-            selected = select(hasAttribute());
-            current = selected;
-        }
-        return selected;
+        return INSTANCE;
     }
 
-    static HealthCompat select(boolean supportsAttribute) {
-        HealthCompat packaged = instantiate(supportsAttribute ? MODERN_CLASS : LEGACY_CLASS);
-        if (packaged != null) {
-            return packaged;
-        }
+    private static final class StandardHealthCompat implements HealthCompat {
 
-        return supportsAttribute ? new DirectModernHealthCompat() : new DirectLegacyHealthCompat();
-    }
+        private static final Attribute MAX_HEALTH_ATTRIBUTE = resolveMaxHealthAttribute();
 
-    private static boolean hasAttribute() {
-        try {
-            Class.forName("org.bukkit.attribute.Attribute");
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
-    }
-
-    private static HealthCompat instantiate(String className) {
-        try {
-            Class<?> type = Class.forName(className);
-            Object instance = type.getDeclaredConstructor().newInstance();
-            return instance instanceof HealthCompat ? (HealthCompat) instance : null;
-        } catch (ReflectiveOperationException | LinkageError e) {
-            return null;
-        }
-    }
-
-    private static final class DirectModernHealthCompat implements HealthCompat {
-
-        @Override
-        public double getMaxHealth(Player player) {
+        private static Attribute resolveMaxHealthAttribute() {
             try {
-                Class<?> attributeClass = Class.forName("org.bukkit.attribute.Attribute");
-                Object maxHealth = attributeClass.getField("MAX_HEALTH").get(null);
-                Object attr = player.getClass().getMethod("getAttribute", attributeClass).invoke(player, maxHealth);
-                return (double) attr.getClass().getMethod("getValue").invoke(attr);
-            } catch (ReflectiveOperationException | LinkageError e) {
-                return 20.0;
+                Attribute byKey = Registry.ATTRIBUTE.get(NamespacedKey.minecraft("max_health"));
+                if (byKey != null) {
+                    return byKey;
+                }
+            } catch (Throwable ignored) {
+            }
+            try {
+                Attribute byLegacyKey = Registry.ATTRIBUTE.get(NamespacedKey.minecraft("generic.max_health"));
+                if (byLegacyKey != null) {
+                    return byLegacyKey;
+                }
+            } catch (Throwable ignored) {
+            }
+            try {
+                return Attribute.valueOf("GENERIC_MAX_HEALTH");
+            } catch (IllegalArgumentException ignored) {
+                return Attribute.valueOf("MAX_HEALTH");
             }
         }
-    }
-
-    private static final class DirectLegacyHealthCompat implements HealthCompat {
 
         @Override
         public double getMaxHealth(Player player) {
+            if (MAX_HEALTH_ATTRIBUTE != null) {
+                AttributeInstance instance = player.getAttribute(MAX_HEALTH_ATTRIBUTE);
+                if (instance != null) {
+                    return instance.getValue();
+                }
+            }
             return 20.0;
         }
     }

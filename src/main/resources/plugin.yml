@@ -1,7 +1,7 @@
 name: Allium
 version: '${version}'
 main: codes.castled.allium.PluginStart
-api-version: '1.13'
+api-version: '1.20'
 description: A modern essentials suite built on Takion
 authors: [castledking]
 softdepend: [Vault, PlaceholderAPI]

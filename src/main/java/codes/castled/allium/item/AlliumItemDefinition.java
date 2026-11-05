@@ -11,15 +11,30 @@ import java.util.Objects;
 
 /**
  * Definition of a built-in Allium item ({@code allium:<id>}).
+ *
+ * @param privileged whether this item's behavior requires a valid server-secret HMAC signature
+ *                   in PDC (e.g. {@code true} for Handcuffs and Phantom Obliterator)
  */
 public record AlliumItemDefinition(
         String id,
         Material carrierMaterial,
         @Nullable String behaviorId,
+        boolean privileged,
         @Nullable Integer customModelData,
         @Nullable String displayName,
         Map<String, String> defaultState
 ) {
+    public AlliumItemDefinition(
+            String id,
+            Material carrierMaterial,
+            @Nullable String behaviorId,
+            @Nullable Integer customModelData,
+            @Nullable String displayName,
+            Map<String, String> defaultState
+    ) {
+        this(id, carrierMaterial, behaviorId, false, customModelData, displayName, defaultState);
+    }
+
     public AlliumItemDefinition {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(carrierMaterial, "carrierMaterial");

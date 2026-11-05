@@ -4,12 +4,14 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 /**
  * Canonical provider-qualified item key {@code <provider>:<id>}.
  *
- * <p>Rules enforced:
+ * <p>Platform-neutral value object in {@code allium-core}. Rules enforced:
  * <ul>
  *   <li>Splits at the <b>first colon only</b> so CraftEngine references retain their full
  *       internal namespace (e.g. {@code craftengine:sf_ores:silver_ingot} has provider
@@ -18,7 +20,8 @@ import java.util.function.Consumer;
  *       Allium items always require {@code allium:<id>}.</li>
  *   <li>Legacy {@code ci:} and {@code custom:} prefixes are rejected.</li>
  *   <li>{@code ce:} is rejected unless explicitly parsed with {@link #parse(String, boolean, Consumer)}
- *       in deprecated compatibility mode, which emits a warning and normalizes to {@code craftengine:}.</li>
+ *       in deprecated compatibility mode, which emits a warning once per distinct reference
+ *       per startup/reload and normalizes to {@code craftengine:}.</li>
  * </ul>
  */
 public record ProviderKey(String provider, String id) {
@@ -28,6 +31,8 @@ public record ProviderKey(String provider, String id) {
     public static final String NEXO = "nexo";
     public static final String ORAXEN = "oraxen";
     public static final String CRAFTENGINE = "craftengine";
+
+    private static final Set<String> WARNED_DEPRECATED_CE_REFS = ConcurrentHashMap.newKeySet();
 
     public ProviderKey {
         Objects.requireNonNull(provider, "provider");
@@ -55,6 +60,13 @@ public record ProviderKey(String provider, String id) {
     }
 
     /**
+     * Resets the per-startup/per-reload set of warned {@code ce:} references.
+     */
+    public static void resetDeprecationWarnings() {
+        WARNED_DEPRECATED_CE_REFS.clear();
+    }
+
+    /**
      * Parses a canonical item reference string in strict mode (rejecting {@code ci:}, {@code custom:}, and {@code ce:}).
      */
     public static ProviderKey parse(String rawReference) {
@@ -66,8 +78,8 @@ public record ProviderKey(String provider, String id) {
      *
      * @param rawReference      raw input string (e.g. {@code "stone"}, {@code "minecraft:stone"},
      *                          {@code "allium:mob_disarmer"}, {@code "craftengine:sf_ores:silver_ingot"})
-     * @param allowDeprecatedCe whether to accept deprecated {@code ce:} prefix with a warning
-     * @param warningConsumer   optional sink for deprecation warnings
+     * @param allowDeprecatedCe whether to accept deprecated {@code ce:} prefix with a bounded warning
+     * @param warningConsumer   optional sink for deprecation warnings (fired at most once per distinct reference per startup/reload)
      */
     public static ProviderKey parse(
             String rawReference,
@@ -111,7 +123,7 @@ public record ProviderKey(String provider, String id) {
                 throw new IllegalArgumentException(
                         "Legacy prefix 'ce:' is deprecated; use 'craftengine:" + rawId + "' instead");
             }
-            if (warningConsumer != null) {
+            if (warningConsumer != null && WARNED_DEPRECATED_CE_REFS.add("ce:" + rawId)) {
                 warningConsumer.accept("Deprecated item prefix 'ce:" + rawId
                         + "' used; convert to 'craftengine:" + rawId + "'");
             }

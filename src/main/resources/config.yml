@@ -35,6 +35,16 @@ modules:
   spawn: true
   moderation: true
 
+# External addon jars live in plugins/Allium/addons/.
+# These are for heavier features that should not be bundled into the core jar.
+addons:
+  # Auto-download should remain opt-in and must verify addon checksums before loading.
+  auto-download: false
+  enabled:
+    party-locator: false
+    modguard: false
+    custom-items: false
+
 # General settings
 settings:
   debug: false

@@ -1,7 +1,61 @@
 name: Allium
 version: '${version}'
-main: net.survivalfun.allium.Allium
-api-version: '1.20'
+main: codes.castled.allium.PluginStart
+api-version: '1.13'
 description: A modern essentials suite built on Takion
-authors: [towkio]
+authors: [castledking]
 softdepend: [Vault, PlaceholderAPI]
+
+commands:
+  heal:
+    description: Heal yourself or another player
+    usage: /<command> [player]
+    permission: allium.heal
+  feed:
+    description: Feed yourself or another player
+    usage: /<command> [player]
+    permission: allium.feed
+  fly:
+    description: Toggle flight mode
+    usage: /<command> [player]
+    permission: allium.fly
+  god:
+    description: Toggle god mode
+    usage: /<command> [player]
+    permission: allium.god
+  gamemode:
+    description: Change your gamemode
+    usage: /<command> <mode> [player]
+    aliases: [gm]
+    permission: allium.gamemode
+
+permissions:
+  allium.*:
+    description: All Allium permissions
+    default: op
+    children:
+      allium.heal: true
+      allium.feed: true
+      allium.fly: true
+      allium.god: true
+      allium.gamemode: true
+      allium.gamemode.others: true
+      allium.economy.*: true
+  allium.heal:
+    description: Allows use of /heal
+    default: op
+  allium.feed:
+    description: Allows use of /feed
+    default: op
+  allium.fly:
+    description: Allows use of /fly
+    default: op
+  allium.god:
+    description: Allows use of /god
+    default: op
+  allium.gamemode:
+    description: Allows use of /gamemode
+    default: op
+  allium.gamemode.others:
+    description: Allows changing others gamemodes
+    default: op

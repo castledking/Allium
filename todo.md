@@ -20,10 +20,22 @@ appropriate to each slice.
 These slices make the first coding sessions concrete. Each includes an observable
 result and must preserve the existing uncommitted work.
 
-- [ ] **S01 / M0 — Baseline:** pin Gradle/build JDK and Java toolchains; compile
+- [x] **S01 / M0 — Baseline:** pin Gradle/build JDK and Java toolchains; compile
       shared code against Spigot 1.20/Java 17; audit Takion/InvUI/HikariCP and Shadow
       minimization; correct plugin API metadata; retire pre-1.20 scope. Gate: clean
       check/build/package and no-provider boot on minimum and maximum server lanes.
+- [ ] **S01.5 / M1 — Text formatting and animation module (retire Takion):**
+      implement Allium's own text formatting (`&`/`§` legacy, `#RRGGBB`/`§x` hex,
+      multi-stop gradients, rainbows, MiniMessage on Paper behind an Adventure adapter,
+      Spigot legacy fallback) and deterministic animation engine (`pulse`, `shift`,
+      `sparkle`, and `phase-scroll` gradient/rainbow using pure
+      `color(glyphIndex, length, timeMs, seed) -> RGB`, optional OKLab interpolation,
+      frame caching per `(text, effect, frame)`, delta-only pushes, and a single shared
+      clock/scheduler across tab, nametag/scoreboard team, boss bar and display entities);
+      then remove `me.croabeast.takion:shaded` from `build.gradle.kts`. Gate: deterministic
+      frame output in unit tests; one scheduler for N animated players; no main-thread
+      spikes at the measured SF player count; Spigot legacy and Paper Adventure output
+      match.
 - [ ] **S02 / M1 — Command families:** canonical/alias/namespace policy and
       `disabled-commands: []`. Gate: disabling a family blocks all Allium aliases
       and lets another plugin own the label after restart; no command interception
@@ -56,14 +68,35 @@ result and must preserve the existing uncommitted work.
 - [ ] **S08 / M2 — Sound preferences:** omitted volume/pitch defaults, legacy
       lang.yml importer, `/messagesounds` aliases `/msounds` and `/mfx`,
       volume/toggle/reset. Gate: zero, finite ranges, independent defaults,
-      restoration and config changes; no duplicate Takion playback.
+      restoration and config changes; Allium owns message sound playback directly.
 
-S02–S03 and S04–S05 can proceed in parallel after S01 with separate file ownership.
-S06 depends on S04–S05; S07–S08 depend on S03 and the message pipeline.
+S01.5, S02–S03 and S04–S05 can proceed after S01 with separate file ownership.
+S06 depends on S04–S05; S07–S08 depend on S01.5, S03 and the message pipeline.
+
+## S01 Audit: Shaded Dependencies & Takion Retirement Plan
+
+### Bytecode & Shadow Minimization Findings
+- **Allium shared classes:** Compiled against `org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT` with `--release 17` (class version 61 / Java 17).
+- **HikariCP 5.1.0 (`com.zaxxer:HikariCP`):** Class version 55 (Java 11). Excluded from Shadow `minimize()` because pool and proxy classes are loaded reflectively.
+- **InvUI 1.49 (`xyz.xenondevs.invui`):** `invui-core`, `inventory-access`, and `inventory-access-r16..r18` (1.20.0–1.20.4) are class version 55–61 (Java 11–17). `inventory-access-r19..r26` (1.20.5–1.21.11) are class version 65 (Java 21), loaded reflectively via `InventoryAccessRevision` only on 1.20.5+ servers (which require Java 21+). Excluded from Shadow `minimize()` so `Class.forName` lookups succeed.
+- **Adventure Legacy Serializer 4.17.0:** Class version 52 (Java 8).
+
+### Takion (`me.croabeast.takion:shaded:1.4`) Inventory & Findings
+1. **Call sites in recode:**
+   - Formerly only two files referenced Takion: `PluginStart.java` (`new TakionLib(this)`) and `MessageManager.java` (`takion.getLoadedSender().setTargets(player).send(text)` in `broadcast()`).
+   - **Critical 26.3 Boot Failure:** On Spigot 26.3 and Paper 26.3, `new TakionLib(this)` triggers `me.croabeast.common.util.ServerInfoUtils.<clinit>`, which matches `Bukkit.getVersion()` against `1\.(\d+(\.\d+)?)`. On 26.3 (`SERVER_VERSION = 0.0 < 20.5`), it splits `Bukkit.getServer().getClass().getPackage().getName()` (`org.bukkit.craftbukkit`, length 3) and indexes `[3]`, throwing `ArrayIndexOutOfBoundsException: Index 3 out of bounds for length 3`.
+   - `PluginStart` and `MessageManager` have been decoupled from `TakionLib` in S01 so 1.20 and 26.3 boot cleanly.
+2. **Takion jar grep for animation APIs:**
+   - `me.croabeast.prismatic.PrismaticAPI` and `me.croabeast.prismatic.color.MultiColor` (`$Gradient`, `$Rainbow`) provide **static** string/component colorization only (`applyGradient`, `applyRainbow`, `colorize`). There is **no** per-frame or phase-scroll text animation API in Takion's Prismatic package.
+   - `me.croabeast.takion.bossbar.AnimatedBossbar` only cycles through a `List<String>` of bossbar titles/colors/styles on a timer.
+3. **Replacement Plan (S01.5):**
+   - Implement `codes.castled.allium.text` (legacy/hex/gradient/rainbow/MiniMessage formatter + pure deterministic `pulse`/`shift`/`sparkle`/`phase-scroll` animation engine with single shared clock and frame cache).
+   - Route `MessageManager` through the new formatter and sound player.
+   - Remove `implementation("me.croabeast.takion:shaded:1.4")` and its relocation rule from `build.gradle.kts` once S01.5 unit and parity checks pass.
 
 ## M0 — Foundation and migration inventory
 
-- [ ] Record exact server/JDK/provider matrix and baseline current build results.
+- [x] Record exact server/JDK/provider matrix and baseline current build results.
 - [ ] Validate plugin lifecycle, command unregistering and safe module reload.
 - [ ] Validate config snapshots before replacing active configuration.
 - [ ] Establish bounded scheduler/storage ownership and dependency cleanup.
@@ -137,6 +170,7 @@ S06 depends on S04–S05; S07–S08 depend on S03 and the message pipeline.
 
 - No Allium dialog framework/datapacks; CommandPanels owns dialogs.
 - Shared Nexo/CraftEngine/Oraxen support and staple tools are core.
+- Allium owns its text formatting, sound playback and animation engine; Takion is retired.
 - Kitchen is separate from Harvest; SpawnerCraft is always its own addon.
 - Addons use Bukkit loading, not a custom nested-jar classloader.
 - Automatic downloads stay off and are deferred.

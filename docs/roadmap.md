@@ -50,9 +50,10 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   use read/modify/write. It is not a safe transaction foundation for `/pay` yet.
 - `allium-core` is currently a build subproject with no Java sources. Its name
   does not mean a stable public API or a completed domain layer exists.
-- The build targets Paper 1.21.8/Java 21, with additional Bukkit 1.8.8/Java 8
-  compatibility sources. Those sources do not establish 1.20–26.3 support.
-  `plugin.yml` still declares API 1.13. There is no source test suite today.
+- **S01 baseline (completed):** Gradle 9.5.1 is pinned with Java toolchains; shared
+  code compiles against Spigot `1.20-R0.1-SNAPSHOT` with Java 17 bytecode (class
+  version 61); `plugin.yml` declares `api-version: '1.20'`; pre-1.20 compatibility
+  sources have been retired.
 - Private messages, preference commands, provider adapters, addons and pack
   delivery are not implemented in this recode. Some config module names are
   placeholders; do not count them as working features.
@@ -77,6 +78,15 @@ Runtime lanes to verify are Java 17 for early 1.20, Java 21 for 1.20.5/1.20.6 an
 line and requires Java 25 for 26.1+; see [Paper's requirements][paper-java].
 Verify exact Spigot/server requirements when pinning the matrix. Java 17 output
 does not imply newer servers can run on Java 17.
+
+#### Recorded S01 Server/JDK Baseline Matrix
+
+| Lane | Server Build | Runtime JDK | S01 No-Provider Boot Status |
+| --- | --- | --- | --- |
+| Minimum (1.20) | Paper `1.20-17` (`c287e92`) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable |
+| Intermediate (1.20.4–1.21.x) | Spigot / Paper 1.20.4, 1.20.6, 1.21.1, 1.21.4 | OpenJDK 21 (`java-21-openjdk`) | Planned for M1/M6 lane expansion |
+| Maximum (26.3) | Spigot `26.3-R0.1-SNAPSHOT` (local BuildTools jar) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable |
+| Maximum (26.3) | Paper `26.3` (`world_version: 5023`, protocol 777) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable |
 
 At minimum, run real-server checks on Spigot and Paper at 1.20, 1.20.4, 1.20.6,
 1.21.1, 1.21.4, the final 1.21 patch, 26.1, 26.2 and 26.3. Pin exact build IDs
@@ -186,6 +196,80 @@ rewrite another plugin's configuration silently. Players declining the pack keep
 working vanilla-item fallbacks unless the server explicitly requires the pack.
 Ship distributable assets only; provide a local export recipe for server-only art.
 
+### Text formatting and animated text
+
+Allium owns its text formatting, color parsing, sound playback and animated text
+subsystem in core, retiring Takion (`me.croabeast.takion:shaded`) as a dependency.
+During the S01 boot audit on Spigot/Paper 26.3, Takion's `ServerInfoUtils.<clinit>`
+threw `ExceptionInInitializerError` (`ArrayIndexOutOfBoundsException: Index 3 out
+of bounds for length 3`) because its version regex (`1\.(\d+(\.\d+)?)`) assumes
+`1.x` versioning and falls back to splitting the unversioned `org.bukkit.craftbukkit`
+package name at index 3. Furthermore, Takion's `PrismaticAPI` only provides static
+string colorization (`applyGradient`, `applyRainbow`) and has no per-frame or
+phase-based text animation API.
+
+#### Formatting capabilities
+- **Legacy & Hex:** Support standard `&`/`§` codes, `&#RRGGBB`, `#RRGGBB`, and
+  Bungee/Spigot `§x§r§r§g§g§b§b` hex sequences.
+- **Static & Animated Tags:** Support multi-stop `<gradient:...>` and `<rainbow:...>`
+  tags as well as animated effect tags (`<pulse:...>`, `<shift:...>`, `<sparkle:...>`,
+  and phase-scrolled gradients/rainbows).
+- **Paper Adventure vs. Spigot Fallback:** On Paper, deliver rich `Component`
+  instances via an isolated Adventure adapter (keeping Paper-only signatures out of
+  shared classes per the runtime compatibility rule). On Spigot, render deterministic
+  legacy + `§x` hex strings so visual output matches across both platforms.
+
+#### Animation contract
+- **Pure Deterministic Evaluation:** Every animated effect is a pure, deterministic
+  function:
+  `color(glyphIndex, length, timeMs, seed) -> RGB`
+- **Single Clock & Bounded Scheduler:** All animated targets share one monotonic
+  clock and one bounded scheduler tick at a configurable frame rate (default 100 ms /
+  2 ticks). Never spawn per-player timers or per-frame `runTask` calls.
+- **Frame Caching & Delta Pushes:** Rendered frames are cached per
+  `(text, effect, frame)` and pushed to viewers/targets **only** when the rendered
+  output actually changes from the last sent value.
+- **Color Interpolation:** Support standard linear RGB interpolation and optional
+  perceptual **OKLab** interpolation between stops.
+- **Supported Targets:** Tab list name, nametag / scoreboard team prefix & suffix,
+  boss bar titles, and hologram / text-display entities where present. Ordinary
+  chat messages are rendered statically once when sent.
+
+#### Initial effects (reimplemented from behavioral specification only; no copied code)
+- **`pulse`:** Picks a random glyph index `p` and flash color `c` from `palette[1..]`
+  (with `palette[0]` as `base`), seeded deterministically per target (`seed` +
+  cycle index). `intensity` starts at `1.0` and decreases by `0.05` per frame
+  (at default 100 ms frame duration). For each glyph `j`:
+  `weight = clamp(intensity - 0.1 * |p - j|, 0.0, 1.0)` (explicitly clamping the
+  weight to `[0, 1]`, never relying on RGB channel clamping), and output color is
+  `lerp(base, c, weight)`. When `intensity < 0.1`, advance to the next cycle with a
+  new seeded `p` and `c`.
+- **`shift`:** Discrete or blended palette stepping where glyph `j` at frame `f`
+  samples `palette[(j + f) % n]`, with optional smooth interpolation between
+  adjacent palette stops.
+- **`sparkle`:** Deterministic per-frame pseudo-random roll (`hash(seed, frame, j)`)
+  against a configurable probability; on hit, glyph `j` takes a random color from
+  the palette, otherwise `base`.
+- **`phase-scroll` gradient / rainbow:** Animates the phase offset of a multi-stop
+  gradient or rainbow across `[0, 1)` (or `[-1, 1]` for MiniMessage compatibility)
+  as a pure function of `(glyphIndex, length, timeMs)`.
+  - *Reference audit (`/mnt/storage/devops/UnlimitedNametags`):* UnlimitedNametags
+    implements phase animation in `PlaceholderManager.java` by running three
+    separate 1-tick async timers (`startIndexTask`) that mutate shared fields:
+    `miniGradientIndexBD` (a `BigDecimal` incremented by `0.1` from `-1.0` to `1.0`),
+    `mmIndex` (`10` down to `1`), and `index` (`16777215` down to `1`), formatting
+    them with `DecimalFormat("#.#")` into a concurrent map (`#phase-mm-g#`,
+    `#-phase-mm-g#`, `#phase-mm#`, `#phase-md#`), doing string `.replace(...)` on
+    every line before MiniMessage parsing, and caching the resulting `Component` in
+    a 2-minute `ExpiringMap`. Additionally, for entity glow (`GlowOverrideComputer`),
+    it computes rainbow hue via `(elapsedSeconds * speed * 360.0) % 360.0` and
+    gradient steps via `(monotonicTick / stepInterval) % colors.size()`.
+  - Allium avoids UnlimitedNametags' three separate async timers, `BigDecimal`
+    string-replacement churn, and string-level MiniMessage reparsing on every tick by
+    computing phase directly inside the pure `color(glyphIndex, length, timeMs, seed)`
+    evaluator on the shared animation clock (while still supporting phase placeholder
+    tokens if needed by external templates).
+
 ## Required behavior contracts
 
 ### Command ownership and signs
@@ -285,9 +369,9 @@ present, otherwise `sounds.messages.fallback-volume`, **multiplied by** that
 message's explicit volume or `sounds.defaults.volume`. This makes zero mute
 reliably while keeping relative authored sound levels. Effective pitch is the
 message's pitch or `sounds.defaults.pitch`. Message preferences affect private
-message notifications, not every sound Allium emits. Missing/disabled/invalid
-sound IDs leave the text usable and produce a bounded diagnostic; no double
-playback through both Takion and Allium. Validate fallback volume in [0,1], finite
+message notifications, not every sound Allium emits. Allium owns message sound
+playback directly; missing/disabled/invalid sound IDs leave the text usable and
+produce a bounded diagnostic. Validate fallback volume in [0,1], finite
 per-sound volume >= 0, and pitch in the supported playback range.
 
 ### Staple tools and renaming
@@ -356,7 +440,7 @@ to exercise an API, but extraction must not postpone a stable core.
 | Milestone | Deliverable | Completion gate |
 | --- | --- | --- |
 | M0 — Reproducible baseline | Pin build/toolchains; Spigot baseline; correct plugin metadata; audit libraries, schema handling, command lifecycle and existing five commands | Clean build/check/package succeeds on supported build JDK; real Spigot/Paper boot at range endpoints; all optional integrations absent; accurate support matrix recorded |
-| M1 — Shared contracts and flagship item | Minimal API, preferences repository, command-family policy, scheduler boundary, shared Give/Enchant/Skull/Potion library, built-in/vanilla and three provider adapters; Mob Disarmer across providers; core pack generation | Core is the only required plugin; one behavior works standalone and with each supported provider; round-trip metadata/charges; provider readiness/reload safe; no vanilla-carrier false matches |
+| M1 — Shared contracts and flagship item | Minimal API, preferences repository, command-family policy, scheduler boundary, native text formatting/animation module (retiring Takion), shared Give/Enchant/Skull/Potion library, built-in/vanilla and three provider adapters; Mob Disarmer across providers; core pack generation | Core is the only required plugin; one behavior works standalone and with each supported provider; round-trip metadata/charges; provider readiness/reload safe; no vanilla-carrier false matches |
 | M2 — Communication and preferences | `/msg`, `/reply`, ignore/mute/social spy, `/msgtoggle`, sound defaults and `/mfx` aliases; mail and notification routing | Overrides survive restart; zero/default/reset/omitted pitch-volume work; failed or blocked sends are silent; privacy, console and permission cases covered |
 | M3 — Movement and money | Safe TP service, requests/tptoggle/back/spawn/homes/warps; atomic economy/pay/paytoggle/Vault; kits via item service | Request expiry/movement cancellation/pending invalidation; safe destinations; offline preferences; no lost or duplicated funds on concurrent transfers or failures |
 | M4 — Complete core | Remaining staff/player utilities; handcuffs/Obliterator/renamer/CrowBar; signs; timed broadcasts; config parity and diagnostics | Core-only acceptance run passes; permissions checked at every entry point; rename failure spends nothing; broadcasts remain idle by default; bounded CrowBar/entity work |
@@ -465,6 +549,8 @@ Local source evidence used for this plan:
 - `/mnt/storage/devops/Essentials`: `Settings`, `EssentialsToggleCommand`,
   `Commandmsgtoggle`, `Commandpaytoggle`, `Commandtptoggle`, `SignWarp`,
   `EssentialsSign`, `SignPlayerListener`, and the default `config.yml`.
+- `/mnt/storage/devops/UnlimitedNametags`: `placeholders/PlaceholderManager`,
+  `config/Formatter`, `config/GlowOverride`, `packet/GlowOverrideComputer`.
 
 Essentials and ItemTag carry GPLv3 licenses. Use their behavior as reference;
 decide Allium's license and attribution before directly incorporating source or

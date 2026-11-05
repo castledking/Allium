@@ -3,7 +3,9 @@ package codes.castled.allium.command;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
@@ -12,16 +14,24 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BukkitCommandRendererAndMapTest {
+
+    public interface TestServerWithCommandMap extends Server {
+        CommandMap getCommandMap();
+    }
 
     @Test
     void yieldingDisabledFamilyRemovesAlliumLabelsAndPromotesOtherPluginCommand() {
@@ -70,6 +80,64 @@ class BukkitCommandRendererAndMapTest {
 
         assertFalse(knownCommands.containsKey("allium:heal"));
         assertSame(otherPluginHeal, knownCommands.get("heal"));
+    }
+
+    @Test
+    void yieldCommandFamilyCallsUpdateCommandsForOnlinePlayersAndLogsDiagnosticOnFailure() {
+        Plugin alliumPlugin = dummyPlugin("Allium");
+        AtomicBoolean updateCommandsCalled = new AtomicBoolean(false);
+        Player alice = (Player) Proxy.newProxyInstance(
+                Player.class.getClassLoader(),
+                new Class<?>[]{Player.class},
+                (proxy, method, args) -> {
+                    if ("updateCommands".equals(method.getName())) {
+                        updateCommandsCalled.set(true);
+                        return null;
+                    }
+                    if ("getName".equals(method.getName())) {
+                        return "Alice";
+                    }
+                    return null;
+                }
+        );
+
+        Server bareServer = (Server) Proxy.newProxyInstance(
+                Server.class.getClassLoader(),
+                new Class<?>[]{Server.class},
+                (proxy, method, args) -> "getOnlinePlayers".equals(method.getName()) ? List.of(alice) : null
+        );
+        SimpleCommandMap commandMap = new SimpleCommandMap(bareServer);
+
+        Server serverWithGetCommandMap = (Server) Proxy.newProxyInstance(
+                TestServerWithCommandMap.class.getClassLoader(),
+                new Class<?>[]{TestServerWithCommandMap.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getCommandMap" -> commandMap;
+                    case "getOnlinePlayers" -> List.of(alice);
+                    default -> null;
+                }
+        );
+
+        List<String> diagnostics = new ArrayList<>();
+        boolean yielded = CommandMapBridge.yieldCommandFamily(
+                serverWithGetCommandMap,
+                alliumPlugin,
+                CoreCommandSpecs.GAMEMODE,
+                diagnostics::add
+        );
+        assertTrue(yielded);
+        assertTrue(updateCommandsCalled.get());
+        assertTrue(diagnostics.isEmpty());
+
+        // Also test guarded accessor failure diagnostic when Server exposes no CommandMap
+        List<String> failureDiagnostics = new ArrayList<>();
+        CommandMapBridge.AccessReport failedReport = CommandMapBridge.inspectPlatformAccess(
+                bareServer,
+                failureDiagnostics::add
+        );
+        assertNull(failedReport);
+        assertEquals(1, failureDiagnostics.size());
+        assertTrue(failureDiagnostics.get(0).contains("CommandMapBridge failed to access CommandMap"));
     }
 
     @Test

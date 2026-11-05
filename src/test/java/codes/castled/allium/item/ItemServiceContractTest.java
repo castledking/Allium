@@ -104,6 +104,7 @@ class ItemServiceContractTest {
         String originalSig = pdc.get(ItemService.KEY_SIGNATURE, PersistentDataType.STRING);
         assertNotNull(originalInstanceUuid);
         assertNotNull(originalSig);
+        assertTrue(originalSig.startsWith("k1:"));
 
         assertEquals(Optional.of("allium:handcuffs"), itemService.identifyBehavior(cuffs));
         assertTrue(itemService.matchesBehavior(cuffs, "allium:handcuffs"));
@@ -125,6 +126,109 @@ class ItemServiceContractTest {
     }
 
     @Test
+    void privilegedStateMutationReSignsWhileDirectStateTamperingFailsVerification() {
+        // Phantom Obliterator is privileged and carries default state charges=3
+        ItemStack obliterator = itemService.create(itemService.parseRef("allium:phantom_obliterator")).itemStack().orElseThrow();
+        assertEquals(Optional.of("allium:phantom_obliterator"), itemService.identifyBehavior(obliterator));
+        assertEquals(Optional.of("3"), itemService.getState(obliterator, "charges"));
+
+        // 1. Mutating state through ItemService#setState re-signs the HMAC and remains valid
+        itemService.setState(obliterator, "charges", "2");
+        assertEquals(Optional.of("allium:phantom_obliterator"), itemService.identifyBehavior(obliterator));
+        assertEquals(Optional.of("2"), itemService.getState(obliterator, "charges"));
+        assertTrue(diagnostics.isEmpty());
+
+        // 2. Editing allium:state_charges directly in PDC without re-signing fails verification!
+        obliterator.getItemMeta().getPersistentDataContainer().set(
+                new NamespacedKey("allium", "state_charges"),
+                PersistentDataType.STRING,
+                "999"
+        );
+        ItemRef tamperedStateRef = itemService.identify(obliterator).orElseThrow();
+        assertEquals(ProviderKey.minecraft("blaze_rod"), tamperedStateRef.appearance());
+        assertTrue(tamperedStateRef.behaviorId().isEmpty());
+        assertEquals(1, diagnostics.size());
+        assertTrue(diagnostics.get(0).contains("invalid/tampered signature or state"));
+    }
+
+    @Test
+    void unknownKeyIdLogsLoudDiagnosticAndRejectsItem() {
+        ItemHmacSigner otherNetworkKey = ItemHmacSigner.randomEphemeral("prod-2025");
+        ItemStack foreignSigned = createMockBackedStack(Material.IRON_SHOVEL);
+        PersistentDataContainer pdc = foreignSigned.getItemMeta().getPersistentDataContainer();
+        String uuid = UUID.randomUUID().toString();
+        pdc.set(ItemService.KEY_PROVIDER, PersistentDataType.STRING, "allium");
+        pdc.set(ItemService.KEY_ITEM_ID, PersistentDataType.STRING, "handcuffs");
+        pdc.set(ItemService.KEY_BEHAVIOR_ID, PersistentDataType.STRING, "allium:handcuffs");
+        pdc.set(ItemService.KEY_INSTANCE_UUID, PersistentDataType.STRING, uuid);
+        pdc.set(ItemService.KEY_SIGNATURE, PersistentDataType.STRING,
+                otherNetworkKey.sign("allium", "handcuffs", "allium:handcuffs", uuid));
+
+        ItemRef identified = itemService.identify(foreignSigned).orElseThrow();
+        assertEquals(ProviderKey.minecraft("iron_shovel"), identified.appearance());
+        assertTrue(identified.behaviorId().isEmpty());
+        assertEquals(1, diagnostics.size());
+        assertTrue(diagnostics.get(0).contains("CRITICAL HMAC KEY MISMATCH"));
+        assertTrue(diagnostics.get(0).contains("prod-2025"));
+    }
+
+    @Test
+    void providerAndPdcDisagreementLogsExplicitDiagnosticAndFollowsDocumentedRule() {
+        NamespacedKey nativeNexoKey = new NamespacedKey("nexo", "id");
+        itemService.registerProvider(new ItemProviderAdapter() {
+            @Override
+            public String providerName() {
+                return "nexo";
+            }
+
+            @Override
+            public ProviderStatus status() {
+                return ProviderStatus.READY;
+            }
+
+            @Override
+            public ResolutionResult createItem(String id) {
+                ItemStack stack = createMockBackedStack(Material.GOLDEN_HOE);
+                stack.getItemMeta().getPersistentDataContainer().set(nativeNexoKey, PersistentDataType.STRING, id);
+                return ResolutionResult.resolved(ProviderKey.of("nexo", id), stack);
+            }
+
+            @Override
+            public Optional<String> identifyItemId(ItemStack stack) {
+                String id = stack.getItemMeta().getPersistentDataContainer().get(nativeNexoKey, PersistentDataType.STRING);
+                return Optional.ofNullable(id);
+            }
+
+            @Override
+            public boolean hasAuthoritativeNativeIdCheck() {
+                return true;
+            }
+        });
+
+        // Case 1: Provider native API says "nexo:real_disarmer" while PDC stamp says "nexo:stale_disarmer"
+        ItemStack stack = createMockBackedStack(Material.GOLDEN_HOE);
+        PersistentDataContainer pdc = stack.getItemMeta().getPersistentDataContainer();
+        pdc.set(nativeNexoKey, PersistentDataType.STRING, "real_disarmer");
+        pdc.set(ItemService.KEY_PROVIDER, PersistentDataType.STRING, "nexo");
+        pdc.set(ItemService.KEY_ITEM_ID, PersistentDataType.STRING, "stale_disarmer");
+
+        ItemRef resolved = itemService.identify(stack).orElseThrow();
+        assertEquals(ProviderKey.of("nexo", "real_disarmer"), resolved.appearance());
+        assertEquals(1, diagnostics.size());
+        assertTrue(diagnostics.get(0).contains("Identity mismatch on item stack"));
+
+        // Case 2: PDC claims "nexo:fake_item" on a plain item that Nexo's native API does not recognize
+        ItemStack forgedProviderStack = createMockBackedStack(Material.GOLDEN_HOE);
+        PersistentDataContainer forgedPdc = forgedProviderStack.getItemMeta().getPersistentDataContainer();
+        forgedPdc.set(ItemService.KEY_PROVIDER, PersistentDataType.STRING, "nexo");
+        forgedPdc.set(ItemService.KEY_ITEM_ID, PersistentDataType.STRING, "fake_item");
+
+        ItemRef forgedResolved = itemService.identify(forgedProviderStack).orElseThrow();
+        assertEquals(ProviderKey.minecraft("golden_hoe"), forgedResolved.appearance());
+        assertEquals(2, diagnostics.size());
+    }
+
+    @Test
     void privilegedBehaviorRejectsMissingForgedAndTamperedSignaturesWithBoundedDiagnostics() {
         // 1. Missing signature (creative client or /give component injection setting PDC without HMAC)
         ItemStack missingSig = createMockBackedStack(Material.IRON_SHOVEL);
@@ -142,7 +246,7 @@ class ItemServiceContractTest {
         itemService.identify(missingSig);
         assertEquals(1, diagnostics.size());
 
-        // 2. Forged signature (signed with a different secret key)
+        // 2. Forged signature (signed with a different secret key using same keyId k1)
         ItemHmacSigner attackerSigner = ItemHmacSigner.randomEphemeral();
         ItemStack forgedSig = createMockBackedStack(Material.BLAZE_ROD);
         PersistentDataContainer forgedPdc = forgedSig.getItemMeta().getPersistentDataContainer();

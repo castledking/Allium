@@ -406,6 +406,9 @@ public final class ItemService {
                             + "). If you rotated keys or migrated servers, add 'retired="
                             + outcome.keyId() + ":<hexSecret>' to plugins/Allium/.item-hmac-secret; resolving as plain "
                             + plainVanillaKey);
+                } else if (outcome.status() == ItemHmacSigner.VerificationStatus.UNSUPPORTED_VERSION) {
+                    warnDiagnosticOnce("Rejected legacy/unsupported item signature format for '" + behaviorId
+                            + "'. Preserve the item and keyring for explicit trusted migration; automatic re-signing is disabled.");
                 } else {
                     String reason = outcome.status() == ItemHmacSigner.VerificationStatus.MISSING
                             ? "missing signature"
@@ -527,7 +530,8 @@ public final class ItemService {
 
     /**
      * Updates a persisted state value (e.g. {@code "charges"}) in the stack's server-owned PDC
-     * and re-signs the HMAC signature if the item is privileged or signed.
+     * and re-signs the HMAC signature if the item is privileged or signed. Such items must
+     * verify before any metadata is changed; rejected items are left untouched.
      */
     public void setState(ItemStack stack, String stateKey, String value) {
         Objects.requireNonNull(stack, "stack");
@@ -540,31 +544,57 @@ public final class ItemService {
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         if (pdc != null) {
             NamespacedKey key = new NamespacedKey(NAMESPACE, STATE_KEY_PREFIX + stateKey.trim().toLowerCase(Locale.ROOT));
-            pdc.set(key, PersistentDataType.STRING, value);
-
-            String storedBehavior = pdc.get(KEY_BEHAVIOR_ID, PersistentDataType.STRING);
+            ProviderKey storedAppearance = storedAppearanceForStateEdit(pdc);
+            String storedBehavior = ItemRef.normalizeBehaviorId(pdc.get(KEY_BEHAVIOR_ID, PersistentDataType.STRING));
+            if (storedBehavior == null && storedAppearance != null) {
+                storedBehavior = appearanceToBehavior.get(storedAppearance);
+            }
             String existingSig = pdc.get(KEY_SIGNATURE, PersistentDataType.STRING);
-            if (storedBehavior != null && (isPrivilegedBehavior(storedBehavior) || existingSig != null)) {
-                String storedProvider = pdc.get(KEY_PROVIDER, PersistentDataType.STRING);
-                String storedId = pdc.get(KEY_ITEM_ID, PersistentDataType.STRING);
-                if (storedProvider != null && storedId != null) {
-                    String instanceUuid = pdc.get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
-                    if (instanceUuid == null || instanceUuid.isBlank()) {
-                        instanceUuid = UUID.randomUUID().toString();
-                        pdc.set(KEY_INSTANCE_UUID, PersistentDataType.STRING, instanceUuid);
-                    }
-                    Map<String, String> updatedState = extractStateMap(pdc);
-                    String newSig = hmacSigner.sign(
-                            storedProvider,
-                            storedId,
-                            ItemRef.normalizeBehaviorId(storedBehavior),
-                            instanceUuid,
-                            updatedState
-                    );
-                    pdc.set(KEY_SIGNATURE, PersistentDataType.STRING, newSig);
+            String newSig = null;
+            if (isPrivilegedBehavior(storedBehavior) || existingSig != null) {
+                String instanceUuid = pdc.get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
+                if (storedAppearance == null || storedBehavior == null
+                        || instanceUuid == null || instanceUuid.isBlank()) {
+                    return;
                 }
+
+                // identify verifies the original state and the authoritative native provider identity.
+                // Rejection returns a plain vanilla reference, so presence alone is not proof of trust.
+                ItemRef verified = identify(stack).orElse(null);
+                if (verified == null || !storedAppearance.equals(verified.appearance())
+                        || !Optional.of(storedBehavior).equals(verified.behaviorId())) {
+                    return;
+                }
+                Map<String, String> updatedState = new LinkedHashMap<>(verified.stateData());
+                updatedState.put(key.getKey().substring(STATE_KEY_PREFIX.length()), value);
+                newSig = hmacSigner.sign(
+                        verified.appearance().provider(),
+                        verified.appearance().id(),
+                        storedBehavior,
+                        instanceUuid,
+                        updatedState
+                );
+            }
+
+            pdc.set(key, PersistentDataType.STRING, value);
+            if (newSig != null) {
+                pdc.set(KEY_SIGNATURE, PersistentDataType.STRING, newSig);
             }
             stack.setItemMeta(meta);
+        }
+    }
+
+    @Nullable
+    private static ProviderKey storedAppearanceForStateEdit(PersistentDataContainer pdc) {
+        String provider = pdc.get(KEY_PROVIDER, PersistentDataType.STRING);
+        String id = pdc.get(KEY_ITEM_ID, PersistentDataType.STRING);
+        if (provider == null || provider.isBlank() || id == null || id.isBlank()) {
+            return null;
+        }
+        try {
+            return ProviderKey.of(provider, id);
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 

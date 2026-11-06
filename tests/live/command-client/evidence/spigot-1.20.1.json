@@ -1,0 +1,54 @@
+{
+  "version": "1.20.1",
+  "passed": true,
+  "suggestions": {
+    "/gm c": [
+      "competitor-creative",
+      "competitor-survival"
+    ],
+    "/allium:gm c": [
+      "creative"
+    ]
+  },
+  "trees": [
+    {
+      "index": 1,
+      "alliumGm": true,
+      "alliumGamemode": true
+    },
+    {
+      "index": 2,
+      "alliumGm": false,
+      "alliumGamemode": false
+    },
+    {
+      "index": 3,
+      "alliumGm": false,
+      "alliumGamemode": false
+    }
+  ],
+  "serverVersion": "3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1)",
+  "bukkitVersion": "1.20.1-R0.1-SNAPSHOT",
+  "yieldReturned": true,
+  "bridgeDiagnostics": [],
+  "access": {
+    "serverClass": "org.bukkit.craftbukkit.v1_20_R1.CraftServer",
+    "commandMapClass": "org.bukkit.craftbukkit.v1_20_R1.command.CraftCommandMap",
+    "commandMapResolution": "Server#getCommandMap()",
+    "knownCommandsResolution": "CraftCommandMap#getKnownCommands()",
+    "syncCommandsSupported": true,
+    "knownCommandsMapClass": "java.util.HashMap",
+    "knownCommandsSize": 196,
+    "diag": []
+  },
+  "commandOwnersAfter": {
+    "gamemode": "ClientGate",
+    "gm": "ClientGate",
+    "allium:gamemode": null,
+    "allium:gm": null,
+    "clientgate:gamemode": "ClientGate",
+    "clientgate:gm": "ClientGate",
+    "minecraft:gamemode": "(non-plugin)"
+  },
+  "paperWrappersAfter": []
+}

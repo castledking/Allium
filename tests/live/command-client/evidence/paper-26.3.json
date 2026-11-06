@@ -1,0 +1,62 @@
+{
+  "server": "Paper26.3 protocol777",
+  "passed": true,
+  "suggestions": {
+    "1:/gm c": [
+      "creative"
+    ],
+    "2:/allium:gm c": [
+      "creative"
+    ],
+    "3:/gm c": [
+      "competitor-creative",
+      "competitor-survival"
+    ]
+  },
+  "trees": [
+    {
+      "index": 1,
+      "alliumGm": true,
+      "alliumGamemode": true,
+      "bytes": 39370
+    },
+    {
+      "index": 2,
+      "alliumGm": false,
+      "alliumGamemode": false,
+      "bytes": 39378
+    },
+    {
+      "index": 3,
+      "alliumGm": false,
+      "alliumGamemode": false,
+      "bytes": 39378
+    }
+  ],
+  "serverVersion": "26.3-141-54024d3 (MC: 26.3)",
+  "bukkitVersion": "26.3.build.141-beta",
+  "yieldReturned": true,
+  "bridgeDiagnostics": [],
+  "access": {
+    "serverClass": "org.bukkit.craftbukkit.CraftServer",
+    "commandMapClass": "org.bukkit.craftbukkit.command.CraftCommandMap",
+    "commandMapResolution": "Server#getCommandMap()",
+    "knownCommandsResolution": "CraftCommandMap#getKnownCommands()",
+    "syncCommandsSupported": true,
+    "knownCommandsMapClass": "io.papermc.paper.command.brigadier.bukkit.BukkitBrigForwardingMap",
+    "knownCommandsSize": 226,
+    "diag": []
+  },
+  "commandOwnersAfter": {
+    "gamemode": "ClientGate",
+    "gm": "ClientGate",
+    "allium:gamemode": null,
+    "allium:gm": null,
+    "clientgate:gamemode": "ClientGate",
+    "clientgate:gm": "ClientGate",
+    "minecraft:gamemode": "(non-plugin)"
+  },
+  "paperWrappersAfter": [
+    "BukkitBrigCommand.command -> codes.castled.clientgate.CompetitorGamemodeCommand owner=ClientGate [COMPETITOR]"
+  ]
+}

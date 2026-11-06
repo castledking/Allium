@@ -61,8 +61,8 @@ result and must preserve the existing uncommitted work.
       `/fly`, `/god`, and `/gamemode` onto the neutral command spec as proof. Gate:
       disabling a family blocks all Allium aliases (`gm`, `allium:gamemode`, `allium:gm`)
       and yields labels in Bukkit's `CommandMap` so another plugin owns the label;
-      live client-side tab completion and Brigadier root node refresh verified on Spigot
-      1.20.1, Paper 1.20.6, and Paper 26.3; no command interception leaks, clear restart
+      actual command-tree packets and suggestion round trips verified on Spigot
+      1.20.1, Paper 1.20.6, and Paper 26.3 (see `tests/live/command-client/evidence/`); no command interception leaks, clear restart
       diagnostics on reload, and permission/visibility-aware completion; the five ported
       commands behave identically before and after the port across all 5 lanes.
 - [ ] **S03 / M1 — Preferences:** UUID repository, schema migrations, defaults,
@@ -72,7 +72,7 @@ result and must preserve the existing uncommitted work.
       serialize vanilla/Allium references; first-colon namespace split (`craftengine:<ns>:<id>`);
       bare names resolve to vanilla only; behavior ID separate from appearance;
       once-per-reload `ce:` deprecation warning; `schema_version` (`1`) in stamped PDC
-      and `ItemRef.serialize()`; server-secret `HmacSHA256` signature (`<keyId>:<hex>`)
+      and `ItemRef.serialize()`; server-secret `HmacSHA256` signature (`v2:<keyId>:<hex>`)
       over `(provider, itemId, behaviorId, instanceUuid, canonicalState)` with keyring
       rotation (`active` + `retired` keys in `plugins/Allium/.item-hmac-secret`, included
       in `BackupManager`), automatic re-signing on `setState`, and loud

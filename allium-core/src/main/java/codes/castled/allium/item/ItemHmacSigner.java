@@ -3,11 +3,18 @@ package codes.castled.allium.item;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -38,7 +45,9 @@ import java.util.TreeMap;
  *
  * <h3>Keyring & Rotation</h3>
  * <ul>
- *   <li>Signatures are formatted as {@code <keyId>:<64-char-hex-hmac>} (e.g. {@code k1:9f86...}).</li>
+ *   <li>Signatures are formatted as {@code v2:<keyId>:<64-char-hex-hmac>}.
+ *       The version identifies a length-prefixed payload; unsafe unversioned delimiter signatures
+ *       require explicit migration and are never accepted or silently re-signed.</li>
  *   <li>The keyring holds one {@code activeKeyId} used for all new signatures and state mutations,
  *       plus zero or more {@code retired} keys that remain valid for verifying existing items.</li>
  *   <li>If an item carries an unknown {@code keyId}, {@link #verifyDetailed} returns
@@ -49,6 +58,7 @@ import java.util.TreeMap;
 public final class ItemHmacSigner {
 
     public static final String DEFAULT_KEY_ID = "k1";
+    public static final String SIGNATURE_VERSION = "v2";
     private static final String HMAC_ALGO = "HmacSHA256";
     private static final int SECRET_BYTES = 32;
     private static final HexFormat HEX = HexFormat.of();
@@ -57,6 +67,7 @@ public final class ItemHmacSigner {
         VALID,
         MISSING,
         UNKNOWN_KEY_ID,
+        UNSUPPORTED_VERSION,
         INVALID_MAC
     }
 
@@ -80,17 +91,19 @@ public final class ItemHmacSigner {
         Objects.requireNonNull(activeKeyId, "activeKeyId");
         Objects.requireNonNull(keyring, "keyring");
         String normActive = normalizeKeyId(activeKeyId);
-        if (normActive.isEmpty()) {
-            throw new IllegalArgumentException("activeKeyId must not be empty");
+        if (!isValidKeyId(normActive)) {
+            throw new IllegalArgumentException("activeKeyId must use letters, digits, dots, underscores, or hyphens");
         }
         Map<String, byte[]> copied = new LinkedHashMap<>();
         for (Map.Entry<String, byte[]> entry : keyring.entrySet()) {
             String kId = normalizeKeyId(entry.getKey());
             byte[] secret = entry.getValue();
-            if (kId.isEmpty() || secret == null || secret.length < 16) {
+            if (!isValidKeyId(kId) || secret == null || secret.length < 16) {
                 throw new IllegalArgumentException("Each keyring entry must have a non-empty keyId and >= 16-byte secret");
             }
-            copied.put(kId, secret.clone());
+            if (copied.putIfAbsent(kId, secret.clone()) != null) {
+                throw new IllegalArgumentException("Duplicate normalized keyId '" + kId + "'");
+            }
         }
         if (!copied.containsKey(normActive)) {
             throw new IllegalArgumentException("keyring must contain activeKeyId '" + normActive + "'");
@@ -132,8 +145,8 @@ public final class ItemHmacSigner {
      */
     public ItemHmacSigner rotateKey(String newActiveKeyId, byte[] newSecretBytes) {
         String normNew = normalizeKeyId(newActiveKeyId);
-        if (normNew.isEmpty()) {
-            throw new IllegalArgumentException("newActiveKeyId must not be empty");
+        if (keyring.containsKey(normNew)) {
+            throw new IllegalArgumentException("Rotation requires a new keyId to preserve retired verification keys");
         }
         Map<String, byte[]> updated = new LinkedHashMap<>(this.keyring);
         updated.put(normNew, newSecretBytes.clone());
@@ -154,15 +167,15 @@ public final class ItemHmacSigner {
      *   </li>
      *   <li>Single-line legacy hex format: {@code <64-char-hex>} (loaded as {@code active=k1:<hex>}).</li>
      * </ul>
+     * Existing empty, malformed, or unusable files throw {@link IOException} without modification.
+     * New files are created exclusively, with owner-only permissions on POSIX filesystems.
      */
     public static ItemHmacSigner loadOrGenerate(Path secretFile) throws IOException {
         Objects.requireNonNull(secretFile, "secretFile");
-        if (Files.exists(secretFile)) {
-            List<String> lines = Files.readAllLines(secretFile, StandardCharsets.UTF_8);
-            ItemHmacSigner parsed = parseKeyringLines(lines);
-            if (parsed != null) {
-                return parsed;
-            }
+        try {
+            return parseKeyringLines(Files.readAllLines(secretFile, StandardCharsets.UTF_8));
+        } catch (NoSuchFileException missing) {
+            // Only a missing file permits generation. Malformed or unreadable files must survive.
         }
 
         Path parent = secretFile.getParent();
@@ -179,71 +192,74 @@ public final class ItemHmacSigner {
                 + "# To rotate keys: move the current active key to 'retired=<keyId>:<hex>' and set a new 'active=<newKeyId>:<hex>'." + System.lineSeparator()
                 + "active=" + DEFAULT_KEY_ID + ":" + encoded + System.lineSeparator();
 
-        Files.writeString(
-                secretFile,
-                content,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE
-        );
-
+        Set<StandardOpenOption> options = Set.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
         try {
-            Files.setPosixFilePermissions(
-                    secretFile,
-                    EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)
-            );
-        } catch (UnsupportedOperationException ignored) {
-            // Non-POSIX filesystem
+            SeekableByteChannel channel;
+            try {
+                channel = Files.newByteChannel(secretFile, options, PosixFilePermissions.asFileAttribute(
+                        EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)));
+            } catch (UnsupportedOperationException nonPosix) {
+                channel = Files.newByteChannel(secretFile, options);
+            }
+            try (SeekableByteChannel output = channel) {
+                ByteBuffer bytes = StandardCharsets.UTF_8.encode(content);
+                while (bytes.hasRemaining()) {
+                    output.write(bytes);
+                }
+            }
+        } catch (FileAlreadyExistsException raced) {
+            // Another process created the keyring since our read. Never truncate its secret.
+            return parseKeyringLines(Files.readAllLines(secretFile, StandardCharsets.UTF_8));
         }
 
         return new ItemHmacSigner(DEFAULT_KEY_ID, Map.of(DEFAULT_KEY_ID, generated));
     }
 
-    private static ItemHmacSigner parseKeyringLines(List<String> lines) {
+    private static ItemHmacSigner parseKeyringLines(List<String> lines) throws IOException {
+        List<String> entries = lines.stream().map(String::trim)
+                .filter(line -> !line.isEmpty() && !line.startsWith("#")).toList();
+        if (entries.isEmpty()) {
+            throw new IOException("Existing item HMAC keyring is empty; restore a valid keyring from backup");
+        }
+        if (entries.size() == 1 && !entries.get(0).contains("=")) {
+            byte[] legacy = decodeHexSafe(entries.get(0));
+            if (legacy != null && legacy.length >= 16) {
+                return new ItemHmacSigner(legacy);
+            }
+            throw new IOException("Invalid legacy item HMAC secret; existing file was preserved");
+        }
+
         String activeId = null;
         Map<String, byte[]> keys = new LinkedHashMap<>();
-
-        for (String rawLine : lines) {
-            if (rawLine == null) {
-                continue;
+        for (String line : entries) {
+            boolean isActive = line.startsWith("active=");
+            if (!isActive && !line.startsWith("retired=")) {
+                throw new IOException("Unrecognized item HMAC keyring entry; existing file was preserved");
             }
-            String line = rawLine.trim();
-            if (line.isEmpty() || line.startsWith("#")) {
-                continue;
+            String spec = line.substring(line.indexOf('=') + 1).trim();
+            int colon = spec.indexOf(':');
+            if (colon <= 0) {
+                throw new IOException("Invalid item HMAC keyring entry; expected keyId:hexSecret");
             }
-            if (line.startsWith("active=") || line.startsWith("retired=")) {
-                boolean isActive = line.startsWith("active=");
-                String spec = line.substring(line.indexOf('=') + 1).trim();
-                int colon = spec.indexOf(':');
-                if (colon <= 0 || colon == spec.length() - 1) {
-                    continue;
+            String keyId = normalizeKeyId(spec.substring(0, colon));
+            byte[] secret = decodeHexSafe(spec.substring(colon + 1).trim());
+            if (!isValidKeyId(keyId) || secret == null || secret.length < 16) {
+                throw new IOException("Invalid item HMAC key ID or secret; existing file was preserved");
+            }
+            if (keys.putIfAbsent(keyId, secret) != null) {
+                throw new IOException("Duplicate item HMAC key ID '" + keyId + "'; existing file was preserved");
+            }
+            if (isActive) {
+                if (activeId != null) {
+                    throw new IOException("Item HMAC keyring must have exactly one active key");
                 }
-                String kId = normalizeKeyId(spec.substring(0, colon));
-                String hex = spec.substring(colon + 1).trim();
-                byte[] decoded = decodeHexSafe(hex);
-                if (!kId.isEmpty() && decoded != null && decoded.length >= 16) {
-                    keys.put(kId, decoded);
-                    if (isActive) {
-                        activeId = kId;
-                    }
-                }
-            } else {
-                // Single-line bare hex secret compatibility
-                byte[] decoded = decodeHexSafe(line);
-                if (decoded != null && decoded.length >= 16) {
-                    keys.put(DEFAULT_KEY_ID, decoded);
-                    if (activeId == null) {
-                        activeId = DEFAULT_KEY_ID;
-                    }
-                }
+                activeId = keyId;
             }
         }
-
-        if (activeId != null && keys.containsKey(activeId)) {
-            return new ItemHmacSigner(activeId, keys);
+        if (activeId == null) {
+            throw new IOException("Item HMAC keyring has no active key; restore it without discarding retired keys");
         }
-        return null;
+        return new ItemHmacSigner(activeId, keys);
     }
 
     private static byte[] decodeHexSafe(String hex) {
@@ -255,7 +271,7 @@ public final class ItemHmacSigner {
     }
 
     /**
-     * Computes a keyed signature {@code <activeKeyId>:<hex-hmac>} over
+     * Computes a keyed signature {@code v2:<activeKeyId>:<hex-hmac>} over
      * {@code (provider, itemId, behaviorId, instanceUuid)} with empty state.
      */
     public String sign(String provider, String itemId, String behaviorId, String instanceUuid) {
@@ -263,7 +279,7 @@ public final class ItemHmacSigner {
     }
 
     /**
-     * Computes a keyed signature {@code <activeKeyId>:<hex-hmac>} over
+     * Computes a keyed signature {@code v2:<activeKeyId>:<hex-hmac>} over
      * {@code (provider, itemId, behaviorId, instanceUuid, canonicalState)}.
      */
     public String sign(
@@ -279,8 +295,8 @@ public final class ItemHmacSigner {
         Objects.requireNonNull(instanceUuid, "instanceUuid");
 
         byte[] activeSecret = keyring.get(activeKeyId);
-        byte[] macBytes = computeMac(activeSecret, provider, itemId, behaviorId, instanceUuid, stateData);
-        return activeKeyId + ":" + HEX.formatHex(macBytes);
+        byte[] macBytes = computeMac(activeSecret, activeKeyId, provider, itemId, behaviorId, instanceUuid, stateData);
+        return SIGNATURE_VERSION + ":" + activeKeyId + ":" + HEX.formatHex(macBytes);
     }
 
     /**
@@ -313,7 +329,8 @@ public final class ItemHmacSigner {
 
     /**
      * Verifies a candidate signature in constant time and distinguishes missing signatures,
-     * unknown key IDs, and tampered/forged MACs.
+     * unknown key IDs, unsupported signature versions, and tampered/forged MACs.
+     * Unsafe unversioned signatures are rejected even when their old MAC matches.
      */
     public VerificationOutcome verifyDetailed(
             String provider,
@@ -331,17 +348,17 @@ public final class ItemHmacSigner {
             return new VerificationOutcome(VerificationStatus.MISSING, null);
         }
 
-        String trimmedSig = candidateSignature.trim();
-        String keyId;
-        String hexPart;
-        int colon = trimmedSig.indexOf(':');
-        if (colon > 0) {
-            keyId = normalizeKeyId(trimmedSig.substring(0, colon));
-            hexPart = trimmedSig.substring(colon + 1).trim();
-        } else {
-            keyId = DEFAULT_KEY_ID;
-            hexPart = trimmedSig;
+        String[] parts = candidateSignature.trim().split(":", -1);
+        if (!SIGNATURE_VERSION.equals(parts[0])) {
+            String legacyKeyId = parts.length == 2 ? normalizeKeyId(parts[0])
+                    : parts.length >= 3 ? normalizeKeyId(parts[1]) : null;
+            return new VerificationOutcome(VerificationStatus.UNSUPPORTED_VERSION, legacyKeyId);
         }
+        String keyId = parts.length > 1 ? normalizeKeyId(parts[1]) : null;
+        if (parts.length != 3 || !isValidKeyId(keyId)) {
+            return new VerificationOutcome(VerificationStatus.INVALID_MAC, keyId);
+        }
+        String hexPart = parts[2];
 
         byte[] secret = keyring.get(keyId);
         if (secret == null) {
@@ -357,7 +374,12 @@ public final class ItemHmacSigner {
             return new VerificationOutcome(VerificationStatus.INVALID_MAC, keyId);
         }
 
-        byte[] expectedBytes = computeMac(secret, provider, itemId, behaviorId, instanceUuid, stateData);
+        byte[] expectedBytes;
+        try {
+            expectedBytes = computeMac(secret, keyId, provider, itemId, behaviorId, instanceUuid, stateData);
+        } catch (IllegalArgumentException invalidPayload) {
+            return new VerificationOutcome(VerificationStatus.INVALID_MAC, keyId);
+        }
         boolean matches = MessageDigest.isEqual(expectedBytes, candidateBytes);
         return new VerificationOutcome(
                 matches ? VerificationStatus.VALID : VerificationStatus.INVALID_MAC,
@@ -366,34 +388,36 @@ public final class ItemHmacSigner {
     }
 
     /**
-     * Encodes {@code allium:state_*} key/value pairs in a canonical, key-sorted format.
+     * Encodes {@code allium:state_*} pairs as a count followed by key-sorted, length-prefixed
+     * fields. Lengths count UTF-16 code units, so embedded NULs, colons, and equals signs cannot
+     * create field boundaries. The MAC payload also length-prefixes every identity field.
      */
     public static String encodeCanonicalState(Map<String, String> stateData) {
-        if (stateData == null || stateData.isEmpty()) {
-            return "";
-        }
         TreeMap<String, String> sorted = new TreeMap<>();
-        for (Map.Entry<String, String> entry : stateData.entrySet()) {
-            if (entry.getKey() != null && entry.getValue() != null) {
-                String k = entry.getKey().trim().toLowerCase(Locale.ROOT);
-                if (!k.isEmpty()) {
-                    sorted.put(k, entry.getValue());
+        if (stateData != null) {
+            for (Map.Entry<String, String> entry : stateData.entrySet()) {
+                if (entry.getKey() != null && entry.getValue() != null) {
+                    String key = entry.getKey().trim().toLowerCase(Locale.ROOT);
+                    if (!key.isEmpty() && sorted.putIfAbsent(key, entry.getValue()) != null) {
+                        throw new IllegalArgumentException("Duplicate normalized item state key '" + key + "'");
+                    }
                 }
             }
         }
-        if (sorted.isEmpty()) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
+        StringBuilder encoded = new StringBuilder().append(sorted.size()).append(':');
         for (Map.Entry<String, String> entry : sorted.entrySet()) {
-            if (!first) {
-                sb.append('\0');
-            }
-            first = false;
-            sb.append(entry.getKey()).append('=').append(entry.getValue());
+            appendLengthPrefixed(encoded, entry.getKey());
+            appendLengthPrefixed(encoded, entry.getValue());
         }
-        return sb.toString();
+        return encoded.toString();
+    }
+
+    private static void appendLengthPrefixed(StringBuilder payload, String value) {
+        payload.append(value.length()).append(':').append(value);
+    }
+
+    private static boolean isValidKeyId(String keyId) {
+        return keyId != null && keyId.matches("[a-z0-9][a-z0-9_.-]*");
     }
 
     public static String normalizeKeyId(String keyId) {
@@ -405,6 +429,7 @@ public final class ItemHmacSigner {
 
     private static byte[] computeMac(
             byte[] secretKey,
+            String keyId,
             String provider,
             String itemId,
             String behaviorId,
@@ -414,12 +439,21 @@ public final class ItemHmacSigner {
         try {
             Mac mac = Mac.getInstance(HMAC_ALGO);
             mac.init(new SecretKeySpec(secretKey, HMAC_ALGO));
-            String payload = provider.trim().toLowerCase(Locale.ROOT)
-                    + '\0' + itemId.trim().toLowerCase(Locale.ROOT)
-                    + '\0' + behaviorId.trim().toLowerCase(Locale.ROOT)
-                    + '\0' + instanceUuid.trim().toLowerCase(Locale.ROOT)
-                    + '\0' + encodeCanonicalState(stateData);
-            return mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+            StringBuilder payload = new StringBuilder();
+            appendLengthPrefixed(payload, SIGNATURE_VERSION);
+            appendLengthPrefixed(payload, keyId);
+            appendLengthPrefixed(payload, provider.trim().toLowerCase(Locale.ROOT));
+            // External provider IDs can be case sensitive; callers supply canonical ProviderKey IDs.
+            appendLengthPrefixed(payload, itemId.trim());
+            appendLengthPrefixed(payload, behaviorId.trim().toLowerCase(Locale.ROOT));
+            appendLengthPrefixed(payload, instanceUuid.trim().toLowerCase(Locale.ROOT));
+            appendLengthPrefixed(payload, encodeCanonicalState(stateData));
+            // Reject malformed Unicode instead of collapsing distinct strings to replacement bytes.
+            ByteBuffer encoded = StandardCharsets.UTF_8.newEncoder().encode(CharBuffer.wrap(payload));
+            mac.update(encoded);
+            return mac.doFinal();
+        } catch (CharacterCodingException e) {
+            throw new IllegalArgumentException("Item signature fields must contain valid Unicode", e);
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("Failed to compute HmacSHA256 for item signature", e);
         }

@@ -93,13 +93,23 @@ does not imply newer servers can run on Java 17.
 
 #### Recorded S01 / S02 / S04 Server/JDK Baseline & Smoke-Test Matrix
 
-| Lane | Server Build | Runtime JDK | No-Provider Boot & Lifecycle | `/heal`, `/feed`, `/fly`, `/god`, `/gamemode` (`self`, `other`, `console`) | S02 Client Tab-Complete & `knownCommands` Access | S04 Item Contract, State HMAC & Keyring |
+| Lane | Server Build | Runtime JDK | No-Provider Boot & Lifecycle | `/heal`, `/feed`, `/fly`, `/god`, `/gamemode` (`self`, `other`, `console`) | S02 Command-Tree Packets, Suggestions & `knownCommands` Access | S04 Item Contract, State HMAC & Keyring |
 | --- | --- | --- | --- | --- | --- | --- |
 | Minimum (Spigot 1.20.1) | Spigot `3871-Spigot-d2eba2c-3f9263b` (MC 1.20.1) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** (`Server#getCommandMap()` -> `v1_20_R1.command.CraftCommandMap#getKnownCommands()`, `syncCommands()` + `player.updateCommands()`) | **PASS** (`s04:privileged-hmac-valid`, `s04:privileged-hmac-resigned-on-setState`, `s04:privileged-hmac-state-tamper-rejected`) |
 | Minimum (Paper 1.20) | Paper `git-Paper-17` (`c287e92`, MC 1.20) | OpenJDK 17 (`java-17-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** | **PASS** |
 | Intermediate (Paper 1.20.6, NBT-to-component & InvUI `r19+` boundary) | Paper `1.20.6-151-a4f0f5c` (MC 1.20.6) | OpenJDK 21 (`java-21-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** (`Server#getCommandMap()` -> `craftbukkit.command.CraftCommandMap#getKnownCommands()`, Paper Brigadier `BukkitCommandNode` updated via `syncCommands()` + `player.updateCommands()`) | **PASS** (`s04:privileged-hmac-valid`, `s04:privileged-hmac-resigned-on-setState`, `s04:privileged-hmac-state-tamper-rejected`) |
 | Maximum (Spigot 26.3) | Spigot `4660-Spigot-766de51-bd6d9dc` (MC 26.3) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** | **PASS** |
 | Maximum (Paper 26.3) | Paper `26.3-141-54024d3` (`world_version: 5023`, protocol 777) | OpenJDK 25 (`java-25-openjdk`) | **PASS** — clean enable, SQLite connect, modules loaded, clean disable | **15/15 PASS** | **PASS** (`Server#getCommandMap()` -> `craftbukkit.command.CraftCommandMap#getKnownCommands()`, Paper Brigadier `BukkitCommandNode` updated via `syncCommands()` + `player.updateCommands()`) | **PASS** (`s04:privileged-hmac-valid`, `s04:privileged-hmac-resigned-on-setState`, `s04:privileged-hmac-state-tamper-rejected`) |
+
+The original S02 smoke harness inspected server command maps/dispatchers with proxy
+players. It did not prove client updates. The corrective follow-up additionally
+connects real offline protocol clients to loopback disposable servers at Spigot
+1.20.1, Paper 1.20.6 and Paper 26.3: before/after command-tree packets and suggestion
+responses pass. Evidence and reproducible validation code are in
+[`tests/live/command-client/`](../tests/live/command-client/). Paper 26.3 uses a
+minimal protocol-777 client with packet IDs obtained from the exact server's own
+protocol details, not a guessed older-version schema. This verifies wire behavior;
+it is not a screenshot-based human-client test.
 
 #### Open M4 Risk: InvUI on 26.x
 
@@ -200,12 +210,11 @@ Because PDC tags are forgeable by creative clients and `/give` component syntax,
 stamped PDC and serialized `ItemRef`s carry an explicit `schema_version` (`1`),
 and `AlliumItemDefinition` declares `privileged = true|false` (`handcuffs` and
 `phantom_obliterator` are privileged). Privileged behaviors require a valid
-server-secret `HmacSHA256` signature (`<keyId>:<64-char-hex>`) over
+server-secret `HmacSHA256` signature (`v2:<keyId>:<64-char-hex>`) over
 `(provider, itemId, behaviorId, instanceUuid, canonicalState)` stored in PDC
 (`allium:instance_uuid`, `allium:signature`), where `canonicalState` is a
 lexicographically key-sorted encoding of `allium:state_*` (`ItemHmacSigner#encodeCanonicalState`).
-Every state mutation (`ItemService#setState`) re-signs the stack automatically, and
-editing `allium:state_*` in PDC invalidates verification. Keyring secrets (`active`
+Every signed/privileged state mutation (`ItemService#setState`) first verifies the original identity/state, then re-signs the stack with the active key. Rejected items remain unchanged. Directly editing `allium:state_*` in PDC invalidates verification. Keyring secrets (`active`
 key for signing plus `retired` keys valid for verification) are generated on first
 run and stored outside `config.yml` (`plugins/Allium/.item-hmac-secret`, `0600`
 permissions) so they are never leaked when configs are posted; multi-server networks

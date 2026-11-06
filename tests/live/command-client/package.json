@@ -1,0 +1,6 @@
+{
+  "name": "allium-command-client-gate",
+  "private": true,
+  "version": "0.0.0",
+  "dependencies": { "minecraft-protocol": "1.68.0" }
+}

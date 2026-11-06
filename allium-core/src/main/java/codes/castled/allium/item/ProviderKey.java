@@ -38,7 +38,12 @@ public record ProviderKey(String provider, String id) {
         Objects.requireNonNull(provider, "provider");
         Objects.requireNonNull(id, "id");
         provider = provider.trim().toLowerCase(Locale.ROOT);
-        id = id.trim().toLowerCase(Locale.ROOT);
+        id = id.trim();
+        // External registries (notably Nexo and Oraxen) use case-sensitive IDs.
+        // Only namespaces with a defined lowercase identity are normalized.
+        if (MINECRAFT.equals(provider) || ALLIUM.equals(provider) || CRAFTENGINE.equals(provider)) {
+            id = id.toLowerCase(Locale.ROOT);
+        }
         if (provider.isEmpty()) {
             throw new IllegalArgumentException("Item provider namespace must not be empty");
         }
@@ -102,7 +107,7 @@ public record ProviderKey(String provider, String id) {
         }
 
         String rawProvider = trimmed.substring(0, firstColon).trim().toLowerCase(Locale.ROOT);
-        String rawId = trimmed.substring(firstColon + 1).trim().toLowerCase(Locale.ROOT);
+        String rawId = trimmed.substring(firstColon + 1).trim();
 
         if (rawId.isEmpty() || rawId.startsWith(":") || rawId.endsWith(":")) {
             throw new IllegalArgumentException("Malformed item identifier in reference: '" + rawReference + "'");
@@ -119,6 +124,7 @@ public record ProviderKey(String provider, String id) {
         }
 
         if (rawProvider.equals("ce")) {
+            rawId = rawId.toLowerCase(Locale.ROOT);
             if (!allowDeprecatedCe) {
                 throw new IllegalArgumentException(
                         "Legacy prefix 'ce:' is deprecated; use 'craftengine:" + rawId + "' instead");

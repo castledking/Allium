@@ -1,0 +1,14 @@
+name: ClientGate
+version: '0.1.0-validation'
+main: codes.castled.clientgate.ClientGatePlugin
+api-version: '1.20'
+depend: [Allium]
+description: Validation-only network-client gate for Allium CommandMapBridge yield + Player.updateCommands
+commands:
+  clientgate:
+    description: client gate validation control
+    usage: /clientgate <install|yield|refresh|state> [phase]
+    permission: clientgate.admin
+permissions:
+  clientgate.admin:
+    default: op

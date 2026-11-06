@@ -68,6 +68,47 @@ class ItemServiceContractTest {
     }
 
     @Test
+    void stateMutationCannotLaunderInvalidIdentityOrAlterRejectedMetadata() {
+        for (String invalid : List.of("missing", "forged", "unknown", "tampered", "missing-uuid", "legacy")) {
+            ItemStack stack = itemService.create(ItemRef.parse("allium:phantom_obliterator")).itemStack().orElseThrow();
+            PersistentDataContainer pdc = stack.getItemMeta().getPersistentDataContainer();
+            switch (invalid) {
+                case "missing" -> pdc.remove(ItemService.KEY_SIGNATURE);
+                case "forged" -> pdc.set(ItemService.KEY_SIGNATURE, PersistentDataType.STRING, "v2:k1:" + "00".repeat(32));
+                case "unknown" -> pdc.set(ItemService.KEY_SIGNATURE, PersistentDataType.STRING, "v2:foreign:" + "00".repeat(32));
+                case "tampered" -> pdc.set(new NamespacedKey("allium", "state_tier"), PersistentDataType.STRING, "999");
+                case "missing-uuid" -> pdc.remove(ItemService.KEY_INSTANCE_UUID);
+                case "legacy" -> pdc.set(ItemService.KEY_SIGNATURE, PersistentDataType.STRING, "k1:" + "00".repeat(32));
+            }
+            String beforeSignature = pdc.get(ItemService.KEY_SIGNATURE, PersistentDataType.STRING);
+            String beforeUuid = pdc.get(ItemService.KEY_INSTANCE_UUID, PersistentDataType.STRING);
+            clearInvocations(stack);
+            itemService.setState(stack, "charges", "999");
+            assertEquals(Optional.of("3"), itemService.getState(stack, "charges"), invalid);
+            assertEquals(beforeSignature, pdc.get(ItemService.KEY_SIGNATURE, PersistentDataType.STRING), invalid);
+            assertEquals(beforeUuid, pdc.get(ItemService.KEY_INSTANCE_UUID, PersistentDataType.STRING), invalid);
+            verify(stack, never()).setItemMeta(any());
+            assertTrue(itemService.identifyBehavior(stack).isEmpty(), invalid);
+        }
+    }
+
+    @Test
+    void validRetiredSignatureCanMutateAndResignsWithActiveKey() {
+        ItemStack stack = itemService.create(ItemRef.parse("allium:phantom_obliterator")).itemStack().orElseThrow();
+        byte[] nextSecret = new byte[32];
+        new java.security.SecureRandom().nextBytes(nextSecret);
+        ItemService rotated = new ItemService(ItemServiceContractTest::createMockBackedStack,
+                signer.rotateKey("k2", nextSecret), diagnostics::add);
+        rotated.registerPrivilegedBehavior("allium:phantom_obliterator");
+        assertEquals(Optional.of("allium:phantom_obliterator"), rotated.identifyBehavior(stack));
+        rotated.setState(stack, "charges", "2");
+        assertEquals(Optional.of("2"), rotated.getState(stack, "charges"));
+        assertTrue(stack.getItemMeta().getPersistentDataContainer().get(ItemService.KEY_SIGNATURE,
+                PersistentDataType.STRING).startsWith("v2:k2:"));
+        assertEquals(Optional.of("allium:phantom_obliterator"), rotated.identifyBehavior(stack));
+    }
+
+    @Test
     void signedBehaviorIdentityVerifiesValidCloneAndAppearanceSwap() {
         itemService.registerProvider(new ItemProviderAdapter() {
             @Override
@@ -104,7 +145,7 @@ class ItemServiceContractTest {
         String originalSig = pdc.get(ItemService.KEY_SIGNATURE, PersistentDataType.STRING);
         assertNotNull(originalInstanceUuid);
         assertNotNull(originalSig);
-        assertTrue(originalSig.startsWith("k1:"));
+        assertTrue(originalSig.startsWith("v2:k1:"));
 
         assertEquals(Optional.of("allium:handcuffs"), itemService.identifyBehavior(cuffs));
         assertTrue(itemService.matchesBehavior(cuffs, "allium:handcuffs"));
@@ -355,6 +396,10 @@ class ItemServiceContractTest {
         when(pdc.get(any(NamespacedKey.class), any())).thenAnswer(inv -> pdcMap.get(inv.getArgument(0)));
         when(pdc.has(any(NamespacedKey.class), any())).thenAnswer(inv -> pdcMap.containsKey(inv.getArgument(0)));
         when(pdc.getKeys()).thenAnswer(inv -> pdcMap.keySet());
+        doAnswer(inv -> {
+            pdcMap.remove(inv.getArgument(0));
+            return null;
+        }).when(pdc).remove(any(NamespacedKey.class));
 
         ItemMeta meta = mock(ItemMeta.class);
         when(meta.getPersistentDataContainer()).thenReturn(pdc);

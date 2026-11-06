@@ -34,6 +34,11 @@ public final class ProviderAdapterBootstrap {
 
     private static final Pattern LEADING_VERSION_NUMBERS = Pattern.compile("^\\D*(\\d+)(?:\\.(\\d+))?(?:\\.(\\d+))?");
 
+    /**
+     * Runtime acceptance policy. A nonempty {@code verifiedRuntimeVersions} set is an exclusive
+     * allowlist; only an empty set enables the {@code majorVersion}/{@code minorVersion} line.
+     * Compile-only API pins in the diagnostic description do not grant runtime support.
+     */
     public record ProviderSpec(
             String providerKey,
             String bukkitPluginName,
@@ -49,13 +54,15 @@ public final class ProviderAdapterBootstrap {
         }
 
         public boolean isVersionSupported(@Nullable String rawVersion) {
-            if (rawVersion != null && verifiedRuntimeVersions.contains(rawVersion.trim())) return true;
+            if (!verifiedRuntimeVersions.isEmpty()) {
+                return rawVersion != null && verifiedRuntimeVersions.contains(rawVersion.trim());
+            }
             int[] parsed = parseVersionNumbers(rawVersion);
             if (parsed == null) {
                 return false;
             }
-            // Version lines are deliberately narrow. Future versions require API/gate review,
-            // rather than being accepted merely because their number is larger.
+            // Line acceptance is retained for CraftEngine only. Do not empty the Nexo/Oraxen
+            // allowlists: their numeric API pins have not established runtime line support.
             return parsed[0] == majorVersion && parsed[1] == minorVersion;
         }
     }
@@ -65,7 +72,7 @@ public final class ProviderAdapterBootstrap {
             "Nexo",
             "codes.castled.allium.item.provider.nexo.NexoProviderAdapter",
             "com.nexomc.nexo.api.NexoItems",
-            "1.29.x (API pin 1.29.1), verified runtime 1.30-dev-36f4ce686",
+            "1.30-dev-36f4ce686 only (compile-only API pin 1.29.1)",
             1, 29,
             Set.of("1.30-dev-36f4ce686")
     );
@@ -85,7 +92,7 @@ public final class ProviderAdapterBootstrap {
             "Oraxen",
             "codes.castled.allium.item.provider.oraxen.OraxenProviderAdapter",
             "io.th0rgal.oraxen.api.OraxenItems",
-            "1.211.x (API pin 1.211.0), verified runtime 1.220.1",
+            "1.220.1 only (compile-only API pin 1.211.0)",
             1, 211,
             Set.of("1.220.1")
     );
@@ -97,7 +104,7 @@ public final class ProviderAdapterBootstrap {
 
     /**
      * Registers all external provider adapters onto {@code itemService}, checking {@code pluginManager}
-     * for presence, enabled state, supported version line, and API class availability.
+     * for presence, enabled state, runtime version acceptance, and API class availability.
      */
     public static void registerAll(
             Plugin hostPlugin,
@@ -152,7 +159,7 @@ public final class ProviderAdapterBootstrap {
                 : null;
         if (!spec.isVersionSupported(rawVersion)) {
             String msg = spec.bukkitPluginName() + " version '" + rawVersion
-                    + "' is incompatible (verified API line is " + spec.supportedVersionLine()
+                    + "' is incompatible (supported runtime policy is " + spec.supportedVersionLine()
                     + "); registering provider '" + spec.providerKey() + "' as ABSENT.";
             warningLogger.accept(msg);
             return new AbsentProviderAdapter(spec.providerKey(), msg);

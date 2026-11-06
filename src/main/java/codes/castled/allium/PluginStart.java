@@ -10,6 +10,7 @@ import codes.castled.allium.item.ItemHmacSigner;
 import codes.castled.allium.item.ItemService;
 import codes.castled.allium.item.ItemSigningKeyAudit;
 import codes.castled.allium.item.provider.ProviderAdapterBootstrap;
+import codes.castled.allium.item.provider.ProviderStartupDiagnostics;
 import codes.castled.allium.listener.ListenerManager;
 import codes.castled.allium.message.LanguageManager;
 import codes.castled.allium.message.MessageManager;
@@ -88,6 +89,7 @@ public final class PluginStart extends JavaPlugin {
 
         commandManager.registerAll();
         listenerManager.registerAll();
+        new ProviderStartupDiagnostics(itemService, getServer().getPluginManager(), logger::warning).install(this);
         new ItemSigningKeyAudit(hmacSigner, logger::severe).install(this);
         logger.info("Item signing keyring loaded: active=" + hmacSigner.activeKeyId()
                 + ", verification keys=" + hmacSigner.keyIds()

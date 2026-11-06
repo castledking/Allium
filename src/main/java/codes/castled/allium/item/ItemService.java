@@ -154,6 +154,14 @@ public final class ItemService {
     }
 
     /**
+     * Read-only snapshot of registered definition, alias and preferred-appearance bindings.
+     * Startup provider diagnostics use this to inspect deliberately managed items only.
+     */
+    public Map<ProviderKey, String> appearanceBindings() {
+        return Map.copyOf(appearanceToBehavior);
+    }
+
+    /**
      * Parses a canonical reference string into an {@link ItemRef}, applying any registered
      * behavior binding and default state for that item.
      */

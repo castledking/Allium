@@ -9,7 +9,7 @@ was modified.
 
 ## Build and accepted runtimes
 
-| Isolated source set | Compile-only API pin | Additional explicitly verified runtime |
+| Isolated source set | Compile-only API pin | Explicitly verified runtime |
 | --- | --- | --- |
 | `nexoAdapter` | `com.nexomc:nexo:1.29.1` | User-supplied `1.30-dev-36f4ce686` only |
 | `craftengineAdapter` | `net.momirealms:craft-engine-core:26.9.1`, `craft-engine-bukkit:26.9.1` | Tested 26.9.1 and adjacent 26.9.2 |
@@ -19,23 +19,63 @@ Shared code and `allium-core` remain Java 17; provider APIs compile with JDK 21 
 emit `--release 17`. Core has no Bukkit dependency. The supplied runtimes retain
 the bound native build/identity/event signatures; the Oraxen registry change has
 a separate guarded probe. Accepting these exact builds does not accept arbitrary
-future 1.30.x/1.220.x versions. Original 1.29.x/1.211.x API lines remain accepted.
+future 1.30.x/1.220.x versions. Nexo and Oraxen bootstrap acceptance is restricted
+to the exact supplied version strings above; their compile-only 1.29.x/1.211.x
+API lines are not accepted runtime lines. Stock Nexo 1.29.1 has no runnable
+artifact available in the recorded investigation and has not been live-verified.
+Earlier Nexo 1.29 dev results do not establish stock 1.29.1 or 1.29.x support.
+The historical recovered Oraxen 1.211.0 source-build result is scoped to its exact
+artifact below, not an arbitrary stock distribution reporting that version.
+Bootstrap does not fingerprint jars, so `1.211.0` remains rejected rather than
+allowing all jars with that version string. CE's existing 26.9.x acceptance policy
+is unchanged; its reset-safety release condition remains separate below.
 
-The final jar is 1,510,926 bytes, with 16 provider/bootstrap classes at class major
-61, and no native provider APIs, Kotlin or gate fixtures bundled. SHA-256:
+The original S05-gated jar is 1,510,926 bytes, with 16 provider/bootstrap classes at
+class major 61, and no native provider APIs, Kotlin or gate fixtures bundled. SHA-256:
 `de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7`.
-The unit suite passes **87 tests** (74 plugin, 13 platform-neutral core).
+The recorded unit suite passed **87 tests** (74 plugin, 13 platform-neutral core).
 Nine separate runner regression tests and two native event fault-injection checks
 verify that skipped assertions and abnormal process exits cannot produce a PASS.
 [Supplied runtime hashes and reproduction](../tests/live/providers/supplied/README.md)
 and the result manifests identify each live-tested Allium jar independently.
 Earlier 2026-11-05/early 2026-11-06 runs used the previous committed artifact;
-they are not presented as byte-identical to this final jar.
+they are not presented as byte-identical to this original gate jar. The live
+evidence and its hashes remain unchanged. This follow-up changes startup warnings
+and bootstrap support policy; its artifact and unit-test/build results are recorded
+separately. The original hash and 87-test count do not identify the current build
+or establish a native runtime PASS for the follow-up.
+
+The startup-warning/support-policy follow-up passed the root agent's offline
+Gradle test and `shadowJar` run: **105 tests** (92 plugin, 13 platform-neutral
+core), with no failures, errors or skips. Focused coverage includes delayed
+readiness, managed preferred/alias bindings, native reset-chain inspection,
+converter defaults and unchanged configuration bytes, and exact runtime allowlists.
+This is separate unit/build validation, not a rerun of the original native gate.
 
 Bootstrap checks presence, enabled state, supported version and API class before
 loading an adapter by class-name string. Missing/incompatible/linkage failures
 produce ABSENT with a diagnostic. Main code never eagerly references a provider
 class. Provider libraries come from their owning plugins.
+
+Startup diagnostics only warn; they never edit vendor configuration, update an
+inventory, reload a provider or re-sign an item. The scheduled check runs after
+`onEnable` registrations and waits while CraftEngine is LOADING. Once READY, it
+reads a fresh snapshot of ItemService's actual appearance-to-behavior bindings,
+including preferred appearances and aliases. Only those managed CE IDs are
+inspected; unrelated native definitions do not produce reset warnings. The
+isolated adapter reads `ItemDefinition.updater()` and the guarded private
+`ItemUpdateConfig.versions` list, then checks native `Version.updaters()` for
+`ResetOperation` across the entire chain without executing an updater or building
+an item. Inspection failures warn separately and do not fail an otherwise healthy
+provider. This startup check is not a continuous configuration/reload audit.
+
+When enabled Nexo and installed Oraxen coexist, the startup check reads Nexo's
+`converter.yml` without calling its lazy native converter getter. The inspected
+compile pin and supplied runtime bytecode give all four `oraxenConverter` switches
+a default of true, including a missing section; a missing file is not created.
+Any enabled switch warns about automatic migration and points to the coexistence
+recipe below. These are startup file settings, not a probe of changed in-memory
+converter state. No new native runtime run is claimed for these warning changes.
 
 ## Readiness and identity
 
@@ -55,8 +95,9 @@ class. Provider libraries come from their owning plugins.
   observable through this completion-only API. No legacy 0.0.67 fallback exists.
 - **Oraxen:** verified `getItemById(id).build()`, `getIdByItem(stack)` and
   `OraxenItemsLoadedEvent`. Reload is synchronous; no fictitious pre event is used.
-  The 1.211 probe checks its null/uninitialized static `Map map`. Exact 1.220.1
-  uses a volatile `RegistrySnapshot`; its verified schema and publication pattern
+  The historical source-built 1.211.0 probe checks its null/uninitialized static
+  `Map map`; retaining that probe does not accept the 1.211.x runtime line. Exact
+  1.220.1 uses a volatile `RegistrySnapshot`; its verified schema and publication pattern
   distinguish the initial `Map.of()` sentinel from a published empty registry.
   Both probes are read-only and fail loudly on schema/access changes. Oraxen can
   swallow parse errors and keep an old registry; its post event has no success
@@ -97,7 +138,8 @@ Exact CE distributions came from official Modrinth releases
 [Paper EDh6mvv2](https://modrinth.com/plugin/craftengine/version/EDh6mvv2) and
 [Bukkit prX5nH7G](https://modrinth.com/plugin/craftengine/version/prX5nH7G). Both are
 labelled beta. Their 26.9.1 metadata omits 26.3; the 26.9.2 pass must not be
-transferred to that exact pin. Nexo's supplied dev build is not stable 1.29.1.
+transferred to that exact pin. Nexo's supplied dev build is not stable 1.29.1;
+stock 1.29.1 remains unavailable for live validation and is rejected by bootstrap.
 Paper 1.21.5 has no stable build in the queried service; its ALPHA test result is
 not a stable-server recommendation. Version support is limited to these checks.
 
@@ -216,10 +258,18 @@ binaries, Bukkit builds, lanes or configuration combinations.
 - [CE trigger diagnostic](../tests/live/providers/trigger/README.md): retained stock
   failures, patched passes, typed metadata snapshots, native source evidence and
   exact-source build provenance.
-- The older Oraxen 1.211 source tag was also recovered/built with a genuine
-  source-built Iris dependency and passed its native Paper 1.21.8 check. It is a
-  source-built artifact, not the official binary; supplied 1.220.1 is now directly
-  validated and no fake API jar descriptor was used.
+- The recovered Oraxen `v1.211.0` source build, using a genuine source-built Iris
+  dependency, passed native creation/identity, inventory, reload/update, restart
+  and disable checks on Paper 1.21.8-60 across two boots. This is historical
+  evidence for **exactly** `oraxen-1.211.0-source-built.jar` (4,505,675 bytes),
+  SHA-256 `fa2ae33f4cbc08a396fd8cdccce2b044ddeb4b6706a00a365119c299e9bfc036`,
+  with the earlier Allium artifact identified in its manifest. The retained local
+  evidence is `/tmp/allium-s05-20261106/oraxen/logs/`: `artifact-manifest.json`,
+  `native-result.json`, `evidence-boot-1.log` and `evidence-boot-2.log`.
+  It does not verify the official stock 1.211.0 binary or the 1.211.x line, and
+  version text alone cannot authorize that exact source-built artifact at runtime.
+  The current predicate therefore rejects `1.211.0`; supplied `1.220.1` remains
+  directly validated and accepted. No fake API jar descriptor was used.
 
 The recorded S05 gate is complete for the explicit patched configurations above.
 Interactive coverage outside the recorded lanes, unlisted server/provider

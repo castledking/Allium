@@ -97,10 +97,11 @@ also emit Java 17 bytecode; install JDK 17 and 21 for the configured toolchains.
 Provider tests run on Java 21. Output is `build/libs/Allium.jar`.
 
 Provider API pins, actual server runs and open validation rows are documented in
-[the S05 matrix](docs/s05-provider-matrix.md). The complete S05 gate is still open;
-its native CE reset quantity checks fail even though the recorded Oraxen/all-three
-lifecycle, identity and signed-state checks pass. Supplied Nexo 1.30-dev-36f4ce686
-and Oraxen 1.220.1 are explicitly verified runtime exceptions to the API pins.
+[the S05 matrix](docs/s05-provider-matrix.md). Native CE reset quantity checks
+require the recorded count-preserving source patch: stock 26.9.1/26.9.2 lose items.
+The patched runtime gate and its exact artifact hashes are recorded separately
+from stock results. Supplied Nexo 1.30-dev-36f4ce686 and Oraxen 1.220.1 are
+explicitly verified runtime exceptions to the API pins.
 Core remains the only required plugin; external providers are compile-only and
 are not bundled. Current bundled libraries are HikariCP 5.1.0 and InvUI 1.49.
 InvUI's 26.x GUI compatibility remains an explicit later-slice risk.

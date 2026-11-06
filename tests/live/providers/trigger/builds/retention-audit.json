@@ -1,0 +1,570 @@
+{
+  "scope": "S05 build provenance retained 2026-11-06; no builds or servers invoked",
+  "original_root": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds",
+  "builder_outputs_absent_at_retention": [
+    "verification.json",
+    "SHA256SUMS"
+  ],
+  "builder_verifier_status": "Not run during retention. Original final outputs are absent; shaded JAR bytes differ from unshaded compiler output, contradicting its equality assertion. No builder PASS is claimed.",
+  "retention_checks": "Read-only subset of original verifier checks, existing dependency report file/hash checks, and verbatim copy checks. This file is new retention evidence, not original builder output or runtime evidence.",
+  "dependency_report_limits": "Eight reports per lane retained by path/hash only. Reported file inputs were checked; project class directories, absent NO-SOURCE outputs, plugin/buildSrc resolution and full task inputs are not covered. Reports describe original configurations, not the init-script-reordered effective compileJava classpath. This is not a dependency lock or a complete reproducible build manifest.",
+  "lanes": [
+    {
+      "lane": "ce-26.9.1-2b9e6f59",
+      "source_commit": "2b9e6f59a0bf4dac7f71958c0ea96c14b8e44985",
+      "source_checks": "Exact requested HEAD; only one tracked Java line changed; no staged or untracked changes; recorded diff equals git diff; reverse apply --check passes.",
+      "source_changes_patch_sha256": "813cb48ad113895dbbd8aca2505e5853ba6c4f0068a12e6005d4117f450d7bde",
+      "artifact": {
+        "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/source/target/craft-engine-paper-plugin-26.9.1.jar",
+        "sha256": "9b86b1044e0d97d800e1722b1ca2b01f2582d44269a28508da7b9b79babfcd41",
+        "bytes": 10885784
+      },
+      "archive_checks": {
+        "zip_crc": "pass",
+        "entries": 5933,
+        "classes": 4965,
+        "native_descriptor_equals_generated": true,
+        "native_descriptors": {
+          "paper-plugin.yml": {
+            "sha256": "8d87a3af6b6ecebb8a3e84a97e047cbc5044fb17a775afb948d54cccbfc6098e",
+            "matches_provenance_and_saved_content": true
+          },
+          "META-INF/MANIFEST.MF": {
+            "sha256": "966394b5b31b6007d43654e4040510e8819e307d407b93e54007bb9ae83c9fda",
+            "matches_provenance_and_saved_content": true
+          },
+          "craft-engine.properties": {
+            "sha256": "f37790ec20957a54b0b219ccedf754660c32bd43203da16950471615fb6a5779",
+            "matches_provenance_and_saved_content": true
+          }
+        },
+        "embedded_proxy_sha256": "aa5d465d35a1bd9edd4fcf6c829be021770a8a7451b75f1802db010281609d09",
+        "reset_class_java_major_version": 65,
+        "reset_class_sha256": "8193914d60d7726fc194cb8154446dda01af71e4213dbf5570f9caa3fd75d243",
+        "unshaded_compiler_reset_class_sha256": "9789c11a0e5234d108295a0ffbd0122debe6d770c6a27adc5bceed292e89c41c",
+        "reset_class_equals_unshaded_compiler_output": false,
+        "saved_javap_equals_fresh_jar_javap": true,
+        "count_preserving_bytecode": "Item.count() -> ItemDefinition.buildItem(ItemBuildContext,int)"
+      },
+      "resolved_dependency_reports": [
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/resolved-inputs/bukkit.json",
+          "sha256": "e3f8facc11cea54baadc21b549b5fa1419fa1b6c3af7ba140e450cfa0b89f9aa",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 123,
+              "file_inputs": 122
+            },
+            "runtimeClasspath": {
+              "artifacts": 1,
+              "file_inputs": 1
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/resolved-inputs/bukkit_compatibility.json",
+          "sha256": "2b14207bcc3957c1008178314a6637d723b4fbe4f85aecdb0e8c9a64d0372c29",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 128,
+              "file_inputs": 128
+            },
+            "runtimeClasspath": {
+              "artifacts": 0,
+              "file_inputs": 0
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/resolved-inputs/bukkit_compatibility_legacy.json",
+          "sha256": "45f7fd7ab5bc42642ce55a8ffe06830ea5371fc2705462ff757f7977fb78432d",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 54,
+              "file_inputs": 54
+            },
+            "runtimeClasspath": {
+              "artifacts": 0,
+              "file_inputs": 0
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/resolved-inputs/bukkit_legacy.json",
+          "sha256": "f96980dd2773c77e68201a2001b22752b4b24b58f7d9433d41a1434a6dd50dcd",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 44,
+              "file_inputs": 44
+            },
+            "runtimeClasspath": {
+              "artifacts": 0,
+              "file_inputs": 0
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/resolved-inputs/bukkit_paper-loader.json",
+          "sha256": "549d97822f99e9adf8764234791e3f3708020f143a30b013a57d503b3729174e",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 62,
+              "file_inputs": 59
+            },
+            "runtimeClasspath": {
+              "artifacts": 19,
+              "file_inputs": 21
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/resolved-inputs/bukkit_proxy.json",
+          "sha256": "b8c9f63398b7d7a7ee2d35074b5f9054871fdb955b054ff239295a787f7f9153",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 98,
+              "file_inputs": 99
+            },
+            "runtimeClasspath": {
+              "artifacts": 1,
+              "file_inputs": 1
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/resolved-inputs/common-files.json",
+          "sha256": "79790d5635f64ba1af24074aae90f21ceee16c5193120fcfae2cdc12ed235aa5",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 0,
+              "file_inputs": 0
+            },
+            "runtimeClasspath": {
+              "artifacts": 0,
+              "file_inputs": 0
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/resolved-inputs/core.json",
+          "sha256": "f3fcc9602c219fbf4ac0425d5b1a8b45a4ef395ff75b2ff426d875b3adf7ee69",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 105,
+              "file_inputs": 107
+            },
+            "runtimeClasspath": {
+              "artifacts": 7,
+              "file_inputs": 7
+            }
+          }
+        }
+      ],
+      "resolved_file_inputs_hash_checked": 233,
+      "unhashed_project_inputs": [
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/source/core/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/source/bukkit/legacy/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/source/bukkit/proxy/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/source/bukkit/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/source/bukkit/compatibility/legacy/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/source/bukkit/compatibility/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/source/common-files/build/classes/java/main",
+          "recorded_kind": "jar",
+          "currently_exists": false
+        }
+      ],
+      "tracked_source_jars": [
+        {
+          "path": "bukkit/compatibility/legacy/libs/awsm-api.jar",
+          "git_blob": "d5d4d7c4c100edecc6e53f5de0e81683b01a5b0b",
+          "sha256": "14b898f38075f400c3d1f787abf50433d106326de07cb5dc3c92ae5c04c48bc5"
+        },
+        {
+          "path": "bukkit/compatibility/legacy/libs/flow-nbt-2.0.2.jar",
+          "git_blob": "68c47da2ad3cd1ec86930bfda37ea8f7112da5d0",
+          "sha256": "e569a93dd44a139399020cd4690769840e9f155d525850cba779658fadd4743e"
+        },
+        {
+          "path": "gradle/wrapper/gradle-wrapper.jar",
+          "git_blob": "b1b8ef56b44f16b14dc800fa8103a6d89abb526f",
+          "sha256": "497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7"
+        },
+        {
+          "path": "libs/AxiomPaperPlugin-5.0.4.jar",
+          "git_blob": "9c4010b991f4869a6bfa2e206cf4d0085a64fae2",
+          "sha256": "e62fa9e034803d760d0dfc00fc14c66b7cef0603c5ccefa1cc364fafe5b2030d"
+        },
+        {
+          "path": "libs/denizen-1.3.3.jar",
+          "git_blob": "7d6e33134faa9223f71dd7d1a7e1b5255bd1321f",
+          "sha256": "332d48fc9623d4615f4aa1e4af5496da904f899d8fafcf4ad1ee02f4c49d6e60"
+        },
+        {
+          "path": "libs/jni-internal-lookup-1.9.jar",
+          "git_blob": "20ac3feab182d43fa2b7359b4cfcb3fa300e25a3",
+          "sha256": "738e7f8a23ed5610a89ce6b5430dd610d546dab6dce21b2bea0a0a18b20751de"
+        },
+        {
+          "path": "libs/leafpile-1.0.0.1.jar",
+          "git_blob": "f1e531a52fc7c029a2964e8206e1b6158b785c88",
+          "sha256": "d85b9ecb2b800f7dbc0c98c66d73e4f1341bfe608055ca5e95c1fbc9f0c40e48"
+        },
+        {
+          "path": "libs/worldguard-bukkit-7.0.14-dist.jar",
+          "git_blob": "69d590e5e84439b9316fb76c582a3db59e1808bd",
+          "sha256": "459497fb7269b53a0424b83bd70eb8ce46af1e66ad86a60f6d3121cb6b5c700d"
+        }
+      ],
+      "compile_classpath_evidence": {
+        "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/compatibility-classpath-gson-first.txt",
+        "sha256": "da7fd4bf2c44a7485c0e7ea880b5b7e99be622662f1268536c96d05d54940c63",
+        "first_entry": "/home/towkio/.gradle/caches/modules-2/files-2.1/com.google.code.gson/gson/2.14.0/efc0e34ede4e3204eaefb84a00e55e8c86634382/gson-2.14.0.jar",
+        "gson_sha256": "2cbd119bf1961c28788310963dc80ba65f58cdeec1dd139c8bdb1240faa2c36f",
+        "bundled_old_gson_container": "/home/towkio/.m2/repository/org/geysermc/geyser/common/2.2.1-SNAPSHOT/common-2.2.1-SNAPSHOT.jar",
+        "bundled_old_gson_container_sha256": "21a8c7b95799031eec07f28c6a84f4e929f682cbcaccbee3b3119b9c19e3d312"
+      },
+      "gradle_wrapper": {
+        "distribution": "gradle-9.7.1-bin.zip",
+        "properties_sha256": "d01b41913834fb3cb14e71f69a08898e6a47e663b08f5c9b8c7e0772c38889d2"
+      },
+      "runtime_validation_claimed": false
+    },
+    {
+      "lane": "sf-26.9.2-94b74598",
+      "source_commit": "94b74598312d5a16216caed1c07fe3966d854096",
+      "source_checks": "Exact requested HEAD; only one tracked Java line changed; no staged or untracked changes; recorded diff equals git diff; reverse apply --check passes.",
+      "source_changes_patch_sha256": "813cb48ad113895dbbd8aca2505e5853ba6c4f0068a12e6005d4117f450d7bde",
+      "artifact": {
+        "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/source/target/craft-engine-paper-plugin-26.9.2.jar",
+        "sha256": "d779823f05922747a70a268888610f408dcfa151b194ef46d28d483393d74852",
+        "bytes": 11072715
+      },
+      "archive_checks": {
+        "zip_crc": "pass",
+        "entries": 6010,
+        "classes": 5033,
+        "native_descriptor_equals_generated": true,
+        "native_descriptors": {
+          "paper-plugin.yml": {
+            "sha256": "8950a9c1640663b65700188134e4b3e18a2563980cb1bd87da40c3c7afd6274d",
+            "matches_provenance_and_saved_content": true
+          },
+          "META-INF/MANIFEST.MF": {
+            "sha256": "966394b5b31b6007d43654e4040510e8819e307d407b93e54007bb9ae83c9fda",
+            "matches_provenance_and_saved_content": true
+          },
+          "craft-engine.properties": {
+            "sha256": "7e564a5210792d30dd82e8444645f1af655c4176b658a5a7fe2afa0d2d96ddac",
+            "matches_provenance_and_saved_content": true
+          }
+        },
+        "embedded_proxy_sha256": "445a9dc35287b2291d4a5dddee62a81e6b100129b7fa2e53dc1910c53da7a01a",
+        "reset_class_java_major_version": 65,
+        "reset_class_sha256": "8193914d60d7726fc194cb8154446dda01af71e4213dbf5570f9caa3fd75d243",
+        "unshaded_compiler_reset_class_sha256": "9789c11a0e5234d108295a0ffbd0122debe6d770c6a27adc5bceed292e89c41c",
+        "reset_class_equals_unshaded_compiler_output": false,
+        "saved_javap_equals_fresh_jar_javap": true,
+        "count_preserving_bytecode": "Item.count() -> ItemDefinition.buildItem(ItemBuildContext,int)"
+      },
+      "resolved_dependency_reports": [
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/resolved-inputs/bukkit.json",
+          "sha256": "e342f2ae4e392eb0a0a7ff1c760a3aaaa0e386c2f41f5a1ba341687e55e1c6b8",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 125,
+              "file_inputs": 124
+            },
+            "runtimeClasspath": {
+              "artifacts": 1,
+              "file_inputs": 1
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/resolved-inputs/bukkit_compatibility.json",
+          "sha256": "92388a3c18d4ea55e364a017581bec54b361587da0b45b0576bf48693dba91f3",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 130,
+              "file_inputs": 130
+            },
+            "runtimeClasspath": {
+              "artifacts": 0,
+              "file_inputs": 0
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/resolved-inputs/bukkit_compatibility_legacy.json",
+          "sha256": "59fa4f928ffb420b3a35bff65173505b5c713676f12654f73c6f0331df820dd6",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 54,
+              "file_inputs": 54
+            },
+            "runtimeClasspath": {
+              "artifacts": 0,
+              "file_inputs": 0
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/resolved-inputs/bukkit_legacy.json",
+          "sha256": "f96980dd2773c77e68201a2001b22752b4b24b58f7d9433d41a1434a6dd50dcd",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 44,
+              "file_inputs": 44
+            },
+            "runtimeClasspath": {
+              "artifacts": 0,
+              "file_inputs": 0
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/resolved-inputs/bukkit_paper-loader.json",
+          "sha256": "2b741b5b7543f772299d495e92612df0aca8ed154d55863a0660d58318493f31",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 62,
+              "file_inputs": 59
+            },
+            "runtimeClasspath": {
+              "artifacts": 19,
+              "file_inputs": 21
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/resolved-inputs/bukkit_proxy.json",
+          "sha256": "9df4abe287762687cc74475b8cb40ddf4925379e7303cb12d287431873fd0d32",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 98,
+              "file_inputs": 99
+            },
+            "runtimeClasspath": {
+              "artifacts": 1,
+              "file_inputs": 1
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/resolved-inputs/common-files.json",
+          "sha256": "79790d5635f64ba1af24074aae90f21ceee16c5193120fcfae2cdc12ed235aa5",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 0,
+              "file_inputs": 0
+            },
+            "runtimeClasspath": {
+              "artifacts": 0,
+              "file_inputs": 0
+            }
+          }
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/resolved-inputs/core.json",
+          "sha256": "9e9cc40b52808d833721ebd6a7a48c2a68fc56cc08fa3aeca758909ef8a8117e",
+          "configurations": {
+            "compileClasspath": {
+              "artifacts": 107,
+              "file_inputs": 109
+            },
+            "runtimeClasspath": {
+              "artifacts": 7,
+              "file_inputs": 7
+            }
+          }
+        }
+      ],
+      "resolved_file_inputs_hash_checked": 237,
+      "unhashed_project_inputs": [
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/source/core/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/source/bukkit/legacy/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/source/bukkit/proxy/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/source/bukkit/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/source/bukkit/compatibility/legacy/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/source/bukkit/compatibility/build/classes/java/main",
+          "recorded_kind": "project classes directory",
+          "currently_exists": true
+        },
+        {
+          "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/source/common-files/build/classes/java/main",
+          "recorded_kind": "jar",
+          "currently_exists": false
+        }
+      ],
+      "tracked_source_jars": [
+        {
+          "path": "bukkit/compatibility/legacy/libs/awsm-api.jar",
+          "git_blob": "d5d4d7c4c100edecc6e53f5de0e81683b01a5b0b",
+          "sha256": "14b898f38075f400c3d1f787abf50433d106326de07cb5dc3c92ae5c04c48bc5"
+        },
+        {
+          "path": "bukkit/compatibility/legacy/libs/flow-nbt-2.0.2.jar",
+          "git_blob": "68c47da2ad3cd1ec86930bfda37ea8f7112da5d0",
+          "sha256": "e569a93dd44a139399020cd4690769840e9f155d525850cba779658fadd4743e"
+        },
+        {
+          "path": "gradle/wrapper/gradle-wrapper.jar",
+          "git_blob": "b1b8ef56b44f16b14dc800fa8103a6d89abb526f",
+          "sha256": "497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7"
+        },
+        {
+          "path": "libs/AxiomPaperPlugin-5.0.4.jar",
+          "git_blob": "9c4010b991f4869a6bfa2e206cf4d0085a64fae2",
+          "sha256": "e62fa9e034803d760d0dfc00fc14c66b7cef0603c5ccefa1cc364fafe5b2030d"
+        },
+        {
+          "path": "libs/denizen-1.3.3.jar",
+          "git_blob": "7d6e33134faa9223f71dd7d1a7e1b5255bd1321f",
+          "sha256": "332d48fc9623d4615f4aa1e4af5496da904f899d8fafcf4ad1ee02f4c49d6e60"
+        },
+        {
+          "path": "libs/jni-internal-lookup-1.9.jar",
+          "git_blob": "20ac3feab182d43fa2b7359b4cfcb3fa300e25a3",
+          "sha256": "738e7f8a23ed5610a89ce6b5430dd610d546dab6dce21b2bea0a0a18b20751de"
+        },
+        {
+          "path": "libs/leafpile-1.0.0.1.jar",
+          "git_blob": "f1e531a52fc7c029a2964e8206e1b6158b785c88",
+          "sha256": "d85b9ecb2b800f7dbc0c98c66d73e4f1341bfe608055ca5e95c1fbc9f0c40e48"
+        },
+        {
+          "path": "libs/worldguard-bukkit-7.0.14-dist.jar",
+          "git_blob": "69d590e5e84439b9316fb76c582a3db59e1808bd",
+          "sha256": "459497fb7269b53a0424b83bd70eb8ce46af1e66ad86a60f6d3121cb6b5c700d"
+        }
+      ],
+      "compile_classpath_evidence": {
+        "path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/compatibility-classpath-gson-first.txt",
+        "sha256": "3277f13caea463464a3e76f85c00702ebfef882ed5f2d730a3b407834a097e2d",
+        "first_entry": "/home/towkio/.gradle/caches/modules-2/files-2.1/com.google.code.gson/gson/2.14.0/efc0e34ede4e3204eaefb84a00e55e8c86634382/gson-2.14.0.jar",
+        "gson_sha256": "2cbd119bf1961c28788310963dc80ba65f58cdeec1dd139c8bdb1240faa2c36f",
+        "bundled_old_gson_container": "/home/towkio/.m2/repository/org/geysermc/geyser/common/2.2.1-SNAPSHOT/common-2.2.1-SNAPSHOT.jar",
+        "bundled_old_gson_container_sha256": "21a8c7b95799031eec07f28c6a84f4e929f682cbcaccbee3b3119b9c19e3d312"
+      },
+      "gradle_wrapper": {
+        "distribution": "gradle-9.7.1-bin.zip",
+        "properties_sha256": "d01b41913834fb3cb14e71f69a08898e6a47e663b08f5c9b8c7e0772c38889d2"
+      },
+      "runtime_validation_claimed": false
+    }
+  ],
+  "verbatim_copies": [
+    {
+      "path": "builder-README.md",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/README.md",
+      "sha256": "6cb6d905180f684c4ac19b02c0a32fc570cb8dfac19521cd71bd99e7ed316296"
+    },
+    {
+      "path": "ce-26.9.1-2b9e6f59/ResetOperation.javap.txt",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/ResetOperation.javap.txt",
+      "sha256": "657cf6887639f23b35f9c724e94b7a14daa779a9b7bcc8ebb0a9087180376ebd"
+    },
+    {
+      "path": "ce-26.9.1-2b9e6f59/build-online-gson-first.log.txt",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/build-online-gson-first.log",
+      "sha256": "475b3a4802549c4e97e01e665cedf2b9faaea9ab7858c87a91f2b70223b4fdd1"
+    },
+    {
+      "path": "ce-26.9.1-2b9e6f59/provenance.json",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/provenance.json",
+      "sha256": "c8f4d415823a46b661b9838311ef817e2fa24ec3b6ab293273cc2d96e4cfe41b"
+    },
+    {
+      "path": "ce-26.9.1-2b9e6f59/source-changes.patch",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/ce-26.9.1-2b9e6f59/source-changes.patch",
+      "sha256": "813cb48ad113895dbbd8aca2505e5853ba6c4f0068a12e6005d4117f450d7bde"
+    },
+    {
+      "path": "compatibility-gson-first.init.gradle",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/compatibility-gson-first.init.gradle",
+      "sha256": "f572ec4280e7b57bd7d710bcbb502b5528962c95618a8675b4797f6d41cd3f6f"
+    },
+    {
+      "path": "record-resolved-inputs.init.gradle",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/record-resolved-inputs.init.gradle",
+      "sha256": "7b0cdd741b59416dc8678b2b5302f9f5905e29d234ea5bb51ace7519af95f19d"
+    },
+    {
+      "path": "reset-preserve-count.patch",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/reset-preserve-count.patch",
+      "sha256": "e592edc6278ca90d853bd729e2fd0aaa54457498f9ff5df8f3ccd7517dcaa7d1"
+    },
+    {
+      "path": "sf-26.9.2-94b74598/ResetOperation.javap.txt",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/ResetOperation.javap.txt",
+      "sha256": "657cf6887639f23b35f9c724e94b7a14daa779a9b7bcc8ebb0a9087180376ebd"
+    },
+    {
+      "path": "sf-26.9.2-94b74598/build-online-gson-first.log.txt",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/build-online-gson-first.log",
+      "sha256": "c62620cb6110fd52f8623f1b8c3bc0276f7265fb21b9242545d9adce3e0761f3"
+    },
+    {
+      "path": "sf-26.9.2-94b74598/provenance.json",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/provenance.json",
+      "sha256": "cd2a010df1b36f643e6250a75982b379bd1ae8b31e17bbe1c7069cb61b36fbe1"
+    },
+    {
+      "path": "sf-26.9.2-94b74598/source-changes.patch",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/source-changes.patch",
+      "sha256": "813cb48ad113895dbbd8aca2505e5853ba6c4f0068a12e6005d4117f450d7bde"
+    },
+    {
+      "path": "historical-verify-artifacts.py.txt",
+      "original_path": "/mnt/storage/.allium-validation/20261106/ce-count-fix/builds/verify-artifacts.py",
+      "sha256": "f27956ae490a085e4cd6378de166440e12ab64dea6592792b5f253448ae2a613"
+    }
+  ]
+}

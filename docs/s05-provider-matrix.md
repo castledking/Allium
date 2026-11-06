@@ -1,9 +1,11 @@
 # S05 provider implementation and validation
 
-Updated 2026-11-06. **The quantity gate fails:** CraftEngine's native reset updater
-reduces a stack of seven to one. Adapter implementation, provider lifecycle,
-identity, signatures and the recorded native runs below pass their stated scopes.
-S06 remains unstarted. No production SF installation was modified.
+Updated 2026-11-06. **The recorded S05 gate passes with the count-preserving CE
+source patch.** Both full patched runtimes pass 20 native cases / 28 observations
+each. Stock CE 26.9.1/26.9.2 still reduce reset stacks from seven to one; they do
+not inherit this PASS. Adapter, lifecycle and coexistence results retain their
+individual scopes below. S06 remains unstarted. No production SF installation
+was modified.
 
 ## Build and accepted runtimes
 
@@ -132,7 +134,7 @@ Pack generation/delivery/hosting is disabled in fixtures; RPM presence proves
 coexistence only. CE intentionally shuts down a server when disabled at runtime;
 the earlier test recorded containment, not supported hot unloading/re-enabling.
 
-## CE reset retention and failing quantity gate
+## CE reset retention and conditional quantity gate
 
 Every destructive reset in an Allium-managed item's version chain must retain
 custom data. The pinned API has no global old/new update event:
@@ -160,11 +162,46 @@ The fixture observes genuine native events and rereads cursor/entity/inventory
 after continuation; it does not manually fire Bukkit events or re-sign items.
 
 There is no reset amount-retention setting in the inspected native factories.
-The proposed minimal upstream fix builds the replacement with `item.count()`.
-The [patch and full reproduction](../tests/live/providers/trigger/README.md) are
-reviewable; the patch has not been applied, built or accepted as a passing fix.
-This external bug keeps S05's full quantity gate open. An unvalidated listener
-that guesses counts or repairs/re-signs inventory is not used to hide it.
+The minimal upstream fix builds the replacement with `item.count()`, before
+native dynamic processors run. Two isolated full Paper plugin builds apply only
+that Java source change to the exact revisions used by the failing runtimes:
+
+| Patched runtime / lane | Source revision | Full artifact SHA-256 |
+| --- | --- | --- |
+| CE 26.9.1 / Paper 1.21.8 | `2b9e6f59a0bf4dac7f71958c0ea96c14b8e44985` | `9b86b1044e0d97d800e1722b1ca2b01f2582d44269a28508da7b9b79babfcd41` |
+| SF CE 26.9.2 / Paper 26.3 | `94b74598312d5a16216caed1c07fe3966d854096` | `d779823f05922747a70a268888610f408dcfa151b194ef46d28d483393d74852` |
+
+Both patched artifacts first pass the original 12-case diagnostic, then pass an
+expanded 20-case / 28-observation suite each, using the final Allium jar above:
+
+- Every original control/reset/repeat plus a 64-item reset per trigger.
+- Dynamic `count=<arg:item.count>` definitions: two reset migrations in one
+  trigger to version 3, another migration of the same existing stack to version
+  4, then a current-version no-op. Names render `count=7` throughout.
+- Native right-click split `7 → 3 + 4`, then left-click merge back to 7.
+- Native single-item drop leaves six old-version items held and one migrated item
+  entity; dropping the remaining six migrates them and preserves a total of seven.
+
+Exact MACs, instance UUIDs, spent state, PDC types/values and raw custom data
+survive all observations. Both clients and servers exit zero without forced
+shutdown or logged exceptions. Relocating an existing stack for a repeat compares
+its full snapshot before/after; it does not create or re-sign an item. No Allium
+inventory repair or post-baseline refresh masks the native result.
+
+The [patch, retained evidence and reproduction](../tests/live/providers/trigger/README.md)
+and [source-build provenance](../tests/live/providers/trigger/builds/README.md)
+identify these as local patched builds, not official stock distributions.
+Compilation uses the original dependencies; an external compiler-only classpath
+ordering adjustment puts the declared Gson ahead of an older copy shaded inside
+Geyser. Runtime packaging and dependency versions are unchanged.
+
+**Release condition:** use a verified count-preserving CE build for reset
+updaters, plus the retention recipe above. Allium's version check does not
+fingerprint or automatically patch the installed provider. Stock binaries remain
+unsafe for these resets. The fix conserves quantity; it does not split stacks
+when a migration lowers the maximum stack size, or override processors that
+intentionally replace items/counts. These runs do not transfer to other CE
+binaries, Bukkit builds, lanes or configuration combinations.
 
 ## Evidence and remaining work
 
@@ -176,15 +213,17 @@ that guesses counts or repairs/re-signs inventory is not used to hide it.
   and [Spigot results](../tests/live/providers/spigot/RESULTS.md): scopes and earlier
   artifact hashes retained independently. A quota-failed Spigot attempt was retried
   fresh; only the clean retry is a PASS. No passing run contains quota/save failures.
-- [CE trigger diagnostic](../tests/live/providers/trigger/README.md): quantity failure,
-  typed metadata snapshots, native source evidence and proposed upstream patch.
+- [CE trigger diagnostic](../tests/live/providers/trigger/README.md): retained stock
+  failures, patched passes, typed metadata snapshots, native source evidence and
+  exact-source build provenance.
 - The older Oraxen 1.211 source tag was also recovered/built with a genuine
   source-built Iris dependency and passed its native Paper 1.21.8 check. It is a
   source-built artifact, not the official binary; supplied 1.220.1 is now directly
   validated and no fake API jar descriptor was used.
 
-To close the current gate, obtain/fix the native CE reset count behavior and rerun
-the trigger suite requiring every quantity assertion to pass. Interactive coverage
-outside the recorded common lane, unlisted server/provider releases, pack visuals,
-GUI compatibility and complete production configuration still need their release
-checks. S06 has not begun. Nothing here constitutes a production deployment.
+The recorded S05 gate is complete for the explicit patched configurations above.
+Interactive coverage outside the recorded lanes, unlisted server/provider
+releases, pack visuals, GUI compatibility and complete production configuration
+still need their release checks. Deploying a verified provider fix is separate
+from this validation; no production files or running services were changed. S06
+has not begun.

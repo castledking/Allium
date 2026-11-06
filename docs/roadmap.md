@@ -55,8 +55,11 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   code compiles against Spigot `1.20-R0.1-SNAPSHOT` with Java 17 bytecode (class
   version 61); `plugin.yml` declares `api-version: '1.20'`; pre-1.20 compatibility
   sources have been retired.
-- S05 provider adapter code is implemented; its live gate remains partially open.
-  See the [pinned provider matrix](s05-provider-matrix.md).
+- S05 provider adapters and the recorded native gates pass for their explicit
+  configurations, including count-preserving source-built CE runtimes. Stock
+  CE reset updaters still lose stack quantity; deployment requires the verified
+  fix and documented retention/converter prerequisites. See the
+  [pinned provider matrix](s05-provider-matrix.md). S06 has not begun.
 - Private messages, preference commands, addons and pack delivery are not implemented in this recode. Some config module names are
   placeholders; do not count them as working features.
 

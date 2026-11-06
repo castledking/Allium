@@ -1,0 +1,36 @@
+import groovy.json.JsonOutput
+import java.security.MessageDigest
+
+def modulePaths = [':core', ':bukkit', ':bukkit:legacy', ':bukkit:proxy', ':bukkit:compatibility', ':bukkit:compatibility:legacy', ':bukkit:paper-loader', ':common-files']
+def sha256 = { File f ->
+    def md = MessageDigest.getInstance('SHA-256')
+    f.withInputStream { input ->
+        byte[] buffer = new byte[65536]
+        int n
+        while ((n = input.read(buffer)) != -1) md.update(buffer, 0, n)
+    }
+    md.digest().encodeHex().toString()
+}
+gradle.projectsEvaluated {
+    if (gradle.rootProject.findProject(':bukkit:paper-loader') == null) return
+    modulePaths.each { path ->
+        def p = gradle.rootProject.project(path)
+        p.tasks.register('s05ResolvedInputs') {
+            doLast {
+                def report = [:]
+                ['compileClasspath', 'runtimeClasspath'].each { name ->
+                    def conf = p.configurations.getByName(name)
+                    report[name] = [
+                        artifacts: conf.resolvedConfiguration.resolvedArtifacts.collect { a ->
+                            [module: a.moduleVersion.id.toString(), classifier: a.classifier, file: a.file.absolutePath, sha256: a.file.isFile() ? sha256(a.file) : null, kind: a.file.isDirectory() ? 'project classes directory' : 'jar']
+                        },
+                        fileInputs: conf.files.findAll { it.isFile() }.collect { f -> [file: f.absolutePath, bytes: f.length(), sha256: sha256(f)] }
+                    ]
+                }
+                def out = new File(p.rootProject.projectDir.parentFile, 'resolved-inputs/' + p.path.substring(1).replace(':', '_') + '.json')
+                out.parentFile.mkdirs()
+                out.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+            }
+        }
+    }
+}

@@ -1,0 +1,10 @@
+[18:40:34] [Server thread/INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[18:40:34] [Server thread/INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[18:40:34] [Server thread/INFO]: [ProviderGate] S05-INITIAL {nexo=ABSENT, craftengine=LOADING, oraxen=ABSENT}
+[18:40:34] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-craftengine
+[18:40:34] [Server thread/INFO]: [Allium] CraftEngine provider (26.9.2) READY (1 items).
+[18:40:35] [Server thread/INFO]: [ProviderGate] S05-READY {nexo=ABSENT, craftengine=READY, oraxen=ABSENT}
+[18:41:45] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-standalone-native-id
+[18:41:45] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-standalone-signature
+[18:41:45] [Server thread/INFO]: [ProviderGate] S05-DONE smoke
+[18:41:45] [Server thread/INFO]: [ProviderGate] S05-STATUS {nexo=ABSENT, craftengine=READY, oraxen=ABSENT} history=[CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING]

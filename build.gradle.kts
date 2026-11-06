@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.attributes.java.TargetJvmVersion
 
 plugins {
     java
@@ -21,6 +22,9 @@ repositories {
     maven("https://repo.xenondevs.xyz/releases")
     maven("https://repo.extendedclip.com/releases/")
     maven("https://jitpack.io")
+    maven("https://repo.nexomc.com/releases")
+    maven("https://repo.oraxen.com/releases")
+    maven("https://repo.momirealms.net/releases/")
 }
 
 java {
@@ -29,8 +33,43 @@ java {
     }
 }
 
+// Provider APIs remain compile-only and never enter shared/main signatures.
+val providerSources = listOf("nexoAdapter", "craftengineAdapter", "oraxenAdapter")
+val providerJavaCompiler = javaToolchains.compilerFor {
+    languageVersion.set(JavaLanguageVersion.of(21))
+}
+val providerTestLauncher = javaToolchains.launcherFor {
+    languageVersion.set(JavaLanguageVersion.of(21))
+}
+providerSources.forEach { name ->
+    sourceSets.create(name) {
+        compileClasspath += sourceSets.main.get().output + sourceSets.main.get().compileClasspath
+    }
+    configurations.named(sourceSets[name].compileClasspathConfigurationName) {
+        attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21)
+    }
+}
+
+sourceSets.test {
+    providerSources.forEach { name ->
+        compileClasspath += sourceSets[name].output
+        runtimeClasspath += sourceSets[name].output
+    }
+}
+configurations.testCompileClasspath {
+    attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21)
+}
+configurations.testRuntimeClasspath {
+    attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21)
+}
+
 dependencies {
     implementation(coreProject)
+
+    add("nexoAdapterCompileOnly", "com.nexomc:nexo:1.29.1") { isTransitive = false }
+    add("craftengineAdapterCompileOnly", "net.momirealms:craft-engine-core:26.9.1") { isTransitive = false }
+    add("craftengineAdapterCompileOnly", "net.momirealms:craft-engine-bukkit:26.9.1") { isTransitive = false }
+    add("oraxenAdapterCompileOnly", "io.th0rgal:oraxen:1.211.0") { isTransitive = false }
 
     // Shared baseline server API: Spigot 1.20
     compileOnly("org.spigotmc:spigot-api:$spigotApiVersion")
@@ -57,6 +96,11 @@ dependencies {
 
     // Testing
     testImplementation("org.spigotmc:spigot-api:$spigotApiVersion")
+    testImplementation("com.nexomc:nexo:1.29.1") { isTransitive = false }
+    testImplementation("net.momirealms:craft-engine-core:26.9.1") { isTransitive = false }
+    testImplementation("net.momirealms:craft-engine-bukkit:26.9.1") { isTransitive = false }
+    testImplementation("io.th0rgal:oraxen:1.211.0") { isTransitive = false }
+    testRuntimeOnly("org.jetbrains.kotlin:kotlin-stdlib:2.1.20")
     testImplementation("net.kyori:adventure-api:4.17.0")
     testImplementation("net.kyori:adventure-text-serializer-legacy:4.17.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
@@ -72,6 +116,16 @@ tasks {
         options.release.set(targetJavaVersion)
     }
 
+    // Pinned provider APIs use Java 21; adapters still emit Java 17 bytecode.
+    providerSources.forEach { name ->
+        named<JavaCompile>(sourceSets[name].compileJavaTaskName) {
+            javaCompiler.set(providerJavaCompiler)
+        }
+    }
+    named<JavaCompile>("compileTestJava") {
+        javaCompiler.set(providerJavaCompiler)
+    }
+
     processResources {
         filesMatching("plugin.yml") {
             expand("version" to project.version.toString())
@@ -82,6 +136,7 @@ tasks {
         archiveBaseName.set("Allium")
         archiveClassifier.set("")
         archiveVersion.set("")
+        providerSources.forEach { from(sourceSets[it].output) }
 
         // Preserve reflectively loaded InvUI version modules and HikariCP internals, and all allium-core classes
         minimize {
@@ -102,6 +157,7 @@ tasks {
     }
 
     test {
+        javaLauncher.set(providerTestLauncher)
         useJUnitPlatform()
         jvmArgs("-Xshare:off", "-Dnet.bytebuddy.experimental=true")
         testLogging {

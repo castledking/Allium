@@ -109,6 +109,50 @@ class ItemServiceContractTest {
     }
 
     @Test
+    void threeReadyProvidersRouteIndependentlyAndResolveConversionTagsDeterministically() {
+        Map<String, AtomicReference<ProviderStatus>> states = new HashMap<>();
+        for (String provider : List.of("nexo", "craftengine", "oraxen")) {
+            AtomicReference<ProviderStatus> status = new AtomicReference<>(ProviderStatus.READY);
+            states.put(provider, status);
+            NamespacedKey nativeKey = new NamespacedKey(provider, "native_id");
+            itemService.registerProvider(new ItemProviderAdapter() {
+                public String providerName() { return provider; }
+                public ProviderStatus status() { return status.get(); }
+                public boolean hasAuthoritativeNativeIdCheck() { return true; }
+                public ResolutionResult createItem(String id) {
+                    ItemStack stack = createMockBackedStack(Material.PAPER);
+                    stack.getItemMeta().getPersistentDataContainer().set(nativeKey, PersistentDataType.STRING, id);
+                    return ResolutionResult.resolved(ProviderKey.of(provider,id), stack);
+                }
+                public Optional<String> identifyItemId(ItemStack stack) {
+                    return Optional.ofNullable(stack.getItemMeta().getPersistentDataContainer().get(nativeKey, PersistentDataType.STRING));
+                }
+            });
+        }
+        for (String provider : states.keySet()) {
+            ProviderKey appearance = ProviderKey.of(provider, provider.equals("craftengine") ? "sf_ores:silver_ingot" : "MixedCase");
+            ItemRef ref = new ItemRef(appearance, "allium:phantom_obliterator", 1, Map.of("charges","2"));
+            ItemStack stack = itemService.create(ref).itemStack().orElseThrow();
+            String signature = stack.getItemMeta().getPersistentDataContainer().get(ItemService.KEY_SIGNATURE, PersistentDataType.STRING);
+            assertEquals(ref, itemService.identify(stack).orElseThrow());
+            assertFalse(itemService.matches(stack, ItemRef.parse("paper")));
+            // An old converter can leave another provider's ID on this physical stack.
+            for (String other : states.keySet()) if (!other.equals(provider)) {
+                stack.getItemMeta().getPersistentDataContainer().set(new NamespacedKey(other,"native_id"), PersistentDataType.STRING,"OtherItem");
+            }
+            assertEquals(ref, itemService.identify(stack).orElseThrow(), "native confirmation of stamp wins, never hash-map iteration");
+            assertEquals(signature, stack.getItemMeta().getPersistentDataContainer().get(ItemService.KEY_SIGNATURE, PersistentDataType.STRING));
+            // Remove only Allium's appearance stamp: multiple native tags now have no reliable identity.
+            stack.getItemMeta().getPersistentDataContainer().remove(ItemService.KEY_PROVIDER);
+            stack.getItemMeta().getPersistentDataContainer().remove(ItemService.KEY_ITEM_ID);
+            assertTrue(itemService.identify(stack).isEmpty());
+            states.get(provider).set(ProviderStatus.LOADING);
+            assertEquals(ResolutionStatus.PROVIDER_LOADING, itemService.create(ref).status());
+            states.get(provider).set(ProviderStatus.READY);
+        }
+    }
+
+    @Test
     void signedBehaviorIdentityVerifiesValidCloneAndAppearanceSwap() {
         itemService.registerProvider(new ItemProviderAdapter() {
             @Override

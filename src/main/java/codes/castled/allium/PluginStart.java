@@ -9,6 +9,7 @@ import codes.castled.allium.item.AlliumItemDefinition;
 import codes.castled.allium.item.ItemHmacSigner;
 import codes.castled.allium.item.ItemService;
 import codes.castled.allium.item.ItemSigningKeyAudit;
+import codes.castled.allium.item.provider.ProviderAdapterBootstrap;
 import codes.castled.allium.listener.ListenerManager;
 import codes.castled.allium.message.LanguageManager;
 import codes.castled.allium.message.MessageManager;
@@ -62,12 +63,19 @@ public final class PluginStart extends JavaPlugin {
         }
         itemService = new ItemService(hmacSigner, logger::warning);
         registerCoreItems(itemService);
+        ProviderAdapterBootstrap.registerAll(
+                this,
+                getServer().getPluginManager(),
+                itemService,
+                logger::info,
+                logger::warning
+        );
 
         try {
             databaseManager = new DatabaseManager(this);
             databaseManager.connect();
         } catch (Exception e) {
-            logger.severe("Failed to initialize database: \" + e.getMessage()");
+            logger.severe("Failed to initialize database: " + e.getMessage());
             getServer().getPluginManager().disablePlugin(this);
             return;
         }

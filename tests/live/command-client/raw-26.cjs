@@ -2,7 +2,7 @@
 // World packets are deliberately ignored; actual command-tree and suggestion packets are asserted.
 const net=require('node:net'), z=require('node:zlib'), fs=require('node:fs'), crypto=require('node:crypto');
 const [lane,portText]=process.argv.slice(2), port=Number(portText);
-if(!lane || port!==25592) throw Error('Only disposable Paper26.3 loopback port25592 is allowed');
+if(!lane || ![25589,25592].includes(port)) throw Error('Only disposable loopback gate ports25589/25592 are allowed');
 const ids=JSON.parse(fs.readFileSync(lane+'/plugins/ClientGate/state-ids.json')).wirePackets;
 if(!ids) throw Error('Run clientgate wireids ids on the exact server before connecting');
 function vi(n){const a=[];do{let b=n&127;n>>>=7;if(n)b|=128;a.push(b)}while(n);return Buffer.from(a)}
@@ -57,6 +57,13 @@ async function until(fn,label){const end=Date.now()+25000;while(!fn()){if(result
 async function query(id,text){named('game_SERVERBOUND','command_suggestion',Buffer.concat([vi(id),str(text)]));await until(()=>replies.has(id),text);const got=replies.get(id);result.suggestions[id+':'+text]=got;return got}
 (async()=>{try{
  await until(()=>ready,'op command-tree packet');
+ if(process.env.PROVIDER_GATE_MODE==='1') {
+  console.log('PROVIDER_GATE_CLIENT_READY');
+  await new Promise(resolve=>{const timer=setInterval(()=>{if(fs.existsSync(lane+'/provider-client-stop')){clearInterval(timer);resolve()}},100)});
+  delete result.passed;
+  result.connectionOnly=true;
+  return;
+ }
  if(!(await query(1,'/gm c')).includes('creative'))throw Error('Missing before creative');
  if(!(await query(2,'/allium:gm c')).includes('creative'))throw Error('Missing namespaced before creative');
  named('game_SERVERBOUND','chat_command',str('clientgate install before'));

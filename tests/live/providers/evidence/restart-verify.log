@@ -1,0 +1,24 @@
+[18:55:54] [Server thread/INFO]: [ProviderGate] Loading server plugin ProviderGate v1.0-validation
+[18:55:55] [Server thread/INFO]: [ProviderGate] Enabling ProviderGate v1.0-validation
+[18:55:55] [Server thread/INFO]: [ProviderGate] S05-INITIAL {nexo=LOADING, craftengine=LOADING, oraxen=ABSENT}
+[18:55:55] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-nexo
+[18:55:55] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-craftengine
+[18:55:56] [Server thread/INFO]: [ProviderGate] S05-READY {nexo=READY, craftengine=READY, oraxen=ABSENT}
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-baseline-exists
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-signature-unchanged
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-uuid-unchanged
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-state-unchanged
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-still-verifies
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-amount-unchanged
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-HELD nexo material=PAPER
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-FRESH nexo material=PAPER
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-baseline-exists
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-signature-unchanged
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-uuid-unchanged
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-state-unchanged
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-still-verifies
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-amount-unchanged
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-HELD craftengine material=DIAMOND
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-FRESH craftengine material=DIAMOND
+[18:56:12] [Server thread/INFO]: [ProviderGate] S05-DONE verify
+[18:56:13] [Server thread/INFO]: [ProviderGate] Disabling ProviderGate v1.0-validation

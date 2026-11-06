@@ -55,8 +55,9 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   code compiles against Spigot `1.20-R0.1-SNAPSHOT` with Java 17 bytecode (class
   version 61); `plugin.yml` declares `api-version: '1.20'`; pre-1.20 compatibility
   sources have been retired.
-- Private messages, preference commands, provider adapters, addons and pack
-  delivery are not implemented in this recode. Some config module names are
+- S05 provider adapter code is implemented; its live gate remains partially open.
+  See the [pinned provider matrix](s05-provider-matrix.md).
+- Private messages, preference commands, addons and pack delivery are not implemented in this recode. Some config module names are
   placeholders; do not count them as working features.
 
 ## Architecture decisions
@@ -200,7 +201,7 @@ namespace forms explicitly; ambiguous old references require a mapping report.
 At runtime, deprecated `ce:` input warns **once per distinct reference per startup
 or reload** rather than on every resolution. The existing resolver in legacy Allium
 supports Nexo and CraftEngine but does not have an active Oraxen implementation;
-Oraxen needs a real adapter.
+The recode now has a real isolated Oraxen adapter; full native-plugin validation remains pending.
 
 Separate stable **Allium behavior identity** from the provider reference supplying
 its appearance. Selecting `nexo:handcuffs` must not require a second implementation

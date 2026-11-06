@@ -1,0 +1,28 @@
+[19:02:01] [Server thread/INFO]: [ProviderGate] Loading server plugin ProviderGate v1.0-validation
+[19:02:01] [Server thread/INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[19:02:02] [Server thread/INFO]: [ProviderGate] Enabling ProviderGate v1.0-validation
+[19:02:02] [Server thread/INFO]: [ProviderGate] S05-INITIAL {nexo=LOADING, craftengine=LOADING, oraxen=ABSENT}
+[19:02:02] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-nexo
+[19:02:02] [Server thread/INFO]: [Allium] Nexo provider (1.29-dev-b3ebc6e48) READY (1 items).
+[19:02:02] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-craftengine
+[19:02:02] [Server thread/INFO]: [Allium] CraftEngine provider (26.9.2) READY (1 items).
+[19:02:03] [Server thread/INFO]: [ProviderGate] S05-READY {nexo=READY, craftengine=READY, oraxen=ABSENT}
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-baseline-exists
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-signature-unchanged
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-uuid-unchanged
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-state-unchanged
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-still-verifies
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-amount-unchanged
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-HELD nexo material=BOOK
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-FRESH nexo material=BOOK
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-baseline-exists
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-signature-unchanged
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-uuid-unchanged
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-state-unchanged
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-still-verifies
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-amount-unchanged
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-HELD craftengine material=EMERALD
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-FRESH craftengine material=EMERALD
+[19:02:46] [Server thread/INFO]: [ProviderGate] S05-DONE verify
+[19:02:47] [Server thread/INFO]: [ProviderGate] Disabling ProviderGate v1.0-validation
+[19:02:47] [Server thread/INFO]: [Allium] Allium disabled.

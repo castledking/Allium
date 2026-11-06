@@ -92,9 +92,14 @@ result and must preserve the existing uncommitted work.
       and expose API to addons (with an optional minimal M1 `GiveCommand` test harness).
       No extra required plugin, duplicate shaded API, internal command dispatch or
       duplicated item parsers.
-- [ ] **S05 / M1 — Provider adapters:** Nexo, CraftEngine and Oraxen with ready/reload
-      states, isolated optional classes and diagnostics. Gate: each present/absent,
-      delayed readiness and reload; CE namespace preserved; no persisted-state loss.
+- [x] **S05 / M1 — Provider adapter implementation:** isolated Nexo 1.29.1,
+      CraftEngine core/bukkit 26.9.1 and Oraxen 1.211.0 compile-only API bindings;
+      ready/reload/disable states, native ID/case preservation and diagnostics.
+- [ ] **S05 live gate — still open:** Nexo/CE alone and SF Nexo+CE+RPM pass on
+      Paper 26.3; full Oraxen artifact/all-three/common-lane tests, exact stable
+      boots and remaining supported lanes remain. Nexo/CE held-state retention
+      passes native update and actual server restart checks.
+      See [provider matrix](docs/s05-provider-matrix.md). Do not begin S06.
 - [ ] **S06 / M1 — First tool and pack:** Mob Disarmer through the item service,
       built-in visual plus all providers; inventory SF assets and stable IDs;
       generate the core pack with an explicit delivery owner. Gate: one authorized

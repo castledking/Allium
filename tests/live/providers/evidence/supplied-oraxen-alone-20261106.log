@@ -1,0 +1,131 @@
+[05:44:33 INFO]: [Allium] Loading server plugin Allium v1.0.0-SNAPSHOT
+[05:44:33 INFO]: [OraxenGate] Loading server plugin OraxenGate v1.0-validation
+[05:44:35 INFO]: [Allium] Enabling Allium v1.0.0-SNAPSHOT
+[05:44:35 INFO]: [Allium] Starting Allium...
+[05:44:35 INFO]: [Allium] Loaded locale: en_US
+[05:44:35 INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[05:44:35 INFO]: [Allium] CraftEngine is not installed; provider 'craftengine' is ABSENT (optional).
+[05:44:35 INFO]: [Allium] Oraxen provider (1.220.1) READY (1 items).
+[05:44:35 INFO]: [Allium] Database connected (SQLITE).
+[05:44:35 INFO]: [Allium] Module [economy] enabled.
+[05:44:35 INFO]: [Allium] Module [essentials] enabled.
+[05:44:35 INFO]: [Allium] Item signing keyring loaded: active=k1, verification keys=[k1]. Loaded inventories are audited for unknown key IDs.
+[05:44:35 INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[05:44:35 INFO]: [OraxenGate] Enabling OraxenGate v1.0-validation
+[05:44:35 INFO]: [OraxenGate] S05-ORAXEN-PASS real-plugin-enabled
+[05:44:35 INFO]: [OraxenGate] S05-ORAXEN-INITIAL READY
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-DEFERRED READY
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-POSTLOAD events=1 status=READY
+
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-STATUS READY
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-DONE status
+
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS ready
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS fresh-paper
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS unknown-id
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS case-sensitive
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS fresh-signed-instances
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-DONE smoke
+
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS checkpoint-exists
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS held-signature
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS held-uuid
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS held-spent-charges
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS held-amount
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-HELD material=PAPER amount=1
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-DONE create
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-POSTLOAD events=2 status=READY
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS real-postload-event
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS ready-after-reload
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-PASS fresh-book-after-reload
+[05:44:36 INFO]: [OraxenGate] S05-ORAXEN-DONE reload
+
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS checkpoint-exists
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS held-signature
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS held-uuid
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS held-spent-charges
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS held-amount
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-HELD material=BOOK amount=1
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-DONE verify
+
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS checkpoint-exists
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS held-signature
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS held-uuid
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS held-spent-charges
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS held-amount
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-HELD material=BOOK amount=1
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-PASS native-updater-book
+[05:44:38 INFO]: [OraxenGate] S05-ORAXEN-DONE nativeupdate
+[05:44:40 INFO]: [OraxenGate] Disabling OraxenGate v1.0-validation
+[05:44:40 INFO]: [Allium] Disabling Allium v1.0.0-SNAPSHOT
+[05:44:40 INFO]: [Allium] Module [economy] disabled.
+[05:44:40 INFO]: [Allium] Module [essentials] disabled.
+[05:44:40 INFO]: [Allium] Database connection pool closed.
+[05:44:40 INFO]: [Allium] Allium disabled.
+[05:44:47 INFO]: [Allium] Loading server plugin Allium v1.0.0-SNAPSHOT
+[05:44:47 INFO]: [OraxenGate] Loading server plugin OraxenGate v1.0-validation
+[05:44:48 INFO]: [Allium] Enabling Allium v1.0.0-SNAPSHOT
+[05:44:48 INFO]: [Allium] Starting Allium...
+[05:44:48 INFO]: [Allium] Loaded locale: en_US
+[05:44:48 INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[05:44:48 INFO]: [Allium] CraftEngine is not installed; provider 'craftengine' is ABSENT (optional).
+[05:44:48 INFO]: [Allium] Oraxen provider (1.220.1) READY (1 items).
+[05:44:48 INFO]: [Allium] Database connected (SQLITE).
+[05:44:48 INFO]: [Allium] Module [economy] enabled.
+[05:44:48 INFO]: [Allium] Module [essentials] enabled.
+[05:44:48 INFO]: [Allium] Item signing keyring loaded: active=k1, verification keys=[k1]. Loaded inventories are audited for unknown key IDs.
+[05:44:48 INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[05:44:48 INFO]: [OraxenGate] Enabling OraxenGate v1.0-validation
+[05:44:48 INFO]: [OraxenGate] S05-ORAXEN-PASS real-plugin-enabled
+[05:44:48 INFO]: [OraxenGate] S05-ORAXEN-INITIAL READY
+[05:44:48 INFO]: [OraxenGate] S05-ORAXEN-DEFERRED READY
+[05:44:48 INFO]: [OraxenGate] S05-ORAXEN-POSTLOAD events=1 status=READY
+
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-STATUS READY
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-DONE status
+
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS checkpoint-exists
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS held-signature
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS held-uuid
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS held-spent-charges
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS held-amount
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-HELD material=BOOK amount=1
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-DONE verify
+[05:44:49 WARN]: [Allium] Oraxen was disabled; provider is ABSENT.
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS disabled-absent
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-PASS disabled-create-absent
+[05:44:49 INFO]: [OraxenGate] S05-ORAXEN-DONE disable
+[05:44:51 INFO]: [OraxenGate] Disabling OraxenGate v1.0-validation
+[05:44:51 INFO]: [Allium] Disabling Allium v1.0.0-SNAPSHOT
+[05:44:51 INFO]: [Allium] Module [economy] disabled.
+[05:44:51 INFO]: [Allium] Module [essentials] disabled.
+[05:44:51 INFO]: [Allium] Database connection pool closed.
+[05:44:51 INFO]: [Allium] Allium disabled.

@@ -1,0 +1,73 @@
+{
+  "date": "2026-11-06",
+  "cases": [
+    {
+      "name": "oraxen-alone",
+      "passed": true,
+      "combination": false,
+      "cycles": 2,
+      "inputs": {
+        "Allium.jar": {
+          "sha256": "de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7",
+          "bytes": 1510926
+        },
+        "Oraxen.jar": {
+          "sha256": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2",
+          "bytes": 3050583
+        },
+        "OraxenGate.jar": {
+          "sha256": "9864eb6ecff8941272d01d79b2e4d718651e5145c88a0b874c1b0695e3eb4767",
+          "bytes": 6351
+        }
+      },
+      "server": {
+        "version": "Paper1.21.8-60",
+        "java": "21.0.13.0.3",
+        "protocol": 772
+      },
+      "evidence": "supplied-oraxen-alone-20261106.log"
+    },
+    {
+      "name": "all-three-rpm-final",
+      "passed": true,
+      "combination": true,
+      "cycles": 2,
+      "inputs": {
+        "Allium.jar": {
+          "sha256": "de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7",
+          "bytes": 1510926
+        },
+        "CraftEngine.jar": {
+          "sha256": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f",
+          "bytes": 10981948
+        },
+        "Nexo.jar": {
+          "sha256": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b",
+          "bytes": 5597146
+        },
+        "Oraxen.jar": {
+          "sha256": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2",
+          "bytes": 3050583
+        },
+        "OraxenGate.jar": {
+          "sha256": "8c1fd3a5e1f845c3080e7141f3a354ab9548c16a56e650c8b0b67d81cc9a6ff5",
+          "bytes": 6580
+        },
+        "ProviderGate.jar": {
+          "sha256": "8b08ef70f808067dfc24f1bff0ac8a8c86d333298c88328b51231436cf496647",
+          "bytes": 8558
+        },
+        "ResourcePackManager.jar": {
+          "sha256": "1979a2ea415fed28ee8d6aa011c24fe53635a371e003d90446992e5b9f873b4b",
+          "bytes": 10502310
+        }
+      },
+      "server": {
+        "version": "Paper1.21.8-60",
+        "java": "21.0.13.0.3",
+        "protocol": 772
+      },
+      "evidence": "supplied-all-three-rpm-final-20261106.log"
+    }
+  ]
+}

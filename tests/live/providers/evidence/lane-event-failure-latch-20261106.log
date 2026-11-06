@@ -1,0 +1,6 @@
+[06:08:34 INFO]: [LaneGate] Loading server plugin LaneGate v1.0-validation
+[06:08:37 INFO]: [LaneGate] Enabling LaneGate v1.0-validation
+[06:08:37 INFO]: [LaneGate] S05-LANE-BOOT 1.21.8-60-29c8822 (MC: 1.21.8) expected=[craftengine]
+[06:08:38 ERROR]: [LaneGate] S05-LANE-FAIL java.lang.IllegalStateException: injected event assertion failure
+[06:08:38 ERROR]: [LaneGate] S05-LANE-FAIL java.lang.IllegalStateException: preceding assertion failed; refusing subsequent PASS
+[06:08:39 INFO]: [LaneGate] Disabling LaneGate v1.0-validation

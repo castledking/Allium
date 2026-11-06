@@ -1,0 +1,54 @@
+[00:36:07 INFO]: [LaneGate] Loading server plugin LaneGate v1.0-validation
+[00:36:08 INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[00:36:08 INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[00:36:08 INFO]: [Allium] Module [economy] enabled.
+[00:36:08 INFO]: [Allium] Module [essentials] enabled.
+[00:36:08 INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[00:36:08 INFO]: [LaneGate] Enabling LaneGate v1.0-validation
+[00:36:08 INFO]: [LaneGate] S05-LANE-BOOT 1.20.6-151-a4f0f5c (MC: 1.20.6) expected=[craftengine]
+[00:36:09 INFO]: [LaneGate] S05-LANE-PASS craftengine native event exposes PROVIDER_LOADING
+[00:36:09 INFO]: [Allium] CraftEngine provider (26.9.1) READY (1 items).
+[00:36:09 INFO]: [LaneGate] S05-LANE-READY
+[00:36:09 INFO]: [LaneGate] S05-LANE-PASS expected providers ready; others absent
+[00:36:09 INFO]: [LaneGate] S05-LANE-PASS craftengine native identity
+[00:36:09 INFO]: [LaneGate] S05-LANE-PASS craftengine signature
+[00:36:09 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature unchanged
+[00:36:09 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized UUID unchanged
+[00:36:09 INFO]: [LaneGate] S05-LANE-PASS craftengine spent state unchanged
+[00:36:09 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature verifies
+[00:36:09 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized native identity
+[00:36:09 INFO]: [LaneGate] S05-LANE-PROBE-PASS
+[00:36:09 INFO]: [LaneGate] S05-LANE-PASS craftengine native event exposes PROVIDER_LOADING
+[00:36:09 INFO]: [Allium] CraftEngine provider (26.9.1) READY (1 items).
+[00:36:10 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature unchanged
+[00:36:10 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized UUID unchanged
+[00:36:10 INFO]: [LaneGate] S05-LANE-PASS craftengine spent state unchanged
+[00:36:10 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature verifies
+[00:36:10 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized native identity
+[00:36:10 INFO]: [LaneGate] S05-LANE-RELOAD-PASS
+[00:36:10 INFO]: [LaneGate] Disabling LaneGate v1.0-validation
+[00:36:10 INFO]: [Allium] Module [economy] disabled.
+[00:36:10 INFO]: [Allium] Module [essentials] disabled.
+[00:36:10 INFO]: [Allium] Allium disabled.
+[00:36:30 INFO]: [LaneGate] Loading server plugin LaneGate v1.0-validation
+[00:36:32 INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[00:36:32 INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[00:36:32 INFO]: [Allium] Module [economy] enabled.
+[00:36:32 INFO]: [Allium] Module [essentials] enabled.
+[00:36:32 INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[00:36:32 INFO]: [LaneGate] Enabling LaneGate v1.0-validation
+[00:36:32 INFO]: [LaneGate] S05-LANE-BOOT 1.20.6-151-a4f0f5c (MC: 1.20.6) expected=[craftengine]
+[00:36:33 INFO]: [LaneGate] S05-LANE-PASS craftengine native event exposes PROVIDER_LOADING
+[00:36:33 INFO]: [Allium] CraftEngine provider (26.9.1) READY (1 items).
+[00:36:33 INFO]: [LaneGate] S05-LANE-READY
+[00:36:33 INFO]: [LaneGate] S05-LANE-PASS providers ready after restart
+[00:36:33 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature unchanged
+[00:36:33 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized UUID unchanged
+[00:36:33 INFO]: [LaneGate] S05-LANE-PASS craftengine spent state unchanged
+[00:36:33 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature verifies
+[00:36:33 INFO]: [LaneGate] S05-LANE-PASS craftengine serialized native identity
+[00:36:33 INFO]: [LaneGate] S05-LANE-RESTORE-PASS
+[00:36:33 INFO]: [LaneGate] Disabling LaneGate v1.0-validation
+[00:36:34 INFO]: [Allium] Module [economy] disabled.
+[00:36:34 INFO]: [Allium] Module [essentials] disabled.
+[00:36:34 INFO]: [Allium] Allium disabled.

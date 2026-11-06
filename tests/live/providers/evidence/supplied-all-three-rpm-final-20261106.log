@@ -1,0 +1,239 @@
+[06:17:58 INFO]: [Allium] Loading server plugin Allium v1.0.0-SNAPSHOT
+[06:17:58 INFO]: [OraxenGate] Loading server plugin OraxenGate v1.0-validation
+[06:17:58 INFO]: [ProviderGate] Loading server plugin ProviderGate v1.0-validation
+[06:18:02 INFO]: [Allium] Enabling Allium v1.0.0-SNAPSHOT
+[06:18:02 INFO]: [Allium] Starting Allium...
+[06:18:02 INFO]: [Allium] Loaded locale: en_US
+[06:18:02 INFO]: [Allium] Oraxen provider (1.220.1) READY (1 items).
+[06:18:02 INFO]: [Allium] Database connected (SQLITE).
+[06:18:02 INFO]: [Allium] Module [economy] enabled.
+[06:18:02 INFO]: [Allium] Module [essentials] enabled.
+[06:18:02 INFO]: [Allium] Item signing keyring loaded: active=k1, verification keys=[k1]. Loaded inventories are audited for unknown key IDs.
+[06:18:02 INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[06:18:02 INFO]: [OraxenGate] Enabling OraxenGate v1.0-validation
+[06:18:02 INFO]: [OraxenGate] S05-ORAXEN-PASS real-plugin-enabled
+[06:18:02 INFO]: [OraxenGate] S05-ORAXEN-INITIAL READY
+[06:18:02 INFO]: [ProviderGate] Enabling ProviderGate v1.0-validation
+[06:18:02 INFO]: [ProviderGate] S05-INITIAL {nexo=LOADING, craftengine=LOADING, oraxen=READY}
+[06:18:02 INFO]: [ProviderGate] S05-PASS reload-event-loading-nexo
+[06:18:02 INFO]: [Allium] Nexo provider (1.30-dev-36f4ce686) READY (1 items).
+[06:18:02 INFO]: [OraxenGate] S05-ORAXEN-DEFERRED READY
+[06:18:02 INFO]: [ProviderGate] S05-PASS reload-event-loading-craftengine
+[06:18:02 INFO]: [Allium] CraftEngine provider (26.9.1) READY (1 items).
+[06:18:02 INFO]: [OraxenGate] S05-ORAXEN-POSTLOAD events=1 status=READY
+
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-STATUS READY
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-DONE status
+
+[06:18:03 INFO]: [ProviderGate] S05-STATUS {nexo=READY, craftengine=READY, oraxen=READY} history=[Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING]
+
+[06:18:03 INFO]: [ProviderGate] S05-READY {nexo=READY, craftengine=READY, oraxen=READY}
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-PASS ready
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-PASS fresh-paper
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-PASS unknown-id
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-PASS case-sensitive
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-PASS fresh-signed-instances
+[06:18:03 INFO]: [OraxenGate] S05-ORAXEN-DONE smoke
+
+[06:18:04 INFO]: [ProviderGate] S05-STATUS {nexo=READY, craftengine=READY, oraxen=READY} history=[Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING]
+
+[06:18:04 INFO]: [ProviderGate] S05-PASS nexo-create-native-id
+[06:18:04 INFO]: [ProviderGate] S05-PASS nexo-create-signed
+[06:18:04 INFO]: [ProviderGate] S05-PASS nexo-strict-carrier
+[06:18:04 INFO]: [ProviderGate] S05-CREATED nexo material=PAPER uuid=295e715d-df3b-447a-89f2-a24e9fb22217
+[06:18:04 INFO]: [ProviderGate] S05-PASS craftengine-create-native-id
+[06:18:04 INFO]: [ProviderGate] S05-PASS craftengine-create-signed
+[06:18:04 INFO]: [ProviderGate] S05-PASS craftengine-strict-carrier
+[06:18:04 INFO]: [ProviderGate] S05-CREATED craftengine material=IRON_INGOT uuid=2129e773-d106-4db3-a61b-18b35b9ea2a3
+[06:18:04 INFO]: [ProviderGate] S05-DONE create
+
+[06:18:04 INFO]: [ProviderGate] S05-STATUS {nexo=READY, craftengine=READY, oraxen=READY} history=[Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING]
+
+[06:18:04 INFO]: [ProviderGate] S05-PASS nexo-checkpoint-valid-signature
+[06:18:04 INFO]: [ProviderGate] S05-PASS nexo-checkpoint-spent-state
+[06:18:04 INFO]: [ProviderGate] S05-PASS craftengine-checkpoint-valid-signature
+[06:18:04 INFO]: [ProviderGate] S05-PASS craftengine-checkpoint-spent-state
+[06:18:04 INFO]: [ProviderGate] S05-DONE checkpoint
+
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS checkpoint-exists
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS held-signature
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS held-uuid
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS held-spent-charges
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS held-amount
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-HELD material=PAPER amount=1
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-DONE create
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-POSTLOAD events=2 status=READY
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS real-postload-event
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS ready-after-reload
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-PASS fresh-book-after-reload
+[06:18:04 INFO]: [OraxenGate] S05-ORAXEN-DONE reload
+
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS checkpoint-exists
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS held-signature
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS held-uuid
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS held-spent-charges
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS held-amount
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-HELD material=BOOK amount=1
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-DONE verify
+
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS checkpoint-exists
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS held-signature
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS held-uuid
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS held-spent-charges
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS held-amount
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-HELD material=BOOK amount=1
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-PASS native-updater-book
+[06:18:05 INFO]: [OraxenGate] S05-ORAXEN-DONE nativeupdate
+
+[06:18:06 INFO]: [ProviderGate] S05-PASS reload-event-loading-nexo
+[06:18:06 INFO]: [Allium] Nexo provider (1.30-dev-36f4ce686) READY (1 items).
+[06:18:06 INFO]: [ProviderGate] S05-STATUS {nexo=READY, craftengine=LOADING, oraxen=READY} history=[Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING, Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING]
+[06:18:06 INFO]: [ProviderGate] S05-PASS reload-event-loading-craftengine
+[06:18:06 INFO]: [Allium] CraftEngine provider (26.9.1) READY (1 items).
+
+[06:18:06 INFO]: [ProviderGate] S05-STATUS {nexo=READY, craftengine=READY, oraxen=READY} history=[Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING, Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING]
+
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-baseline-exists
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-held-signature-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-held-uuid-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-held-state-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-held-still-verifies
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-held-amount-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-HELD nexo material=BOOK
+[06:18:06 INFO]: [ProviderGate] S05-FRESH nexo material=BOOK
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-baseline-exists
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-held-signature-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-held-uuid-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-held-state-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-held-still-verifies
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-held-amount-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-HELD craftengine material=IRON_INGOT
+[06:18:06 INFO]: [ProviderGate] S05-FRESH craftengine material=GOLD_INGOT
+[06:18:06 INFO]: [ProviderGate] S05-DONE verify
+
+[06:18:06 INFO]: [ProviderGate] S05-STATUS {nexo=READY, craftengine=READY, oraxen=READY} history=[Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING, Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING]
+
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-baseline-exists
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-held-signature-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-held-uuid-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-held-state-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-held-still-verifies
+[06:18:06 INFO]: [ProviderGate] S05-PASS nexo-held-amount-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-HELD nexo material=BOOK
+[06:18:06 INFO]: [ProviderGate] S05-FRESH nexo material=BOOK
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-baseline-exists
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-native-updater-ran
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-held-signature-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-held-uuid-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-held-state-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-held-still-verifies
+[06:18:06 INFO]: [ProviderGate] S05-PASS craftengine-held-amount-unchanged
+[06:18:06 INFO]: [ProviderGate] S05-HELD craftengine material=GOLD_INGOT
+[06:18:06 INFO]: [ProviderGate] S05-FRESH craftengine material=GOLD_INGOT
+[06:18:06 INFO]: [ProviderGate] S05-DONE nativeupdate
+[06:18:08 INFO]: [ProviderGate] Disabling ProviderGate v1.0-validation
+[06:18:08 INFO]: [OraxenGate] Disabling OraxenGate v1.0-validation
+[06:18:08 INFO]: [Allium] Disabling Allium v1.0.0-SNAPSHOT
+[06:18:08 INFO]: [Allium] Module [economy] disabled.
+[06:18:08 INFO]: [Allium] Module [essentials] disabled.
+[06:18:08 INFO]: [Allium] Database connection pool closed.
+[06:18:08 INFO]: [Allium] Allium disabled.
+[06:18:18 INFO]: [Allium] Loading server plugin Allium v1.0.0-SNAPSHOT
+[06:18:18 INFO]: [OraxenGate] Loading server plugin OraxenGate v1.0-validation
+[06:18:18 INFO]: [ProviderGate] Loading server plugin ProviderGate v1.0-validation
+[06:18:20 INFO]: [Allium] Enabling Allium v1.0.0-SNAPSHOT
+[06:18:20 INFO]: [Allium] Starting Allium...
+[06:18:20 INFO]: [Allium] Loaded locale: en_US
+[06:18:20 INFO]: [Allium] Oraxen provider (1.220.1) READY (1 items).
+[06:18:20 INFO]: [Allium] Database connected (SQLITE).
+[06:18:20 INFO]: [Allium] Module [economy] enabled.
+[06:18:20 INFO]: [Allium] Module [essentials] enabled.
+[06:18:20 INFO]: [Allium] Item signing keyring loaded: active=k1, verification keys=[k1]. Loaded inventories are audited for unknown key IDs.
+[06:18:20 INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[06:18:20 INFO]: [OraxenGate] Enabling OraxenGate v1.0-validation
+[06:18:20 INFO]: [OraxenGate] S05-ORAXEN-PASS real-plugin-enabled
+[06:18:20 INFO]: [OraxenGate] S05-ORAXEN-INITIAL READY
+[06:18:20 INFO]: [ProviderGate] Enabling ProviderGate v1.0-validation
+[06:18:20 INFO]: [ProviderGate] S05-INITIAL {nexo=LOADING, craftengine=LOADING, oraxen=READY}
+[06:18:21 INFO]: [ProviderGate] S05-PASS reload-event-loading-nexo
+[06:18:21 INFO]: [Allium] Nexo provider (1.30-dev-36f4ce686) READY (1 items).
+[06:18:21 INFO]: [OraxenGate] S05-ORAXEN-DEFERRED READY
+[06:18:21 INFO]: [ProviderGate] S05-PASS reload-event-loading-craftengine
+[06:18:21 INFO]: [Allium] CraftEngine provider (26.9.1) READY (1 items).
+[06:18:21 INFO]: [OraxenGate] S05-ORAXEN-POSTLOAD events=1 status=READY
+
+[06:18:21 INFO]: [OraxenGate] S05-ORAXEN-STATUS READY
+[06:18:21 INFO]: [OraxenGate] S05-ORAXEN-DONE status
+
+[06:18:21 INFO]: [ProviderGate] S05-STATUS {nexo=READY, craftengine=READY, oraxen=READY} history=[Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING]
+[06:18:21 INFO]: [ProviderGate] S05-READY {nexo=READY, craftengine=READY, oraxen=READY}
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS checkpoint-exists
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS held-signature
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS held-uuid
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS held-spent-charges
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS held-amount
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS native-id-case
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS allium-native-id
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS signature-valid
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS strict-carrier
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-HELD material=BOOK amount=1
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-DONE verify
+
+[06:18:22 INFO]: [ProviderGate] S05-STATUS {nexo=READY, craftengine=READY, oraxen=READY} history=[Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING]
+
+[06:18:22 INFO]: [ProviderGate] S05-PASS nexo-baseline-exists
+[06:18:22 INFO]: [ProviderGate] S05-PASS nexo-held-signature-unchanged
+[06:18:22 INFO]: [ProviderGate] S05-PASS nexo-held-uuid-unchanged
+[06:18:22 INFO]: [ProviderGate] S05-PASS nexo-held-state-unchanged
+[06:18:22 INFO]: [ProviderGate] S05-PASS nexo-held-still-verifies
+[06:18:22 INFO]: [ProviderGate] S05-PASS nexo-held-amount-unchanged
+[06:18:22 INFO]: [ProviderGate] S05-HELD nexo material=BOOK
+[06:18:22 INFO]: [ProviderGate] S05-FRESH nexo material=BOOK
+[06:18:22 INFO]: [ProviderGate] S05-PASS craftengine-baseline-exists
+[06:18:22 INFO]: [ProviderGate] S05-PASS craftengine-held-signature-unchanged
+[06:18:22 INFO]: [ProviderGate] S05-PASS craftengine-held-uuid-unchanged
+[06:18:22 INFO]: [ProviderGate] S05-PASS craftengine-held-state-unchanged
+[06:18:22 INFO]: [ProviderGate] S05-PASS craftengine-held-still-verifies
+[06:18:22 INFO]: [ProviderGate] S05-PASS craftengine-held-amount-unchanged
+[06:18:22 INFO]: [ProviderGate] S05-HELD craftengine material=GOLD_INGOT
+[06:18:22 INFO]: [ProviderGate] S05-FRESH craftengine material=GOLD_INGOT
+[06:18:22 INFO]: [ProviderGate] S05-DONE verify
+[06:18:22 WARN]: [Allium] Oraxen was disabled; provider is ABSENT.
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS disabled-absent
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-PASS disabled-create-absent
+[06:18:22 INFO]: [OraxenGate] S05-ORAXEN-DONE disable
+
+[06:18:22 INFO]: [ProviderGate] S05-STATUS {nexo=READY, craftengine=READY, oraxen=ABSENT} history=[Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING, CraftEngine net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent PROVIDER_LOADING]
+[06:18:22 WARN]: [Allium] Nexo was disabled; provider is ABSENT.
+[06:18:22 INFO]: [ProviderGate] S05-DISABLED {nexo=ABSENT, craftengine=READY, oraxen=ABSENT}
+[06:18:24 INFO]: [ProviderGate] Disabling ProviderGate v1.0-validation
+[06:18:24 INFO]: [OraxenGate] Disabling OraxenGate v1.0-validation
+[06:18:24 INFO]: [Allium] Disabling Allium v1.0.0-SNAPSHOT
+[06:18:24 INFO]: [Allium] Module [economy] disabled.
+[06:18:24 INFO]: [Allium] Module [essentials] disabled.
+[06:18:24 INFO]: [Allium] Database connection pool closed.
+[06:18:24 INFO]: [Allium] Allium disabled.

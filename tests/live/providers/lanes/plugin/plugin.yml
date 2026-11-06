@@ -1,0 +1,11 @@
+name: LaneGate
+version: 1.0-validation
+main: gate.LaneGate
+api-version: '1.20'
+depend: [Allium]
+commands:
+  lanegate:
+    permission: lanegate.console
+permissions:
+  lanegate.console:
+    default: op

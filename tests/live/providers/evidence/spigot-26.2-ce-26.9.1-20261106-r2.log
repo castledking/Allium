@@ -1,0 +1,1109 @@
+{
+  "utc": "2026-11-06T08:43:15.870472+00:00",
+  "head": "ddfeeca5a05508291b16448e96c101578b9bff2a",
+  "provenance": {
+    "server": "Cached genuine BuildTools bundle /mnt/storage/devops/.buildtools/spigot-26.2.jar; buildtools-26.2.log records BuildTools #200 --rev 26.2 --remapped successful July 30 2026.",
+    "ce": "https://cdn.modrinth.com/data/tRX6FMfQ/versions/prX5nH7G/craft-engine-bukkit-plugin-26.9.1.jar",
+    "ce_metadata": "/tmp/allium-s05-20261106/pins/ce/version-prX5nH7G.json",
+    "ce_sha512_verified": true,
+    "ce_supported_game_versions": [
+      "26.1",
+      "26.1.1",
+      "26.1.2",
+      "26.2"
+    ],
+    "ce_supported_loaders": [
+      "bukkit",
+      "spigot"
+    ]
+  },
+  "java": "openjdk version \"25.0.5.0.3\" 2026-10-24\nOpenJDK Runtime Environment (build 25.0.5.0.3)\nOpenJDK 64-Bit Server VM (build 25.0.5.0.3, mixed mode, sharing)\n",
+  "input_sha256": {
+    "/mnt/storage/devops/.buildtools/spigot-26.2.jar": "0dc80f98d5d2eec4782d2f351c39ad4bb44cc382954be6e3a16676df880ee605",
+    "/mnt/storage/repos/Allium-recode/build/libs/Allium.jar": "4e90e660141964643ac32ee8580b74082ffec2460e3ca0a85428db4e88c1c14e",
+    "/tmp/allium-s05-20261106/lanes/fixture/LaneGate.jar": "f2f0380864231d872cda30346501e3985a3ac6fe5ab4f4df4747576c10d1c4e7",
+    "/tmp/allium-s05-20261106/pins/ce/craft-engine-bukkit-plugin-26.9.1.jar": "389da875c3c4a0667d5914ffb58478c67a8ecc06670d88f36b6ff58b99c1c1c1",
+    "/tmp/allium-s05-20261106/spigot/26.2-ce-26.9.1-r2/plugins/CraftEngine/resources/s05_spigot/configuration/items.yml": "534c496303d5976a0fa3e5a0feabfbb60b1eebdf64eddbc70508c2a14ac69ff8",
+    "/tmp/allium-s05-20261106/spigot/26.2-ce-26.9.1-r2/plugins/CraftEngine/config.yml": "fec966237e024afc58f17fbe4cf87f64d2b67f97f8af3492f539f6e5ea85a0e2"
+  },
+  "bundler_manifest": {
+    "libraries/asm-9.10.1.jar": {
+      "sha256": "ed825d10ab1399c8c0cb669e688cf0c8c82629b4c8399b58352b68e92ca10fcb",
+      "packaged": true
+    },
+    "libraries/asm-commons-9.10.1.jar": {
+      "sha256": "6d0abefb7cbf972ea16edb37ec14835372505063a45f976ab7ea889ed9497895",
+      "packaged": true
+    },
+    "libraries/authlib-9.0.75.jar": {
+      "sha256": "1f77e70240548b9cd233da0e12938bbbe5597ac9e94f6c6b07577faf1461a951",
+      "packaged": true
+    },
+    "libraries/azure-json-1.4.0.jar": {
+      "sha256": "c50bc998cd1a6c689f8644b51c206217bf2da09d5b949e777490a60290cc3a0d",
+      "packaged": true
+    },
+    "libraries/brigadier-1.3.10.jar": {
+      "sha256": "c8ee4136e474ac7723ca2b432ec8d1a2bc88ef7d1ec57c314ba9e33cdc83dd75",
+      "packaged": true
+    },
+    "libraries/bungeecord-chat-1.21-R0.4.jar": {
+      "sha256": "3bade7edb09149aff360836012b5e8b469416bed8edd4f63bda2cdcce3d450ca",
+      "packaged": true
+    },
+    "libraries/bungeecord-dialog-1.21-R0.4.jar": {
+      "sha256": "f478dd41a852136c93b94b339b310f165f824f85b478ebe3c8081bd21044b87e",
+      "packaged": true
+    },
+    "libraries/bungeecord-serializer-1.21-R0.4.jar": {
+      "sha256": "0552eac3de15c1ed4d3495a8a6016b50f5502cf669b46f0ca4669f9940b85c71",
+      "packaged": true
+    },
+    "libraries/commons-codec-1.21.0.jar": {
+      "sha256": "4da851cb6abfb98bfe9eb77c5e5fc47f5414fa28b94e21b7fd9a646705dc167f",
+      "packaged": true
+    },
+    "libraries/commons-io-2.20.0.jar": {
+      "sha256": "df90bba0fe3cb586b7f164e78fe8f8f4da3f2dd5c27fa645f888100ccc25dd72",
+      "packaged": true
+    },
+    "libraries/commons-lang-2.6.jar": {
+      "sha256": "50f11b09f877c294d56f24463f47d28f929cf5044f648661c0f0cfbae9a2f49c",
+      "packaged": true
+    },
+    "libraries/commons-lang3-3.20.0.jar": {
+      "sha256": "69e5c9fa35da7a51a5fd2099dfe56a2d8d32cf233e2f6d770e796146440263f4",
+      "packaged": true
+    },
+    "libraries/datafixerupper-10.0.21.jar": {
+      "sha256": "3547cb1da8993fb7ebd42494d0e78997d2cfbe90c421f5efd022863e6909941e",
+      "packaged": true
+    },
+    "libraries/error_prone_annotations-2.47.0.jar": {
+      "sha256": "5364bc6f22e72e98195e406a58d3ba1c09ffa11dea0729592cb870dc2de4056d",
+      "packaged": true
+    },
+    "libraries/failureaccess-1.0.3.jar": {
+      "sha256": "cbfc3906b19b8f55dd7cfd6dfe0aa4532e834250d7f080bd8d211a3e246b59cb",
+      "packaged": true
+    },
+    "libraries/fastutil-8.5.18.jar": {
+      "sha256": "9094ae67d01d0ad246f886f11ad557fc2e79c72cbf3feed83e1512a8ae90a74a",
+      "packaged": true
+    },
+    "libraries/gson-2.14.0.jar": {
+      "sha256": "2cbd119bf1961c28788310963dc80ba65f58cdeec1dd139c8bdb1240faa2c36f",
+      "packaged": true
+    },
+    "libraries/guava-33.6.0-jre.jar": {
+      "sha256": "dc573e1fca4fd5454f4a5fd3d7da2df03002876a4175bafc14a95980dd7713b3",
+      "packaged": true
+    },
+    "libraries/httpclient-4.5.14.jar": {
+      "sha256": "c8bc7e1c51a6d4ce72f40d2ebbabf1c4b68bfe76e732104b04381b493478e9d6",
+      "packaged": true
+    },
+    "libraries/httpcore-4.4.16.jar": {
+      "sha256": "6c9b3dd142a09dc468e23ad39aad6f75a0f2b85125104469f026e52a474e464f",
+      "packaged": true
+    },
+    "libraries/j2objc-annotations-3.1.jar": {
+      "sha256": "84d3a150518485f8140ea99b8a985656749629f6433c92b80c75b36aba3b099b",
+      "packaged": true
+    },
+    "libraries/javax.inject-1.jar": {
+      "sha256": "91c77044a50c481636c32d916fd89c9118a72195390452c81065080f957de7ff",
+      "packaged": true
+    },
+    "libraries/jcl-over-slf4j-1.7.36.jar": {
+      "sha256": "ab57ca8fd223772c17365d121f59e94ecbf0ae59d08c03a3cb5b81071c019195",
+      "packaged": true
+    },
+    "libraries/jline-3.30.4.jar": {
+      "sha256": "a177738b52cf41ff4865c4a441c4fc7fdf2262648159e0de6ced2f842acf52e9",
+      "packaged": true
+    },
+    "libraries/jna-5.17.0.jar": {
+      "sha256": "b3a9408e7c51e08ef0e3bfcc08f443f6ec0f6191ba8cd7c18d53d2b22e5bdbc0",
+      "packaged": true
+    },
+    "libraries/jna-platform-5.17.0.jar": {
+      "sha256": "b7e3d46c87bad2eb409b0e704916bcd81206168e357312dfddd0e253679cd9e0",
+      "packaged": true
+    },
+    "libraries/joml-1.10.8.jar": {
+      "sha256": "bf19510145178df82cd3bd37edd514c13f411531ec5545299fd3abcbc98fe7c2",
+      "packaged": true
+    },
+    "libraries/jopt-simple-5.0.4.jar": {
+      "sha256": "df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28",
+      "packaged": true
+    },
+    "libraries/json-simple-1.1.1.jar": {
+      "sha256": "4e69696892b88b41c55d49ab2fdcc21eead92bf54acc588c0050596c3b75199c",
+      "packaged": true
+    },
+    "libraries/jspecify-1.0.0.jar": {
+      "sha256": "1fad6e6be7557781e4d33729d49ae1cdc8fdda6fe477bb0cc68ce351eafdfbab",
+      "packaged": true
+    },
+    "libraries/jsr305-3.0.2.jar": {
+      "sha256": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7",
+      "packaged": true
+    },
+    "libraries/jtracy-1.0.37.jar": {
+      "sha256": "8bb68d0b65e8eceb92de2bd1d9e1443a8c9a9dd1b5818a5e54870b0f8253672a",
+      "packaged": true
+    },
+    "libraries/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar": {
+      "sha256": "b372a037d4230aa57fbeffdef30fd6123f9c0c2db85d0aced00c91b974f33f99",
+      "packaged": true
+    },
+    "libraries/log4j-api-2.26.0.jar": {
+      "sha256": "820de7bbaf430eaf2e3e5ccb92f23e2085797c5ac4d4f7fc6c8b660fbefa1dbc",
+      "packaged": true
+    },
+    "libraries/log4j-core-2.26.0.jar": {
+      "sha256": "406bb3132c47a5d322e5c571feb0787ca84496469f346eb51f1ef2ee45499902",
+      "packaged": true
+    },
+    "libraries/log4j-iostreams-2.26.0.jar": {
+      "sha256": "1c4e14ebecfd6a0e100a08f9eccfb639784a441e7591e887752440bb4c941fe8",
+      "packaged": true
+    },
+    "libraries/log4j-slf4j2-impl-2.26.0.jar": {
+      "sha256": "cfc1bddbd39e684b698ae968291d8a3b3a55ee0ec2ef3d3ea5c2336a9e151598",
+      "packaged": true
+    },
+    "libraries/logging-1.7.12.jar": {
+      "sha256": "3c7ac9742fa98c773275379eb1046c048b5d2ee989152a8c69e7ba696c3f8538",
+      "packaged": true
+    },
+    "libraries/lz4-java-1.10.1.jar": {
+      "sha256": "a58a84c4271e50df4c96ed916ccb7e48a869f8ed9cdcda1ad5d3d4c33b0214a3",
+      "packaged": true
+    },
+    "libraries/maven-artifact-3.9.14.jar": {
+      "sha256": "1effa70eacbf0aa4d94ad9c7b225be031ce4317fa07da59e23b02b3e4e1231a3",
+      "packaged": true
+    },
+    "libraries/maven-builder-support-3.9.14.jar": {
+      "sha256": "2109ff808046e4f8b356b1064060a3f224b0b0aad07ecceaf7696c3bdc0b2296",
+      "packaged": true
+    },
+    "libraries/maven-model-3.9.14.jar": {
+      "sha256": "684f573b1b37933c5d62c1c21d5da4335b049fb8b3d9754281597a38dbbc4044",
+      "packaged": true
+    },
+    "libraries/maven-model-builder-3.9.14.jar": {
+      "sha256": "9a6f4deb11bd6fe3f8b11036ed46f34cded3b00fc638f242327537bfb53c9d3f",
+      "packaged": true
+    },
+    "libraries/maven-repository-metadata-3.9.14.jar": {
+      "sha256": "307e4920b17a8fdd764b556a7569de9bdd384d6b5f3f6a63dfb2ef186f02da2a",
+      "packaged": true
+    },
+    "libraries/maven-resolver-api-1.9.27.jar": {
+      "sha256": "a895d222283666a7320ddc76615e2e93a41fabd93ce9a6bf9ddee39272bb87b4",
+      "packaged": true
+    },
+    "libraries/maven-resolver-connector-basic-1.9.27.jar": {
+      "sha256": "3bd98e3a426f9adcae39e3786db229e2be77e08a743ecd9be15c5ed77be3a625",
+      "packaged": true
+    },
+    "libraries/maven-resolver-impl-1.9.27.jar": {
+      "sha256": "295d48ea2a8bb3aef51888967f105fb6251997d111f13c32d28919fd9b1c951e",
+      "packaged": true
+    },
+    "libraries/maven-resolver-named-locks-1.9.27.jar": {
+      "sha256": "b39ecd4da98fdac5068e6f5d16910a71f4e4d48e95e17d107f6603e18f2b3fdf",
+      "packaged": true
+    },
+    "libraries/maven-resolver-provider-3.9.14.jar": {
+      "sha256": "a5bc340ffe35325c55a01762feee374abb2a9e2b14191ea39c1ef646c2754f65",
+      "packaged": true
+    },
+    "libraries/maven-resolver-spi-1.9.27.jar": {
+      "sha256": "1cab02f45bc58d5f4d8e084eaf032f13ea1a5fc9021d8bd74f8360ebb6593e5a",
+      "packaged": true
+    },
+    "libraries/maven-resolver-transport-http-1.9.27.jar": {
+      "sha256": "723f3d9d717a693d0aac589e266b995f76e9c63edd48ecc8a0cf9e86a77e459c",
+      "packaged": true
+    },
+    "libraries/maven-resolver-util-1.9.27.jar": {
+      "sha256": "74a12548f0d6aad13c728666288c1e81201c24bd05bb4e4ec8c1558517b379a7",
+      "packaged": true
+    },
+    "libraries/minecraft-server-26.2-R0.1-SNAPSHOT.jar": {
+      "manifest_sha256": "e2f7e9c1ec3dd6bceba91f18149a43ddc9b8d9daf807f5aae4a8e6a352869e23",
+      "packaged": false
+    },
+    "libraries/msal4j-1.24.1.jar": {
+      "sha256": "12e62f79d1a71d176a41c168c0587f8167f0add99b78f006f39595bd7242aebe",
+      "packaged": true
+    },
+    "libraries/mysql-connector-j-9.6.0.jar": {
+      "sha256": "66df1d453789dc8cb759a7dc17f58646893bf28483f262328650f170472a6ead",
+      "packaged": true
+    },
+    "libraries/netty-buffer-4.2.15.Final.jar": {
+      "sha256": "1361fd9c9ba85b9831cf54a1b2e45ddc3ce34a768931726c099d3f5ef0efe4a3",
+      "packaged": true
+    },
+    "libraries/netty-codec-base-4.2.15.Final.jar": {
+      "sha256": "2c6d39d7270628b8cfc3166fbd7a93d595958e59c461bc32ddb383c8c91bf811",
+      "packaged": true
+    },
+    "libraries/netty-codec-compression-4.2.15.Final.jar": {
+      "sha256": "4adaa5cdd4d2e9b50b23e4c3eff42e73de6eb40848718b3aa84cd5b454da6ce8",
+      "packaged": true
+    },
+    "libraries/netty-codec-http-4.2.15.Final.jar": {
+      "sha256": "76ae57e87af37b3c4107140f50b9244b1456163a6a225510838f7c5a4458ec22",
+      "packaged": true
+    },
+    "libraries/netty-common-4.2.15.Final.jar": {
+      "sha256": "78206aa7f6d197caa926291408c01889b6b910ca0f74017d3fcbdaccf9562959",
+      "packaged": true
+    },
+    "libraries/netty-handler-4.2.15.Final.jar": {
+      "sha256": "99b59e4bea72220d2aed52df8baf37d97431b06ade0b135226cdf73168975eab",
+      "packaged": true
+    },
+    "libraries/netty-resolver-4.2.15.Final.jar": {
+      "sha256": "24318497f2a3a645964fed418f48879ba11365cab8e1f8d66c47fa7da15ef19a",
+      "packaged": true
+    },
+    "libraries/netty-transport-4.2.15.Final.jar": {
+      "sha256": "9fb671e96651066cf1a28dad3f1382c7c99df5b8326d4a214d9a375b311f8dc1",
+      "packaged": true
+    },
+    "libraries/netty-transport-classes-epoll-4.2.15.Final.jar": {
+      "sha256": "be509407fd71a4b83378567c613420db544d659bb522df7b253a1dbe8ca297fe",
+      "packaged": true
+    },
+    "libraries/netty-transport-classes-kqueue-4.2.15.Final.jar": {
+      "sha256": "2a15e2213a1fe49e73b4bb39bc746e7196dba8c1b182bc0d21a719a4d1be2c00",
+      "packaged": true
+    },
+    "libraries/netty-transport-native-epoll-4.2.15.Final-linux-aarch_64.jar": {
+      "sha256": "5a401e9dfb4f937e37a2221f6b91da25a008eac1f08ddd4bb0d9ed20e0e32668",
+      "packaged": true
+    },
+    "libraries/netty-transport-native-epoll-4.2.15.Final-linux-x86_64.jar": {
+      "sha256": "5440e38f5ca2858fee8d7898e65291e05b665736c9e8a14c832e707511f5dba6",
+      "packaged": true
+    },
+    "libraries/netty-transport-native-kqueue-4.2.15.Final-osx-aarch_64.jar": {
+      "sha256": "c9696a41e549eb42432f1e2cc3f387c85435034b73a3bf8748ffff40d00f921a",
+      "packaged": true
+    },
+    "libraries/netty-transport-native-kqueue-4.2.15.Final-osx-x86_64.jar": {
+      "sha256": "6095c29661abe1f2fbc2c79c54a94de4fdaddd6e99c702927fd3c00e66872574",
+      "packaged": true
+    },
+    "libraries/netty-transport-native-unix-common-4.2.15.Final.jar": {
+      "sha256": "b9ea9fc5ad5eba04e99afdff75b2eb97b5ddfb2ad772e2f2ef5d8f277f3cbd76",
+      "packaged": true
+    },
+    "libraries/org.eclipse.sisu.inject-1.0.0.jar": {
+      "sha256": "3ab8d7bfe68f3b6ec95c1a0a47e628edbc9d76e90634cb0a0ba121fbb11b8e42",
+      "packaged": true
+    },
+    "libraries/oshi-core-6.9.0.jar": {
+      "sha256": "b29ba9bce041e6ea822203d5b5a692660c87551241510ebc76eedffe684844c7",
+      "packaged": true
+    },
+    "libraries/plexus-interpolation-1.29.jar": {
+      "sha256": "088d444dbcedfb384630d8686697ece3c401d6f33c8f8b3aa7259ea1c6996878",
+      "packaged": true
+    },
+    "libraries/plexus-utils-3.6.0.jar": {
+      "sha256": "27ef130e32c236090e408fb5498d94cb9ea26d14070fb1c8985d607b62d098d1",
+      "packaged": true
+    },
+    "libraries/protobuf-java-4.31.1.jar": {
+      "sha256": "d60dfe7c68a0d38a248cca96924f289dc7e1966a887ee7cae397701af08575ae",
+      "packaged": true
+    },
+    "libraries/slf4j-api-2.0.17.jar": {
+      "sha256": "7b751d952061954d5abfed7181c1f645d336091b679891591d63329c622eb832",
+      "packaged": true
+    },
+    "libraries/snakeyaml-2.6.jar": {
+      "sha256": "c8f7a98e7394adda02f6317249710e4d1b4c7a25aa8c7eace0c2eea52eb8bf85",
+      "packaged": true
+    },
+    "libraries/spigot-api-26.2-R0.1-SNAPSHOT.jar": {
+      "sha256": "a57da864312bc3d0aa88ed24f62618e63584b0b0f79df9ab00205b15f47f3a84",
+      "packaged": true
+    },
+    "libraries/sqlite-jdbc-3.51.3.0.jar": {
+      "sha256": "3684ac5e9bd893cbe68eb0ac1708343f66be829b1d2b5ab317e783d05acd5aef",
+      "packaged": true
+    },
+    "versions/spigot-26.2-R0.1-SNAPSHOT.jar": {
+      "sha256": "8381d6eec7a79ae2e4aede0c49c4a77f043c8c46ba2bb95abe058fc1c0c5fd00",
+      "packaged": true
+    }
+  },
+  "argv": [
+    "/usr/lib/jvm/java-25-openjdk/bin/java",
+    "-Xms256M",
+    "-Xmx1600M",
+    "-XX:ActiveProcessorCount=2",
+    "-cp",
+    "bundler/versions/spigot-26.2-R0.1-SNAPSHOT.jar:bundler/libraries/*",
+    "org.bukkit.craftbukkit.Main",
+    "nogui",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "25626"
+  ],
+  "lane": "/tmp/allium-s05-20261106/spigot/26.2-ce-26.9.1-r2",
+  "limitations": "No actual player. LaneGate checkpoint is YAML-serialized ItemStack, not a player inventory. No core-five command-packet, updater-trigger, stack-quantity or S06 pack claims."
+}
+--- INITIAL BOOT / NATIVE RELOAD ---
+*** Error, this build is outdated ***
+*** Please download a new build as per instructions from https://www.spigotmc.org/go/outdated-spigot ***
+*** Server will start in 20 seconds ***
+Loading libraries, please wait...
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by com.sun.jna.Native in an unnamed module (file:/tmp/allium-s05-20261106/spigot/26.2-ce-26.9.1-r2/bundler/libraries/jna-5.17.0.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/tmp/allium-s05-20261106/spigot/26.2-ce-26.9.1-r2/bundler/libraries/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+[00:43:39] [main/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, profilesHost=https://api.mojang.com, name=PROD]
+[00:43:39] [main/INFO]: Found new data pack file/bukkit, loading it automatically
+[00:43:40] [Worker-Main-1/INFO]: No existing world data, creating new world
+[00:43:40] [main/INFO]: Loaded 1585 recipes
+[00:43:39] [main/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, profilesHost=https://api.mojang.com, name=PROD]
+[00:43:39] [main/INFO]: Found new data pack file/bukkit, loading it automatically
+[00:43:40] [Worker-Main-1/INFO]: No existing world data, creating new world
+[00:43:40] [main/INFO]: Loaded 1585 recipes
+[00:43:40] [Server thread/INFO]: Starting minecraft server version 26.2
+[00:43:40] [Server thread/INFO]: Loading properties
+[00:43:40] [Server thread/INFO]: This server is running Spigot version 4645-Spigot-8db49a2-c4d1107 (MC: 26.2) (Implementing API version 26.2-R0.1-SNAPSHOT)
+[00:43:41] [Server thread/INFO]: *** This version of Spigot contains changes to some enums. If you notice that plugins no longer work after updating, please report this to the developers of those plugins first. ***
+[00:43:41] [Server thread/INFO]: *** If you cannot update those plugins, you can try setting `settings.compatibility.enum-compatibility-mode` to `true` in `bukkit.yml`. ***
+[00:43:41] [Server thread/INFO]: Debug logging is disabled
+[00:43:41] [Server thread/INFO]: Server Ping Player Sample Count: 12
+[00:43:41] [Server thread/INFO]: Using 4 threads for Netty based IO
+[00:43:41] [Server thread/INFO]: Default game type: SURVIVAL
+[00:43:41] [Server thread/INFO]: Generating keypair
+[00:43:41] [Server thread/INFO]: Starting Minecraft server on 127.0.0.1:25626
+[00:43:41] [craft-engine-common-worker-2/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/ow2/asm/asm/9.10.1/asm-9.10.1.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/me/lucko/jar-relocator/1.7/jar-relocator-1.7.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/ow2/asm/asm-commons/9.10.1/asm-commons-9.10.1.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully downloaded jar-relocator-1.7.jar
+[00:43:41] [craft-engine-common-worker-2/INFO]: [CraftEngine] Successfully downloaded asm-9.10.1.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully downloaded asm-commons-9.10.1.jar
+[00:43:41] [craft-engine-common-worker-2/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/com/github/ben-manes/caffeine/caffeine/3.2.4/caffeine-3.2.4.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/bstats/bstats-base/3.2.1/bstats-base-3.2.1.jar
+[00:43:41] [craft-engine-common-worker-3/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/incendo/cloud-core/2.0.0/cloud-core-2.0.0.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/io/leangen/geantyref/geantyref/2.0.1/geantyref-2.0.1.jar
+[00:43:41] [craft-engine-common-worker-6/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/commons-io/commons-io/2.22.0/commons-io-2.22.0.jar
+[00:43:41] [craft-engine-common-worker-4/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/incendo/cloud-services/2.0.0/cloud-services-2.0.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/com/google/code/gson/gson/2.14.0/gson-2.14.0.jar
+[00:43:41] [craft-engine-common-worker-7/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.20.0/commons-lang3-3.20.0.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully downloaded bstats-base-3.2.1.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Remapping bstats-base-3.2.1.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully remapped bstats-base-3.2.1.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/com/github/luben/zstd-jni/1.5.7-15/zstd-jni-1.5.7-15.jar
+[00:43:41] [craft-engine-common-worker-3/INFO]: [CraftEngine] Successfully downloaded cloud-core-2.0.0.jar
+[00:43:41] [craft-engine-common-worker-3/INFO]: [CraftEngine] Remapping cloud-core-2.0.0.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully downloaded geantyref-2.0.1.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Remapping geantyref-2.0.1.jar
+[00:43:41] [craft-engine-common-worker-2/INFO]: [CraftEngine] Successfully downloaded caffeine-3.2.4.jar
+[00:43:41] [craft-engine-common-worker-2/INFO]: [CraftEngine] Remapping caffeine-3.2.4.jar
+[00:43:41] [craft-engine-common-worker-4/INFO]: [CraftEngine] Successfully downloaded cloud-services-2.0.0.jar
+[00:43:41] [craft-engine-common-worker-4/INFO]: [CraftEngine] Remapping cloud-services-2.0.0.jar
+[00:43:41] [craft-engine-common-worker-4/INFO]: [CraftEngine] Successfully remapped cloud-services-2.0.0.jar
+[00:43:41] [craft-engine-common-worker-4/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/bytebuddy/byte-buddy/1.18.12/byte-buddy-1.18.12.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully downloaded gson-2.14.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/bytebuddy/byte-buddy-agent/1.18.12/byte-buddy-agent-1.18.12.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully remapped geantyref-2.0.1.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/snakeyaml/snakeyaml-engine/3.1.1/snakeyaml-engine-3.1.1.jar
+[00:43:41] [craft-engine-common-worker-6/INFO]: [CraftEngine] Successfully downloaded commons-io-2.22.0.jar
+[00:43:41] [craft-engine-common-worker-7/INFO]: [CraftEngine] Successfully downloaded commons-lang3-3.20.0.jar
+[00:43:41] [craft-engine-common-worker-6/INFO]: [CraftEngine] Remapping commons-io-2.22.0.jar
+[00:43:41] [craft-engine-common-worker-7/INFO]: [CraftEngine] Remapping commons-lang3-3.20.0.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully downloaded snakeyaml-engine-3.1.1.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Remapping snakeyaml-engine-3.1.1.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully downloaded byte-buddy-agent-1.18.12.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Remapping byte-buddy-agent-1.18.12.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully downloaded zstd-jni-1.5.7-15.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/kyori/option/1.1.0/option-1.1.0.jar
+[00:43:41] [craft-engine-common-worker-4/INFO]: [CraftEngine] Successfully downloaded byte-buddy-1.18.12.jar
+[00:43:41] [craft-engine-common-worker-4/INFO]: [CraftEngine] Remapping byte-buddy-1.18.12.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully downloaded option-1.1.0.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Remapping option-1.1.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully remapped byte-buddy-agent-1.18.12.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/kyori/adventure-key/5.2.0/adventure-key-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully remapped option-1.1.0.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/kyori/adventure-api/5.2.0/adventure-api-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully downloaded adventure-key-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Remapping adventure-key-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully remapped adventure-key-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully downloaded adventure-api-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-0/INFO]: [CraftEngine] Remapping adventure-api-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/kyori/adventure-nbt/5.2.0/adventure-nbt-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully downloaded adventure-nbt-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Remapping adventure-nbt-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully remapped snakeyaml-engine-3.1.1.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/kyori/adventure-text-serializer-commons/5.2.0/adventure-text-serializer-commons-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully remapped adventure-nbt-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/kyori/adventure-text-serializer-legacy/5.2.0/adventure-text-serializer-legacy-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully downloaded adventure-text-serializer-commons-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Remapping adventure-text-serializer-commons-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully remapped adventure-text-serializer-commons-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/kyori/adventure-text-serializer-gson/5.2.0/adventure-text-serializer-gson-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully downloaded adventure-text-serializer-legacy-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Remapping adventure-text-serializer-legacy-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully downloaded adventure-text-serializer-gson-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-1/INFO]: [CraftEngine] Remapping adventure-text-serializer-gson-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully remapped adventure-text-serializer-legacy-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-5/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/kyori/adventure-text-serializer-json-legacy-impl/5.2.0/adventure-text-serializer-json-legacy-impl-5.2.0.jar
+[00:43:41] [craft-engine-common-worker-3/INFO]: [CraftEngine] Successfully remapped cloud-core-2.0.0.jar
+[00:43:41] [craft-engine-common-worker-3/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/net/kyori/adventure-text-serializer-json/5.2.0/adventure-text-serializer-json-5.2.0.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully downloaded adventure-text-serializer-json-legacy-impl-5.2.0.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Remapping adventure-text-serializer-json-legacy-impl-5.2.0.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully remapped adventure-text-serializer-json-legacy-impl-5.2.0.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/ahocorasick/ahocorasick/0.6.3/ahocorasick-0.6.3.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully remapped adventure-text-serializer-gson-5.2.0.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/at/yawk/lz4/lz4-java/1.11.2/lz4-java-1.11.2.jar
+[00:43:42] [craft-engine-common-worker-3/INFO]: [CraftEngine] Successfully downloaded adventure-text-serializer-json-5.2.0.jar
+[00:43:42] [craft-engine-common-worker-3/INFO]: [CraftEngine] Remapping adventure-text-serializer-json-5.2.0.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully downloaded ahocorasick-0.6.3.jar
+[00:43:42] [craft-engine-common-worker-3/INFO]: [CraftEngine] Successfully remapped adventure-text-serializer-json-5.2.0.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Remapping ahocorasick-0.6.3.jar
+[00:43:42] [craft-engine-common-worker-3/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/io/netty/netty-codec-http/4.1.137.Final/netty-codec-http-4.1.137.Final.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully downloaded lz4-java-1.11.2.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Remapping lz4-java-1.11.2.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully remapped ahocorasick-0.6.3.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/com/google/jimfs/jimfs/1.3.2/jimfs-1.3.2.jar
+[00:43:42] [craft-engine-common-worker-6/INFO]: [CraftEngine] Successfully remapped commons-io-2.22.0.jar
+[00:43:42] [craft-engine-common-worker-6/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/com/bucket4j/bucket4j_jdk17-core/8.19.0/bucket4j_jdk17-core-8.19.0.jar
+[00:43:42] [craft-engine-common-worker-3/INFO]: [CraftEngine] Successfully downloaded netty-codec-http-4.1.137.Final.jar
+[00:43:42] [craft-engine-common-worker-3/INFO]: [CraftEngine] Remapping netty-codec-http-4.1.137.Final.jar
+[00:43:42] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully remapped adventure-api-5.2.0.jar
+[00:43:42] [craft-engine-common-worker-6/INFO]: [CraftEngine] Successfully downloaded bucket4j-jdk17-core-8.19.0.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully downloaded jimfs-1.3.2.jar
+[00:43:42] [craft-engine-common-worker-6/INFO]: [CraftEngine] Remapping bucket4j-jdk17-core-8.19.0.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Remapping jimfs-1.3.2.jar
+[00:43:42] [craft-engine-common-worker-0/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/bstats/bstats-bukkit/3.2.1/bstats-bukkit-3.2.1.jar
+[00:43:42] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully downloaded bstats-bukkit-3.2.1.jar
+[00:43:42] [craft-engine-common-worker-0/INFO]: [CraftEngine] Remapping bstats-bukkit-3.2.1.jar
+[00:43:42] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully remapped bstats-bukkit-3.2.1.jar
+[00:43:42] [craft-engine-common-worker-0/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/incendo/cloud-bukkit/2.0.0-beta.17/cloud-bukkit-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully downloaded cloud-bukkit-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-0/INFO]: [CraftEngine] Remapping cloud-bukkit-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully remapped lz4-java-1.11.2.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/incendo/cloud-paper/2.0.0-beta.17/cloud-paper-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully downloaded cloud-paper-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Remapping cloud-paper-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-7/INFO]: [CraftEngine] Successfully remapped commons-lang3-3.20.0.jar
+[00:43:42] [craft-engine-common-worker-7/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/incendo/cloud-brigadier/2.0.0-beta.17/cloud-brigadier-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-7/INFO]: [CraftEngine] Successfully downloaded cloud-brigadier-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-7/INFO]: [CraftEngine] Remapping cloud-brigadier-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully remapped cloud-paper-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/incendo/cloud-minecraft-extras/2.0.0-beta.17/cloud-minecraft-extras-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully remapped cloud-bukkit-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully remapped jimfs-1.3.2.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully downloaded cloud-minecraft-extras-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Remapping cloud-minecraft-extras-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-7/INFO]: [CraftEngine] Successfully remapped cloud-brigadier-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-2/INFO]: [CraftEngine] Successfully remapped caffeine-3.2.4.jar
+[00:43:42] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully remapped cloud-minecraft-extras-2.0.0-beta.17.jar
+[00:43:42] [craft-engine-common-worker-6/INFO]: [CraftEngine] Successfully remapped bucket4j-jdk17-core-8.19.0.jar
+[00:43:42] [craft-engine-common-worker-3/INFO]: [CraftEngine] Successfully remapped netty-codec-http-4.1.137.Final.jar
+[00:43:42] [craft-engine-common-worker-4/INFO]: [CraftEngine] Successfully remapped byte-buddy-1.18.12.jar
+[00:43:43] [Server thread/INFO]: [CraftEngine] Loading CraftEngine v26.9.1
+[00:43:43] [Server thread/INFO]: [CraftEngine] Initializing registries...
+[00:43:43] [craft-engine-common-worker-4/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/2.22/jackson-annotations-2.22.jar
+[00:43:43] [craft-engine-common-worker-1/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/flywaydb/flyway-core/13.5.0/flyway-core-13.5.0.jar
+[00:43:43] [craft-engine-common-worker-5/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.19/slf4j-api-2.0.19.jar
+[00:43:43] [craft-engine-common-worker-2/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/com/zaxxer/HikariCP/7.1.0/HikariCP-7.1.0.jar
+[00:43:43] [craft-engine-common-worker-6/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/tools/jackson/core/jackson-databind/3.2.2/jackson-databind-3.2.2.jar
+[00:43:43] [craft-engine-common-worker-7/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/jdbi/jdbi3-core/3.54.0/jdbi3-core-3.54.0.jar
+[00:43:43] [craft-engine-common-worker-0/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.53.4.0/sqlite-jdbc-3.53.4.0.jar
+[00:43:43] [craft-engine-common-worker-3/INFO]: [CraftEngine] Downloading dependency https://repo1.maven.org/maven2/tools/jackson/core/jackson-core/3.2.2/jackson-core-3.2.2.jar
+[00:43:43] [craft-engine-common-worker-4/INFO]: [CraftEngine] Successfully downloaded jackson-annotations-2.22.jar
+[00:43:43] [craft-engine-common-worker-4/INFO]: [CraftEngine] Remapping jackson-annotations-2.22.jar
+[00:43:43] [craft-engine-common-worker-4/INFO]: [CraftEngine] Successfully remapped jackson-annotations-2.22.jar
+[00:43:43] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully downloaded flyway-core-13.5.0.jar
+[00:43:43] [craft-engine-common-worker-1/INFO]: [CraftEngine] Remapping flyway-core-13.5.0.jar
+[00:43:43] [craft-engine-common-worker-3/INFO]: [CraftEngine] Successfully downloaded jackson-core-3.2.2.jar
+[00:43:43] [craft-engine-common-worker-3/INFO]: [CraftEngine] Remapping jackson-core-3.2.2.jar
+[00:43:43] [craft-engine-common-worker-5/INFO]: [CraftEngine] Successfully downloaded slf4j-api-2.0.19.jar
+[00:43:44] [craft-engine-common-worker-2/INFO]: [CraftEngine] Successfully downloaded hikaricp-7.1.0.jar
+[00:43:44] [craft-engine-common-worker-2/INFO]: [CraftEngine] Remapping hikaricp-7.1.0.jar
+[00:43:44] [craft-engine-common-worker-6/INFO]: [CraftEngine] Successfully downloaded jackson-databind-3.2.2.jar
+[00:43:44] [craft-engine-common-worker-6/INFO]: [CraftEngine] Remapping jackson-databind-3.2.2.jar
+[00:43:44] [craft-engine-common-worker-2/INFO]: [CraftEngine] Successfully remapped hikaricp-7.1.0.jar
+[00:43:44] [craft-engine-common-worker-3/INFO]: [CraftEngine] Successfully remapped jackson-core-3.2.2.jar
+[00:43:44] [craft-engine-common-worker-1/INFO]: [CraftEngine] Successfully remapped flyway-core-13.5.0.jar
+[00:43:44] [craft-engine-common-worker-7/INFO]: [CraftEngine] Successfully downloaded jdbi3-core-3.54.0.jar
+[00:43:44] [craft-engine-common-worker-7/INFO]: [CraftEngine] Remapping jdbi3-core-3.54.0.jar
+[00:43:44] [craft-engine-common-worker-0/INFO]: [CraftEngine] Successfully downloaded sqlite-jdbc-3.53.4.0.jar
+[00:43:44] [craft-engine-common-worker-7/INFO]: [CraftEngine] Successfully remapped jdbi3-core-3.54.0.jar
+[00:43:44] [craft-engine-common-worker-6/INFO]: [CraftEngine] Successfully remapped jackson-databind-3.2.2.jar
+[00:43:44] [Server thread/INFO]: craftengine-storage - Starting...
+[00:43:44] [Server thread/INFO]: craftengine-storage - Added connection org.sqlite.jdbc4.JDBC4Connection@50743345
+[00:43:44] [Server thread/INFO]: craftengine-storage - Start completed.
+[00:43:44] [Server thread/INFO]: Database: ******** (SQLite 3.51)
+[00:43:44] [Server thread/INFO]: Schema history table "main"."ce_schema_history" does not exist yet
+[00:43:44] [Server thread/INFO]: Successfully validated 1 migration (execution time 00:00.007s)
+[00:43:44] [Server thread/INFO]: All configured schemas are empty; a baseline marker will not be added to Flyway's schema history table. A baseline or migration script with a lower version than the baseline version may execute if available. Check the Schemas parameter if this is not intended. See https://help.red-gate.com/help/flyway-cli13/help_5.aspx?topic=baseline-on-migrate for more info
+[00:43:44] [Server thread/INFO]: Creating Schema History table "main"."ce_schema_history" ...
+[00:43:44] [Server thread/INFO]: Current version of schema "main": << Empty Schema >>
+[00:43:44] [Server thread/INFO]: Migrating schema "main" to version "1 - pack preferences"
+[00:43:44] [Server thread/INFO]: Successfully applied 1 migration to schema "main", now at version v1 (execution time 00:00.001s)
+[00:43:45] [Server thread/INFO]: [Allium] Loading Allium v1.0.0-SNAPSHOT
+[00:43:45] [Server thread/INFO]: [LaneGate] Loading LaneGate v1.0-validation
+[00:43:45] [Server thread/INFO]: [CraftEngine] Enabling CraftEngine v26.9.1
+[00:43:45] [Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[00:43:45] [Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.
+[00:43:45] [Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[00:43:45] [Server thread/WARN]: To change this, set "online-mode" to "true" in the server.properties file.
+[00:43:45] [Server thread/INFO]: Preparing level "s05-fresh-world"
+[00:43:45] [Server thread/INFO]: -------- World Settings For [s05-fresh-world] --------
+[00:43:45] [Server thread/INFO]: Cactus Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Cane Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Melon Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Mushroom Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Pumpkin Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Sapling Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Beetroot Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Carrot Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Potato Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Wheat Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: NetherWart Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Vine Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Cocoa Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Bamboo Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: SweetBerry Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Kelp Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: TwistingVines Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: WeepingVines Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: CaveVines Growth Modifier: 100%
+[00:43:45] [Server thread/INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Di 128 / Other 64
+[00:43:45] [Server thread/INFO]: Hopper Transfer: 8 Hopper Check: 1 Hopper Amount: 1 Hopper Can Load Chunks: false
+[00:43:45] [Server thread/INFO]: Custom Map Seeds:  Village: 10387312 Desert: 14357617 Igloo: 14357618 Jungle: 14357619 Swamp: 14357620 Monument: 10387313 Ocean: 14357621 Shipwreck: 165745295 End City: 10387313 Slime: 987234911 Nether: 30084232 Mansion: 10387319 Fossil: 14357921 Portal: 34222645
+[00:43:45] [Server thread/INFO]: Max TNT Explosions: 100
+[00:43:45] [Server thread/INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms
+[00:43:45] [Server thread/INFO]: Experience Merge Radius: 3.0
+[00:43:45] [Server thread/INFO]: Mob Spawn Range: 6
+[00:43:45] [Server thread/INFO]: View Distance: 3
+[00:43:45] [Server thread/INFO]: Simulation Distance: 2
+[00:43:45] [Server thread/INFO]: Item Despawn Rate: 6000
+[00:43:45] [Server thread/INFO]: Item Merge Radius: 2.5
+[00:43:45] [Server thread/INFO]: Entity Activation Range: An 32 / Mo 32 / Ra 48 / Mi 16 / Tiv true / Isa false
+[00:43:45] [Server thread/INFO]: Allow Zombie Pigmen to spawn from portal blocks: true
+[00:43:45] [Server thread/INFO]: Arrow Despawn Rate: 1200 Trident Respawn Rate:1200
+[00:43:45] [Server thread/INFO]: Zombie Aggressive Towards Villager: true
+[00:43:45] [Server thread/INFO]: Nerfing mobs spawned from spawners: false
+[00:43:45] [Server thread/INFO]: Selecting global world spawn...
+[00:43:51] [Server thread/INFO]: -------- World Settings For [s05-fresh-world_nether] --------
+[00:43:51] [Server thread/INFO]: Cactus Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Cane Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Melon Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Mushroom Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Pumpkin Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Sapling Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Beetroot Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Carrot Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Potato Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Wheat Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: NetherWart Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Vine Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Cocoa Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Bamboo Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: SweetBerry Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Kelp Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: TwistingVines Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: WeepingVines Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: CaveVines Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Di 128 / Other 64
+[00:43:51] [Server thread/INFO]: Hopper Transfer: 8 Hopper Check: 1 Hopper Amount: 1 Hopper Can Load Chunks: false
+[00:43:51] [Server thread/INFO]: Custom Map Seeds:  Village: 10387312 Desert: 14357617 Igloo: 14357618 Jungle: 14357619 Swamp: 14357620 Monument: 10387313 Ocean: 14357621 Shipwreck: 165745295 End City: 10387313 Slime: 987234911 Nether: 30084232 Mansion: 10387319 Fossil: 14357921 Portal: 34222645
+[00:43:51] [Server thread/INFO]: Max TNT Explosions: 100
+[00:43:51] [Server thread/INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms
+[00:43:51] [Server thread/INFO]: Experience Merge Radius: 3.0
+[00:43:51] [Server thread/INFO]: Mob Spawn Range: 6
+[00:43:51] [Server thread/INFO]: View Distance: 3
+[00:43:51] [Server thread/INFO]: Simulation Distance: 2
+[00:43:51] [Server thread/INFO]: Item Despawn Rate: 6000
+[00:43:51] [Server thread/INFO]: Item Merge Radius: 2.5
+[00:43:51] [Server thread/INFO]: Entity Activation Range: An 32 / Mo 32 / Ra 48 / Mi 16 / Tiv true / Isa false
+[00:43:51] [Server thread/INFO]: Allow Zombie Pigmen to spawn from portal blocks: true
+[00:43:51] [Server thread/INFO]: Arrow Despawn Rate: 1200 Trident Respawn Rate:1200
+[00:43:51] [Server thread/INFO]: Zombie Aggressive Towards Villager: true
+[00:43:51] [Server thread/INFO]: Nerfing mobs spawned from spawners: false
+[00:43:51] [Server thread/INFO]: Selecting global world spawn...
+[00:43:51] [Server thread/INFO]: -------- World Settings For [s05-fresh-world_the_end] --------
+[00:43:51] [Server thread/INFO]: Cactus Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Cane Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Melon Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Mushroom Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Pumpkin Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Sapling Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Beetroot Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Carrot Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Potato Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Wheat Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: NetherWart Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Vine Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Cocoa Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Bamboo Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: SweetBerry Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Kelp Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: TwistingVines Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: WeepingVines Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: CaveVines Growth Modifier: 100%
+[00:43:51] [Server thread/INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Di 128 / Other 64
+[00:43:51] [Server thread/INFO]: Hopper Transfer: 8 Hopper Check: 1 Hopper Amount: 1 Hopper Can Load Chunks: false
+[00:43:51] [Server thread/INFO]: Custom Map Seeds:  Village: 10387312 Desert: 14357617 Igloo: 14357618 Jungle: 14357619 Swamp: 14357620 Monument: 10387313 Ocean: 14357621 Shipwreck: 165745295 End City: 10387313 Slime: 987234911 Nether: 30084232 Mansion: 10387319 Fossil: 14357921 Portal: 34222645
+[00:43:51] [Server thread/INFO]: Max TNT Explosions: 100
+[00:43:51] [Server thread/INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms
+[00:43:51] [Server thread/INFO]: Experience Merge Radius: 3.0
+[00:43:51] [Server thread/INFO]: Mob Spawn Range: 6
+[00:43:51] [Server thread/INFO]: View Distance: 3
+[00:43:51] [Server thread/INFO]: Simulation Distance: 2
+[00:43:51] [Server thread/INFO]: Item Despawn Rate: 6000
+[00:43:51] [Server thread/INFO]: Item Merge Radius: 2.5
+[00:43:51] [Server thread/INFO]: Entity Activation Range: An 32 / Mo 32 / Ra 48 / Mi 16 / Tiv true / Isa false
+[00:43:51] [Server thread/INFO]: Allow Zombie Pigmen to spawn from portal blocks: true
+[00:43:51] [Server thread/INFO]: Arrow Despawn Rate: 1200 Trident Respawn Rate:1200
+[00:43:51] [Server thread/INFO]: Zombie Aggressive Towards Villager: true
+[00:43:51] [Server thread/INFO]: Nerfing mobs spawned from spawners: false
+[00:43:51] [Server thread/INFO]: Selecting global world spawn...
+[00:43:51] [Server thread/INFO]: Loading 0 persistent chunks...
+[00:43:51] [Server thread/INFO]: Preparing spawn area: 100%
+[00:43:51] [Server thread/INFO]: Time elapsed: 6159 ms
+[00:43:51] [Server thread/INFO]: [Allium] Enabling Allium v1.0.0-SNAPSHOT
+[00:43:51] [Server thread/INFO]: [Allium] Starting Allium...
+[00:43:51] [Server thread/INFO]: [Allium] Loaded locale: en_US
+[00:43:51] [Server thread/INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[00:43:51] [Server thread/INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[00:43:51] [Server thread/INFO]: Allium-Pool - Starting...
+[00:43:51] [Server thread/INFO]: Allium-Pool - Added connection org.sqlite.jdbc4.JDBC4Connection@7ea8aa84
+[00:43:51] [Server thread/INFO]: Allium-Pool - Start completed.
+[00:43:51] [Server thread/INFO]: [Allium] Database connected (SQLITE).
+[00:43:51] [Server thread/INFO]: [Allium] Module [economy] enabled.
+[00:43:51] [Server thread/INFO]: [Allium] Module [essentials] enabled.
+[00:43:51] [Server thread/INFO]: [Allium] Item signing keyring loaded: active=k1, verification keys=[k1]. Loaded inventories are audited for unknown key IDs.
+[00:43:51] [Server thread/INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[00:43:51] [Server thread/INFO]: [LaneGate] Enabling LaneGate v1.0-validation
+[00:43:52] [Server thread/INFO]: [LaneGate] S05-LANE-BOOT 4645-Spigot-8db49a2-c4d1107 (MC: 26.2) expected=[craftengine]
+[00:43:52] [Server thread/INFO]: Done (6.431s)! For help, type "help"
+[00:43:52] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world]'/minecraft:overworld
+[00:43:52] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_nether]'/minecraft:the_nether
+[00:43:52] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_the_end]'/minecraft:the_end
+[00:43:52] [Server thread/INFO]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[00:43:52] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[00:43:52] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[00:43:52] [Server thread/INFO]: ThreadedAnvilChunkStorage: All dimensions are saved
+[00:43:52] [Server thread/INFO]: [CraftEngine] Loaded pack: s05_spigot. Default namespace: sf_ores
+[00:43:52] [craft-engine-common-worker-2/INFO]: [CraftEngine] Loaded items in 8.15ms (1)
+[00:43:52] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine native event exposes PROVIDER_LOADING
+[00:43:52] [Server thread/INFO]: [Allium] CraftEngine provider (26.9.1) READY (1 items).
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-READY
+HARNESS CONSOLE> version
+HARNESS CONSOLE> plugins
+HARNESS CONSOLE> lanegate probe
+[00:43:53] [Server thread/INFO]: This server is running Spigot version 4645-Spigot-8db49a2-c4d1107 (MC: 26.2) (Implementing API version 26.2-R0.1-SNAPSHOT)
+[00:43:53] [Server thread/INFO]: Checking version, please wait...
+[00:43:53] [Server thread/INFO]: Plugins (3): CraftEngine, Allium, LaneGate
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-PASS expected providers ready; others absent
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine native identity
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine signature
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature unchanged
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized UUID unchanged
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine spent state unchanged
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature verifies
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized native identity
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-PROBE-PASS
+HARNESS CONSOLE> lanegate awaitreload
+HARNESS CONSOLE> ce reload
+[00:43:53] [craft-engine-common-worker-7/INFO]: [CraftEngine] Loaded pack: s05_spigot. Default namespace: sf_ores
+[00:43:53] [craft-engine-common-worker-0/INFO]: [CraftEngine] Loaded items in 0.28ms (1)
+[00:43:53] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine native event exposes PROVIDER_LOADING
+[00:43:53] [Server thread/INFO]: » CraftEngine • Configs reloaded (16/1 ms)
+[00:43:53] [Server thread/INFO]: [Allium] CraftEngine provider (26.9.1) READY (1 items).
+[00:43:53] [Thread-3/INFO]: You are 21 version(s) behind
+[00:43:54] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature unchanged
+[00:43:54] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized UUID unchanged
+[00:43:54] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine spent state unchanged
+[00:43:54] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature verifies
+[00:43:54] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized native identity
+[00:43:54] [Server thread/INFO]: [LaneGate] S05-LANE-RELOAD-PASS
+HARNESS CONSOLE> stop
+[00:43:54] [Server thread/INFO]: Stopping the server
+[00:43:54] [Server thread/INFO]: Stopping server
+[00:43:54] [Server thread/INFO]: [LaneGate] Disabling LaneGate v1.0-validation
+[00:43:54] [Server thread/INFO]: [Allium] Disabling Allium v1.0.0-SNAPSHOT
+[00:43:54] [Server thread/INFO]: [Allium] Module [economy] disabled.
+[00:43:54] [Server thread/INFO]: [Allium] Module [essentials] disabled.
+[00:43:54] [Server thread/INFO]: Allium-Pool - Shutdown initiated...
+[00:43:54] [Server thread/INFO]: Allium-Pool - Shutdown completed.
+[00:43:54] [Server thread/INFO]: [Allium] Database connection pool closed.
+[00:43:54] [Server thread/INFO]: [Allium] Allium disabled.
+[00:43:54] [Server thread/INFO]: [CraftEngine] Disabling CraftEngine v26.9.1
+[00:43:54] [Server thread/INFO]: craftengine-storage - Shutdown initiated...
+[00:43:54] [Server thread/INFO]: craftengine-storage - Shutdown completed.
+[00:43:54] [Server thread/INFO]: Saving players
+[00:43:54] [Server thread/INFO]: Saving worlds
+[00:43:54] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world]'/minecraft:overworld
+[00:43:54] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_nether]'/minecraft:the_nether
+[00:43:54] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_the_end]'/minecraft:the_end
+[00:43:54] [Server thread/INFO]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[00:43:54] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[00:43:54] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[00:43:54] [Server thread/INFO]: ThreadedAnvilChunkStorage: All dimensions are saved
+STAGE RESULT {"stage": "boot_and_native_reload", "exit": 0, "markers": ["S05-LANE-PROBE-PASS", "S05-LANE-READY", "S05-LANE-RELOAD-PASS"], "infrastructure_failure": null, "allium_disabled": true, "craftengine_disabled": true, "pass": true}
+--- RESTART / SERIALIZED CHECKPOINT ---
+*** Error, this build is outdated ***
+*** Please download a new build as per instructions from https://www.spigotmc.org/go/outdated-spigot ***
+*** Server will start in 20 seconds ***
+Loading libraries, please wait...
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by com.sun.jna.Native in an unnamed module (file:/tmp/allium-s05-20261106/spigot/26.2-ce-26.9.1-r2/bundler/libraries/jna-5.17.0.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/tmp/allium-s05-20261106/spigot/26.2-ce-26.9.1-r2/bundler/libraries/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+[00:44:19] [main/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, profilesHost=https://api.mojang.com, name=PROD]
+[00:44:20] [main/INFO]: Loaded 1585 recipes
+[00:44:19] [main/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, profilesHost=https://api.mojang.com, name=PROD]
+[00:44:20] [main/INFO]: Loaded 1585 recipes
+[00:44:20] [Server thread/INFO]: Starting minecraft server version 26.2
+[00:44:20] [Server thread/INFO]: Loading properties
+[00:44:20] [Server thread/INFO]: This server is running Spigot version 4645-Spigot-8db49a2-c4d1107 (MC: 26.2) (Implementing API version 26.2-R0.1-SNAPSHOT)
+[00:44:20] [Server thread/INFO]: *** This version of Spigot contains changes to some enums. If you notice that plugins no longer work after updating, please report this to the developers of those plugins first. ***
+[00:44:20] [Server thread/INFO]: *** If you cannot update those plugins, you can try setting `settings.compatibility.enum-compatibility-mode` to `true` in `bukkit.yml`. ***
+[00:44:20] [Server thread/INFO]: Debug logging is disabled
+[00:44:20] [Server thread/INFO]: Server Ping Player Sample Count: 12
+[00:44:20] [Server thread/INFO]: Using 4 threads for Netty based IO
+[00:44:20] [Server thread/INFO]: Default game type: SURVIVAL
+[00:44:20] [Server thread/INFO]: Generating keypair
+[00:44:20] [Server thread/INFO]: Starting Minecraft server on 127.0.0.1:25626
+[00:44:21] [Server thread/INFO]: [CraftEngine] Loading CraftEngine v26.9.1
+[00:44:21] [Server thread/INFO]: [CraftEngine] Initializing registries...
+[00:44:21] [Server thread/INFO]: craftengine-storage - Starting...
+[00:44:21] [Server thread/INFO]: craftengine-storage - Added connection org.sqlite.jdbc4.JDBC4Connection@6ef874b2
+[00:44:21] [Server thread/INFO]: craftengine-storage - Start completed.
+[00:44:21] [Server thread/INFO]: Database: ******** (SQLite 3.51)
+[00:44:21] [Server thread/INFO]: Successfully validated 1 migration (execution time 00:00.009s)
+[00:44:21] [Server thread/INFO]: Current version of schema "main": 1
+[00:44:21] [Server thread/INFO]: Schema "main" is up to date. No migration necessary.
+[00:44:22] [Server thread/INFO]: [Allium] Loading Allium v1.0.0-SNAPSHOT
+[00:44:22] [Server thread/INFO]: [LaneGate] Loading LaneGate v1.0-validation
+[00:44:22] [Server thread/INFO]: [CraftEngine] Enabling CraftEngine v26.9.1
+[00:44:22] [Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[00:44:22] [Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.
+[00:44:22] [Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[00:44:22] [Server thread/WARN]: To change this, set "online-mode" to "true" in the server.properties file.
+[00:44:22] [Server thread/INFO]: Preparing level "s05-fresh-world"
+[00:44:22] [Server thread/INFO]: -------- World Settings For [s05-fresh-world] --------
+[00:44:22] [Server thread/INFO]: Experience Merge Radius: 3.0
+[00:44:22] [Server thread/INFO]: Mob Spawn Range: 6
+[00:44:22] [Server thread/INFO]: Cactus Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Cane Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Melon Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Mushroom Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Pumpkin Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Sapling Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Beetroot Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Carrot Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Potato Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Wheat Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: NetherWart Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Vine Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Cocoa Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Bamboo Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: SweetBerry Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Kelp Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: TwistingVines Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: WeepingVines Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: CaveVines Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Di 128 / Other 64
+[00:44:22] [Server thread/INFO]: Hopper Transfer: 8 Hopper Check: 1 Hopper Amount: 1 Hopper Can Load Chunks: false
+[00:44:22] [Server thread/INFO]: Custom Map Seeds:  Village: 10387312 Desert: 14357617 Igloo: 14357618 Jungle: 14357619 Swamp: 14357620 Monument: 10387313 Ocean: 14357621 Shipwreck: 165745295 End City: 10387313 Slime: 987234911 Nether: 30084232 Mansion: 10387319 Fossil: 14357921 Portal: 34222645
+[00:44:22] [Server thread/INFO]: Max TNT Explosions: 100
+[00:44:22] [Server thread/INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms
+[00:44:22] [Server thread/INFO]: View Distance: 3
+[00:44:22] [Server thread/INFO]: Simulation Distance: 2
+[00:44:22] [Server thread/INFO]: Item Despawn Rate: 6000
+[00:44:22] [Server thread/INFO]: Item Merge Radius: 2.5
+[00:44:22] [Server thread/INFO]: Entity Activation Range: An 32 / Mo 32 / Ra 48 / Mi 16 / Tiv true / Isa false
+[00:44:22] [Server thread/INFO]: Allow Zombie Pigmen to spawn from portal blocks: true
+[00:44:22] [Server thread/INFO]: Arrow Despawn Rate: 1200 Trident Respawn Rate:1200
+[00:44:22] [Server thread/INFO]: Zombie Aggressive Towards Villager: true
+[00:44:22] [Server thread/INFO]: Nerfing mobs spawned from spawners: false
+[00:44:22] [Server thread/INFO]: -------- World Settings For [s05-fresh-world_nether] --------
+[00:44:22] [Server thread/INFO]: Experience Merge Radius: 3.0
+[00:44:22] [Server thread/INFO]: Mob Spawn Range: 6
+[00:44:22] [Server thread/INFO]: Cactus Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Cane Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Melon Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Mushroom Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Pumpkin Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Sapling Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Beetroot Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Carrot Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Potato Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Wheat Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: NetherWart Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Vine Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Cocoa Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Bamboo Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: SweetBerry Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Kelp Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: TwistingVines Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: WeepingVines Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: CaveVines Growth Modifier: 100%
+[00:44:22] [Server thread/INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Di 128 / Other 64
+[00:44:22] [Server thread/INFO]: Hopper Transfer: 8 Hopper Check: 1 Hopper Amount: 1 Hopper Can Load Chunks: false
+[00:44:22] [Server thread/INFO]: Custom Map Seeds:  Village: 10387312 Desert: 14357617 Igloo: 14357618 Jungle: 14357619 Swamp: 14357620 Monument: 10387313 Ocean: 14357621 Shipwreck: 165745295 End City: 10387313 Slime: 987234911 Nether: 30084232 Mansion: 10387319 Fossil: 14357921 Portal: 34222645
+[00:44:22] [Server thread/INFO]: Max TNT Explosions: 100
+[00:44:22] [Server thread/INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms
+[00:44:22] [Server thread/INFO]: View Distance: 3
+[00:44:22] [Server thread/INFO]: Simulation Distance: 2
+[00:44:22] [Server thread/INFO]: Item Despawn Rate: 6000
+[00:44:22] [Server thread/INFO]: Item Merge Radius: 2.5
+[00:44:22] [Server thread/INFO]: Entity Activation Range: An 32 / Mo 32 / Ra 48 / Mi 16 / Tiv true / Isa false
+[00:44:22] [Server thread/INFO]: Allow Zombie Pigmen to spawn from portal blocks: true
+[00:44:22] [Server thread/INFO]: Arrow Despawn Rate: 1200 Trident Respawn Rate:1200
+[00:44:22] [Server thread/INFO]: Zombie Aggressive Towards Villager: true
+[00:44:22] [Server thread/INFO]: Nerfing mobs spawned from spawners: false
+[00:44:23] [Server thread/INFO]: -------- World Settings For [s05-fresh-world_the_end] --------
+[00:44:23] [Server thread/INFO]: Experience Merge Radius: 3.0
+[00:44:23] [Server thread/INFO]: Mob Spawn Range: 6
+[00:44:23] [Server thread/INFO]: Cactus Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Cane Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Melon Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Mushroom Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Pumpkin Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Sapling Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Beetroot Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Carrot Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Potato Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Wheat Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: NetherWart Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Vine Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Cocoa Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Bamboo Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: SweetBerry Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Kelp Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: TwistingVines Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: WeepingVines Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: CaveVines Growth Modifier: 100%
+[00:44:23] [Server thread/INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Di 128 / Other 64
+[00:44:23] [Server thread/INFO]: Hopper Transfer: 8 Hopper Check: 1 Hopper Amount: 1 Hopper Can Load Chunks: false
+[00:44:23] [Server thread/INFO]: Custom Map Seeds:  Village: 10387312 Desert: 14357617 Igloo: 14357618 Jungle: 14357619 Swamp: 14357620 Monument: 10387313 Ocean: 14357621 Shipwreck: 165745295 End City: 10387313 Slime: 987234911 Nether: 30084232 Mansion: 10387319 Fossil: 14357921 Portal: 34222645
+[00:44:23] [Server thread/INFO]: Max TNT Explosions: 100
+[00:44:23] [Server thread/INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms
+[00:44:23] [Server thread/INFO]: View Distance: 3
+[00:44:23] [Server thread/INFO]: Simulation Distance: 2
+[00:44:23] [Server thread/INFO]: Item Despawn Rate: 6000
+[00:44:23] [Server thread/INFO]: Item Merge Radius: 2.5
+[00:44:23] [Server thread/INFO]: Entity Activation Range: An 32 / Mo 32 / Ra 48 / Mi 16 / Tiv true / Isa false
+[00:44:23] [Server thread/INFO]: Allow Zombie Pigmen to spawn from portal blocks: true
+[00:44:23] [Server thread/INFO]: Arrow Despawn Rate: 1200 Trident Respawn Rate:1200
+[00:44:23] [Server thread/INFO]: Zombie Aggressive Towards Villager: true
+[00:44:23] [Server thread/INFO]: Nerfing mobs spawned from spawners: false
+[00:44:23] [Server thread/INFO]: Loading 0 persistent chunks...
+[00:44:23] [Server thread/INFO]: Time elapsed: 0 ms
+[00:44:23] [Server thread/INFO]: [Allium] Enabling Allium v1.0.0-SNAPSHOT
+[00:44:23] [Server thread/INFO]: [Allium] Starting Allium...
+[00:44:23] [Server thread/INFO]: [Allium] Loaded locale: en_US
+[00:44:23] [Server thread/INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[00:44:23] [Server thread/INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[00:44:23] [Server thread/INFO]: Allium-Pool - Starting...
+[00:44:23] [Server thread/INFO]: Allium-Pool - Added connection org.sqlite.jdbc4.JDBC4Connection@7df538d5
+[00:44:23] [Server thread/INFO]: Allium-Pool - Start completed.
+[00:44:23] [Server thread/INFO]: [Allium] Database connected (SQLITE).
+[00:44:23] [Server thread/INFO]: [Allium] Module [economy] enabled.
+[00:44:23] [Server thread/INFO]: [Allium] Module [essentials] enabled.
+[00:44:23] [Server thread/INFO]: [Allium] Item signing keyring loaded: active=k1, verification keys=[k1]. Loaded inventories are audited for unknown key IDs.
+[00:44:23] [Server thread/INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[00:44:23] [Server thread/INFO]: [LaneGate] Enabling LaneGate v1.0-validation
+[00:44:23] [Server thread/INFO]: [LaneGate] S05-LANE-BOOT 4645-Spigot-8db49a2-c4d1107 (MC: 26.2) expected=[craftengine]
+[00:44:23] [Server thread/INFO]: Server permissions file permissions.yml is empty, ignoring it
+[00:44:23] [Server thread/INFO]: Done (0.195s)! For help, type "help"
+[00:44:23] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world]'/minecraft:overworld
+[00:44:23] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_nether]'/minecraft:the_nether
+[00:44:23] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_the_end]'/minecraft:the_end
+[00:44:23] [Server thread/INFO]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[00:44:23] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[00:44:23] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[00:44:23] [Server thread/INFO]: ThreadedAnvilChunkStorage: All dimensions are saved
+[00:44:23] [Server thread/INFO]: [CraftEngine] Loaded pack: s05_spigot. Default namespace: sf_ores
+[00:44:23] [craft-engine-common-worker-4/INFO]: [CraftEngine] Loaded items in 6.52ms (1)
+[00:44:23] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine native event exposes PROVIDER_LOADING
+[00:44:23] [Server thread/INFO]: [Allium] CraftEngine provider (26.9.1) READY (1 items).
+[00:44:24] [Server thread/INFO]: [LaneGate] S05-LANE-READY
+HARNESS CONSOLE> version
+HARNESS CONSOLE> plugins
+HARNESS CONSOLE> lanegate restore
+[00:44:24] [Server thread/INFO]: This server is running Spigot version 4645-Spigot-8db49a2-c4d1107 (MC: 26.2) (Implementing API version 26.2-R0.1-SNAPSHOT)
+[00:44:24] [Server thread/INFO]: Checking version, please wait...
+[00:44:24] [Server thread/INFO]: Plugins (3): CraftEngine, Allium, LaneGate
+[00:44:24] [Server thread/INFO]: [LaneGate] S05-LANE-PASS providers ready after restart
+[00:44:24] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature unchanged
+[00:44:24] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized UUID unchanged
+[00:44:24] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine spent state unchanged
+[00:44:24] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized signature verifies
+[00:44:24] [Server thread/INFO]: [LaneGate] S05-LANE-PASS craftengine serialized native identity
+[00:44:24] [Server thread/INFO]: [LaneGate] S05-LANE-RESTORE-PASS
+HARNESS CONSOLE> stop
+[00:44:24] [Server thread/INFO]: Stopping the server
+[00:44:24] [Server thread/INFO]: Stopping server
+[00:44:24] [Server thread/INFO]: [LaneGate] Disabling LaneGate v1.0-validation
+[00:44:24] [Server thread/INFO]: [Allium] Disabling Allium v1.0.0-SNAPSHOT
+[00:44:24] [Server thread/INFO]: [Allium] Module [economy] disabled.
+[00:44:24] [Server thread/INFO]: [Allium] Module [essentials] disabled.
+[00:44:24] [Server thread/INFO]: Allium-Pool - Shutdown initiated...
+[00:44:24] [Server thread/INFO]: Allium-Pool - Shutdown completed.
+[00:44:24] [Server thread/INFO]: [Allium] Database connection pool closed.
+[00:44:24] [Server thread/INFO]: [Allium] Allium disabled.
+[00:44:24] [Server thread/INFO]: [CraftEngine] Disabling CraftEngine v26.9.1
+[00:44:24] [Server thread/INFO]: craftengine-storage - Shutdown initiated...
+[00:44:24] [Server thread/INFO]: craftengine-storage - Shutdown completed.
+[00:44:24] [Server thread/INFO]: Saving players
+[00:44:24] [Server thread/INFO]: Saving worlds
+[00:44:24] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world]'/minecraft:overworld
+[00:44:24] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_nether]'/minecraft:the_nether
+[00:44:24] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_the_end]'/minecraft:the_end
+[00:44:24] [Server thread/INFO]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[00:44:24] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[00:44:24] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[00:44:24] [Server thread/INFO]: ThreadedAnvilChunkStorage: All dimensions are saved
+[00:44:24] [Thread-3/INFO]: You are 21 version(s) behind
+STAGE RESULT {"stage": "serialized_checkpoint_restart", "exit": 0, "markers": ["S05-LANE-READY", "S05-LANE-RESTORE-PASS"], "infrastructure_failure": null, "allium_disabled": true, "craftengine_disabled": true, "pass": true}
+--- HARNESS RESULT ---
+{
+  "pass": true,
+  "stages": [
+    {
+      "stage": "boot_and_native_reload",
+      "exit": 0,
+      "markers": [
+        "S05-LANE-PROBE-PASS",
+        "S05-LANE-READY",
+        "S05-LANE-RELOAD-PASS"
+      ],
+      "infrastructure_failure": null,
+      "allium_disabled": true,
+      "craftengine_disabled": true,
+      "pass": true
+    },
+    {
+      "stage": "serialized_checkpoint_restart",
+      "exit": 0,
+      "markers": [
+        "S05-LANE-READY",
+        "S05-LANE-RESTORE-PASS"
+      ],
+      "infrastructure_failure": null,
+      "allium_disabled": true,
+      "craftengine_disabled": true,
+      "pass": true
+    }
+  ],
+  "allium_sha256_after": "4e90e660141964643ac32ee8580b74082ffec2460e3ca0a85428db4e88c1c14e",
+  "installed_allium_sha256": "4e90e660141964643ac32ee8580b74082ffec2460e3ca0a85428db4e88c1c14e"
+}
+POST-RUN VERIFICATION 2026-11-06T08:45:53.714559+00:00: all recorded owned JVM PIDs absent; no loopback TCP listener on reserved ports 25625-25629.
+POST-RUN RUNTIME JAR SHA-256 (CE-downloaded libraries and installed plugins):
+{
+  "plugins/Allium.jar": "4e90e660141964643ac32ee8580b74082ffec2460e3ca0a85428db4e88c1c14e",
+  "plugins/CraftEngine/libs/at/yawk/lz4/lz4-java/1.11.2/lz4-java-1.11.2-remapped.jar": "7544ff8ce182c2fd2d16a844153f1fb0308c71ae7a68d2a2ad386ccf952e5b4d",
+  "plugins/CraftEngine/libs/at/yawk/lz4/lz4-java/1.11.2/lz4-java-1.11.2.jar": "8a7458657938e9b692224db83aac458c13abd7a59ab75c3d3b08bd2233a646a2",
+  "plugins/CraftEngine/libs/com/bucket4j/bucket4j_jdk17-core/8.19.0/bucket4j-jdk17-core-8.19.0-remapped.jar": "bf8b1da372fa8f89f63bb41e7157954450660eca11fbd25a5627944c4894a40b",
+  "plugins/CraftEngine/libs/com/bucket4j/bucket4j_jdk17-core/8.19.0/bucket4j-jdk17-core-8.19.0.jar": "603885663799e203f7e17394315fdbdc584fe021643614d8a34b49b53e618c74",
+  "plugins/CraftEngine/libs/com/fasterxml/jackson/core/jackson-annotations/2.22/jackson-annotations-2.22-remapped.jar": "f349eaf67d0332baf2afed29eaddc6d1a18459bdad2caea0d919d5f520ff29c7",
+  "plugins/CraftEngine/libs/com/fasterxml/jackson/core/jackson-annotations/2.22/jackson-annotations-2.22.jar": "21ddb598807d3a51a876704eb979d9296e1c6a6f47ab1826ff88c6d6a127a2d0",
+  "plugins/CraftEngine/libs/com/github/ben-manes/caffeine/caffeine/3.2.4/caffeine-3.2.4-remapped.jar": "87f4f4c042c90e533ca82e1920c85cbbad2e582ec833b1c9adfe9977b597110d",
+  "plugins/CraftEngine/libs/com/github/ben-manes/caffeine/caffeine/3.2.4/caffeine-3.2.4.jar": "9d9d2cfd681fd9272ded3d27c9930db12f89f732345975aa113ebc223bbf1224",
+  "plugins/CraftEngine/libs/com/github/luben/zstd-jni/1.5.7-15/zstd-jni-1.5.7-15.jar": "88af05c50951c2c8d0fe10c7b3451736204fcc389eaad01e767e7acc64e75fe2",
+  "plugins/CraftEngine/libs/com/google/code/gson/gson/2.14.0/gson-2.14.0.jar": "2cbd119bf1961c28788310963dc80ba65f58cdeec1dd139c8bdb1240faa2c36f",
+  "plugins/CraftEngine/libs/com/google/jimfs/jimfs/1.3.2/jimfs-1.3.2-remapped.jar": "9e9ee7cd157ed7b2a7d214db2b1e8df6631a1c782dbed0895d015517f907589e",
+  "plugins/CraftEngine/libs/com/google/jimfs/jimfs/1.3.2/jimfs-1.3.2.jar": "30f4c0d36508d794b0107286eae7a43e9ad8ad593148002acac941196f619c59",
+  "plugins/CraftEngine/libs/com/zaxxer/HikariCP/7.1.0/hikaricp-7.1.0-remapped.jar": "a3cd10a6b3bea6e797b3fd769f373471607b1da28ed6cac2506d854a4b1c7bed",
+  "plugins/CraftEngine/libs/com/zaxxer/HikariCP/7.1.0/hikaricp-7.1.0.jar": "2be45c641b841e81df87292e181f2c203500c5f0e9a1676f135927387f3cf40b",
+  "plugins/CraftEngine/libs/commons-io/commons-io/2.22.0/commons-io-2.22.0-remapped.jar": "1352b51d55b1272fefca816067dbb5481bd7fd3499d73ccc51a41c05992595af",
+  "plugins/CraftEngine/libs/commons-io/commons-io/2.22.0/commons-io-2.22.0.jar": "2b9a7b1f726fb86216dbd2c8321eabe0221dbd5b1be81c18e1cb53811b104758",
+  "plugins/CraftEngine/libs/io/leangen/geantyref/geantyref/2.0.1/geantyref-2.0.1-remapped.jar": "650e7dccfd4e44d5c52bc819e81d10126ddaea38106d75fef17dc42a68fc8e12",
+  "plugins/CraftEngine/libs/io/leangen/geantyref/geantyref/2.0.1/geantyref-2.0.1.jar": "386b535c079be7d65ddbe0ad9c00955155b7862225aa92b4c6553ab2b1ea95f9",
+  "plugins/CraftEngine/libs/io/netty/netty-codec-http/4.1.137.Final/netty-codec-http-4.1.137.Final-remapped.jar": "17755e235739167ea043c81e5031e45228b106392d751b8eda8dee9378ef3477",
+  "plugins/CraftEngine/libs/io/netty/netty-codec-http/4.1.137.Final/netty-codec-http-4.1.137.Final.jar": "0535bb5a736472bef5c948d15eb273c4ab9f796656fc7c5d6b982ad92bddbd49",
+  "plugins/CraftEngine/libs/me/lucko/jar-relocator/1.7/jar-relocator-1.7.jar": "6f7d1184e17a90788797e3b9b2e34b87ff9e02bd623851052d78709071c3bb82",
+  "plugins/CraftEngine/libs/net/bytebuddy/byte-buddy/1.18.12/byte-buddy-1.18.12-remapped.jar": "17402c69ee561ed326d7cd2955b51fe4e0800969350c795375ee584c09417a75",
+  "plugins/CraftEngine/libs/net/bytebuddy/byte-buddy/1.18.12/byte-buddy-1.18.12.jar": "2ed11da684a8f5b088e0222baa87461cd757e433a8dc4a03671457229d91d5fa",
+  "plugins/CraftEngine/libs/net/bytebuddy/byte-buddy-agent/1.18.12/byte-buddy-agent-1.18.12-remapped.jar": "ecc33badf67f1fd846e1c5c2df4763382b2ce656bef6543eb257b4d803f71b7f",
+  "plugins/CraftEngine/libs/net/bytebuddy/byte-buddy-agent/1.18.12/byte-buddy-agent-1.18.12.jar": "287703bea3473edf89e1b373a097e49bad04ed48b85796228f68b1474dc93cf8",
+  "plugins/CraftEngine/libs/net/kyori/adventure-api/5.2.0/adventure-api-5.2.0-remapped.jar": "988b4338fa7c59f3771ca61ee31e9a8a8713d838e35c8f2fe4a5e3a0bca6061f",
+  "plugins/CraftEngine/libs/net/kyori/adventure-api/5.2.0/adventure-api-5.2.0.jar": "7e52fe7190be3e87b3b3f71712cfa12315fcd27109f302a7b440c12f01fae827",
+  "plugins/CraftEngine/libs/net/kyori/adventure-key/5.2.0/adventure-key-5.2.0-remapped.jar": "68717bd27e5d744fe4b0edbd90bd4e597306948970a2db06d4a792b80c0bc56b",
+  "plugins/CraftEngine/libs/net/kyori/adventure-key/5.2.0/adventure-key-5.2.0.jar": "0184d173200e2eef8fbc791f622d1d58fd459f8930c616b5a4fe79e83eda6c55",
+  "plugins/CraftEngine/libs/net/kyori/adventure-nbt/5.2.0/adventure-nbt-5.2.0-remapped.jar": "ab3badea936299392cfe8f6ab3b5eb5fb78a00f14314163a02c228ab99a0f06c",
+  "plugins/CraftEngine/libs/net/kyori/adventure-nbt/5.2.0/adventure-nbt-5.2.0.jar": "834e94d6c883ac5dba43054632bc383eee6e39bd42ba1b87b6b6f47bcf84554b",
+  "plugins/CraftEngine/libs/net/kyori/adventure-text-serializer-commons/5.2.0/adventure-text-serializer-commons-5.2.0-remapped.jar": "1e5a48df832e8b1b924eb2a4c5b0ee0a21449c677ea628f1cdaa717a30e2db64",
+  "plugins/CraftEngine/libs/net/kyori/adventure-text-serializer-commons/5.2.0/adventure-text-serializer-commons-5.2.0.jar": "64b3e45d93aa57f4da9b257d16c8f2172612d9e3312b061f4892fd426922d2c3",
+  "plugins/CraftEngine/libs/net/kyori/adventure-text-serializer-gson/5.2.0/adventure-text-serializer-gson-5.2.0-remapped.jar": "9a1601db31fa7a497f69c9f4312d682d47873e8d755e05cefcfb7cd36e89c9c2",
+  "plugins/CraftEngine/libs/net/kyori/adventure-text-serializer-gson/5.2.0/adventure-text-serializer-gson-5.2.0.jar": "5b2ad1c8a65e7fa0811279b51a45d5fc574b6a6354097b545e4fdb5b68aaed73",
+  "plugins/CraftEngine/libs/net/kyori/adventure-text-serializer-json/5.2.0/adventure-text-serializer-json-5.2.0-remapped.jar": "f92156e6aa383229b09ca1502791716c7bbd5487ea6f1a09d15dddc60fbd381c",
+  "plugins/CraftEngine/libs/net/kyori/adventure-text-serializer-json/5.2.0/adventure-text-serializer-json-5.2.0.jar": "adb5410006175b9aa6343bfadd0bd11c4a6955ee2abc1a58abe2a3fa6cbd9ab5",
+  "plugins/CraftEngine/libs/net/kyori/adventure-text-serializer-json-legacy-impl/5.2.0/adventure-text-serializer-json-legacy-impl-5.2.0-remapped.jar": "4a6d058703084d0a8cd6e1eeba8712ce359df8c789fbe83a3279dd772f886a55",
+  "plugins/CraftEngine/libs/net/kyori/adventure-text-serializer-json-legacy-impl/5.2.0/adventure-text-serializer-json-legacy-impl-5.2.0.jar": "d98bf67bf06d1eca2ff6619567e32a4681c3c652e077d3c8379ac2ff4c14f349",
+  "plugins/CraftEngine/libs/net/kyori/adventure-text-serializer-legacy/5.2.0/adventure-text-serializer-legacy-5.2.0-remapped.jar": "3deaed022dfa593009b3b5b9c315ec7a2c0bcfc82430642f8ad6b668c41c4666",
+  "plugins/CraftEngine/libs/net/kyori/adventure-text-serializer-legacy/5.2.0/adventure-text-serializer-legacy-5.2.0.jar": "1231a0de417de66c59e2f2a3892ecca6b8d48621df6f1d9a2f81b01f57e328b7",
+  "plugins/CraftEngine/libs/net/kyori/option/1.1.0/option-1.1.0-remapped.jar": "0f715919322db170525f242271ff30984e260a22c41380bb3997e845d1b4ea0e",
+  "plugins/CraftEngine/libs/net/kyori/option/1.1.0/option-1.1.0.jar": "97b69b4b17dfe02217c9131ad342564cbc9aebd04c75eb689639b5f78fd4b11c",
+  "plugins/CraftEngine/libs/net/momirealms/craft-engine-bukkit-proxy/20260918_1032/craft-engine-bukkit-proxy-20260918_1032.jar": "e74945e346b93ab5edecda21230cbcd9e608c380b47684803cf819d09e077fb8",
+  "plugins/CraftEngine/libs/org/ahocorasick/ahocorasick/0.6.3/ahocorasick-0.6.3-remapped.jar": "e880c1cf9e2b4cd8279f213e59d2e6c2389e446f5c613022b03e37fc83703472",
+  "plugins/CraftEngine/libs/org/ahocorasick/ahocorasick/0.6.3/ahocorasick-0.6.3.jar": "80bc42edaf2d8ec2d0b665c8c344012006cf2bd00279b10b2df871184f809194",
+  "plugins/CraftEngine/libs/org/apache/commons/commons-lang3/3.20.0/commons-lang3-3.20.0-remapped.jar": "5398bce997b2710ac2dc77033e9dc1afcd4df37820a5f097bf255676c92238b6",
+  "plugins/CraftEngine/libs/org/apache/commons/commons-lang3/3.20.0/commons-lang3-3.20.0.jar": "69e5c9fa35da7a51a5fd2099dfe56a2d8d32cf233e2f6d770e796146440263f4",
+  "plugins/CraftEngine/libs/org/bstats/bstats-base/3.2.1/bstats-base-3.2.1-remapped.jar": "8cdcda3b33cd045f7c22c0b41b540bb1e546a156fe9477f2cfe89adf839cb913",
+  "plugins/CraftEngine/libs/org/bstats/bstats-base/3.2.1/bstats-base-3.2.1.jar": "ea9af6291004e1e7b1ae820105c48803f513ffdd0229edfd5f2402ea7e8ff9a0",
+  "plugins/CraftEngine/libs/org/bstats/bstats-bukkit/3.2.1/bstats-bukkit-3.2.1-remapped.jar": "b23b61bb05175b6f72d00abbe96b60bbd87028fdeae48a9e926a349e986edfeb",
+  "plugins/CraftEngine/libs/org/bstats/bstats-bukkit/3.2.1/bstats-bukkit-3.2.1.jar": "9506152619165f4aa7df9768d755f3c2c9ff8e95a3ccc5ded34cb49b87b50dd4",
+  "plugins/CraftEngine/libs/org/flywaydb/flyway-core/13.5.0/flyway-core-13.5.0-remapped.jar": "09b792120e11c135210071e57e7132375e03308fda6a47c59ffbf64c09431b32",
+  "plugins/CraftEngine/libs/org/flywaydb/flyway-core/13.5.0/flyway-core-13.5.0.jar": "1adf597e9d4d405b48229c0651f4c7d9dde81e958cac45c2a00afa9b06bc4047",
+  "plugins/CraftEngine/libs/org/incendo/cloud-brigadier/2.0.0-beta.17/cloud-brigadier-2.0.0-beta.17-remapped.jar": "8648f2d0a46283bafc5aeea62aaa66aa0e7599ef8cc4af6e8d617f524a1cdb04",
+  "plugins/CraftEngine/libs/org/incendo/cloud-brigadier/2.0.0-beta.17/cloud-brigadier-2.0.0-beta.17.jar": "4c2c0418052dc4317cd7efe75ba355fe5f77faae015aad2410c801e498e37506",
+  "plugins/CraftEngine/libs/org/incendo/cloud-bukkit/2.0.0-beta.17/cloud-bukkit-2.0.0-beta.17-remapped.jar": "535dfed953bc2f4cc57c384817b2786203446eb9d19d69d8dc30b3a9ee0fff6d",
+  "plugins/CraftEngine/libs/org/incendo/cloud-bukkit/2.0.0-beta.17/cloud-bukkit-2.0.0-beta.17.jar": "658fd6e5553af0be0bb01fcd79ec7df9c97ca15349cd60a498e0a03d0c99da66",
+  "plugins/CraftEngine/libs/org/incendo/cloud-core/2.0.0/cloud-core-2.0.0-remapped.jar": "556d6995c6f826b295580782d263d4c696cbb07d629b6d3237f43193bbe19443",
+  "plugins/CraftEngine/libs/org/incendo/cloud-core/2.0.0/cloud-core-2.0.0.jar": "f78352c5730340b868216faabf5bc0349c5622bfc8db6f49ce66bf533a51883e",
+  "plugins/CraftEngine/libs/org/incendo/cloud-minecraft-extras/2.0.0-beta.17/cloud-minecraft-extras-2.0.0-beta.17-remapped.jar": "ec287c6f42a5a31708ba93fbb820ad9c23b19ea0e238cbd7bbbab6c32fb0b059",
+  "plugins/CraftEngine/libs/org/incendo/cloud-minecraft-extras/2.0.0-beta.17/cloud-minecraft-extras-2.0.0-beta.17.jar": "0ca293778ae92a36ab68c2e71f7de4e518ea80705f52e5abf53f52cda8d001fb",
+  "plugins/CraftEngine/libs/org/incendo/cloud-paper/2.0.0-beta.17/cloud-paper-2.0.0-beta.17-remapped.jar": "b114f0b0792a42b5f708fd4d4f085d735bff5eb111fcbd720c835971ccb6c3b5",
+  "plugins/CraftEngine/libs/org/incendo/cloud-paper/2.0.0-beta.17/cloud-paper-2.0.0-beta.17.jar": "3ad9c690ebb5fc9c048d992d852805f5f02227273785d563ef57eab14a22779c",
+  "plugins/CraftEngine/libs/org/incendo/cloud-services/2.0.0/cloud-services-2.0.0-remapped.jar": "f789b26f356ba4fc37cb8d754c164ae0a945c98a06ea50db25b1b03d72dedbf9",
+  "plugins/CraftEngine/libs/org/incendo/cloud-services/2.0.0/cloud-services-2.0.0.jar": "f660b3768142c8e10e15290827c33db8bae3a458faa6a5bbe7b30d86fa9a8e30",
+  "plugins/CraftEngine/libs/org/jdbi/jdbi3-core/3.54.0/jdbi3-core-3.54.0-remapped.jar": "65a3b7ec4bde847907e3291d27645a1144211cdb000c514fd0800c071f7213b3",
+  "plugins/CraftEngine/libs/org/jdbi/jdbi3-core/3.54.0/jdbi3-core-3.54.0.jar": "2fd7938a701d60fa02e394250328be2d9415728cb636e24eeba4da3e0afcef9a",
+  "plugins/CraftEngine/libs/org/ow2/asm/asm/9.10.1/asm-9.10.1.jar": "ed825d10ab1399c8c0cb669e688cf0c8c82629b4c8399b58352b68e92ca10fcb",
+  "plugins/CraftEngine/libs/org/ow2/asm/asm-commons/9.10.1/asm-commons-9.10.1.jar": "6d0abefb7cbf972ea16edb37ec14835372505063a45f976ab7ea889ed9497895",
+  "plugins/CraftEngine/libs/org/slf4j/slf4j-api/2.0.19/slf4j-api-2.0.19.jar": "e91ff6d720609e7a194ffe758c3ed5c84e798617ae07b0a0f6a4fe229741b4bb",
+  "plugins/CraftEngine/libs/org/snakeyaml/snakeyaml-engine/3.1.1/snakeyaml-engine-3.1.1-remapped.jar": "8c63dd163730a4c885477c8b32d81e6df97d9d6e94d2314c050824fae1b1cdad",
+  "plugins/CraftEngine/libs/org/snakeyaml/snakeyaml-engine/3.1.1/snakeyaml-engine-3.1.1.jar": "59d73655cf077f154137e2d6f6f92c041a954c0b1c534c63800047a0d70a6947",
+  "plugins/CraftEngine/libs/org/xerial/sqlite-jdbc/3.53.4.0/sqlite-jdbc-3.53.4.0.jar": "bcb1f51e36f940867e83342f9efbf5968ac44a6bef4d397bb4af7b17b45cd2fb",
+  "plugins/CraftEngine/libs/tools/jackson/core/jackson-core/3.2.2/jackson-core-3.2.2-remapped.jar": "dfdf1134fa922e3834339ade6bab9ff93e7a1627e26c0b5d55b2e858b7132e9f",
+  "plugins/CraftEngine/libs/tools/jackson/core/jackson-core/3.2.2/jackson-core-3.2.2.jar": "93d9090b8c505b2f942ad85dd5821e8c401bfbafafff11708a3fbe2ef9da18ca",
+  "plugins/CraftEngine/libs/tools/jackson/core/jackson-databind/3.2.2/jackson-databind-3.2.2-remapped.jar": "3624eaae80ea6f788621932fd0ea7fdd1fe6c05d92ace1d2fe307813852cab5a",
+  "plugins/CraftEngine/libs/tools/jackson/core/jackson-databind/3.2.2/jackson-databind-3.2.2.jar": "d27509f990d990fc779a01f3f612005ff6c67dc3bb0a720f5f4d9b2f5c713401",
+  "plugins/LaneGate.jar": "f2f0380864231d872cda30346501e3985a3ac6fe5ab4f4df4747576c10d1c4e7",
+  "plugins/craft-engine-bukkit-plugin-26.9.1.jar": "389da875c3c4a0667d5914ffb58478c67a8ecc06670d88f36b6ff58b99c1c1c1"
+}

@@ -1,0 +1,5 @@
+items:
+  sf_ores:silver_ingot:
+    material: diamond
+    data:
+      item-name: '<white>S05 Spigot CE fixture'

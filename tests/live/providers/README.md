@@ -6,6 +6,13 @@ Compile `plugin/gate/ProviderGate.java` with Java 17, `--release 17`, Spigot API
 `ProviderGate.jar`, installed only in a stopped, loopback/offline disposable server.
 Never deploy it to SF production.
 
+Observer and command assertion failures are permanent for that boot and emit
+`S05-FAIL`; READY/DONE markers cannot follow a failed callback. A disposable
+`test.force-event-failure: true` configuration tests that path with a real CE
+event, then verifies status/smoke commands refuse success. The published fault
+trace is `evidence/provider-event-failure-latch-20261106.log`. Normal runs leave
+that test-only injection off.
+
 Use only owned ports 25589/25594/25595, fresh/minimal provider definitions, and a
 local test keyring. Do not copy production player/world data or credentials.
 Disable Nexo pack generation/dispatch and RPM hosting before first boot; this

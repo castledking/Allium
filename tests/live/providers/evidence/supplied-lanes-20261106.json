@@ -1,0 +1,318 @@
+{
+  "date": "2026-11-06",
+  "scope": "native API/YAML/reload/restart; headless",
+  "cases": [
+    {
+      "name": "supplied-1.21.10-coexist",
+      "providers": [
+        "nexo",
+        "craftengine",
+        "oraxen"
+      ],
+      "passed": true,
+      "inputs": {
+        "server": {
+          "path": "/tmp/allium-s05-20261106/lanes/artifacts/paper-1.21.10-130.jar",
+          "sha256": "158703f75a26f842ea656b3dc6d75bf3d1ec176b97a2c36384d0b80b3871af53"
+        },
+        "allium": {
+          "path": "/mnt/storage/repos/Allium-recode/build/libs/Allium.jar",
+          "sha256": "de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7"
+        },
+        "fixture": {
+          "path": "/tmp/allium-s05-20261106/supplied/lane-fixture/LaneGate.jar",
+          "sha256": "082989f9c3327ecdf7bf46344bcf48bb0770df303545e9ca2a28a760ea7c2005"
+        },
+        "nexo": {
+          "path": "/tmp/allium-s05-20261106/supplied/nexo.jar",
+          "sha256": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b"
+        },
+        "craftengine": {
+          "path": "/tmp/allium-s05-20261106/pins/ce/craft-engine-paper-plugin-26.9.1.jar",
+          "sha256": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f"
+        },
+        "oraxen": {
+          "path": "/tmp/allium-s05-20261106/supplied/oraxen.jar",
+          "sha256": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2"
+        }
+      },
+      "java": "/usr/lib/jvm/java-21-openjdk/bin/java",
+      "scope": "native API, YAML serialization, reload and restart; no player client",
+      "evidence": "supplied-lane-1.21.10-20261106.log",
+      "migration": "disabled before boot"
+    },
+    {
+      "name": "supplied-1.21.11-coexist",
+      "providers": [
+        "nexo",
+        "craftengine",
+        "oraxen"
+      ],
+      "passed": true,
+      "inputs": {
+        "server": {
+          "path": "/tmp/allium-s05-20261106/lanes/artifacts/paper-1.21.11-132.jar",
+          "sha256": "5ffef465eeeb5f2a3c23a24419d97c51afd7dbb4923ff42df9a3f58bba1ccfba"
+        },
+        "allium": {
+          "path": "/mnt/storage/repos/Allium-recode/build/libs/Allium.jar",
+          "sha256": "de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7"
+        },
+        "fixture": {
+          "path": "/tmp/allium-s05-20261106/supplied/lane-fixture/LaneGate.jar",
+          "sha256": "082989f9c3327ecdf7bf46344bcf48bb0770df303545e9ca2a28a760ea7c2005"
+        },
+        "nexo": {
+          "path": "/tmp/allium-s05-20261106/supplied/nexo.jar",
+          "sha256": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b"
+        },
+        "craftengine": {
+          "path": "/tmp/allium-s05-20261106/pins/ce/craft-engine-paper-plugin-26.9.1.jar",
+          "sha256": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f"
+        },
+        "oraxen": {
+          "path": "/tmp/allium-s05-20261106/supplied/oraxen.jar",
+          "sha256": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2"
+        }
+      },
+      "java": "/usr/lib/jvm/java-21-openjdk/bin/java",
+      "scope": "native API, YAML serialization, reload and restart; no player client",
+      "evidence": "supplied-lane-1.21.11-20261106.log",
+      "migration": "disabled before boot"
+    },
+    {
+      "name": "supplied-1.21.4-coexist",
+      "providers": [
+        "nexo",
+        "craftengine",
+        "oraxen"
+      ],
+      "passed": true,
+      "inputs": {
+        "server": {
+          "path": "/tmp/allium-s05-20261106/lanes/artifacts/paper-1.21.4-232.jar",
+          "sha256": "5ee4f542f628a14c644410b08c94ea42e772ef4d29fe92973636b6813d4eaffc"
+        },
+        "allium": {
+          "path": "/mnt/storage/repos/Allium-recode/build/libs/Allium.jar",
+          "sha256": "de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7"
+        },
+        "fixture": {
+          "path": "/tmp/allium-s05-20261106/supplied/lane-fixture/LaneGate.jar",
+          "sha256": "082989f9c3327ecdf7bf46344bcf48bb0770df303545e9ca2a28a760ea7c2005"
+        },
+        "nexo": {
+          "path": "/tmp/allium-s05-20261106/supplied/nexo.jar",
+          "sha256": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b"
+        },
+        "craftengine": {
+          "path": "/tmp/allium-s05-20261106/pins/ce/craft-engine-paper-plugin-26.9.1.jar",
+          "sha256": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f"
+        },
+        "oraxen": {
+          "path": "/tmp/allium-s05-20261106/supplied/oraxen.jar",
+          "sha256": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2"
+        }
+      },
+      "java": "/usr/lib/jvm/java-21-openjdk/bin/java",
+      "scope": "native API, YAML serialization, reload and restart; no player client",
+      "evidence": "supplied-lane-1.21.4-20261106.log",
+      "migration": "disabled before boot"
+    },
+    {
+      "name": "supplied-1.21.5-coexist",
+      "providers": [
+        "nexo",
+        "craftengine",
+        "oraxen"
+      ],
+      "passed": true,
+      "inputs": {
+        "server": {
+          "path": "/tmp/allium-s05-20261106/lanes/artifacts/paper-1.21.5-114.jar",
+          "sha256": "2ae6ae22adf417699746e0f89fc2ef6cb6ee050a5f6608cee58f0535d60b509e"
+        },
+        "allium": {
+          "path": "/mnt/storage/repos/Allium-recode/build/libs/Allium.jar",
+          "sha256": "de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7"
+        },
+        "fixture": {
+          "path": "/tmp/allium-s05-20261106/supplied/lane-fixture/LaneGate.jar",
+          "sha256": "082989f9c3327ecdf7bf46344bcf48bb0770df303545e9ca2a28a760ea7c2005"
+        },
+        "nexo": {
+          "path": "/tmp/allium-s05-20261106/supplied/nexo.jar",
+          "sha256": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b"
+        },
+        "craftengine": {
+          "path": "/tmp/allium-s05-20261106/pins/ce/craft-engine-paper-plugin-26.9.1.jar",
+          "sha256": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f"
+        },
+        "oraxen": {
+          "path": "/tmp/allium-s05-20261106/supplied/oraxen.jar",
+          "sha256": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2"
+        }
+      },
+      "java": "/usr/lib/jvm/java-21-openjdk/bin/java",
+      "scope": "native API, YAML serialization, reload and restart; no player client",
+      "evidence": "supplied-lane-1.21.5-20261106.log",
+      "migration": "disabled before boot"
+    },
+    {
+      "name": "supplied-1.21.8-coexist",
+      "providers": [
+        "nexo",
+        "craftengine",
+        "oraxen"
+      ],
+      "passed": true,
+      "inputs": {
+        "server": {
+          "path": "/tmp/allium-s05-20261106/lanes/artifacts/paper-1.21.8-60.jar",
+          "sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+        },
+        "allium": {
+          "path": "/mnt/storage/repos/Allium-recode/build/libs/Allium.jar",
+          "sha256": "de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7"
+        },
+        "fixture": {
+          "path": "/tmp/allium-s05-20261106/supplied/lane-fixture/LaneGate.jar",
+          "sha256": "082989f9c3327ecdf7bf46344bcf48bb0770df303545e9ca2a28a760ea7c2005"
+        },
+        "nexo": {
+          "path": "/tmp/allium-s05-20261106/supplied/nexo.jar",
+          "sha256": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b"
+        },
+        "craftengine": {
+          "path": "/tmp/allium-s05-20261106/pins/ce/craft-engine-paper-plugin-26.9.1.jar",
+          "sha256": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f"
+        },
+        "oraxen": {
+          "path": "/tmp/allium-s05-20261106/supplied/oraxen.jar",
+          "sha256": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2"
+        }
+      },
+      "java": "/usr/lib/jvm/java-21-openjdk/bin/java",
+      "scope": "native API, YAML serialization, reload and restart; no player client",
+      "evidence": "supplied-lane-1.21.8-20261106.log",
+      "migration": "disabled before boot"
+    },
+    {
+      "name": "supplied-26.1.2-coexist",
+      "providers": [
+        "nexo",
+        "craftengine",
+        "oraxen"
+      ],
+      "passed": true,
+      "inputs": {
+        "server": {
+          "path": "/tmp/allium-s05-20261106/lanes/artifacts/paper-26.1.2-74.jar",
+          "sha256": "1d70b1dab9cf4a6de615209a536f3a45a2186240253c428213ce2188ab95e5f7"
+        },
+        "allium": {
+          "path": "/mnt/storage/repos/Allium-recode/build/libs/Allium.jar",
+          "sha256": "de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7"
+        },
+        "fixture": {
+          "path": "/tmp/allium-s05-20261106/supplied/lane-fixture/LaneGate.jar",
+          "sha256": "082989f9c3327ecdf7bf46344bcf48bb0770df303545e9ca2a28a760ea7c2005"
+        },
+        "nexo": {
+          "path": "/tmp/allium-s05-20261106/supplied/nexo.jar",
+          "sha256": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b"
+        },
+        "craftengine": {
+          "path": "/tmp/allium-s05-20261106/pins/ce/craft-engine-paper-plugin-26.9.1.jar",
+          "sha256": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f"
+        },
+        "oraxen": {
+          "path": "/tmp/allium-s05-20261106/supplied/oraxen.jar",
+          "sha256": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2"
+        }
+      },
+      "java": "/usr/lib/jvm/java-25-openjdk/bin/java",
+      "scope": "native API, YAML serialization, reload and restart; no player client",
+      "evidence": "supplied-lane-26.1.2-20261106.log",
+      "migration": "disabled before boot"
+    },
+    {
+      "name": "supplied-26.2-coexist",
+      "providers": [
+        "nexo",
+        "craftengine",
+        "oraxen"
+      ],
+      "passed": true,
+      "inputs": {
+        "server": {
+          "path": "/tmp/allium-s05-20261106/lanes/artifacts/paper-26.2-135.jar",
+          "sha256": "ef3dbc68b013deafdbbee3bebf1ba351671ebcda94a8f136809b7532d5ba2fe1"
+        },
+        "allium": {
+          "path": "/mnt/storage/repos/Allium-recode/build/libs/Allium.jar",
+          "sha256": "de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7"
+        },
+        "fixture": {
+          "path": "/tmp/allium-s05-20261106/supplied/lane-fixture/LaneGate.jar",
+          "sha256": "082989f9c3327ecdf7bf46344bcf48bb0770df303545e9ca2a28a760ea7c2005"
+        },
+        "nexo": {
+          "path": "/tmp/allium-s05-20261106/supplied/nexo.jar",
+          "sha256": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b"
+        },
+        "craftengine": {
+          "path": "/tmp/allium-s05-20261106/pins/ce/craft-engine-paper-plugin-26.9.1.jar",
+          "sha256": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f"
+        },
+        "oraxen": {
+          "path": "/tmp/allium-s05-20261106/supplied/oraxen.jar",
+          "sha256": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2"
+        }
+      },
+      "java": "/usr/lib/jvm/java-25-openjdk/bin/java",
+      "scope": "native API, YAML serialization, reload and restart; no player client",
+      "evidence": "supplied-lane-26.2-20261106.log",
+      "migration": "disabled before boot"
+    },
+    {
+      "name": "supplied-26.3-coexist",
+      "providers": [
+        "nexo",
+        "craftengine",
+        "oraxen"
+      ],
+      "passed": true,
+      "inputs": {
+        "server": {
+          "path": "/tmp/allium-ce-smoke-server/paper.jar",
+          "sha256": "82e32117ceacf9e73ada0a36c6d280f3482c949b8b1ebbe2a451aa5e820a5748"
+        },
+        "allium": {
+          "path": "/mnt/storage/repos/Allium-recode/build/libs/Allium.jar",
+          "sha256": "de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7"
+        },
+        "fixture": {
+          "path": "/tmp/allium-s05-20261106/supplied/lane-fixture/LaneGate.jar",
+          "sha256": "082989f9c3327ecdf7bf46344bcf48bb0770df303545e9ca2a28a760ea7c2005"
+        },
+        "nexo": {
+          "path": "/tmp/allium-s05-20261106/supplied/nexo.jar",
+          "sha256": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b"
+        },
+        "craftengine": {
+          "path": "/tmp/allium-s05-20261105/provider-gate/artifacts/craft-engine-sf-26.9.2.jar",
+          "sha256": "19535f1987e8a27ebe8c6d811e7deae9a1f05dbd3ef3359435aff5a3d819e0f9"
+        },
+        "oraxen": {
+          "path": "/tmp/allium-s05-20261106/supplied/oraxen.jar",
+          "sha256": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2"
+        }
+      },
+      "java": "/usr/lib/jvm/java-25-openjdk/bin/java",
+      "scope": "native API, YAML serialization, reload and restart; no player client",
+      "evidence": "supplied-lane-26.3-20261106.log",
+      "migration": "disabled before boot"
+    }
+  ]
+}

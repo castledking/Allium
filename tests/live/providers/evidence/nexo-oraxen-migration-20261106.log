@@ -1,0 +1,4 @@
+Expected failure with Nexo automatic Oraxen migration enabled.
+Read-only inventory diagnostic after restarting same failed fixture:
+[05:54:39 WARN]: [OraxenGate] S05-ORAXEN-IDENTITY native=null nexo=Gate_Oraxen keys=[allium:state_charges, nexo:id, allium:signature, allium:instance_uuid, allium:behavior_id, allium:item_id, allium:schema_version, allium:provider]
+Fresh run with migration disabled passes; see supplied-all-three-rpm-final-20261106.log.

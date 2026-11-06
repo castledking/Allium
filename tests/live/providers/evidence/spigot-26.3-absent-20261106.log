@@ -1,0 +1,323 @@
+{
+  "scope": "S05 Spigot 26.3 all optional providers absent",
+  "utc": "2026-11-06T08:37:44.608240+00:00",
+  "head": "ddfeeca5a05508291b16448e96c101578b9bff2a",
+  "provenance": "User-supplied local BuildTools launcher; only immutable extracted bundler copied from prior disposable lane. No world/player/secret copied.",
+  "lane": "/tmp/allium-s05-20261106/spigot/26.3-absent",
+  "providers": [],
+  "fixture_expected": [],
+  "input_sha256": {
+    "/mnt/storage/devops/.buildtools/spigot-26.3.jar": "bba50623f55ed5feb2f527220126ad1e0eb72cce4140819cced96df4552ebe4f",
+    "/mnt/storage/repos/Allium-recode/build/libs/Allium.jar": "4e90e660141964643ac32ee8580b74082ffec2460e3ca0a85428db4e88c1c14e",
+    "/tmp/allium-s05-20261106/lanes/fixture/LaneGate.jar": "f2f0380864231d872cda30346501e3985a3ac6fe5ab4f4df4747576c10d1c4e7",
+    "/tmp/allium-s05-20261106/spigot/26.3-absent/bundler/versions/spigot-26.3-R0.1-SNAPSHOT.jar": "9581f58262b6097c84f3eeef3dde8d482bb5bc6ba93222ba86d6ba0f89601a18"
+  },
+  "copied_bundler_sha256": {
+    "bundler/libraries/asm-9.10.1.jar": "ed825d10ab1399c8c0cb669e688cf0c8c82629b4c8399b58352b68e92ca10fcb",
+    "bundler/libraries/asm-commons-9.10.1.jar": "6d0abefb7cbf972ea16edb37ec14835372505063a45f976ab7ea889ed9497895",
+    "bundler/libraries/authlib-10.0.77.jar": "521672866582633a412c82171d3cfa416ecaccdf05a43baf809c16f9aec07068",
+    "bundler/libraries/azure-json-1.4.0.jar": "c50bc998cd1a6c689f8644b51c206217bf2da09d5b949e777490a60290cc3a0d",
+    "bundler/libraries/brigadier-1.3.11.jar": "9d09cf4819de83dfcd38bcb212d5f2227131791cef3abbfca3321d6fb2b9a64d",
+    "bundler/libraries/bungeecord-chat-1.21-R0.4.jar": "3bade7edb09149aff360836012b5e8b469416bed8edd4f63bda2cdcce3d450ca",
+    "bundler/libraries/bungeecord-dialog-1.21-R0.4.jar": "f478dd41a852136c93b94b339b310f165f824f85b478ebe3c8081bd21044b87e",
+    "bundler/libraries/bungeecord-serializer-1.21-R0.4.jar": "0552eac3de15c1ed4d3495a8a6016b50f5502cf669b46f0ca4669f9940b85c71",
+    "bundler/libraries/commons-codec-1.21.0.jar": "4da851cb6abfb98bfe9eb77c5e5fc47f5414fa28b94e21b7fd9a646705dc167f",
+    "bundler/libraries/commons-io-2.20.0.jar": "df90bba0fe3cb586b7f164e78fe8f8f4da3f2dd5c27fa645f888100ccc25dd72",
+    "bundler/libraries/commons-lang-2.6.jar": "50f11b09f877c294d56f24463f47d28f929cf5044f648661c0f0cfbae9a2f49c",
+    "bundler/libraries/commons-lang3-3.20.0.jar": "69e5c9fa35da7a51a5fd2099dfe56a2d8d32cf233e2f6d770e796146440263f4",
+    "bundler/libraries/datafixerupper-10.0.21.jar": "3547cb1da8993fb7ebd42494d0e78997d2cfbe90c421f5efd022863e6909941e",
+    "bundler/libraries/error_prone_annotations-2.47.0.jar": "5364bc6f22e72e98195e406a58d3ba1c09ffa11dea0729592cb870dc2de4056d",
+    "bundler/libraries/failureaccess-1.0.3.jar": "cbfc3906b19b8f55dd7cfd6dfe0aa4532e834250d7f080bd8d211a3e246b59cb",
+    "bundler/libraries/fastutil-8.5.18.jar": "9094ae67d01d0ad246f886f11ad557fc2e79c72cbf3feed83e1512a8ae90a74a",
+    "bundler/libraries/gson-2.14.0.jar": "2cbd119bf1961c28788310963dc80ba65f58cdeec1dd139c8bdb1240faa2c36f",
+    "bundler/libraries/guava-33.6.0-jre.jar": "dc573e1fca4fd5454f4a5fd3d7da2df03002876a4175bafc14a95980dd7713b3",
+    "bundler/libraries/httpclient-4.5.14.jar": "c8bc7e1c51a6d4ce72f40d2ebbabf1c4b68bfe76e732104b04381b493478e9d6",
+    "bundler/libraries/httpcore-4.4.16.jar": "6c9b3dd142a09dc468e23ad39aad6f75a0f2b85125104469f026e52a474e464f",
+    "bundler/libraries/j2objc-annotations-3.1.jar": "84d3a150518485f8140ea99b8a985656749629f6433c92b80c75b36aba3b099b",
+    "bundler/libraries/javax.inject-1.jar": "91c77044a50c481636c32d916fd89c9118a72195390452c81065080f957de7ff",
+    "bundler/libraries/jcl-over-slf4j-1.7.36.jar": "ab57ca8fd223772c17365d121f59e94ecbf0ae59d08c03a3cb5b81071c019195",
+    "bundler/libraries/jline-4.4.3.jar": "20ac584986ae2049b51c5533a06467d04da5a99971e86f41990d3cf4fc9bf3ef",
+    "bundler/libraries/jna-5.17.0.jar": "b3a9408e7c51e08ef0e3bfcc08f443f6ec0f6191ba8cd7c18d53d2b22e5bdbc0",
+    "bundler/libraries/jna-platform-5.17.0.jar": "b7e3d46c87bad2eb409b0e704916bcd81206168e357312dfddd0e253679cd9e0",
+    "bundler/libraries/joml-1.10.9.jar": "feca4db853371704338621c120acc5cc32300d8af635fa42414b6213301e216b",
+    "bundler/libraries/jopt-simple-5.0.4.jar": "df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28",
+    "bundler/libraries/json-simple-1.1.1.jar": "4e69696892b88b41c55d49ab2fdcc21eead92bf54acc588c0050596c3b75199c",
+    "bundler/libraries/jspecify-1.0.0.jar": "1fad6e6be7557781e4d33729d49ae1cdc8fdda6fe477bb0cc68ce351eafdfbab",
+    "bundler/libraries/jsr305-3.0.2.jar": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7",
+    "bundler/libraries/jtracy-1.14.38.jar": "721bff502a9664d689d781ab7bfed19330606c2e1ef6b8e4d59fba67e7e765da",
+    "bundler/libraries/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar": "b372a037d4230aa57fbeffdef30fd6123f9c0c2db85d0aced00c91b974f33f99",
+    "bundler/libraries/log4j-api-2.26.0.jar": "820de7bbaf430eaf2e3e5ccb92f23e2085797c5ac4d4f7fc6c8b660fbefa1dbc",
+    "bundler/libraries/log4j-core-2.26.0.jar": "406bb3132c47a5d322e5c571feb0787ca84496469f346eb51f1ef2ee45499902",
+    "bundler/libraries/log4j-iostreams-2.26.0.jar": "1c4e14ebecfd6a0e100a08f9eccfb639784a441e7591e887752440bb4c941fe8",
+    "bundler/libraries/log4j-slf4j2-impl-2.26.0.jar": "cfc1bddbd39e684b698ae968291d8a3b3a55ee0ec2ef3d3ea5c2336a9e151598",
+    "bundler/libraries/logging-1.7.12.jar": "3c7ac9742fa98c773275379eb1046c048b5d2ee989152a8c69e7ba696c3f8538",
+    "bundler/libraries/lz4-java-1.10.1.jar": "a58a84c4271e50df4c96ed916ccb7e48a869f8ed9cdcda1ad5d3d4c33b0214a3",
+    "bundler/libraries/maven-artifact-3.9.16.jar": "54cc1c1ef932e3d4a903352111b42b4d3c3ed8e7a1d0de73b625309d9c3ad3e8",
+    "bundler/libraries/maven-builder-support-3.9.16.jar": "02972384eae3495801565fd27abb84cfd75a8e6d2cbb1ae0c556752ebc2b1cde",
+    "bundler/libraries/maven-model-3.9.16.jar": "f59d86a507c241bf17bbf050050d1b8b9c0d34d5010a7e2386c3cab7c83b93de",
+    "bundler/libraries/maven-model-builder-3.9.16.jar": "002be86d1f53b36f559a0786034a17598d71087f1935f205a1f9e51d4dd124b3",
+    "bundler/libraries/maven-repository-metadata-3.9.16.jar": "bc3dd413b89a16b695f35a5d0496b58ea2787c30b7b6062c130d24d6d764720f",
+    "bundler/libraries/maven-resolver-api-1.9.27.jar": "a895d222283666a7320ddc76615e2e93a41fabd93ce9a6bf9ddee39272bb87b4",
+    "bundler/libraries/maven-resolver-connector-basic-1.9.27.jar": "3bd98e3a426f9adcae39e3786db229e2be77e08a743ecd9be15c5ed77be3a625",
+    "bundler/libraries/maven-resolver-impl-1.9.27.jar": "295d48ea2a8bb3aef51888967f105fb6251997d111f13c32d28919fd9b1c951e",
+    "bundler/libraries/maven-resolver-named-locks-1.9.27.jar": "b39ecd4da98fdac5068e6f5d16910a71f4e4d48e95e17d107f6603e18f2b3fdf",
+    "bundler/libraries/maven-resolver-provider-3.9.16.jar": "72a2d6aad3708e2c708b659b292ae9587a4d170ec88f48466290318730221118",
+    "bundler/libraries/maven-resolver-spi-1.9.27.jar": "1cab02f45bc58d5f4d8e084eaf032f13ea1a5fc9021d8bd74f8360ebb6593e5a",
+    "bundler/libraries/maven-resolver-transport-http-1.9.27.jar": "723f3d9d717a693d0aac589e266b995f76e9c63edd48ecc8a0cf9e86a77e459c",
+    "bundler/libraries/maven-resolver-util-1.9.27.jar": "74a12548f0d6aad13c728666288c1e81201c24bd05bb4e4ec8c1558517b379a7",
+    "bundler/libraries/msal4j-1.24.1.jar": "12e62f79d1a71d176a41c168c0587f8167f0add99b78f006f39595bd7242aebe",
+    "bundler/libraries/mysql-connector-j-26.7.0.jar": "69084713593a4aa8d07c383619b9639276f08bccf8faf1c562178147d389b1e1",
+    "bundler/libraries/netty-buffer-4.2.16.Final.jar": "cc36ae9fbd0b03fe755eb4eb4424ca53b59cfd297d7fd47d49e5b1059beded6c",
+    "bundler/libraries/netty-codec-base-4.2.16.Final.jar": "feb410225938d9970de6b624a0c031d079804fa5cc5e1ec6e9298f16db5998a7",
+    "bundler/libraries/netty-codec-compression-4.2.16.Final.jar": "13c8565414dd2115281303ef4ad1f7cc69bd7771d8d12c7d2fb31307dff26d11",
+    "bundler/libraries/netty-codec-http-4.2.16.Final.jar": "0d16f981de8d0d304a2ab1a81f0a674892089fbaa8a583100aebb4a5b00456ec",
+    "bundler/libraries/netty-common-4.2.16.Final.jar": "9825ee68a0dc4cd2b53e2f532502401b2211bad9b77e8b04882d9e64487283ff",
+    "bundler/libraries/netty-handler-4.2.16.Final.jar": "a259ca496da05ac1981f95cd856211f894a328056a6129e9cd70dbbd5df401f7",
+    "bundler/libraries/netty-resolver-4.2.16.Final.jar": "c9eca6a99036485cf1d186b4a6a595b0a54c53808319ee03924270eae04c32bb",
+    "bundler/libraries/netty-transport-4.2.16.Final.jar": "cfa3f654caff906653385f4b7ddaa539d795b78f5711a622482b17d2b73484c0",
+    "bundler/libraries/netty-transport-classes-epoll-4.2.16.Final.jar": "9f2b53210db9c8d24e787ed43f3896aaf30d686ed270c7afbb29ab6330c6aa23",
+    "bundler/libraries/netty-transport-classes-kqueue-4.2.16.Final.jar": "6599b495f69420cb240ab0a1aa60a19a2df3bc72791729170e0993727637a689",
+    "bundler/libraries/netty-transport-native-epoll-4.2.16.Final-linux-aarch_64.jar": "212cc7d81390e31b580a1fb91b6c8d963b43e762ed072c555e2b09ad4476e928",
+    "bundler/libraries/netty-transport-native-epoll-4.2.16.Final-linux-x86_64.jar": "2e00548e731948881d0c73ee79d2ead759254e750929406a1d595484758f0267",
+    "bundler/libraries/netty-transport-native-kqueue-4.2.16.Final-osx-aarch_64.jar": "796c503f7a80217177bd315f6448263134ee0f9042627d5fd698c760bcf99c8c",
+    "bundler/libraries/netty-transport-native-kqueue-4.2.16.Final-osx-x86_64.jar": "05a09a4ab51f488f0c22f42ccce6c06935afbfac51173fae44170465aa072828",
+    "bundler/libraries/netty-transport-native-unix-common-4.2.16.Final.jar": "41ca8fe192083d17917be7ddcecded4da4fc1db1d1656d03d0bcb14e2f431155",
+    "bundler/libraries/org.eclipse.sisu.inject-1.0.0.jar": "3ab8d7bfe68f3b6ec95c1a0a47e628edbc9d76e90634cb0a0ba121fbb11b8e42",
+    "bundler/libraries/oshi-core-6.9.0.jar": "b29ba9bce041e6ea822203d5b5a692660c87551241510ebc76eedffe684844c7",
+    "bundler/libraries/plexus-interpolation-1.29.jar": "088d444dbcedfb384630d8686697ece3c401d6f33c8f8b3aa7259ea1c6996878",
+    "bundler/libraries/plexus-utils-3.6.1.jar": "05a63effd67e2d6b9d610cc82e2bd7473289d34802e57a529b28110f28af5679",
+    "bundler/libraries/protobuf-java-4.31.1.jar": "d60dfe7c68a0d38a248cca96924f289dc7e1966a887ee7cae397701af08575ae",
+    "bundler/libraries/slf4j-api-2.0.17.jar": "7b751d952061954d5abfed7181c1f645d336091b679891591d63329c622eb832",
+    "bundler/libraries/snakeyaml-2.7.jar": "2e194eba45a67dee19a4e272f4a04b18de8054e9f598b094382f6dae0b0e4b5e",
+    "bundler/libraries/spigot-api-26.3-R0.1-SNAPSHOT.jar": "fdcc4f76cb58fc468b40d32fe2958928fd0dcfa202dba0354ce09f674ad70aaf",
+    "bundler/libraries/sqlite-jdbc-3.53.4.0.jar": "bcb1f51e36f940867e83342f9efbf5968ac44a6bef4d397bb4af7b17b45cd2fb",
+    "bundler/versions/spigot-26.3-R0.1-SNAPSHOT.jar": "9581f58262b6097c84f3eeef3dde8d482bb5bc6ba93222ba86d6ba0f89601a18"
+  },
+  "java": "openjdk version \"25.0.5.0.3\" 2026-10-24\nOpenJDK Runtime Environment (build 25.0.5.0.3)\nOpenJDK 64-Bit Server VM (build 25.0.5.0.3, mixed mode, sharing)\n",
+  "limitations": "Headless console fixture; no actual player, core-five command packets, native-provider item/reload, or inventory-retention claims.",
+  "argv": [
+    "/usr/lib/jvm/java-25-openjdk/bin/java",
+    "-Xms256M",
+    "-Xmx1400M",
+    "-XX:ActiveProcessorCount=2",
+    "-cp",
+    "bundler/versions/spigot-26.3-R0.1-SNAPSHOT.jar:bundler/libraries/*",
+    "org.bukkit.craftbukkit.Main",
+    "nogui",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "25625"
+  ]
+}
+--- RAW SERVER OUTPUT ---
+*** Error, this build is outdated ***
+*** Please download a new build as per instructions from https://www.spigotmc.org/go/outdated-spigot ***
+*** Server will start in 20 seconds ***
+Loading libraries, please wait...
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by com.sun.jna.Native in an unnamed module (file:/tmp/allium-s05-20261106/spigot/26.3-absent/bundler/libraries/jna-5.17.0.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/tmp/allium-s05-20261106/spigot/26.3-absent/bundler/libraries/joml-1.10.9.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+[00:38:11] [main/INFO]: Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[00:38:11] [main/INFO]: Found new data pack file/bukkit, loading it automatically
+[00:38:12] [Worker-Main-1/INFO]: No existing world data, creating new world
+[00:38:11] [main/INFO]: Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[00:38:11] [main/INFO]: Found new data pack file/bukkit, loading it automatically
+[00:38:12] [Worker-Main-1/INFO]: No existing world data, creating new world
+[00:38:12] [Server thread/INFO]: Starting minecraft server version 26.3
+[00:38:12] [Server thread/INFO]: Loading properties
+[00:38:12] [Server thread/INFO]: This server is running Spigot version 4660-Spigot-766de51-bd6d9dc (MC: 26.3) (Implementing API version 26.3-R0.1-SNAPSHOT)
+[00:38:13] [Server thread/INFO]: *** This version of Spigot contains changes to some enums. If you notice that plugins no longer work after updating, please report this to the developers of those plugins first. ***
+[00:38:13] [Server thread/INFO]: *** If you cannot update those plugins, you can try setting `settings.compatibility.enum-compatibility-mode` to `true` in `bukkit.yml`. ***
+[00:38:13] [Server thread/INFO]: Debug logging is disabled
+[00:38:13] [Server thread/INFO]: Server Ping Player Sample Count: 12
+[00:38:13] [Server thread/INFO]: Using 4 threads for Netty based IO
+[00:38:13] [Server thread/INFO]: Default game type: SURVIVAL
+[00:38:13] [Server thread/INFO]: Generating keypair
+[00:38:13] [Server thread/INFO]: Starting Minecraft server on 127.0.0.1:25625
+[00:38:13] [Server thread/INFO]: [Allium] Loading Allium v1.0.0-SNAPSHOT
+[00:38:13] [Server thread/INFO]: [LaneGate] Loading LaneGate v1.0-validation
+[00:38:13] [Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[00:38:13] [Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.
+[00:38:13] [Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[00:38:13] [Server thread/WARN]: To change this, set "online-mode" to "true" in the server.properties file.
+[00:38:13] [Server thread/INFO]: Preparing level "s05-fresh-world"
+[00:38:13] [Server thread/INFO]: -------- World Settings For [s05-fresh-world] --------
+[00:38:13] [Server thread/INFO]: Mob Spawn Range: 6
+[00:38:13] [Server thread/INFO]: Cactus Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Cane Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Melon Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Mushroom Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Pumpkin Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Sapling Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Beetroot Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Carrot Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Potato Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Wheat Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: NetherWart Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Vine Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Cocoa Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Bamboo Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: SweetBerry Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Kelp Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: TwistingVines Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: WeepingVines Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: CaveVines Growth Modifier: 100%
+[00:38:13] [Server thread/INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Di 128 / Other 64
+[00:38:13] [Server thread/INFO]: Hopper Transfer: 8 Hopper Check: 1 Hopper Amount: 1 Hopper Can Load Chunks: false
+[00:38:13] [Server thread/INFO]: Custom Map Seeds:  Village: 10387312 Desert: 14357617 Igloo: 14357618 Jungle: 14357619 Swamp: 14357620 Monument: 10387313 Ocean: 14357621 Shipwreck: 165745295 End City: 10387313 Slime: 987234911 Nether: 30084232 Mansion: 10387319 Fossil: 14357921 Portal: 34222645
+[00:38:13] [Server thread/INFO]: Max TNT Explosions: 100
+[00:38:13] [Server thread/INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms
+[00:38:13] [Server thread/INFO]: Experience Merge Radius: 3.0
+[00:38:13] [Server thread/INFO]: View Distance: 3
+[00:38:13] [Server thread/INFO]: Simulation Distance: 2
+[00:38:13] [Server thread/INFO]: Item Despawn Rate: 6000
+[00:38:13] [Server thread/INFO]: Item Merge Radius: 2.5
+[00:38:13] [Server thread/INFO]: Entity Activation Range: An 32 / Mo 32 / Ra 48 / Mi 16 / Tiv true / Isa false
+[00:38:13] [Server thread/INFO]: Arrow Despawn Rate: 1200 Trident Respawn Rate:1200
+[00:38:13] [Server thread/INFO]: Allow Zombie Pigmen to spawn from portal blocks: true
+[00:38:13] [Server thread/INFO]: Zombie Aggressive Towards Villager: true
+[00:38:13] [Server thread/INFO]: Nerfing mobs spawned from spawners: false
+[00:38:13] [Server thread/INFO]: Selecting global world spawn...
+[00:38:16] [Server thread/INFO]: -------- World Settings For [s05-fresh-world_nether] --------
+[00:38:16] [Server thread/INFO]: Mob Spawn Range: 6
+[00:38:16] [Server thread/INFO]: Cactus Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Cane Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Melon Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Mushroom Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Pumpkin Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Sapling Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Beetroot Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Carrot Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Potato Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Wheat Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: NetherWart Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Vine Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Cocoa Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Bamboo Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: SweetBerry Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Kelp Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: TwistingVines Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: WeepingVines Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: CaveVines Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Di 128 / Other 64
+[00:38:16] [Server thread/INFO]: Hopper Transfer: 8 Hopper Check: 1 Hopper Amount: 1 Hopper Can Load Chunks: false
+[00:38:16] [Server thread/INFO]: Custom Map Seeds:  Village: 10387312 Desert: 14357617 Igloo: 14357618 Jungle: 14357619 Swamp: 14357620 Monument: 10387313 Ocean: 14357621 Shipwreck: 165745295 End City: 10387313 Slime: 987234911 Nether: 30084232 Mansion: 10387319 Fossil: 14357921 Portal: 34222645
+[00:38:16] [Server thread/INFO]: Max TNT Explosions: 100
+[00:38:16] [Server thread/INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms
+[00:38:16] [Server thread/INFO]: Experience Merge Radius: 3.0
+[00:38:16] [Server thread/INFO]: View Distance: 3
+[00:38:16] [Server thread/INFO]: Simulation Distance: 2
+[00:38:16] [Server thread/INFO]: Item Despawn Rate: 6000
+[00:38:16] [Server thread/INFO]: Item Merge Radius: 2.5
+[00:38:16] [Server thread/INFO]: Entity Activation Range: An 32 / Mo 32 / Ra 48 / Mi 16 / Tiv true / Isa false
+[00:38:16] [Server thread/INFO]: Arrow Despawn Rate: 1200 Trident Respawn Rate:1200
+[00:38:16] [Server thread/INFO]: Allow Zombie Pigmen to spawn from portal blocks: true
+[00:38:16] [Server thread/INFO]: Zombie Aggressive Towards Villager: true
+[00:38:16] [Server thread/INFO]: Nerfing mobs spawned from spawners: false
+[00:38:16] [Server thread/INFO]: Selecting global world spawn...
+[00:38:16] [Server thread/INFO]: -------- World Settings For [s05-fresh-world_the_end] --------
+[00:38:16] [Server thread/INFO]: Mob Spawn Range: 6
+[00:38:16] [Server thread/INFO]: Cactus Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Cane Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Melon Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Mushroom Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Pumpkin Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Sapling Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Beetroot Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Carrot Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Potato Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Wheat Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: NetherWart Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Vine Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Cocoa Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Bamboo Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: SweetBerry Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Kelp Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: TwistingVines Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: WeepingVines Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: CaveVines Growth Modifier: 100%
+[00:38:16] [Server thread/INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Di 128 / Other 64
+[00:38:16] [Server thread/INFO]: Hopper Transfer: 8 Hopper Check: 1 Hopper Amount: 1 Hopper Can Load Chunks: false
+[00:38:16] [Server thread/INFO]: Custom Map Seeds:  Village: 10387312 Desert: 14357617 Igloo: 14357618 Jungle: 14357619 Swamp: 14357620 Monument: 10387313 Ocean: 14357621 Shipwreck: 165745295 End City: 10387313 Slime: 987234911 Nether: 30084232 Mansion: 10387319 Fossil: 14357921 Portal: 34222645
+[00:38:16] [Server thread/INFO]: Max TNT Explosions: 100
+[00:38:16] [Server thread/INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms
+[00:38:16] [Server thread/INFO]: Experience Merge Radius: 3.0
+[00:38:16] [Server thread/INFO]: View Distance: 3
+[00:38:16] [Server thread/INFO]: Simulation Distance: 2
+[00:38:16] [Server thread/INFO]: Item Despawn Rate: 6000
+[00:38:16] [Server thread/INFO]: Item Merge Radius: 2.5
+[00:38:16] [Server thread/INFO]: Entity Activation Range: An 32 / Mo 32 / Ra 48 / Mi 16 / Tiv true / Isa false
+[00:38:16] [Server thread/INFO]: Arrow Despawn Rate: 1200 Trident Respawn Rate:1200
+[00:38:16] [Server thread/INFO]: Allow Zombie Pigmen to spawn from portal blocks: true
+[00:38:16] [Server thread/INFO]: Zombie Aggressive Towards Villager: true
+[00:38:16] [Server thread/INFO]: Nerfing mobs spawned from spawners: false
+[00:38:16] [Server thread/INFO]: Selecting global world spawn...
+[00:38:17] [Server thread/INFO]: Loading 0 persistent chunks...
+[00:38:17] [Server thread/INFO]: Preparing spawn area: 100%
+[00:38:17] [Server thread/INFO]: Time elapsed: 3475 ms
+[00:38:17] [Server thread/INFO]: [Allium] Enabling Allium v1.0.0-SNAPSHOT
+[00:38:17] [Server thread/INFO]: [Allium] Starting Allium...
+[00:38:17] [Server thread/INFO]: [Allium] Loaded locale: en_US
+[00:38:17] [Server thread/INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[00:38:17] [Server thread/INFO]: [Allium] CraftEngine is not installed; provider 'craftengine' is ABSENT (optional).
+[00:38:17] [Server thread/INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[00:38:17] [Server thread/INFO]: Allium-Pool - Starting...
+[00:38:17] [Server thread/INFO]: Allium-Pool - Added connection org.sqlite.jdbc4.JDBC4Connection@4ce92bf0
+[00:38:17] [Server thread/INFO]: Allium-Pool - Start completed.
+[00:38:17] [Server thread/INFO]: [Allium] Database connected (SQLITE).
+[00:38:17] [Server thread/INFO]: [Allium] Module [economy] enabled.
+[00:38:17] [Server thread/INFO]: [Allium] Module [essentials] enabled.
+[00:38:17] [Server thread/INFO]: [Allium] Item signing keyring loaded: active=k1, verification keys=[k1]. Loaded inventories are audited for unknown key IDs.
+[00:38:17] [Server thread/INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[00:38:17] [Server thread/INFO]: [LaneGate] Enabling LaneGate v1.0-validation
+[00:38:17] [Server thread/INFO]: [LaneGate] S05-LANE-BOOT 4660-Spigot-766de51-bd6d9dc (MC: 26.3) expected=[]
+[00:38:17] [Server thread/INFO]: Done (3.939s)! For help, type "help"
+HARNESS CONSOLE> version
+HARNESS CONSOLE> plugins
+HARNESS CONSOLE> lanegate probe
+[00:38:17] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world]'/minecraft:overworld
+[00:38:17] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_nether]'/minecraft:the_nether
+[00:38:17] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_the_end]'/minecraft:the_end
+[00:38:17] [Server thread/INFO]: [LaneGate] S05-LANE-READY
+[00:38:17] [Server thread/INFO]: This server is running Spigot version 4660-Spigot-766de51-bd6d9dc (MC: 26.3) (Implementing API version 26.3-R0.1-SNAPSHOT)
+[00:38:17] [Server thread/INFO]: Checking version, please wait...
+[00:38:17] [Server thread/INFO]: Plugins (2): Allium, LaneGate
+[00:38:17] [Server thread/INFO]: [LaneGate] S05-LANE-PASS expected providers ready; others absent
+[00:38:17] [Server thread/INFO]: [LaneGate] S05-LANE-PROBE-PASS
+HARNESS CONSOLE> stop
+[00:38:17] [Server thread/INFO]: System chat: Stopping the server
+[00:38:17] [Server thread/INFO]: Stopping server
+[00:38:17] [Server thread/INFO]: [LaneGate] Disabling LaneGate v1.0-validation
+[00:38:17] [Server thread/INFO]: [Allium] Disabling Allium v1.0.0-SNAPSHOT
+[00:38:17] [Server thread/INFO]: [Allium] Module [economy] disabled.
+[00:38:17] [Server thread/INFO]: [Allium] Module [essentials] disabled.
+[00:38:17] [Server thread/INFO]: Allium-Pool - Shutdown initiated...
+[00:38:17] [Server thread/INFO]: Allium-Pool - Shutdown completed.
+[00:38:17] [Server thread/INFO]: [Allium] Database connection pool closed.
+[00:38:17] [Server thread/INFO]: [Allium] Allium disabled.
+[00:38:17] [Server thread/INFO]: Saving players
+[00:38:17] [Server thread/INFO]: Saving worlds
+[00:38:18] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world]'/minecraft:overworld
+[00:38:18] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_nether]'/minecraft:the_nether
+[00:38:18] [Server thread/INFO]: Saving chunks for level 'ServerLevel[s05-fresh-world_the_end]'/minecraft:the_end
+[00:38:18] [Thread-3/INFO]: You are 5 version(s) behind
+--- HARNESS RESULT ---
+{
+  "server_exit": 0,
+  "boot_done": true,
+  "console_probe_pass": true,
+  "stop_requested": true,
+  "allium_enabled": true,
+  "allium_disabled": true,
+  "fresh_input_allium_sha256": "4e90e660141964643ac32ee8580b74082ffec2460e3ca0a85428db4e88c1c14e",
+  "build_allium_sha256_after": "4e90e660141964643ac32ee8580b74082ffec2460e3ca0a85428db4e88c1c14e",
+  "failure_marker_seen": false,
+  "pass": true
+}
+POST-RUN VERIFICATION 2026-11-06T08:45:53.714559+00:00: all recorded owned JVM PIDs absent; no loopback TCP listener on reserved ports 25625-25629.

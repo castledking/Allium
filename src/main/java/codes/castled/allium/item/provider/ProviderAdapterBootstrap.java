@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,9 +41,15 @@ public final class ProviderAdapterBootstrap {
             String apiProbeClassName,
             String supportedVersionLine,
             int majorVersion,
-            int minorVersion
+            int minorVersion,
+            Set<String> verifiedRuntimeVersions
     ) {
+        public ProviderSpec {
+            verifiedRuntimeVersions = Set.copyOf(verifiedRuntimeVersions);
+        }
+
         public boolean isVersionSupported(@Nullable String rawVersion) {
+            if (rawVersion != null && verifiedRuntimeVersions.contains(rawVersion.trim())) return true;
             int[] parsed = parseVersionNumbers(rawVersion);
             if (parsed == null) {
                 return false;
@@ -58,8 +65,9 @@ public final class ProviderAdapterBootstrap {
             "Nexo",
             "codes.castled.allium.item.provider.nexo.NexoProviderAdapter",
             "com.nexomc.nexo.api.NexoItems",
-            "1.29.x (API pin 1.29.1)",
-            1, 29
+            "1.29.x (API pin 1.29.1), verified runtime 1.30-dev-36f4ce686",
+            1, 29,
+            Set.of("1.30-dev-36f4ce686")
     );
 
     public static final ProviderSpec CRAFTENGINE_SPEC = new ProviderSpec(
@@ -68,7 +76,8 @@ public final class ProviderAdapterBootstrap {
             "codes.castled.allium.item.provider.craftengine.CraftEngineProviderAdapter",
             "net.momirealms.craftengine.bukkit.api.CraftEngineItems",
             "26.9.x (API pin 26.9.1)",
-            26, 9
+            26, 9,
+            Set.of()
     );
 
     public static final ProviderSpec ORAXEN_SPEC = new ProviderSpec(
@@ -76,8 +85,9 @@ public final class ProviderAdapterBootstrap {
             "Oraxen",
             "codes.castled.allium.item.provider.oraxen.OraxenProviderAdapter",
             "io.th0rgal.oraxen.api.OraxenItems",
-            "1.211.x (API pin 1.211.0)",
-            1, 211
+            "1.211.x (API pin 1.211.0), verified runtime 1.220.1",
+            1, 211,
+            Set.of("1.220.1")
     );
 
     public static final List<ProviderSpec> ALL_SPECS = List.of(NEXO_SPEC, CRAFTENGINE_SPEC, ORAXEN_SPEC);

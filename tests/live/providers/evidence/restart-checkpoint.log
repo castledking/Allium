@@ -1,0 +1,12 @@
+[18:55:19] [Server thread/INFO]: [ProviderGate] Loading server plugin ProviderGate v1.0-validation
+[18:55:20] [Server thread/INFO]: [ProviderGate] Enabling ProviderGate v1.0-validation
+[18:55:20] [Server thread/INFO]: [ProviderGate] S05-INITIAL {nexo=LOADING, craftengine=LOADING, oraxen=ABSENT}
+[18:55:21] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-nexo
+[18:55:21] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-craftengine
+[18:55:22] [Server thread/INFO]: [ProviderGate] S05-READY {nexo=READY, craftengine=READY, oraxen=ABSENT}
+[18:55:37] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-checkpoint-valid-signature
+[18:55:37] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-checkpoint-spent-state
+[18:55:37] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-checkpoint-valid-signature
+[18:55:37] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-checkpoint-spent-state
+[18:55:37] [Server thread/INFO]: [ProviderGate] S05-DONE checkpoint
+[18:55:38] [Server thread/INFO]: [ProviderGate] Disabling ProviderGate v1.0-validation

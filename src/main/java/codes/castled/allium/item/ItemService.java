@@ -328,7 +328,7 @@ public final class ItemService {
         }
 
         // Query external provider adapters using their native item-ID APIs
-        ProviderKey nativeAppearance = null;
+        Set<ProviderKey> nativeAppearances = new java.util.TreeSet<>(java.util.Comparator.comparing(ProviderKey::asString));
         for (ItemProviderAdapter adapter : providers.values()) {
             String pName = adapter.providerName();
             if (ProviderKey.MINECRAFT.equals(pName) || ProviderKey.ALLIUM.equals(pName)) {
@@ -338,12 +338,28 @@ public final class ItemService {
                 Optional<String> externalId = adapter.identifyItemId(stack);
                 if (externalId.isPresent() && !externalId.get().isBlank()) {
                     try {
-                        nativeAppearance = ProviderKey.of(pName, externalId.get());
-                        break;
+                        nativeAppearances.add(ProviderKey.of(pName, externalId.get()));
                     } catch (IllegalArgumentException ignored) {
                     }
                 }
             }
+        }
+
+        ProviderKey nativeAppearance = null;
+        if (pdcAppearance != null && nativeAppearances.contains(pdcAppearance)) {
+            // A provider's native API confirms this exact stamped appearance. Other providers
+            // may still recognize legacy conversion tags; map iteration order is not authority.
+            nativeAppearance = pdcAppearance;
+            if (nativeAppearances.size() > 1) {
+                warnDiagnosticOnce("Multiple native provider identities " + nativeAppearances
+                        + "; choosing API-confirmed Allium stamp '" + pdcAppearance + "'. Signature verification still applies.");
+            }
+        } else if (nativeAppearances.size() == 1) {
+            nativeAppearance = nativeAppearances.iterator().next();
+        } else if (nativeAppearances.size() > 1) {
+            warnDiagnosticOnce("Ambiguous native provider identities " + nativeAppearances
+                    + " without an API-confirmed Allium stamp; refusing item/behavior matching. Metadata was preserved.");
+            return Optional.empty();
         }
 
         ProviderKey appearance;

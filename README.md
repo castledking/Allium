@@ -77,7 +77,7 @@ alpha does not wait for every addon. Import planning starts with M0.
 - Module, command and listener managers.
 - Config loading, backup-before-upgrade, migrations and missing-key insertion.
 - Locale files in `lang/`, a `Messages` enum and English fallback.
-- Takion messaging integration; rich delivery still needs consistent use across paths.
+- Native static text formatting and sound playback; Takion has been retired.
 - HikariCP database setup for MySQL/SQLite and economy/Vault scaffolding.
 - Implementations of `/heal`, `/feed`, `/fly`, `/god` and `/gamemode`.
 
@@ -91,19 +91,21 @@ need the verification described in M0–M4.
 ./gradlew clean build
 ```
 
-The current build compiles against **Paper 1.21.8**, emits **Java 21** bytecode and
-packages `build/libs/Allium.jar`. Its legacy compatibility sources target Bukkit
-1.8.8/Java 8. Those settings are existing implementation details, not the intended
-support matrix. No fresh successful build is claimed by the documentation update.
+Shared code compiles against **Spigot 1.20** and emits **Java 17** bytecode.
+The three optional provider source sets compile against pinned Java 21 APIs but
+also emit Java 17 bytecode; install JDK 17 and 21 for the configured toolchains.
+Provider tests run on Java 21. Output is `build/libs/Allium.jar`.
 
-M0 will pin toolchains, compile shared code against Spigot 1.20 with Java 17
-bytecode, remove pre-1.20 scope, and isolate newer APIs. Servers still need the
-Java version required by their own release; newer runtime lanes include Java 21
-and Java 25. See the [compatibility plan](docs/roadmap.md#runtime-and-compatibility).
+Provider API pins, actual server runs and open validation rows are documented in
+[the S05 matrix](docs/s05-provider-matrix.md). The complete S05 gate is still open;
+its native Oraxen/all-three and remaining lane checks are not claimed as passing.
+Core remains the only required plugin; external providers are compile-only and
+are not bundled. Current bundled libraries are HikariCP 5.1.0 and InvUI 1.49.
+InvUI's 26.x GUI compatibility remains an explicit later-slice risk.
 
-Current dependencies include Takion 1.4, InvUI 1.49 and HikariCP 5.1.0 (bundled),
-plus optional Vault and PlaceholderAPI (provided). Dependency versions, bytecode,
-relocation and reflective resources need review before releasing for the full range.
+Servers need the Java version required by their own release and installed provider
+plugins. The shared Java 17 bytecode target does not lower server/provider runtime
+requirements. See the [compatibility plan](docs/roadmap.md#runtime-and-compatibility).
 
 ## Source layout
 
@@ -118,9 +120,9 @@ src/main/java/codes/castled/allium/
   message/                 Message keys, locales and delivery
   listener/                Listener registration and god-mode handling
   compat/                  Compatibility interfaces/providers
-src/compat/                Existing legacy and modern implementations
+src/*Adapter/             Isolated Nexo/CraftEngine/Oraxen API source sets
 src/main/resources/        plugin.yml, config.yml and lang/
-allium-core/               Build subproject; public API extraction is planned
+allium-core/               Platform-neutral command specs and item identity/signing
 ```
 
 ## License

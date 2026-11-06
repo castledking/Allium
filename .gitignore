@@ -33,5 +33,7 @@ ehthumbs.db
 # Runtime / local / secrets
 local.properties
 *.log
+# Filtered, reviewable validation evidence only; runtime logs remain ignored.
+!tests/live/providers/evidence/*.log
 /run/
 .item-hmac-secret

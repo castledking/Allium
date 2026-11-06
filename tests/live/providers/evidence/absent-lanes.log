@@ -1,0 +1,20 @@
+Lane: spigot-1.20.1
+[18:21:55] [Server thread/INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[18:21:55] [Server thread/INFO]: [Allium] CraftEngine is not installed; provider 'craftengine' is ABSENT (optional).
+[18:21:55] [Server thread/INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[18:21:55] [Server thread/INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[18:21:56] [Server thread/INFO]: [Allium] Allium disabled.
+
+Lane: paper-1.20.6
+[18:21:55] [Server thread/INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[18:21:55] [Server thread/INFO]: [Allium] CraftEngine is not installed; provider 'craftengine' is ABSENT (optional).
+[18:21:55] [Server thread/INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[18:21:55] [Server thread/INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[18:21:57] [Server thread/INFO]: [Allium] Allium disabled.
+
+Lane: paper-26.3
+[18:26:07] [Server thread/INFO]: [Allium] Nexo is not installed; provider 'nexo' is ABSENT (optional).
+[18:26:07] [Server thread/INFO]: [Allium] CraftEngine is not installed; provider 'craftengine' is ABSENT (optional).
+[18:26:07] [Server thread/INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[18:26:07] [Server thread/INFO]: [Allium] Allium v1.0.0-SNAPSHOT enabled.
+[18:28:40] [Server thread/INFO]: [Allium] Allium disabled.

@@ -1,0 +1,51 @@
+[18:49:01] [Server thread/INFO]: [ProviderGate] Loading server plugin ProviderGate v1.0-validation
+[18:49:02] [Server thread/INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[18:49:02] [Server thread/INFO]: [ProviderGate] Enabling ProviderGate v1.0-validation
+[18:49:02] [Server thread/INFO]: [ProviderGate] S05-INITIAL {nexo=LOADING, craftengine=LOADING, oraxen=ABSENT}
+[18:49:03] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-nexo
+[18:49:03] [Server thread/INFO]: [Allium] Nexo provider (1.29-dev-b3ebc6e48) READY (1 items).
+[18:49:03] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-craftengine
+[18:49:03] [Server thread/INFO]: [Allium] CraftEngine provider (26.9.2) READY (1 items).
+[18:49:04] [Server thread/INFO]: [ProviderGate] S05-READY {nexo=READY, craftengine=READY, oraxen=ABSENT}
+[18:51:03] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-create-native-id
+[18:51:03] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-create-signed
+[18:51:03] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-strict-carrier
+[18:51:03] [Server thread/INFO]: [ProviderGate] S05-CREATED nexo material=STICK uuid=ea3360b6-8964-473f-8bab-abc366f120b3
+[18:51:03] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-create-native-id
+[18:51:03] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-create-signed
+[18:51:03] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-strict-carrier
+[18:51:03] [Server thread/INFO]: [ProviderGate] S05-CREATED craftengine material=GOLD_INGOT uuid=c9d2b047-c8bb-4a44-ac00-c46aad7c939d
+[18:51:03] [Server thread/INFO]: [ProviderGate] S05-DONE create
+[18:51:04] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-nexo
+[18:51:04] [Server thread/INFO]: [Allium] Nexo provider (1.29-dev-b3ebc6e48) READY (1 items).
+[18:51:04] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-craftengine
+[18:51:04] [Server thread/INFO]: [Allium] CraftEngine provider (26.9.2) READY (1 items).
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-signature-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-uuid-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-state-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-still-verifies
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-HELD nexo material=PAPER
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-FRESH nexo material=PAPER
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-signature-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-uuid-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-state-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-still-verifies
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-HELD craftengine material=GOLD_INGOT
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-FRESH craftengine material=DIAMOND
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-DONE verify
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-signature-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-uuid-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-state-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-held-still-verifies
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-HELD nexo material=PAPER
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-FRESH nexo material=PAPER
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-native-updater-ran
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-signature-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-uuid-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-state-unchanged
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-PASS craftengine-held-still-verifies
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-HELD craftengine material=DIAMOND
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-FRESH craftengine material=DIAMOND
+[18:53:14] [Server thread/INFO]: [ProviderGate] S05-DONE nativeupdate
+[18:53:36] [Server thread/INFO]: [ProviderGate] Disabling ProviderGate v1.0-validation
+[18:53:36] [Server thread/INFO]: [Allium] Allium disabled.

@@ -1,0 +1,10 @@
+[18:40:30] [Server thread/INFO]: [Allium] CraftEngine is not installed; provider 'craftengine' is ABSENT (optional).
+[18:40:30] [Server thread/INFO]: [Allium] Oraxen is not installed; provider 'oraxen' is ABSENT (optional).
+[18:40:31] [Server thread/INFO]: [ProviderGate] S05-INITIAL {nexo=LOADING, craftengine=ABSENT, oraxen=ABSENT}
+[18:40:31] [Server thread/INFO]: [ProviderGate] S05-PASS reload-event-loading-nexo
+[18:40:31] [Server thread/INFO]: [Allium] Nexo provider (1.29-dev-b3ebc6e48) READY (1 items).
+[18:40:31] [Server thread/INFO]: [ProviderGate] S05-READY {nexo=READY, craftengine=ABSENT, oraxen=ABSENT}
+[18:41:44] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-standalone-native-id
+[18:41:44] [Server thread/INFO]: [ProviderGate] S05-PASS nexo-standalone-signature
+[18:41:44] [Server thread/INFO]: [ProviderGate] S05-DONE smoke
+[18:41:44] [Server thread/INFO]: [ProviderGate] S05-STATUS {nexo=READY, craftengine=ABSENT, oraxen=ABSENT} history=[Nexo com.nexomc.nexo.api.events.NexoPreItemsLoadEvent PROVIDER_LOADING]

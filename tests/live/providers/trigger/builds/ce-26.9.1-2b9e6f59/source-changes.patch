@@ -1,0 +1,13 @@
+diff --git a/core/src/main/java/net/momirealms/craftengine/core/item/updater/impl/ResetOperation.java b/core/src/main/java/net/momirealms/craftengine/core/item/updater/impl/ResetOperation.java
+index 140fb8162..1ffd11694 100644
+--- a/core/src/main/java/net/momirealms/craftengine/core/item/updater/impl/ResetOperation.java
++++ b/core/src/main/java/net/momirealms/craftengine/core/item/updater/impl/ResetOperation.java
+@@ -30,7 +30,7 @@ public final class ResetOperation implements ItemUpdater {
+     @Override
+     public void update(ItemBuildContext context) {
+         Item item = context.item();
+-        Item newItem = this.item.get().buildItem(context);
++        Item newItem = this.item.get().buildItem(context, item.count());
+         if (VersionHelper.COMPONENT_RELEASE) {
+             for (Key component : this.componentsToKeep) {
+                 if (item.hasComponent(component)) {

@@ -1,6 +1,12 @@
 # CE native trigger diagnostic (S05 only)
 
-**Quantity gate FAIL:** genuine clicks, full-stack drops, and pickups reset a stack
+**Patched gate PASS, stock FAIL.** Two exact-source full CE builds with the one-line
+count fix pass the expanded native suite below. Stock results are retained as the
+negative reproduction; no production provider was replaced.
+
+## Stock reproduction
+
+**Stock quantity gate FAIL:** genuine clicks, full-stack drops, and pickups reset a stack
 of seven to **one**. This repeats twice per trigger on both native versions below.
 Each count-1 reset passes. Current-version count-7 controls keep seven. All cases
 retain the exact Allium signature, instance UUID, spent charges (`9 → 2` before the
@@ -25,8 +31,8 @@ fail in each run. All 24 cases generated real native events; no event was manual
 fired. Both clients and servers exited **0**. The diagnostic runner exits **1**
 because the quantity contract fails. Full logs/JSON remain in
 `/tmp/allium-s05-20261106/ce-triggers/{exact-1218,final-263-r2}`. Neither run has
-quota/save/logging exceptions. S05's quantity gate remains blocked; this does not
-claim all supported lanes or provider combinations pass.
+quota/save/logging exceptions. These stock artifacts remain unsafe for reset
+updaters; passing patched builds do not change their result.
 
 ## Minimal reproduction and cause
 
@@ -81,11 +87,12 @@ Item newItem = this.item.get().buildItem(context, item.count());
 ```
 
 [reset-preserve-count.patch](reset-preserve-count.patch) contains only that change.
-It passes `git apply --check` against the inspected checkout. **It was not applied,
-built, or live-tested.** No vendor/provider/Allium code was changed. Before accepting
-an upstream fix, rerun this diagnostic against that full native artifact and
-require every quantity check to pass; include constant/dynamic build paths and
-multiple newer updater versions in upstream regression tests.
+It is applied in isolated clones at the exact native source revisions, then built
+through the genuine `:bukkit:paper-loader:shadowJar` task. The original CE checkout
+and installed production plugins remain unchanged. No Allium runtime code or
+inventory repair listener was added. [Build recipe and provenance](builds/README.md)
+include the external compiler-only Gson ordering adjustment, native descriptors,
+full artifact hashes and the source diff.
 
 For migrations that only change material, source `transmute` explicitly passes
 `item.count()`; explicit `apply_data` operations can update selected components.
@@ -93,6 +100,48 @@ Those have narrower semantics than reset and are **not live-validated alternativ
 here**. Recommend an upstream reset count fix and a rerun, rather than silently
 repairing quantity or re-signing in Allium. No definition-only retention setting
 closes the reset quantity gap.
+
+## Patched native results
+
+Both runtimes first pass the original 12-case diagnostic, then pass the expanded
+suite with **20 case identities and 28 observations per runtime**, using Allium
+SHA-256 `de103116a3724cb520d2351c5d9bc25aea5fd7fa91b2c997c74922ecbac580e7`.
+
+| Full patched runtime | Source commit | SHA-256 |
+| --- | --- | --- |
+| CE 26.9.1, Paper 1.21.8 / Java 21 | `2b9e6f59a0bf4dac7f71958c0ea96c14b8e44985` | `9b86b1044e0d97d800e1722b1ca2b01f2582d44269a28508da7b9b79babfcd41` |
+| SF CE 26.9.2, Paper 26.3 / Java 25 | `94b74598312d5a16216caed1c07fe3966d854096` | `d779823f05922747a70a268888610f408dcfa151b194ef46d28d483393d74852` |
+
+The expanded cases add:
+
+- Count 64 reset on each native trigger, alongside the original counts 1 and 7.
+- Dynamic `item_name: "count=<arg:item.count>"` on each trigger. An existing count-7
+  stack traverses reset versions 2 and 3 in one trigger, then version 4 in another,
+  then a no-op at current version. Every dynamic name is `count=7`; this verifies
+  that processors receive the preserved count during construction.
+- Real right-click split into inventory 3 and cursor 4, then a left-click merge
+  back into inventory 7, retaining the original identity and metadata on both.
+- Real single-item drop: held count 6 remains IRON_INGOT/version 1, dropped count
+  1 becomes EMERALD/version 2. Dropping the remaining six migrates all of them;
+  the final live item entities conserve a total of 7, whether merged or separate.
+
+All cases require exact MAC/UUID, spent charges, every recorded PDC type/value,
+raw sentinel and native identity. Single-stack click/drop/pickup cases assert the
+actual post-continuation destination: cursor/entity/inventory respectively. No
+native update is called by the fixture. For repeated triggers, the already tested
+stack is relocated, its full snapshot is compared before/after relocation, and
+fresh observation files prevent an earlier result from satisfying a later wait.
+The migration history stays on that same stack; it is not freshly minted.
+
+[Exact 26.9.1 evidence](../evidence/ce-trigger-patched-ce2691-20261106.log) and
+[SF 26.9.2 evidence](../evidence/ce-trigger-patched-ce2692-20261106.log) retain the
+assertions, wire packets and every server-owned stage snapshot. The
+[manifest](../evidence/ce-trigger-patched-20261106.json) identifies source builds,
+lanes, counts, exits and hashes. These are local patched binaries, not upstream
+official releases. Stack conservation does not implement splitting when a new
+definition lowers the maximum stack size, nor override an arbitrary processor
+that deliberately replaces an item/count. Other lanes/combinations require their
+own release checks.
 
 ## Run it
 
@@ -107,9 +156,9 @@ External prerequisites (no root Gradle build is used):
 
 - Stopped disposable runtime template
   `/tmp/allium-s05-20261105/provider-gate/lane`, containing Paper 26.3's libraries,
-  version jar, audited `plugins/Allium.jar`, and CE config/commands templates.
-  `--template` overrides the path. The stale `artifacts/Allium.jar` is deliberately
-  **not** used; the stopped lane's audited jar is used.
+  version jar and genuine dependency libraries. `--template` overrides the path.
+  Allium defaults to this repository's `build/libs/Allium.jar`; `--allium-jar`
+  selects an explicit artifact. Its actual hash is recorded for every run.
 - Adjacent full CE jar at
   `/tmp/allium-s05-20261105/provider-gate/artifacts/craft-engine-sf-26.9.2.jar`;
   `--artifacts` overrides its directory.
@@ -128,20 +177,22 @@ External prerequisites (no root Gradle build is used):
   exact running server's protocol catalog.
 - Network access for native dynamic dependency downloads and first Paper bootstrap.
   Fresh data directories are generated under the owned `/tmp/.../ce-triggers`
-  root; allow roughly 0.3 GB per run and additional transient runtime headroom.
+  root by default. `--run-root` also accepts the owned storage path shown below;
+  allow roughly 0.3 GB per run and additional transient runtime headroom.
 
 Only owned loopback ports **25610–25612** are accepted by both the fixture and
 clients. The runner refuses existing run directories; it never copies worlds,
 player data, databases, keys, Nexo, RPM, or other plugins. Only Allium, CE, and the
-validation fixture are installed. It disables the template's resource-pack host
-registry, workflows and send-on-join before first boot. Shared ProviderGate,
-raw-client, adapters, docs, and build files remain untouched.
+validation fixture are installed. It disables the native resource-pack host
+registry, workflows and send-on-join before first boot. Normal application
+commands, adapters and root build files are not changed by this diagnostic.
 
-The raw client sends a real left click with no predicted changed slots and an
-empty hashed cursor prediction; the native server executes it and returns
-an authoritative resync. Its protocol777 drop action ordinal is `4`; the 1.21.8
-client's is `3`. Protocol777 movement also sends `client_tick_end` and the initial
-`player_loaded` packet. These details must be revisited for another protocol.
+The clients send real left/right clicks with no predicted changed slots and an
+empty cursor prediction; vanilla executes them and returns an authoritative
+resync. Drop action ordinals come from the exact running server's native enum
+catalog, including the different protocol772/777 values. Protocol777 movement
+also sends `client_tick_end` and the initial `player_loaded` packet. Packet
+formats must be revisited for another protocol.
 
 The runner always shuts down its own client/server in `finally`, with bounded
 terminate/kill/reap fallbacks. Renders from a completed run are reproducible:
@@ -151,7 +202,22 @@ python3 tests/live/providers/trigger/evidence.py reproduce-263
 python3 tests/live/providers/trigger/evidence.py reproduce-1218
 ```
 
-Only the two complete final runs are committed as native trigger evidence.
+The patched gate can be repeated with the full built native artifact:
+
+```sh
+python3 tests/live/providers/trigger/run.py --extended --exact1218 --port 25611 \
+  --run-name verify-patched-2691 \
+  --run-root /mnt/storage/.allium-validation/20261106/ce-count-fix/runs \
+  --ce-jar /path/to/craft-engine-paper-plugin-26.9.1.jar \
+  --provenance /path/to/provenance.json
+python3 tests/live/providers/trigger/evidence.py verify-patched-2691 \
+  --run-root /mnt/storage/.allium-validation/20261106/ce-count-fix/runs
+```
+
+For SF 26.9.2 / Paper 26.3, omit `--exact1218`, use port 25610 and its patched
+artifact/provenance. Never reuse a run directory. The final reviewed patched runs
+are `patched-2691-reviewed` and `patched-2692-reviewed` under that storage root.
+Both stock failures and patched passes are committed as separate evidence.
 Earlier harness attempts (reload completion text and missing protocol777 client
  tick marker) are not passing tests and remain temporary diagnostics. A review
 also hardened failure-path process cleanup. Nonzero exits and any forced shutdown,
@@ -164,4 +230,4 @@ python3 -m unittest discover -s tests/live/providers/trigger -p 'test_*.py' -v
 ```
 
 The recorded native failures already have clean client/server exit zero. The
-cleanup checks do not turn their quantity failures into passing tests.
+cleanup checks do not turn stock quantity failures into passing tests.

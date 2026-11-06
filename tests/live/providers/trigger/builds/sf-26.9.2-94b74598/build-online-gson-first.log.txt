@@ -1,0 +1,62 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :buildSrc:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :buildSrc:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :buildSrc:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :buildSrc:compilePluginsBlocks UP-TO-DATE
+> Task :buildSrc:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :buildSrc:generateScriptPluginAdapters UP-TO-DATE
+> Task :buildSrc:compileKotlin UP-TO-DATE
+> Task :buildSrc:compileJava NO-SOURCE
+> Task :buildSrc:compileGroovy NO-SOURCE
+> Task :buildSrc:pluginDescriptors UP-TO-DATE
+> Task :buildSrc:processResources UP-TO-DATE
+> Task :buildSrc:classes UP-TO-DATE
+> Task :buildSrc:jar UP-TO-DATE
+
+> Task :core:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :bukkit:legacy:compileJava
+> Task :bukkit:proxy:compileJava
+
+> Task :bukkit:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :bukkit:processResources NO-SOURCE
+> Task :bukkit:classes
+> Task :bukkit:jar
+> Task :bukkit:shadowJar
+> Task :common-files:compileJava NO-SOURCE
+> Task :common-files:generateScopedResourceIndex
+> Task :common-files:processResources
+> Task :common-files:classes
+> Task :common-files:jar
+> Task :core:processResources
+> Task :core:classes
+> Task :core:jar
+> Task :bukkit:compatibility:legacy:compileJava
+> Task :bukkit:compatibility:compileJava
+> Task :bukkit:compatibility:processResources NO-SOURCE
+> Task :bukkit:compatibility:classes
+> Task :bukkit:compatibility:jar
+> Task :bukkit:legacy:processResources NO-SOURCE
+> Task :bukkit:legacy:classes
+> Task :bukkit:legacy:jar
+> Task :bukkit:legacy:shadowJar
+> Task :bukkit:paper-loader:compileJava
+> Task :bukkit:paper-loader:generatePaperPluginDescription
+> Task :bukkit:paper-loader:processResources
+> Task :bukkit:paper-loader:classes
+> Task :bukkit:proxy:processResources NO-SOURCE
+> Task :bukkit:proxy:classes
+> Task :bukkit:proxy:shadowJar
+> Task :bukkit:paper-loader:shadowJar
+
+[Incubating] Problems report is available at: file:///mnt/storage/.allium-validation/20261106/ce-count-fix/builds/sf-26.9.2-94b74598/source/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 54s
+30 actionable tasks: 21 executed, 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.7.1/userguide/configuration_cache_enabling.html

@@ -1,0 +1,16 @@
+// Build-only correction: a transitive Geyser common jar bundles an old Gson
+// ahead of the catalog's Gson 2.14.0 on compatibility's javac classpath.
+// Prefer that same resolved catalog dependency; do not alter runtime contents.
+gradle.projectsEvaluated {
+    def p = gradle.rootProject.findProject(':bukkit:compatibility')
+    if (p == null) return
+    p.tasks.named('compileJava').configure {
+        def originalClasspath = classpath
+        def gson = originalClasspath.filter { it.name == 'gson-2.14.0.jar' }
+        classpath = gson + originalClasspath
+        doFirst {
+            if (gson.files.size() != 1) throw new GradleException('Declared genuine Gson 2.14.0 artifact missing or ambiguous')
+            new File(p.rootProject.projectDir.parentFile, 'compatibility-classpath-gson-first.txt').text = classpath.files.collect { it.absolutePath }.join('\n') + '\n'
+        }
+    }
+}

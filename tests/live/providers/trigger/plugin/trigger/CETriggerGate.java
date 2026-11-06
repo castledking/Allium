@@ -31,6 +31,13 @@ public final class CETriggerGate extends JavaPlugin implements Listener {
         service=PluginStart.getInstance().getItemService();
         service.registerPrivilegedBehavior("allium:trigger_gate");
         getServer().getPluginManager().registerEvents(this,this);
+        try {
+            Map<String,Integer> actions=new LinkedHashMap<>();
+            for(Object value:Class.forName("net.minecraft.network.protocol.game.ServerboundPlayerActionPacket$Action").getEnumConstants()) {
+                Enum<?> action=(Enum<?>)value;actions.put(action.name(),action.ordinal());
+            }
+            write("action-ids",actions);
+        }catch(Exception e){throw new IllegalStateException("native action catalog unavailable",e);}
         try { write("wire-ids", Map.of("wirePackets",wirePacketIds())); } catch(Exception e) { getLogger().warning("CE-TRIGGER wire catalog unavailable (use external protocol client): "+e); }
         getLogger().info("CE-TRIGGER runtime="+Bukkit.getVersion()+" java="+System.getProperty("java.version")+" CE="+Bukkit.getPluginManager().getPlugin("CraftEngine").getDescription().getVersion());
     }
@@ -62,6 +69,7 @@ public final class CETriggerGate extends JavaPlugin implements Listener {
         Map<String,Object> out=new LinkedHashMap<>();
         if(s==null||s.getType().isAir()){out.put("empty",true);return out;}
         out.put("material",s.getType().toString());out.put("amount",s.getAmount());
+        try {out.put("itemNameJson",((Optional<?>)itemType().getMethod("itemNameJson").invoke(wrapped(s))).map(Object::toString).orElse(null));}catch(Exception e){throw new RuntimeException(e);}
         PersistentDataContainer p=s.getItemMeta().getPersistentDataContainer();
         Map<String,Object> pdc=new TreeMap<>();
         for(NamespacedKey k:p.getKeys()) {
@@ -107,6 +115,22 @@ public final class CETriggerGate extends JavaPlugin implements Listener {
                 } else {p.getInventory().setItem(0,stack);stack=p.getInventory().getItem(0);}
                 baseline=snapshot(stack);write(name+"-baseline",baseline);
                 getLogger().info("CE-TRIGGER BASELINE case="+name+" "+json.toJson(baseline).replace('\n',' '));
+            } else if(a[0].equals("rearm")) {
+                List<ItemStack> candidates=new ArrayList<>();
+                ItemStack cursor=p.getItemOnCursor();
+                if(cursor!=null&&!cursor.getType().isAir())candidates.add(cursor);
+                for(ItemStack s:p.getInventory().getContents())if(s!=null&&!s.getType().isAir())candidates.add(s);
+                for(org.bukkit.entity.Item drop:p.getWorld().getEntitiesByClass(org.bukkit.entity.Item.class))candidates.add(drop.getItemStack());
+                if(candidates.size()!=1)throw new IllegalStateException("rearm requires exactly one existing stack");
+                ItemStack stack=candidates.get(0).clone();Map<String,Object> before=snapshot(stack);
+                if(!Objects.equals(before.get("uuid"),baseline.get("uuid")))throw new IllegalStateException("rearm identity changed");
+                p.getInventory().clear();p.setItemOnCursor(null);
+                for(org.bukkit.entity.Item drop:p.getWorld().getEntitiesByClass(org.bukkit.entity.Item.class))drop.remove();
+                Location base=new Location(p.getWorld(),0.5,100,0.5);p.teleport(base);
+                if(mode.equals("pickup")) {entity=p.getWorld().dropItem(base.clone().add(3,0,0),stack);entity.setGravity(false);entity.setVelocity(new org.bukkit.util.Vector());entity.setPickupDelay(0);stack=entity.getItemStack();}
+                else {p.getInventory().setItem(0,stack);stack=p.getInventory().getItem(0);}
+                Map<String,Object> after=snapshot(stack);if(!before.equals(after))throw new IllegalStateException("rearm changed existing stack data/count");
+                clicks=drops=pickups=0;events.clear();write(name+"-rearm",Map.of("before",before,"after",after,"unchanged",true));
             } else if(a[0].equals("before")) {
                 Map<String,Object> now=snapshot(mode.equals("pickup")?entity.getItemStack():p.getInventory().getItem(0));
                 Map<String,Object> result=new LinkedHashMap<>();result.put("snapshot",now);result.put("unchangedSinceSeed",baseline.equals(now));

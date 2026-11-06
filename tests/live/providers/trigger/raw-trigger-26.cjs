@@ -4,6 +4,7 @@ const net=require('node:net'),z=require('node:zlib'),fs=require('node:fs'),crypt
 const [lane,portText]=process.argv.slice(2),port=Number(portText);
 if(!lane||![25610,25611,25612].includes(port))throw Error('TEST ONLY: require owned port25610-25612');
 const ids=JSON.parse(fs.readFileSync(lane+'/plugins/CETriggerGate/wire-ids.json')).wirePackets;
+const actions=JSON.parse(fs.readFileSync(lane+'/plugins/CETriggerGate/action-ids.json'));
 function vi(n){const a=[];do{let b=n&127;n>>>=7;if(n)b|=128;a.push(b)}while(n);return Buffer.from(a)}
 function read(b,o=0){let n=0,s=0;for(let i=o;i<b.length;i++){const c=b[i];n|=(c&127)<<s;if(!(c&128))return[n,i+1];s+=7;if(s>35)throw Error('bad varint')}return null}
 function str(s){const b=Buffer.from(s);return Buffer.concat([vi(b.length),b])}
@@ -51,16 +52,17 @@ socket.on('error',e=>{console.error(e);process.exitCode=1});
 socket.on('close',()=>process.exit(process.exitCode||0));
 require('node:readline').createInterface({input:process.stdin}).on('line',line=>{try{
  const [action,...args]=line.trim().split(/\s+/);if(!ready)throw Error('wait for READY');
- if(action==='click'){
+ if(action==='click'||action==='rightclick'){
   const slot=Buffer.alloc(2);slot.writeInt16BE(36); // player hotbar slot0, native PICKUP left click
   // No predicted slot deltas; empty hashed cursor prediction requests authoritative resync.
   // Server executes the genuine click and returns its actual cursor/inventory; observer asserts it.
-  game('container_click',Buffer.concat([vi(0),vi(stateId),slot,Buffer.from([0]),vi(0),vi(0),Buffer.from([0])]));
-  console.log('CE-WIRE SEND container_click slot36 left PICKUP state='+stateId);
- }else if(action==='drop'){
-  // Exact runtime Action enum: DROP_ALL_ITEMS=4 (26.3 includes CHANGE_DESTROY_DIRECTION).
-  game('player_action',Buffer.concat([vi(4),Buffer.alloc(8),Buffer.from([0]),vi(0)]));
-  console.log('CE-WIRE SEND player_action DROP_ALL_ITEMS=4');
+  const button=action==='rightclick'?1:0;
+  game('container_click',Buffer.concat([vi(0),vi(stateId),slot,Buffer.from([button]),vi(0),vi(0),Buffer.from([0])]));
+  console.log('CE-WIRE SEND container_click slot36 button='+button+' PICKUP state='+stateId);
+ }else if(action==='drop'||action==='drop-one'){
+  const key=action==='drop-one'?'DROP_ITEM':'DROP_ALL_ITEMS';if(!Number.isInteger(actions[key]))throw Error('Missing native action '+key);
+  game('player_action',Buffer.concat([vi(actions[key]),Buffer.alloc(8),Buffer.from([0]),vi(0)]));
+  console.log('CE-WIRE SEND player_action '+key+'='+actions[key]);
  }else if(action==='move'){
   const b=Buffer.alloc(25);args.map(Number).forEach((v,i)=>b.writeDoubleBE(v,8*i));b[24]=0;
   game('move_player_pos',b);game('client_tick_end');position=args.map(Number);console.log('CE-WIRE SEND move_player_pos '+JSON.stringify(position));

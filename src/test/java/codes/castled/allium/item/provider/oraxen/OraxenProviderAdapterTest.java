@@ -146,7 +146,7 @@ class OraxenProviderAdapterTest {
         assertEquals(ProviderStatus.FAILED, adapter.status());
         assertEquals(ResolutionStatus.PROVIDER_FAILED, adapter.createItem("x").status());
         assertEquals(1, warnings.size());
-        assertTrue(warnings.get(0).contains("pinned 1.211.0"));
+        assertTrue(warnings.get(0).contains("1.211.0"));
         assertTrue(warnings.get(0).contains("NoSuchFieldException"));
         api.probeFailure = null;
         api.initialized = true;

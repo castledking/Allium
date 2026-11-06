@@ -95,10 +95,12 @@ result and must preserve the existing uncommitted work.
 - [x] **S05 / M1 — Provider adapter implementation:** isolated Nexo 1.29.1,
       CraftEngine core/bukkit 26.9.1 and Oraxen 1.211.0 compile-only API bindings;
       ready/reload/disable states, native ID/case preservation and diagnostics.
-- [ ] **S05 live gate — still open:** Nexo/CE alone and SF Nexo+CE+RPM pass on
-      Paper 26.3; full Oraxen artifact/all-three/common-lane tests, exact stable
-      boots and remaining supported lanes remain. Nexo/CE held-state retention
-      passes native update and actual server restart checks.
+- [ ] **S05 live gate — quantity failure:** stock CE reset updates reduce stacks
+      of seven to one through genuine click/drop/pickup triggers. Exact CE 26.9.1
+      and adjacent 26.9.2 both reproduce it; proposed upstream patch is recorded.
+      Supplied Nexo 1.30-dev-36f4ce686/Oraxen 1.220.1 now have explicit runtime
+      checks; all three pass eight headless Paper lanes, and actual inventory
+      reload/update/restart with RPM on Paper 1.21.8 when migration is disabled.
       See [provider matrix](docs/s05-provider-matrix.md). Do not begin S06.
 - [ ] **S06 / M1 — First tool and pack:** Mob Disarmer through the item service,
       built-in visual plus all providers; inventory SF assets and stable IDs;

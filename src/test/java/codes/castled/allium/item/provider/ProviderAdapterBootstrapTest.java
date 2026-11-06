@@ -16,6 +16,11 @@ class ProviderAdapterBootstrapTest {
         assertTrue(ProviderAdapterBootstrap.NEXO_SPEC.isVersionSupported("1.29.1"));
         assertTrue(ProviderAdapterBootstrap.CRAFTENGINE_SPEC.isVersionSupported("26.9.2"));
         assertTrue(ProviderAdapterBootstrap.ORAXEN_SPEC.isVersionSupported("1.211.0"));
+        assertTrue(ProviderAdapterBootstrap.NEXO_SPEC.isVersionSupported("1.30-dev-36f4ce686"));
+        assertTrue(ProviderAdapterBootstrap.ORAXEN_SPEC.isVersionSupported("1.220.1"));
+        assertFalse(ProviderAdapterBootstrap.NEXO_SPEC.isVersionSupported("1.30-dev-unverified"));
+        assertFalse(ProviderAdapterBootstrap.ORAXEN_SPEC.isVersionSupported("1.220.2"));
+        assertFalse(ProviderAdapterBootstrap.ORAXEN_SPEC.isVersionSupported("1.220.0"));
         for (String version : List.of("", "dev", "1.1.0", "1.30.0", "2.0.0", "999999999999999999999.1")) {
             assertFalse(ProviderAdapterBootstrap.NEXO_SPEC.isVersionSupported(version), version);
         }

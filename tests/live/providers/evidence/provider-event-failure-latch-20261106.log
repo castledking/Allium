@@ -1,0 +1,7 @@
+[06:18:05 INFO]: [ProviderGate] Loading server plugin ProviderGate v1.0-validation
+[06:18:08 INFO]: [ProviderGate] Enabling ProviderGate v1.0-validation
+[06:18:08 INFO]: [ProviderGate] S05-INITIAL {nexo=ABSENT, craftengine=LOADING, oraxen=ABSENT}
+[31;1m[06:18:09 ERROR]: [ProviderGate] S05-FAIL java.lang.IllegalStateException: injected provider event assertion failure
+[31;1m[06:18:09 ERROR]: [ProviderGate] S05-FAIL java.lang.IllegalStateException: preceding assertion failed; refusing subsequent PASS
+[31;1m[06:18:09 ERROR]: [ProviderGate] S05-FAIL java.lang.IllegalStateException: preceding assertion failed; refusing subsequent PASS
+[06:18:10 INFO]: [ProviderGate] Disabling ProviderGate v1.0-validation

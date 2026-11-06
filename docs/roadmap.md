@@ -201,7 +201,9 @@ namespace forms explicitly; ambiguous old references require a mapping report.
 At runtime, deprecated `ce:` input warns **once per distinct reference per startup
 or reload** rather than on every resolution. The existing resolver in legacy Allium
 supports Nexo and CraftEngine but does not have an active Oraxen implementation;
-The recode now has a real isolated Oraxen adapter; full native-plugin validation remains pending.
+The recode now has a real isolated Oraxen adapter, with native validation for the
+supplied 1.220.1 runtime. The [S05 matrix](s05-provider-matrix.md) records coexistence
+requirements and the remaining native CE reset quantity failure.
 
 Separate stable **Allium behavior identity** from the provider reference supplying
 its appearance. Selecting `nexo:handcuffs` must not require a second implementation

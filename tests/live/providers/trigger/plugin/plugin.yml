@@ -1,0 +1,11 @@
+name: CETriggerGate
+version: 1.0-validation
+main: trigger.CETriggerGate
+api-version: '1.20'
+depend: [Allium, CraftEngine]
+commands:
+  cetrigger:
+    permission: cetrigger.admin
+permissions:
+  cetrigger.admin:
+    default: op

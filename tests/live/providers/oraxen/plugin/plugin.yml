@@ -1,0 +1,12 @@
+name: OraxenGate
+version: 1.0-validation
+main: gate.OraxenGate
+api-version: '1.20'
+depend: [Allium]
+softdepend: [Oraxen]
+commands:
+  oraxengate:
+    permission: oraxengate.admin
+permissions:
+  oraxengate.admin:
+    default: op

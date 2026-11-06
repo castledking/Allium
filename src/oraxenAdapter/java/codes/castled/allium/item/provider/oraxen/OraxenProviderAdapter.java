@@ -16,9 +16,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -37,6 +34,8 @@ import java.util.function.Consumer;
  * <p>The verified private static Map map distinguishes not-yet-initialized (null) from a
  * loaded empty registry; public getMap masks null with a fresh empty map. This probe reads
  * only, checks its declared shape, and fails explicitly if the pinned internals change.
+ * The verified 1.220.1 runtime uses an atomic RegistrySnapshot instead; its publication
+ * probe distinguishes the initial Map.of() sentinel from published empty registries.
  * Oraxen catches some parse failures internally and its post event has no success payload;
  * a retained registry following such a failure cannot be distinguished by this adapter.
  */
@@ -51,19 +50,17 @@ public final class OraxenProviderAdapter implements ItemProviderAdapter, Listene
     }
 
     private static final class PinnedApi implements NativeApi {
-        private Field registry;
+        private final boolean snapshotRegistry;
+        private OraxenRegistryProbe probe;
+
+        private PinnedApi(String version) {
+            snapshotRegistry = version.trim().equals("1.220.1");
+        }
 
         @Override
         public boolean registryInitialized() throws ReflectiveOperationException {
-            if (registry == null) {
-                Field field = OraxenItems.class.getDeclaredField("map");
-                if (field.getType() != Map.class || !Modifier.isStatic(field.getModifiers())
-                        || !field.trySetAccessible()) {
-                    throw new IllegalAccessException("OraxenItems.map must be an accessible static Map (pinned 1.211.0)");
-                }
-                registry = field;
-            }
-            return registry.get(null) != null;
+            if (probe == null) probe = new OraxenRegistryProbe(OraxenItems.class, snapshotRegistry);
+            return probe.published();
         }
 
         @Override public Set<String> itemNames() { return OraxenItems.getNames(); }
@@ -87,7 +84,7 @@ public final class OraxenProviderAdapter implements ItemProviderAdapter, Listene
     public OraxenProviderAdapter(Plugin hostPlugin, String providerVersion,
                                  Consumer<String> infoLogger, Consumer<String> warningLogger,
                                  Runnable reloadInvalidateCallback) {
-        this(hostPlugin, providerVersion, infoLogger, warningLogger, reloadInvalidateCallback, new PinnedApi());
+        this(hostPlugin, providerVersion, infoLogger, warningLogger, reloadInvalidateCallback, new PinnedApi(providerVersion));
     }
 
     OraxenProviderAdapter(Plugin hostPlugin, String providerVersion,
@@ -132,7 +129,7 @@ public final class OraxenProviderAdapter implements ItemProviderAdapter, Listene
                 infoLogger.accept("Oraxen provider (" + providerVersion + ") READY (" + names.size() + " items).");
             }
         } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
-            fail("reading pinned 1.211.0 readiness/registry", failure);
+            fail("reading verified " + providerVersion + " readiness/registry", failure);
         }
     }
 

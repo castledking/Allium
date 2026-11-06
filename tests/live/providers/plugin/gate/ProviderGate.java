@@ -24,6 +24,7 @@ public final class ProviderGate extends JavaPlugin implements Listener {
     private final Map<String,String> signatures = new LinkedHashMap<>();
     private final Map<String,String> uuids = new LinkedHashMap<>();
     private ItemService items;
+    private boolean failed;
     private final List<String> history = new ArrayList<>();
     @Override public void onEnable() {
         items=PluginStart.getInstance().getItemService();
@@ -40,25 +41,39 @@ public final class ProviderGate extends JavaPlugin implements Listener {
             try {
                 Class<? extends Event> type=Class.forName(event,true,provider.getClass().getClassLoader()).asSubclass(Event.class);
                 getServer().getPluginManager().registerEvent(type,this,EventPriority.MONITOR,(listener,e)-> {
-                    String key=name.equals("Nexo")?"nexo":"craftengine";
-                    ResolutionStatus status=items.create(new ItemRef(ProviderKey.of(key,key.equals("nexo")?"gate_wand":"sf_ores:silver_ingot"),null,1,Map.of())).status();
-                    history.add(name+" "+event+" "+status);
-                    check("reload-event-loading-"+key,status==ResolutionStatus.PROVIDER_LOADING);
+                    try {
+                        if(getConfig().getBoolean("test.force-event-failure",false))throw new IllegalStateException("injected provider event assertion failure");
+                        String key=name.equals("Nexo")?"nexo":"craftengine";
+                        ResolutionStatus status=items.create(new ItemRef(ProviderKey.of(key,key.equals("nexo")?"gate_wand":"sf_ores:silver_ingot"),null,1,Map.of())).status();
+                        check("reload-event-loading-"+key,status==ResolutionStatus.PROVIDER_LOADING);
+                        history.add(name+" "+event+" "+status);
+                    }catch(Exception|LinkageError failure){fail(failure);}
                 },this);
             }catch(Exception ex){throw new IllegalStateException(ex);}
         }
         getLogger().info("S05-INITIAL "+states());
-        new BukkitRunnable(){int ticks;public void run(){if(++ticks>120){getLogger().severe("S05 readiness timeout "+states());cancel();return;}
-            if(states().values().stream().noneMatch(s->s==ProviderStatus.LOADING)){getLogger().info("S05-READY "+states());cancel();}
-        }}.runTaskTimer(this,1,20);
+        new BukkitRunnable() {
+            int ticks;
+            @Override public void run() {
+                if(failed){cancel();return;}
+                try {
+                    Map<String,ProviderStatus> current=states();
+                    if(current.containsValue(ProviderStatus.FAILED))throw new IllegalStateException("provider FAILED "+current);
+                    if(++ticks>120)throw new IllegalStateException("readiness timeout "+current);
+                    if(!current.containsValue(ProviderStatus.LOADING)){getLogger().info("S05-READY "+current);cancel();}
+                }catch(Exception|LinkageError failure){fail(failure);cancel();}
+            }
+        }.runTaskTimer(this,1,20);
     }
     private Map<String,ProviderStatus> states(){Map<String,ProviderStatus> map=new LinkedHashMap<>();for(String key:List.of("nexo","craftengine","oraxen"))map.put(key,items.getProvider(key).orElseThrow().status());return map;}
     private void check(String label,boolean value){if(!value)throw new IllegalStateException(label);getLogger().info("S05-PASS "+label);}
+    private void fail(Throwable failure){failed=true;getLogger().severe("S05-FAIL "+failure);}
     private Player player(){Player p=Bukkit.getPlayerExact("GateBot");if(p==null)throw new IllegalStateException("Connect actual GateBot protocol client first");return p;}
     private String tag(ItemStack s,org.bukkit.NamespacedKey key){return s.getItemMeta().getPersistentDataContainer().get(key,PersistentDataType.STRING);}
     private String id(String key){return key.equals("nexo")?"gate_wand":"sf_ores:silver_ingot";}
     private int slot(String key){return key.equals("nexo")?0:1;}
     @Override public boolean onCommand(CommandSender sender,Command command,String label,String[] args){
+        if(failed){fail(new IllegalStateException("preceding assertion failed; refusing subsequent PASS"));return true;}
         try {
             String action=args.length==0?"status":args[0];
             if(action.equals("status")){getLogger().info("S05-STATUS "+states()+" history="+history);return true;}
@@ -114,7 +129,7 @@ public final class ProviderGate extends JavaPlugin implements Listener {
                 }
             }
             getLogger().info("S05-DONE "+action);
-        }catch(Throwable ex){getLogger().severe("S05-FAIL "+ex);ex.printStackTrace();}
+        }catch(Exception|LinkageError ex){fail(ex);ex.printStackTrace();}
         return true;
     }
     private ItemStack updateNative(String key,ItemStack old)throws Exception{

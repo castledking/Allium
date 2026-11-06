@@ -1,0 +1,1 @@
+CE 26.2 initial harness preparation failed before starting Java: FileNotFoundError copying Allium.jar because plugins/ directory had not been created. Fixed with plugins.mkdir(); preserved untouched extracted bundle as /tmp/allium-s05-20261106/spigot/26.2-ce-26.9.1-prep-failed. No server from that preparation ran.

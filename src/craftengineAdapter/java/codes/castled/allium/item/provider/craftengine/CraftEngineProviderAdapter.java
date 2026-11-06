@@ -4,6 +4,7 @@ import codes.castled.allium.item.ItemProviderAdapter;
 import codes.castled.allium.item.ProviderKey;
 import codes.castled.allium.item.ProviderStatus;
 import codes.castled.allium.item.ResolutionResult;
+import codes.castled.allium.item.provider.ProviderConfigurationDiagnostics;
 import net.momirealms.craftengine.bukkit.api.event.CraftEngineReloadEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -16,6 +17,9 @@ import org.bukkit.plugin.PluginManager;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -27,7 +31,7 @@ import java.util.regex.Pattern;
  * polls its native lifecycle flags before accessing the registry. Its completion event runs
  * before those flags reset, so readiness is reconciled on the next server tick.
  */
-public final class CraftEngineProviderAdapter implements ItemProviderAdapter, Listener {
+public final class CraftEngineProviderAdapter implements ItemProviderAdapter, ProviderConfigurationDiagnostics, Listener {
     public static final String PLUGIN_NAME = "CraftEngine";
     private static final Pattern NATIVE_ID = Pattern.compile("[a-z0-9._-]+:[a-z0-9/._-]+");
 
@@ -192,6 +196,22 @@ public final class CraftEngineProviderAdapter implements ItemProviderAdapter, Li
     @Override
     public boolean hasAuthoritativeNativeIdCheck() {
         return true;
+    }
+
+    @Override
+    public synchronized List<String> configurationWarnings(Set<String> managedItemIds) throws ReflectiveOperationException {
+        if (status() != ProviderStatus.READY) return List.of();
+        List<String> warnings = new ArrayList<>();
+        for (String id : managedItemIds.stream().sorted().toList()) {
+            if (NATIVE_ID.matcher(id).matches() && api.hasResetUpdater(id)) {
+                warnings.add("Allium-managed CraftEngine item '" + id + "' has a reset updater. Stock CE 26.9.1/26.9.2 "
+                        + "resets lose stack quantity (7 -> 1), even with metadata retention. Every reset in its version chain "
+                        + "must retain keep_components: [minecraft:custom_data] and keep_tags: [PublicBukkitValues], "
+                        + "and use a verified count-preserving provider fix (buildItem(context, item.count())). "
+                        + "See docs/s05-provider-matrix.md; Allium does not fingerprint the installed binary or edit provider configuration.");
+            }
+        }
+        return List.copyOf(warnings);
     }
 
     @Override

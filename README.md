@@ -101,7 +101,9 @@ Provider API pins, actual server runs and open validation rows are documented in
 require the recorded count-preserving source patch: stock 26.9.1/26.9.2 lose items.
 The patched runtime gate and its exact artifact hashes are recorded separately
 from stock results. Supplied Nexo 1.30-dev-36f4ce686 and Oraxen 1.220.1 are
-explicitly verified runtime exceptions to the API pins.
+explicitly runtime-verified builds. The Nexo 1.29.x and Oraxen 1.211.x API lines
+are compile-only, not runtime-verified support claims; see the matrix for the
+separate source-built Oraxen experiment.
 Core remains the only required plugin; external providers are compile-only and
 are not bundled. Current bundled libraries are HikariCP 5.1.0 and InvUI 1.49.
 InvUI's 26.x GUI compatibility remains an explicit later-slice risk.

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -51,6 +52,46 @@ class CraftEngineProviderAdapterTest {
         assertEquals(ProviderStatus.READY, adapter.status());
         assertEquals(ResolutionStatus.UNKNOWN_ID, adapter.createItem(ID).status());
         assertTrue(adapter.hasAuthoritativeNativeIdCheck());
+    }
+
+    @Test
+    void resetWarningOnlyInspectsExplicitlyManagedIdsAndNeverBuildsOrUpdatesItems() throws Exception {
+        when(api.hasResetUpdater(ID)).thenReturn(true);
+        adapter.initialize(plugins);
+        List<String> messages = adapter.configurationWarnings(Set.of(ID, "other:plain", "invalid"));
+        assertEquals(1, messages.size());
+        String warning = messages.get(0);
+        assertTrue(warning.contains(ID));
+        assertTrue(warning.contains("Stock CE 26.9.1/26.9.2"));
+        assertTrue(warning.contains("7 -> 1"));
+        assertTrue(warning.contains("keep_components: [minecraft:custom_data]"));
+        assertTrue(warning.contains("keep_tags: [PublicBukkitValues]"));
+        assertTrue(warning.contains("buildItem(context, item.count())"));
+        verify(api).hasResetUpdater(ID);
+        verify(api).hasResetUpdater("other:plain");
+        verify(api, never()).hasResetUpdater("invalid");
+        verify(api, never()).build(anyString());
+        verify(api, never()).nativeId(any());
+        assertEquals(ProviderStatus.READY, adapter.status());
+    }
+
+    @Test
+    void emptyManagedSetAndLoadingProviderNeverInspectUnrelatedNativeDefinitions() throws Exception {
+        adapter.initialize(plugins);
+        assertTrue(adapter.configurationWarnings(Set.of()).isEmpty());
+        when(api.lifecycle()).thenReturn(RELOADING);
+        assertTrue(adapter.configurationWarnings(Set.of(ID)).isEmpty());
+        verify(api, never()).hasResetUpdater(anyString());
+    }
+
+    @Test
+    void diagnosticProbeFailureDoesNotFailHealthyProvider() throws Exception {
+        adapter.initialize(plugins);
+        when(api.hasResetUpdater(ID)).thenThrow(new IllegalAccessException("changed updater schema"));
+        assertThrows(IllegalAccessException.class, () -> adapter.configurationWarnings(Set.of(ID)));
+        assertEquals(ProviderStatus.READY, adapter.status());
+        assertTrue(warnings.isEmpty(), "caller logs unavailable inspection without failing item operations");
+        verify(api, never()).build(anyString());
     }
 
     @Test

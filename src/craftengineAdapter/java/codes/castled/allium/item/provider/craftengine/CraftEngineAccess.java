@@ -10,4 +10,5 @@ interface CraftEngineAccess {
     int loadedItemCount();
     ItemStack build(String id);
     String nativeId(ItemStack stack);
+    boolean hasResetUpdater(String id) throws ReflectiveOperationException;
 }

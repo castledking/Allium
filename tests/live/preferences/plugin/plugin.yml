@@ -1,0 +1,13 @@
+name: PrefGate
+version: 1.0.0
+main: gate.PrefGate
+api-version: '1.20'
+depend: [Allium]
+description: S03 preferences gate fixture only. Never install on a production server.
+commands:
+  pg:
+    description: S03 preferences gate fixture
+    permission: prefgate.console
+permissions:
+  prefgate.console:
+    default: op

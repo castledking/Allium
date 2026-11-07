@@ -26,6 +26,12 @@ public final class FaultInjection {
     /** A skull profile lookup never answers, so the lookup timeout fires. */
     public static final String SKULL_LOOKUP_HANG = "skull.lookup-hang";
 
+    /** A preference load waits {@code PreferencesModule#SLOW_LOAD_FAULT_MILLIS} before reading. */
+    public static final String PREFERENCES_LOAD_SLOW = "preferences.load-slow";
+
+    /** A preference load fails as if the database were unreachable. */
+    public static final String PREFERENCES_LOAD_FAIL = "preferences.load-fail";
+
     private static final FaultInjection GLOBAL = new FaultInjection(Boolean.getBoolean(PROPERTY));
 
     private final boolean enabled;

@@ -27,6 +27,9 @@ dependencies {
     testImplementation("org.mockito:mockito-junit-jupiter:5.16.0")
     testImplementation("org.mockito:mockito-inline:5.2.0")
     testImplementation("org.jetbrains:annotations:26.0.2")
+    // JDBC drivers for storage tests only; servers provide their own at runtime.
+    testRuntimeOnly("org.xerial:sqlite-jdbc:3.49.1.0")
+    testRuntimeOnly("com.mysql:mysql-connector-j:9.2.0")
 }
 
 tasks.withType<JavaCompile>().configureEach {
@@ -36,5 +39,7 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
+    // MySQL/MariaDB storage tests run only when a disposable database is supplied.
+    System.getenv("ALLIUM_TEST_MYSQL_URL")?.let { environment("ALLIUM_TEST_MYSQL_URL", it) }
     jvmArgs("-Xshare:off", "-Dnet.bytebuddy.experimental=true")
 }

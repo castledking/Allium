@@ -1,10 +1,11 @@
 // Test-only S04 give-gate client for protocol 777 (Paper 26.3) with no npm dependencies; packet IDs come
-// from the running server's catalog (GiveGate wire-ids.json). Owned loopback ports 25670-25672 only.
+// from the running server's catalog (a gate fixture's wire-ids.json; S04G_WIRE_IDS overrides the GiveGate path).
+// Owned loopback ports 25670-25672 (S04 gate) and 25680-25681 (S03 gate) only.
 const net = require('node:net'), z = require('node:zlib'), fs = require('node:fs'), crypto = require('node:crypto');
 const [lane, portText, username = 'GateBot'] = process.argv.slice(2), port = Number(portText);
 if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) throw Error('bad username');
-if (!lane || ![25670, 25671, 25672].includes(port)) throw Error('TEST ONLY: owned port 25670-25672');
-const ids = JSON.parse(fs.readFileSync(lane + '/plugins/GiveGate/wire-ids.json')).wirePackets;
+if (!lane || ![25670, 25671, 25672, 25680, 25681].includes(port)) throw Error('TEST ONLY: owned port 25670-25672|25680-25681');
+const ids = JSON.parse(fs.readFileSync(process.env.S04G_WIRE_IDS || lane + '/plugins/GiveGate/wire-ids.json')).wirePackets;
 function vi(n) { const a = []; do { let b = n & 127; n >>>= 7; if (n) b |= 128; a.push(b); } while (n); return Buffer.from(a); }
 function read(b, o = 0) { let n = 0, s = 0; for (let i = o; i < b.length; i++) { const c = b[i]; n |= (c & 127) << s; if (!(c & 128)) return [n, i + 1]; s += 7; if (s > 35) throw Error('bad varint'); } return null; }
 function str(s) { const b = Buffer.from(s); return Buffer.concat([vi(b.length), b]); }

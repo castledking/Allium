@@ -4,6 +4,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.module.EconomyModule;
 import codes.castled.allium.module.EssentialsModule;
 import codes.castled.allium.module.ItemsModule;
+import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.module.ToolsModule;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,6 +26,7 @@ public final class ModuleManager {
     }
 
     public void loadModules() {
+        registerModule(new PreferencesModule(plugin));
         registerModule(new EconomyModule(plugin));
         registerModule(new EssentialsModule(plugin));
         registerModule(new ToolsModule(plugin));

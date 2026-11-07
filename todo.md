@@ -65,9 +65,18 @@ result and must preserve the existing uncommitted work.
       1.20.1, Paper 1.20.6, and Paper 26.3 (see `tests/live/command-client/evidence/`); no command interception leaks, clear restart
       diagnostics on reload, and permission/visibility-aware completion; the five ported
       commands behave identically before and after the port across all 5 lanes.
-- [ ] **S03 / M1 — Preferences:** UUID repository, schema migrations, defaults,
-      bounded asynchronous storage and safe session loading. Gate: SQLite/MySQL
-      round-trip and reconnect/restart behavior without accidental default overwrite.
+- [x] **S03 / M1 — Preferences:** UUID repository (`allium_preferences`, nullable
+      field = configured default, field-level patches with a `version`), schema migrations
+      (`allium_schema`, newer schema refused), `preferences.defaults.*` plus
+      `sounds.defaults.volume`, bounded per-UUID storage lanes (SQLite one serialized lane,
+      MySQL four, drained on shutdown) and generation-safe sessions (load at pre-login;
+      LOADING/FAILED never enforce defaults; stale loads discarded). Fields: the three accept
+      flags, `message-sound-volume` and its restoration state, with the `/mfx` rules as
+      code. Gate passed 2026-11-07: 188 live checks on Spigot 1.20.1 and Paper 26.3 against
+      SQLite and MariaDB (round trip, restart, reconnect during a slow load, failed load,
+      two concurrent writers, shutdown drain, no default overwrite); see
+      [the results](tests/live/preferences/RESULTS.md). Not yet: offline lookups for
+      `/pay` and other offline-player uses, and cross-server push of other servers' writes.
 - [x] **S04 / M1 — Item contract:** parse, create, identify, match, clone and
       serialize vanilla/Allium references; first-colon namespace split (`craftengine:<ns>:<id>`);
       bare names resolve to vanilla only; behavior ID separate from appearance;

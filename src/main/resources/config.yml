@@ -72,6 +72,13 @@ tools:
       preset: none
       per-charge: 0.0
       final-charge: 0.0
+    # Which removed pieces drop; the rest are destroyed. Either way the slot's drop chance is
+    # then set to 0, so killing the mob cannot drop them again.
+    # slot-chance: each piece rolls its slot's own drop chance once (2.0 for gear a mob picked up,
+    #   0.085 for natural spawn gear). Villager gear and an enderman's carried block always drop.
+    #   This is pre-recode Allium's behavior.
+    # always: every removed piece drops.
+    drop-rule: slot-chance
     # Mob types that cannot be disarmed. Players and armor stands never can.
     excluded-mobs: [ender_dragon, wither, elder_guardian, warden]
     # Skip entities other plugins mark as NPCs (e.g. Citizens).

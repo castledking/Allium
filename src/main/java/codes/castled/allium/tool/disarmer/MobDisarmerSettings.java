@@ -21,6 +21,7 @@ import java.util.Set;
  * @param chargeVariants appearance sets; a disarmer whose appearance is in a set is shown as
  *                       that set's entry for its charge count. Key {@link #BROKEN_VARIANT} is
  *                       used for broken tools.
+ * @param dropRule       how removed pieces drop; {@link DisarmDropRule#SLOT_CHANCE} by default
  */
 public record MobDisarmerSettings(
         boolean enabled,
@@ -29,6 +30,7 @@ public record MobDisarmerSettings(
         List<Map<Integer, ProviderKey>> chargeVariants,
         double radius,
         DisarmerRules rules,
+        DisarmDropRule dropRule,
         DisarmTargetPolicy targetPolicy,
         long pickupBlockMillis,
         long clickGuardMillis,
@@ -144,6 +146,16 @@ public record MobDisarmerSettings(
         }
         DisarmerRules rules = new DisarmerRules(maxCharges, rechargeSeconds * 1000L, perCharge, finalCharge);
 
+        String rawDropRule = section == null ? null : section.getString("drop-rule");
+        DisarmDropRule dropRule = DisarmDropRule.SLOT_CHANCE;
+        if (rawDropRule != null) {
+            dropRule = DisarmDropRule.fromConfig(rawDropRule).orElse(null);
+            if (dropRule == null) {
+                warnings.add(PATH + ".drop-rule must be always or slot-chance; using slot-chance");
+                dropRule = DisarmDropRule.SLOT_CHANCE;
+            }
+        }
+
         List<String> excluded = section == null || !section.contains("excluded-mobs")
                 ? List.copyOf(DisarmTargetPolicy.DEFAULT_EXCLUDED_TYPES)
                 : section.getStringList("excluded-mobs");
@@ -154,7 +166,7 @@ public record MobDisarmerSettings(
         long statusCooldownMillis = nonNegative(section, "status-cooldown-millis", 1000L, warnings);
         String sound = section == null ? "minecraft:item.shield.break" : section.getString("sound", "minecraft:item.shield.break");
 
-        return new MobDisarmerSettings(enabled, appearance, aliases, variants, radius, rules,
+        return new MobDisarmerSettings(enabled, appearance, aliases, variants, radius, rules, dropRule,
                 new DisarmTargetPolicy(excluded, excludeNpcs), pickupBlockMillis, clickGuardMillis,
                 statusCooldownMillis, sound == null ? "" : sound.trim(), warnings);
     }

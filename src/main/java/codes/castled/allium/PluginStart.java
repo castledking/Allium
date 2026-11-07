@@ -3,6 +3,7 @@ package codes.castled.allium;
 import codes.castled.allium.command.CommandManager;
 import codes.castled.allium.compat.GodModeCompatProvider;
 import codes.castled.allium.config.ConfigManager;
+import codes.castled.allium.core.FaultInjection;
 import codes.castled.allium.core.ModuleManager;
 import codes.castled.allium.database.DatabaseManager;
 import codes.castled.allium.item.AlliumItemDefinition;
@@ -45,6 +46,10 @@ public final class PluginStart extends JavaPlugin {
 
         logger = new AlliumLogger(this);
         logger.info("Starting Allium...");
+        if (FaultInjection.enabled()) {
+            logger.warning("Fault injection is enabled (-D" + FaultInjection.PROPERTY + "=true). This is for disposable "
+                    + "test servers only: armed fault points make Allium operations fail on purpose.");
+        }
 
         configManager = new ConfigManager(this);
         configManager.loadAll();

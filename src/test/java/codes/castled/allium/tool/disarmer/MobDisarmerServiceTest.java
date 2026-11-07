@@ -135,7 +135,7 @@ class MobDisarmerServiceTest {
 
     private static MobDisarmerSettings settings(DisarmerRules rules) {
         MobDisarmerSettings d = MobDisarmerSettings.defaults();
-        return new MobDisarmerSettings(true, d.appearance(), List.of(), List.of(), 6.0D, rules, d.targetPolicy(),
+        return new MobDisarmerSettings(true, d.appearance(), List.of(), List.of(), 6.0D, rules, DisarmDropRule.SLOT_CHANCE, d.targetPolicy(),
                 120_000L, 200L, 1_000L, "", List.of());
     }
 
@@ -306,6 +306,33 @@ class MobDisarmerServiceTest {
         assertEquals(1.0F, kit.chances.get(EquipmentSlot.LEGS));
         assertTrue(drops.isEmpty());
         assertEquals(DisarmerCharges.full(3), toolState());
+    }
+
+    @Test
+    void alwaysRuleDropsEveryPieceAndVillagerGearIsGuaranteedUnderSlotChance() {
+        MobDisarmerSettings d = settings(RULES);
+        service = newService(new MobDisarmerSettings(true, d.appearance(), List.of(), List.of(), 6.0D, RULES,
+                DisarmDropRule.ALWAYS, d.targetPolicy(), 120_000L, 200L, 1_000L, "", List.of()));
+        Kit zombie = zombie();
+        zombie.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 0.0F);
+        zombie.equip(EquipmentSlot.FEET, Material.IRON_BOOTS, 0.4F);
+        assertEquals(MobDisarmerService.Outcome.DISARMED, click(zombie.mob));
+        assertEquals(List.of(Material.IRON_SWORD, Material.IRON_BOOTS), drops.stream().map(ItemStack::getType).toList());
+        assertEquals(0.0F, zombie.chances.get(EquipmentSlot.FEET));
+
+        // Default slot-chance: the 0.5 roll keeps a 0.4 zombie piece, but villager gear always drops.
+        drops.clear();
+        service = newService(settings(RULES));
+        Kit sameRoll = zombie();
+        sameRoll.equip(EquipmentSlot.FEET, Material.IRON_BOOTS, 0.4F);
+        assertEquals(MobDisarmerService.Outcome.DISARMED, click(sameRoll.mob));
+        assertTrue(drops.isEmpty());
+        nanos.addAndGet(1_000_000_000L);
+        Kit villager = kit(mock(org.bukkit.entity.Villager.class), EntityType.VILLAGER, new Location(world, 2, 64, 0));
+        villager.equip(EquipmentSlot.HAND, Material.EMERALD, 0.0F);
+        assertEquals(MobDisarmerService.Outcome.DISARMED, click(villager.mob));
+        assertEquals(List.of(Material.EMERALD), drops.stream().map(ItemStack::getType).toList());
+        assertEquals(new DisarmerCharges(0, clock.get() + 120_000L, false, 3L), toolState());
     }
 
     @Test

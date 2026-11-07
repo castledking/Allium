@@ -106,6 +106,20 @@ class DisarmerPolicyTest {
     }
 
     @Test
+    void dropRuleAlwaysDropsEverythingAndSlotChanceRollsUnlessGuaranteed() {
+        assertTrue(DisarmDropRule.ALWAYS.drops(0.0F, false, 0.99F));
+        assertTrue(DisarmDropRule.ALWAYS.drops(Float.NaN, false, 0.0F));
+        assertFalse(DisarmDropRule.SLOT_CHANCE.drops(0.0F, false, 0.0F));
+        assertFalse(DisarmDropRule.SLOT_CHANCE.drops(0.085F, false, 0.5F));
+        assertTrue(DisarmDropRule.SLOT_CHANCE.drops(0.085F, false, 0.01F));
+        assertTrue(DisarmDropRule.SLOT_CHANCE.drops(0.0F, true, 0.99F));
+        assertEquals(java.util.Optional.of(DisarmDropRule.SLOT_CHANCE), DisarmDropRule.fromConfig(" Slot_Chance "));
+        assertEquals(java.util.Optional.of(DisarmDropRule.ALWAYS), DisarmDropRule.fromConfig("always"));
+        assertTrue(DisarmDropRule.fromConfig("sometimes").isEmpty());
+        assertTrue(DisarmDropRule.fromConfig(null).isEmpty());
+    }
+
+    @Test
     void targetPolicyExcludesPlayersNonMobsBossesAndOptionallyNpcs() {
         DisarmTargetPolicy defaults = new DisarmTargetPolicy(DisarmTargetPolicy.DEFAULT_EXCLUDED_TYPES, true);
         assertEquals(DisarmTargetPolicy.Verdict.ALLOWED, defaults.evaluate(facts("minecraft:zombie", false, true, false)));

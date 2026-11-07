@@ -4,29 +4,29 @@
   "result": "PASS",
   "allium": {
     "path": "build/libs/Allium.jar",
-    "sha256": "56d8a52036f66733153e0acc5c43762e6910b7fcd74b94e54a3e9eb7acfa4040"
+    "sha256": "13685eee1f22746edc13c0f003e5e965f982491ff6f4d49c68e4b1c37743af0f"
   },
   "harness": {
-    "run.py": "170c506627667c873e59f35dd4b9c7a0028150e59ebea14dab03471a14ca29da",
+    "run.py": "5b2550013911c4d1879ae337231c84a67f5a5d0fb20a5305a41be96e96076d08",
     "client-mcp.cjs": "2039acf747db83abd5fd07761a2f52a9ae4c69175693921158a9efe752716574",
     "client-raw26.cjs": "51a2d98bea79f236dab47ff998aac93bb77f418b0f96e11ab0d40aeca61fea8a",
-    "plugin/gate/DisarmerGate.java": "123291f6b0a3150626492ed05f4041c53d75f63ae04cba731921b938d7f99255",
+    "plugin/gate/DisarmerGate.java": "ab4ea3223a0301567f28f2a8c4add9f015d4be40f422631bc576099d8159e053",
     "plugin/plugin.yml": "02b7579c1f56ba489b2a9b0d547c7660f1e708b1b19168ccafa41056863ea48d"
   },
   "unitTests": {
-    "plugin": 110,
-    "core": 23,
+    "plugin": 114,
+    "core": 24,
     "failures": 0
   },
   "totals": {
-    "cases": 55,
-    "checks": 793,
+    "cases": 58,
+    "checks": 862,
     "failures": 0
   },
   "lanes": [
     {
       "lane": "spigot-1.20.1",
-      "run": "/tmp/allium-s06a-20261106/runs/spigot-1201-final",
+      "run": "/tmp/allium-s06a-20261106/runs/spigot-1201-followup",
       "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
       "java": "openjdk version \"17.0.21.0.3\" 2026-10-24 / OpenJDK Runtime Environment (build 17.0.21.0.3+1)",
       "client": "minecraft-protocol 1.68.0, protocol 763",
@@ -36,20 +36,21 @@
       "appearances": [
         "allium:mob_disarmer"
       ],
-      "cases": 9,
-      "checks": 126,
-      "passed": 126,
+      "cases": 10,
+      "checks": 149,
+      "passed": 149,
       "failures": [],
       "boots": 2,
       "jarSha256": {
-        "DisarmerGate.jar": "964857bb20aa647684d1657da11de7dd1f63a6db72cf998ef85ae05dcda76c45",
-        "Allium.jar": "56d8a52036f66733153e0acc5c43762e6910b7fcd74b94e54a3e9eb7acfa4040",
+        "DisarmerGate.jar": "5c48173ee1a61d929f056d30f5cb6fce60382de703c7ba6a2ad237e012b9bdcb",
+        "Allium.jar": "13685eee1f22746edc13c0f003e5e965f982491ff6f4d49c68e4b1c37743af0f",
         "server.jar": "3f62f0200d03a745483a74e4df97dddb0a2757bb1c3cc23dd48bf1174cc33491"
-      }
+      },
+      "faultInjection": "-Dallium.fault-injection=true (one armed item.state-write fault in allium-write-fault)"
     },
     {
       "lane": "paper-1.21.8",
-      "run": "/tmp/allium-s06a-20261106/runs/paper-1218-final",
+      "run": "/tmp/allium-s06a-20261106/runs/paper-1218-followup",
       "server": "This server is running Paper version 1.21.8-60-main@29c8822 (2025-09-06T21:49:13Z) (Implementing API version 1.21.8-R0.1-SNAPSHOT)",
       "java": "openjdk version \"21.0.13.0.3\" 2026-10-24 / OpenJDK Runtime Environment (build 21.0.13.0.3+1)",
       "client": "minecraft-protocol 1.68.0, protocol 772",
@@ -66,23 +67,24 @@
         "craftengine:allium_gate:mob_disarmer",
         "oraxen:Gate_Disarmer"
       ],
-      "cases": 36,
-      "checks": 525,
-      "passed": 525,
+      "cases": 37,
+      "checks": 548,
+      "passed": 548,
       "failures": [],
       "boots": 2,
       "jarSha256": {
         "oraxen.jar": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2",
         "craftengine.jar": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f",
         "nexo.jar": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b",
-        "DisarmerGate.jar": "7ca9955f0cb9ae0afe0939d0fab802930954d81217cf492182c6306e97ba490a",
-        "Allium.jar": "56d8a52036f66733153e0acc5c43762e6910b7fcd74b94e54a3e9eb7acfa4040",
+        "DisarmerGate.jar": "78b04ae342d1d57dd7e8a939fc87ab45af351fda8553a2374797c978f990e0f0",
+        "Allium.jar": "13685eee1f22746edc13c0f003e5e965f982491ff6f4d49c68e4b1c37743af0f",
         "server.jar": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
-      }
+      },
+      "faultInjection": "-Dallium.fault-injection=true (one armed item.state-write fault in allium-write-fault)"
     },
     {
       "lane": "paper-26.3",
-      "run": "/tmp/allium-s06a-20261106/runs/paper-263-gp-r1",
+      "run": "/tmp/allium-s06a-20261106/runs/paper-263-gp-followup",
       "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
       "java": "openjdk version \"25.0.5.0.3\" 2026-10-24 / OpenJDK Runtime Environment (build 25.0.5.0.3)",
       "client": "owned raw client, protocol 777, server packet catalog",
@@ -92,16 +94,26 @@
       "appearances": [
         "allium:mob_disarmer"
       ],
-      "cases": 10,
-      "checks": 142,
-      "passed": 142,
+      "cases": 11,
+      "checks": 165,
+      "passed": 165,
       "failures": [],
       "boots": 2,
       "jarSha256": {
         "GriefPrevention3D.jar": "7c255267790639619bdeae0826c963c85e026bc276fd26a15e20a81062b78c88",
-        "DisarmerGate.jar": "27f8f9df0abbf20527178175255848b2fa71819ed538bce53b64b2e8de61ee7f",
-        "Allium.jar": "56d8a52036f66733153e0acc5c43762e6910b7fcd74b94e54a3e9eb7acfa4040"
-      }
+        "DisarmerGate.jar": "a2e7424c802c1ee8a0e42cc3a8db21b16ea004e115d2c473e27c39e3dd32097e",
+        "Allium.jar": "13685eee1f22746edc13c0f003e5e965f982491ff6f4d49c68e4b1c37743af0f"
+      },
+      "faultInjection": "-Dallium.fault-injection=true (one armed item.state-write fault in allium-write-fault)"
     }
-  ]
+  ],
+  "followUp": {
+    "dropRule": "tools.mob-disarmer.drop-rule: slot-chance (default; pre-recode Allium rolled each slot chance, villager gear and enderman blocks always) | always",
+    "faultCase": "allium-write-fault on every lane: ItemService.updateState rejected once mid-disarm; equipment and drop chances restored field-by-field, nothing dropped, no charge spent, restored chances drop exactly once on kill",
+    "supersededRuns": [
+      "/tmp/allium-s06a-20261106/runs/spigot-1201-final",
+      "/tmp/allium-s06a-20261106/runs/paper-1218-final",
+      "/tmp/allium-s06a-20261106/runs/paper-263-gp-r1"
+    ]
+  }
 }

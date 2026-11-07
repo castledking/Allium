@@ -1,0 +1,14 @@
+name: DisarmerGate
+version: 1.0.0
+main: gate.DisarmerGate
+api-version: '1.20'
+depend: [Allium]
+softdepend: [Nexo, CraftEngine, Oraxen, GriefPrevention, GriefPrevention3D]
+description: S06a validation fixture only. Never install on a production server.
+commands:
+  dg:
+    description: S06a Mob Disarmer gate fixture
+    permission: disarmergate.console
+permissions:
+  disarmergate.console:
+    default: op

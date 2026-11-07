@@ -59,7 +59,13 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   configurations, including count-preserving source-built CE runtimes. Stock
   CE reset updaters still lose stack quantity; deployment requires the verified
   fix and documented retention/converter prerequisites. See the
-  [pinned provider matrix](s05-provider-matrix.md). S06 has not begun.
+  [pinned provider matrix](s05-provider-matrix.md).
+- **S06a (behavior only):** the Mob Disarmer (`allium:mob_disarmer`, signed but not privileged)
+  works with its built-in item and with Nexo, CraftEngine and Oraxen appearances. Protection runs
+  through a small `ProtectionService` with a GriefPrevention/GriefPrevention3D claim hook and a
+  cancellable `AlliumProtectionCheckEvent`. Live results are in
+  [the S06a results](../tests/live/tools/disarmer/RESULTS.md). There is no give command or pack yet;
+  S06b owns the pack.
 - Private messages, preference commands, addons and pack delivery are not implemented in this recode. Some config module names are
   placeholders; do not count them as working features.
 
@@ -220,7 +226,11 @@ server-secret `HmacSHA256` signature (`v2:<keyId>:<64-char-hex>`) over
 `(provider, itemId, behaviorId, instanceUuid, canonicalState)` stored in PDC
 (`allium:instance_uuid`, `allium:signature`), where `canonicalState` is a
 lexicographically key-sorted encoding of `allium:state_*` (`ItemHmacSigner#encodeCanonicalState`).
-Every signed/privileged state mutation (`ItemService#setState`) first verifies the original identity/state, then re-signs the stack with the active key. Rejected items remain unchanged. Directly editing `allium:state_*` in PDC invalidates verification. Keyring secrets (`active`
+Definitions can also be `signed` without being privileged (`mob_disarmer`): new stacks carry
+an instance UUID and MAC, a present MAC is always verified, and an unsigned stack of that
+behavior is still accepted. Appearance refreshes keep a verified MAC and never attach a
+privileged behavior the source stack lacked. Every signed/privileged state mutation
+(`ItemService#setState`, `ItemService#updateState`) first verifies the original identity/state, then re-signs the stack with the active key. Rejected items remain unchanged. Directly editing `allium:state_*` in PDC invalidates verification. Keyring secrets (`active`
 key for signing plus `retired` keys valid for verification) are generated on first
 run and stored outside `config.yml` (`plugins/Allium/.item-hmac-secret`, `0600`
 permissions) so they are never leaked when configs are posted; multi-server networks
@@ -388,7 +398,10 @@ teleport and shutdown. Missing claim APIs disable claim cuffs only. Do not carry
 over the legacy default logout `ban {player}` without an explicit configured policy.
 
 Mob Disarmer targets supported nonplayer mobs, excludes armor stands/players,
-respects protection and handles equipment/drop probabilities once. Phantom
+respects protection and handles equipment/drop probabilities once. As built in S06a, only the
+main hand acts. A disarm takes every piece out of its slot before anything drops, and rolls
+each piece once against the drop chance its slot had: 1 or more always drops, 0 never does.
+It then zeroes the slot's chance. A disarm that removes nothing spends nothing. Phantom
 Obliterator defaults to unnamed phantoms within 64 blocks; empty scans consume no
 charge. Bound searches to loaded entities/chunks and respect protections/events.
 Expose charges, recharge, radius and break chance as configuration rather than

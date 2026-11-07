@@ -4,7 +4,7 @@ main: codes.castled.allium.PluginStart
 api-version: '1.20'
 description: A modern essentials suite
 authors: [castledking]
-softdepend: [Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager]
+softdepend: [Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, GriefPrevention, GriefPrevention3D]
 
 commands:
   heal:
@@ -45,6 +45,8 @@ permissions:
       allium.gamemode: true
       allium.gamemode.others: true
       allium.economy.*: true
+      allium.mobdisarmer.use: true
+      allium.mobdisarmer.bypass: true
   allium.heal:
     description: Allows use of /heal
     default: op
@@ -74,4 +76,10 @@ permissions:
     default: op
   allium.gamemode.others:
     description: Allows changing others gamemodes
+    default: op
+  allium.mobdisarmer.use:
+    description: Allows using a Mob Disarmer
+    default: true
+  allium.mobdisarmer.bypass:
+    description: Mob Disarmer uses spend no charges and never break
     default: op

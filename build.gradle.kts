@@ -50,7 +50,19 @@ providerSources.forEach { name ->
     }
 }
 
+// Optional protection hooks: compiled against public plugin APIs, Java 17 bytecode, loaded reflectively.
+val hookSources = listOf("griefpreventionHook")
+hookSources.forEach { name ->
+    sourceSets.create(name) {
+        compileClasspath += sourceSets.main.get().output + sourceSets.main.get().compileClasspath
+    }
+}
+
 sourceSets.test {
+    hookSources.forEach { name ->
+        compileClasspath += sourceSets[name].output
+        runtimeClasspath += sourceSets[name].output
+    }
     providerSources.forEach { name ->
         compileClasspath += sourceSets[name].output
         runtimeClasspath += sourceSets[name].output
@@ -70,6 +82,7 @@ dependencies {
     add("craftengineAdapterCompileOnly", "net.momirealms:craft-engine-core:26.9.1") { isTransitive = false }
     add("craftengineAdapterCompileOnly", "net.momirealms:craft-engine-bukkit:26.9.1") { isTransitive = false }
     add("oraxenAdapterCompileOnly", "io.th0rgal:oraxen:1.211.0") { isTransitive = false }
+    add("griefpreventionHookCompileOnly", "com.github.GriefPrevention:GriefPrevention:16.18.2") { isTransitive = false }
 
     // Shared baseline server API: Spigot 1.20
     compileOnly("org.spigotmc:spigot-api:$spigotApiVersion")
@@ -100,6 +113,7 @@ dependencies {
     testImplementation("net.momirealms:craft-engine-core:26.9.1") { isTransitive = false }
     testImplementation("net.momirealms:craft-engine-bukkit:26.9.1") { isTransitive = false }
     testImplementation("io.th0rgal:oraxen:1.211.0") { isTransitive = false }
+    testImplementation("com.github.GriefPrevention:GriefPrevention:16.18.2") { isTransitive = false }
     testRuntimeOnly("org.jetbrains.kotlin:kotlin-stdlib:2.1.20")
     testImplementation("net.kyori:adventure-api:4.17.0")
     testImplementation("net.kyori:adventure-text-serializer-legacy:4.17.0")
@@ -137,6 +151,7 @@ tasks {
         archiveClassifier.set("")
         archiveVersion.set("")
         providerSources.forEach { from(sourceSets[it].output) }
+        hookSources.forEach { from(sourceSets[it].output) }
 
         // Preserve reflectively loaded InvUI version modules and HikariCP internals, and all allium-core classes
         minimize {

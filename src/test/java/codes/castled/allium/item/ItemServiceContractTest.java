@@ -211,6 +211,76 @@ class ItemServiceContractTest {
     }
 
     @Test
+    void signedNonPrivilegedBehaviorKeepsMacThroughStateWritesAndSwapsButNeverMintsPrivilegedBehavior() {
+        itemService.registerProvider(new ItemProviderAdapter() {
+            public String providerName() { return "nexo"; }
+            public ProviderStatus status() { return ProviderStatus.READY; }
+            public ResolutionResult createItem(String id) {
+                return ResolutionResult.resolved(ProviderKey.of("nexo", id), createMockBackedStack(Material.IRON_SHOVEL));
+            }
+            public Optional<String> identifyItemId(ItemStack stack) { return Optional.empty(); }
+        });
+        itemService.registerAlliumItem(new AlliumItemDefinition(
+                "signed_tool", Material.GOLDEN_HOE, "allium:signed_tool", false, null, null, Map.of(), true));
+        assertTrue(itemService.isSignedBehavior("allium:signed_tool"));
+        assertFalse(itemService.isPrivilegedBehavior("allium:signed_tool"));
+
+        ItemStack tool = itemService.create(ItemRef.parse("allium:signed_tool")).itemStack().orElseThrow();
+        PersistentDataContainer pdc = tool.getItemMeta().getPersistentDataContainer();
+        String uuid = pdc.get(ItemService.KEY_INSTANCE_UUID, PersistentDataType.STRING);
+        assertNotNull(uuid);
+        assertNotNull(pdc.get(ItemService.KEY_SIGNATURE, PersistentDataType.STRING));
+
+        // One verified write applies every value and re-signs once.
+        assertTrue(itemService.updateState(tool, Map.of("charges", "2", "Recharge_At", "0")));
+        assertEquals(Optional.of("2"), itemService.getState(tool, "charges"));
+        assertEquals(Optional.of("0"), itemService.getState(tool, "recharge_at"));
+        assertEquals(Optional.of("allium:signed_tool"), itemService.identifyBehavior(tool));
+
+        // Appearance swaps keep state, instance UUID and a valid MAC, even for a behavior that
+        // does not require one: a second service without the signed registration still re-signs.
+        ItemService unaware = new ItemService(ItemServiceContractTest::createMockBackedStack, signer, diagnostics::add);
+        unaware.registerProvider(new ItemProviderAdapter() {
+            public String providerName() { return "nexo"; }
+            public ProviderStatus status() { return ProviderStatus.READY; }
+            public ResolutionResult createItem(String id) {
+                return ResolutionResult.resolved(ProviderKey.of("nexo", id), createMockBackedStack(Material.IRON_SHOVEL));
+            }
+            public Optional<String> identifyItemId(ItemStack stack) { return Optional.empty(); }
+        });
+        ItemStack swapped = unaware.swapOrRefreshAppearance(tool, ProviderKey.of("nexo", "tool_2-3")).itemStack().orElseThrow();
+        PersistentDataContainer swappedPdc = swapped.getItemMeta().getPersistentDataContainer();
+        assertEquals(uuid, swappedPdc.get(ItemService.KEY_INSTANCE_UUID, PersistentDataType.STRING));
+        assertNotNull(swappedPdc.get(ItemService.KEY_SIGNATURE, PersistentDataType.STRING));
+        ItemRef swappedRef = itemService.identify(swapped).orElseThrow();
+        assertEquals(ProviderKey.of("nexo", "tool_2-3"), swappedRef.appearance());
+        assertEquals(Optional.of("allium:signed_tool"), swappedRef.behaviorId());
+        assertEquals("2", swappedRef.stateData().get("charges"));
+
+        // Edited signed state is rejected; a rejected write changes nothing.
+        swappedPdc.set(new NamespacedKey("allium", "state_charges"), PersistentDataType.STRING, "99");
+        assertTrue(itemService.identifyBehavior(swapped).isEmpty());
+        assertFalse(itemService.updateState(swapped, Map.of("charges", "1")));
+        assertEquals(Optional.of("99"), itemService.getState(swapped, "charges"));
+        assertEquals(ResolutionStatus.REJECTED,
+                itemService.swapOrRefreshAppearance(swapped, ProviderKey.of("nexo", "tool")).status());
+
+        // Removing the MAC leaves an unsigned stack of a non-privileged behavior, which is accepted.
+        swappedPdc.remove(ItemService.KEY_SIGNATURE);
+        assertEquals(Optional.of("allium:signed_tool"), itemService.identifyBehavior(swapped));
+
+        // A refresh never attaches privileged behavior the source stack lacked.
+        itemService.bindAppearanceToBehavior(ProviderKey.of("nexo", "handcuffs"), "allium:handcuffs");
+        ItemStack plain = itemService.create(ItemRef.parse("minecraft:iron_shovel")).itemStack().orElseThrow();
+        ResolutionResult minted = itemService.swapOrRefreshAppearance(plain, ProviderKey.of("nexo", "handcuffs"));
+        assertEquals(ResolutionStatus.RESOLVED, minted.status());
+        assertTrue(itemService.identifyBehavior(minted.itemStack().orElseThrow()).isEmpty());
+        ItemStack unbound = itemService.create(new ItemRef(ProviderKey.of("nexo", "loose"), null, 1, Map.of())).itemStack().orElseThrow();
+        assertEquals(ResolutionStatus.REJECTED,
+                itemService.swapOrRefreshAppearance(unbound, ProviderKey.of("nexo", "handcuffs")).status());
+    }
+
+    @Test
     void privilegedStateMutationReSignsWhileDirectStateTamperingFailsVerification() {
         // Phantom Obliterator is privileged and carries default state charges=3
         ItemStack obliterator = itemService.create(itemService.parseRef("allium:phantom_obliterator")).itemStack().orElseThrow();
@@ -420,60 +490,6 @@ class ItemServiceContractTest {
     }
 
     private static ItemStack createMockBackedStack(Material material) {
-        return createMockBackedStack(material, 1, new HashMap<>(), new AtomicReference<>(null), new AtomicReference<>(null));
-    }
-
-    private static ItemStack createMockBackedStack(
-            Material material,
-            int initialAmount,
-            Map<NamespacedKey, Object> pdcMap,
-            AtomicReference<String> displayNameRef,
-            AtomicReference<Integer> cmdRef
-    ) {
-        AtomicReference<Integer> amountRef = new AtomicReference<>(initialAmount);
-
-        PersistentDataContainer pdc = mock(PersistentDataContainer.class);
-        doAnswer(inv -> {
-            pdcMap.put(inv.getArgument(0), inv.getArgument(2));
-            return null;
-        }).when(pdc).set(any(NamespacedKey.class), any(), any());
-        when(pdc.get(any(NamespacedKey.class), any())).thenAnswer(inv -> pdcMap.get(inv.getArgument(0)));
-        when(pdc.has(any(NamespacedKey.class), any())).thenAnswer(inv -> pdcMap.containsKey(inv.getArgument(0)));
-        when(pdc.getKeys()).thenAnswer(inv -> pdcMap.keySet());
-        doAnswer(inv -> {
-            pdcMap.remove(inv.getArgument(0));
-            return null;
-        }).when(pdc).remove(any(NamespacedKey.class));
-
-        ItemMeta meta = mock(ItemMeta.class);
-        when(meta.getPersistentDataContainer()).thenReturn(pdc);
-        doAnswer(inv -> {
-            displayNameRef.set(inv.getArgument(0));
-            return null;
-        }).when(meta).setDisplayName(any());
-        when(meta.getDisplayName()).thenAnswer(inv -> displayNameRef.get());
-        doAnswer(inv -> {
-            cmdRef.set(inv.getArgument(0));
-            return null;
-        }).when(meta).setCustomModelData(any());
-        when(meta.getCustomModelData()).thenAnswer(inv -> cmdRef.get() != null ? cmdRef.get() : 0);
-
-        ItemStack stack = mock(ItemStack.class);
-        when(stack.getType()).thenReturn(material);
-        when(stack.getAmount()).thenAnswer(inv -> amountRef.get());
-        doAnswer(inv -> {
-            amountRef.set(inv.getArgument(0));
-            return null;
-        }).when(stack).setAmount(anyInt());
-        when(stack.getItemMeta()).thenReturn(meta);
-        when(stack.setItemMeta(any())).thenReturn(true);
-        when(stack.clone()).thenAnswer(inv -> createMockBackedStack(
-                material,
-                amountRef.get(),
-                new HashMap<>(pdcMap),
-                new AtomicReference<>(displayNameRef.get()),
-                new AtomicReference<>(cmdRef.get())
-        ));
-        return stack;
+        return MockItemStacks.create(material);
     }
 }

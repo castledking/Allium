@@ -104,3 +104,21 @@ utility:
   seen-offline: "{prefix} &f{player} &cwas last seen &f{time} &cago."
   near: "{prefix} &fNearby players: &d{players}"
   near-none: "{prefix} &cNo players nearby."
+
+tool:
+  mob-disarmer:
+    disarmed: "{prefix} &aDisarmed &f{target}&a: &f{removed} &aremoved, &f{dropped} &adropped. Charges: &f{charges}&7/&f{max}"
+    disarmed-bypass: "{prefix} &aDisarmed &f{target}&a: &f{removed} &aremoved, &f{dropped} &adropped."
+    last-charge: "{prefix} &cThat was the last charge. Fully recharged in &f{time}&c."
+    broke: "{prefix} &cThe Mob Disarmer broke while in use."
+    broken: "{prefix} &cThis Mob Disarmer is broken."
+    recharging: "{prefix} &cThe Mob Disarmer is recharging. Ready in &f{time}&c."
+    status: "{prefix} &eRight-click a mob to disarm it. &7Charges: &a{charges}&7/{max}"
+    status-bypass: "{prefix} &eRight-click a mob to disarm it. &7Charges: &aunlimited"
+    player-target: "{prefix} &cThe Mob Disarmer does not work on players."
+    excluded: "{prefix} &cThe Mob Disarmer does not work on &f{target}&c."
+    too-far: "{prefix} &cThat mob is too far away."
+    protected: "{prefix} &cYou can't disarm that mob here."
+    protected-reason: "{prefix} &c{reason}"
+    single-item: "{prefix} &cHold a single Mob Disarmer, not a stack."
+    update-failed: "{prefix} &cThe Mob Disarmer could not be updated, so nothing was used."

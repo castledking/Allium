@@ -44,6 +44,7 @@ public final class ItemService {
     private final Map<ProviderKey, String> appearanceToBehavior = new ConcurrentHashMap<>();
     private final Map<String, ProviderKey> behaviorPreferredAppearance = new ConcurrentHashMap<>();
     private final Set<String> privilegedBehaviors = ConcurrentHashMap.newKeySet();
+    private final Set<String> signedBehaviors = ConcurrentHashMap.newKeySet();
     private final Set<String> warnedDiagnostics = ConcurrentHashMap.newKeySet();
 
     private final Function<Material, ItemStack> itemStackFactory;
@@ -102,6 +103,9 @@ public final class ItemService {
             if (definition.privileged()) {
                 privilegedBehaviors.add(definition.behaviorId());
             }
+            if (definition.signed()) {
+                signedBehaviors.add(definition.behaviorId());
+            }
         }
     }
 
@@ -115,6 +119,25 @@ public final class ItemService {
     public boolean isPrivilegedBehavior(@Nullable String behaviorId) {
         String normalized = ItemRef.normalizeBehaviorId(behaviorId);
         return normalized != null && privilegedBehaviors.contains(normalized);
+    }
+
+    /**
+     * Marks a behavior whose new stacks carry an instance UUID and MAC without requiring one.
+     */
+    public void registerSignedBehavior(String behaviorId) {
+        String normalized = ItemRef.normalizeBehaviorId(behaviorId);
+        if (normalized != null) {
+            signedBehaviors.add(normalized);
+        }
+    }
+
+    /**
+     * True when new stacks of this behavior are stamped with an instance UUID and MAC:
+     * every privileged behavior, plus non-privileged behaviors registered as signed.
+     */
+    public boolean isSignedBehavior(@Nullable String behaviorId) {
+        String normalized = ItemRef.normalizeBehaviorId(behaviorId);
+        return normalized != null && (privilegedBehaviors.contains(normalized) || signedBehaviors.contains(normalized));
     }
 
     public Optional<AlliumItemDefinition> getAlliumItem(String id) {
@@ -224,10 +247,22 @@ public final class ItemService {
      * (including canonical sorted state when privileged), and state metadata.
      */
     public ResolutionResult create(ItemRef ref) {
-        return createInternal(ref, null);
+        return createInternal(ref, null, true, false);
     }
 
-    private ResolutionResult createInternal(ItemRef ref, @Nullable String preservedInstanceUuid) {
+    /**
+     * @param useAppearanceBinding when the ref names no behavior, fall back to the behavior bound
+     *                             to its appearance. Refreshes pass {@code false} so they can
+     *                             never mint behavior the source stack did not have.
+     * @param preserveSignature    sign the new stack even when its behavior does not require it,
+     *                             because the source stack carried a verified MAC
+     */
+    private ResolutionResult createInternal(
+            ItemRef ref,
+            @Nullable String preservedInstanceUuid,
+            boolean useAppearanceBinding,
+            boolean preserveSignature
+    ) {
         Objects.requireNonNull(ref, "ref");
         ProviderKey appearance = ref.appearance();
         ItemProviderAdapter adapter = providers.get(appearance.provider());
@@ -262,7 +297,8 @@ public final class ItemService {
 
         stack.setAmount(ref.amount());
 
-        String effectiveBehaviorId = ref.behaviorId().orElseGet(() -> appearanceToBehavior.get(appearance));
+        String effectiveBehaviorId = ref.behaviorId()
+                .orElseGet(() -> useAppearanceBinding ? appearanceToBehavior.get(appearance) : null);
         Map<String, String> mergedState = new LinkedHashMap<>();
         if (effectiveBehaviorId != null && effectiveBehaviorId.startsWith(ProviderKey.ALLIUM + ":")) {
             String localBehaviorName = effectiveBehaviorId.substring((ProviderKey.ALLIUM + ":").length());
@@ -273,7 +309,8 @@ public final class ItemService {
         }
         mergedState.putAll(ref.stateData());
 
-        stampMetadata(stack, ref.schemaVersion(), appearance, effectiveBehaviorId, mergedState, preservedInstanceUuid);
+        stampMetadata(stack, ref.schemaVersion(), appearance, effectiveBehaviorId, mergedState,
+                preservedInstanceUuid, preserveSignature);
         return ResolutionResult.resolved(appearance, stack);
     }
 
@@ -558,54 +595,81 @@ public final class ItemService {
      * verify before any metadata is changed; rejected items are left untouched.
      */
     public void setState(ItemStack stack, String stateKey, String value) {
-        Objects.requireNonNull(stack, "stack");
         Objects.requireNonNull(stateKey, "stateKey");
         Objects.requireNonNull(value, "value");
+        updateState(stack, Map.of(stateKey, value));
+    }
+
+    /**
+     * Applies several state values in one metadata write with at most one re-signature.
+     * Privileged or signed stacks first verify their original identity and state; on rejection
+     * nothing is written and {@code false} is returned. Unsigned non-privileged stacks are
+     * written directly.
+     *
+     * @return {@code true} when every value was written (or {@code changes} is empty)
+     */
+    public boolean updateState(ItemStack stack, Map<String, String> changes) {
+        Objects.requireNonNull(stack, "stack");
+        Objects.requireNonNull(changes, "changes");
+        Map<String, String> normalized = new LinkedHashMap<>();
+        for (Map.Entry<String, String> change : changes.entrySet()) {
+            String stateKey = Objects.requireNonNull(change.getKey(), "stateKey").trim().toLowerCase(Locale.ROOT);
+            if (stateKey.isEmpty()) {
+                throw new IllegalArgumentException("stateKey must not be blank");
+            }
+            normalized.put(stateKey, Objects.requireNonNull(change.getValue(), "value for " + stateKey));
+        }
+        if (normalized.isEmpty()) {
+            return true;
+        }
         ItemMeta meta = stack.getItemMeta();
         if (meta == null) {
-            return;
+            return false;
         }
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        if (pdc != null) {
-            NamespacedKey key = new NamespacedKey(NAMESPACE, STATE_KEY_PREFIX + stateKey.trim().toLowerCase(Locale.ROOT));
-            ProviderKey storedAppearance = storedAppearanceForStateEdit(pdc);
-            String storedBehavior = ItemRef.normalizeBehaviorId(pdc.get(KEY_BEHAVIOR_ID, PersistentDataType.STRING));
-            if (storedBehavior == null && storedAppearance != null) {
-                storedBehavior = appearanceToBehavior.get(storedAppearance);
-            }
-            String existingSig = pdc.get(KEY_SIGNATURE, PersistentDataType.STRING);
-            String newSig = null;
-            if (isPrivilegedBehavior(storedBehavior) || existingSig != null) {
-                String instanceUuid = pdc.get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
-                if (storedAppearance == null || storedBehavior == null
-                        || instanceUuid == null || instanceUuid.isBlank()) {
-                    return;
-                }
-
-                // identify verifies the original state and the authoritative native provider identity.
-                // Rejection returns a plain vanilla reference, so presence alone is not proof of trust.
-                ItemRef verified = identify(stack).orElse(null);
-                if (verified == null || !storedAppearance.equals(verified.appearance())
-                        || !Optional.of(storedBehavior).equals(verified.behaviorId())) {
-                    return;
-                }
-                Map<String, String> updatedState = new LinkedHashMap<>(verified.stateData());
-                updatedState.put(key.getKey().substring(STATE_KEY_PREFIX.length()), value);
-                newSig = hmacSigner.sign(
-                        verified.appearance().provider(),
-                        verified.appearance().id(),
-                        storedBehavior,
-                        instanceUuid,
-                        updatedState
-                );
-            }
-
-            pdc.set(key, PersistentDataType.STRING, value);
-            if (newSig != null) {
-                pdc.set(KEY_SIGNATURE, PersistentDataType.STRING, newSig);
-            }
-            stack.setItemMeta(meta);
+        if (pdc == null) {
+            return false;
         }
+        ProviderKey storedAppearance = storedAppearanceForStateEdit(pdc);
+        String storedBehavior = ItemRef.normalizeBehaviorId(pdc.get(KEY_BEHAVIOR_ID, PersistentDataType.STRING));
+        if (storedBehavior == null && storedAppearance != null) {
+            storedBehavior = appearanceToBehavior.get(storedAppearance);
+        }
+        String existingSig = pdc.get(KEY_SIGNATURE, PersistentDataType.STRING);
+        String newSig = null;
+        if (isPrivilegedBehavior(storedBehavior) || existingSig != null) {
+            String instanceUuid = pdc.get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
+            if (storedAppearance == null || storedBehavior == null
+                    || instanceUuid == null || instanceUuid.isBlank()) {
+                return false;
+            }
+
+            // identify verifies the original state and the authoritative native provider identity.
+            // Rejection returns a plain vanilla reference, so presence alone is not proof of trust.
+            ItemRef verified = identify(stack).orElse(null);
+            if (verified == null || !storedAppearance.equals(verified.appearance())
+                    || !Optional.of(storedBehavior).equals(verified.behaviorId())) {
+                return false;
+            }
+            Map<String, String> updatedState = new LinkedHashMap<>(verified.stateData());
+            updatedState.putAll(normalized);
+            newSig = hmacSigner.sign(
+                    verified.appearance().provider(),
+                    verified.appearance().id(),
+                    storedBehavior,
+                    instanceUuid,
+                    updatedState
+            );
+        }
+
+        for (Map.Entry<String, String> change : normalized.entrySet()) {
+            pdc.set(new NamespacedKey(NAMESPACE, STATE_KEY_PREFIX + change.getKey()), PersistentDataType.STRING, change.getValue());
+        }
+        if (newSig != null) {
+            pdc.set(KEY_SIGNATURE, PersistentDataType.STRING, newSig);
+        }
+        stack.setItemMeta(meta);
+        return true;
     }
 
     @Nullable
@@ -639,7 +703,12 @@ public final class ItemService {
     /**
      * Rebuilds an item's visual stack from {@code newAppearance} while preserving its
      * verified {@code behaviorId}, {@code instanceUuid} (re-signed for the new appearance),
-     * stack size, and all persisted {@code allium:state_*} values.
+     * stack size, and all persisted {@code allium:state_*} values. A source stack with a
+     * verified MAC stays signed even when its behavior does not require one.
+     *
+     * <p>Returns {@link ResolutionStatus#REJECTED} without building anything when the source
+     * stack carries Allium identity claims that fail verification, or when the refresh would
+     * attach a privileged behavior that the source stack did not already have.
      */
     public ResolutionResult swapOrRefreshAppearance(ItemStack existingStack, ProviderKey newAppearance) {
         Objects.requireNonNull(existingStack, "existingStack");
@@ -648,14 +717,27 @@ public final class ItemService {
                 .orElseThrow(() -> new IllegalArgumentException("Cannot refresh empty or AIR stack"));
 
         String existingInstanceUuid = null;
+        String existingSignature = null;
+        boolean claimsBehavior = false;
         ItemMeta meta = existingStack.getItemMeta();
         if (meta != null && meta.getPersistentDataContainer() != null) {
-            existingInstanceUuid = meta.getPersistentDataContainer().get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
+            PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            existingInstanceUuid = pdc.get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
+            existingSignature = pdc.get(KEY_SIGNATURE, PersistentDataType.STRING);
+            claimsBehavior = pdc.has(KEY_BEHAVIOR_ID, PersistentDataType.STRING);
+        }
+        if ((existingSignature != null || claimsBehavior) && current.behaviorId().isEmpty()) {
+            return ResolutionResult.rejected(newAppearance,
+                    "Refusing to refresh a stack whose Allium identity failed verification");
         }
 
         // Only carry over bound behavior if the existing stack had a valid behavior or was non-vanilla
         String nextBehavior = current.behaviorId()
                 .orElseGet(() -> current.appearance().isVanilla() ? null : appearanceToBehavior.get(newAppearance));
+        if (current.behaviorId().isEmpty() && isPrivilegedBehavior(nextBehavior)) {
+            return ResolutionResult.rejected(newAppearance,
+                    "Refusing to attach privileged behavior '" + nextBehavior + "' through an appearance refresh");
+        }
 
         ItemRef updatedRef = new ItemRef(
                 current.schemaVersion(),
@@ -664,7 +746,8 @@ public final class ItemService {
                 existingStack.getAmount(),
                 current.stateData()
         );
-        return createInternal(updatedRef, existingInstanceUuid);
+        boolean verifiedSignature = existingSignature != null && current.behaviorId().isPresent();
+        return createInternal(updatedRef, existingInstanceUuid, false, verifiedSignature);
     }
 
     private static Map<String, String> extractStateMap(PersistentDataContainer pdc) {
@@ -687,7 +770,8 @@ public final class ItemService {
             ProviderKey appearance,
             @Nullable String behaviorId,
             Map<String, String> stateData,
-            @Nullable String preservedInstanceUuid
+            @Nullable String preservedInstanceUuid,
+            boolean preserveSignature
     ) {
         if (appearance.isVanilla() && behaviorId == null && stateData.isEmpty()) {
             return;
@@ -709,7 +793,7 @@ public final class ItemService {
             }
             if (behaviorId != null && !behaviorId.isBlank()) {
                 pdc.set(KEY_BEHAVIOR_ID, PersistentDataType.STRING, behaviorId);
-                if (isPrivilegedBehavior(behaviorId)) {
+                if (isSignedBehavior(behaviorId) || preserveSignature) {
                     String instanceUuid = (preservedInstanceUuid != null && !preservedInstanceUuid.isBlank())
                             ? preservedInstanceUuid
                             : UUID.randomUUID().toString();

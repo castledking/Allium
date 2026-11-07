@@ -103,10 +103,14 @@ result and must preserve the existing uncommitted work.
       inventory, restart and RPM checks retain the recorded matrix scopes.
       See [provider matrix](docs/s05-provider-matrix.md) for hashes, retention and
       converter prerequisites. Stop/report at S05; S06 has not begun.
-- [ ] **S06 / M1 — First tool and pack:** Mob Disarmer through the item service,
-      built-in visual plus all providers; inventory SF assets and stable IDs;
-      generate the core pack with an explicit delivery owner. Gate: one authorized
-      activation consumes once, protection respected, metadata/charges preserved.
+- [x] **S06a / M1 — Mob Disarmer behavior:** through `ItemService`, built-in visual plus
+      Nexo/CE/Oraxen appearances and optional charge-variant swaps; `ProtectionService` with a
+      GriefPrevention hook and cancellable check event; configurable charges, recharge, radius,
+      break chance and exclusions; legacy charge/timestamp import. Gate PASS: 55 live cases /
+      793 checks on Spigot 1.20.1, Paper 1.21.8 (all three providers) and Paper 26.3 (+GP3D);
+      see [results](tests/live/tools/disarmer/RESULTS.md).
+- [ ] **S06b / M1 — Core pack:** inventory SF assets and stable IDs; generate the core pack with
+      an explicit delivery owner. Gate: tool visuals for built-in items; no duplicate pack pushes.
 - [ ] **S07 / M2 — Messaging:** msg/reply, acceptance/ignore/mute/vanish rules,
       `/msgtoggle [on|off]`, per-recipient notifications. Gate: blocked sends are
       silent; replies obey the same policy; preference persists; console/others
@@ -117,7 +121,7 @@ result and must preserve the existing uncommitted work.
       restoration and config changes; Allium owns message sound playback directly.
 
 S01.5a, S02–S03 and S04–S05 can proceed after S01 with separate file ownership.
-S06 depends on S04–S05; S07–S08 depend on S01.5a, S03 and the message pipeline.
+S06a depended on S04–S05; S06b depends on S06a. S07–S08 depend on S01.5a, S03 and the message pipeline.
 
 ## S01 Audit: Shaded Dependencies & Takion Retirement Plan
 

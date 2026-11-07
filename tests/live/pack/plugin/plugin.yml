@@ -1,0 +1,13 @@
+name: PackGate
+version: 1.0.0
+main: gate.PackGate
+api-version: '1.20'
+depend: [Allium]
+description: S06b pack-load validation fixture only. Never install on a production server.
+commands:
+  pg:
+    description: S06b core pack gate fixture
+    permission: packgate.console
+permissions:
+  packgate.console:
+    default: op

@@ -92,6 +92,14 @@ tools:
     # Sound played at the mob on a disarm; "" for none.
     sound: minecraft:item.shield.break
 
+# Core resource pack (Allium's custom item visuals). Allium generates the pack at build time and
+# bundles it in the jar. Players who decline it keep working, named vanilla items.
+resource-pack:
+  # Who sends the pack to players. none: Allium never sends or exports it (another plugin or the
+  # server's own resource-pack setting can serve it). standalone and rpm-export are reserved for
+  # the delivery step and currently behave like none.
+  owner: none
+
 # External addon jars live in plugins/Allium/addons/.
 # These are for heavier features that should not be bundled into the core jar.
 addons:

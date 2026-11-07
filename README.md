@@ -109,6 +109,10 @@ three providers, and Paper 26.3 with GriefPrevention3D; see
 [the S06a results](tests/live/tools/disarmer/RESULTS.md). The optional GriefPrevention hook
 compiles against the public GriefPrevention 16.18.2 API (Java 17 bytecode). It loads only
 when GriefPrevention or GriefPrevention3D is enabled.
+The core resource pack (S06b) is generated from [`pack/manifest.json`](pack/README.md) during
+`./gradlew build` and bundled in the jar; Allium does not send it yet (`resource-pack.owner: none`).
+See [the S06b results](tests/live/pack/RESULTS.md) and the
+[manual visual checklist](tests/live/pack/VISUAL-CHECKLIST.md).
 Core remains the only required plugin; external providers are compile-only and
 are not bundled. Current bundled libraries are HikariCP 5.1.0 and InvUI 1.49.
 InvUI's 26.x GUI compatibility remains an explicit later-slice risk.
@@ -131,11 +135,13 @@ src/main/java/codes/castled/allium/
   listener/                Listener registration and god-mode handling
   protection/              ProtectionService, hooks and the cancellable check event
   tool/disarmer/           Mob Disarmer behavior, settings and listener
+  pack/                    Manifest-backed core item definitions and resource-pack settings
   compat/                  Compatibility interfaces/providers
 src/*Adapter/             Isolated Nexo/CraftEngine/Oraxen API source sets
 src/griefpreventionHook/   Isolated GriefPrevention claim hook
 src/main/resources/        plugin.yml, config.yml and lang/
-allium-core/               Platform-neutral command specs, item identity/signing and tool policy
+allium-core/               Platform-neutral command specs, item identity/signing, tool policy, pack generator/validator
+pack/                      Core pack manifest, original textures and SF inventory/export tools
 ```
 
 ## License

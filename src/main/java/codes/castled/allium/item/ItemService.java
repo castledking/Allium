@@ -46,6 +46,7 @@ public final class ItemService {
     private final Map<String, ProviderKey> behaviorPreferredAppearance = new ConcurrentHashMap<>();
     private final Set<String> privilegedBehaviors = ConcurrentHashMap.newKeySet();
     private final Set<String> signedBehaviors = ConcurrentHashMap.newKeySet();
+    private final Map<String, ModelSelector> modelSelectors = new ConcurrentHashMap<>();
     private final Set<String> warnedDiagnostics = ConcurrentHashMap.newKeySet();
 
     private final Function<Material, ItemStack> itemStackFactory;
@@ -125,6 +126,40 @@ public final class ItemService {
     /**
      * Marks a behavior whose new stacks carry an instance UUID and MAC without requiring one.
      */
+    /**
+     * Chooses a built-in item's {@code custom_model_data} from its state, so state visuals (for
+     * example Mob Disarmer charges) are model selections on the same stack, never item swaps.
+     */
+    @FunctionalInterface
+    public interface ModelSelector {
+        /** @return the model data for this state, or {@code null} to leave it unchanged */
+        @Nullable Integer select(Map<String, String> state);
+    }
+
+    /**
+     * Installs or clears ({@code null}) the model selector for {@code allium:<id>}. It runs whenever
+     * Allium creates the item or writes its state.
+     */
+    public void setModelSelector(String alliumItemId, @Nullable ModelSelector selector) {
+        String id = alliumItemId.trim().toLowerCase(Locale.ROOT);
+        if (selector == null) {
+            modelSelectors.remove(id);
+        } else {
+            modelSelectors.put(id, selector);
+        }
+    }
+
+    private void applyModelSelection(ItemMeta meta, @Nullable ProviderKey appearance, Map<String, String> state) {
+        if (appearance == null || !ProviderKey.ALLIUM.equals(appearance.provider())) {
+            return;
+        }
+        ModelSelector selector = modelSelectors.get(appearance.id());
+        Integer value = selector == null ? null : selector.select(Collections.unmodifiableMap(state));
+        if (value != null) {
+            meta.setCustomModelData(value);
+        }
+    }
+
     public void registerSignedBehavior(String behaviorId) {
         String normalized = ItemRef.normalizeBehaviorId(behaviorId);
         if (normalized != null) {
@@ -672,6 +707,7 @@ public final class ItemService {
         if (newSig != null) {
             pdc.set(KEY_SIGNATURE, PersistentDataType.STRING, newSig);
         }
+        applyModelSelection(meta, storedAppearance, extractStateMap(pdc));
         stack.setItemMeta(meta);
         return true;
     }
@@ -813,6 +849,7 @@ public final class ItemService {
                 }
             }
         }
+        applyModelSelection(meta, appearance, stateData);
         stack.setItemMeta(meta);
     }
 

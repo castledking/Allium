@@ -12,6 +12,7 @@ version = property("version") as String
 val spigotApiVersion = providers.gradleProperty("spigotApiVersion").get()
 val targetJavaVersion = providers.gradleProperty("targetJavaVersion").get().toInt()
 val coreProject = project(":allium-core")
+evaluationDependsOn(":allium-core")
 
 repositories {
     mavenLocal()
@@ -124,6 +125,21 @@ dependencies {
     testImplementation("org.jetbrains:annotations:26.0.2")
 }
 
+// Core resource pack: generated from pack/manifest.json by allium-core's CorePackMain.
+// The output is byte-identical for identical inputs (sorted, stored, fixed timestamps).
+val corePackDir = layout.buildDirectory.dir("pack")
+val corePack = tasks.register<JavaExec>("corePack") {
+    group = "build"
+    description = "Generates and validates the deterministic core resource pack."
+    classpath = coreProject.the<SourceSetContainer>()["main"].runtimeClasspath
+    mainClass.set("codes.castled.allium.pack.CorePackMain")
+    inputs.file("pack/manifest.json")
+    inputs.dir("pack/assets")
+    outputs.dir(corePackDir)
+    doFirst { delete(corePackDir) }
+    args("build", file("pack/manifest.json").absolutePath, file("pack").absolutePath, corePackDir.get().asFile.absolutePath)
+}
+
 tasks {
     withType<JavaCompile>().configureEach {
         options.encoding = "UTF-8"
@@ -144,6 +160,9 @@ tasks {
         filesMatching("plugin.yml") {
             expand("version" to project.version.toString())
         }
+        // The deterministic core pack and its manifest ship inside the plugin jar.
+        from(corePack) { into("pack") }
+        from("pack/manifest.json") { into("pack") }
     }
 
     shadowJar {

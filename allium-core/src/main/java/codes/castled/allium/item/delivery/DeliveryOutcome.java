@@ -17,10 +17,17 @@ public record DeliveryOutcome(Status status, int requested, int given, int dropp
     public enum Status {
         /** Everything was given (some may have been dropped under {@link OverflowPolicy#DROP}). */
         DELIVERED,
+        /**
+         * Everything was given, but at least one item fell back (a player head without its skin
+         * because the profile lookup timed out, failed or was rate-limited).
+         */
+        DEGRADED,
         /** {@link OverflowPolicy#PARTIAL}: what fit was given, the rest was not. */
         PARTIAL,
         /** {@link OverflowPolicy#REFUSE}: it did not all fit, so nothing was given. */
         REFUSED_FULL,
+        /** {@link SkullFallback#REFUSE}: a skull's skin could not be resolved, so nothing was given. */
+        REFUSED_UNRESOLVED,
         /** The target left before the items were ready; nothing was given. */
         TARGET_OFFLINE,
         /** A listener cancelled {@code ItemGiveEvent}; nothing was given. */

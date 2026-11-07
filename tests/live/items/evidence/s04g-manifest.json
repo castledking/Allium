@@ -4,10 +4,10 @@
   "result": "PASS",
   "allium": {
     "path": "build/libs/Allium.jar",
-    "sha256": "717912a97dd6ccfa1474334b672b9000dc1c239f7274e70ffb767cc7bc73f316"
+    "sha256": "270f8ee81529f3213259138f33f3b4d23ff2d388e0abb69b4aab6b5d125ec3eb"
   },
   "unitTests": {
-    "plugin": 131,
+    "plugin": 134,
     "core": 41,
     "failures": 0
   },
@@ -19,16 +19,16 @@
   "faultInjection": "-Dallium.fault-injection=true; the fixture arms skull.lookup-slow (2 s) and skull.lookup-hang only",
   "environmentNote": "A machine reboot cleared /tmp before this run. Lane prerequisites were restored: provider jars and the Paper 26.3-141 lane from persistent copies (hashes unchanged), Paper 1.21.8-60 re-downloaded from PaperMC (SHA-256 matches the S05/S06a record), Spigot 1.20.1 rebuilt with BuildTools (same build 3871-d2eba2c; its bootstrap jar hash differs because BuildTools output is not byte-reproducible), and minecraft-protocol 1.68.0 reinstalled. Run logs are kept on persistent storage.",
   "harness": {
-    "run.py": "866ae49c2a29d2c2dfb4bd5cfc62f4536302b126364d8ad51b02b12384b41e32",
-    "client-mcp.cjs": "f57c767100af28fe4bec414a6cc871c88790c8ea382571fd602ccca0f53693b8",
-    "client-raw26.cjs": "48e14e4fe2b5b30299ffd8517ee03af6b27794d966153d442b679ec5af030c3f",
-    "plugin/gate/GiveGate.java": "056e2acb1fe356bbb05d572a26fe3a1f9767495e92a585223fe4a2d409a8e213",
-    "plugin/plugin.yml": "736da6dea314423c104b29b79f79c5add15f7db4cd83fc1baa451041b86356ab"
+    "run.py": "2a4a62ae9821f4579b525a1b754295428b85d335bf68b58a0c5e3c24b222099d",
+    "client-mcp.cjs": "613ad9d7f591909deed0c06d76a989f9a1f4aad340a1e4faff0d4d4a012a2e85",
+    "client-raw26.cjs": "fce4008062b0af27877765811d2cb063cc507e95851e2618ffc16649bcc78f7b",
+    "plugin/gate/GiveGate.java": "a438a8e6e8b1682ca2b8fbd262a972bc4ce714b813a1ffe04d383c3284702e0c",
+    "plugin/plugin.yml": "5b3ae6f21f96a36ffc884035783c4ceb0f85321de156e4669bccb000a1a0da69"
   },
   "lanes": [
     {
       "lane": "spigot-1.20.1",
-      "run": "/mnt/storage/.allium-validation/20261107/items-gate/spigot-1201-final",
+      "run": "/mnt/storage/.allium-validation/20261107/items-gate/gate-1201-fu3",
       "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
       "java": "OpenJDK 17.0.21",
       "client": "minecraft-protocol 1.68.0 (minecraft-data 3.119.0), protocol 763",
@@ -88,7 +88,7 @@
         },
         {
           "command": "give GateBot player_head owner:GateBot",
-          "reply": "Gave 1x player_head to GateBot."
+          "reply": "Gave 1x player_head to GateBot, but a head was given without its skin."
         },
         {
           "command": "give NoSuchPlayer stone",
@@ -100,22 +100,22 @@
         },
         {
           "command": "give GateBot player_head owner:Dinnerbone",
-          "reply": "Gave 1x player_head to GateBot."
+          "reply": "Gave 1x player_head to GateBot, but a head was given without its skin."
         },
         {
           "command": "warning",
-          "reply": "Warning: the skin for Dinnerbone could not be resolved (the lookup timed out after 3000 ms); the head was given without it"
+          "reply": "Warning: the skin for Dinnerbone could not be resolved (the lookup timed out after 3000 ms)"
         }
       ],
       "jarSha256": {
-        "GiveGate.jar": "5c45a0b2609485da978009eee25d15a34cc9316d83ba82db9c714d2ba66a21b7",
-        "Allium.jar": "717912a97dd6ccfa1474334b672b9000dc1c239f7274e70ffb767cc7bc73f316",
+        "GiveGate.jar": "2282b6990dc9f7f7891403975cd42dbc193c72d4bcd288249ecad8087dc82984",
+        "Allium.jar": "270f8ee81529f3213259138f33f3b4d23ff2d388e0abb69b4aab6b5d125ec3eb",
         "server": "1416cd67e2337e42058def6035260f6a42e294adb4a148707b87591cddfbb760"
       }
     },
     {
       "lane": "paper-1.21.8",
-      "run": "/mnt/storage/.allium-validation/20261107/items-gate/paper-1218-final",
+      "run": "/mnt/storage/.allium-validation/20261107/items-gate/gate-1218-fu3",
       "server": "This server is running Paper version 1.21.8-60-main@29c8822 (2025-09-06T21:49:13Z) (Implementing API version 1.21.8-R0.1-SNAPSHOT)",
       "java": "OpenJDK 21.0.13",
       "client": "minecraft-protocol 1.68.0 (minecraft-data 3.119.0), protocol 772",
@@ -191,11 +191,11 @@
         },
         {
           "command": "give GateBot player_head owner:GateBot",
-          "reply": "Gave 1x player_head to GateBot."
+          "reply": "Gave 1x player_head to GateBot, but a head was given without its skin."
         },
         {
           "command": "give NoSuchPlayer stone",
-          "reply": "Player NoSuchPlayer not found."
+          "reply": "No player was found"
         },
         {
           "command": "give GateBot player_head owner:Notch (bot disconnects during a 2 s lookup)",
@@ -203,25 +203,25 @@
         },
         {
           "command": "give GateBot player_head owner:Dinnerbone",
-          "reply": "Gave 1x player_head to GateBot."
+          "reply": "Gave 1x player_head to GateBot, but a head was given without its skin."
         },
         {
           "command": "warning",
-          "reply": "Warning: the skin for Dinnerbone could not be resolved (the lookup timed out after 3000 ms); the head was given without it"
+          "reply": "Warning: the skin for Dinnerbone could not be resolved (the lookup timed out after 3000 ms)"
         }
       ],
       "jarSha256": {
         "oraxen.jar": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2",
         "craftengine.jar": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f",
         "nexo.jar": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b",
-        "GiveGate.jar": "eb497900eaa8fb0ef2ca70307c4f1013579d6aff93f39698e421893c6de0a78f",
-        "Allium.jar": "717912a97dd6ccfa1474334b672b9000dc1c239f7274e70ffb767cc7bc73f316",
+        "GiveGate.jar": "3b35a35ded98ae22559748ffbe93158bb357cf9d2caf56bdccaa576d9867b58e",
+        "Allium.jar": "270f8ee81529f3213259138f33f3b4d23ff2d388e0abb69b4aab6b5d125ec3eb",
         "server": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
       }
     },
     {
       "lane": "paper-26.3",
-      "run": "/mnt/storage/.allium-validation/20261107/items-gate/paper-263-final",
+      "run": "/mnt/storage/.allium-validation/20261107/items-gate/gate-263-fu3",
       "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
       "java": "OpenJDK 25.0.5",
       "client": "owned raw client, protocol 777, server packet catalog",
@@ -281,11 +281,11 @@
         },
         {
           "command": "give GateBot player_head owner:GateBot",
-          "reply": "Gave 1x player_head to GateBot."
+          "reply": "Gave 1x player_head to GateBot, but a head was given without its skin."
         },
         {
           "command": "give NoSuchPlayer stone",
-          "reply": "Player NoSuchPlayer not found."
+          "reply": "No player was found"
         },
         {
           "command": "give GateBot player_head owner:Notch (bot disconnects during a 2 s lookup)",
@@ -293,18 +293,186 @@
         },
         {
           "command": "give GateBot player_head owner:Dinnerbone",
-          "reply": "Gave 1x player_head to GateBot."
+          "reply": "Gave 1x player_head to GateBot, but a head was given without its skin."
         },
         {
           "command": "warning",
-          "reply": "Warning: the skin for Dinnerbone could not be resolved (the lookup timed out after 3000 ms); the head was given without it"
+          "reply": "Warning: the skin for Dinnerbone could not be resolved (the lookup timed out after 3000 ms)"
         }
       ],
       "jarSha256": {
-        "GiveGate.jar": "5c45a0b2609485da978009eee25d15a34cc9316d83ba82db9c714d2ba66a21b7",
-        "Allium.jar": "717912a97dd6ccfa1474334b672b9000dc1c239f7274e70ffb767cc7bc73f316",
+        "GiveGate.jar": "2282b6990dc9f7f7891403975cd42dbc193c72d4bcd288249ecad8087dc82984",
+        "Allium.jar": "270f8ee81529f3213259138f33f3b4d23ff2d388e0abb69b4aab6b5d125ec3eb",
         "server": "b2a93cb788ae8e2a91b1614cb5cd57ea602a74d291ca25d6acae34b19a234e1d"
       }
     }
-  ]
+  ],
+  "followUp": {
+    "scenario": "run.py --scenario compat (two bots; GateBot is not an operator)",
+    "checks": 36,
+    "lanes": [
+      {
+        "lane": "spigot-1.20.1",
+        "run": "/mnt/storage/.allium-validation/20261107/items-gate/compat-1201-fu3",
+        "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+        "checks": 17,
+        "failures": [],
+        "results": [
+          "PASS initial fixture enabled",
+          "PASS initial Allium item library enabled",
+          "PASS command block \"give @p\" gave the nearest player GateBot (3 blocks) and not GateBot2 (15): {'GateBot': 1, 'GateBot2': 0}, Allium events ['GateBot']",
+          "PASS command block \"give @p\" gave the nearest player GateBot2 (3 blocks) and not GateBot (15): {'GateBot': 0, 'GateBot2': 1}, Allium events ['GateBot2']",
+          "PASS execute as GateBot2 at GateBot2 run give @s gave GateBot2, the execution context (vanilla handled it)",
+          "PASS execute as GateBot at GateBot2 run give @p measured @p from GateBot2, the execution position (vanilla handled it)",
+          "PASS minecraft:give reached vanilla (vanilla reply, no ItemGiveEvent): [05:39:35] [Server thread/INFO]: Gave 1 [Diamond] to GateBot",
+          "PASS a datapack function's give stays vanilla (GateBot2 got 1 diamond, no ItemGiveEvent, no Allium reply)",
+          "PASS GateBot is not an operator",
+          "PASS without allium.give, a player /give gives nothing",
+          "PASS with allium.give but not allium.give.privileged, handcuffs are denied",
+          "PASS with allium.give.privileged the player mints signed handcuffs",
+          "PASS a non-op player without minecraft.command.selector cannot use @s",
+          "PASS with minecraft.command.selector, @s targets the player",
+          "PASS -e equipped the helmet into the empty slot and left the worn boots; the new boots went to the inventory: {'HEAD': 'IRON_HELMET', 'CHEST': None, 'LEGS': None, 'FEET': 'LEATHER_BOOTS'}, ['IRON_BOOTS']",
+          "PASS skull-timeout-fallback: refuse gives nothing when the lookup times out: ]: [Allium] A skin for player_head could not be resolved, so nothing was given to GateBot.",
+          "PASS no listener or Allium exceptions in server log: []"
+        ],
+        "executeHandlers": {
+          "senderProbe": {
+            "execute as GateBot2 at GateBot2 run ggwho": "not reachable under /execute: :39:31] [Server thread/INFO]: Incorrect argument for command",
+            "execute as GateBot at GateBot2 run ggwho": "not reachable under /execute: :39:31] [Server thread/INFO]: Incorrect argument for command"
+          },
+          "as-self": {
+            "handler": "vanilla",
+            "log": [
+              "[05:39:31] [Server thread/INFO]: Gave 1 [Diamond] to GateBot2"
+            ]
+          },
+          "at-nearest": {
+            "handler": "vanilla",
+            "log": [
+              "[05:39:33] [Server thread/INFO]: Gave 1 [Diamond] to GateBot2"
+            ]
+          }
+        },
+        "realSkull": null
+      },
+      {
+        "lane": "paper-26.3",
+        "run": "/mnt/storage/.allium-validation/20261107/items-gate/compat-263-bungee",
+        "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+        "checks": 19,
+        "failures": [],
+        "results": [
+          "PASS initial fixture enabled",
+          "PASS initial Allium item library enabled",
+          "PASS command block \"give @p\" gave the nearest player GateBot (3 blocks) and not GateBot2 (15): {'GateBot': 1, 'GateBot2': 0}, Allium events ['GateBot']",
+          "PASS command block \"give @p\" gave the nearest player GateBot2 (3 blocks) and not GateBot (15): {'GateBot': 0, 'GateBot2': 1}, Allium events ['GateBot2']",
+          "PASS execute as GateBot2 at GateBot2 run give @s gave GateBot2, the execution context (allium handled it)",
+          "PASS execute as GateBot at GateBot2 run give @p measured @p from GateBot2, the execution position (allium handled it)",
+          "PASS minecraft:give reached vanilla (vanilla reply, no ItemGiveEvent): [05:38:26 INFO]: System chat: Gave 1 [Diamond] to GateBot",
+          "PASS a datapack function's give stays vanilla (GateBot2 got 1 diamond, no ItemGiveEvent, no Allium reply)",
+          "PASS GateBot is not an operator",
+          "PASS without allium.give, a player /give gives nothing",
+          "PASS with allium.give but not allium.give.privileged, handcuffs are denied",
+          "PASS with allium.give.privileged the player mints signed handcuffs",
+          "PASS a non-op player without minecraft.command.selector cannot use @s",
+          "PASS with minecraft.command.selector, @s targets the player",
+          "PASS -e equipped the helmet into the empty slot and left the worn boots; the new boots went to the inventory: {'HEAD': 'IRON_HELMET', 'CHEST': None, 'LEGS': None, 'FEET': 'LEATHER_BOOTS'}, ['IRON_BOOTS']",
+          "PASS the first owner:Notch made exactly one remote lookup ({'onlineHits': 0, 'cacheHits': 0, 'sharedLookups': 0, 'remoteLookups': 1, 'resolved': 1, 'noSkin': 0, 'timeouts': 0, 'failures': 0, 'rateLimited': 0, 'queueRejected': 0})",
+          "PASS the second owner:Notch was served from the cache with no lookup ({'onlineHits': 0, 'cacheHits': 1, 'sharedLookups': 0, 'remoteLookups': 1, 'resolved': 1, 'noSkin': 0, 'timeouts': 0, 'failures': 0, 'rateLimited': 0, 'queueRejected': 0})",
+          "PASS a second distinct name within the minute hit the 1-per-minute limit locally and was reported degraded ({'onlineHits': 0, 'cacheHits': 1, 'sharedLookups': 0, 'remoteLookups': 1, 'resolved': 1, 'noSkin': 0, 'timeouts': 0, 'failures': 0, 'rateLimited': 1, 'queueRejected': 0})",
+          "PASS no listener or Allium exceptions in server log: []"
+        ],
+        "executeHandlers": {
+          "senderProbe": {
+            "execute as GateBot2 at GateBot2 run ggwho": "class=com.destroystokyo.paper.console.TerminalConsoleCommandSender name=CONSOLE @s=[] @p=[GateBot]",
+            "execute as GateBot at GateBot2 run ggwho": "class=com.destroystokyo.paper.console.TerminalConsoleCommandSender name=CONSOLE @s=[] @p=[GateBot]"
+          },
+          "as-self": {
+            "handler": "allium",
+            "log": [
+              "[05:38:22 INFO]: [Allium] Gave 1x diamond to GateBot2."
+            ]
+          },
+          "at-nearest": {
+            "handler": "allium",
+            "log": [
+              "[05:38:24 INFO]: [Allium] Gave 1x diamond to GateBot2."
+            ]
+          }
+        },
+        "realSkull": {
+          "first": {
+            "reply": "[05:38:39 INFO]: [Allium] Gave 1x player_head to GateBot.",
+            "seconds": 2.0,
+            "head": {
+              "material": "PLAYER_HEAD",
+              "amount": 1,
+              "name": null,
+              "lore": null,
+              "unbreakable": false,
+              "customModelData": null,
+              "enchants": {},
+              "skullOwner": "Notch",
+              "skullTextured": true,
+              "appearance": "minecraft:player_head",
+              "behavior": null,
+              "state": {},
+              "instanceUuid": null,
+              "signature": null,
+              "slot": 0
+            },
+            "stats": {
+              "onlineHits": 0,
+              "cacheHits": 0,
+              "sharedLookups": 0,
+              "remoteLookups": 1,
+              "resolved": 1,
+              "noSkin": 0,
+              "timeouts": 0,
+              "failures": 0,
+              "rateLimited": 0,
+              "queueRejected": 0
+            }
+          },
+          "cached": {
+            "reply": "[05:38:39 INFO]: [Allium] Gave 1x player_head to GateBot.",
+            "seconds": 0.1,
+            "pending": false,
+            "stats": {
+              "onlineHits": 0,
+              "cacheHits": 1,
+              "sharedLookups": 0,
+              "remoteLookups": 1,
+              "resolved": 1,
+              "noSkin": 0,
+              "timeouts": 0,
+              "failures": 0,
+              "rateLimited": 0,
+              "queueRejected": 0
+            }
+          },
+          "limited": {
+            "reply": "[05:38:40 INFO]: [Allium] Gave 1x player_head to GateBot, but a head was given without its skin.",
+            "stats": {
+              "onlineHits": 0,
+              "cacheHits": 1,
+              "sharedLookups": 0,
+              "remoteLookups": 1,
+              "resolved": 1,
+              "noSkin": 0,
+              "timeouts": 0,
+              "failures": 0,
+              "rateLimited": 1,
+              "queueRejected": 0
+            }
+          }
+        }
+      }
+    ],
+    "notes": [
+      "Paper runs legacy Bukkit commands under /execute with the initiating sender and no as/at context; on Paper 1.20.6+ /give is therefore registered through Paper's Brigadier API with vanilla's players() argument. Spigot keeps the Bukkit command; there plugin commands are not reachable under /execute, so execute ... run give is vanilla's.",
+      "On an offline-mode server Paper's PlayerProfile#update builds an offline profile without contacting Mojang. The real lookup ran on the 26.3 lane in BungeeCord mode (proxy online mode) with forwarded logins."
+    ]
+  }
 }

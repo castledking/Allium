@@ -203,9 +203,57 @@ class ItemLibraryTest {
             assertEquals(1, calls[0]);
             assertThrows(ItemBuildException.class, () -> profiles.resolve("bad name!"));
         }
-        // A lookup that never answers times out into a warning, not an exception.
+        // A lookup that never answers times out into a degraded result with a warning, not an exception.
         SkullProfiles.Resolved timedOut = skulls.resolve("Dinnerbone").get();
         assertNotNull(timedOut.profile());
+        assertTrue(timedOut.degraded());
         assertTrue(timedOut.warning().contains("timed out after 100 ms"), timedOut.warning());
+        assertEquals(1, skulls.stats().timeouts());
+    }
+
+    @Test
+    void remoteLookupsAreRateLimitedPerRollingMinuteAndCounted() throws Exception {
+        java.util.concurrent.atomic.AtomicLong now = new java.util.concurrent.atomic.AtomicLong(1_000_000L);
+        int[] calls = {0};
+        try (SkullProfiles limited = new SkullProfiles(name -> null, name -> mock(PlayerProfile.class), name -> {
+            calls[0]++;
+            return CompletableFuture.completedFuture(mock(PlayerProfile.class));
+        }, 1_000L, 600_000L, 8, now::get, 2)) {
+            assertFalse(limited.resolve("Notch").get().degraded());
+            assertFalse(limited.resolve("jeb_").get().degraded());
+            SkullProfiles.Resolved third = limited.resolve("Dinnerbone").get();
+            assertTrue(third.degraded(), "the third remote lookup in one minute is refused locally");
+            assertTrue(third.warning().contains("2 profile lookups per minute"), third.warning());
+            assertFalse(limited.resolve("Notch").get().degraded(), "cached names never count against the limit");
+            now.addAndGet(60_001L);
+            assertFalse(limited.resolve("Dinnerbone").get().degraded(), "the window rolls over");
+            SkullProfiles.Stats stats = limited.stats();
+            assertEquals(3, calls[0]);
+            assertEquals(3, stats.remoteLookups());
+            assertEquals(1, stats.rateLimited());
+            assertEquals(1, stats.cacheHits());
+            assertEquals(3, stats.resolved());
+        }
+    }
+
+    @Test
+    void aProfileWithoutASkinIsDegradedAndCached() throws Exception {
+        PlayerProfile textured = mock(PlayerProfile.class);
+        PlayerProfile bare = mock(PlayerProfile.class);
+        int[] calls = {0};
+        try (SkullProfiles profiles = new SkullProfiles(name -> null, name -> mock(PlayerProfile.class), name -> {
+            calls[0]++;
+            return CompletableFuture.completedFuture(name.equals("Notch") ? textured : bare);
+        }, 1_000L, 600_000L, 8, System::currentTimeMillis, 0, profile -> profile == textured)) {
+            assertFalse(profiles.resolve("Notch").get().degraded());
+            SkullProfiles.Resolved offline = profiles.resolve("Offline").get();
+            assertTrue(offline.degraded(), "an offline profile has no skin");
+            assertTrue(offline.warning().contains("offline-mode server"), offline.warning());
+            assertSame(bare, offline.profile());
+            assertTrue(profiles.resolve("offline").get().degraded(), "cached, still degraded");
+            assertEquals(2, calls[0]);
+            assertEquals(1, profiles.stats().noSkin());
+            assertEquals(1, profiles.stats().cacheHits());
+        }
     }
 }

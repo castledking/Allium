@@ -145,6 +145,7 @@ src/main/java/codes/castled/allium/
   compat/                  Compatibility interfaces/providers
 src/*Adapter/             Isolated Nexo/CraftEngine/Oraxen API source sets
 src/griefpreventionHook/   Isolated GriefPrevention claim hook
+src/paperCommands/        Paper-only Brigadier /give registration (keeps vanilla /execute targeting)
 src/main/resources/        plugin.yml, config.yml and lang/
 allium-core/               Platform-neutral command specs, item identity/signing, tool policy, pack generator/validator
 pack/                      Core pack manifest, original textures and SF inventory/export tools

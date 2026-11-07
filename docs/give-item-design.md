@@ -27,6 +27,18 @@ Built and live-verified on Spigot 1.20.1, Paper 1.21.8 and Paper 26.3
   cache with expiry, are deduplicated, and run on Allium's own two-thread executor with a
   32-entry queue and a 3 s timeout. A timeout or failure gives a head without its skin plus a
   warning, never an exception.
+- **Command ownership:** on Paper 1.20.6+ `/give` is registered through Paper's Brigadier API with
+  vanilla's `players()` argument, because Paper runs legacy Bukkit commands under `/execute`
+  with the initiating sender and no `as`/`at` context. Spigot keeps the Bukkit command; there
+  `execute … run give` resolves to vanilla. `minecraft:give` and datapack functions are always
+  vanilla. Selectors need vanilla's `minecraft.command.selector` on both routes, and a target
+  that resolves to nobody reports vanilla's "No player was found".
+- **Skull fallbacks:** a skin that cannot be resolved makes the delivery `DEGRADED` (head given
+  without its skin) or, with `items.give.skull-timeout-fallback: refuse`, `REFUSED_UNRESOLVED`
+  (nothing given). Remote lookups are limited per rolling minute
+  (`items.give.skull.max-lookups-per-minute`, default 30). On an offline-mode server Paper and
+  Spigot resolve names to offline profiles without contacting Mojang, so heads there have no
+  skin unless the server runs behind an online-mode proxy.
 - **Not yet:** `/i`, operator item aliases, kits/signs/rewards callers, and a stable addon API
   surface. `/give` is labelled the M1 harness.
 

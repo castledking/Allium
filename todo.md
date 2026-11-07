@@ -93,7 +93,9 @@ result and must preserve the existing uncommitted work.
       `drop`/`refuse`/`partial` overflow, target revalidation, cancellable `ItemGiveEvent` and
       non-destructive `-e`, and `/give` on the command spec as the M1 harness (signed items are
       minted one per stack; privileged behaviors need `allium.give.privileged`). Gate PASS:
-      93 live checks on Spigot 1.20.1, Paper 1.21.8 (all providers) and Paper 26.3; see
+      93 live checks on Spigot 1.20.1, Paper 1.21.8 (all providers) and Paper 26.3, plus 36
+      compatibility checks (command blocks, `/execute`, `minecraft:give`, functions, non-op
+      senders, skull fallbacks and one real Mojang lookup); see
       [results](tests/live/items/RESULTS.md). Not yet: `/i`, command item aliases, kits,
       addon API surface, claim-storage `queue` overflow.
       No extra required plugin, duplicate shaded API, internal command dispatch or

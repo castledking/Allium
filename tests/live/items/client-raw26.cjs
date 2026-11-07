@@ -1,7 +1,8 @@
 // Test-only S04 give-gate client for protocol 777 (Paper 26.3) with no npm dependencies; packet IDs come
 // from the running server's catalog (GiveGate wire-ids.json). Owned loopback ports 25670-25672 only.
 const net = require('node:net'), z = require('node:zlib'), fs = require('node:fs'), crypto = require('node:crypto');
-const [lane, portText] = process.argv.slice(2), port = Number(portText);
+const [lane, portText, username = 'GateBot'] = process.argv.slice(2), port = Number(portText);
+if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) throw Error('bad username');
 if (!lane || ![25670, 25671, 25672].includes(port)) throw Error('TEST ONLY: owned port 25670-25672');
 const ids = JSON.parse(fs.readFileSync(lane + '/plugins/GiveGate/wire-ids.json')).wirePackets;
 function vi(n) { const a = []; do { let b = n & 127; n >>>= 7; if (n) b |= 128; a.push(b); } while (n); return Buffer.from(a); }
@@ -13,10 +14,13 @@ const socket = net.connect({host: '127.0.0.1', port});
 function send(id, data = Buffer.alloc(0)) { let body = Buffer.concat([vi(id), data]); if (compressed) body = Buffer.concat([vi(0), body]); socket.write(Buffer.concat([vi(body.length), body])); }
 function named(flow, name, data) { const id = ids[flow]['minecraft:' + name]; if (id === undefined) throw Error('Unknown packet ' + flow + '/' + name); send(id, data); }
 function game(name, data) { named('game_SERVERBOUND', name, data); }
+// S04G_BUNGEE=1 sends BungeeCord legacy forwarding in the handshake (host\0ip\0uuid\0properties), for a lane that
+// runs in BungeeCord mode so Paper completes profiles in online mode (real Mojang lookups) while the bot stays offline.
 socket.on('connect', () => {
-  const p = Buffer.alloc(2); p.writeUInt16BE(port); send(0, Buffer.concat([vi(777), str('127.0.0.1'), p, vi(2)]));
-  const uuid = crypto.createHash('md5').update('OfflinePlayer:GateBot').digest(); uuid[6] = (uuid[6] & 15) | 48; uuid[8] = (uuid[8] & 63) | 128;
-  named('login_SERVERBOUND', 'hello', Buffer.concat([str('GateBot'), uuid]));
+  const uuid = crypto.createHash('md5').update('OfflinePlayer:' + username).digest(); uuid[6] = (uuid[6] & 15) | 48; uuid[8] = (uuid[8] & 63) | 128;
+  const host = process.env.S04G_BUNGEE === '1' ? ['127.0.0.1', '127.0.0.1', uuid.toString('hex'), '[]'].join('\0') : '127.0.0.1';
+  const p = Buffer.alloc(2); p.writeUInt16BE(port); send(0, Buffer.concat([vi(777), str(host), p, vi(2)]));
+  named('login_SERVERBOUND', 'hello', Buffer.concat([str(username), uuid]));
 });
 socket.on('data', chunk => { try {
   buffer = Buffer.concat([buffer, chunk]);
@@ -41,11 +45,20 @@ socket.on('data', chunk => { try {
         const [tp, o] = read(payload);
         game('accept_teleportation', Buffer.concat([vi(tp), payload.subarray(o, o + 24), payload.subarray(o + 48, o + 56)]));
       }
-      if (id === ids.game_CLIENTBOUND['minecraft:commands'] && !ready) { ready = true; game('player_loaded'); game('client_tick_end'); console.log('S04G-WIRE READY protocol777 port=' + port); }
+      if (id === ids.game_CLIENTBOUND['minecraft:commands'] && !ready) { ready = true; game('player_loaded'); game('client_tick_end'); console.log('S04G-WIRE READY protocol777 port=' + port + ' user=' + username); }
       if (id === ids.game_CLIENTBOUND['minecraft:disconnect']) throw Error('Play disconnected ' + payload.toString('hex'));
     }
   }
 } catch (e) { console.error(e.stack); process.exitCode = 1; socket.destroy(); } });
 socket.on('error', e => { console.error(e); process.exitCode = 1; });
 socket.on('close', () => { console.log('S04G-WIRE END'); process.exit(process.exitCode || 0); });
-require('node:readline').createInterface({input: process.stdin}).on('line', line => { if (line.trim() === 'stop') socket.end(); });
+// "cmd <command>" sends ServerboundChatCommandPacket (unsigned command string, 1.20.5+).
+require('node:readline').createInterface({input: process.stdin}).on('line', line => { try {
+  const text = line.trim();
+  if (text === 'stop') { socket.end(); return; }
+  if (!ready) throw Error('wait for READY');
+  if (!text.startsWith('cmd ')) throw Error('unknown action ' + text);
+  game('chat_command', str(text.slice(4)));
+  game('client_tick_end');
+  console.log('S04G-WIRE SENT /' + text.slice(4));
+} catch (e) { console.error(e.stack); process.exitCode = 1; socket.destroy(); } });

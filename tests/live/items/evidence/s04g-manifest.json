@@ -1,0 +1,310 @@
+{
+  "slice": "S04 follow-up: item library and M1 /give harness",
+  "date": "2026-11-07",
+  "result": "PASS",
+  "allium": {
+    "path": "build/libs/Allium.jar",
+    "sha256": "717912a97dd6ccfa1474334b672b9000dc1c239f7274e70ffb767cc7bc73f316"
+  },
+  "unitTests": {
+    "plugin": 131,
+    "core": 41,
+    "failures": 0
+  },
+  "liveTotals": {
+    "lanes": 3,
+    "checks": 93,
+    "failures": 0
+  },
+  "faultInjection": "-Dallium.fault-injection=true; the fixture arms skull.lookup-slow (2 s) and skull.lookup-hang only",
+  "environmentNote": "A machine reboot cleared /tmp before this run. Lane prerequisites were restored: provider jars and the Paper 26.3-141 lane from persistent copies (hashes unchanged), Paper 1.21.8-60 re-downloaded from PaperMC (SHA-256 matches the S05/S06a record), Spigot 1.20.1 rebuilt with BuildTools (same build 3871-d2eba2c; its bootstrap jar hash differs because BuildTools output is not byte-reproducible), and minecraft-protocol 1.68.0 reinstalled. Run logs are kept on persistent storage.",
+  "harness": {
+    "run.py": "866ae49c2a29d2c2dfb4bd5cfc62f4536302b126364d8ad51b02b12384b41e32",
+    "client-mcp.cjs": "f57c767100af28fe4bec414a6cc871c88790c8ea382571fd602ccca0f53693b8",
+    "client-raw26.cjs": "48e14e4fe2b5b30299ffd8517ee03af6b27794d966153d442b679ec5af030c3f",
+    "plugin/gate/GiveGate.java": "056e2acb1fe356bbb05d572a26fe3a1f9767495e92a585223fe4a2d409a8e213",
+    "plugin/plugin.yml": "736da6dea314423c104b29b79f79c5add15f7db4cd83fc1baa451041b86356ab"
+  },
+  "lanes": [
+    {
+      "lane": "spigot-1.20.1",
+      "run": "/mnt/storage/.allium-validation/20261107/items-gate/spigot-1201-final",
+      "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+      "java": "OpenJDK 17.0.21",
+      "client": "minecraft-protocol 1.68.0 (minecraft-data 3.119.0), protocol 763",
+      "port": 25670,
+      "providers": [],
+      "checks": 27,
+      "passed": 27,
+      "failures": [],
+      "gives": [
+        {
+          "command": "give GateBot allium:mob_disarmer",
+          "reply": "Gave 1x allium:mob_disarmer to GateBot."
+        },
+        {
+          "command": "give GateBot allium:mob_disarmer 3",
+          "reply": "Gave 3x allium:mob_disarmer to GateBot."
+        },
+        {
+          "command": "give GateBot diamond 100 --overflow=refuse",
+          "reply": "GateBot's inventory cannot hold 100x diamond, so nothing was given."
+        },
+        {
+          "command": "give GateBot diamond 100 --overflow=partial",
+          "reply": "Gave 64 of 100x diamond to GateBot; 36 did not fit and were not given."
+        },
+        {
+          "command": "give GateBot diamond 100 --overflow=drop",
+          "reply": "Gave 64 of 100x diamond to GateBot; 36 did not fit and dropped at their feet."
+        },
+        {
+          "command": "give GateBot diamond",
+          "reply": "Another plugin cancelled giving diamond to GateBot."
+        },
+        {
+          "command": "give GateBot minecraft:diamond_sword[unbreakable={}]",
+          "reply": "Could not give minecraft:diamond_sword[unbreakable={}]: data components [...] require Minecraft 1.20.5+; this server is 1.20.1, so write {...} NBT instead"
+        },
+        {
+          "command": "give GateBot diamond_sword{display:{Name:'{\"text\":\"Blade, of Testing; Mk II\"}'},Unbreakable:1b}",
+          "reply": "Gave 1x diamond_sword{display:{Name:'{\"text\":\"Blade, of Testing; Mk II\"}'},Unbreakable:1b} to GateBot."
+        },
+        {
+          "command": "give GateBot allium:mob_disarmer[unbreakable={}]",
+          "reply": "Could not give allium:mob_disarmer[unbreakable={}]: raw item data ([...] components) applies only to vanilla items, not allium:mob_disarmer"
+        },
+        {
+          "command": "give GateBot diamond_sword sharpness:5 name:&6Gate_Blade lore:One|\"Two words\" unbreakable",
+          "reply": "Gave 1x diamond_sword to GateBot."
+        },
+        {
+          "command": "give GateBot potion potion:swiftness effect:speed:2:60",
+          "reply": "Gave 1x potion to GateBot."
+        },
+        {
+          "command": "give GateBot oraxen:gate_disarmer",
+          "reply": "Could not give oraxen:gate_disarmer (PROVIDER_ABSENT): Item provider 'oraxen' is not installed or enabled"
+        },
+        {
+          "command": "give GateBot player_head owner:GateBot",
+          "reply": "Gave 1x player_head to GateBot."
+        },
+        {
+          "command": "give NoSuchPlayer stone",
+          "reply": "Player NoSuchPlayer not found."
+        },
+        {
+          "command": "give GateBot player_head owner:Notch (bot disconnects during a 2 s lookup)",
+          "reply": "GateBot left before the items were ready, so nothing was given."
+        },
+        {
+          "command": "give GateBot player_head owner:Dinnerbone",
+          "reply": "Gave 1x player_head to GateBot."
+        },
+        {
+          "command": "warning",
+          "reply": "Warning: the skin for Dinnerbone could not be resolved (the lookup timed out after 3000 ms); the head was given without it"
+        }
+      ],
+      "jarSha256": {
+        "GiveGate.jar": "5c45a0b2609485da978009eee25d15a34cc9316d83ba82db9c714d2ba66a21b7",
+        "Allium.jar": "717912a97dd6ccfa1474334b672b9000dc1c239f7274e70ffb767cc7bc73f316",
+        "server": "1416cd67e2337e42058def6035260f6a42e294adb4a148707b87591cddfbb760"
+      }
+    },
+    {
+      "lane": "paper-1.21.8",
+      "run": "/mnt/storage/.allium-validation/20261107/items-gate/paper-1218-final",
+      "server": "This server is running Paper version 1.21.8-60-main@29c8822 (2025-09-06T21:49:13Z) (Implementing API version 1.21.8-R0.1-SNAPSHOT)",
+      "java": "OpenJDK 21.0.13",
+      "client": "minecraft-protocol 1.68.0 (minecraft-data 3.119.0), protocol 772",
+      "port": 25671,
+      "providers": [
+        "nexo",
+        "craftengine",
+        "oraxen"
+      ],
+      "checks": 39,
+      "passed": 39,
+      "failures": [],
+      "gives": [
+        {
+          "command": "give GateBot allium:mob_disarmer",
+          "reply": "Gave 1x allium:mob_disarmer to GateBot."
+        },
+        {
+          "command": "give GateBot nexo:mob_disarmer",
+          "reply": "Gave 1x nexo:mob_disarmer to GateBot."
+        },
+        {
+          "command": "give GateBot craftengine:allium_gate:mob_disarmer",
+          "reply": "Gave 1x craftengine:allium_gate:mob_disarmer to GateBot."
+        },
+        {
+          "command": "give GateBot oraxen:Gate_Disarmer",
+          "reply": "Gave 1x oraxen:Gate_Disarmer to GateBot."
+        },
+        {
+          "command": "give GateBot allium:mob_disarmer 3",
+          "reply": "Gave 3x allium:mob_disarmer to GateBot."
+        },
+        {
+          "command": "give GateBot diamond 100 --overflow=refuse",
+          "reply": "GateBot's inventory cannot hold 100x diamond, so nothing was given."
+        },
+        {
+          "command": "give GateBot diamond 100 --overflow=partial",
+          "reply": "Gave 64 of 100x diamond to GateBot; 36 did not fit and were not given."
+        },
+        {
+          "command": "give GateBot diamond 100 --overflow=drop",
+          "reply": "Gave 64 of 100x diamond to GateBot; 36 did not fit and dropped at their feet."
+        },
+        {
+          "command": "give GateBot diamond",
+          "reply": "Another plugin cancelled giving diamond to GateBot."
+        },
+        {
+          "command": "give GateBot diamond_sword[custom_name={text:\"Blade, of Testing; Mk II\",italic:false},unbreakable={}]",
+          "reply": "Gave 1x diamond_sword[custom_name={text:\"Blade, of Testing; Mk II\",italic:false},unbreakable={}] to GateBot."
+        },
+        {
+          "command": "give GateBot diamond_sword{Unbreakable:1b}",
+          "reply": "Could not give diamond_sword{Unbreakable:1b}: Minecraft 1.21.8 uses [...] data components; {...} NBT is no longer accepted"
+        },
+        {
+          "command": "give GateBot allium:mob_disarmer[unbreakable={}]",
+          "reply": "Could not give allium:mob_disarmer[unbreakable={}]: raw item data ([...] components) applies only to vanilla items, not allium:mob_disarmer"
+        },
+        {
+          "command": "give GateBot diamond_sword sharpness:5 name:&6Gate_Blade lore:One|\"Two words\" unbreakable",
+          "reply": "Gave 1x diamond_sword to GateBot."
+        },
+        {
+          "command": "give GateBot potion potion:swiftness effect:speed:2:60",
+          "reply": "Gave 1x potion to GateBot."
+        },
+        {
+          "command": "give GateBot nexo:does_not_exist",
+          "reply": "Could not give nexo:does_not_exist (UNKNOWN_ID): Unknown or empty Nexo item ID: 'does_not_exist'"
+        },
+        {
+          "command": "give GateBot player_head owner:GateBot",
+          "reply": "Gave 1x player_head to GateBot."
+        },
+        {
+          "command": "give NoSuchPlayer stone",
+          "reply": "Player NoSuchPlayer not found."
+        },
+        {
+          "command": "give GateBot player_head owner:Notch (bot disconnects during a 2 s lookup)",
+          "reply": "GateBot left before the items were ready, so nothing was given."
+        },
+        {
+          "command": "give GateBot player_head owner:Dinnerbone",
+          "reply": "Gave 1x player_head to GateBot."
+        },
+        {
+          "command": "warning",
+          "reply": "Warning: the skin for Dinnerbone could not be resolved (the lookup timed out after 3000 ms); the head was given without it"
+        }
+      ],
+      "jarSha256": {
+        "oraxen.jar": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2",
+        "craftengine.jar": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f",
+        "nexo.jar": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b",
+        "GiveGate.jar": "eb497900eaa8fb0ef2ca70307c4f1013579d6aff93f39698e421893c6de0a78f",
+        "Allium.jar": "717912a97dd6ccfa1474334b672b9000dc1c239f7274e70ffb767cc7bc73f316",
+        "server": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+      }
+    },
+    {
+      "lane": "paper-26.3",
+      "run": "/mnt/storage/.allium-validation/20261107/items-gate/paper-263-final",
+      "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+      "java": "OpenJDK 25.0.5",
+      "client": "owned raw client, protocol 777, server packet catalog",
+      "port": 25672,
+      "providers": [],
+      "checks": 27,
+      "passed": 27,
+      "failures": [],
+      "gives": [
+        {
+          "command": "give GateBot allium:mob_disarmer",
+          "reply": "Gave 1x allium:mob_disarmer to GateBot."
+        },
+        {
+          "command": "give GateBot allium:mob_disarmer 3",
+          "reply": "Gave 3x allium:mob_disarmer to GateBot."
+        },
+        {
+          "command": "give GateBot diamond 100 --overflow=refuse",
+          "reply": "GateBot's inventory cannot hold 100x diamond, so nothing was given."
+        },
+        {
+          "command": "give GateBot diamond 100 --overflow=partial",
+          "reply": "Gave 64 of 100x diamond to GateBot; 36 did not fit and were not given."
+        },
+        {
+          "command": "give GateBot diamond 100 --overflow=drop",
+          "reply": "Gave 64 of 100x diamond to GateBot; 36 did not fit and dropped at their feet."
+        },
+        {
+          "command": "give GateBot diamond",
+          "reply": "Another plugin cancelled giving diamond to GateBot."
+        },
+        {
+          "command": "give GateBot diamond_sword[custom_name={text:\"Blade, of Testing; Mk II\",italic:false},unbreakable={}]",
+          "reply": "Gave 1x diamond_sword[custom_name={text:\"Blade, of Testing; Mk II\",italic:false},unbreakable={}] to GateBot."
+        },
+        {
+          "command": "give GateBot diamond_sword{Unbreakable:1b}",
+          "reply": "Could not give diamond_sword{Unbreakable:1b}: Minecraft 26.3 uses [...] data components; {...} NBT is no longer accepted"
+        },
+        {
+          "command": "give GateBot allium:mob_disarmer[unbreakable={}]",
+          "reply": "Could not give allium:mob_disarmer[unbreakable={}]: raw item data ([...] components) applies only to vanilla items, not allium:mob_disarmer"
+        },
+        {
+          "command": "give GateBot diamond_sword sharpness:5 name:&6Gate_Blade lore:One|\"Two words\" unbreakable",
+          "reply": "Gave 1x diamond_sword to GateBot."
+        },
+        {
+          "command": "give GateBot potion potion:swiftness effect:speed:2:60",
+          "reply": "Gave 1x potion to GateBot."
+        },
+        {
+          "command": "give GateBot oraxen:gate_disarmer",
+          "reply": "Could not give oraxen:gate_disarmer (PROVIDER_ABSENT): Item provider 'oraxen' is not installed or enabled"
+        },
+        {
+          "command": "give GateBot player_head owner:GateBot",
+          "reply": "Gave 1x player_head to GateBot."
+        },
+        {
+          "command": "give NoSuchPlayer stone",
+          "reply": "Player NoSuchPlayer not found."
+        },
+        {
+          "command": "give GateBot player_head owner:Notch (bot disconnects during a 2 s lookup)",
+          "reply": "GateBot left before the items were ready, so nothing was given."
+        },
+        {
+          "command": "give GateBot player_head owner:Dinnerbone",
+          "reply": "Gave 1x player_head to GateBot."
+        },
+        {
+          "command": "warning",
+          "reply": "Warning: the skin for Dinnerbone could not be resolved (the lookup timed out after 3000 ms); the head was given without it"
+        }
+      ],
+      "jarSha256": {
+        "GiveGate.jar": "5c45a0b2609485da978009eee25d15a34cc9316d83ba82db9c714d2ba66a21b7",
+        "Allium.jar": "717912a97dd6ccfa1474334b672b9000dc1c239f7274e70ffb767cc7bc73f316",
+        "server": "b2a93cb788ae8e2a91b1614cb5cd57ea602a74d291ca25d6acae34b19a234e1d"
+      }
+    }
+  ]
+}

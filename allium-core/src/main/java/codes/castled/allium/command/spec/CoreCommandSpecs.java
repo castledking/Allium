@@ -131,6 +131,44 @@ public final class CoreCommandSpecs {
             ))
     );
 
+    /**
+     * M1 harness for the item library: resolves item specs through ItemService and delivers them
+     * through ItemDeliveryService. Not yet the full M2 give (no kits, aliases or {@code /i}).
+     */
+    public static final CommandSpec GIVE = new CommandSpec(
+            "give",
+            CommandSpec.DEFAULT_NAMESPACE,
+            "items",
+            List.of(),
+            "Give items (M1 item-library harness)",
+            "/give <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]",
+            "/give <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]",
+            "allium.give",
+            null,
+            List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
+                    CommandArgSpec.required("item", null, SuggestionSpec.none())
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.ofEntries(
+                    Map.entry("delivered", "item.give.delivered"),
+                    Map.entry("dropped", "item.give.dropped"),
+                    Map.entry("partial", "item.give.partial"),
+                    Map.entry("refused", "item.give.refused"),
+                    Map.entry("offline", "item.give.offline"),
+                    Map.entry("cancelled", "item.give.cancelled"),
+                    Map.entry("failed", "item.give.failed"),
+                    Map.entry("invalid", "item.give.invalid"),
+                    Map.entry("unresolved", "item.give.unresolved"),
+                    Map.entry("privileged", "item.give.privileged"),
+                    Map.entry("pending", "item.give.pending"),
+                    Map.entry("warning", "item.give.warning"),
+                    Map.entry("received", "item.give.received")
+            ))
+    );
+
+    public static final List<CommandSpec> ITEM_SPECS = List.of(GIVE);
+
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(
             HEAL,
             FEED,

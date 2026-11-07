@@ -23,6 +23,7 @@ public final class CommandManager {
     public CommandManager(PluginStart plugin) {
         this.plugin = plugin;
         this.familyPolicy.registerSpecs(CoreCommandSpecs.ESSENTIALS_PROOF_SPECS);
+        this.familyPolicy.registerSpecs(CoreCommandSpecs.ITEM_SPECS);
         initializePolicyFromConfig();
     }
 

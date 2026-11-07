@@ -28,6 +28,10 @@ commands:
     usage: /<command> <mode> [player]
     aliases: [gm]
     permission: allium.gamemode
+  give:
+    description: Give items (M1 item-library harness)
+    usage: /<command> <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
+    permission: allium.give
 
 permissions:
   allium.*:
@@ -47,6 +51,8 @@ permissions:
       allium.economy.*: true
       allium.mobdisarmer.use: true
       allium.mobdisarmer.bypass: true
+      allium.give: true
+      allium.give.privileged: true
   allium.heal:
     description: Allows use of /heal
     default: op
@@ -76,6 +82,12 @@ permissions:
     default: op
   allium.gamemode.others:
     description: Allows changing others gamemodes
+    default: op
+  allium.give:
+    description: Allows /give (M1 item-library harness)
+    default: op
+  allium.give.privileged:
+    description: Allows /give to mint privileged items such as handcuffs
     default: op
   allium.mobdisarmer.use:
     description: Allows using a Mob Disarmer

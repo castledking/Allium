@@ -123,7 +123,20 @@ public enum Messages {
     TOOL_DISARMER_PROTECTED("tool.mob-disarmer.protected", "{prefix} &cYou can't disarm that mob here."),
     TOOL_DISARMER_PROTECTED_REASON("tool.mob-disarmer.protected-reason", "{prefix} &c{reason}"),
     TOOL_DISARMER_SINGLE("tool.mob-disarmer.single-item", "{prefix} &cHold a single Mob Disarmer, not a stack."),
-    TOOL_DISARMER_UPDATE_FAILED("tool.mob-disarmer.update-failed", "{prefix} &cThe Mob Disarmer could not be updated, so nothing was used.");
+    TOOL_DISARMER_UPDATE_FAILED("tool.mob-disarmer.update-failed", "{prefix} &cThe Mob Disarmer could not be updated, so nothing was used."),
+    ITEM_GIVE_DELIVERED("item.give.delivered", "{prefix} &aGave &f{amount}x {item} &ato &f{player}&a."),
+    ITEM_GIVE_DROPPED("item.give.dropped", "{prefix} &aGave &f{given}&a of &f{amount}x {item} &ato &f{player}&a; &f{dropped} &adid not fit and dropped at their feet."),
+    ITEM_GIVE_PARTIAL("item.give.partial", "{prefix} &eGave &f{given}&e of &f{amount}x {item} &eto &f{player}&e; &f{leftover} &edid not fit and were not given."),
+    ITEM_GIVE_REFUSED("item.give.refused", "{prefix} &c{player}'s inventory cannot hold &f{amount}x {item}&c, so nothing was given."),
+    ITEM_GIVE_OFFLINE("item.give.offline", "{prefix} &c{player} left before the items were ready, so nothing was given."),
+    ITEM_GIVE_CANCELLED("item.give.cancelled", "{prefix} &cAnother plugin cancelled giving {item} to {player}."),
+    ITEM_GIVE_FAILED("item.give.failed", "{prefix} &cCould not give {item}: &f{reason}"),
+    ITEM_GIVE_INVALID("item.give.invalid", "{prefix} &cInvalid item spec: &f{reason}"),
+    ITEM_GIVE_UNRESOLVED("item.give.unresolved", "{prefix} &cCould not give {item} ({status}): &f{reason}"),
+    ITEM_GIVE_PRIVILEGED("item.give.privileged", "{prefix} &cGiving {item} ({behavior}) needs &f{permission}&c."),
+    ITEM_GIVE_PENDING("item.give.pending", "{prefix} &7Resolving skull profiles for {player}..."),
+    ITEM_GIVE_WARNING("item.give.warning", "{prefix} &eWarning: {warning}"),
+    ITEM_GIVE_RECEIVED("item.give.received", "{prefix} &aYou received &f{amount}x {item}&a.");
 
     private static final Map<String, Messages> BY_KEY;
 

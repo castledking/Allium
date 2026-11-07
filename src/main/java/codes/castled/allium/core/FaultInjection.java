@@ -20,6 +20,12 @@ public final class FaultInjection {
     /** {@code ItemService#updateState} rejects without writing, exactly like a failed verification. */
     public static final String ITEM_STATE_WRITE = "item.state-write";
 
+    /** A skull profile lookup answers after {@code SkullProfiles#SLOW_FAULT_MILLIS} with a name-only profile. */
+    public static final String SKULL_LOOKUP_SLOW = "skull.lookup-slow";
+
+    /** A skull profile lookup never answers, so the lookup timeout fires. */
+    public static final String SKULL_LOOKUP_HANG = "skull.lookup-hang";
+
     private static final FaultInjection GLOBAL = new FaultInjection(Boolean.getBoolean(PROPERTY));
 
     private final boolean enabled;

@@ -122,3 +122,19 @@ tool:
     protected-reason: "{prefix} &c{reason}"
     single-item: "{prefix} &cHold a single Mob Disarmer, not a stack."
     update-failed: "{prefix} &cThe Mob Disarmer could not be updated, so nothing was used."
+
+item:
+  give:
+    delivered: "{prefix} &aGave &f{amount}x {item} &ato &f{player}&a."
+    dropped: "{prefix} &aGave &f{given}&a of &f{amount}x {item} &ato &f{player}&a; &f{dropped} &adid not fit and dropped at their feet."
+    partial: "{prefix} &eGave &f{given}&e of &f{amount}x {item} &eto &f{player}&e; &f{leftover} &edid not fit and were not given."
+    refused: "{prefix} &c{player}'s inventory cannot hold &f{amount}x {item}&c, so nothing was given."
+    offline: "{prefix} &c{player} left before the items were ready, so nothing was given."
+    cancelled: "{prefix} &cAnother plugin cancelled giving {item} to {player}."
+    failed: "{prefix} &cCould not give {item}: &f{reason}"
+    invalid: "{prefix} &cInvalid item spec: &f{reason}"
+    unresolved: "{prefix} &cCould not give {item} ({status}): &f{reason}"
+    privileged: "{prefix} &cGiving {item} ({behavior}) needs &f{permission}&c."
+    pending: "{prefix} &7Resolving skull profiles for {player}..."
+    warning: "{prefix} &eWarning: {warning}"
+    received: "{prefix} &aYou received &f{amount}x {item}&a."

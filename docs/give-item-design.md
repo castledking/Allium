@@ -2,6 +2,34 @@
 
 Status: design specification aligned with [roadmap.md](roadmap.md) contracts.
 
+## Implementation status (S04 follow-up, M1 harness)
+
+Built and live-verified on Spigot 1.20.1, Paper 1.21.8 and Paper 26.3
+([results](../tests/live/items/RESULTS.md)). Where the build differs from the text below:
+
+- **Grammar:** `ItemSpecParser` (`allium-core`) implements §5. A quote opens a string only at a
+  value boundary (start, whitespace, or after `[ { , : = |`), so `name:Bob's_Sword` is plain
+  text. Provider names are case-insensitive; provider ids keep their case (Oraxen ids are
+  case-sensitive). With `legacy-semicolon-syntax: true` the old form is converted; otherwise a
+  top-level `;` is an error. Duplicate tokens are rejected.
+- **Raw data (§6):** `ComponentAdapter` uses `ItemFactory#createItemStack` in both eras, since the
+  1.20 API already has it: `minecraft:<id>{...}` before 1.20.5 and `minecraft:<id>[...]` from
+  1.20.5, with the other syntax rejected by version. `UnsafeValues#modifyItemStack` is not used.
+  Raw data applies only to vanilla items, because on Allium or provider items it could rewrite
+  identity and signature tags.
+- **Signed items:** an item whose behavior is signed or privileged is minted one per stack, so
+  every stack has its own instance UUID (at most 36 per request). Minting a privileged behavior
+  needs `allium.give.privileged` as well as `allium.give`.
+- **Overflow (§7):** `drop`, `refuse` and `partial` (what fits is given, the exact leftover is
+  reported and not given). `queue` to claim storage is not built yet. `refuse` is decided from a
+  plan before anything changes.
+- **Skulls:** an online owner's profile is used at once. Otherwise lookups share a bounded LRU
+  cache with expiry, are deduplicated, and run on Allium's own two-thread executor with a
+  32-entry queue and a 3 s timeout. A timeout or failure gives a head without its skin plus a
+  warning, never an exception.
+- **Not yet:** `/i`, operator item aliases, kits/signs/rewards callers, and a stable addon API
+  surface. `/give` is labelled the M1 harness.
+
 ## 1. Context: Legacy Allium vs. Essentials
 
 ### Legacy Allium (`codes.castled.allium.commands.Give`)

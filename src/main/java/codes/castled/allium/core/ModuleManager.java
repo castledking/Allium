@@ -3,6 +3,7 @@ package codes.castled.allium.core;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.module.EconomyModule;
 import codes.castled.allium.module.EssentialsModule;
+import codes.castled.allium.module.ItemsModule;
 import codes.castled.allium.module.ToolsModule;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,6 +28,7 @@ public final class ModuleManager {
         registerModule(new EconomyModule(plugin));
         registerModule(new EssentialsModule(plugin));
         registerModule(new ToolsModule(plugin));
+        registerModule(new ItemsModule(plugin));
         for (AbstractModule module : modules.values()) {
             String key = module.getName().toLowerCase();
             boolean enabled = plugin.getConfig().getBoolean("modules." + key, true);

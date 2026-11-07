@@ -73,6 +73,12 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   in [`s06b-sf-inventory.md`](s06b-sf-inventory.md). Delivery is not implemented:
   `resource-pack.owner` is a stub that defaults to `none`. Live results are in
   [the S06b results](../tests/live/pack/RESULTS.md).
+- **S04 follow-up (item library + M1 `/give` harness):** item specs parse through a
+  bracket/brace/quote-aware grammar over `ProviderKey`, build through `ItemService` (so Allium
+  and provider items are stamped and signed) or the version-split `ComponentAdapter`, and are
+  delivered with an overflow policy, target revalidation and a cancellable `ItemGiveEvent`.
+  See [the give design status](give-item-design.md) and
+  [the results](../tests/live/items/RESULTS.md).
 - Private messages, preference commands, addons and pack delivery are not implemented in this recode. Some config module names are
   placeholders; do not count them as working features.
 

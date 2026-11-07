@@ -85,11 +85,17 @@ result and must preserve the existing uncommitted work.
       signature verification (surviving clone, `setState`, and appearance swap), strict
       provider-carrier matching and no AIR fallback across Spigot 1.20.1, Paper 1.20,
       Paper 1.20.6 (NBT-to-component boundary), Spigot 26.3, and Paper 26.3.
-- [ ] **S04 follow-up — Item library:** shared Give/Enchant/Skull/Potion builders,
-      bracket/brace/quote-aware grammar, `ItemFactory#createItemStack` / `ComponentAdapter`
-      validation, cancellable `ItemGiveEvent`, configurable overflow policy, non-destructive
-      `-e` equip, and async head resolution with target revalidation; bundle in core
-      and expose API to addons (with an optional minimal M1 `GiveCommand` test harness).
+- [x] **S04 follow-up — Item library and M1 give harness:** `ItemSpecParser` over
+      `ProviderKey` with a bracket/brace/quote-aware lexer (gated legacy `;` syntax), human
+      tokens (enchantments, `owner:` with a bounded async skull cache, `potion:`/`effect:`/
+      `color:`, `name:`/`lore:`, `unbreakable`), the version-split `ComponentAdapter`
+      (`[...]` from 1.20.5, `{...}` before; vanilla items only), `ItemDeliveryService` with
+      `drop`/`refuse`/`partial` overflow, target revalidation, cancellable `ItemGiveEvent` and
+      non-destructive `-e`, and `/give` on the command spec as the M1 harness (signed items are
+      minted one per stack; privileged behaviors need `allium.give.privileged`). Gate PASS:
+      93 live checks on Spigot 1.20.1, Paper 1.21.8 (all providers) and Paper 26.3; see
+      [results](tests/live/items/RESULTS.md). Not yet: `/i`, command item aliases, kits,
+      addon API surface, claim-storage `queue` overflow.
       No extra required plugin, duplicate shaded API, internal command dispatch or
       duplicated item parsers.
 - [x] **S05 / M1 — Provider adapter implementation:** isolated Nexo 1.29.1,

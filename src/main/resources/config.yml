@@ -31,6 +31,8 @@ database:
 
 # Module toggles - enable/disable entire feature sets
 modules:
+  # Item library and the M1 /give harness.
+  items: true
   teleportation: true
   economy: true
   homes: true
@@ -91,6 +93,21 @@ tools:
     status-cooldown-millis: 1000
     # Sound played at the mob on a disarm; "" for none.
     sound: minecraft:item.shield.break
+
+# Item library and the M1 /give harness.
+items:
+  give:
+    # What happens when the target's inventory is full. drop: give what fits and drop the rest at
+    # their feet. refuse: give nothing unless everything fits. partial: give what fits and report
+    # the rest. Override per command with --overflow=<policy>.
+    overflow: drop
+    # Accept the old item;meta;amount form. Semicolons inside [...], {...} or quotes always work.
+    legacy-semicolon-syntax: false
+    skull:
+      # owner:<name> resolves off the server thread; a slow lookup gives a head without its skin.
+      lookup-timeout-millis: 3000
+      cache-size: 256
+      cache-minutes: 60
 
 # Core resource pack (Allium's custom item visuals). Allium generates the pack at build time and
 # bundles it in the jar. Players who decline it keep working, named vanilla items.

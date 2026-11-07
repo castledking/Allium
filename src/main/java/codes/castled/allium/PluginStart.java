@@ -6,7 +6,6 @@ import codes.castled.allium.config.ConfigManager;
 import codes.castled.allium.core.FaultInjection;
 import codes.castled.allium.core.ModuleManager;
 import codes.castled.allium.database.DatabaseManager;
-import codes.castled.allium.item.AlliumItemDefinition;
 import codes.castled.allium.item.ItemHmacSigner;
 import codes.castled.allium.item.ItemService;
 import codes.castled.allium.item.ItemSigningKeyAudit;
@@ -15,15 +14,17 @@ import codes.castled.allium.item.provider.ProviderStartupDiagnostics;
 import codes.castled.allium.listener.ListenerManager;
 import codes.castled.allium.message.LanguageManager;
 import codes.castled.allium.message.MessageManager;
+import codes.castled.allium.pack.AssetManifest;
+import codes.castled.allium.pack.CoreItems;
+import codes.castled.allium.pack.Json;
+import codes.castled.allium.pack.ResourcePackSettings;
 import codes.castled.allium.protection.ProtectionHookBootstrap;
 import codes.castled.allium.protection.ProtectionService;
 import codes.castled.allium.util.AlliumLogger;
-import org.bukkit.Material;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Map;
 
 public final class PluginStart extends JavaPlugin {
 
@@ -39,6 +40,7 @@ public final class PluginStart extends JavaPlugin {
     private ModuleManager moduleManager;
     private CommandManager commandManager;
     private ListenerManager listenerManager;
+    private AssetManifest packManifest;
 
     @Override
     public void onEnable() {
@@ -71,7 +73,15 @@ public final class PluginStart extends JavaPlugin {
             return;
         }
         itemService = new ItemService(hmacSigner, logger::warning);
-        registerCoreItems(itemService);
+        try {
+            packManifest = CoreItems.loadManifest(getClassLoader());
+            CoreItems.definitions(packManifest).forEach(itemService::registerAlliumItem);
+        } catch (IOException | IllegalArgumentException e) {
+            logger.severe("Failed to load the core item manifest: " + e.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        reportCorePack();
         ProviderAdapterBootstrap.registerAll(
                 this,
                 getServer().getPluginManager(),
@@ -111,15 +121,22 @@ public final class PluginStart extends JavaPlugin {
         logger.info("Allium v" + getDescription().getVersion() + " enabled.");
     }
 
-    private static void registerCoreItems(ItemService service) {
-        service.registerAlliumItem(new AlliumItemDefinition(
-                "handcuffs", Material.IRON_SHOVEL, "allium:handcuffs", true, 1001, "§fHandcuffs", Map.of()));
-        service.registerAlliumItem(new AlliumItemDefinition(
-                "mob_disarmer", Material.GOLDEN_HOE, "allium:mob_disarmer", false, 1002, "§6Mob Disarmer", Map.of(), true));
-        service.registerAlliumItem(new AlliumItemDefinition(
-                "phantom_obliterator", Material.BLAZE_ROD, "allium:phantom_obliterator", true, 1003, "§bPhantom Obliterator", Map.of("charges", "3")));
-        service.registerAlliumItem(new AlliumItemDefinition(
-                "item_renamer", Material.NAME_TAG, "allium:item_renamer", false, 1004, "§eItem Renamer", Map.of()));
+    /** Logs the bundled core pack; delivery is not implemented, so nothing is sent or exported. */
+    private void reportCorePack() {
+        ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
+        settings.warnings().forEach(logger::warning);
+        try (java.io.InputStream in = getClassLoader().getResourceAsStream(CoreItems.PACK_INFO_RESOURCE)) {
+            if (in == null) {
+                logger.warning("The core resource pack is missing from the plugin jar.");
+                return;
+            }
+            java.util.Map<String, Object> info = Json.parseObject(
+                    new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            logger.info("Core resource pack " + info.get("sha1") + " (" + info.get("bytes") + " bytes) is bundled; delivery owner "
+                    + settings.owner().configName() + ", so Allium does not send or export it.");
+        } catch (IOException | IllegalArgumentException e) {
+            logger.warning("Could not read the bundled core resource pack info: " + e.getMessage());
+        }
     }
 
     @Override
@@ -157,6 +174,11 @@ public final class PluginStart extends JavaPlugin {
 
     public ItemService getItemService() {
         return itemService;
+    }
+
+    /** The bundled core pack's asset manifest (core item carriers, model data and visual states). */
+    public AssetManifest getPackManifest() {
+        return packManifest;
     }
 
     public ProtectionService getProtectionService() {

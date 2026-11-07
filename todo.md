@@ -110,8 +110,16 @@ result and must preserve the existing uncommitted work.
       legacy charge/timestamp import. Gate PASS: 58 live cases / 862 checks on Spigot 1.20.1,
       Paper 1.21.8 (all three providers) and Paper 26.3 (+GP3D), including a rejected-write
       fault case; see [results](tests/live/tools/disarmer/RESULTS.md).
-- [ ] **S06b / M1 — Core pack:** inventory SF assets and stable IDs; generate the core pack with
-      an explicit delivery owner. Gate: tool visuals for built-in items; no duplicate pack pushes.
+- [x] **S06b / M1 — Core pack (generation):** asset manifest with stable IDs, allocations and
+      texture provenance (`pack/`); SF inventory ([report](docs/s06b-sf-inventory.md)) and a local
+      SF art export recipe; deterministic pack (7,055 bytes, SHA-1 `2413dc17…`, identical on
+      JDK 17/21/25 and clean builds) with a 1.20 base and a 1.21.4+ item-definition overlay;
+      charge states are model selections on the same stack; `resource-pack.owner` stub (`none`).
+      Automated gate PASS: clean against Mojang client jars 1.20.1–26.3 and 125 live checks on
+      Spigot 1.20.1, Paper 1.21.8 and Paper 26.3; see [results](tests/live/pack/RESULTS.md).
+      Visual check pending: [checklist](tests/live/pack/VISUAL-CHECKLIST.md).
+- [ ] **Pack delivery (separate step) / M1:** one delivery owner (standalone URL/hash or RPM export), no
+      duplicate pushes, conflict reports for shared vanilla carrier files.
 - [ ] **S07 / M2 — Messaging:** msg/reply, acceptance/ignore/mute/vanish rules,
       `/msgtoggle [on|off]`, per-recipient notifications. Gate: blocked sends are
       silent; replies obey the same policy; preference persists; console/others
@@ -122,7 +130,7 @@ result and must preserve the existing uncommitted work.
       restoration and config changes; Allium owns message sound playback directly.
 
 S01.5a, S02–S03 and S04–S05 can proceed after S01 with separate file ownership.
-S06a depended on S04–S05; S06b depends on S06a. S07–S08 depend on S01.5a, S03 and the message pipeline.
+S06a depended on S04–S05; S06b depended on S06a; pack delivery depends on S06b. S07–S08 depend on S01.5a, S03 and the message pipeline.
 
 ## S01 Audit: Shaded Dependencies & Takion Retirement Plan
 

@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "namespace": "allium",
+  "licenseNote": "Textures here are original work made for Allium. The repository has no LICENSE yet; the owner must assign one (UNASSIGNED below) before public distribution. Server-only art (for example SF's Nexo textures) is never committed: see pack/tools/sf_export.py.",
+  "pack": {
+    "description": "Allium core tools",
+    "baseFormat": 15,
+    "maxFormat": 97,
+    "itemDefinitionsOverlay": {
+      "directory": "allium_item_definitions",
+      "minFormat": 46
+    }
+  },
+  "customModelData": {
+    "first": 2577000,
+    "last": 2577999
+  },
+  "carriers": {
+    "golden_hoe": {
+      "vanillaModel": {
+        "parent": "minecraft:item/handheld",
+        "textures": {
+          "layer0": "minecraft:item/golden_hoe"
+        }
+      },
+      "vanillaItem": {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:item/golden_hoe"
+        }
+      }
+    }
+  },
+  "tools": [
+    {
+      "id": "handcuffs",
+      "behavior": "allium:handcuffs",
+      "carrier": "iron_shovel",
+      "name": "§fHandcuffs",
+      "status": "planned",
+      "allocation": {
+        "first": 2577010,
+        "last": 2577019
+      },
+      "states": [
+        {
+          "key": "default",
+          "cmd": 2577010
+        }
+      ]
+    },
+    {
+      "id": "mob_disarmer",
+      "behavior": "allium:mob_disarmer",
+      "carrier": "golden_hoe",
+      "name": "§6Mob Disarmer",
+      "status": "ready",
+      "allocation": {
+        "first": 2577020,
+        "last": 2577029
+      },
+      "modelParent": "minecraft:item/handheld",
+      "states": [
+        {
+          "key": "full",
+          "cmd": 2577020,
+          "texture": "allium:item/mob_disarmer/full",
+          "meaning": "every charge available"
+        },
+        {
+          "key": "two_thirds",
+          "cmd": 2577021,
+          "texture": "allium:item/mob_disarmer/two_thirds",
+          "meaning": "some charges spent; about two thirds left"
+        },
+        {
+          "key": "one_third",
+          "cmd": 2577022,
+          "texture": "allium:item/mob_disarmer/one_third",
+          "meaning": "one third or less of the charges left"
+        },
+        {
+          "key": "empty",
+          "cmd": 2577023,
+          "texture": "allium:item/mob_disarmer/empty",
+          "meaning": "no charges; recharging"
+        },
+        {
+          "key": "broken",
+          "cmd": 2577024,
+          "texture": "allium:item/mob_disarmer/broken",
+          "meaning": "the tool broke"
+        }
+      ]
+    },
+    {
+      "id": "phantom_obliterator",
+      "behavior": "allium:phantom_obliterator",
+      "carrier": "blaze_rod",
+      "name": "§bPhantom Obliterator",
+      "status": "planned",
+      "allocation": {
+        "first": 2577030,
+        "last": 2577039
+      },
+      "states": [
+        {
+          "key": "default",
+          "cmd": 2577030
+        }
+      ]
+    },
+    {
+      "id": "item_renamer",
+      "behavior": "allium:item_renamer",
+      "carrier": "name_tag",
+      "name": "§eItem Renamer",
+      "status": "planned",
+      "allocation": {
+        "first": 2577040,
+        "last": 2577049
+      },
+      "states": [
+        {
+          "key": "default",
+          "cmd": 2577040
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "id": "allium:item/mob_disarmer/full",
+      "file": "assets/allium/textures/item/mob_disarmer/full.png",
+      "sha256": "fc7600a67eeb8a67e30d9f7095d9239f5ae521031fc6887f652697475e7654a5",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (DISARMER with all three pips lit)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/mob_disarmer/two_thirds",
+      "file": "assets/allium/textures/item/mob_disarmer/two_thirds.png",
+      "sha256": "3d5e67d53ede66e6844c3ec2cf687af7fb71031d7fd256cd58c0be3761bfeb8a",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (DISARMER with the lower two pips lit)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/mob_disarmer/one_third",
+      "file": "assets/allium/textures/item/mob_disarmer/one_third.png",
+      "sha256": "c32d936ac7f6c75e6a40bac3213db679d774e262aa404a231f3a98644cc36c15",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (DISARMER with the lowest pip lit)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/mob_disarmer/empty",
+      "file": "assets/allium/textures/item/mob_disarmer/empty.png",
+      "sha256": "74d48c3f2f9d67df308bcefd93e95c5973d14dc5d1503833f9c744f6b08d0a8b",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (DISARMER with every pip spent)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/mob_disarmer/broken",
+      "file": "assets/allium/textures/item/mob_disarmer/broken.png",
+      "sha256": "3409418f2648e485c6e45ffc0bc6733ce7ef104cecf7697a2b3378ab6e99b660",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (DISARMER_BROKEN_HEAD: right jaw snapped, every pip spent)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    }
+  ]
+}

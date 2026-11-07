@@ -64,8 +64,15 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   works with its built-in item and with Nexo, CraftEngine and Oraxen appearances. Protection runs
   through a small `ProtectionService` with a GriefPrevention/GriefPrevention3D claim hook and a
   cancellable `AlliumProtectionCheckEvent`. Live results are in
-  [the S06a results](../tests/live/tools/disarmer/RESULTS.md). There is no give command or pack yet;
-  S06b owns the pack.
+  [the S06a results](../tests/live/tools/disarmer/RESULTS.md). There is no give command yet.
+- **S06b (pack generation only):** the core resource pack is generated from
+  [`pack/manifest.json`](../pack/README.md) at build time, byte-identically, and bundled in the jar.
+  Built-in disarmers show their charge state by `custom_model_data` model selection on the same
+  golden-hoe stack (1.20 overrides; 1.21.4+ item definitions in an overlay). Allium does not stamp
+  `item_model`, so players who decline the pack keep a named vanilla golden hoe. The SF inventory is
+  in [`s06b-sf-inventory.md`](s06b-sf-inventory.md). Delivery is not implemented:
+  `resource-pack.owner` is a stub that defaults to `none`. Live results are in
+  [the S06b results](../tests/live/pack/RESULTS.md).
 - Private messages, preference commands, addons and pack delivery are not implemented in this recode. Some config module names are
   placeholders; do not count them as working features.
 

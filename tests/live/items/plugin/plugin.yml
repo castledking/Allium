@@ -9,6 +9,9 @@ commands:
   gg:
     description: S04 give gate fixture
     permission: givegate.console
+  ggwho:
+    description: S04 gate probe; logs the CommandSender a plugin command receives
+    permission: givegate.console
 permissions:
   givegate.console:
     default: op

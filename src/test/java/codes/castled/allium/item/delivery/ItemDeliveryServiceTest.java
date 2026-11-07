@@ -153,7 +153,7 @@ class ItemDeliveryServiceTest {
         CompletableFuture<DeliveryOutcome> pending = service.deliver(mock(CommandSender.class), player, prepared, false, OverflowPolicy.DROP);
         assertFalse(pending.isDone(), "the server thread is not blocked while the profile resolves");
         online.set(null);
-        lookup.complete(new SkullProfiles.Resolved(mock(PlayerProfile.class), null));
+        lookup.complete(new SkullProfiles.Resolved(mock(PlayerProfile.class)));
         assertEquals(DeliveryOutcome.Status.TARGET_OFFLINE, pending.join().status());
         verify(inventory, never()).addItem(any(ItemStack[].class));
 
@@ -165,11 +165,36 @@ class ItemDeliveryServiceTest {
         CompletableFuture<DeliveryOutcome> warned = service.deliver(mock(CommandSender.class), player,
                 new ItemLibrary.Prepared(List.of(new ItemLibrary.PreparedItem(second, slow)), List.of()), false, OverflowPolicy.DROP);
         PlayerProfile fallback = mock(PlayerProfile.class);
-        slow.complete(new SkullProfiles.Resolved(fallback, "the skin for Notch could not be resolved"));
+        slow.complete(new SkullProfiles.Resolved(fallback, "the skin for Notch could not be resolved", true));
         DeliveryOutcome outcome = warned.join();
-        assertEquals(DeliveryOutcome.Status.DELIVERED, outcome.status());
+        assertEquals(DeliveryOutcome.Status.DEGRADED, outcome.status(), "an untextured fallback is reported, not hidden");
+        assertEquals(1, outcome.given());
         assertEquals(List.of("the skin for Notch could not be resolved"), outcome.warnings());
         verify(meta).setOwnerProfile(fallback);
+    }
+
+    @Test
+    void refuseFallbackGivesNothingWhenASkinCannotBeResolved() {
+        PluginManager events = mock(PluginManager.class);
+        ItemDeliveryService refusing = new ItemDeliveryService(Runnable::run, () -> true, uuid -> online.get(), events,
+                () -> SkullFallback.REFUSE);
+        ItemStack head = MockItemStacks.create(Material.PLAYER_HEAD);
+        ItemStack diamond = stack(Material.DIAMOND, 1);
+        CompletableFuture<SkullProfiles.Resolved> degraded = CompletableFuture.completedFuture(
+                new SkullProfiles.Resolved(mock(PlayerProfile.class), "the skin for Notch could not be resolved (timed out)", true));
+        DeliveryOutcome outcome = refusing.deliver(mock(CommandSender.class), player, new ItemLibrary.Prepared(List.of(
+                new ItemLibrary.PreparedItem(head, degraded), new ItemLibrary.PreparedItem(diamond, null)), List.of()),
+                false, OverflowPolicy.DROP).join();
+        assertEquals(DeliveryOutcome.Status.REFUSED_UNRESOLVED, outcome.status());
+        assertEquals(0, outcome.given());
+        assertEquals(2, outcome.leftover());
+        verify(inventory, never()).addItem(any(ItemStack[].class));
+        verify(events, never()).callEvent(any());
+
+        CompletableFuture<SkullProfiles.Resolved> fine = CompletableFuture.completedFuture(new SkullProfiles.Resolved(mock(PlayerProfile.class)));
+        assertEquals(DeliveryOutcome.Status.DELIVERED, refusing.deliver(mock(CommandSender.class), player, new ItemLibrary.Prepared(List.of(
+                new ItemLibrary.PreparedItem(MockItemStacks.create(Material.PLAYER_HEAD), fine)), List.of()), false, OverflowPolicy.DROP)
+                .join().status(), "a resolved skin is unaffected by the refuse fallback");
     }
 
     @Test

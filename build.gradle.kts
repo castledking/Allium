@@ -26,6 +26,7 @@ repositories {
     maven("https://repo.nexomc.com/releases")
     maven("https://repo.oraxen.com/releases")
     maven("https://repo.momirealms.net/releases/")
+    maven("https://libraries.minecraft.net")
 }
 
 java {
@@ -59,6 +60,18 @@ hookSources.forEach { name ->
     }
 }
 
+// Paper-only Brigadier command registration (Paper 1.20.6+), compiled against paper-api and
+// loaded reflectively; Spigot never loads it.
+val paperSources = listOf("paperCommands")
+paperSources.forEach { name ->
+    sourceSets.create(name) {
+        compileClasspath += sourceSets.main.get().output + sourceSets.main.get().compileClasspath
+    }
+    configurations.named(sourceSets[name].compileClasspathConfigurationName) {
+        attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21)
+    }
+}
+
 sourceSets.test {
     hookSources.forEach { name ->
         compileClasspath += sourceSets[name].output
@@ -84,6 +97,7 @@ dependencies {
     add("craftengineAdapterCompileOnly", "net.momirealms:craft-engine-bukkit:26.9.1") { isTransitive = false }
     add("oraxenAdapterCompileOnly", "io.th0rgal:oraxen:1.211.0") { isTransitive = false }
     add("griefpreventionHookCompileOnly", "com.github.GriefPrevention:GriefPrevention:16.18.2") { isTransitive = false }
+    add("paperCommandsCompileOnly", "io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
 
     // Shared baseline server API: Spigot 1.20
     compileOnly("org.spigotmc:spigot-api:$spigotApiVersion")
@@ -147,7 +161,7 @@ tasks {
     }
 
     // Pinned provider APIs use Java 21; adapters still emit Java 17 bytecode.
-    providerSources.forEach { name ->
+    (providerSources + paperSources).forEach { name ->
         named<JavaCompile>(sourceSets[name].compileJavaTaskName) {
             javaCompiler.set(providerJavaCompiler)
         }
@@ -171,6 +185,7 @@ tasks {
         archiveVersion.set("")
         providerSources.forEach { from(sourceSets[it].output) }
         hookSources.forEach { from(sourceSets[it].output) }
+        paperSources.forEach { from(sourceSets[it].output) }
 
         // Preserve reflectively loaded InvUI version modules and HikariCP internals, and all allium-core classes
         minimize {

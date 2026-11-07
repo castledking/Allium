@@ -32,6 +32,8 @@ import java.util.stream.Collectors;
 public final class GiveCommand implements SpecCommandHandler {
 
     public static final String PERMISSION_PRIVILEGED = "allium.give.privileged";
+    /** Vanilla's selector permission (permission level 2); Paper's {@code players()} argument enforces it too. */
+    public static final String PERMISSION_SELECTOR = "minecraft.command.selector";
 
     private final PluginStart plugin;
     private final Supplier<ItemSpecParser> parser;
@@ -55,7 +57,6 @@ public final class GiveCommand implements SpecCommandHandler {
 
     @Override
     public void execute(BukkitCommandContext context) {
-        CommandSender sender = context.sender();
         String[] args = context.args();
         if (args.length < 2) {
             context.sendInvalidArgs(spec().selfUsage());
@@ -65,18 +66,27 @@ public final class GiveCommand implements SpecCommandHandler {
         if (targets.isEmpty()) {
             return;
         }
+        give(context.sender(), targets, String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
+    }
+
+    /**
+     * Gives {@code specText} ({@code <item[,item...]> [amount] [key:value...] [flags]}) to each
+     * target. Shared by the Bukkit command and Paper's Brigadier registration, which resolves
+     * targets from the full execution context.
+     */
+    public void give(CommandSender sender, List<Player> targets, String specText) {
         GiveSpec spec;
         try {
-            spec = parser.get().parse(String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
+            spec = parser.get().parse(specText);
         } catch (ItemSpecException e) {
-            context.sendOutcome(sender, "invalid", "{reason}", e.getMessage());
+            send(sender, "invalid", "{reason}", e.getMessage());
             return;
         }
         OverflowPolicy policy = defaultPolicy.get();
         if (spec.overflow().isPresent()) {
             policy = OverflowPolicy.fromConfig(spec.overflow().get()).orElse(null);
             if (policy == null) {
-                context.sendOutcome(sender, "invalid", "{reason}", "--overflow must be drop, refuse or partial");
+                send(sender, "invalid", "{reason}", "--overflow must be drop, refuse or partial");
                 return;
             }
         }
@@ -87,31 +97,42 @@ public final class GiveCommand implements SpecCommandHandler {
             try {
                 prepared = library.build(spec, mayGivePrivileged);
             } catch (ItemBuildException.Privileged e) {
-                context.sendOutcome(sender, "privileged", "{item}", itemText, "{behavior}", e.behavior(), "{permission}", PERMISSION_PRIVILEGED);
+                send(sender, "privileged", "{item}", itemText, "{behavior}", e.behavior(), "{permission}", PERMISSION_PRIVILEGED);
                 return;
             } catch (ItemBuildException.Unresolved e) {
-                context.sendOutcome(sender, "unresolved", "{item}", itemText, "{status}", e.status().name(), "{reason}", e.getMessage());
+                send(sender, "unresolved", "{item}", itemText, "{status}", e.status().name(), "{reason}", e.getMessage());
                 return;
             } catch (ItemBuildException e) {
-                context.sendOutcome(sender, "failed", "{item}", itemText, "{reason}", e.getMessage());
+                send(sender, "failed", "{item}", itemText, "{reason}", e.getMessage());
                 return;
             }
             if (prepared.async()) {
-                context.sendOutcome(sender, "pending", "{player}", target.getName());
+                send(sender, "pending", "{player}", target.getName());
             }
             String targetName = target.getName();
             OverflowPolicy chosen = policy;
             delivery.deliver(sender, target, prepared, spec.equip(), chosen)
-                    .whenComplete((outcome, error) -> report(context, target, targetName, itemText, chosen, outcome, error));
+                    .whenComplete((outcome, error) -> report(sender, target, targetName, itemText, chosen, outcome, error));
         }
     }
 
-    private void report(BukkitCommandContext context, Player target, String targetName, String item, OverflowPolicy policy,
+    /** A target selector or name that resolved to no player (vanilla's own message text). */
+    public void reportTargetError(CommandSender sender, String message) {
+        send(sender, "no-target", "{reason}", message);
+    }
+
+    private void send(CommandSender recipient, String outcome, String... replacements) {
+        String key = spec().messageKeys().outcomeKey(outcome);
+        if (key != null) {
+            plugin.getMessageManager().sendByKey(recipient, key, replacements);
+        }
+    }
+
+    private void report(CommandSender sender, Player target, String targetName, String item, OverflowPolicy policy,
                         DeliveryOutcome outcome, Throwable error) {
-        CommandSender sender = context.sender();
         if (error != null) {
             plugin.logger().warning("Give to " + targetName + " failed: " + error);
-            context.sendOutcome(sender, "failed", "{item}", item, "{reason}", String.valueOf(error.getMessage()));
+            send(sender, "failed", "{item}", item, "{reason}", String.valueOf(error.getMessage()));
             return;
         }
         String[] values = {"{player}", targetName, "{item}", item, "{amount}", Integer.toString(outcome.requested()),
@@ -119,35 +140,68 @@ public final class GiveCommand implements SpecCommandHandler {
                 "{leftover}", Integer.toString(outcome.leftover()), "{policy}", policy.configName()};
         switch (outcome.status()) {
             case DELIVERED -> {
-                context.sendOutcome(sender, outcome.dropped() > 0 ? "dropped" : "delivered", values);
+                send(sender, outcome.dropped() > 0 ? "dropped" : "delivered", values);
                 if (target.isOnline() && target != sender) {
-                    context.sendOutcome(target, "received", values);
+                    send(target, "received", values);
                 }
             }
-            case PARTIAL -> context.sendOutcome(sender, "partial", values);
-            case REFUSED_FULL -> context.sendOutcome(sender, "refused", values);
-            case TARGET_OFFLINE -> context.sendOutcome(sender, "offline", values);
-            case CANCELLED_BY_EVENT -> context.sendOutcome(sender, "cancelled", values);
-            case FAILED -> context.sendOutcome(sender, "failed", "{item}", item, "{reason}", "delivery failed");
+            case DEGRADED -> {
+                send(sender, "degraded", values);
+                if (target.isOnline() && target != sender) {
+                    send(target, "received", values);
+                }
+            }
+            case PARTIAL -> send(sender, "partial", values);
+            case REFUSED_FULL -> send(sender, "refused", values);
+            case REFUSED_UNRESOLVED -> send(sender, "refused-unresolved", values);
+            case TARGET_OFFLINE -> send(sender, "offline", values);
+            case CANCELLED_BY_EVENT -> send(sender, "cancelled", values);
+            case FAILED -> send(sender, "failed", "{item}", item, "{reason}", "delivery failed");
         }
         for (String warning : outcome.warnings()) {
-            context.sendOutcome(sender, "warning", "{warning}", warning);
+            send(sender, "warning", "{warning}", warning);
         }
     }
 
-    /** A player name, or a selector ({@code @p}, {@code @a}, {@code @r}, {@code @s}, ...) filtered to players. */
+    /**
+     * Vanilla {@code /give} targeting: a player name, a UUID, or a selector ({@code @p}, {@code @a},
+     * {@code @r}, {@code @s}, ...) resolved through the server's own selector parser from the
+     * sender's context (a command block's position, {@code /execute as ... at ...}). Like vanilla,
+     * a selector that matches only non-players is an error rather than an empty give, and selectors
+     * need vanilla's {@code minecraft.command.selector} permission.
+     */
     private List<Player> targets(BukkitCommandContext context, String raw) {
         List<Player> out = new ArrayList<>();
         if (raw.startsWith("@")) {
+            if (!context.sender().hasPermission(PERMISSION_SELECTOR)) {
+                context.sendOutcome(context.sender(), "invalid", "{reason}", "selectors such as " + raw + " need "
+                        + PERMISSION_SELECTOR + "; name the player instead");
+                return List.of();
+            }
+            List<Entity> matched;
             try {
-                for (Entity entity : plugin.getServer().selectEntities(context.sender(), raw)) {
-                    if (entity instanceof Player player) {
-                        out.add(player);
-                    }
-                }
+                matched = plugin.getServer().selectEntities(context.sender(), raw);
             } catch (IllegalArgumentException e) {
                 context.sendOutcome(context.sender(), "invalid", "{reason}", "bad selector " + raw + ": " + e.getMessage());
                 return List.of();
+            }
+            for (Entity entity : matched) {
+                if (entity instanceof Player player) {
+                    out.add(player);
+                }
+            }
+            if (out.isEmpty() && !matched.isEmpty()) {
+                context.sendOutcome(context.sender(), "invalid", "{reason}", "only players may be given items (" + raw + ")");
+                return List.of();
+            }
+        } else if (raw.length() == 36 && raw.chars().filter(c -> c == '-').count() == 4) {
+            try {
+                Player player = plugin.getServer().getPlayer(java.util.UUID.fromString(raw));
+                if (player != null) {
+                    out.add(player);
+                }
+            } catch (IllegalArgumentException ignored) {
+                // not a UUID after all; reported as an unknown player below
             }
         } else {
             Player player = plugin.getServer().getPlayerExact(raw);

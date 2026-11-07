@@ -38,12 +38,19 @@ public final class ItemDeliveryService {
     private final BooleanSupplier onServerThread;
     private final Function<UUID, Player> players;
     private final PluginManager events;
+    private final java.util.function.Supplier<SkullFallback> skullFallback;
 
     public ItemDeliveryService(Executor serverThread, BooleanSupplier onServerThread, Function<UUID, Player> players, PluginManager events) {
+        this(serverThread, onServerThread, players, events, () -> SkullFallback.UNTEXTURED);
+    }
+
+    public ItemDeliveryService(Executor serverThread, BooleanSupplier onServerThread, Function<UUID, Player> players, PluginManager events,
+                               java.util.function.Supplier<SkullFallback> skullFallback) {
         this.serverThread = Objects.requireNonNull(serverThread, "serverThread");
         this.onServerThread = Objects.requireNonNull(onServerThread, "onServerThread");
         this.players = Objects.requireNonNull(players, "players");
         this.events = Objects.requireNonNull(events, "events");
+        this.skullFallback = Objects.requireNonNull(skullFallback, "skullFallback");
     }
 
     public CompletableFuture<DeliveryOutcome> deliver(CommandSender source, Player target, ItemLibrary.Prepared prepared,
@@ -71,10 +78,12 @@ public final class ItemDeliveryService {
             return DeliveryOutcome.nothing(DeliveryOutcome.Status.TARGET_OFFLINE, requested, warnings);
         }
         List<ItemStack> stacks = new ArrayList<>();
+        boolean degraded = false;
         for (ItemLibrary.PreparedItem item : prepared.items()) {
             ItemStack stack = item.stack();
             if (item.skull() != null) {
                 SkullProfiles.Resolved resolved = item.skull().join();
+                degraded |= resolved.degraded();
                 if (stack.getItemMeta() instanceof SkullMeta skull) {
                     skull.setOwnerProfile(resolved.profile());
                     stack.setItemMeta(skull);
@@ -84,6 +93,9 @@ public final class ItemDeliveryService {
                 }
             }
             stacks.add(stack);
+        }
+        if (degraded && skullFallback.get() == SkullFallback.REFUSE) {
+            return DeliveryOutcome.nothing(DeliveryOutcome.Status.REFUSED_UNRESOLVED, requested, warnings);
         }
         ItemGiveEvent event = new ItemGiveEvent(source, target, stacks, equip);
         events.callEvent(event);
@@ -132,7 +144,8 @@ public final class ItemDeliveryService {
                 leftover = notPlaced;
             }
         }
-        DeliveryOutcome.Status status = leftover > 0 ? DeliveryOutcome.Status.PARTIAL : DeliveryOutcome.Status.DELIVERED;
+        DeliveryOutcome.Status status = leftover > 0 ? DeliveryOutcome.Status.PARTIAL
+                : degraded ? DeliveryOutcome.Status.DEGRADED : DeliveryOutcome.Status.DELIVERED;
         return new DeliveryOutcome(status, requested, given, dropped, leftover, warnings);
     }
 

@@ -44,6 +44,8 @@ p.add_argument('--lane', choices=sorted(LANES), required=True)
 p.add_argument('--run-name', required=True)
 p.add_argument('--run-root', type=Path, default=Path('/tmp/allium-s04g-20261107/runs'))
 p.add_argument('--allium-jar', type=Path, default=REPO / 'build/libs/Allium.jar')
+p.add_argument('--scenario', choices=['gate', 'compat'], default='gate',
+               help='gate: the item-library gate; compat: vanilla /give ownership, player senders and skull fallbacks')
 a = p.parse_args()
 if not re.fullmatch('[a-zA-Z0-9_.-]+', a.run_name):
     p.error('invalid run-name')
@@ -59,8 +61,9 @@ data = lane / 'plugins/GiveGate'
 port = spec['port']
 providers = spec['providers']
 
-server = client = None
-server_thread = client_thread = None
+server = None
+server_thread = None
+clients = {}
 logs, client_logs, driver, failures, cases = [], [], [], [], []
 
 
@@ -123,9 +126,9 @@ def status():
     return json.loads(path.read_text())
 
 
-def snapshot(name):
+def snapshot(name, player=None):
     path = read_json('snapshot-' + name)
-    gg('snapshot ' + name)
+    gg('snapshot ' + name + ('' if player is None else ' ' + player))
     wait(path.exists, 'snapshot ' + name, 30)
     out = json.loads(path.read_text())
     (run / 'cases').mkdir(exist_ok=True)
@@ -271,26 +274,35 @@ def boot(label):
     require(any('Item library enabled' in x for x in logs[start:]), label + ' Allium item library enabled')
 
 
-def connect(label):
-    global client, client_thread
+def connect(label, user='GateBot'):
     start = len(client_logs)
     script = 'client-raw26.cjs' if spec['client'] == 'raw26' else 'client-mcp.cjs'
-    args = ['node', str(HERE / script), str(lane), str(port)] + ([] if spec['client'] == 'raw26' else [spec['client']])
-    client = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
-    client_thread = threading.Thread(target=pump, args=(client, run / 'client.log', client_logs), daemon=True)
-    client_thread.start()
-    wait(lambda: any('S04G-WIRE READY' in x for x in client_logs[start:]), label + ' client READY', 90)
-    wait(lambda: status()['botOnline'], 'bot online', 30)
+    args = ['node', str(HERE / script), str(lane), str(port)] + ([] if spec['client'] == 'raw26' else [spec['client']]) + [user]
+    env = dict(__import__('os').environ, S04G_BUNGEE='1' if bungee_mode() else '0')
+    proc = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, env=env)
+    thread = threading.Thread(target=pump, args=(proc, run / f'client-{user}.log', client_logs), daemon=True)
+    thread.start()
+    clients[user] = (proc, thread)
+    wait(lambda: any('S04G-WIRE READY' in x and ('user=' + user) in x for x in client_logs[start:]), label + ' client READY', 90)
+    if user == 'GateBot':
+        wait(lambda: status()['botOnline'], 'bot online', 30)
     if providers:
         wait(lambda: (lambda s: s if all(s[x] == 'READY' for x in providers) else None)(status()), 'providers READY', 120)
 
 
-def disconnect():
-    global client
-    stop_process(client, lambda: (client.stdin.write('stop\n'), client.stdin.flush()), timeout=10)
-    if client_thread:
-        client_thread.join(timeout=5)
-    client = None
+def disconnect(user='GateBot'):
+    proc, thread = clients.pop(user)
+    stop_process(proc, lambda: (proc.stdin.write('stop\n'), proc.stdin.flush()), timeout=10)
+    thread.join(timeout=5)
+
+
+def bot(user, command):
+    """Sends a real chat command from a bot, as a player would type it."""
+    proc, _ = clients[user]
+    start = len(client_logs)
+    proc.stdin.write('cmd ' + command + '\n')
+    proc.stdin.flush()
+    wait(lambda: any(('S04G-WIRE SENT /' + command) in x for x in client_logs[start:]), 'bot sent ' + command, 10)
 
 
 def slots_of(snap, material):
@@ -361,8 +373,9 @@ def skull_cases():
     heads = slots_of(snap, 'PLAYER_HEAD')
     require(len(heads) == 1 and heads[0].get('skullOwner') == 'GateBot', 'an online owner resolves at once')
 
-    line, _ = give('NoSuchPlayer stone', 'not found')
-    require('NoSuchPlayer' in line, 'an offline target is refused before anything is built')
+    # Bukkit route: Allium's "not found"; Paper route: vanilla's players() argument error.
+    line, _ = give('NoSuchPlayer stone', ['not found', 'No player was found'])
+    require('NoSuchPlayer' in line or 'No player was found' in line, f'an offline target is refused before anything is built: {line.strip()[-60:]}')
 
     gg('clear')
     gg('fault skull.lookup-slow 1')
@@ -433,6 +446,211 @@ def token_cases():
         require('PROVIDER_ABSENT' in line, f'an absent provider is reported as PROVIDER_ABSENT: {line.strip()[-80:]}')
 
 
+def bungee_mode():
+    """The 26.3 compat lane runs behind BungeeCord forwarding so Paper completes profiles online (real lookups)."""
+    return a.scenario == 'compat' and a.lane == 'paper-26.3'
+
+
+def compat_setup():
+    """Command blocks on, a datapack whose function runs a vanilla give, and per-lane skull settings."""
+    props = lane / 'server.properties'
+    props.write_text(props.read_text() + 'enable-command-block=true\n')
+    pack = lane / 'world/datapacks/allium_gate'
+    if a.lane == 'spigot-1.20.1':
+        meta = {'pack': {'pack_format': 15, 'description': 'S04 give gate'}}
+        folder = 'functions'
+    else:
+        meta = {'pack': {'description': 'S04 give gate', 'min_format': 121, 'max_format': 121}}
+        folder = 'function'
+    (pack / f'data/allium_gate/{folder}').mkdir(parents=True)
+    (pack / 'pack.mcmeta').write_text(json.dumps(meta))
+    (pack / f'data/allium_gate/{folder}/give_test.mcfunction').write_text('give @a[name=GateBot2] minecraft:diamond 1\n')
+    if bungee_mode():
+        # Paper then treats the server as proxy-online: PlayerProfile#update asks Mojang's session server.
+        (lane / 'spigot.yml').write_text('settings:\n  bungeecord: true\n')
+    config = lane / 'plugins/Allium/config.yml'
+    text = config.read_text()
+    if a.lane == 'spigot-1.20.1':
+        text = text.replace('    skull-timeout-fallback: untextured\n', '    skull-timeout-fallback: refuse\n')
+    else:
+        text = text.replace('      max-lookups-per-minute: 30\n', '      max-lookups-per-minute: 1\n')
+    config.write_text(text)
+
+
+def diamonds(snap):
+    return sum(s['amount'] for s in snap['slots'] if s['material'] == 'DIAMOND')
+
+
+def allium_gives(snap):
+    return [e['target'] for e in snap['events']]
+
+
+def compat_cases():
+    connect('second', 'GateBot2')
+    both = lambda name: (snapshot(name + '-1', 'GateBot'), snapshot(name + '-2', 'GateBot2'))
+
+    # Command block @p: the nearest player to the block, then the other way round.
+    for near, far in [('GateBot', 'GateBot2'), ('GateBot2', 'GateBot')]:
+        gg('clear')
+        gg(f'tp {near} 43 0')
+        gg(f'tp {far} 55 0')
+        gg('cmdblock 40 0 give @p diamond 1')
+        time.sleep(2.0)
+        one, two = both('cmdblock-' + near)
+        got = {'GateBot': diamonds(one), 'GateBot2': diamonds(two)}
+        require(got[near] == 1 and got[far] == 0 and allium_gives(one) == [near],
+                f'command block "give @p" gave the nearest player {near} (3 blocks) and not {far} (15): {got}, Allium events {allium_gives(one)}')
+
+    # Which CommandSender does a plugin command receive under /execute? (diagnostic probe)
+    gg('tp GateBot 43 0')
+    gg('tp GateBot2 55 0')
+    for probe in ['execute as GateBot2 at GateBot2 run ggwho', 'execute as GateBot at GateBot2 run ggwho']:
+        start = len(logs)
+        console(probe)
+        line = wait(lambda: next((x for x in logs[start:] if 'S04G-WHO' in x or 'Incorrect argument' in x
+                                  or 'Unknown or incomplete' in x), None), 'probe ' + probe, 10)
+        result = line.split('S04G-WHO ', 1)[1].strip() if 'S04G-WHO' in line else 'not reachable under /execute: ' + line.strip()[-60:]
+        execute_handlers.setdefault('senderProbe', {})[probe] = result
+        emit('SENDER-PROBE ' + probe + ' -> ' + execute_handlers['senderProbe'][probe])
+
+    # /execute: whichever handler the server routes "run give" to, the target must follow the
+    # execution context. The handler is recorded (an ItemGiveEvent means Allium, none means vanilla).
+    gg('clear')
+    start = len(logs)
+    console('execute as GateBot2 at GateBot2 run give @s diamond 1')
+    time.sleep(1.5)
+    one, two = both('execute-self')
+    handler = 'allium' if allium_gives(two) else 'vanilla'
+    execute_handlers['as-self'] = {'handler': handler, 'log': [x.strip()[-80:] for x in logs[start:] if 'Gave' in x]}
+    emit('EXECUTE-HANDLER as-self ' + json.dumps(execute_handlers['as-self']))
+    require(diamonds(two) == 1 and diamonds(one) == 0,
+            f'execute as GateBot2 at GateBot2 run give @s gave GateBot2, the execution context ({handler} handled it)')
+    gg('clear')
+    gg('tp GateBot 43 0')
+    gg('tp GateBot2 55 0')
+    start = len(logs)
+    console('execute as GateBot at GateBot2 run give @p diamond 1')
+    time.sleep(1.5)
+    one, two = both('execute-at')
+    handler = 'allium' if allium_gives(two) or allium_gives(one) else 'vanilla'
+    execute_handlers['at-nearest'] = {'handler': handler, 'log': [x.strip()[-80:] for x in logs[start:] if 'Gave' in x]}
+    emit('EXECUTE-HANDLER at-nearest ' + json.dumps(execute_handlers['at-nearest']))
+    require(diamonds(two) == 1 and diamonds(one) == 0,
+            f'execute as GateBot at GateBot2 run give @p measured @p from GateBot2, the execution position ({handler} handled it)')
+
+    gg('clear')
+    start = len(logs)
+    console('minecraft:give GateBot diamond 1')
+    vanilla = wait(lambda: next((x for x in logs[start:] if 'Gave 1 [Diamond] to GateBot' in x or 'Gave 1x diamond' in x), None),
+                   'minecraft:give reply', 10)
+    one = snapshot('vanilla-give', 'GateBot')
+    require('Gave 1 [Diamond] to GateBot' in vanilla and diamonds(one) == 1 and not one['events'],
+            f'minecraft:give reached vanilla (vanilla reply, no ItemGiveEvent): {vanilla.strip()[-60:]}')
+
+    gg('clear')
+    start = len(logs)
+    console('function allium_gate:give_test')
+    time.sleep(1.5)
+    two = snapshot('function-give', 'GateBot2')
+    allium_said = any('[Allium]' in x and 'Gave' in x for x in logs[start:])
+    require(diamonds(two) == 1 and not two['events'] and not allium_said,
+            'a datapack function\'s give stays vanilla (GateBot2 got 1 diamond, no ItemGiveEvent, no Allium reply)')
+
+    # Player senders: a non-op bot typing /give.
+    gg('clear')
+    one = snapshot('nonop', 'GateBot')
+    require(one['op'] is False, 'GateBot is not an operator')
+    bot('GateBot', 'give GateBot diamond 1')
+    time.sleep(1.5)
+    require(diamonds(snapshot('no-give-permission', 'GateBot')) == 0, 'without allium.give, a player /give gives nothing')
+    gg('perm GateBot allium.give true')
+    bot('GateBot', 'give GateBot allium:handcuffs')
+    time.sleep(1.5)
+    one = snapshot('privileged-denied', 'GateBot')
+    require(not [s for s in one['slots'] if s['behavior'] == 'allium:handcuffs'] and not one['events'],
+            'with allium.give but not allium.give.privileged, handcuffs are denied')
+    gg('perm GateBot allium.give.privileged true')
+    bot('GateBot', 'give GateBot allium:handcuffs')
+    time.sleep(1.5)
+    one = snapshot('privileged-allowed', 'GateBot')
+    cuffs = [s for s in one['slots'] if s['behavior'] == 'allium:handcuffs']
+    require(len(cuffs) == 1 and str(cuffs[0]['signature']).startswith('v2:') and cuffs[0]['instanceUuid'],
+            'with allium.give.privileged the player mints signed handcuffs')
+
+    # Vanilla: selectors need permission level 2 (minecraft.command.selector), even for @s.
+    gg('clear')
+    bot('GateBot', 'give @s diamond 1')
+    time.sleep(1.5)
+    require(diamonds(snapshot('selector-denied', 'GateBot')) == 0, 'a non-op player without minecraft.command.selector cannot use @s')
+    gg('perm GateBot minecraft.command.selector true')
+    bot('GateBot', 'give @s diamond 1')
+    time.sleep(1.5)
+    require(diamonds(snapshot('selector-allowed', 'GateBot')) == 1, 'with minecraft.command.selector, @s targets the player')
+
+    gg('clear')
+    gg('wear GateBot FEET LEATHER_BOOTS')
+    bot('GateBot', 'give GateBot iron_helmet,iron_boots -e')
+    time.sleep(1.5)
+    one = snapshot('equip', 'GateBot')
+    stored = [s['material'] for s in one['slots'] if s['slot'] < 36]
+    require(one['armor']['HEAD'] == 'IRON_HELMET' and one['armor']['FEET'] == 'LEATHER_BOOTS' and 'IRON_BOOTS' in stored,
+            f'-e equipped the helmet into the empty slot and left the worn boots; the new boots went to the inventory: {one["armor"]}, {stored}')
+
+    if a.lane == 'spigot-1.20.1':
+        gg('clear')
+        gg('fault skull.lookup-hang 1')
+        line, _ = give('GateBot player_head owner:Dinnerbone', ['so nothing was given', 'Gave'], timeout=20)
+        one = snapshot('skull-refused', 'GateBot')
+        require('could not be resolved, so nothing was given' in line and not [s for s in one['slots'] if s['material'] == 'PLAYER_HEAD'],
+                f'skull-timeout-fallback: refuse gives nothing when the lookup times out: {line.strip()[-90:]}')
+    else:
+        real_skull_cases()
+
+
+def real_skull_cases():
+    """One real Mojang lookup (Notch), then the cache, then the 1-per-minute limit."""
+    gg('clear')
+    started = time.monotonic()
+    line, _ = give('GateBot player_head owner:Notch', ['Gave 1x player_head', 'without its skin', 'Could not give'], timeout=30)
+    first = time.monotonic() - started
+    one = snapshot('skull-real', 'GateBot')
+    head = [s for s in one['slots'] if s['material'] == 'PLAYER_HEAD']
+    stats = read_stats()
+    real_skull['first'] = {'reply': line.strip(), 'seconds': round(first, 2), 'head': head[0] if head else None, 'stats': stats}
+    emit('REAL-LOOKUP ' + json.dumps(real_skull['first']))
+    require(len(head) == 1 and stats['remoteLookups'] == 1, f'the first owner:Notch made exactly one remote lookup ({stats})')
+
+    started = time.monotonic()
+    start = len(logs)
+    line, _ = give('GateBot player_head owner:Notch', ['Gave 1x player_head', 'without its skin'], timeout=10)
+    again = time.monotonic() - started
+    pending = any('Resolving skull profiles' in x for x in logs[start:])
+    stats = read_stats()
+    real_skull['cached'] = {'reply': line.strip(), 'seconds': round(again, 2), 'pending': pending, 'stats': stats}
+    emit('REAL-CACHED ' + json.dumps(real_skull['cached']))
+    if real_skull['first']['head'] and real_skull['first']['head'].get('skullTextured'):
+        require(stats['remoteLookups'] == 1 and stats['cacheHits'] == 1 and not pending,
+                f'the second owner:Notch was served from the cache with no lookup ({stats})')
+
+    line, _ = give('GateBot player_head owner:jeb_', ['without its skin', 'Gave 1x player_head'], timeout=10)
+    stats = read_stats()
+    real_skull['limited'] = {'reply': line.strip(), 'stats': stats}
+    emit('REAL-LIMITED ' + json.dumps(real_skull['limited']))
+    require('without its skin' in line and stats['rateLimited'] >= 1 and stats['remoteLookups'] == 1,
+            f'a second distinct name within the minute hit the 1-per-minute limit locally and was reported degraded ({stats})')
+
+
+real_skull = {}
+execute_handlers = {}
+
+
+def read_stats():
+    path = read_json('skullstats')
+    gg('skullstats')
+    wait(path.exists, 'skullstats', 10)
+    return json.loads(path.read_text())
+
+
 summary = {}
 try:
     with socket.socket() as s:
@@ -440,20 +658,25 @@ try:
         s.bind(('127.0.0.1', port))
     build_fixture()
     write_lane()
+    if a.scenario == 'compat':
+        compat_setup()
     boot('initial')
     connect('initial')
-    disarmer_cases()
-    overflow_cases()
-    raw_cases()
-    token_cases()
-    skull_cases()
+    if a.scenario == 'compat':
+        compat_cases()
+    else:
+        disarmer_cases()
+        overflow_cases()
+        raw_cases()
+        token_cases()
+        skull_cases()
 except BaseException as e:
     failures.append('HARNESS ' + repr(e))
     emit('ERROR ' + repr(e))
 finally:
-    if client is not None:
+    for user in list(clients):
         try:
-            disconnect()
+            disconnect(user)
         except Exception as e:
             failures.append('client cleanup ' + repr(e))
     if server is not None:
@@ -468,7 +691,8 @@ finally:
     hashes = {x.name: hashlib.sha256(x.read_bytes()).hexdigest() for x in (lane / 'plugins').glob('*.jar')} if (lane / 'plugins').exists() else {}
     summary = {'lane': a.lane, 'port': port, 'server': version, 'client': spec['client'], 'providers': providers,
                'checks': sum(1 for x in driver if x.startswith(('PASS ', 'FAIL '))), 'failures': failures,
-               'serverLogErrors': errors[:40], 'hashes': hashes, 'gives': cases}
+               'serverLogErrors': errors[:40], 'hashes': hashes, 'gives': cases, 'scenario': a.scenario,
+               'realSkull': real_skull, 'executeHandlers': execute_handlers}
     (run / 'summary.json').write_text(json.dumps(summary, indent=2))
     (run / 'driver.log').write_text('\n'.join(driver) + '\n')
     for name in ['libraries', 'versions', 'cache', 'bundler', 'world', 'world_nether', 'world_the_end', 'server.jar']:

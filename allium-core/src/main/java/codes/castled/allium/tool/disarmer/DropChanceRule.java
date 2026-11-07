@@ -1,7 +1,7 @@
 package codes.castled.allium.tool.disarmer;
 
 /**
- * The single rule deciding whether a removed equipment piece drops.
+ * The slot-chance roll used by {@link DisarmDropRule#SLOT_CHANCE}.
  *
  * <p>Each removed piece is rolled exactly once, against the drop chance its slot had
  * immediately before removal: a chance of {@code 1.0} or more (vanilla uses {@code 2.0} for

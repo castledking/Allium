@@ -399,9 +399,13 @@ over the legacy default logout `ban {player}` without an explicit configured pol
 
 Mob Disarmer targets supported nonplayer mobs, excludes armor stands/players,
 respects protection and handles equipment/drop probabilities once. As built in S06a, only the
-main hand acts. A disarm takes every piece out of its slot before anything drops, and rolls
-each piece once against the drop chance its slot had: 1 or more always drops, 0 never does.
-It then zeroes the slot's chance. A disarm that removes nothing spends nothing. Phantom
+main hand acts. A disarm takes every piece out of its slot before anything drops, then decides
+each piece once by `drop-rule`. The default, `slot-chance`, matches pre-recode Allium: each
+piece rolls the drop chance its slot had (1 or more always drops, 0 never does), and villager
+gear and an enderman's carried block always drop. `always` drops every piece. Either way the
+slot's chance is then zeroed. If the tool's state write is rejected, the equipment and chances
+are put back and nothing drops (verified live with a fault point that only a
+`-Dallium.fault-injection=true` JVM flag can enable). A disarm that removes nothing spends nothing. Phantom
 Obliterator defaults to unnamed phantoms within 64 blocks; empty scans consume no
 charge. Bound searches to loaded entities/chunks and respect protections/events.
 Expose charges, recharge, radius and break chance as configuration rather than

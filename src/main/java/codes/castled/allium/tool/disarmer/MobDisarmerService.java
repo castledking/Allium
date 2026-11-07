@@ -15,6 +15,7 @@ import org.bukkit.entity.Enderman;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Villager;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.inventory.EntityEquipment;
@@ -47,9 +48,9 @@ import java.util.random.RandomGenerator;
  * the tool's charges; admit one committing click per player within the guard window; ask
  * protection; re-read the held stack and target; then commit. The commit takes every removable
  * piece out of its slot, writes the new charge state (restoring the equipment if the write is
- * rejected), rolls each piece's drop chance once per {@link DropChanceRule} and zeroes the
- * slot's drop chance. A disarm that removes nothing spends nothing. All methods run on the
- * server thread.
+ * rejected), decides each piece's drop once per the configured {@link DisarmDropRule} and
+ * zeroes the slot's drop chance. A disarm that removes nothing spends nothing. All methods run on
+ * the server thread.
  */
 public final class MobDisarmerService {
 
@@ -264,7 +265,7 @@ public final class MobDisarmerService {
         Location dropAt = mob.getLocation().add(0.0D, 0.5D, 0.0D);
         int dropped = 0;
         for (Removed piece : removed) {
-            if (DropChanceRule.drops(piece.dropChance(), random.nextFloat())) {
+            if (config.dropRule().drops(piece.dropChance(), piece.guaranteed(), random.nextFloat())) {
                 mob.getWorld().dropItemNaturally(dropAt, piece.stack());
                 dropped++;
             }
@@ -442,10 +443,12 @@ public final class MobDisarmerService {
 
     /**
      * Takes every removable piece out of the mob before anything drops, so a piece can only
-     * exist once. A slot that does not report empty after clearing keeps its piece.
+     * exist once. A slot that does not report empty after clearing keeps its piece. Villager
+     * gear and an enderman's carried block are guaranteed drops, as in pre-recode Allium.
      */
     private static List<Removed> takeEquipment(Mob mob) {
         List<Removed> removed = new ArrayList<>();
+        boolean guaranteed = mob instanceof Villager;
         EntityEquipment equipment = mob.getEquipment();
         if (equipment != null) {
             for (EquipmentSlot slot : DISARM_SLOTS) {
@@ -460,7 +463,7 @@ public final class MobDisarmerService {
                     continue;
                 }
                 setDropChance(equipment, slot, 0.0F);
-                removed.add(new Removed(slot, taken, chance, null));
+                removed.add(new Removed(slot, taken, chance, guaranteed, null));
             }
         }
         if (mob instanceof Enderman enderman) {
@@ -470,7 +473,7 @@ public final class MobDisarmerService {
                 enderman.setCarriedBlock(null);
                 if (enderman.getCarriedBlock() == null) {
                     // Vanilla always drops a carried block when an enderman dies.
-                    removed.add(new Removed(null, new ItemStack(material), 1.0F, original));
+                    removed.add(new Removed(null, new ItemStack(material), 1.0F, true, original));
                 }
             }
         }
@@ -594,7 +597,9 @@ public final class MobDisarmerService {
         return remainder == 0L ? minutes + "m" : minutes + "m " + remainder + "s";
     }
 
-    private record Removed(@Nullable EquipmentSlot slot, ItemStack stack, float dropChance, @Nullable BlockData carriedBlock) {
+    /** {@code dropChance} is the slot's chance before removal, restored if the write is rejected. */
+    private record Removed(@Nullable EquipmentSlot slot, ItemStack stack, float dropChance, boolean guaranteed,
+                           @Nullable BlockData carriedBlock) {
     }
 
     private record ToolFingerprint(int heldSlot, ItemRef ref, @Nullable String instanceUuid, @Nullable String signature) {

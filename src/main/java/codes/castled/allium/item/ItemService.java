@@ -1,5 +1,6 @@
 package codes.castled.allium.item;
 
+import codes.castled.allium.core.FaultInjection;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
@@ -621,6 +622,9 @@ public final class ItemService {
         }
         if (normalized.isEmpty()) {
             return true;
+        }
+        if (FaultInjection.trip(FaultInjection.ITEM_STATE_WRITE)) {
+            return false;
         }
         ItemMeta meta = stack.getItemMeta();
         if (meta == null) {

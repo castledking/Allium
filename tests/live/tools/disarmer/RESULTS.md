@@ -1,17 +1,18 @@
 # S06a Mob Disarmer live gate
 
-**PASS: 55 cases, 793 checks, 0 failures** on three lanes with a real protocol client, on
-2026-11-06. Allium.jar SHA-256
-`56d8a52036f66733153e0acc5c43762e6910b7fcd74b94e54a3e9eb7acfa4040`. Hashes, exact versions and run paths are in
+**PASS: 58 cases, 862 checks, 0 failures** on three lanes with a real protocol client, on
+2026-11-06, including the S06a follow-up (drop rule and one fault-injection case). Allium.jar SHA-256
+`13685eee1f22746edc13c0f003e5e965f982491ff6f4d49c68e4b1c37743af0f`. Hashes, exact versions and run paths are in
 the [manifest](evidence/s06a-manifest.json). Each run rebuilds the fixture jar from the same source,
 so the jar hashes differ only by archive timestamps; the manifest pins the source hashes. The run directories, with full server/client logs
-and per-case JSON, are under `/tmp/allium-s06a-20261106/runs/`. They are not committed.
+and per-case JSON, are `/tmp/allium-s06a-20261106/runs/*-followup`. They are not committed; the
+earlier `*-final` / `paper-263-gp-r1` runs (55 cases, 793 checks) are superseded.
 
 | Lane | Runtime | Client | Appearances | Cases | Checks |
 | --- | --- | --- | --- | --- | --- |
-| Spigot 1.20.1 (3871-d2eba2c) | Java 17.0.21 | minecraft-protocol 1.68.0, protocol 763 | built-in | 9 | 126 |
-| Paper 1.21.8-60 | Java 21.0.13 | minecraft-protocol 1.68.0, protocol 772 | built-in, Nexo 1.30-dev-36f4ce686, CE 26.9.1, Oraxen 1.220.1 | 36 | 525 |
-| Paper 26.3-141 + GriefPrevention3D 18.4.5 | Java 25.0.5 | owned raw client, protocol 777 | built-in | 10 | 142 |
+| Spigot 1.20.1 (3871-d2eba2c) | Java 17.0.21 | minecraft-protocol 1.68.0, protocol 763 | built-in | 10 | 149 |
+| Paper 1.21.8-60 | Java 21.0.13 | minecraft-protocol 1.68.0, protocol 772 | built-in, Nexo 1.30-dev-36f4ce686, CE 26.9.1, Oraxen 1.220.1 | 37 | 548 |
+| Paper 26.3-141 + GriefPrevention3D 18.4.5 | Java 25.0.5 | owned raw client, protocol 777 | built-in | 11 | 165 |
 
 ## What each case asserts
 
@@ -19,7 +20,8 @@ The fixture never disarms anything. It sets up a case from the console, and the 
 interaction packets, the same ones a vanilla client sends when the main hand passes:
 main hand first, then off hand. The fixture records the server-side events and the resulting state.
 Every mob wears six marked pieces with drop chances HAND 1.0, CHEST 2.0, LEGS 1.0 and
-OFF_HAND/HEAD/FEET 0.0, so the drop rule has an exact expected result.
+OFF_HAND/HEAD/FEET 0.0, so the drop rule has an exact expected result. Lanes run the shipped
+default `drop-rule: slot-chance`.
 
 Each appearance on each lane runs these cases:
 
@@ -36,6 +38,13 @@ Each appearance on each lane runs these cases:
 - **Off-hand only:** the off-hand tool is unchanged and the mob keeps its gear.
 - **Both hands:** only the main-hand tool spends; the off-hand tool is byte-identical.
 - **Kill after disarm:** a player kill drops no disarmed piece, and no piece is duplicated.
+- **Rejected write (built-in appearance, once per lane):** the fixture arms one
+  `item.state-write` fault, so `ItemService.updateState` rejects the disarm's write after
+  protection and the recheck, with every piece already off the mob. The fault trips exactly
+  once and Allium logs the rejected write. The tool is unchanged (state, UUID, MAC, all
+  `allium:*` PDC), the six slots and drop chances equal the baseline field by field, and nothing
+  drops or reaches the player. Killing the mob afterwards drops exactly HAND, CHEST and LEGS
+  once each, so the restored chances are live and nothing was duplicated.
 - **Persistence:** a spent keeper of each appearance is compared field by field: behavior,
   appearance, state, UUID, MAC and all `allium:*` PDC. On 1.21.8 this runs after
   `nexo reload items`, `ce reload` and `oraxen reload items`, and on every lane after a restart.
@@ -51,12 +60,16 @@ inside it spends nothing and leaves the gear in place. The interaction stays unc
 GP3D did not block it itself. The generic check event never fires, so the denial came from
 Allium's GriefPrevention hook.
 
+Fault injection exists only for disposable lanes: the runner starts each server with
+`-Dallium.fault-injection=true`, Allium logs a warning at startup, and the point is inert unless
+the fixture arms it. Nothing in config or in-game can enable it.
+
 ## Scope and limits
 
 - Providers were exercised on 1.21.8 only, with the supplied Nexo/Oraxen builds and official CE
   26.9.1. CE items here have no reset updater, so the CE count defect is not involved.
-- The click guard, legacy import, break chances, recharge expiry, bypass and the rejected-write
-  rollback are covered by unit tests, not by live cases. In live double-clicks, the second click
+- The click guard, legacy import, break chances, recharge expiry, bypass, `drop-rule: always`
+  and the villager guarantee are covered by unit tests, not by live cases. In live double-clicks, the second click
   found nothing left to remove.
 - Only upstream-compatible GriefPrevention API was used, and only GP3D 18.4.5 was run. No
   separate upstream GriefPrevention run was made.

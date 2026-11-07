@@ -1,6 +1,7 @@
 package gate;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.core.FaultInjection;
 import codes.castled.allium.item.ItemProviderAdapter;
 import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.item.ItemService;
@@ -139,7 +140,7 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
     /**
      * @param layout main | offhand | both | held (keep the current main-hand tool)
      * @param kit    full | empty
-     * @param veto   none | check-event | interact
+     * @param veto   none | check-event | interact | write-fault (arm one rejected item state write)
      */
     private void setup(String name, String appearance, String layout, String kit, String veto) throws IOException {
         Player bot = requireBot();
@@ -176,6 +177,8 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
             setChance(equipment, SLOTS[i], kit.equals("full") ? CHANCES[i] : 0.0F);
         }
         this.veto = veto;
+        if (FaultInjection.enabled()) FaultInjection.reset();
+        if (veto.equals("write-fault")) FaultInjection.arm(FaultInjection.ITEM_STATE_WRITE, 1);
         interactions.clear();
         deathMarkers.clear();
         spawnedMarkers.clear();
@@ -277,6 +280,11 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
         out.put("spawnedMarkers", new ArrayList<>(spawnedMarkers));
         out.put("interactions", new ArrayList<>(interactions));
         out.put("checkEvents", checkEvents);
+        Map<String, Object> fault = new LinkedHashMap<>();
+        fault.put("enabled", FaultInjection.enabled());
+        fault.put("armed", FaultInjection.armed(FaultInjection.ITEM_STATE_WRITE));
+        fault.put("tripped", FaultInjection.tripped(FaultInjection.ITEM_STATE_WRITE));
+        out.put("stateWriteFault", fault);
         return out;
     }
 

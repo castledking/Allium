@@ -38,6 +38,8 @@ NEXO_VARIANTS = {'3': 'nexo:mob_disarmer', '2': 'nexo:mob_disarmer_2-3', '1': 'n
 SLOTS = ['HAND', 'OFF_HAND', 'HEAD', 'CHEST', 'LEGS', 'FEET']
 DROPPED = ['CHEST', 'HAND', 'LEGS']  # chances 2.0, 1.0, 1.0; the others are 0.0
 FULL_CHANCES = {'HAND': 1.0, 'OFF_HAND': 0.0, 'HEAD': 0.0, 'CHEST': 2.0, 'LEGS': 1.0, 'FEET': 0.0}
+# Disposable lanes only: lets the fixture arm one rejected item state write. Inert unless armed.
+FAULTS = '-Dallium.fault-injection=true'
 
 p = argparse.ArgumentParser()
 p.add_argument('--lane', choices=sorted(LANES), required=True)
@@ -248,9 +250,9 @@ def argv():
                 libs[artifact] = jar
         cp = ':'.join(str(x.relative_to(lane)) for x in [lane / 'versions/26.3/paper-26.3.jar', *libs.values()])
         return [spec['java'], '-Xms512M', '-Xmx1536M', '-Dterminal.jline=false', '-Dterminal.ansi=false',
-                '-cp', cp, 'org.bukkit.craftbukkit.Main', '--nogui']
+                FAULTS, '-cp', cp, 'org.bukkit.craftbukkit.Main', '--nogui']
     return [spec['java'], '-Xms512M', '-Xmx2G', '-Dterminal.jline=false', '-Dterminal.ansi=false',
-            '-jar', 'server.jar', '--nogui']
+            FAULTS, '-jar', 'server.jar', '--nogui']
 
 
 def boot(label):
@@ -264,6 +266,7 @@ def boot(label):
     wait(lambda: any('Done (' in x for x in logs[start:]), 'server Done', 300)
     require(any('S06A-GATE READY' in x for x in logs[start:]), label + ' fixture enabled')
     require(any('Mob Disarmer enabled' in x for x in logs[start:]), label + ' Allium Mob Disarmer enabled')
+    require(any('Fault injection is enabled' in x for x in logs[start:]), label + ' Allium logged the fault-injection warning')
     if a.griefprevention:
         require(any('Protection hook enabled: GriefPrevention' in x for x in logs[start:]), label + ' GriefPrevention hook loaded')
 
@@ -444,6 +447,35 @@ def run_cases():
         spent_once(base['main'], obs['main'], name, appearance_after(label, 2))
         same_tool(base['off'], obs['off'], name + ' off-hand')
         disarmed(obs, name)
+
+        if label == 'allium':
+            write_fault()
+
+
+def write_fault():
+    # One rejected ItemService.updateState in the middle of a real disarm: after protection and
+    # the recheck, with every piece already taken off the mob.
+    name = 'allium-write-fault'
+    start = len(logs)
+    base, obs = play(name, APPEARANCES['allium'], 'main', 'full', 'write-fault')
+    require(base['stateWriteFault'] == {'enabled': True, 'armed': 1, 'tripped': 0}, name + ' one state-write fault armed')
+    require(obs['stateWriteFault'] == {'enabled': True, 'armed': 0, 'tripped': 1},
+            f'{name} the disarm reached updateState and it was rejected exactly once: {obs["stateWriteFault"]}')
+    require(obs['checkEvents'] == 1, name + ' protection was consulted once before the write')
+    require(any('state write was rejected' in x for x in logs[start:]), name + ' Allium logged the rejected write')
+    same_tool(base['main'], obs['main'], name)
+    require(obs['mob'] == base['mob'], name + ' equipment and drop chances restored exactly (field-by-field equal to baseline)')
+    equipment_intact(obs, name)
+    main_hand_events(obs, name, False)
+    path = result(name + '-kill')
+    cmd('dg kill ' + name)
+    killed = read(path)
+    expected = sorted(f'{name}:{s}' for s in DROPPED)
+    require(killed['mobDead'], name + ' mob killed by the player')
+    require(sorted(killed['deathMarkers']) == expected,
+            f'{name} death drops follow the restored chances (1.0/2.0/1.0 drop, 0.0 never): {killed["deathMarkers"]}')
+    located = sorted(killed['ground'] + mine(killed['playerInventory'], name))
+    require(located == expected, f'{name} each piece exists exactly once after the kill: {located}')
 
 
 def compare_keepers(before, after, stage):

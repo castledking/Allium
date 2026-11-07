@@ -25,6 +25,22 @@ class MobDisarmerSettingsTest {
         assertEquals(DisarmTargetPolicy.DEFAULT_EXCLUDED_TYPES, shipped.targetPolicy().excludedTypes());
         assertEquals(120_000L, shipped.pickupBlockMillis());
         assertTrue(shipped.chargeVariants().isEmpty());
+        // Pre-recode Allium rolled each slot's own chance; the shipped default keeps that.
+        assertEquals(DisarmDropRule.SLOT_CHANCE, shipped.dropRule());
+        assertEquals(DisarmDropRule.SLOT_CHANCE, MobDisarmerSettings.defaults().dropRule());
+    }
+
+    @Test
+    void dropRuleAcceptsAlwaysAndFallsBackToSlotChanceWithAWarning() throws Exception {
+        YamlConfiguration always = new YamlConfiguration();
+        always.loadFromString("drop-rule: always\n");
+        assertEquals(DisarmDropRule.ALWAYS, MobDisarmerSettings.parse(always).dropRule());
+        assertEquals(List.of(), MobDisarmerSettings.parse(always).warnings());
+        YamlConfiguration invalid = new YamlConfiguration();
+        invalid.loadFromString("drop-rule: sometimes\n");
+        MobDisarmerSettings parsed = MobDisarmerSettings.parse(invalid);
+        assertEquals(DisarmDropRule.SLOT_CHANCE, parsed.dropRule());
+        assertEquals(List.of("tools.mob-disarmer.drop-rule must be always or slot-chance; using slot-chance"), parsed.warnings());
     }
 
     @Test

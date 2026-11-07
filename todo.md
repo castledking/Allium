@@ -106,9 +106,10 @@ result and must preserve the existing uncommitted work.
 - [x] **S06a / M1 — Mob Disarmer behavior:** through `ItemService`, built-in visual plus
       Nexo/CE/Oraxen appearances and optional charge-variant swaps; `ProtectionService` with a
       GriefPrevention hook and cancellable check event; configurable charges, recharge, radius,
-      break chance and exclusions; legacy charge/timestamp import. Gate PASS: 55 live cases /
-      793 checks on Spigot 1.20.1, Paper 1.21.8 (all three providers) and Paper 26.3 (+GP3D);
-      see [results](tests/live/tools/disarmer/RESULTS.md).
+      break chance, drop rule (`slot-chance` default, as legacy, or `always`) and exclusions;
+      legacy charge/timestamp import. Gate PASS: 58 live cases / 862 checks on Spigot 1.20.1,
+      Paper 1.21.8 (all three providers) and Paper 26.3 (+GP3D), including a rejected-write
+      fault case; see [results](tests/live/tools/disarmer/RESULTS.md).
 - [ ] **S06b / M1 — Core pack:** inventory SF assets and stable IDs; generate the core pack with
       an explicit delivery owner. Gate: tool visuals for built-in items; no duplicate pack pushes.
 - [ ] **S07 / M2 — Messaging:** msg/reply, acceptance/ignore/mute/vanish rules,

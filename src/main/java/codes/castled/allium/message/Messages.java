@@ -106,7 +106,24 @@ public enum Messages {
     SEEN_ONLINE("utility.seen-online", "{prefix} &f{player} &ais currently online. Joined &f{time} &aago."),
     SEEN_OFFLINE("utility.seen-offline", "{prefix} &f{player} &cwas last seen &f{time} &cago."),
     NEAR("utility.near", "{prefix} &fNearby players: &d{players}"),
-    NEAR_NONE("utility.near-none", "{prefix} &cNo players nearby.");
+    NEAR_NONE("utility.near-none", "{prefix} &cNo players nearby."),
+
+    // -- Tools --
+    TOOL_DISARMER_DISARMED("tool.mob-disarmer.disarmed", "{prefix} &aDisarmed &f{target}&a: &f{removed} &aremoved, &f{dropped} &adropped. Charges: &f{charges}&7/&f{max}"),
+    TOOL_DISARMER_DISARMED_BYPASS("tool.mob-disarmer.disarmed-bypass", "{prefix} &aDisarmed &f{target}&a: &f{removed} &aremoved, &f{dropped} &adropped."),
+    TOOL_DISARMER_LAST_CHARGE("tool.mob-disarmer.last-charge", "{prefix} &cThat was the last charge. Fully recharged in &f{time}&c."),
+    TOOL_DISARMER_BROKE("tool.mob-disarmer.broke", "{prefix} &cThe Mob Disarmer broke while in use."),
+    TOOL_DISARMER_BROKEN("tool.mob-disarmer.broken", "{prefix} &cThis Mob Disarmer is broken."),
+    TOOL_DISARMER_RECHARGING("tool.mob-disarmer.recharging", "{prefix} &cThe Mob Disarmer is recharging. Ready in &f{time}&c."),
+    TOOL_DISARMER_STATUS("tool.mob-disarmer.status", "{prefix} &eRight-click a mob to disarm it. &7Charges: &a{charges}&7/{max}"),
+    TOOL_DISARMER_STATUS_BYPASS("tool.mob-disarmer.status-bypass", "{prefix} &eRight-click a mob to disarm it. &7Charges: &aunlimited"),
+    TOOL_DISARMER_PLAYER("tool.mob-disarmer.player-target", "{prefix} &cThe Mob Disarmer does not work on players."),
+    TOOL_DISARMER_EXCLUDED("tool.mob-disarmer.excluded", "{prefix} &cThe Mob Disarmer does not work on &f{target}&c."),
+    TOOL_DISARMER_TOO_FAR("tool.mob-disarmer.too-far", "{prefix} &cThat mob is too far away."),
+    TOOL_DISARMER_PROTECTED("tool.mob-disarmer.protected", "{prefix} &cYou can't disarm that mob here."),
+    TOOL_DISARMER_PROTECTED_REASON("tool.mob-disarmer.protected-reason", "{prefix} &c{reason}"),
+    TOOL_DISARMER_SINGLE("tool.mob-disarmer.single-item", "{prefix} &cHold a single Mob Disarmer, not a stack."),
+    TOOL_DISARMER_UPDATE_FAILED("tool.mob-disarmer.update-failed", "{prefix} &cThe Mob Disarmer could not be updated, so nothing was used.");
 
     private static final Map<String, Messages> BY_KEY;
 

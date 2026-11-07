@@ -104,6 +104,11 @@ from stock results. Supplied Nexo 1.30-dev-36f4ce686 and Oraxen 1.220.1 are
 explicitly runtime-verified builds. The Nexo 1.29.x and Oraxen 1.211.x API lines
 are compile-only, not runtime-verified support claims; see the matrix for the
 separate source-built Oraxen experiment.
+The Mob Disarmer (S06a) passed its live gate on Spigot 1.20.1, Paper 1.21.8 with all
+three providers, and Paper 26.3 with GriefPrevention3D; see
+[the S06a results](tests/live/tools/disarmer/RESULTS.md). The optional GriefPrevention hook
+compiles against the public GriefPrevention 16.18.2 API (Java 17 bytecode). It loads only
+when GriefPrevention or GriefPrevention3D is enabled.
 Core remains the only required plugin; external providers are compile-only and
 are not bundled. Current bundled libraries are HikariCP 5.1.0 and InvUI 1.49.
 InvUI's 26.x GUI compatibility remains an explicit later-slice risk.
@@ -124,10 +129,13 @@ src/main/java/codes/castled/allium/
   database/                JDBC setup and economy table
   message/                 Message keys, locales and delivery
   listener/                Listener registration and god-mode handling
+  protection/              ProtectionService, hooks and the cancellable check event
+  tool/disarmer/           Mob Disarmer behavior, settings and listener
   compat/                  Compatibility interfaces/providers
 src/*Adapter/             Isolated Nexo/CraftEngine/Oraxen API source sets
+src/griefpreventionHook/   Isolated GriefPrevention claim hook
 src/main/resources/        plugin.yml, config.yml and lang/
-allium-core/               Platform-neutral command specs and item identity/signing
+allium-core/               Platform-neutral command specs, item identity/signing and tool policy
 ```
 
 ## License

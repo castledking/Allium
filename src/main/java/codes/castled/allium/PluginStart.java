@@ -14,6 +14,8 @@ import codes.castled.allium.item.provider.ProviderStartupDiagnostics;
 import codes.castled.allium.listener.ListenerManager;
 import codes.castled.allium.message.LanguageManager;
 import codes.castled.allium.message.MessageManager;
+import codes.castled.allium.protection.ProtectionHookBootstrap;
+import codes.castled.allium.protection.ProtectionService;
 import codes.castled.allium.util.AlliumLogger;
 import org.bukkit.Material;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -32,6 +34,7 @@ public final class PluginStart extends JavaPlugin {
     private MessageManager messageManager;
     private DatabaseManager databaseManager;
     private ItemService itemService;
+    private ProtectionService protectionService;
     private ModuleManager moduleManager;
     private CommandManager commandManager;
     private ListenerManager listenerManager;
@@ -72,6 +75,11 @@ public final class PluginStart extends JavaPlugin {
                 logger::warning
         );
 
+        protectionService = new ProtectionService(
+                ProtectionHookBootstrap.loadAll(getServer().getPluginManager(), logger::info, logger::warning),
+                getServer().getPluginManager(),
+                logger::warning);
+
         try {
             databaseManager = new DatabaseManager(this);
             databaseManager.connect();
@@ -102,7 +110,7 @@ public final class PluginStart extends JavaPlugin {
         service.registerAlliumItem(new AlliumItemDefinition(
                 "handcuffs", Material.IRON_SHOVEL, "allium:handcuffs", true, 1001, "§fHandcuffs", Map.of()));
         service.registerAlliumItem(new AlliumItemDefinition(
-                "mob_disarmer", Material.GOLDEN_HOE, "allium:mob_disarmer", false, 1002, "§6Mob Disarmer", Map.of("charges", "3")));
+                "mob_disarmer", Material.GOLDEN_HOE, "allium:mob_disarmer", false, 1002, "§6Mob Disarmer", Map.of(), true));
         service.registerAlliumItem(new AlliumItemDefinition(
                 "phantom_obliterator", Material.BLAZE_ROD, "allium:phantom_obliterator", true, 1003, "§bPhantom Obliterator", Map.of("charges", "3")));
         service.registerAlliumItem(new AlliumItemDefinition(
@@ -144,6 +152,10 @@ public final class PluginStart extends JavaPlugin {
 
     public ItemService getItemService() {
         return itemService;
+    }
+
+    public ProtectionService getProtectionService() {
+        return protectionService;
     }
 
     public ModuleManager getModuleManager() {

@@ -8,5 +8,8 @@ public enum ResolutionStatus {
     UNKNOWN_ID,
     PROVIDER_ABSENT,
     PROVIDER_LOADING,
-    PROVIDER_FAILED
+    PROVIDER_FAILED,
+    /** The source stack carried Allium identity claims that failed verification, or the
+     *  operation would mint behavior the source stack never had. Nothing was changed. */
+    REJECTED
 }

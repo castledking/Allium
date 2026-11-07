@@ -59,6 +59,10 @@ public final class ResolutionResult {
         return new ResolutionResult(ResolutionStatus.PROVIDER_FAILED, key, null, message);
     }
 
+    public static ResolutionResult rejected(ProviderKey key, String message) {
+        return new ResolutionResult(ResolutionStatus.REJECTED, key, null, message);
+    }
+
     public ResolutionStatus status() {
         return status;
     }

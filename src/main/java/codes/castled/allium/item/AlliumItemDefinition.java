@@ -14,6 +14,10 @@ import java.util.Objects;
  *
  * @param privileged whether this item's behavior requires a valid server-secret HMAC signature
  *                   in PDC (e.g. {@code true} for Handcuffs and Phantom Obliterator)
+ * @param signed     whether new stacks of this behavior carry an instance UUID and MAC even
+ *                   though the behavior does not require one. A present MAC is always verified,
+ *                   so edited signed state is rejected; an unsigned stack of a non-privileged
+ *                   behavior is still accepted. Privileged definitions are always signed.
  */
 public record AlliumItemDefinition(
         String id,
@@ -22,7 +26,8 @@ public record AlliumItemDefinition(
         boolean privileged,
         @Nullable Integer customModelData,
         @Nullable String displayName,
-        Map<String, String> defaultState
+        Map<String, String> defaultState,
+        boolean signed
 ) {
     public AlliumItemDefinition(
             String id,
@@ -32,7 +37,19 @@ public record AlliumItemDefinition(
             @Nullable String displayName,
             Map<String, String> defaultState
     ) {
-        this(id, carrierMaterial, behaviorId, false, customModelData, displayName, defaultState);
+        this(id, carrierMaterial, behaviorId, false, customModelData, displayName, defaultState, false);
+    }
+
+    public AlliumItemDefinition(
+            String id,
+            Material carrierMaterial,
+            @Nullable String behaviorId,
+            boolean privileged,
+            @Nullable Integer customModelData,
+            @Nullable String displayName,
+            Map<String, String> defaultState
+    ) {
+        this(id, carrierMaterial, behaviorId, privileged, customModelData, displayName, defaultState, privileged);
     }
 
     public AlliumItemDefinition {
@@ -46,6 +63,7 @@ public record AlliumItemDefinition(
             throw new IllegalArgumentException("Allium item carrierMaterial must never be AIR for 'allium:" + id + "'");
         }
         behaviorId = behaviorId != null ? ItemRef.normalizeBehaviorId(behaviorId) : ProviderKey.ALLIUM + ":" + id;
+        signed = signed || privileged;
         if (defaultState == null || defaultState.isEmpty()) {
             defaultState = Collections.emptyMap();
         } else {

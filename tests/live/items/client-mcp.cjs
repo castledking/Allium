@@ -1,8 +1,8 @@
 // Test-only S04 give-gate client for 1.20.1 (763) and 1.21.8 (772). Requires external minecraft-protocol 1.68.0.
-// Owned loopback ports 25670-25672 only. It joins (as GateBot unless named), stays online as a /give target,
+// Owned loopback ports 25670-25672 (S04 gate) and 25680-25681 (S03 gate) only. It joins (as GateBot unless named), stays online as a /give target,
 // sends "cmd <command>" lines as a real chat command (unsigned, offline mode), and leaves on "stop".
 const [lane, portText, version, username = 'GateBot'] = process.argv.slice(2), port = Number(portText);
-if (!lane || ![25670, 25671, 25672].includes(port) || !['1.20.1', '1.21.8'].includes(version)) throw Error('TEST ONLY: owned port 25670-25672 and version 1.20.1|1.21.8');
+if (!lane || ![25670, 25671, 25672, 25680, 25681].includes(port) || !['1.20.1', '1.21.8'].includes(version)) throw Error('TEST ONLY: owned port 25670-25672|25680-25681 and version 1.20.1|1.21.8');
 const mc = require(process.env.MC_PROTOCOL_MODULE || '/tmp/allium-s05-20261105/client/node_modules/minecraft-protocol');
 if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) throw Error('bad username');
 const client = mc.createClient({host: '127.0.0.1', port, username, auth: 'offline', version});

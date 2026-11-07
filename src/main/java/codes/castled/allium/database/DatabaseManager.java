@@ -35,6 +35,13 @@ public final class DatabaseManager {
 
         dataSource = new HikariDataSource(config);
         plugin.logger().info("Database connected (" + type.name() + ").");
+        if (type == DatabaseType.SQLITE) {
+            try (Connection conn = getConnection(); java.sql.Statement statement = conn.createStatement()) {
+                statement.execute("PRAGMA journal_mode = WAL");
+            } catch (SQLException e) {
+                plugin.logger().warning("Could not enable SQLite WAL mode: " + e.getMessage());
+            }
+        }
         initTables();
     }
 
@@ -70,7 +77,8 @@ public final class DatabaseManager {
         config.setDriverClassName("org.sqlite.JDBC");
         config.setMaximumPoolSize(1);
         config.setConnectionTestQuery("SELECT 1");
-        config.setConnectionInitSql("SELECT 1");
+        // Wait for a lock instead of failing at once when another process holds the file.
+        config.setConnectionInitSql("PRAGMA busy_timeout = 10000");
     }
 
     private void initTables() {
@@ -97,6 +105,15 @@ public final class DatabaseManager {
 
     public DatabaseType getType() {
         return type;
+    }
+
+    public codes.castled.allium.storage.SqlDialect dialect() {
+        return type == DatabaseType.MYSQL ? codes.castled.allium.storage.SqlDialect.MYSQL : codes.castled.allium.storage.SqlDialect.SQLITE;
+    }
+
+    /** Pooled connections for platform-neutral repositories. */
+    public codes.castled.allium.storage.ConnectionSource connectionSource() {
+        return this::getConnection;
     }
 
     public void shutdown() {

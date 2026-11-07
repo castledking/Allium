@@ -1,0 +1,810 @@
+{
+  "slice": "S03 player preferences",
+  "date": "2026-11-07",
+  "alliumJarSha256": "a5b6cb02a6fd61945856637971c7767ba8ee2d5839ba3b10f36f3c4eaa201705",
+  "fixture": "tests/live/preferences/plugin (PrefGate, test-only; rebuilt per run, so its jar hash differs per run)",
+  "player": {
+    "name": "PrefBot",
+    "offlineUuid": "c0cfe260-e699-357b-87c7-b9c7ccb2766b"
+  },
+  "environment": {
+    "spigot-1.20.1": {
+      "build": "3871-Spigot-d2eba2c-3f9263b",
+      "java": 17,
+      "jdbc": [
+        "sqlite-jdbc 3.42.0.0",
+        "mysql-connector-j 8.0.33"
+      ],
+      "client": "minecraft-protocol 1.68.0 (protocol 763), Node v26.13.0"
+    },
+    "paper-26.3": {
+      "build": "26.3-141-main@54024d3",
+      "java": 25,
+      "jdbc": [
+        "sqlite-jdbc 3.49.1.0",
+        "mysql-connector-j 9.2.0"
+      ],
+      "client": "owned raw client (protocol 777), Node v26.13.0"
+    },
+    "mysql": "MariaDB 10.11.16 in the disposable container allium-s03-mariadb, tmpfs storage, 127.0.0.1:33306, database allium_s03",
+    "unitTests": {
+      "core": 50,
+      "plugin": 134,
+      "failures": 0,
+      "coreMySqlRun": "ALLIUM_TEST_MYSQL_URL against the same MariaDB"
+    }
+  },
+  "persistedEvidence": "/mnt/storage/.allium-validation/20261107/preferences-gate/ (logs, summaries, SQLite files; the test database password is redacted)",
+  "runs": [
+    {
+      "run": "final-spigot-1.20.1-sqlite",
+      "lane": "spigot-1.20.1",
+      "backend": "sqlite",
+      "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+      "client": "1.20.1",
+      "ports": [
+        25680
+      ],
+      "checks": 45,
+      "failures": [],
+      "hashes": {
+        "PrefGate.jar": "386c42fa05e14d47b2fbe40fa2d0ac0e16f393d914cd204cb0617515d07dcc68",
+        "Allium.jar": "a5b6cb02a6fd61945856637971c7767ba8ee2d5839ba3b10f36f3c4eaa201705"
+      },
+      "evidence": {
+        "roundTrip": {
+          "row": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": null,
+            "messageSoundVolume": 0.0,
+            "messageSoundRestore": 0.4,
+            "version": 3,
+            "updatedAt": 1794076472150
+          }
+        },
+        "slowReconnect": {
+          "joinedSeconds": 2.4,
+          "reconnectSeconds": 2.63,
+          "firstJoin": {
+            "name": "PrefBot",
+            "at": 1794076482040,
+            "state": "LOADING",
+            "generation": 2
+          },
+          "secondJoin": {
+            "name": "PrefBot",
+            "at": 1794076484686,
+            "state": "LOADING",
+            "generation": 3
+          },
+          "statsBefore": {
+            "loads": 1,
+            "staleLoadsDiscarded": 0,
+            "loadFailures": 0,
+            "writes": 5,
+            "writeFailures": 0
+          },
+          "statsAfter": {
+            "loads": 2,
+            "staleLoadsDiscarded": 1,
+            "loadFailures": 0,
+            "writes": 6,
+            "writeFailures": 0
+          },
+          "rowBefore": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": null,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 8,
+            "updatedAt": 1794076479577
+          },
+          "rowAfter": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 9,
+            "updatedAt": 1794076491994
+          }
+        },
+        "concurrent": {
+          "mode": "Allium's session and an independent store on its own connection to the same file",
+          "count": 100,
+          "rowBefore": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 9,
+            "updatedAt": 1794076491994
+          },
+          "rowAfter": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.6,
+            "messageSoundRestore": null,
+            "version": 209,
+            "updatedAt": 1794076493404
+          },
+          "lastA": {
+            "uuid": "c0cfe260-e699-357b-87c7-b9c7ccb2766b",
+            "acceptMessages": true,
+            "acceptPayments": true,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.1,
+            "messageSoundRestore": null,
+            "version": 168
+          },
+          "lastB": {
+            "uuid": "c0cfe260-e699-357b-87c7-b9c7ccb2766b",
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.6,
+            "messageSoundRestore": null,
+            "version": 209
+          },
+          "interleaved": true
+        },
+        "drainOnStop": {
+          "count": 400,
+          "queuedAtDisable": 401,
+          "rowBefore": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.6,
+            "messageSoundRestore": null,
+            "version": 209,
+            "updatedAt": 1794076493404
+          },
+          "rowAfter": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.4,
+            "messageSoundRestore": null,
+            "version": 609,
+            "updatedAt": 1794076500411
+          }
+        }
+      },
+      "driver": [
+        "BOOT a initial",
+        "PASS a initial: fixture and preferences module enabled",
+        "PASS a initial: SQLITE storage at schema v1 with 1 lane(s): [acceptMessages=true, acceptPayments=true, acceptTeleportRequests=true, messageSoundVolume=1.0], pre-login wait 2000 ms.",
+        "PASS a normal join is READY at join (the pre-login wait covered the load): [{'name': 'PrefBot', 'at': 1794076471354, 'state': 'READY', 'generation': 1}]",
+        "PASS a new player inherits the configured defaults: {'acceptMessages': True, 'acceptPayments': True, 'acceptTeleportRequests': True, 'messageSoundVolume': 1.0, 'volumeOverridden': False}",
+        "PASS joining wrote no row: defaults are never stored",
+        "PASS accept-messages false is stored alone (version 1)",
+        "PASS message-sound-volume 0.4 is stored",
+        "PASS volume NaN is rejected: ion: message-sound-volume must be a finite number from 0 to 1, not NaN",
+        "PASS volume Infinity is rejected: message-sound-volume must be a finite number from 0 to 1, not Infinity",
+        "PASS volume 1.5 is rejected: ion: message-sound-volume must be a finite number from 0 to 1, not 1.5",
+        "PASS volume -0.1 is rejected: on: message-sound-volume must be a finite number from 0 to 1, not -0.1",
+        "PASS rejected volumes wrote nothing",
+        "PASS toggle from 0.4 mutes and remembers 0.4 as the restoration state: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS sqlite round trip: the stored row matches: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS quit and rejoin load the same row and write nothing",
+        "BOOT a restart (accept-payments default now false)",
+        "PASS a restart (accept-payments default now false): fixture and preferences module enabled",
+        "PASS a restart (accept-payments default now false): SQLITE storage at schema v1 with 1 lane(s): acceptMessages=true, acceptPayments=false, acceptTeleportRequests=true, messageSoundVolume=1.0], pre-login wait 2000 ms.",
+        "PASS after a restart the session holds the stored row, restoration state included: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS an unset field follows the changed default (accept-payments false) while stored values stay: {'acceptMessages': False, 'acceptPayments': False, 'acceptTeleportRequests': True, 'messageSoundVolume': 0.0, 'volumeOverridden': True}",
+        "PASS the restart and the join wrote nothing (accept-payments is still unset in the database)",
+        "PASS toggle after the restart restores 0.4 from the persisted restoration state: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.4, 'messageSoundRestore': None, 'version': 4}",
+        "PASS reset removes the override and the restoration state; the configured 1.0 applies",
+        "PASS toggle with no override mutes and stores no restoration value",
+        "PASS toggle back with nothing to restore returns to the configured fallback (1.0, not still muted)",
+        "PASS the row after the restart steps: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 8}",
+        "PASS with a 6000 ms load the player joins after the 2 s pre-login wait still LOADING (2.4 s)",
+        "PASS while LOADING nothing is enforced: no effective preferences, no defaults",
+        "PASS a toggle while LOADING is refused: erences for c0cfe260-e699-357b-87c7-b9c7ccb2766b are LOADING",
+        "PASS reconnected 2.6 s into the first 6 s load; the new session is LOADING (generation 2 -> 3)",
+        "PASS a change made during LOADING is accepted while the session is still LOADING",
+        "PASS the change was saved once (version 9)",
+        "PASS the reconnected session is READY with the real row plus the change, not defaults: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': False, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 9}",
+        "PASS the first, slow load finished after its session was replaced and was discarded (stale +1)",
+        "PASS both loads were slow (2); the database changed only by the explicit patch: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': False, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 9}",
+        "PASS a failed load leaves the session FAILED with no effective preferences: fault injection: preference load failed",
+        "PASS a toggle on a FAILED session is refused",
+        "PASS the failure is reported once in the log",
+        "PASS a failed load wrote nothing",
+        "PASS the next join loads the real row",
+        "PASS Allium's session and an independent store on its own connection to the same file: 100 + 100 concurrent writes all succeeded",
+        "PASS no lost update: each writer kept its own field, the shared volume holds one writer's last value (0.6) and the version rose by exactly 200 (9 -> 209)",
+        "PASS the two writers overlapped: their last writes landed at versions [168, 209], not one after the other (109, 209)",
+        "PASS after rejoining, the session matches the database",
+        "PASS /stop during a slow load with 400 writes behind it: 401 storage tasks were queued when Allium disabled, and all 400 writes were saved before the pool closed (version 209 -> 609)",
+        "PASS no listener or Allium exceptions in the server logs: []"
+      ]
+    },
+    {
+      "run": "final-spigot-1.20.1-mysql",
+      "lane": "spigot-1.20.1",
+      "backend": "mysql",
+      "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+      "client": "1.20.1",
+      "ports": [
+        25680,
+        25681
+      ],
+      "checks": 49,
+      "failures": [],
+      "hashes": {
+        "PrefGate.jar": "2c58325fdcd355da625bc191e20d8c3d975e1fba269c25555887d1ed64655197",
+        "Allium.jar": "a5b6cb02a6fd61945856637971c7767ba8ee2d5839ba3b10f36f3c4eaa201705"
+      },
+      "evidence": {
+        "roundTrip": {
+          "row": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": null,
+            "messageSoundVolume": 0.0,
+            "messageSoundRestore": 0.4,
+            "version": 3,
+            "updatedAt": 1794076508372
+          }
+        },
+        "slowReconnect": {
+          "joinedSeconds": 2.35,
+          "reconnectSeconds": 2.57,
+          "firstJoin": {
+            "name": "PrefBot",
+            "at": 1794076518670,
+            "state": "LOADING",
+            "generation": 2
+          },
+          "secondJoin": {
+            "name": "PrefBot",
+            "at": 1794076521274,
+            "state": "LOADING",
+            "generation": 3
+          },
+          "statsBefore": {
+            "loads": 1,
+            "staleLoadsDiscarded": 0,
+            "loadFailures": 0,
+            "writes": 5,
+            "writeFailures": 0
+          },
+          "statsAfter": {
+            "loads": 2,
+            "staleLoadsDiscarded": 1,
+            "loadFailures": 0,
+            "writes": 6,
+            "writeFailures": 0
+          },
+          "rowBefore": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": null,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 8,
+            "updatedAt": 1794076516172
+          },
+          "rowAfter": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 9,
+            "updatedAt": 1794076528656
+          }
+        },
+        "concurrent": {
+          "mode": "two servers, one session each",
+          "count": 100,
+          "rowBefore": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 9,
+            "updatedAt": 1794076528656
+          },
+          "rowAfter": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.1,
+            "messageSoundRestore": null,
+            "version": 209,
+            "updatedAt": 1794076536799
+          },
+          "lastA": {
+            "uuid": "c0cfe260-e699-357b-87c7-b9c7ccb2766b",
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.1,
+            "messageSoundRestore": null,
+            "version": 209
+          },
+          "lastB": {
+            "uuid": "c0cfe260-e699-357b-87c7-b9c7ccb2766b",
+            "acceptMessages": false,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.6,
+            "messageSoundRestore": null,
+            "version": 196
+          },
+          "interleaved": true
+        },
+        "drainOnStop": {
+          "count": 400,
+          "queuedAtDisable": 401,
+          "rowBefore": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.1,
+            "messageSoundRestore": null,
+            "version": 209,
+            "updatedAt": 1794076536799
+          },
+          "rowAfter": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.4,
+            "messageSoundRestore": null,
+            "version": 609,
+            "updatedAt": 1794076545521
+          }
+        }
+      },
+      "driver": [
+        "MARIADB reset: dropped ['allium_balances', 'allium_players', 'allium_preferences', 'allium_schema']",
+        "BOOT a initial",
+        "PASS a initial: fixture and preferences module enabled",
+        "PASS a initial: MYSQL storage at schema v1 with 4 lane(s): [acceptMessages=true, acceptPayments=true, acceptTeleportRequests=true, messageSoundVolume=1.0], pre-login wait 2000 ms.",
+        "PASS a normal join is READY at join (the pre-login wait covered the load): [{'name': 'PrefBot', 'at': 1794076507724, 'state': 'READY', 'generation': 1}]",
+        "PASS a new player inherits the configured defaults: {'acceptMessages': True, 'acceptPayments': True, 'acceptTeleportRequests': True, 'messageSoundVolume': 1.0, 'volumeOverridden': False}",
+        "PASS joining wrote no row: defaults are never stored",
+        "PASS accept-messages false is stored alone (version 1)",
+        "PASS message-sound-volume 0.4 is stored",
+        "PASS volume NaN is rejected: ion: message-sound-volume must be a finite number from 0 to 1, not NaN",
+        "PASS volume Infinity is rejected: message-sound-volume must be a finite number from 0 to 1, not Infinity",
+        "PASS volume 1.5 is rejected: ion: message-sound-volume must be a finite number from 0 to 1, not 1.5",
+        "PASS volume -0.1 is rejected: on: message-sound-volume must be a finite number from 0 to 1, not -0.1",
+        "PASS rejected volumes wrote nothing",
+        "PASS toggle from 0.4 mutes and remembers 0.4 as the restoration state: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS mysql round trip: the stored row matches: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS quit and rejoin load the same row and write nothing",
+        "BOOT a restart (accept-payments default now false)",
+        "PASS a restart (accept-payments default now false): fixture and preferences module enabled",
+        "PASS a restart (accept-payments default now false): MYSQL storage at schema v1 with 4 lane(s): acceptMessages=true, acceptPayments=false, acceptTeleportRequests=true, messageSoundVolume=1.0], pre-login wait 2000 ms.",
+        "PASS after a restart the session holds the stored row, restoration state included: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS an unset field follows the changed default (accept-payments false) while stored values stay: {'acceptMessages': False, 'acceptPayments': False, 'acceptTeleportRequests': True, 'messageSoundVolume': 0.0, 'volumeOverridden': True}",
+        "PASS the restart and the join wrote nothing (accept-payments is still unset in the database)",
+        "PASS toggle after the restart restores 0.4 from the persisted restoration state: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.4, 'messageSoundRestore': None, 'version': 4}",
+        "PASS reset removes the override and the restoration state; the configured 1.0 applies",
+        "PASS toggle with no override mutes and stores no restoration value",
+        "PASS toggle back with nothing to restore returns to the configured fallback (1.0, not still muted)",
+        "PASS the row after the restart steps: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 8}",
+        "PASS with a 6000 ms load the player joins after the 2 s pre-login wait still LOADING (2.4 s)",
+        "PASS while LOADING nothing is enforced: no effective preferences, no defaults",
+        "PASS a toggle while LOADING is refused: erences for c0cfe260-e699-357b-87c7-b9c7ccb2766b are LOADING",
+        "PASS reconnected 2.6 s into the first 6 s load; the new session is LOADING (generation 2 -> 3)",
+        "PASS a change made during LOADING is accepted while the session is still LOADING",
+        "PASS the change was saved once (version 9)",
+        "PASS the reconnected session is READY with the real row plus the change, not defaults: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': False, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 9}",
+        "PASS the first, slow load finished after its session was replaced and was discarded (stale +1)",
+        "PASS both loads were slow (2); the database changed only by the explicit patch: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': False, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 9}",
+        "PASS a failed load leaves the session FAILED with no effective preferences: fault injection: preference load failed",
+        "PASS a toggle on a FAILED session is refused",
+        "PASS the failure is reported once in the log",
+        "PASS a failed load wrote nothing",
+        "PASS the next join loads the real row",
+        "BOOT b second server on the same MariaDB",
+        "PASS b second server on the same MariaDB: fixture and preferences module enabled",
+        "PASS b second server on the same MariaDB: MYSQL storage at schema v1 with 4 lane(s): [acceptMessages=true, acceptPayments=true, acceptTeleportRequests=true, messageSoundVolume=1.0], pre-login wait 2000 ms.",
+        "PASS a second server holds its own READY session for the same UUID with the same row",
+        "PASS two servers, one session each: 100 + 100 concurrent writes all succeeded",
+        "PASS no lost update: each writer kept its own field, the shared volume holds one writer's last value (0.1) and the version rose by exactly 200 (9 -> 209)",
+        "PASS the two writers overlapped: their last writes landed at versions [196, 209], not one after the other (109, 209)",
+        "PASS after rejoining, the session matches the database",
+        "PASS the second server, after rejoining, matches the database too",
+        "PASS /stop during a slow load with 400 writes behind it: 401 storage tasks were queued when Allium disabled, and all 400 writes were saved before the pool closed (version 209 -> 609)",
+        "PASS no listener or Allium exceptions in the server logs: []"
+      ]
+    },
+    {
+      "run": "final-paper-26.3-sqlite",
+      "lane": "paper-26.3",
+      "backend": "sqlite",
+      "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+      "client": "raw26",
+      "ports": [
+        25680
+      ],
+      "checks": 45,
+      "failures": [],
+      "hashes": {
+        "PrefGate.jar": "c934675d44409cca349049b3301cf42af9c17476e153c17499e1063b2908d348",
+        "Allium.jar": "a5b6cb02a6fd61945856637971c7767ba8ee2d5839ba3b10f36f3c4eaa201705"
+      },
+      "evidence": {
+        "roundTrip": {
+          "row": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": null,
+            "messageSoundVolume": 0.0,
+            "messageSoundRestore": 0.4,
+            "version": 3,
+            "updatedAt": 1794076399222
+          }
+        },
+        "slowReconnect": {
+          "joinedSeconds": 2.2,
+          "reconnectSeconds": 2.46,
+          "firstJoin": {
+            "name": "PrefBot",
+            "at": 1794076407410,
+            "state": "LOADING",
+            "generation": 2
+          },
+          "secondJoin": {
+            "name": "PrefBot",
+            "at": 1794076409851,
+            "state": "LOADING",
+            "generation": 3
+          },
+          "statsBefore": {
+            "loads": 1,
+            "staleLoadsDiscarded": 0,
+            "loadFailures": 0,
+            "writes": 5,
+            "writeFailures": 0
+          },
+          "statsAfter": {
+            "loads": 2,
+            "staleLoadsDiscarded": 1,
+            "loadFailures": 0,
+            "writes": 6,
+            "writeFailures": 0
+          },
+          "rowBefore": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": null,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 8,
+            "updatedAt": 1794076405098
+          },
+          "rowAfter": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 9,
+            "updatedAt": 1794076417325
+          }
+        },
+        "concurrent": {
+          "mode": "Allium's session and an independent store on its own connection to the same file",
+          "count": 100,
+          "rowBefore": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 9,
+            "updatedAt": 1794076417325
+          },
+          "rowAfter": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.6,
+            "messageSoundRestore": null,
+            "version": 209,
+            "updatedAt": 1794076418278
+          },
+          "lastA": {
+            "uuid": "c0cfe260-e699-357b-87c7-b9c7ccb2766b",
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.1,
+            "messageSoundRestore": null,
+            "version": 115
+          },
+          "lastB": {
+            "uuid": "c0cfe260-e699-357b-87c7-b9c7ccb2766b",
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.6,
+            "messageSoundRestore": null,
+            "version": 209
+          },
+          "interleaved": true
+        },
+        "drainOnStop": {
+          "count": 400,
+          "queuedAtDisable": 401,
+          "rowBefore": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.6,
+            "messageSoundRestore": null,
+            "version": 209,
+            "updatedAt": 1794076418278
+          },
+          "rowAfter": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.4,
+            "messageSoundRestore": null,
+            "version": 609,
+            "updatedAt": 1794076424767
+          }
+        }
+      },
+      "driver": [
+        "BOOT a initial",
+        "PASS a initial: fixture and preferences module enabled",
+        "PASS a initial: SQLITE storage at schema v1 with 1 lane(s): [acceptMessages=true, acceptPayments=true, acceptTeleportRequests=true, messageSoundVolume=1.0], pre-login wait 2000 ms.",
+        "PASS a normal join is READY at join (the pre-login wait covered the load): [{'name': 'PrefBot', 'at': 1794076398687, 'state': 'READY', 'generation': 1}]",
+        "PASS a new player inherits the configured defaults: {'acceptMessages': True, 'acceptPayments': True, 'acceptTeleportRequests': True, 'messageSoundVolume': 1.0, 'volumeOverridden': False}",
+        "PASS joining wrote no row: defaults are never stored",
+        "PASS accept-messages false is stored alone (version 1)",
+        "PASS message-sound-volume 0.4 is stored",
+        "PASS volume NaN is rejected: ion: message-sound-volume must be a finite number from 0 to 1, not NaN",
+        "PASS volume Infinity is rejected: message-sound-volume must be a finite number from 0 to 1, not Infinity",
+        "PASS volume 1.5 is rejected: ion: message-sound-volume must be a finite number from 0 to 1, not 1.5",
+        "PASS volume -0.1 is rejected: on: message-sound-volume must be a finite number from 0 to 1, not -0.1",
+        "PASS rejected volumes wrote nothing",
+        "PASS toggle from 0.4 mutes and remembers 0.4 as the restoration state: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS sqlite round trip: the stored row matches: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS quit and rejoin load the same row and write nothing",
+        "BOOT a restart (accept-payments default now false)",
+        "PASS a restart (accept-payments default now false): fixture and preferences module enabled",
+        "PASS a restart (accept-payments default now false): SQLITE storage at schema v1 with 1 lane(s): acceptMessages=true, acceptPayments=false, acceptTeleportRequests=true, messageSoundVolume=1.0], pre-login wait 2000 ms.",
+        "PASS after a restart the session holds the stored row, restoration state included: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS an unset field follows the changed default (accept-payments false) while stored values stay: {'acceptMessages': False, 'acceptPayments': False, 'acceptTeleportRequests': True, 'messageSoundVolume': 0.0, 'volumeOverridden': True}",
+        "PASS the restart and the join wrote nothing (accept-payments is still unset in the database)",
+        "PASS toggle after the restart restores 0.4 from the persisted restoration state: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.4, 'messageSoundRestore': None, 'version': 4}",
+        "PASS reset removes the override and the restoration state; the configured 1.0 applies",
+        "PASS toggle with no override mutes and stores no restoration value",
+        "PASS toggle back with nothing to restore returns to the configured fallback (1.0, not still muted)",
+        "PASS the row after the restart steps: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 8}",
+        "PASS with a 6000 ms load the player joins after the 2 s pre-login wait still LOADING (2.2 s)",
+        "PASS while LOADING nothing is enforced: no effective preferences, no defaults",
+        "PASS a toggle while LOADING is refused: erences for c0cfe260-e699-357b-87c7-b9c7ccb2766b are LOADING",
+        "PASS reconnected 2.5 s into the first 6 s load; the new session is LOADING (generation 2 -> 3)",
+        "PASS a change made during LOADING is accepted while the session is still LOADING",
+        "PASS the change was saved once (version 9)",
+        "PASS the reconnected session is READY with the real row plus the change, not defaults: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': False, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 9}",
+        "PASS the first, slow load finished after its session was replaced and was discarded (stale +1)",
+        "PASS both loads were slow (2); the database changed only by the explicit patch: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': False, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 9}",
+        "PASS a failed load leaves the session FAILED with no effective preferences: fault injection: preference load failed",
+        "PASS a toggle on a FAILED session is refused",
+        "PASS the failure is reported once in the log",
+        "PASS a failed load wrote nothing",
+        "PASS the next join loads the real row",
+        "PASS Allium's session and an independent store on its own connection to the same file: 100 + 100 concurrent writes all succeeded",
+        "PASS no lost update: each writer kept its own field, the shared volume holds one writer's last value (0.6) and the version rose by exactly 200 (9 -> 209)",
+        "PASS the two writers overlapped: their last writes landed at versions [115, 209], not one after the other (109, 209)",
+        "PASS after rejoining, the session matches the database",
+        "PASS /stop during a slow load with 400 writes behind it: 401 storage tasks were queued when Allium disabled, and all 400 writes were saved before the pool closed (version 209 -> 609)",
+        "PASS no listener or Allium exceptions in the server logs: []"
+      ]
+    },
+    {
+      "run": "final-paper-26.3-mysql",
+      "lane": "paper-26.3",
+      "backend": "mysql",
+      "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+      "client": "raw26",
+      "ports": [
+        25680,
+        25681
+      ],
+      "checks": 49,
+      "failures": [],
+      "hashes": {
+        "PrefGate.jar": "14f689920c4ba278c71e58a8a417f8ca812ec20c0b8bf78a9542cd18e5630789",
+        "Allium.jar": "a5b6cb02a6fd61945856637971c7767ba8ee2d5839ba3b10f36f3c4eaa201705"
+      },
+      "evidence": {
+        "roundTrip": {
+          "row": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": null,
+            "messageSoundVolume": 0.0,
+            "messageSoundRestore": 0.4,
+            "version": 3,
+            "updatedAt": 1794076431792
+          }
+        },
+        "slowReconnect": {
+          "joinedSeconds": 2.2,
+          "reconnectSeconds": 2.41,
+          "firstJoin": {
+            "name": "PrefBot",
+            "at": 1794076440474,
+            "state": "LOADING",
+            "generation": 2
+          },
+          "secondJoin": {
+            "name": "PrefBot",
+            "at": 1794076442873,
+            "state": "LOADING",
+            "generation": 3
+          },
+          "statsBefore": {
+            "loads": 1,
+            "staleLoadsDiscarded": 0,
+            "loadFailures": 0,
+            "writes": 5,
+            "writeFailures": 0
+          },
+          "statsAfter": {
+            "loads": 2,
+            "staleLoadsDiscarded": 1,
+            "loadFailures": 0,
+            "writes": 6,
+            "writeFailures": 0
+          },
+          "rowBefore": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": null,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 8,
+            "updatedAt": 1794076438079
+          },
+          "rowAfter": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 9,
+            "updatedAt": 1794076450407
+          }
+        },
+        "concurrent": {
+          "mode": "two servers, one session each",
+          "count": 100,
+          "rowBefore": {
+            "acceptMessages": false,
+            "acceptPayments": null,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.3,
+            "messageSoundRestore": null,
+            "version": 9,
+            "updatedAt": 1794076450407
+          },
+          "rowAfter": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.6,
+            "messageSoundRestore": null,
+            "version": 209,
+            "updatedAt": 1794076457155
+          },
+          "lastA": {
+            "uuid": "c0cfe260-e699-357b-87c7-b9c7ccb2766b",
+            "acceptMessages": true,
+            "acceptPayments": true,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.1,
+            "messageSoundRestore": null,
+            "version": 198
+          },
+          "lastB": {
+            "uuid": "c0cfe260-e699-357b-87c7-b9c7ccb2766b",
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.6,
+            "messageSoundRestore": null,
+            "version": 209
+          },
+          "interleaved": true
+        },
+        "drainOnStop": {
+          "count": 400,
+          "queuedAtDisable": 401,
+          "rowBefore": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.6,
+            "messageSoundRestore": null,
+            "version": 209,
+            "updatedAt": 1794076457155
+          },
+          "rowAfter": {
+            "acceptMessages": true,
+            "acceptPayments": false,
+            "acceptTeleportRequests": false,
+            "messageSoundVolume": 0.4,
+            "messageSoundRestore": null,
+            "version": 609,
+            "updatedAt": 1794076464611
+          }
+        }
+      },
+      "driver": [
+        "MARIADB reset: dropped ['allium_balances', 'allium_players', 'allium_preferences', 'allium_schema']",
+        "BOOT a initial",
+        "PASS a initial: fixture and preferences module enabled",
+        "PASS a initial: MYSQL storage at schema v1 with 4 lane(s): [acceptMessages=true, acceptPayments=true, acceptTeleportRequests=true, messageSoundVolume=1.0], pre-login wait 2000 ms.",
+        "PASS a normal join is READY at join (the pre-login wait covered the load): [{'name': 'PrefBot', 'at': 1794076431213, 'state': 'READY', 'generation': 1}]",
+        "PASS a new player inherits the configured defaults: {'acceptMessages': True, 'acceptPayments': True, 'acceptTeleportRequests': True, 'messageSoundVolume': 1.0, 'volumeOverridden': False}",
+        "PASS joining wrote no row: defaults are never stored",
+        "PASS accept-messages false is stored alone (version 1)",
+        "PASS message-sound-volume 0.4 is stored",
+        "PASS volume NaN is rejected: ion: message-sound-volume must be a finite number from 0 to 1, not NaN",
+        "PASS volume Infinity is rejected: message-sound-volume must be a finite number from 0 to 1, not Infinity",
+        "PASS volume 1.5 is rejected: ion: message-sound-volume must be a finite number from 0 to 1, not 1.5",
+        "PASS volume -0.1 is rejected: on: message-sound-volume must be a finite number from 0 to 1, not -0.1",
+        "PASS rejected volumes wrote nothing",
+        "PASS toggle from 0.4 mutes and remembers 0.4 as the restoration state: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS mysql round trip: the stored row matches: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS quit and rejoin load the same row and write nothing",
+        "BOOT a restart (accept-payments default now false)",
+        "PASS a restart (accept-payments default now false): fixture and preferences module enabled",
+        "PASS a restart (accept-payments default now false): MYSQL storage at schema v1 with 4 lane(s): acceptMessages=true, acceptPayments=false, acceptTeleportRequests=true, messageSoundVolume=1.0], pre-login wait 2000 ms.",
+        "PASS after a restart the session holds the stored row, restoration state included: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.0, 'messageSoundRestore': 0.4, 'version': 3}",
+        "PASS an unset field follows the changed default (accept-payments false) while stored values stay: {'acceptMessages': False, 'acceptPayments': False, 'acceptTeleportRequests': True, 'messageSoundVolume': 0.0, 'volumeOverridden': True}",
+        "PASS the restart and the join wrote nothing (accept-payments is still unset in the database)",
+        "PASS toggle after the restart restores 0.4 from the persisted restoration state: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.4, 'messageSoundRestore': None, 'version': 4}",
+        "PASS reset removes the override and the restoration state; the configured 1.0 applies",
+        "PASS toggle with no override mutes and stores no restoration value",
+        "PASS toggle back with nothing to restore returns to the configured fallback (1.0, not still muted)",
+        "PASS the row after the restart steps: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': None, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 8}",
+        "PASS with a 6000 ms load the player joins after the 2 s pre-login wait still LOADING (2.2 s)",
+        "PASS while LOADING nothing is enforced: no effective preferences, no defaults",
+        "PASS a toggle while LOADING is refused: erences for c0cfe260-e699-357b-87c7-b9c7ccb2766b are LOADING",
+        "PASS reconnected 2.4 s into the first 6 s load; the new session is LOADING (generation 2 -> 3)",
+        "PASS a change made during LOADING is accepted while the session is still LOADING",
+        "PASS the change was saved once (version 9)",
+        "PASS the reconnected session is READY with the real row plus the change, not defaults: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': False, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 9}",
+        "PASS the first, slow load finished after its session was replaced and was discarded (stale +1)",
+        "PASS both loads were slow (2); the database changed only by the explicit patch: {'acceptMessages': False, 'acceptPayments': None, 'acceptTeleportRequests': False, 'messageSoundVolume': 0.3, 'messageSoundRestore': None, 'version': 9}",
+        "PASS a failed load leaves the session FAILED with no effective preferences: fault injection: preference load failed",
+        "PASS a toggle on a FAILED session is refused",
+        "PASS the failure is reported once in the log",
+        "PASS a failed load wrote nothing",
+        "PASS the next join loads the real row",
+        "BOOT b second server on the same MariaDB",
+        "PASS b second server on the same MariaDB: fixture and preferences module enabled",
+        "PASS b second server on the same MariaDB: MYSQL storage at schema v1 with 4 lane(s): [acceptMessages=true, acceptPayments=true, acceptTeleportRequests=true, messageSoundVolume=1.0], pre-login wait 2000 ms.",
+        "PASS a second server holds its own READY session for the same UUID with the same row",
+        "PASS two servers, one session each: 100 + 100 concurrent writes all succeeded",
+        "PASS no lost update: each writer kept its own field, the shared volume holds one writer's last value (0.6) and the version rose by exactly 200 (9 -> 209)",
+        "PASS the two writers overlapped: their last writes landed at versions [198, 209], not one after the other (109, 209)",
+        "PASS after rejoining, the session matches the database",
+        "PASS the second server, after rejoining, matches the database too",
+        "PASS /stop during a slow load with 400 writes behind it: 401 storage tasks were queued when Allium disabled, and all 400 writes were saved before the pool closed (version 209 -> 609)",
+        "PASS no listener or Allium exceptions in the server logs: []"
+      ]
+    }
+  ]
+}

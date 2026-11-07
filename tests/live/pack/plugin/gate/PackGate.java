@@ -65,6 +65,8 @@ public final class PackGate extends JavaPlugin implements Listener {
                 case "stamps" -> write("stamps", stamps(BOT));
                 case "give" -> write("give-" + args[1], stamps(args[1]));
                 case "arena" -> arena(args[1]);
+                case "recharge" -> recharge(Integer.parseInt(args[1]), Long.parseLong(args[2]));
+                case "slot" -> write("slot-" + args[1], slot(Integer.parseInt(args[1])));
                 default -> throw new IllegalArgumentException("unknown " + args[0]);
             }
             getLogger().info("S06B-DONE " + String.join(" ", args));
@@ -127,6 +129,38 @@ public final class PackGate extends JavaPlugin implements Listener {
             if (bot != null) bot.getInventory().setItem(slot, stack);
             slot++;
         }
+        return out;
+    }
+
+    /** A built-in disarmer with no charges whose recharge finishes in {@code seconds}, put in the bot's slot. */
+    private void recharge(int slot, long seconds) {
+        Player bot = getServer().getPlayerExact(BOT);
+        if (bot == null) throw new IllegalStateException(BOT + " is not online");
+        Map<String, String> state = Map.of("charges", "0", "recharge_at", Long.toString(System.currentTimeMillis() + seconds * 1000L),
+                "broken", "false", "uses", "3");
+        ResolutionResult result = items.create(new ItemRef(ProviderKey.allium("mob_disarmer"), BEHAVIOR, 1, state));
+        bot.getInventory().setItem(slot, result.itemStack().orElseThrow());
+    }
+
+    /** What is in one of the bot's inventory slots (40 is the off hand), as the server holds it. */
+    private Map<String, Object> slot(int slot) {
+        Player bot = getServer().getPlayerExact(BOT);
+        if (bot == null) throw new IllegalStateException(BOT + " is not online");
+        ItemStack stack = bot.getInventory().getItem(slot);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("heldSlot", bot.getInventory().getHeldItemSlot());
+        if (stack == null || stack.getType() == Material.AIR) {
+            out.put("empty", true);
+            return out;
+        }
+        ItemMeta meta = stack.getItemMeta();
+        out.put("material", stack.getType().name());
+        out.put("customModelData", meta.hasCustomModelData() ? meta.getCustomModelData() : null);
+        ItemRef ref = items.identify(stack).orElse(null);
+        out.put("behavior", ref == null ? null : ref.behaviorId().orElse(null));
+        out.put("state", ref == null ? null : ref.stateData());
+        out.put("instanceUuid", meta.getPersistentDataContainer().get(new org.bukkit.NamespacedKey("allium", "instance_uuid"),
+                org.bukkit.persistence.PersistentDataType.STRING));
         return out;
     }
 

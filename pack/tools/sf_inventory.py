@@ -85,6 +85,125 @@ def mcmeta_on_26_3(packs, allium_jar):
     return None
 
 
+CARRIER_FILE = re.compile(r'^(?:(?P<prefix>.*?)/)?assets/minecraft/(?P<kind>models/item|items)/(?P<carrier>[a-z0-9_]+)\.json$')
+
+
+def audit_sources(plugins):
+    """Every SF pack source that can replace vanilla item files: (label, kind, path)."""
+    sources = [('Nexo source pack', 'dir', plugins / 'Nexo/pack', ['assets'])]
+    for extra in ['sf_cit_components', 'sf_optifine_26_2']:
+        sources.append((f'Nexo {extra}', 'dir', plugins / 'Nexo/pack' / extra, None))
+    external = plugins / 'Nexo/pack/external_packs'
+    if external.is_dir():
+        for child in sorted(external.iterdir()):
+            sources.append((f'Nexo external pack {child.name}', 'zip' if child.suffix == '.zip' else 'dir', child, None))
+    sources.append(('Nexo generated pack.zip', 'zip', plugins / 'Nexo/pack/pack.zip', None))
+    ce = plugins / 'CraftEngine/resources'
+    if ce.is_dir():
+        for child in sorted(ce.iterdir()):
+            sources.append((f'CraftEngine resources/{child.name}', 'dir', child, None))
+    sources.append(('CraftEngine generated resource_pack.zip', 'zip', plugins / 'CraftEngine/generated/resource_pack.zip', None))
+    mixer = plugins / 'ResourcePackManager/mixer'
+    for z in sorted(mixer.glob('*.zip')):
+        sources.append((f'RPM mixer {z.name}', 'zip', z, None))
+    output = plugins / 'ResourcePackManager/output'
+    for z in sorted(output.glob('*.zip')):
+        sources.append((f'RPM merged output {z.name}', 'zip', z, None))
+    return sources
+
+
+def source_files(kind, path, subdirs):
+    """(relative path, reader) pairs for a directory or zip source."""
+    if kind == 'zip':
+        archive = zipfile.ZipFile(path)
+        return [(n, (lambda n=n: archive.read(n))) for n in archive.namelist() if not n.endswith('/')]
+    out = []
+    roots = [path / d for d in subdirs] if subdirs else [path]
+    for root in roots:
+        for dirpath, _, files in os.walk(root):
+            for f in files:
+                full = Path(dirpath) / f
+                out.append((str(full.relative_to(path)), (lambda full=full: full.read_bytes())))
+    return out
+
+
+def describe_dispatch(kind, doc, carrier, allocation):
+    """What a replaced carrier file dispatches, and what that does to Allium's values on this carrier."""
+    vanilla = {f'item/{carrier}', f'minecraft:item/{carrier}'}
+    effects = []
+    if kind == 'models/item':
+        values = sorted({o.get('predicate', {}).get('custom_model_data') for o in doc.get('overrides', []) or []
+                         if isinstance(o, dict) and 'custom_model_data' in o.get('predicate', {})})
+        other = sum(1 for o in doc.get('overrides', []) or [] if isinstance(o, dict) and 'custom_model_data' not in o.get('predicate', {}))
+        summary = f"overrides on custom_model_data {values}" + (f' (+{other} other predicates)' if other else '') if values or other else 'no overrides'
+        if allocation and values:
+            first, last = allocation
+            inside = [v for v in values if first <= v <= last]
+            if inside:
+                effects.append(f'uses {inside}, inside Allium {first}..{last}')
+            below = [v for v in values if v < first]
+            if below and not any(v > last for v in values):
+                effects.append(f'its highest override ({max(below)}) applies to every larger value, so Allium values would show its model '
+                               'if this file replaced Allium\'s')
+        return summary, effects
+    model = doc.get('model', {}) if isinstance(doc, dict) else {}
+    mtype = str(model.get('type', '')).replace('minecraft:', '')
+    if mtype == 'range_dispatch':
+        entries = [e for e in model.get('entries', []) or [] if isinstance(e, dict)]
+        thresholds = sorted(e.get('threshold') for e in entries if isinstance(e.get('threshold'), (int, float)))
+        top = max(entries, key=lambda e: e.get('threshold', float('-inf')), default=None)
+        top_model = (top or {}).get('model', {}).get('model') if isinstance((top or {}).get('model'), dict) else None
+        closed = top_model in vanilla
+        summary = f"range_dispatch on {str(model.get('property', '')).replace('minecraft:', '')} thresholds {thresholds}" + \
+                  ('' if closed else ' (open-ended: the highest entry is not vanilla)')
+        if allocation and thresholds:
+            first, last = allocation
+            inside = [t for t in thresholds if first <= t <= last]
+            if inside:
+                effects.append(f'uses {inside}, inside Allium {first}..{last}')
+            if not closed and max(thresholds) < first:
+                effects.append(f'every value from {max(thresholds):g} up shows its top model, so Allium values {first}..{last} would too '
+                               'if this file replaced Allium\'s')
+        return summary, effects
+    if mtype in ('select', 'condition'):
+        return f"{mtype} on {str(model.get('property', '')).replace('minecraft:', '')}", effects
+    if mtype == 'model':
+        target = model.get('model')
+        return f"single model {target}" + ('' if target in vanilla else ' (not vanilla)'), effects
+    return f'{mtype or "unreadable"} item model', effects
+
+
+def carrier_audit(plugins, manifest):
+    allocations = {}
+    for t in manifest['tools']:
+        allocations[t['carrier']] = (t['id'], t['allocation']['first'], t['allocation']['last'], t['status'])
+    hits, unreadable, scanned = [], [], []
+    for label, kind, path, subdirs in audit_sources(plugins):
+        if not path.exists():
+            continue
+        try:
+            files = source_files(kind, path, subdirs)
+        except (OSError, zipfile.BadZipFile) as e:
+            unreadable.append({'source': label, 'reason': type(e).__name__})
+            continue
+        scanned.append(label)
+        for rel, read in files:
+            m = CARRIER_FILE.match(rel.replace(os.sep, '/'))
+            if not m or m.group('carrier') not in allocations:
+                continue
+            tool, first, last, status = allocations[m.group('carrier')]
+            try:
+                doc = json.loads(read().decode('utf-8-sig'))
+                summary, effects = describe_dispatch(m.group('kind'), doc, m.group('carrier'), (first, last))
+            except (ValueError, OSError) as e:
+                summary, effects = f'unparseable ({type(e).__name__})', []
+            hits.append({'carrier': m.group('carrier'), 'tool': tool, 'status': status, 'source': label, 'file': rel,
+                         'overlay': m.group('prefix'), 'kind': m.group('kind'), 'dispatch': summary, 'effects': effects})
+    return {'carriers': {c: {'tool': v[0], 'allocation': [v[1], v[2]], 'status': v[3]} for c, v in allocations.items()},
+            'hits': hits, 'unreadable': unreadable, 'scanned': scanned}
+
+
+
 def strip_minimessage(text):
     return re.sub(r'<[^>]+>', '', text or '').strip()
 
@@ -292,17 +411,29 @@ def markdown(report):
                          'outside its range: the client warns before loading')
                 out.append(f"| {p['pack']} | {r.get('declared')} ({state}) | {'; '.join(r['errors']) or '-'} |")
         out.append('')
-    out += ['Mixer packs that replace an Allium carrier item (`golden_hoe`, `iron_shovel`, `blaze_rod`, `name_tag`):', '']
-    if m['carrierFiles']:
-        out += ['| Pack | File | Values | Conflict with the Allium allocation |', '| --- | --- | --- | --- |']
-        for h in m['carrierFiles']:
-            out.append(f"| {h['pack']} | `{h['file']}` | {h['values']} | {'; '.join(h['conflicts']) or 'none'} |")
-    else:
-        out.append('none')
     if m['unreadable']:
         out += ['', 'Not inventoried (unreadable to this user, left untouched): ' +
                 ', '.join(f"{u['pack']} ({u['reason']})" for u in m['unreadable']) + '.']
     out.append('')
+    au = report['carrierAudit']
+    out += ['## Carrier collision audit (input to the delivery design)', '',
+            'Every SF pack source that also defines a vanilla model file (`models/item/<carrier>.json`) or item definition '
+            '(`items/<carrier>.json`) for a core carrier. A pack that replaces one of these files replaces the whole file, so '
+            'two packs defining it need a merge, or one loses its models. This records the overlap only; no fix is chosen here.', '',
+            'Sources scanned: ' + '; '.join(au['scanned']) + '.', '']
+    if au['unreadable']:
+        out += ['Not readable to this user (left untouched, not audited): ' +
+                ', '.join(f"{u['source']} ({u['reason']})" for u in au['unreadable']) + '.', '']
+    for carrier, info in au['carriers'].items():
+        rows = [h for h in au['hits'] if h['carrier'] == carrier]
+        out += [f"### `{carrier}`: {info['tool']} ({info['status']}, Allium {info['allocation'][0]}..{info['allocation'][1]})", '']
+        if not rows:
+            out += ['No scanned SF source defines this carrier\'s model or item definition.', '']
+            continue
+        out += ['| Source | File | Dispatch | Effect on Allium\'s values |', '| --- | --- | --- | --- |']
+        for h in rows:
+            out.append(f"| {h['source']} | `{h['file']}` | {h['dispatch']} | {'; '.join(h['effects']) or 'no overlap'} |")
+        out.append('')
     return '\n'.join(out)
 
 
@@ -327,6 +458,7 @@ def main():
         'items': items,
         'assets': inventory_assets(plugins, items['items']),
         'mixer': inventory_mixer(plugins, manifest, args.allium_jar),
+        'carrierAudit': carrier_audit(plugins, manifest),
     }
     if args.json:
         args.json.write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')

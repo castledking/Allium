@@ -338,5 +338,25 @@
       "path": "build/sf-export/ (git-ignored, never committed)",
       "note": "validated clean for 1.20.1 and 26.3 client jars"
     }
+  },
+  "followUp": {
+    "rechargeRefresh": {
+      "run": "/tmp/allium-s06b-20261106/runs/paper-263-recharge-r1",
+      "lane": "paper-26.3",
+      "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+      "checks": 11,
+      "failures": [],
+      "triggers": [
+        "PlayerItemHeldEvent",
+        "PlayerSwapHandItemsEvent",
+        "PlayerJoinEvent"
+      ],
+      "alliumJarSha256": "3601f81484fa2fc3c13a3e1c054ae4cf9ff581b97ec52a1082e3c39059535fa4"
+    },
+    "harness": {
+      "run.py": "8e534992e07a696f357af48cb7d40eadd7f6599343ad4433b815b738fad728fe",
+      "client-raw26.cjs": "5920dd4193090ee44a2292025fe70b835668eb6ab0ff7180af2f1c1709d819b0",
+      "plugin/gate/PackGate.java": "ed357a0e6c4ed4ddcd9279f2b63374989bb005a0e2be9c8d3f96f7e76fade9c4"
+    }
   }
 }

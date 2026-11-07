@@ -129,6 +129,23 @@ result and must preserve the existing uncommitted work.
       volume/toggle/reset. Gate: zero, finite ranges, independent defaults,
       restoration and config changes; Allium owns message sound playback directly.
 
+### Recorded inputs for later slices
+
+- [ ] **Handcuffs (M4):** port the behavior onto `allium:handcuffs`. Recorded from the
+      [SF inventory](docs/s06b-sf-inventory.md): SF's four handcuff variants have collapsed
+      identities. `handcuffs_restrained`, `claim_handcuffs` and `claim_handcuffs_restrained`
+      all force PersistentData `nexo:id` to `handcuffs`, so Nexo's id tag no longer tells them
+      apart. `handcuffs_restrained` also sets `allium:custom_item_id` to `handcuffs`, and
+      `claim_handcuffs_restrained` has no `allium:custom_item_id` at all (only a stray
+      `claim_handcuffs_restrained` key). The slice must decide how a claim handcuff and a
+      restraining state are told apart (for example Nexo's registry id or the FISHING_ROD
+      custom_model_data 1012–1015) before trusting either tag.
+- [ ] **Legacy item importer (with handcuffs, M4):** importing SF handcuffs cannot key on
+      `nexo:id` or `allium:custom_item_id` alone, for the reasons above; the restrained
+      variants may be transient states rather than separate tools. Record each variant's
+      mapping and its evidence before converting stacks; never upgrade a stack to a privileged
+      behavior from a forged or collapsed tag.
+
 S01.5a, S02–S03 and S04–S05 can proceed after S01 with separate file ownership.
 S06a depended on S04–S05; S06b depended on S06a; pack delivery depends on S06b. S07–S08 depend on S01.5a, S03 and the message pipeline.
 

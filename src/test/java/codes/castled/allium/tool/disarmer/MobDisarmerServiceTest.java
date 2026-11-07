@@ -47,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @SuppressWarnings("deprecation")
@@ -333,6 +334,48 @@ class MobDisarmerServiceTest {
         assertEquals(MobDisarmerService.Outcome.DISARMED, click(villager.mob));
         assertEquals(List.of(Material.EMERALD), drops.stream().map(ItemStack::getType).toList());
         assertEquals(new DisarmerCharges(0, clock.get() + 120_000L, false, 3L), toolState());
+    }
+
+    @Test
+    void finishedRechargeRefreshesOnlyWhenAnEventAsksAndThenStaysPut() {
+        Map<String, Integer> models = Map.of("full", 2577020, "two_thirds", 2577021, "one_third", 2577022,
+                "empty", 2577023, "broken", 2577024);
+        items.setModelSelector("mob_disarmer", state -> models.get(DisarmerVisualState.of(DisarmerCharges.fromState(state, 3), 3).key()));
+        ItemStack tool = mainHand.get();
+        assertTrue(items.updateState(tool, new DisarmerCharges(0, clock.get() + 1_000L, false, 3L).toState()));
+        assertEquals(2577023, tool.getItemMeta().getCustomModelData());
+        String uuid = pdcString(tool, ItemService.KEY_INSTANCE_UUID);
+
+        assertTrue(service.refreshVisual(tool).isEmpty(), "still recharging: nothing changes");
+        clock.addAndGet(1_000L);
+        assertSame(tool, service.refreshVisual(tool).orElseThrow(), "the same stack is updated");
+        assertEquals(2577020, tool.getItemMeta().getCustomModelData());
+        assertEquals(new DisarmerCharges(3, 0L, false, 3L), toolState());
+        assertEquals(uuid, pdcString(tool, ItemService.KEY_INSTANCE_UUID));
+        assertTrue(service.refreshVisual(tool).isEmpty(), "a second refresh does nothing");
+
+        tool.getItemMeta().setCustomModelData(1002);
+        assertTrue(service.refreshVisual(tool).isPresent(), "a stale model is restamped without a state write");
+        assertEquals(2577020, tool.getItemMeta().getCustomModelData());
+        assertEquals(new DisarmerCharges(3, 0L, false, 3L), toolState());
+
+        assertTrue(service.refreshVisual(null).isEmpty());
+        assertTrue(service.refreshVisual(MockItemStacks.create(Material.GOLDEN_HOE)).isEmpty());
+        ItemStack tampered = newDisarmer();
+        assertTrue(items.updateState(tampered, new DisarmerCharges(0, clock.get() - 1L, false, 3L).toState()));
+        tampered.getItemMeta().getPersistentDataContainer().set(new NamespacedKey("allium", "state_uses"), PersistentDataType.STRING, "0");
+        assertTrue(service.refreshVisual(tampered).isEmpty(), "an edited signed stack is never refreshed");
+        assertEquals(2577023, tampered.getItemMeta().getCustomModelData());
+
+        ItemStack recharged = newDisarmer();
+        assertTrue(items.updateState(recharged, new DisarmerCharges(0, clock.get() - 1L, false, 3L).toState()));
+        PlayerInventory inventory = player.getInventory();
+        ItemStack stone = MockItemStacks.create(Material.STONE);
+        when(inventory.getContents()).thenReturn(new ItemStack[]{null, stone, recharged, tool});
+        assertEquals(1, service.refreshInventory(player));
+        verify(inventory).setItem(2, recharged);
+        verify(inventory, never()).setItem(eq(3), any());
+        assertEquals(2577020, recharged.getItemMeta().getCustomModelData());
     }
 
     @Test

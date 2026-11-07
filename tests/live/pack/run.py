@@ -39,6 +39,8 @@ p.add_argument('--run-root', type=Path, default=Path('/tmp/allium-s06b-20261106/
 p.add_argument('--allium-jar', type=Path, default=REPO / 'build/libs/Allium.jar')
 p.add_argument('--pack', type=Path, default=REPO / 'build/pack/allium-core-pack.zip')
 p.add_argument('--manual', action='store_true', help='boot the lane for a real client; type console commands, "stop" to end')
+p.add_argument('--scenario', choices=['load', 'recharge'], default='load',
+               help='load: pack accept/decline gate; recharge: event-driven recharge visual refresh (raw26 lane)')
 a = p.parse_args()
 if not re.fullmatch('[a-zA-Z0-9_.-]+', a.run_name):
     p.error('invalid run-name')
@@ -351,6 +353,64 @@ def decline_case():
     return {'statuses': names}
 
 
+def bot(command):
+    client.stdin.write(command + '\n')
+    client.stdin.flush()
+
+
+def slot(n):
+    return fixture(f'slot {n}', f'slot-{n}')
+
+
+def recharge_case():
+    """A finished recharge refreshes only on an event: held-slot change, hand swap, join."""
+    if spec['client'] != 'raw26':
+        raise RuntimeError('the recharge scenario drives held-slot and swap packets with the raw 26.3 client')
+    full, empty = disarmer_states['full'], disarmer_states['empty']
+    out = {}
+    connect('accept')
+    wait(lambda: [e for e in pack_events(0) if e['event'] == 'result'], 'pack loaded', 60)
+    bot('hold 0')
+    time.sleep(0.5)
+
+    cmd('pg recharge 1 3')
+    before = slot(1)
+    require(before.get('customModelData') == empty and before['state']['charges'] == '0', f'slot 1 starts empty ({before.get("customModelData")})')
+    time.sleep(4.0)
+    idle = slot(1)
+    require(idle.get('customModelData') == empty and idle['state']['charges'] == '0',
+            'after the recharge time passes with no event, nothing polls: slot 1 is still empty')
+    bot('hold 1')
+    held = wait(lambda: (lambda s: s if s['heldSlot'] == 1 else None)(slot(1)), 'held slot 1', 10)
+    require(held.get('customModelData') == full and held['state']['charges'] == '3' and held['behavior'] == 'allium:mob_disarmer'
+            and held['instanceUuid'] == before['instanceUuid'],
+            f'holding it settles the recharge on the same stack: model {held.get("customModelData")}, charges {held["state"]["charges"]}')
+    out['held'] = {'before': before, 'idle': idle, 'after': held}
+
+    cmd('pg recharge 2 3')
+    bot('hold 2')
+    early = wait(lambda: (lambda s: s if s['heldSlot'] == 2 else None)(slot(2)), 'held slot 2', 10)
+    require(early.get('customModelData') == empty, 'holding it before the recharge ends changes nothing')
+    time.sleep(4.0)
+    bot('swap')
+    swapped = wait(lambda: (lambda s: s if not s.get('empty') else None)(slot(40)), 'off hand filled', 10)
+    require(swapped.get('customModelData') == full and swapped['state']['charges'] == '3'
+            and swapped['instanceUuid'] == early['instanceUuid'], f'swapping it to the off hand refreshes it ({swapped.get("customModelData")})')
+    out['swap'] = {'early': early, 'offHand': swapped}
+
+    cmd('pg recharge 3 3')
+    time.sleep(4.0)
+    offline_before = slot(3)
+    require(offline_before.get('customModelData') == empty, 'slot 3 is still empty before the reconnect')
+    disconnect()
+    connect('accept')
+    joined = wait(lambda: (lambda s: s if s.get('customModelData') == full else None)(slot(3)), 'slot 3 refreshed on join', 20)
+    require(joined['state']['charges'] == '3' and joined['instanceUuid'] == offline_before['instanceUuid'], 'rejoining refreshes it')
+    out['join'] = {'before': offline_before, 'after': joined}
+    disconnect()
+    return out
+
+
 def manual():
     emit(f'MANUAL lane {a.lane} is up at 127.0.0.1:{port} (offline mode). The server offers pack {pack_sha1} from '
          f'http://127.0.0.1:{HTTP_PORT}/. Console commands are forwarded; useful ones: "pg give <name>" (five real '
@@ -377,6 +437,8 @@ try:
     boot()
     if a.manual:
         manual()
+    elif a.scenario == 'recharge':
+        summary['recharge'] = recharge_case()
     else:
         accepted = accept_case()
         declined = decline_case()

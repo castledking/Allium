@@ -94,10 +94,28 @@ read them back:
 - **Tool coverage:** only the Mob Disarmer generates assets. Handcuffs, Phantom Obliterator and
   Item Renamer hold allocations, and SF's Nexo `items/blaze_rod.json` would conflict with the
   Phantom Obliterator carrier as noted in the inventory.
-- **Charge refresh after recharge:** a recharged disarmer keeps its empty model until its state is
-  next written (right-click air or a disarm).
+- **Charge refresh after recharge:** fixed in the follow-up below. Opening the player's own
+  inventory sends nothing to the server, so that trigger cannot be hooked.
 - **Delivery:** not implemented. `resource-pack.owner` accepts `none`, `standalone` or `rpm-export`;
   only `none` acts, and the others warn.
+
+## Follow-up: recharge visual refresh (Paper 26.3)
+
+A finished recharge is now settled and its model updated when the disarmer becomes the held item,
+is swapped between hands, or when the player joins or opens a container. Nothing polls. In
+`--scenario recharge` (run `/tmp/allium-s06b-20261106/runs/paper-263-recharge-r1`, 11 checks, 0
+failures) the raw protocol-777 bot drove the real packets:
+
+- A disarmer whose recharge ended while it sat in slot 1 still showed empty (2577023) with
+  `charges=0` four seconds later, so nothing polls.
+- Holding slot 1 settled it to `charges=3` and model 2577020 on the same stack, with the same
+  instance UUID.
+- A disarmer held before its recharge ended stayed empty. After the recharge ended, a hand swap
+  (player action `SWAP_ITEM_WITH_OFFHAND`, ordinal 7 in 26.3) refreshed it in the off hand.
+- A disarmer that finished recharging while the bot was offline was refreshed on rejoin.
+
+Unit tests cover the same rules, plus stale-model restamps, edited signed stacks (never
+refreshed) and whole-inventory refresh.
 
 ## Rerun
 

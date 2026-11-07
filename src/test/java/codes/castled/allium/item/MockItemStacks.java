@@ -65,6 +65,7 @@ public final class MockItemStacks {
             return null;
         }).when(meta).setCustomModelData(any());
         when(meta.getCustomModelData()).thenAnswer(inv -> cmdRef.get() != null ? cmdRef.get() : 0);
+        when(meta.hasCustomModelData()).thenAnswer(inv -> cmdRef.get() != null);
 
         ItemStack stack = mock(ItemStack.class);
         when(stack.getType()).thenReturn(material);

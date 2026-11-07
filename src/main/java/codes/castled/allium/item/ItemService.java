@@ -149,6 +149,32 @@ public final class ItemService {
         }
     }
 
+    /**
+     * Re-applies the installed model selector to a built-in item's current state, for stacks whose
+     * model went stale without a state write. Returns whether the stack changed. Model data is a
+     * visual only and is not part of the signed state.
+     */
+    public boolean refreshModelSelection(ItemStack stack) {
+        Objects.requireNonNull(stack, "stack");
+        ItemMeta meta = stack.getItemMeta();
+        PersistentDataContainer pdc = meta == null ? null : meta.getPersistentDataContainer();
+        if (pdc == null) {
+            return false;
+        }
+        ProviderKey appearance = storedAppearanceForStateEdit(pdc);
+        if (appearance == null || !ProviderKey.ALLIUM.equals(appearance.provider())) {
+            return false;
+        }
+        ModelSelector selector = modelSelectors.get(appearance.id());
+        Integer value = selector == null ? null : selector.select(Collections.unmodifiableMap(extractStateMap(pdc)));
+        if (value == null || (meta.hasCustomModelData() && meta.getCustomModelData() == value)) {
+            return false;
+        }
+        meta.setCustomModelData(value);
+        stack.setItemMeta(meta);
+        return true;
+    }
+
     private void applyModelSelection(ItemMeta meta, @Nullable ProviderKey appearance, Map<String, String> state) {
         if (appearance == null || !ProviderKey.ALLIUM.equals(appearance.provider())) {
             return;

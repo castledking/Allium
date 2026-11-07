@@ -337,6 +337,71 @@ public final class MobDisarmerService {
         }
     }
 
+    /**
+     * Brings one stack's charge visual up to date: settles a finished recharge (the state write
+     * restamps the model) or restamps a stale model, and applies charge-variant appearances.
+     * Event-driven only (the tool becomes held, is swapped between hands, or on join and container
+     * open); nothing polls. Returns the stack to put back, or empty when nothing changed.
+     */
+    public Optional<ItemStack> refreshVisual(@Nullable ItemStack stack) {
+        MobDisarmerSettings config = settings;
+        if (!config.enabled() || isEmpty(stack) || stack.getAmount() != 1) {
+            return Optional.empty();
+        }
+        ItemRef ref = items.identify(stack).orElse(null);
+        if (ref == null || !ref.behaviorId().map(BEHAVIOR_ID::equals).orElse(false)) {
+            return Optional.empty();
+        }
+        int max = config.rules().maxCharges();
+        DisarmerCharges stored = DisarmerCharges.fromState(ref.stateData(), max);
+        DisarmerCharges settled = stored.settle(clock.getAsLong(), max);
+        boolean changed;
+        if (!settled.equals(stored)) {
+            changed = items.updateState(stack, settled.toState());
+            if (!changed) {
+                return Optional.empty();
+            }
+        } else {
+            changed = items.refreshModelSelection(stack);
+        }
+        ItemStack result = stack;
+        Optional<ProviderKey> variant = config.variantFor(ref.appearance(), settled);
+        if (variant.isPresent() && !variant.get().equals(ref.appearance())) {
+            ResolutionResult swapped = items.swapOrRefreshAppearance(stack, variant.get());
+            if (swapped.isResolved()) {
+                result = swapped.itemStack().orElseThrow();
+                changed = true;
+            } else {
+                warnOnce("variant:" + variant.get(), "Mob Disarmer charge variant " + variant.get()
+                        + " is unavailable; keeping " + ref.appearance() + " (" + swapped.diagnosticMessage() + ")");
+            }
+        }
+        return changed ? Optional.of(result) : Optional.empty();
+    }
+
+    /** Refreshes the disarmer in one inventory slot; returns whether it changed. */
+    public boolean refreshSlot(Player player, int slot) {
+        PlayerInventory inventory = player.getInventory();
+        Optional<ItemStack> refreshed = refreshVisual(inventory.getItem(slot));
+        refreshed.ifPresent(stack -> inventory.setItem(slot, stack));
+        return refreshed.isPresent();
+    }
+
+    /** Refreshes every disarmer in the player's inventory, armor and off hand included; returns how many changed. */
+    public int refreshInventory(Player player) {
+        PlayerInventory inventory = player.getInventory();
+        ItemStack[] contents = inventory.getContents();
+        int changed = 0;
+        for (int slot = 0; slot < contents.length; slot++) {
+            Optional<ItemStack> refreshed = refreshVisual(contents[slot]);
+            if (refreshed.isPresent()) {
+                inventory.setItem(slot, refreshed.get());
+                changed++;
+            }
+        }
+        return changed;
+    }
+
     public void forget(UUID playerId) {
         clickGuard.forget(playerId);
         lastStatus.remove(playerId);

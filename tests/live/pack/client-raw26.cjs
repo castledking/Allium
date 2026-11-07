@@ -62,4 +62,15 @@ socket.on('data', chunk => { try {
 } catch (e) { console.error(e.stack); process.exitCode = 1; socket.destroy(); } });
 socket.on('error', e => { console.error(e); process.exitCode = 1; });
 socket.on('close', () => { console.log('S06B-WIRE END'); process.exit(process.exitCode || 0); });
-require('node:readline').createInterface({input: process.stdin}).on('line', line => { if (line.trim() === 'stop') socket.end(); });
+// Gate controls: "hold <slot>" sends ServerboundSetCarriedItemPacket (short slot); "swap" sends
+// ServerboundPlayerActionPacket SWAP_ITEM_WITH_OFFHAND, ordinal 7 in 26.3 (VarInt action, long pos, byte face, VarInt sequence).
+require('node:readline').createInterface({input: process.stdin}).on('line', line => { try {
+  const [action, arg] = line.trim().split(/\s+/);
+  if (action === 'stop') { socket.end(); return; }
+  if (!ready) throw Error('wait for READY');
+  if (action === 'hold') { const b = Buffer.alloc(2); b.writeInt16BE(Number(arg)); game('set_carried_item', b); }
+  else if (action === 'swap') game('player_action', Buffer.concat([vi(7), Buffer.alloc(8), Buffer.from([0]), vi(0)]));
+  else throw Error('unknown action ' + action);
+  game('client_tick_end');
+  console.log('S06B-WIRE SEND ' + line.trim());
+} catch (e) { console.error(e.stack); process.exitCode = 1; socket.destroy(); } });

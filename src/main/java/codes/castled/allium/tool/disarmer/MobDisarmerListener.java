@@ -7,9 +7,13 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
 import java.util.Objects;
 
@@ -51,6 +55,32 @@ public final class MobDisarmerListener implements Listener {
     public void onPickup(EntityPickupItemEvent event) {
         if (!(event.getEntity() instanceof Player) && service.pickups().isBlocked(event.getEntity())) {
             event.setCancelled(true);
+        }
+    }
+
+    // Recharge visuals refresh on events, never by polling. Opening the player's own inventory sends
+    // nothing to the server, so it cannot be hooked; container opens show that inventory too.
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onHeld(PlayerItemHeldEvent event) {
+        service.refreshSlot(event.getPlayer(), event.getNewSlot());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onSwapHands(PlayerSwapHandItemsEvent event) {
+        service.refreshVisual(event.getMainHandItem()).ifPresent(event::setMainHandItem);
+        service.refreshVisual(event.getOffHandItem()).ifPresent(event::setOffHandItem);
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        service.refreshInventory(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onOpen(InventoryOpenEvent event) {
+        if (event.getPlayer() instanceof Player player) {
+            service.refreshInventory(player);
         }
     }
 

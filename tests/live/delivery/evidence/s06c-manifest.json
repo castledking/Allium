@@ -1,0 +1,927 @@
+{
+  "slice": "S06c core pack delivery",
+  "date": "2026-11-08",
+  "alliumJarSha256": "32a4687b8ebb55b0944cab5edfa71d68e258a5e683123d33cfd8c1d61e844371",
+  "pack": {
+    "sha1": "2413dc172492b961ccd67270f0e6a840ab35226b",
+    "bytes": 7055,
+    "alliumPackId": "ee490115 (UUID.nameUUIDFromBytes(\"allium:core-pack\"))"
+  },
+  "hosting": "the harness serves the exported file on loopback 127.0.0.1:25689 (Allium has no web server)",
+  "sfMixer": "copied read-only from the SF server volume db85ca1b\u2026/plugins/ResourcePackManager/mixer, deleted after the run; the live directory was stat-compared before and after",
+  "regression": {
+    "baselineGate": {
+      "spigot-1.20.1": 31,
+      "paper-26.3": 31,
+      "failures": 0
+    }
+  },
+  "persistedEvidence": "/mnt/storage/.allium-validation/20261108/s06c-pack-delivery/",
+  "runs": [
+    {
+      "run": "final-spigot-1.20.1",
+      "lane": "spigot-1.20.1",
+      "scenario": "standalone",
+      "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+      "client": [
+        "mcp",
+        "1.20.1"
+      ],
+      "checks": 14,
+      "failures": [],
+      "evidence": {
+        "accept": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "play",
+              "uuid": null,
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": false,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": null,
+              "bytes": 7055,
+              "sha1": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "matches": true,
+              "sent": [
+                "ACCEPTED",
+                "SUCCESSFULLY_LOADED"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [],
+          "connected": true,
+          "log_start": 161
+        },
+        "decline": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "play",
+              "uuid": null,
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": false,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": null,
+              "sent": [
+                "DECLINED"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [],
+          "connected": true,
+          "log_start": 169
+        },
+        "mismatch": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "play",
+              "uuid": null,
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": false,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": null,
+              "bytes": 7083,
+              "sha1": "82346f3254e626432cde8398c09eea649d8993a8",
+              "matches": false,
+              "sent": [
+                "ACCEPTED",
+                "FAILED_DOWNLOAD"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [],
+          "connected": true,
+          "log_start": 176
+        },
+        "requiredDecline": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "play",
+              "uuid": null,
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": true,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": null,
+              "sent": [
+                "DECLINED"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [
+            {
+              "phase": "play",
+              "reason": "This server requires its resource pack. Reconnect and accept it to play."
+            }
+          ],
+          "connected": false,
+          "log_start": 304
+        },
+        "requiredMismatch": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "play",
+              "uuid": null,
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": true,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": null,
+              "bytes": 7083,
+              "sha1": "82346f3254e626432cde8398c09eea649d8993a8",
+              "matches": false,
+              "sent": [
+                "ACCEPTED",
+                "FAILED_DOWNLOAD"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [
+            {
+              "phase": "play",
+              "reason": "This server requires its resource pack. Reconnect and accept it to play."
+            }
+          ],
+          "connected": false,
+          "log_start": 311
+        },
+        "startupMismatch": {
+          "log": "[02:19:03] [Server thread/ERROR]: [Allium] Not sending Allium's resource pack: the file at http://127.0.0.1:25689/allium-core-pack.zip has SHA-1 82346f3254e626432cde8398c09eea649d8993a8, but Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+          "seen": {
+            "offers": [],
+            "sent": [],
+            "removed": [],
+            "kicks": [],
+            "connected": true,
+            "log_start": 431
+          }
+        }
+      },
+      "testSources": {
+        "tests/live/delivery/client-mcp.cjs": "01e57d97c1f0a7d2180b16935c08c7e7f22d37504437e06b4cba392e7a6b0c90",
+        "tests/live/delivery/client-raw26.cjs": "f352057b9ef81d86237ed5b5af4574372bf9f1bbd99ebfbd44b157a9d7c8a59f",
+        "tests/live/delivery/pack-response.cjs": "7ef6e353a33d00b8c909b07673d210f3ca8232325300227ab79e9cf0107e0de6",
+        "tests/live/delivery/plugin/gate/DeliveryGate.java": "3ab5123271d67674329a6f236a17e0a1be5330bd1965509d8de3273b81d5d65a",
+        "tests/live/delivery/plugin/plugin.yml": "78ad9f52adf207cb80fe60517ee7888c0b66fa2eb0998ce01de43cc54144fde9",
+        "tests/live/delivery/run.py": "f26c2c58afd775af7b810ee2d62977dd1a8e96ba81b869347d6f67b6954e5554"
+      },
+      "driver": [
+        "BOOT standalone, optional",
+        "PASS Allium exported the bundled pack to plugins/Allium/pack/ (7055 bytes, SHA-1 2413dc172492\u2026)",
+        "PASS at startup Allium downloaded the hosted URL once and verified its SHA-1: 0.0.1:25689/allium-core-pack.zip: the hosted file matches (SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b), as the player's one server pack, optional.",
+        "PASS delivery is VERIFIED, as the one server pack (before 1.20.3)",
+        "PASS the bot was offered Allium's pack with its SHA-1, not forced, with the prompt: {'event': 'offer', 'phase': 'play', 'uuid': None, 'url': 'http://127.0.0.1:25689/allium-core-pack.zip', 'hash': '2413dc172492b961ccd67270f0e6a840ab35226b', 'forced': False, 'prompt': \"This pack shows Allium's custom tool models. Without it you see named vanilla items.\"}",
+        "PASS accept: the bot downloaded it, the SHA-1 matched, it loaded, and Allium logged it; the bot stays",
+        "PASS decline (optional): the bot downloaded nothing, Allium logged it, and the bot stays with the vanilla fallback items",
+        "PASS hash mismatch (optional): the hosted file was swapped after the startup check; the bot found the wrong SHA-1, reported FAILED_DOWNLOAD, and stays",
+        "BOOT standalone, required",
+        "PASS required: the offer is forced, and a bot that loads it stays",
+        "PASS required: a bot that declines is kicked with kick-message: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+        "PASS required: a hash mismatch is kicked the same way: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+        "BOOT standalone, stale hosted file",
+        "PASS a stale hosted file fails the startup check, with both SHA-1s: ut Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+        "PASS Allium then sends nothing (the player keeps the vanilla items)",
+        "BOOT standalone with a server.properties pack, before 1.20.3",
+        "PASS before 1.20.3 Allium warns that one delivery owner is mandatory: resource-pack, and Allium's pack replaces it for every player. Clear resource-pack in server.properties, or set resource-pack.owner to none.",
+        "PASS no listener or Allium exceptions in the server log: []"
+      ]
+    },
+    {
+      "run": "final-paper-1.21.8",
+      "lane": "paper-1.21.8",
+      "scenario": "standalone",
+      "server": "This server is running Paper version 1.21.8-60-main@29c8822 (2025-09-06T21:49:13Z) (Implementing API version 1.21.8-R0.1-SNAPSHOT)",
+      "client": [
+        "mcp",
+        "1.21.8"
+      ],
+      "checks": 15,
+      "failures": [],
+      "evidence": {
+        "accept": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "configuration",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "url": "http://127.0.0.1:25689/second-pack.zip",
+              "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "forced": false,
+              "prompt": null
+            },
+            {
+              "event": "offer",
+              "phase": "play",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": false,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "bytes": 184,
+              "sha1": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "matches": true,
+              "sent": [
+                "ACCEPTED",
+                "DOWNLOADED",
+                "SUCCESSFULLY_LOADED"
+              ]
+            },
+            {
+              "event": "sent",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "bytes": 7055,
+              "sha1": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "matches": true,
+              "sent": [
+                "ACCEPTED",
+                "DOWNLOADED",
+                "SUCCESSFULLY_LOADED"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [],
+          "connected": true,
+          "log_start": 86
+        },
+        "decline": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "configuration",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "url": "http://127.0.0.1:25689/second-pack.zip",
+              "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "forced": false,
+              "prompt": null
+            },
+            {
+              "event": "offer",
+              "phase": "play",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": false,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "sent": [
+                "DECLINED"
+              ]
+            },
+            {
+              "event": "sent",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "sent": [
+                "DECLINED"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [],
+          "connected": true,
+          "log_start": 96
+        },
+        "mismatch": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "configuration",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "url": "http://127.0.0.1:25689/second-pack.zip",
+              "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "forced": false,
+              "prompt": null
+            },
+            {
+              "event": "offer",
+              "phase": "play",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": false,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "bytes": 184,
+              "sha1": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "matches": true,
+              "sent": [
+                "ACCEPTED",
+                "DOWNLOADED",
+                "SUCCESSFULLY_LOADED"
+              ]
+            },
+            {
+              "event": "sent",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "bytes": 7083,
+              "sha1": "82346f3254e626432cde8398c09eea649d8993a8",
+              "matches": false,
+              "sent": [
+                "ACCEPTED",
+                "FAILED_DOWNLOAD"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [],
+          "connected": true,
+          "log_start": 103
+        },
+        "requiredDecline": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "configuration",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "url": "http://127.0.0.1:25689/second-pack.zip",
+              "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "forced": false,
+              "prompt": null
+            },
+            {
+              "event": "offer",
+              "phase": "play",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": true,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "sent": [
+                "DECLINED"
+              ]
+            },
+            {
+              "event": "sent",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "sent": [
+                "DECLINED"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [
+            {
+              "phase": "play",
+              "reason": "This server requires its resource pack. Reconnect and accept it to play."
+            }
+          ],
+          "connected": false,
+          "log_start": 220
+        },
+        "requiredMismatch": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "configuration",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "url": "http://127.0.0.1:25689/second-pack.zip",
+              "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "forced": false,
+              "prompt": null
+            },
+            {
+              "event": "offer",
+              "phase": "play",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": true,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "bytes": 184,
+              "sha1": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "matches": true,
+              "sent": [
+                "ACCEPTED",
+                "DOWNLOADED",
+                "SUCCESSFULLY_LOADED"
+              ]
+            },
+            {
+              "event": "sent",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "bytes": 7083,
+              "sha1": "82346f3254e626432cde8398c09eea649d8993a8",
+              "matches": false,
+              "sent": [
+                "ACCEPTED",
+                "FAILED_DOWNLOAD"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [
+            {
+              "phase": "play",
+              "reason": "This server requires its resource pack. Reconnect and accept it to play."
+            }
+          ],
+          "connected": false,
+          "log_start": 227
+        },
+        "startupMismatch": {
+          "log": "[02:20:07 ERROR]: [Allium] Not sending Allium's resource pack: the file at http://127.0.0.1:25689/allium-core-pack.zip has SHA-1 82346f3254e626432cde8398c09eea649d8993a8, but Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+          "seen": {
+            "offers": [
+              {
+                "event": "offer",
+                "phase": "configuration",
+                "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+                "url": "http://127.0.0.1:25689/second-pack.zip",
+                "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+                "forced": false,
+                "prompt": null
+              }
+            ],
+            "sent": [
+              {
+                "event": "sent",
+                "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+                "bytes": 184,
+                "sha1": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+                "matches": true,
+                "sent": [
+                  "ACCEPTED",
+                  "DOWNLOADED",
+                  "SUCCESSFULLY_LOADED"
+                ]
+              }
+            ],
+            "removed": [],
+            "kicks": [],
+            "connected": true,
+            "log_start": 335
+          }
+        }
+      },
+      "testSources": {
+        "tests/live/delivery/client-mcp.cjs": "01e57d97c1f0a7d2180b16935c08c7e7f22d37504437e06b4cba392e7a6b0c90",
+        "tests/live/delivery/client-raw26.cjs": "f352057b9ef81d86237ed5b5af4574372bf9f1bbd99ebfbd44b157a9d7c8a59f",
+        "tests/live/delivery/pack-response.cjs": "7ef6e353a33d00b8c909b07673d210f3ca8232325300227ab79e9cf0107e0de6",
+        "tests/live/delivery/plugin/gate/DeliveryGate.java": "3ab5123271d67674329a6f236a17e0a1be5330bd1965509d8de3273b81d5d65a",
+        "tests/live/delivery/plugin/plugin.yml": "78ad9f52adf207cb80fe60517ee7888c0b66fa2eb0998ce01de43cc54144fde9",
+        "tests/live/delivery/run.py": "f26c2c58afd775af7b810ee2d62977dd1a8e96ba81b869347d6f67b6954e5554"
+      },
+      "driver": [
+        "BOOT standalone, optional, with a server.properties pack",
+        "PASS Allium exported the bundled pack to plugins/Allium/pack/ (7055 bytes, SHA-1 2413dc172492\u2026)",
+        "PASS at startup Allium downloaded the hosted URL once and verified its SHA-1: ed file matches (SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b), added by UUID ee490115-3c93-302b-9fa6-d01318ab7ef0 beside any other packs, optional.",
+        "PASS delivery is VERIFIED, adding packs by UUID (1.20.3+)",
+        "PASS the bot was offered Allium's pack with its SHA-1, not forced, with the prompt: {'event': 'offer', 'phase': 'play', 'uuid': 'ee490115-3c93-302b-9fa6-d01318ab7ef0', 'url': 'http://127.0.0.1:25689/allium-core-pack.zip', 'hash': '2413dc172492b961ccd67270f0e6a840ab35226b', 'forced': False, 'prompt': \"This pack shows Allium's custom tool models. Without it you see named vanilla items.\"}",
+        "PASS accept: the bot downloaded it, the SHA-1 matched, it loaded, and Allium logged it; the bot stays",
+        "PASS coexistence: the server.properties pack (configuration, 5e3c0d1e\u2026) and Allium's (play, ee490115\u2026) both arrived; nothing removed either",
+        "PASS Allium tracked only its own pack's status (SUCCESSFULLY_LOADED)",
+        "PASS decline (optional): the bot downloaded nothing, Allium logged it, and the bot stays with the vanilla fallback items",
+        "PASS hash mismatch (optional): the hosted file was swapped after the startup check; the bot found the wrong SHA-1, reported FAILED_DOWNLOAD, and stays",
+        "BOOT standalone, required",
+        "PASS required: the offer is forced, and a bot that loads it stays",
+        "PASS required: a bot that declines is kicked with kick-message: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+        "PASS required: a hash mismatch is kicked the same way: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+        "BOOT standalone, stale hosted file",
+        "PASS a stale hosted file fails the startup check, with both SHA-1s: ut Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+        "PASS Allium then sends nothing (the player keeps the vanilla items); the server.properties pack still arrives",
+        "PASS no listener or Allium exceptions in the server log: []"
+      ]
+    },
+    {
+      "run": "final-paper-26.3",
+      "lane": "paper-26.3",
+      "scenario": "standalone",
+      "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+      "client": [
+        "raw26",
+        null
+      ],
+      "checks": 15,
+      "failures": [],
+      "evidence": {
+        "accept": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "configuration",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "url": "http://127.0.0.1:25689/second-pack.zip",
+              "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "forced": false,
+              "prompt": null
+            },
+            {
+              "event": "offer",
+              "phase": "game",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": false,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "bytes": 184,
+              "sha1": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "matches": true,
+              "sent": [
+                "ACCEPTED",
+                "DOWNLOADED",
+                "SUCCESSFULLY_LOADED"
+              ]
+            },
+            {
+              "event": "sent",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "bytes": 7055,
+              "sha1": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "matches": true,
+              "sent": [
+                "ACCEPTED",
+                "DOWNLOADED",
+                "SUCCESSFULLY_LOADED"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [],
+          "connected": true,
+          "log_start": 87
+        },
+        "decline": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "configuration",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "url": "http://127.0.0.1:25689/second-pack.zip",
+              "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "forced": false,
+              "prompt": null
+            },
+            {
+              "event": "offer",
+              "phase": "game",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": false,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "sent": [
+                "DECLINED"
+              ]
+            },
+            {
+              "event": "sent",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "sent": [
+                "DECLINED"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [],
+          "connected": true,
+          "log_start": 100
+        },
+        "mismatch": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "configuration",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "url": "http://127.0.0.1:25689/second-pack.zip",
+              "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "forced": false,
+              "prompt": null
+            },
+            {
+              "event": "offer",
+              "phase": "game",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": false,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "bytes": 184,
+              "sha1": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "matches": true,
+              "sent": [
+                "ACCEPTED",
+                "DOWNLOADED",
+                "SUCCESSFULLY_LOADED"
+              ]
+            },
+            {
+              "event": "sent",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "bytes": 7083,
+              "sha1": "82346f3254e626432cde8398c09eea649d8993a8",
+              "matches": false,
+              "sent": [
+                "ACCEPTED",
+                "FAILED_DOWNLOAD"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [],
+          "connected": true,
+          "log_start": 108
+        },
+        "requiredDecline": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "configuration",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "url": "http://127.0.0.1:25689/second-pack.zip",
+              "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "forced": false,
+              "prompt": null
+            },
+            {
+              "event": "offer",
+              "phase": "game",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": true,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "sent": [
+                "DECLINED"
+              ]
+            },
+            {
+              "event": "sent",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "sent": [
+                "DECLINED"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [
+            {
+              "phase": "game",
+              "reason": "This server requires its resource pack. Reconnect and accept it to play."
+            }
+          ],
+          "connected": false,
+          "log_start": 242
+        },
+        "requiredMismatch": {
+          "offers": [
+            {
+              "event": "offer",
+              "phase": "configuration",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "url": "http://127.0.0.1:25689/second-pack.zip",
+              "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "forced": false,
+              "prompt": null
+            },
+            {
+              "event": "offer",
+              "phase": "game",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "url": "http://127.0.0.1:25689/allium-core-pack.zip",
+              "hash": "2413dc172492b961ccd67270f0e6a840ab35226b",
+              "forced": true,
+              "prompt": "This pack shows Allium's custom tool models. Without it you see named vanilla items."
+            }
+          ],
+          "sent": [
+            {
+              "event": "sent",
+              "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+              "bytes": 184,
+              "sha1": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+              "matches": true,
+              "sent": [
+                "ACCEPTED",
+                "DOWNLOADED",
+                "SUCCESSFULLY_LOADED"
+              ]
+            },
+            {
+              "event": "sent",
+              "uuid": "ee490115-3c93-302b-9fa6-d01318ab7ef0",
+              "bytes": 7083,
+              "sha1": "82346f3254e626432cde8398c09eea649d8993a8",
+              "matches": false,
+              "sent": [
+                "ACCEPTED",
+                "FAILED_DOWNLOAD"
+              ]
+            }
+          ],
+          "removed": [],
+          "kicks": [
+            {
+              "phase": "game",
+              "reason": "This server requires its resource pack. Reconnect and accept it to play."
+            }
+          ],
+          "connected": false,
+          "log_start": 250
+        },
+        "startupMismatch": {
+          "log": "[02:20:49 ERROR]: [Allium] Not sending Allium's resource pack: the file at http://127.0.0.1:25689/allium-core-pack.zip has SHA-1 82346f3254e626432cde8398c09eea649d8993a8, but Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+          "seen": {
+            "offers": [
+              {
+                "event": "offer",
+                "phase": "configuration",
+                "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+                "url": "http://127.0.0.1:25689/second-pack.zip",
+                "hash": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+                "forced": false,
+                "prompt": null
+              }
+            ],
+            "sent": [
+              {
+                "event": "sent",
+                "uuid": "5e3c0d1e-0000-4000-8000-000000000002",
+                "bytes": 184,
+                "sha1": "b6df442c3ffb48914666e669c0ccca7cfed75f8b",
+                "matches": true,
+                "sent": [
+                  "ACCEPTED",
+                  "DOWNLOADED",
+                  "SUCCESSFULLY_LOADED"
+                ]
+              }
+            ],
+            "removed": [],
+            "kicks": [],
+            "connected": true,
+            "log_start": 371
+          }
+        }
+      },
+      "testSources": {
+        "tests/live/delivery/client-mcp.cjs": "01e57d97c1f0a7d2180b16935c08c7e7f22d37504437e06b4cba392e7a6b0c90",
+        "tests/live/delivery/client-raw26.cjs": "f352057b9ef81d86237ed5b5af4574372bf9f1bbd99ebfbd44b157a9d7c8a59f",
+        "tests/live/delivery/pack-response.cjs": "7ef6e353a33d00b8c909b07673d210f3ca8232325300227ab79e9cf0107e0de6",
+        "tests/live/delivery/plugin/gate/DeliveryGate.java": "3ab5123271d67674329a6f236a17e0a1be5330bd1965509d8de3273b81d5d65a",
+        "tests/live/delivery/plugin/plugin.yml": "78ad9f52adf207cb80fe60517ee7888c0b66fa2eb0998ce01de43cc54144fde9",
+        "tests/live/delivery/run.py": "f26c2c58afd775af7b810ee2d62977dd1a8e96ba81b869347d6f67b6954e5554"
+      },
+      "driver": [
+        "BOOT standalone, optional, with a server.properties pack",
+        "PASS Allium exported the bundled pack to plugins/Allium/pack/ (7055 bytes, SHA-1 2413dc172492\u2026)",
+        "PASS at startup Allium downloaded the hosted URL once and verified its SHA-1: ed file matches (SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b), added by UUID ee490115-3c93-302b-9fa6-d01318ab7ef0 beside any other packs, optional.",
+        "PASS delivery is VERIFIED, adding packs by UUID (1.20.3+)",
+        "PASS the bot was offered Allium's pack with its SHA-1, not forced, with the prompt: {'event': 'offer', 'phase': 'game', 'uuid': 'ee490115-3c93-302b-9fa6-d01318ab7ef0', 'url': 'http://127.0.0.1:25689/allium-core-pack.zip', 'hash': '2413dc172492b961ccd67270f0e6a840ab35226b', 'forced': False, 'prompt': \"This pack shows Allium's custom tool models. Without it you see named vanilla items.\"}",
+        "PASS accept: the bot downloaded it, the SHA-1 matched, it loaded, and Allium logged it; the bot stays",
+        "PASS coexistence: the server.properties pack (configuration, 5e3c0d1e\u2026) and Allium's (game, ee490115\u2026) both arrived; nothing removed either",
+        "PASS Allium tracked only its own pack's status (SUCCESSFULLY_LOADED)",
+        "PASS decline (optional): the bot downloaded nothing, Allium logged it, and the bot stays with the vanilla fallback items",
+        "PASS hash mismatch (optional): the hosted file was swapped after the startup check; the bot found the wrong SHA-1, reported FAILED_DOWNLOAD, and stays",
+        "BOOT standalone, required",
+        "PASS required: the offer is forced, and a bot that loads it stays",
+        "PASS required: a bot that declines is kicked with kick-message: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+        "PASS required: a hash mismatch is kicked the same way: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+        "BOOT standalone, stale hosted file",
+        "PASS a stale hosted file fails the startup check, with both SHA-1s: ut Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+        "PASS Allium then sends nothing (the player keeps the vanilla items); the server.properties pack still arrives",
+        "PASS no listener or Allium exceptions in the server log: []"
+      ]
+    },
+    {
+      "run": "rpm-paper-26.3-2",
+      "lane": "paper-26.3",
+      "scenario": "rpm",
+      "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+      "client": [
+        "raw26",
+        null
+      ],
+      "checks": 8,
+      "failures": [],
+      "evidence": {
+        "rpm": {
+          "copied": 13,
+          "skippedUnreadable": [
+            "CraftEngine_resource_pack.zip"
+          ],
+          "checked": "[02:18:03 INFO]: [Allium] [rpm-export dry run] Checked 13 pack(s) in /tmp/allium-s06c-20261108/runs/rpm-paper-26.3-2/sf-mixer-copy for Allium's carrier files.",
+          "blazeRod": [
+            "[02:18:03 INFO]: [Allium] [rpm-export dry run] Carrier collision ahead: Nexo_resource_pack.zip defines assets/minecraft/items/blaze_rod.json (blaze_rod), the carrier of Allium's planned phantom_obliterator. It does not affect the current pack, but will once phantom_obliterator ships."
+          ],
+          "wouldWrite": "[02:18:03 INFO]: [Allium] [rpm-export dry run] Would write /tmp/allium-s06c-20261108/runs/rpm-paper-26.3-2/sf-mixer-copy/Allium_core_resource_pack.zip (7055 bytes, SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b); no such file exists yet. Nothing was written.",
+          "wrote": "[02:18:08 INFO]: [Allium] Wrote the core resource pack in ResourcePackManager's mixer: /tmp/allium-s06c-20261108/runs/rpm-paper-26.3-2/sf-mixer-copy/Allium_core_resource_pack.zip (7055 bytes, SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b). ResourcePackManager merges and sends it; Allium does not send it itself.",
+          "added": [
+            "Allium_core_resource_pack.zip"
+          ]
+        }
+      },
+      "testSources": {
+        "tests/live/delivery/client-mcp.cjs": "01e57d97c1f0a7d2180b16935c08c7e7f22d37504437e06b4cba392e7a6b0c90",
+        "tests/live/delivery/client-raw26.cjs": "f352057b9ef81d86237ed5b5af4574372bf9f1bbd99ebfbd44b157a9d7c8a59f",
+        "tests/live/delivery/pack-response.cjs": "7ef6e353a33d00b8c909b07673d210f3ca8232325300227ab79e9cf0107e0de6",
+        "tests/live/delivery/plugin/gate/DeliveryGate.java": "3ab5123271d67674329a6f236a17e0a1be5330bd1965509d8de3273b81d5d65a",
+        "tests/live/delivery/plugin/plugin.yml": "78ad9f52adf207cb80fe60517ee7888c0b66fa2eb0998ce01de43cc54144fde9",
+        "tests/live/delivery/run.py": "f26c2c58afd775af7b810ee2d62977dd1a8e96ba81b869347d6f67b6954e5554"
+      },
+      "driver": [
+        "COPY 13 of 14 files from SF's mixer (unreadable, not copied: ['CraftEngine_resource_pack.zip'])",
+        "BOOT rpm-export dry run into a copy of SF's mixer",
+        "PASS the dry run read all 13 copied packs:  /tmp/allium-s06c-20261108/runs/rpm-paper-26.3-2/sf-mixer-copy for Allium's carrier files.",
+        "PASS it reports the blaze rod collision (Nexo defines assets/minecraft/items/blaze_rod.json, the carrier of the planned phantom_obliterator), and no collision for the shipped golden hoe: [\"d.json (blaze_rod), the carrier of Allium's planned phantom_obliterator. It does not affect the current pack, but will once phantom_obliterator ships.\"]",
+        "PASS the dry run wrote nothing: every file in the copy is byte-identical",
+        "BOOT rpm-export into the copy",
+        "PASS the export wrote only Allium_core_resource_pack.zip (the bundled pack, byte for byte); every other file, including SF's legacy Allium_resource_pack.zip, is unchanged",
+        "PASS with rpm-export Allium does not send the pack itself",
+        "BOOT rpm-export again, unchanged",
+        "PASS a second start keeps the identical file",
+        "PASS SF's live mixer directory is untouched (same files, sizes and modification times)",
+        "REMOVED the copy of SF's mixer",
+        "PASS no listener or Allium exceptions in the server log: []"
+      ]
+    }
+  ]
+}

@@ -16,12 +16,18 @@ checks appropriate to each slice.
 - [x] Database setup and economy/Vault scaffolding.
 - [x] Heal, feed, fly, god and gamemode executors (ported onto platform-neutral `CommandSpec` + `BukkitCommandRenderer` and verified across `self`, `other`, and `console` on Spigot 1.20.1, Paper 1.20, Paper 1.20.6, Spigot 26.3, and Paper 26.3).
 
-## M1 status (close-out, 2026-11-07)
+## M1 status (updated 2026-11-08)
 
-M1 is **not complete**. All nine roadmap deliverables are built and have recorded evidence
-(the minimal API since S09), and all five M1 gates are met. One item is open: pack delivery,
-which this queue also lists under M1. Two items wait on others: the S06b visual checklist (a
-manual run in a real client), and stock CraftEngine, since deployment needs the patched build.
+All of M1's automated work is done:
+- all nine roadmap deliverables are built and have recorded evidence (the minimal API since
+  S09);
+- the pack delivery this queue lists under M1 is done too (S06c);
+- all five M1 gates are met.
+
+Two items wait on others:
+- **The S06b visual checklist:** a manual run in a real client, owned by the user. Until it
+  passes, M1 is not signed off.
+- **Stock CraftEngine:** deployment needs the patched build.
 
 | M1 deliverable | Status | Evidence |
 | --- | --- | --- |
@@ -33,7 +39,8 @@ manual run in a real client), and stock CraftEngine, since deployment needs the 
 | Give/Enchant/Skull/Potion library | Done (S04 follow-up) | [items results](tests/live/items/RESULTS.md): 93 + 36 live checks. Not yet: `/i`, aliases, kits, `queue` overflow |
 | Built-in/vanilla and three provider adapters | Done, conditionally (S05) | [provider matrix](docs/s05-provider-matrix.md), `tests/live/providers/evidence/`. Stock CE reset updaters lose stack counts; deploying requires the verified CE fix |
 | Mob Disarmer across providers | Done (S06a) | [disarmer results](tests/live/tools/disarmer/RESULTS.md): 58 cases, 862 checks |
-| Core pack generation | Done; **visual check pending** (S06b) | [pack results](tests/live/pack/RESULTS.md): 125 live checks; [visual checklist](tests/live/pack/VISUAL-CHECKLIST.md) for a real client. Delivery is the separate open item below |
+| Pack delivery (this queue's M1 item) | Done (S06c): `none`, `standalone` (export, operator-hosted URL with a startup SHA-1 check, required or optional) and `rpm-export` (mixer export with a carrier-collision report); added by UUID beside other packs on 1.20.3+ | [delivery results](tests/live/delivery/RESULTS.md): 52 live checks on Spigot 1.20.1, Paper 1.21.8 and Paper 26.3, and against a copy of SF's mixer |
+| Core pack generation | Done; **visual check pending** (S06b) | [pack results](tests/live/pack/RESULTS.md): 125 live checks; [visual checklist](tests/live/pack/VISUAL-CHECKLIST.md) for a real client. Delivery: S06c, below |
 
 | M1 gate | Status | Evidence |
 | --- | --- | --- |
@@ -59,7 +66,7 @@ Open before M1 can close:
       Gate passed 2026-11-08: 38 live checks on Spigot 1.20.1 and Paper 26.3; see
       [the results](tests/live/addons/RESULTS.md). It found and fixed a bug: addon items given
       through `/give` lost their default state.
-- [ ] **Pack delivery** (below).
+- [x] **Pack delivery** (S06c, below).
 - [ ] **S06b visual check** in a real client (owner: the user).
 
 ## First implementation queue
@@ -191,8 +198,23 @@ result and must preserve the existing uncommitted work.
       Automated gate PASS: clean against Mojang client jars 1.20.1–26.3 and 125 live checks on
       Spigot 1.20.1, Paper 1.21.8 and Paper 26.3; see [results](tests/live/pack/RESULTS.md).
       Visual check pending: [checklist](tests/live/pack/VISUAL-CHECKLIST.md).
-- [ ] **Pack delivery (separate step) / M1:** one delivery owner (standalone URL/hash or RPM export), no
-      duplicate pushes, conflict reports for shared vanilla carrier files.
+- [x] **S06c / M1 — Pack delivery:** `resource-pack.owner` is `none` (default), `standalone` or
+      `rpm-export`.
+      - **standalone:** exports the bundled pack to `plugins/Allium/pack/` and sends the
+        operator-hosted URL with its SHA-1. It verifies the hosted file once at startup and
+        sends nothing on a mismatch. There is no built-in HTTP server.
+      - **rpm-export:** writes only `Allium_core_resource_pack.zip` into RPM's mixer, from
+        `onLoad`. It never edits RPM's config, and it reports carrier collisions, including SF's
+        blaze rod. It has a dry-run mode.
+      - **Multiple packs:** from 1.20.3 Allium adds its pack by its own UUID beside other packs;
+        on 1.20–1.20.2 it warns that one delivery owner is mandatory.
+      - **Policy:** required or optional, with configurable prompt and kick message. A decline
+        keeps the vanilla fallbacks unless the pack is required.
+
+      Gate passed 2026-11-08: 52 live checks (bot accept, decline and hash mismatch on all three
+      lanes, coexistence with a second pack on 1.20.3+, and an rpm-export dry run and export
+      against a copy of SF's mixer); see [the results](tests/live/delivery/RESULTS.md) and
+      [docs/pack-delivery.md](docs/pack-delivery.md).
 - [ ] **S07 / M2 — Messaging:** msg/reply, acceptance/ignore/mute/vanish rules,
       `/msgtoggle [on|off]`, per-recipient notifications. Gate: blocked sends are
       silent; replies obey the same policy; preference persists; console/others

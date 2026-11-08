@@ -1,0 +1,13 @@
+name: DeliveryGate
+version: 1.0.0
+main: gate.DeliveryGate
+api-version: '1.20'
+depend: [Allium]
+description: S06c pack delivery gate fixture only. Never install on a production server.
+commands:
+  dg:
+    description: S06c delivery gate fixture
+    permission: deliverygate.console
+permissions:
+  deliverygate.console:
+    default: op

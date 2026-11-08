@@ -70,8 +70,7 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   Built-in disarmers show their charge state by `custom_model_data` model selection on the same
   golden-hoe stack (1.20 overrides; 1.21.4+ item definitions in an overlay). Allium does not stamp
   `item_model`, so players who decline the pack keep a named vanilla golden hoe. The SF inventory is
-  in [`s06b-sf-inventory.md`](s06b-sf-inventory.md). Delivery is not implemented:
-  `resource-pack.owner` is a stub that defaults to `none`. Live results are in
+  in [`s06b-sf-inventory.md`](s06b-sf-inventory.md). Delivery is S06c (below). Live results are in
   [the S06b results](../tests/live/pack/RESULTS.md).
 - **S04 follow-up (item library + M1 `/give` harness):** item specs parse through a
   bracket/brace/quote-aware grammar over `ProviderKey`, build through `ItemService` (so Allium
@@ -100,14 +99,19 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   `SchedulerBoundaryTest` fails the build if production code creates threads or executors, or
   uses the Bukkit scheduler, anywhere else. It does not make Allium Folia-ready; that still
   needs per-feature thread-ownership tests.
-- **M1 status:** see the [M1 close-out in the checklist](../todo.md#m1-status-close-out-2026-11-07).
-  All five M1 gates are met. Pack delivery is open, and the S06b visual check is pending in a
-  real client.
+- **M1 status:** see the [M1 status in the checklist](../todo.md#m1-status-updated-2026-11-08).
+  Every deliverable, including pack delivery, has recorded evidence, and all five gates are met.
+  The S06b visual check is pending in a real client.
 - **S09 (minimal addon API):** `allium-api` 1.0.0, with item definitions and create/identify,
   command specs, the scheduler boundary and text. Addons declare `allium-api` ranges in
   `plugin.yml`; mismatched and shaded addons are refused. See
   [the addon API](addon-api.md) and [the results](../tests/live/addons/RESULTS.md).
-- Private messages, preference commands, addons and pack delivery are not implemented in this recode. Some config module names are
+- **S06c (pack delivery):** `resource-pack.owner` `standalone` exports the pack and sends an
+  operator-hosted URL, verified against the bundled SHA-1. `rpm-export` writes into
+  ResourcePackManager's mixer and reports carrier collisions. From 1.20.3 Allium's pack is added
+  by UUID beside other packs. See [pack delivery](pack-delivery.md) and
+  [the results](../tests/live/delivery/RESULTS.md).
+- Private messages, preference commands and the M5 addons are not implemented in this recode. Some config module names are
   placeholders; do not count them as working features.
 
 ## Architecture decisions

@@ -76,17 +76,40 @@ class CoreItemsTest {
     }
 
     @Test
-    void resourcePackOwnerDefaultsToNoneAndReservedOwnersWarn() throws Exception {
+    void resourcePackSettingsDefaultToNoneAndParseEachOwner() throws Exception {
         assertEquals(ResourcePackSettings.Owner.NONE, ResourcePackSettings.parse(null).owner());
         YamlConfiguration shipped = new YamlConfiguration();
         shipped.load(new java.io.InputStreamReader(getClass().getResourceAsStream("/config.yml"), java.nio.charset.StandardCharsets.UTF_8));
         ResourcePackSettings settings = ResourcePackSettings.parse(shipped.getConfigurationSection("resource-pack"));
         assertEquals(ResourcePackSettings.Owner.NONE, settings.owner());
         assertEquals(List.of(), settings.warnings());
+        assertFalse(settings.required());
+        assertTrue(settings.verifyHostedFile());
+        assertEquals("ResourcePackManager/mixer", settings.mixerDirectory());
+        assertEquals("Allium_core_resource_pack.zip", settings.mixerFileName());
+        assertFalse(settings.sendsUrl());
+
+        YamlConfiguration standalone = new YamlConfiguration();
+        standalone.loadFromString("owner: standalone\nstandalone:\n  url: https://cdn.example/pack.zip\nrequired: true\nprompt: '&aHi'\n");
+        ResourcePackSettings s = ResourcePackSettings.parse(standalone);
+        assertEquals(ResourcePackSettings.Owner.STANDALONE, s.owner());
+        assertTrue(s.sendsUrl() && s.required());
+        assertEquals("&aHi", s.prompt());
+        assertEquals(List.of(), s.warnings());
+
+        YamlConfiguration noUrl = new YamlConfiguration();
+        noUrl.loadFromString("owner: standalone\n");
+        assertFalse(ResourcePackSettings.parse(noUrl).sendsUrl());
+        assertTrue(ResourcePackSettings.parse(noUrl).warnings().get(0).contains("standalone.url"));
+
         YamlConfiguration rpm = new YamlConfiguration();
-        rpm.loadFromString("owner: rpm-export\n");
-        assertEquals(ResourcePackSettings.Owner.RPM_EXPORT, ResourcePackSettings.parse(rpm).owner());
-        assertTrue(ResourcePackSettings.parse(rpm).warnings().get(0).contains("not implemented"));
+        rpm.loadFromString("owner: rpm_export\nrpm-export:\n  file-name: ../../evil.zip\n  dry-run: true\n");
+        ResourcePackSettings r = ResourcePackSettings.parse(rpm);
+        assertEquals(ResourcePackSettings.Owner.RPM_EXPORT, r.owner());
+        assertTrue(r.dryRun());
+        assertEquals("Allium_core_resource_pack.zip", r.mixerFileName(), "a path in file-name is refused");
+        assertTrue(r.warnings().get(0).contains("plain .zip file name"));
+
         YamlConfiguration bad = new YamlConfiguration();
         bad.loadFromString("owner: everyone\n");
         assertEquals(ResourcePackSettings.Owner.NONE, ResourcePackSettings.parse(bad).owner());

@@ -159,10 +159,33 @@ items:
 # Core resource pack (Allium's custom item visuals). Allium generates the pack at build time and
 # bundles it in the jar. Players who decline it keep working, named vanilla items.
 resource-pack:
-  # Who sends the pack to players. none: Allium never sends or exports it (another plugin or the
-  # server's own resource-pack setting can serve it). standalone and rpm-export are reserved for
-  # the delivery step and currently behave like none.
+  # Who delivers the pack to players. Changes need a restart.
+  # none: Allium never sends or exports it (another plugin or server.properties can serve it).
+  # standalone: Allium exports it to plugins/Allium/pack/allium-core-pack.zip; you host that file
+  #   at standalone.url, and Allium sends the URL with the pack's SHA-1. Allium has no web server.
+  # rpm-export: Allium writes it into ResourcePackManager's mixer (below) before RPM starts; RPM
+  #   merges and sends it. Allium never edits RPM's config or another pack.
+  # Before 1.20.3 a player holds one server pack, so exactly one delivery owner is mandatory there.
+  # From 1.20.3 Allium adds its pack beside others (server.properties, other plugins) by its own UUID.
   owner: none
+  standalone:
+    # Where you host plugins/Allium/pack/allium-core-pack.zip (http or https).
+    url: ""
+    # Download the URL once at startup and send it only if its SHA-1 matches the bundled pack.
+    verify-hosted-file: true
+  # Standalone only. true: players must load the pack; declining or a failed download kicks them
+  # with kick-message. false: players who decline keep the named vanilla items.
+  required: false
+  # The text shown with the offer (Allium formatting).
+  prompt: "&eThis pack shows Allium's custom tool models. Without it you see named vanilla items."
+  kick-message: "&cThis server requires its resource pack. Reconnect and accept it to play."
+  rpm-export:
+    # ResourcePackManager's mixer directory, relative to plugins/ (or absolute).
+    mixer-directory: ResourcePackManager/mixer
+    # The only file Allium writes there.
+    file-name: Allium_core_resource_pack.zip
+    # Report what would be written and any carrier collisions with other packs, but write nothing.
+    dry-run: false
 
 # External addon jars live in plugins/Allium/addons/.
 # These are for heavier features that should not be bundled into the core jar.

@@ -45,6 +45,7 @@ public final class PluginStart extends JavaPlugin {
     private ListenerManager listenerManager;
     private AssetManifest packManifest;
     private AlliumScheduler scheduler;
+    private codes.castled.allium.pack.delivery.PackDelivery packDelivery;
     private codes.castled.allium.addon.AlliumApiService addonApi;
 
     @Override
@@ -131,7 +132,47 @@ public final class PluginStart extends JavaPlugin {
         logger.info("Allium v" + getDescription().getVersion() + " enabled.");
     }
 
-    /** Logs the bundled core pack; delivery is not implemented, so nothing is sent or exported. */
+    /** The bundled core pack's bytes, or {@code null} if the jar lacks it. */
+    @org.jetbrains.annotations.Nullable
+    private byte[] bundledPack() {
+        try (java.io.InputStream in = getResource(CoreItems.PACK_RESOURCE)) {
+            return in == null ? null : in.readAllBytes();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Exports the core pack for its delivery owner. This runs before any plugin enables, so
+     * ResourcePackManager (rpm-export) merges the current pack when it starts.
+     */
+    @Override
+    public void onLoad() {
+        ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
+        if (settings.owner() == ResourcePackSettings.Owner.NONE) {
+            return;
+        }
+        byte[] pack = bundledPack();
+        if (pack == null) {
+            getLogger().warning("The core resource pack is missing from the plugin jar; nothing was exported.");
+            return;
+        }
+        codes.castled.allium.pack.delivery.PackExport.Logs logs =
+                new codes.castled.allium.pack.delivery.PackExport.Logs(getLogger()::info, getLogger()::warning);
+        try {
+            if (settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
+                codes.castled.allium.pack.delivery.PackExport.exportStandalone(getDataFolder().toPath(), pack, logs);
+            } else {
+                AssetManifest manifest = CoreItems.loadManifest(getClassLoader());
+                codes.castled.allium.pack.delivery.PackExport.exportToMixer(getDataFolder().toPath().getParent(), settings, pack,
+                        manifest.tools(), logs);
+            }
+        } catch (IOException | RuntimeException e) {
+            getLogger().warning("Could not export the core resource pack for " + settings.owner().configName() + ": " + e);
+        }
+    }
+
+    /** Logs the bundled core pack and, when Allium owns delivery (standalone), starts sending it. */
     private void reportCorePack() {
         ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
         settings.warnings().forEach(logger::warning);
@@ -142,16 +183,31 @@ public final class PluginStart extends JavaPlugin {
             }
             java.util.Map<String, Object> info = Json.parseObject(
                     new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
-            logger.info("Core resource pack " + info.get("sha1") + " (" + info.get("bytes") + " bytes) is bundled; delivery owner "
-                    + settings.owner().configName() + ", so Allium does not send or export it.");
+            String owner = switch (settings.owner()) {
+                case NONE -> "none, so Allium does not send or export it";
+                case STANDALONE -> "standalone, so Allium sends it from resource-pack.standalone.url";
+                case RPM_EXPORT -> "rpm-export, so ResourcePackManager merges and sends it";
+            };
+            logger.info("Core resource pack " + info.get("sha1") + " (" + info.get("bytes") + " bytes) is bundled; delivery owner " + owner + ".");
+            if (settings.sendsUrl()) {
+                packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, String.valueOf(info.get("sha1")));
+                packDelivery.enable();
+            }
         } catch (IOException | IllegalArgumentException e) {
             logger.warning("Could not read the bundled core resource pack info: " + e.getMessage());
         }
     }
 
+    /** Allium's own pack delivery, when {@code resource-pack.owner} is standalone; otherwise {@code null}. */
+    @org.jetbrains.annotations.Nullable
+    public codes.castled.allium.pack.delivery.PackDelivery getPackDelivery() {
+        return packDelivery;
+    }
+
     @Override
     public void onDisable() {
         if (addonApi != null) addonApi.closeAll();
+        if (packDelivery != null) packDelivery.disable();
         if (moduleManager != null) moduleManager.unloadModules();
         if (databaseManager != null) databaseManager.shutdown();
         if (scheduler != null) {

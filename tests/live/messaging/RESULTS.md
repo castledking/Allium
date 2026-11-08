@@ -85,11 +85,21 @@ the [manifest](evidence/s07-manifest.json). Run logs and summaries are kept in
   check. Its recipient got a component with click data. That run is in the persisted evidence as
   `control-old-jar-url`.
 
+## Follow-up: `allium.msg.bypass.ignore` live (2026-11-08)
+
+**24 checks, 0 failures** on Spigot 1.20.1, with the same Allium.jar (`c877b783…`). The harness now
+runs this check on every lane:
+- MsgB ignored MsgA. With `allium.msg.bypass.ignore` granted explicitly, MsgA's message reached
+  MsgB.
+- Once the permission was unset, the same send was blocked again, with the generic message and
+  silence for MsgB.
+
+The other 23 checks passed again.
+
 ## Scope and limits
 
 - **Mute and vanish:** only the hooks are tested, with the fixture standing in. Allium's own
   moderation and vanish come later.
-- **Untested bypass:** `allium.msg.bypass.ignore` is covered by unit tests, not live.
 - **No social spy:** it is a separate follow-up.
 - **Not tested on other lanes:** Paper 1.21.8 and the older Paper lanes did not run this gate.
   The same text path passed the baseline gate on all five lanes.

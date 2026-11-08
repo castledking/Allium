@@ -49,54 +49,9 @@ modules:
 
 # Staple tools. Each works with its built-in item and with Nexo, CraftEngine or Oraxen items;
 # an item's appearance never changes the tool's behavior.
-tools:
-  mob-disarmer:
-    enabled: true
-    # Appearance for new and imported disarmers: allium:mob_disarmer (built-in), nexo:<id>,
-    # oraxen:<id> or craftengine:<namespace>:<id>. Vanilla items are not accepted.
-    appearance: allium:mob_disarmer
-    # Provider items that act as Mob Disarmers when issued by their provider (e.g. /nexo give).
-    aliases: []
-    # Optional charge-variant sets. A disarmer shown as any item in a set is swapped to the set's
-    # entry for its new charge count ('broken' for a broken tool, else '0'), keeping its charges,
-    # instance UUID and MAC. Counts without an entry and items in no set keep their appearance.
-    # Swapping rebuilds the item from its provider definition, so custom names are not kept.
-    charge-variants: {}
-    #  sf:
-    #    '3': nexo:mob_disarmer
-    #    '2': nexo:mob_disarmer_2-3
-    #    '1': nexo:mob_disarmer_1-3
-    #    '0': nexo:mob_disarmer_0-3
-    # Maximum distance in blocks between player and mob. 0 leaves reach checks to the server.
-    radius: 6.0
-    max-charges: 3
-    # Spending the last charge starts one timer; the tool refills completely when it ends.
-    recharge-seconds: 120
-    break-chance:
-      # none: never breaks. legacy: 3% per spent charge, 5% on the final charge (pre-recode Allium).
-      # custom: the values below. Each charge-spending disarm rolls once.
-      preset: none
-      per-charge: 0.0
-      final-charge: 0.0
-    # Which removed pieces drop; the rest are destroyed. Either way the slot's drop chance is
-    # then set to 0, so killing the mob cannot drop them again.
-    # slot-chance: each piece rolls its slot's own drop chance once (2.0 for gear a mob picked up,
-    #   0.085 for natural spawn gear). Villager gear and an enderman's carried block always drop.
-    #   This is pre-recode Allium's behavior.
-    # always: every removed piece drops.
-    drop-rule: slot-chance
-    # Mob types that cannot be disarmed. Players and armor stands never can.
-    excluded-mobs: [ender_dragon, wither, elder_guardian, warden]
-    # Skip entities other plugins mark as NPCs (e.g. Citizens).
-    exclude-npcs: true
-    # Seconds a disarmed mob cannot pick items up, so it cannot re-equip at once. 0 disables.
-    pickup-block-seconds: 120
-    # A second charge-spending click from one player within this many milliseconds is ignored.
-    click-guard-millis: 200
-    # Minimum milliseconds between charge status messages from right-clicking air.
-    status-cooldown-millis: 1000
-    # Sound played at the mob on a disarm; "" for none.
-    sound: minecraft:item.shield.break
+# Tools (such as the Mob Disarmer) are defined in plugins/Allium/tools/*.yml, one file per tool.
+# A tools.mob-disarmer section from an older Allium is moved to tools/mob_disarmer.yml the first
+# time this version starts, and is not read after that.
 
 # Message sounds. A lang entry may declare a sound with its own volume and pitch; each one it
 # leaves out falls back separately to these defaults.

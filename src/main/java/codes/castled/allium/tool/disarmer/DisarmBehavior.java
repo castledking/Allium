@@ -4,9 +4,10 @@ import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.item.ItemService;
 import codes.castled.allium.item.ProviderKey;
 import codes.castled.allium.item.ResolutionResult;
-import codes.castled.allium.message.Messages;
+import codes.castled.allium.message.LangMessage;
 import codes.castled.allium.protection.ProtectionDecision;
 import codes.castled.allium.protection.ProtectionService;
+import codes.castled.allium.tool.definition.ToolSound;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -28,6 +29,8 @@ import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -41,7 +44,10 @@ import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
 
 /**
- * Mob Disarmer behavior ({@code allium:mob_disarmer}), independent of the item's appearance.
+ * The {@code allium:disarm} behavior, for every tool definition bound to it (the Mob Disarmer's
+ * {@code allium:mob_disarmer}, and any other). Each definition supplies parameters, messages,
+ * sounds and permissions; the steps below are fixed here and no definition can change them. A
+ * stack acts as the definition its signed identity names, whatever its appearance.
  *
  * <p>Only the main hand activates the tool, once per click. A click is processed in this order:
  * identify the held tool; check permission, target, distance and removable equipment; check
@@ -52,11 +58,10 @@ import java.util.random.RandomGenerator;
  * zeroes the slot's drop chance. A disarm that removes nothing spends nothing. All methods run on
  * the server thread.
  */
-public final class MobDisarmerService {
+public final class DisarmBehavior {
 
-    public static final String BEHAVIOR_ID = "allium:mob_disarmer";
-    public static final String PERMISSION_USE = "allium.mobdisarmer.use";
-    public static final String PERMISSION_BYPASS = "allium.mobdisarmer.bypass";
+    /** The Mob Disarmer's identity; pre-recode tools are imported as this definition. */
+    public static final String MOB_DISARMER_ID = "allium:mob_disarmer";
 
     /** Hands first, so a fully kitted mob reads as disarmed. */
     static final EquipmentSlot[] DISARM_SLOTS = {
@@ -75,7 +80,7 @@ public final class MobDisarmerService {
     static final NamespacedKey LEGACY_USES = new NamespacedKey("allium", "mob_disarmer_uses");
 
     public enum Outcome {
-        /** Not a main-hand Mob Disarmer click, or not a target this tool handles. */
+        /** Not a main-hand click with a disarm tool, or not a target this tool handles. */
         IGNORED,
         /** Refused before anything changed, with a message. */
         REFUSED,
@@ -97,7 +102,7 @@ public final class MobDisarmerService {
     /** Sends a localized message; production uses {@code MessageManager#send}. */
     @FunctionalInterface
     public interface Notifier {
-        void send(Player player, Messages message, String... replacements);
+        void send(Player player, LangMessage message, String... replacements);
     }
 
     private final ItemService items;
@@ -107,20 +112,17 @@ public final class MobDisarmerService {
     private final LongSupplier clock;
     private final RandomGenerator random;
     private final PickupSuppression pickups;
-    private final Map<UUID, Long> lastStatus = new ConcurrentHashMap<>();
     private final Set<String> warned = ConcurrentHashMap.newKeySet();
-    private volatile MobDisarmerSettings settings;
-    private volatile ClickGuard clickGuard;
+    private final Map<String, DisarmTool> tools;
 
-    public MobDisarmerService(
+    public DisarmBehavior(
             ItemService items,
             ProtectionService protection,
             Notifier notifier,
             Consumer<String> diagnostics,
             LongSupplier clock,
-            LongSupplier nanoClock,
             RandomGenerator random,
-            MobDisarmerSettings settings
+            Collection<DisarmTool> tools
     ) {
         this.items = Objects.requireNonNull(items, "items");
         this.protection = Objects.requireNonNull(protection, "protection");
@@ -129,72 +131,84 @@ public final class MobDisarmerService {
         this.clock = Objects.requireNonNull(clock, "clock");
         this.random = Objects.requireNonNull(random, "random");
         this.pickups = new PickupSuppression(clock);
-        this.settings = Objects.requireNonNull(settings, "settings");
-        this.clickGuard = new ClickGuard(settings.clickGuardMillis(), nanoClock);
-        bindAppearances(settings);
-    }
-
-    public MobDisarmerSettings settings() {
-        return settings;
+        Map<String, DisarmTool> byId = new LinkedHashMap<>();
+        for (DisarmTool tool : tools) {
+            if (byId.put(tool.id(), tool) != null) {
+                throw new IllegalArgumentException("two disarm tools share the identity " + tool.id());
+            }
+        }
+        this.tools = Map.copyOf(byId);
     }
 
     public PickupSuppression pickups() {
         return pickups;
     }
 
-    private void bindAppearances(MobDisarmerSettings snapshot) {
-        items.setPreferredAppearanceForBehavior(BEHAVIOR_ID, snapshot.appearance());
-        for (ProviderKey key : snapshot.boundAppearances()) {
-            items.bindAppearanceToBehavior(key, BEHAVIOR_ID);
-        }
+    /** The loaded disarm tool for an identity, e.g. {@code allium:mob_disarmer}. */
+    public Optional<DisarmTool> tool(String identity) {
+        return Optional.ofNullable(tools.get(identity));
+    }
+
+    public Collection<DisarmTool> tools() {
+        return tools.values();
+    }
+
+    @Nullable
+    private DisarmTool toolFor(@Nullable ItemRef ref) {
+        return ref == null ? null : ref.behaviorId().map(tools::get).orElse(null);
+    }
+
+    private void send(Player player, DisarmTool tool, String slot, String... replacements) {
+        notifier.send(player, tool.message(slot), replacements);
     }
 
     public Outcome handleEntityInteraction(Player player, Entity target, EquipmentSlot hand, Cancellable event, @Nullable Event cause) {
-        MobDisarmerSettings config = settings;
-        if (!config.enabled() || hand != EquipmentSlot.HAND) {
+        if (hand != EquipmentSlot.HAND) {
             return Outcome.IGNORED;
         }
         PlayerInventory inventory = player.getInventory();
-        ItemStack tool = importLegacyIfPresent(player, inventory.getItemInMainHand(), config);
+        ItemStack held = importLegacyIfPresent(player, inventory.getItemInMainHand());
+        if (held == null) {
+            return Outcome.IGNORED;
+        }
+        ItemRef ref = items.identify(held).orElse(null);
+        DisarmTool tool = toolFor(ref);
         if (tool == null) {
             return Outcome.IGNORED;
         }
-        ItemRef ref = items.identify(tool).orElse(null);
-        if (ref == null || !ref.behaviorId().map(BEHAVIOR_ID::equals).orElse(false)) {
-            return Outcome.IGNORED;
-        }
+        DisarmParameters config = tool.parameters();
 
-        if (!player.hasPermission(PERMISSION_USE)) {
-            notifier.send(player, Messages.NO_PERMISSION);
+        if (!player.hasPermission(tool.usePermission())) {
+            send(player, tool, DisarmBehaviorType.MSG_NO_PERMISSION);
             return Outcome.REFUSED;
         }
         DisarmTargetPolicy.Verdict verdict = config.targetPolicy().evaluate(facts(target));
         switch (verdict) {
             case PLAYER -> {
                 event.setCancelled(true);
-                notifier.send(player, Messages.TOOL_DISARMER_PLAYER);
+                send(player, tool, DisarmBehaviorType.MSG_PLAYER_TARGET);
                 return Outcome.REFUSED;
             }
             case NOT_A_MOB -> {
                 return Outcome.IGNORED;
             }
             case EXCLUDED_TYPE, NPC -> {
-                notifier.send(player, Messages.TOOL_DISARMER_EXCLUDED, "{target}", describe(target));
+                send(player, tool, DisarmBehaviorType.MSG_EXCLUDED, "{target}", describe(target));
                 return Outcome.REFUSED;
             }
             case ALLOWED -> { }
         }
         Mob mob = (Mob) target;
         if (config.radius() > 0.0D && !withinRadius(player, mob, config.radius())) {
-            notifier.send(player, Messages.TOOL_DISARMER_TOO_FAR);
+            send(player, tool, DisarmBehaviorType.MSG_TOO_FAR);
             return Outcome.REFUSED;
         }
         if (!hasRemovable(mob)) {
             return Outcome.NOTHING_TO_REMOVE;
         }
-        if (tool.getAmount() != 1) {
+        if (held.getAmount() != 1) {
             event.setCancelled(true);
-            notifier.send(player, Messages.TOOL_DISARMER_SINGLE);
+            send(player, tool, DisarmBehaviorType.MSG_SINGLE_ITEM);
             return Outcome.REFUSED;
         }
 
@@ -202,30 +216,30 @@ public final class MobDisarmerService {
         int max = config.rules().maxCharges();
         DisarmerCharges stored = DisarmerCharges.fromState(ref.stateData(), max);
         DisarmerCharges charges = stored.settle(now, max);
-        boolean bypass = player.hasPermission(PERMISSION_BYPASS);
+        boolean bypass = player.hasPermission(tool.bypassPermission());
         DisarmerCharges.Availability availability = charges.availability(now);
         if (availability.kind() == DisarmerCharges.Availability.Kind.BROKEN) {
             event.setCancelled(true);
-            notifier.send(player, Messages.TOOL_DISARMER_BROKEN);
+            send(player, tool, DisarmBehaviorType.MSG_BROKEN);
             return Outcome.REFUSED;
         }
         if (!bypass && availability.kind() == DisarmerCharges.Availability.Kind.RECHARGING) {
             event.setCancelled(true);
-            notifier.send(player, Messages.TOOL_DISARMER_RECHARGING, "{time}", formatDuration(availability.remainingMillis()));
+            send(player, tool, DisarmBehaviorType.MSG_RECHARGING, "{time}", formatDuration(availability.remainingMillis()));
             return Outcome.REFUSED;
         }
-        if (!clickGuard.tryAcquire(player.getUniqueId())) {
+        if (!tool.clickGuard().tryAcquire(player.getUniqueId())) {
             event.setCancelled(true);
             return Outcome.GUARDED;
         }
 
-        ToolFingerprint before = fingerprint(inventory, tool, ref);
-        ProtectionDecision decision = protection.checkEntityInteraction(player, mob, BEHAVIOR_ID, cause);
+        ToolFingerprint before = fingerprint(inventory, held, ref);
+        ProtectionDecision decision = protection.checkEntityInteraction(player, mob, tool.id(), cause);
         if (!decision.allowed()) {
             if (decision.message() != null && !decision.message().isBlank()) {
-                notifier.send(player, Messages.TOOL_DISARMER_PROTECTED_REASON, "{reason}", decision.message());
+                send(player, tool, DisarmBehaviorType.MSG_PROTECTED_REASON, "{reason}", decision.message());
             } else {
-                notifier.send(player, Messages.TOOL_DISARMER_PROTECTED);
+                send(player, tool, DisarmBehaviorType.MSG_PROTECTED);
             }
             return Outcome.DENIED;
         }
@@ -254,13 +268,13 @@ public final class MobDisarmerService {
         }
         if (!items.updateState(liveTool, next.toState())) {
             restore(mob, removed);
-            warnOnce("state-write", "Mob Disarmer state write was rejected for " + player.getName()
+            warnOnce("state-write:" + tool.id(), tool.name() + " state write was rejected for " + player.getName()
                     + "; equipment was restored and nothing was spent.");
-            notifier.send(player, Messages.TOOL_DISARMER_UPDATE_FAILED);
+            send(player, tool, DisarmBehaviorType.MSG_UPDATE_FAILED);
             return Outcome.WRITE_FAILED;
         }
         inventory.setItemInMainHand(liveTool);
-        syncAppearance(inventory, liveTool, liveRef.appearance(), next, config);
+        syncAppearance(inventory, liveTool, liveRef.appearance(), next, tool);
 
         Location dropAt = mob.getLocation().add(0.0D, 0.5D, 0.0D);
         int dropped = 0;
@@ -273,21 +287,21 @@ public final class MobDisarmerService {
         if (config.pickupBlockMillis() > 0L) {
             pickups.block(mob, config.pickupBlockMillis());
         }
-        playSound(mob, config.sound());
+        playSound(mob, tool.disarmSound());
         event.setCancelled(true);
 
         String name = describe(mob);
         if (bypass) {
-            notifier.send(player, Messages.TOOL_DISARMER_DISARMED_BYPASS, "{target}", name,
+            send(player, tool, DisarmBehaviorType.MSG_DISARMED_BYPASS, "{target}", name,
                     "{removed}", Integer.toString(removed.size()), "{dropped}", Integer.toString(dropped));
         } else {
-            notifier.send(player, Messages.TOOL_DISARMER_DISARMED, "{target}", name,
+            send(player, tool, DisarmBehaviorType.MSG_DISARMED, "{target}", name,
                     "{removed}", Integer.toString(removed.size()), "{dropped}", Integer.toString(dropped),
                     "{charges}", Integer.toString(next.charges()), "{max}", Integer.toString(max));
             if (broke) {
-                notifier.send(player, Messages.TOOL_DISARMER_BROKE);
+                send(player, tool, DisarmBehaviorType.MSG_BROKE);
             } else if (next.charges() == 0) {
-                notifier.send(player, Messages.TOOL_DISARMER_LAST_CHARGE, "{time}", formatDuration(config.rules().rechargeMillis()));
+                send(player, tool, DisarmBehaviorType.MSG_LAST_CHARGE, "{time}", formatDuration(config.rules().rechargeMillis()));
             }
         }
         return broke ? Outcome.BROKE : Outcome.DISARMED;
@@ -298,41 +312,41 @@ public final class MobDisarmerService {
      * the charge state; the message is rate-limited, the state work is not.
      */
     public void handleAirUse(Player player, EquipmentSlot hand) {
-        MobDisarmerSettings config = settings;
-        if (!config.enabled() || hand != EquipmentSlot.HAND) {
+        if (hand != EquipmentSlot.HAND) {
             return;
         }
         PlayerInventory inventory = player.getInventory();
-        ItemStack tool = importLegacyIfPresent(player, inventory.getItemInMainHand(), config);
-        if (tool == null) {
+        ItemStack held = importLegacyIfPresent(player, inventory.getItemInMainHand());
+        if (held == null) {
             return;
         }
-        ItemRef ref = items.identify(tool).orElse(null);
-        if (ref == null || !ref.behaviorId().map(BEHAVIOR_ID::equals).orElse(false) || tool.getAmount() != 1) {
+        ItemRef ref = items.identify(held).orElse(null);
+        DisarmTool tool = toolFor(ref);
+        if (tool == null || held.getAmount() != 1) {
             return;
         }
         long now = clock.getAsLong();
-        int max = config.rules().maxCharges();
+        int max = tool.parameters().rules().maxCharges();
         DisarmerCharges stored = DisarmerCharges.fromState(ref.stateData(), max);
         DisarmerCharges charges = stored.settle(now, max);
         if (!charges.equals(stored)) {
-            if (items.updateState(tool, charges.toState())) {
-                inventory.setItemInMainHand(tool);
-                syncAppearance(inventory, tool, ref.appearance(), charges, config);
+            if (items.updateState(held, charges.toState())) {
+                inventory.setItemInMainHand(held);
+                syncAppearance(inventory, held, ref.appearance(), charges, tool);
             }
         }
-        if (!canSendStatus(player.getUniqueId(), now, config)) {
+        if (!tool.admitStatus(player.getUniqueId(), now)) {
             return;
         }
         DisarmerCharges.Availability availability = charges.availability(now);
         if (availability.kind() == DisarmerCharges.Availability.Kind.BROKEN) {
-            notifier.send(player, Messages.TOOL_DISARMER_BROKEN);
-        } else if (player.hasPermission(PERMISSION_BYPASS)) {
-            notifier.send(player, Messages.TOOL_DISARMER_STATUS_BYPASS);
+            send(player, tool, DisarmBehaviorType.MSG_BROKEN);
+        } else if (player.hasPermission(tool.bypassPermission())) {
+            send(player, tool, DisarmBehaviorType.MSG_STATUS_BYPASS);
         } else if (availability.kind() == DisarmerCharges.Availability.Kind.RECHARGING) {
-            notifier.send(player, Messages.TOOL_DISARMER_RECHARGING, "{time}", formatDuration(availability.remainingMillis()));
+            send(player, tool, DisarmBehaviorType.MSG_RECHARGING, "{time}", formatDuration(availability.remainingMillis()));
         } else {
-            notifier.send(player, Messages.TOOL_DISARMER_STATUS,
+            send(player, tool, DisarmBehaviorType.MSG_STATUS,
                     "{charges}", Integer.toString(charges.charges()), "{max}", Integer.toString(max));
         }
     }
@@ -344,14 +358,15 @@ public final class MobDisarmerService {
      * open); nothing polls. Returns the stack to put back, or empty when nothing changed.
      */
     public Optional<ItemStack> refreshVisual(@Nullable ItemStack stack) {
-        MobDisarmerSettings config = settings;
-        if (!config.enabled() || isEmpty(stack) || stack.getAmount() != 1) {
+        if (isEmpty(stack) || stack.getAmount() != 1) {
             return Optional.empty();
         }
         ItemRef ref = items.identify(stack).orElse(null);
-        if (ref == null || !ref.behaviorId().map(BEHAVIOR_ID::equals).orElse(false)) {
+        DisarmTool tool = toolFor(ref);
+        if (tool == null) {
             return Optional.empty();
         }
+        DisarmParameters config = tool.parameters();
         int max = config.rules().maxCharges();
         DisarmerCharges stored = DisarmerCharges.fromState(ref.stateData(), max);
         DisarmerCharges settled = stored.settle(clock.getAsLong(), max);
@@ -372,7 +387,7 @@ public final class MobDisarmerService {
                 result = swapped.itemStack().orElseThrow();
                 changed = true;
             } else {
-                warnOnce("variant:" + variant.get(), "Mob Disarmer charge variant " + variant.get()
+                warnOnce("variant:" + variant.get(), tool.name() + " charge variant " + variant.get()
                         + " is unavailable; keeping " + ref.appearance() + " (" + swapped.diagnosticMessage() + ")");
             }
         }
@@ -403,26 +418,18 @@ public final class MobDisarmerService {
     }
 
     public void forget(UUID playerId) {
-        clickGuard.forget(playerId);
-        lastStatus.remove(playerId);
-    }
-
-    private boolean canSendStatus(UUID playerId, long now, MobDisarmerSettings config) {
-        Long last = lastStatus.get(playerId);
-        if (last != null && now - last < config.statusCooldownMillis()) {
-            return false;
-        }
-        lastStatus.put(playerId, now);
-        return true;
+        tools.values().forEach(tool -> tool.forget(playerId));
     }
 
     /**
-     * Converts a pre-recode Mob Disarmer in the main hand into an Allium item carrying the
-     * imported charges. Returns the stack now in hand, or {@code null} when a legacy tool could
-     * not be converted (it is then left untouched and never acts with default charges).
+     * Converts a pre-recode Mob Disarmer in the main hand into an {@code allium:mob_disarmer}
+     * item carrying the imported charges, using that definition's settings. Returns the stack now
+     * in hand, or {@code null} when a legacy tool could not be converted (it is then left
+     * untouched and never acts with default charges), including when the Mob Disarmer
+     * definition is not loaded.
      */
     @Nullable
-    ItemStack importLegacyIfPresent(Player player, @Nullable ItemStack stack, MobDisarmerSettings config) {
+    ItemStack importLegacyIfPresent(Player player, @Nullable ItemStack stack) {
         if (stack == null || stack.getType() == Material.AIR || stack.getType().isAir()) {
             return null;
         }
@@ -432,6 +439,13 @@ public final class MobDisarmerService {
                 || !LegacyDisarmerImport.isLegacyVariant(read(pdc, LEGACY_ITEM_ID, PersistentDataType.STRING))) {
             return stack;
         }
+        DisarmTool target = tools.get(MOB_DISARMER_ID);
+        if (target == null) {
+            warnOnce("legacy:unloaded", "Legacy Mob Disarmer held by " + player.getName()
+                    + " was left unchanged: the " + MOB_DISARMER_ID + " definition (tools/mob_disarmer.yml) is not loaded.");
+            return null;
+        }
+        DisarmParameters config = target.parameters();
         DisarmerCharges imported = LegacyDisarmerImport.importCharges(
                 read(pdc, LEGACY_CHARGES, PersistentDataType.INTEGER),
                 read(pdc, LEGACY_RECHARGE_AT, PersistentDataType.LONG),
@@ -439,11 +453,11 @@ public final class MobDisarmerService {
                 read(pdc, LEGACY_USES, PersistentDataType.LONG),
                 config.rules().maxCharges());
         ProviderKey nativeAppearance = items.identify(stack).map(ItemRef::appearance).orElse(null);
-        ProviderKey appearance = config.appearance();
+        ProviderKey appearance = target.definition().appearance();
         if (nativeAppearance != null && !nativeAppearance.isVanilla()) {
             appearance = config.variantFor(nativeAppearance, imported).orElse(nativeAppearance);
         }
-        ResolutionResult created = items.create(new ItemRef(appearance, BEHAVIOR_ID, 1, imported.toState()));
+        ResolutionResult created = items.create(new ItemRef(appearance, MOB_DISARMER_ID, 1, imported.toState()));
         if (!created.isResolved() || stack.getAmount() != 1) {
             warnOnce("legacy:" + appearance, "Legacy Mob Disarmer held by " + player.getName()
                     + " was left unchanged: " + (stack.getAmount() != 1 ? "stacked legacy tools are not split"
@@ -458,16 +472,16 @@ public final class MobDisarmerService {
         return player.getInventory().getItemInMainHand();
     }
 
-    private void syncAppearance(PlayerInventory inventory, ItemStack tool, ProviderKey current, DisarmerCharges state, MobDisarmerSettings config) {
-        Optional<ProviderKey> variant = config.variantFor(current, state);
+    private void syncAppearance(PlayerInventory inventory, ItemStack stack, ProviderKey current, DisarmerCharges state, DisarmTool tool) {
+        Optional<ProviderKey> variant = tool.parameters().variantFor(current, state);
         if (variant.isEmpty() || variant.get().equals(current)) {
             return;
         }
-        ResolutionResult swapped = items.swapOrRefreshAppearance(tool, variant.get());
+        ResolutionResult swapped = items.swapOrRefreshAppearance(stack, variant.get());
         if (swapped.isResolved()) {
             inventory.setItemInMainHand(swapped.itemStack().orElseThrow());
         } else {
-            warnOnce("variant:" + variant.get(), "Mob Disarmer charge variant " + variant.get()
+            warnOnce("variant:" + variant.get(), tool.name() + " charge variant " + variant.get()
                     + " is unavailable; keeping " + current + " (" + swapped.diagnosticMessage() + ")");
         }
     }
@@ -617,14 +631,14 @@ public final class MobDisarmerService {
                 pdc == null ? null : pdc.get(ItemService.KEY_SIGNATURE, PersistentDataType.STRING));
     }
 
-    private void playSound(Entity at, String sound) {
-        if (sound.isEmpty() || at.getWorld() == null) {
+    private void playSound(Entity at, ToolSound sound) {
+        if (sound.isNone() || at.getWorld() == null) {
             return;
         }
         try {
-            at.getWorld().playSound(at.getLocation(), sound, 1.0F, 1.2F);
+            at.getWorld().playSound(at.getLocation(), sound.sound(), sound.volume(), sound.pitch());
         } catch (RuntimeException e) {
-            warnOnce("sound:" + sound, "Mob Disarmer sound '" + sound + "' could not play: " + e.getMessage());
+            warnOnce("sound:" + sound.sound(), "Tool sound '" + sound.sound() + "' could not play: " + e.getMessage());
         }
     }
 

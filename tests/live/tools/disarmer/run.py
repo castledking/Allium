@@ -156,13 +156,62 @@ def write_lane():
     shutil.copy2(a.allium_jar, plugins / 'Allium.jar')
     shutil.copy2(run / 'fixture/DisarmerGate.jar', plugins / 'DisarmerGate.jar')
     allium_config = (REPO / 'src/main/resources/config.yml').read_text()
-    if 'nexo' in providers:
-        variants = ''.join(f"\n        '{k}': {v}" for k, v in NEXO_VARIANTS.items())
-        allium_config = allium_config.replace('    charge-variants: {}\n', '    charge-variants:\n      gate:' + variants + '\n')
-        if 'nexo:mob_disarmer_2-3' not in allium_config:
-            raise RuntimeError('charge-variant injection failed')
-    (plugins / 'Allium').mkdir()
+    (plugins / 'Allium').mkdir(parents=True, exist_ok=True)
     (plugins / 'Allium/config.yml').write_text(allium_config)
+    tools_dir = plugins / 'Allium/tools'
+    tools_dir.mkdir(exist_ok=True)
+    disarmer_yaml = (REPO / 'src/main/resources/tools/mob_disarmer.yml').read_text()
+    if 'nexo' in providers:
+        variants = ''.join(f"\n      '{k}': {v}" for k, v in NEXO_VARIANTS.items())
+        disarmer_yaml = disarmer_yaml.replace('  charge-variants: {}', '  charge-variants:\n    gate:' + variants)
+        if 'nexo:mob_disarmer_2-3' not in disarmer_yaml:
+            raise RuntimeError('charge-variant injection failed')
+    (tools_dir / 'mob_disarmer.yml').write_text(disarmer_yaml)
+
+    # Second definition to verify multiple definitions can bind to allium:disarm
+    (tools_dir / 'wand_disarmer.yml').write_text('''schema: 1
+id: allium:wand_disarmer
+name: Disarm Wand
+behavior: allium:disarm
+enabled: true
+item:
+  material: stick
+  name: Disarm Wand
+appearance:
+  default: allium:wand_disarmer
+charges:
+  max: 5
+  recharge-seconds: 60
+  break-chance:
+    preset: none
+targets:
+  radius: 10.0
+  excluded-mobs: []
+  exclude-npcs: false
+disarm:
+  drop-rule: always
+  pickup-block-seconds: 60
+timing:
+  click-guard-millis: 100
+  status-cooldown-millis: 500
+sounds:
+  disarm:
+    sound: minecraft:item.shield.break
+    volume: 1.0
+    pitch: 1.0
+permissions:
+  use: allium.wanddisarmer.use
+  bypass: allium.wanddisarmer.bypass
+messages: {}
+''')
+
+    # Invalid tool definition to verify invalid definition rejection without half-loading
+    (tools_dir / 'invalid_tool.yml').write_text('''schema: 99
+id: allium:invalid_tool
+name: Invalid Tool
+behavior: allium:disarm
+enabled: true
+''')
     for provider in providers:
         shutil.copy2(PROVIDER_JARS[provider], plugins / (provider + '.jar'))
     if a.griefprevention:
@@ -266,6 +315,8 @@ def boot(label):
     wait(lambda: any('Done (' in x for x in logs[start:]), 'server Done', 300)
     require(any('S06A-GATE READY' in x for x in logs[start:]), label + ' fixture enabled')
     require(any('Mob Disarmer enabled' in x for x in logs[start:]), label + ' Allium Mob Disarmer enabled')
+    require(any('Disarm Wand enabled' in x for x in logs[start:]), label + ' second disarmer definition enabled')
+    require(any('Tool definition tools/invalid_tool.yml is invalid' in x for x in logs[start:]), label + ' invalid definition rejected without half-loading')
     require(any('Fault injection is enabled' in x for x in logs[start:]), label + ' Allium logged the fault-injection warning')
     if a.griefprevention:
         require(any('Protection hook enabled: GriefPrevention' in x for x in logs[start:]), label + ' GriefPrevention hook loaded')

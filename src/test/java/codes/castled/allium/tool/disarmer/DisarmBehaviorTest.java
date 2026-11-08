@@ -5,11 +5,14 @@ import codes.castled.allium.item.ItemHmacSigner;
 import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.item.ItemService;
 import codes.castled.allium.item.MockItemStacks;
+import codes.castled.allium.item.ProviderKey;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.protection.AlliumProtectionCheckEvent;
 import codes.castled.allium.protection.ProtectionDecision;
 import codes.castled.allium.protection.ProtectionHook;
 import codes.castled.allium.protection.ProtectionService;
+import codes.castled.allium.tool.definition.ToolDefinition;
+import codes.castled.allium.tool.definition.ToolSound;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -32,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -46,12 +50,11 @@ import java.util.random.RandomGenerator;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyFloat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @SuppressWarnings("deprecation")
-class MobDisarmerServiceTest {
+class DisarmBehaviorTest {
 
     private static final DisarmerRules RULES = new DisarmerRules(3, 120_000L, 0.0D, 0.0D);
 
@@ -67,13 +70,17 @@ class MobDisarmerServiceTest {
     private World world;
     private Player player;
     private AtomicReference<ItemStack> mainHand;
-    private MobDisarmerService service;
+    private DisarmBehavior service;
 
     @BeforeEach
     void setUp() {
         items = new ItemService(MockItemStacks::create, ItemHmacSigner.randomEphemeral(), msg -> {});
         items.registerAlliumItem(new AlliumItemDefinition(
-                "mob_disarmer", Material.GOLDEN_HOE, MobDisarmerService.BEHAVIOR_ID, false, 1002, "Mob Disarmer", Map.of(), true));
+                "mob_disarmer", Material.GOLDEN_HOE, DisarmBehavior.MOB_DISARMER_ID, false, 1002, "Mob Disarmer", Map.of(), true));
+        items.registerSignedBehavior(DisarmBehavior.MOB_DISARMER_ID);
+        items.setPreferredAppearanceForBehavior(DisarmBehavior.MOB_DISARMER_ID, ProviderKey.allium("mob_disarmer"));
+        items.bindAppearanceToBehavior(ProviderKey.allium("mob_disarmer"), DisarmBehavior.MOB_DISARMER_ID);
+
         clock = new AtomicLong(1_000_000L);
         nanos = new AtomicLong(0L);
         sent = new ArrayList<>();
@@ -102,14 +109,53 @@ class MobDisarmerServiceTest {
         when(player.getUniqueId()).thenReturn(UUID.randomUUID());
         when(player.getName()).thenReturn("GateBot");
         when(player.isOnline()).thenReturn(true);
-        when(player.hasPermission(MobDisarmerService.PERMISSION_USE)).thenReturn(true);
+        when(player.hasPermission("allium.mobdisarmer.use")).thenReturn(true);
         when(player.getLocation()).thenAnswer(inv -> new Location(world, 0, 64, 0));
 
-        service = newService(settings(RULES));
+        service = newService(RULES, DisarmDropRule.SLOT_CHANCE);
         mainHand.set(newDisarmer());
     }
 
-    private MobDisarmerService newService(MobDisarmerSettings settings) {
+    private DisarmTool createTool(String id, DisarmerRules rules, DisarmDropRule dropRule, double radius) {
+        DisarmParameters params = new DisarmParameters(
+                rules,
+                List.of(),
+                radius,
+                new DisarmTargetPolicy(DisarmTargetPolicy.DEFAULT_EXCLUDED_TYPES, true),
+                dropRule,
+                120_000L,
+                200L,
+                1_000L
+        );
+        Map<String, String> perms = Map.of(
+                DisarmBehaviorType.PERMISSION_USE, "allium.mobdisarmer.use",
+                DisarmBehaviorType.PERMISSION_BYPASS, "allium.mobdisarmer.bypass"
+        );
+        Map<String, String> msgs = new DisarmBehaviorType().messageSlots();
+        Map<String, ToolSound> sounds = Map.of(DisarmBehaviorType.SOUND_DISARM, DisarmBehaviorType.DEFAULT_DISARM_SOUND);
+        String localId = id.substring(id.indexOf(':') + 1);
+        ToolDefinition def = new ToolDefinition(
+                "tools/" + localId + ".yml",
+                id,
+                "Mob Disarmer",
+                DisarmBehaviorType.ID,
+                true,
+                null,
+                ProviderKey.allium(localId),
+                List.of(),
+                perms,
+                msgs,
+                sounds,
+                params
+        );
+        return new DisarmTool(def, nanos::get);
+    }
+
+    private DisarmBehavior newService(DisarmerRules rules, DisarmDropRule dropRule) {
+        return newService(List.of(createTool(DisarmBehavior.MOB_DISARMER_ID, rules, dropRule, 6.0D)));
+    }
+
+    private DisarmBehavior newService(Collection<DisarmTool> tools) {
         ProtectionHook hook = new ProtectionHook() {
             public String name() { return "TestClaims"; }
             public ProtectionDecision checkEntityInteraction(Player p, org.bukkit.entity.Entity target, org.bukkit.event.Event cause) {
@@ -130,31 +176,25 @@ class MobDisarmerServiceTest {
             public double nextDouble() { return 0.5D; }
             public float nextFloat() { return 0.5F; }
         };
-        return new MobDisarmerService(items, protection, (p, m, r) -> sent.add(m), diagnostics::add,
-                clock::get, nanos::get, random, settings);
-    }
-
-    private static MobDisarmerSettings settings(DisarmerRules rules) {
-        MobDisarmerSettings d = MobDisarmerSettings.defaults();
-        return new MobDisarmerSettings(true, d.appearance(), List.of(), List.of(), 6.0D, rules, DisarmDropRule.SLOT_CHANCE, d.targetPolicy(),
-                120_000L, 200L, 1_000L, "", List.of());
+        return new DisarmBehavior(items, protection, (p, m, r) -> sent.add(m.fallback()), diagnostics::add,
+                clock::get, random, tools);
     }
 
     private ItemStack newDisarmer() {
-        return items.createForBehavior(MobDisarmerService.BEHAVIOR_ID, 1).itemStack().orElseThrow();
+        return items.createForBehavior(DisarmBehavior.MOB_DISARMER_ID, 1).itemStack().orElseThrow();
     }
 
     private DisarmerCharges toolState() {
         ItemRef ref = items.identify(mainHand.get()).orElseThrow();
-        assertEquals(Optional.of(MobDisarmerService.BEHAVIOR_ID), ref.behaviorId(), "tool must still verify");
+        assertEquals(Optional.of(DisarmBehavior.MOB_DISARMER_ID), ref.behaviorId(), "tool must still verify");
         return DisarmerCharges.fromState(ref.stateData(), 3);
     }
 
-    private MobDisarmerService.Outcome click(Object target, EquipmentSlot hand, TestEvent event) {
+    private DisarmBehavior.Outcome click(Object target, EquipmentSlot hand, TestEvent event) {
         return service.handleEntityInteraction(player, (org.bukkit.entity.Entity) target, hand, event, null);
     }
 
-    private MobDisarmerService.Outcome click(Object target) {
+    private DisarmBehavior.Outcome click(Object target) {
         return click(target, EquipmentSlot.HAND, new TestEvent());
     }
 
@@ -174,12 +214,12 @@ class MobDisarmerServiceTest {
         });
         TestEvent event = new TestEvent();
 
-        assertEquals(MobDisarmerService.Outcome.DISARMED, click(kit.mob, EquipmentSlot.HAND, event));
+        assertEquals(DisarmBehavior.Outcome.DISARMED, click(kit.mob, EquipmentSlot.HAND, event));
 
         assertTrue(event.cancelled);
         assertTrue(kit.items.isEmpty());
         assertEquals(List.of(Material.IRON_SWORD, Material.IRON_CHESTPLATE), drops.stream().map(ItemStack::getType).toList());
-        for (EquipmentSlot slot : MobDisarmerService.DISARM_SLOTS) {
+        for (EquipmentSlot slot : DisarmBehavior.DISARM_SLOTS) {
             assertEquals(0.0F, kit.chances.getOrDefault(slot, 0.0F), slot.name());
         }
         assertEquals(new DisarmerCharges(2, 0L, false, 1L), toolState());
@@ -196,7 +236,7 @@ class MobDisarmerServiceTest {
     void emptyTargetsSpendNothingAndLetTheClickThrough() {
         Kit kit = zombie();
         TestEvent event = new TestEvent();
-        assertEquals(MobDisarmerService.Outcome.NOTHING_TO_REMOVE, click(kit.mob, EquipmentSlot.HAND, event));
+        assertEquals(DisarmBehavior.Outcome.NOTHING_TO_REMOVE, click(kit.mob, EquipmentSlot.HAND, event));
         assertFalse(event.cancelled);
         assertEquals(DisarmerCharges.full(3), toolState());
         assertTrue(drops.isEmpty());
@@ -209,13 +249,13 @@ class MobDisarmerServiceTest {
         kit.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 1.0F);
 
         hookDecision.set(ProtectionDecision.deny("TestClaims", "Not your claim"));
-        assertEquals(MobDisarmerService.Outcome.DENIED, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.DENIED, click(kit.mob));
         assertEquals(List.of(Messages.TOOL_DISARMER_PROTECTED_REASON), sent);
 
         hookDecision.set(ProtectionDecision.allow());
         cancelCheckEvent.set(true);
         nanos.addAndGet(1_000_000_000L);
-        assertEquals(MobDisarmerService.Outcome.DENIED, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.DENIED, click(kit.mob));
 
         assertEquals(Material.IRON_SWORD, kit.items.get(EquipmentSlot.HAND).getType());
         assertEquals(1.0F, kit.chances.get(EquipmentSlot.HAND));
@@ -231,7 +271,7 @@ class MobDisarmerServiceTest {
         ItemStack other = newDisarmer();
         hookSideEffect.set(() -> mainHand.set(other));
 
-        assertEquals(MobDisarmerService.Outcome.STALE, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.STALE, click(kit.mob));
         assertNotNull(kit.items.get(EquipmentSlot.HAND));
         assertEquals(DisarmerCharges.full(3), DisarmerCharges.fromState(items.identify(original).orElseThrow().stateData(), 3));
         assertEquals(DisarmerCharges.full(3), toolState());
@@ -240,7 +280,7 @@ class MobDisarmerServiceTest {
         mainHand.set(original);
         hookSideEffect.set(() -> items.updateState(original, Map.of("charges", "1")));
         nanos.addAndGet(1_000_000_000L);
-        assertEquals(MobDisarmerService.Outcome.STALE, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.STALE, click(kit.mob));
         assertNotNull(kit.items.get(EquipmentSlot.HAND));
         assertEquals(1, toolState().charges());
     }
@@ -249,19 +289,19 @@ class MobDisarmerServiceTest {
     void offHandEventsNeverActAndDuplicateClicksInTheGuardWindowSpendNothing() {
         Kit kit = zombie();
         kit.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 1.0F);
-        assertEquals(MobDisarmerService.Outcome.IGNORED, click(kit.mob, EquipmentSlot.OFF_HAND, new TestEvent()));
+        assertEquals(DisarmBehavior.Outcome.IGNORED, click(kit.mob, EquipmentSlot.OFF_HAND, new TestEvent()));
         assertNotNull(kit.items.get(EquipmentSlot.HAND));
 
-        assertEquals(MobDisarmerService.Outcome.DISARMED, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.DISARMED, click(kit.mob));
         kit.equip(EquipmentSlot.HAND, Material.GOLDEN_SWORD, 1.0F);
         TestEvent duplicate = new TestEvent();
-        assertEquals(MobDisarmerService.Outcome.GUARDED, click(kit.mob, EquipmentSlot.HAND, duplicate));
+        assertEquals(DisarmBehavior.Outcome.GUARDED, click(kit.mob, EquipmentSlot.HAND, duplicate));
         assertTrue(duplicate.cancelled);
         assertEquals(Material.GOLDEN_SWORD, kit.items.get(EquipmentSlot.HAND).getType());
         assertEquals(2, toolState().charges());
 
         nanos.addAndGet(200_000_000L);
-        assertEquals(MobDisarmerService.Outcome.DISARMED, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.DISARMED, click(kit.mob));
         assertEquals(1, toolState().charges());
     }
 
@@ -271,7 +311,7 @@ class MobDisarmerServiceTest {
         for (int expected = 2; expected >= 0; expected--) {
             kit.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 0.0F);
             nanos.addAndGet(1_000_000_000L);
-            assertEquals(MobDisarmerService.Outcome.DISARMED, click(kit.mob));
+            assertEquals(DisarmBehavior.Outcome.DISARMED, click(kit.mob));
             assertEquals(expected, toolState().charges());
         }
         assertEquals(clock.get() + 120_000L, toolState().rechargeAt());
@@ -280,13 +320,13 @@ class MobDisarmerServiceTest {
         kit.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 0.0F);
         nanos.addAndGet(1_000_000_000L);
         clock.addAndGet(119_999L);
-        assertEquals(MobDisarmerService.Outcome.REFUSED, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.REFUSED, click(kit.mob));
         assertNotNull(kit.items.get(EquipmentSlot.HAND));
         assertEquals(0, toolState().charges());
 
         clock.addAndGet(1L);
         nanos.addAndGet(1_000_000_000L);
-        assertEquals(MobDisarmerService.Outcome.DISARMED, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.DISARMED, click(kit.mob));
         assertEquals(new DisarmerCharges(2, 0L, false, 4L), toolState());
     }
 
@@ -295,12 +335,12 @@ class MobDisarmerServiceTest {
         ItemService spy = spy(items);
         doReturn(false).when(spy).updateState(any(), any());
         items = spy;
-        service = newService(settings(RULES));
+        service = newService(RULES, DisarmDropRule.SLOT_CHANCE);
         Kit kit = zombie();
         kit.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 0.7F);
         kit.equip(EquipmentSlot.LEGS, Material.IRON_LEGGINGS, 1.0F);
 
-        assertEquals(MobDisarmerService.Outcome.WRITE_FAILED, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.WRITE_FAILED, click(kit.mob));
         assertEquals(Material.IRON_SWORD, kit.items.get(EquipmentSlot.HAND).getType());
         assertEquals(Material.IRON_LEGGINGS, kit.items.get(EquipmentSlot.LEGS).getType());
         assertEquals(0.7F, kit.chances.get(EquipmentSlot.HAND));
@@ -311,27 +351,25 @@ class MobDisarmerServiceTest {
 
     @Test
     void alwaysRuleDropsEveryPieceAndVillagerGearIsGuaranteedUnderSlotChance() {
-        MobDisarmerSettings d = settings(RULES);
-        service = newService(new MobDisarmerSettings(true, d.appearance(), List.of(), List.of(), 6.0D, RULES,
-                DisarmDropRule.ALWAYS, d.targetPolicy(), 120_000L, 200L, 1_000L, "", List.of()));
+        service = newService(RULES, DisarmDropRule.ALWAYS);
         Kit zombie = zombie();
         zombie.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 0.0F);
         zombie.equip(EquipmentSlot.FEET, Material.IRON_BOOTS, 0.4F);
-        assertEquals(MobDisarmerService.Outcome.DISARMED, click(zombie.mob));
+        assertEquals(DisarmBehavior.Outcome.DISARMED, click(zombie.mob));
         assertEquals(List.of(Material.IRON_SWORD, Material.IRON_BOOTS), drops.stream().map(ItemStack::getType).toList());
         assertEquals(0.0F, zombie.chances.get(EquipmentSlot.FEET));
 
         // Default slot-chance: the 0.5 roll keeps a 0.4 zombie piece, but villager gear always drops.
         drops.clear();
-        service = newService(settings(RULES));
+        service = newService(RULES, DisarmDropRule.SLOT_CHANCE);
         Kit sameRoll = zombie();
         sameRoll.equip(EquipmentSlot.FEET, Material.IRON_BOOTS, 0.4F);
-        assertEquals(MobDisarmerService.Outcome.DISARMED, click(sameRoll.mob));
+        assertEquals(DisarmBehavior.Outcome.DISARMED, click(sameRoll.mob));
         assertTrue(drops.isEmpty());
         nanos.addAndGet(1_000_000_000L);
         Kit villager = kit(mock(org.bukkit.entity.Villager.class), EntityType.VILLAGER, new Location(world, 2, 64, 0));
         villager.equip(EquipmentSlot.HAND, Material.EMERALD, 0.0F);
-        assertEquals(MobDisarmerService.Outcome.DISARMED, click(villager.mob));
+        assertEquals(DisarmBehavior.Outcome.DISARMED, click(villager.mob));
         assertEquals(List.of(Material.EMERALD), drops.stream().map(ItemStack::getType).toList());
         assertEquals(new DisarmerCharges(0, clock.get() + 120_000L, false, 3L), toolState());
     }
@@ -382,18 +420,18 @@ class MobDisarmerServiceTest {
     void bypassRecordsUseWithoutSpendingAndBreakingSpendsTheChargeOnce() {
         Kit kit = zombie();
         kit.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 0.0F);
-        when(player.hasPermission(MobDisarmerService.PERMISSION_BYPASS)).thenReturn(true);
-        assertEquals(MobDisarmerService.Outcome.DISARMED, click(kit.mob));
+        when(player.hasPermission("allium.mobdisarmer.bypass")).thenReturn(true);
+        assertEquals(DisarmBehavior.Outcome.DISARMED, click(kit.mob));
         assertEquals(new DisarmerCharges(3, 0L, false, 1L), toolState());
 
-        when(player.hasPermission(MobDisarmerService.PERMISSION_BYPASS)).thenReturn(false);
-        service = newService(settings(new DisarmerRules(3, 120_000L, 0.6D, 0.6D)));
+        when(player.hasPermission("allium.mobdisarmer.bypass")).thenReturn(false);
+        service = newService(new DisarmerRules(3, 120_000L, 0.6D, 0.6D), DisarmDropRule.SLOT_CHANCE);
         kit.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 0.0F);
-        assertEquals(MobDisarmerService.Outcome.BROKE, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.BROKE, click(kit.mob));
         assertEquals(new DisarmerCharges(0, 0L, true, 2L), toolState());
         kit.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 0.0F);
         nanos.addAndGet(1_000_000_000L);
-        assertEquals(MobDisarmerService.Outcome.REFUSED, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.REFUSED, click(kit.mob));
         assertNotNull(kit.items.get(EquipmentSlot.HAND));
     }
 
@@ -402,26 +440,26 @@ class MobDisarmerServiceTest {
         Player other = mock(Player.class);
         when(other.getType()).thenReturn(EntityType.PLAYER);
         TestEvent playerEvent = new TestEvent();
-        assertEquals(MobDisarmerService.Outcome.REFUSED, click(other, EquipmentSlot.HAND, playerEvent));
+        assertEquals(DisarmBehavior.Outcome.REFUSED, click(other, EquipmentSlot.HAND, playerEvent));
         assertTrue(playerEvent.cancelled);
 
         ArmorStand stand = mock(ArmorStand.class);
         when(stand.getType()).thenReturn(EntityType.ARMOR_STAND);
-        assertEquals(MobDisarmerService.Outcome.IGNORED, click(stand));
+        assertEquals(DisarmBehavior.Outcome.IGNORED, click(stand));
 
         Kit dragon = kit(mock(EnderDragon.class), EntityType.ENDER_DRAGON, new Location(world, 1, 64, 0));
         dragon.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 1.0F);
-        assertEquals(MobDisarmerService.Outcome.REFUSED, click(dragon.mob));
+        assertEquals(DisarmBehavior.Outcome.REFUSED, click(dragon.mob));
         assertNotNull(dragon.items.get(EquipmentSlot.HAND));
 
         Kit far = kit(mock(Zombie.class), EntityType.ZOMBIE, new Location(world, 7, 64, 0));
         far.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 1.0F);
-        assertEquals(MobDisarmerService.Outcome.REFUSED, click(far.mob));
+        assertEquals(DisarmBehavior.Outcome.REFUSED, click(far.mob));
 
         Kit near = zombie();
         near.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 1.0F);
         mainHand.get().setAmount(2);
-        assertEquals(MobDisarmerService.Outcome.REFUSED, click(near.mob));
+        assertEquals(DisarmBehavior.Outcome.REFUSED, click(near.mob));
         mainHand.get().setAmount(1);
         assertEquals(DisarmerCharges.full(3), toolState());
         assertNotNull(near.items.get(EquipmentSlot.HAND));
@@ -432,10 +470,10 @@ class MobDisarmerServiceTest {
     void legacyToolsImportChargesTimestampAndUsesBeforeActing() {
         Map<NamespacedKey, Object> legacy = new HashMap<>();
         ItemStack old = MockItemStacks.create(Material.DIAMOND_SWORD, 1, legacy, new AtomicReference<>(), new AtomicReference<>());
-        legacy.put(MobDisarmerService.LEGACY_ITEM_ID, "mob_disarmer_0-3");
-        legacy.put(MobDisarmerService.LEGACY_CHARGES, 0);
-        legacy.put(MobDisarmerService.LEGACY_RECHARGE_AT, clock.get() + 5_000L);
-        legacy.put(MobDisarmerService.LEGACY_USES, 7L);
+        legacy.put(DisarmBehavior.LEGACY_ITEM_ID, "mob_disarmer_0-3");
+        legacy.put(DisarmBehavior.LEGACY_CHARGES, 0);
+        legacy.put(DisarmBehavior.LEGACY_RECHARGE_AT, clock.get() + 5_000L);
+        legacy.put(DisarmBehavior.LEGACY_USES, 7L);
         mainHand.set(old);
 
         service.handleAirUse(player, EquipmentSlot.HAND);
@@ -446,7 +484,7 @@ class MobDisarmerServiceTest {
         clock.addAndGet(5_000L);
         Kit kit = zombie();
         kit.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 0.0F);
-        assertEquals(MobDisarmerService.Outcome.DISARMED, click(kit.mob));
+        assertEquals(DisarmBehavior.Outcome.DISARMED, click(kit.mob));
         assertEquals(new DisarmerCharges(2, 0L, false, 8L), toolState());
     }
 
@@ -465,73 +503,90 @@ class MobDisarmerServiceTest {
         assertEquals(List.of(Messages.TOOL_DISARMER_RECHARGING, Messages.TOOL_DISARMER_STATUS), sent);
     }
 
-    private Kit zombie() {
-        return kit(mock(Zombie.class), EntityType.ZOMBIE, new Location(world, 2, 64, 0));
+    @Test
+    void multipleDefinitionsBindToSameBehaviorWithSeparateStateAndRadius() {
+        String wandId = "allium:wand_disarmer";
+        items.registerAlliumItem(new AlliumItemDefinition(
+                "wand_disarmer", Material.STICK, wandId, false, 2001, "Disarm Wand", Map.of(), true));
+        items.registerSignedBehavior(wandId);
+        items.setPreferredAppearanceForBehavior(wandId, ProviderKey.allium("wand_disarmer"));
+        items.bindAppearanceToBehavior(ProviderKey.allium("wand_disarmer"), wandId);
+
+        DisarmTool mobDisarmer = createTool(DisarmBehavior.MOB_DISARMER_ID, RULES, DisarmDropRule.SLOT_CHANCE, 6.0D);
+        DisarmTool disarmWand = createTool(wandId, new DisarmerRules(5, 60_000L, 0.0D, 0.0D), DisarmDropRule.ALWAYS, 10.0D);
+
+        service = newService(List.of(mobDisarmer, disarmWand));
+
+        // Mob at distance 8 (player at 0, mob at 8)
+        Kit farMob = kit(mock(Zombie.class), EntityType.ZOMBIE, new Location(world, 8, 64, 0));
+        farMob.equip(EquipmentSlot.HAND, Material.IRON_SWORD, 1.0F);
+
+        // Standard disarmer (radius 6.0) is too far
+        mainHand.set(newDisarmer());
+        assertEquals(DisarmBehavior.Outcome.REFUSED, click(farMob.mob));
+
+        // Wand disarmer (radius 10.0) reaches and disarms!
+        ItemStack wand = items.createForBehavior(wandId, 1).itemStack().orElseThrow();
+        mainHand.set(wand);
+        assertEquals(DisarmBehavior.Outcome.DISARMED, click(farMob.mob));
+        ItemRef ref = items.identify(mainHand.get()).orElseThrow();
+        assertEquals(Optional.of(wandId), ref.behaviorId());
+        DisarmerCharges wandCharges = DisarmerCharges.fromState(ref.stateData(), 5);
+        assertEquals(4, wandCharges.charges());
     }
 
-    private Kit kit(Mob mob, EntityType type, Location at) {
+    private static String pdcString(ItemStack item, NamespacedKey key) {
+        return item.getItemMeta().getPersistentDataContainer().get(key, PersistentDataType.STRING);
+    }
+
+    private Kit zombie() {
+        return kit(mock(Zombie.class), EntityType.ZOMBIE, new Location(world, 1, 64, 0));
+    }
+
+    private Kit kit(Mob mob, EntityType type, Location location) {
         Kit kit = new Kit(mob);
         when(mob.getType()).thenReturn(type);
         when(mob.isValid()).thenReturn(true);
+        when(mob.getLocation()).thenReturn(location);
         when(mob.getWorld()).thenReturn(world);
-        when(mob.getLocation()).thenAnswer(inv -> at.clone());
-        EntityEquipment equipment = mock(EntityEquipment.class);
-        when(mob.getEquipment()).thenReturn(equipment);
-        when(equipment.getItem(any(EquipmentSlot.class))).thenAnswer(inv -> kit.items.get((EquipmentSlot) inv.getArgument(0)));
+
+        EntityEquipment eq = mock(EntityEquipment.class);
+        when(mob.getEquipment()).thenReturn(eq);
+        when(eq.getItem(any(EquipmentSlot.class))).thenAnswer(inv -> kit.items.get(inv.getArgument(0)));
+        when(eq.getItemInMainHandDropChance()).thenAnswer(inv -> kit.chances.getOrDefault(EquipmentSlot.HAND, 0.0F));
+        when(eq.getItemInOffHandDropChance()).thenAnswer(inv -> kit.chances.getOrDefault(EquipmentSlot.OFF_HAND, 0.0F));
+        when(eq.getHelmetDropChance()).thenAnswer(inv -> kit.chances.getOrDefault(EquipmentSlot.HEAD, 0.0F));
+        when(eq.getChestplateDropChance()).thenAnswer(inv -> kit.chances.getOrDefault(EquipmentSlot.CHEST, 0.0F));
+        when(eq.getLeggingsDropChance()).thenAnswer(inv -> kit.chances.getOrDefault(EquipmentSlot.LEGS, 0.0F));
+        when(eq.getBootsDropChance()).thenAnswer(inv -> kit.chances.getOrDefault(EquipmentSlot.FEET, 0.0F));
+
         doAnswer(inv -> {
             EquipmentSlot slot = inv.getArgument(0);
             ItemStack stack = inv.getArgument(1);
-            if (stack == null) kit.items.remove(slot); else kit.items.put(slot, stack);
+            if (stack == null || stack.getType() == Material.AIR) {
+                kit.items.remove(slot);
+            } else {
+                kit.items.put(slot, stack);
+            }
             return null;
-        }).when(equipment).setItem(any(EquipmentSlot.class), any());
-        chance(equipment, kit, EquipmentSlot.HAND);
-        chance(equipment, kit, EquipmentSlot.OFF_HAND);
-        chance(equipment, kit, EquipmentSlot.HEAD);
-        chance(equipment, kit, EquipmentSlot.CHEST);
-        chance(equipment, kit, EquipmentSlot.LEGS);
-        chance(equipment, kit, EquipmentSlot.FEET);
+        }).when(eq).setItem(any(EquipmentSlot.class), any());
+
+        doAnswer(inv -> { kit.chances.put(EquipmentSlot.HAND, inv.getArgument(0)); return null; }).when(eq).setItemInMainHandDropChance(anyFloat());
+        doAnswer(inv -> { kit.chances.put(EquipmentSlot.OFF_HAND, inv.getArgument(0)); return null; }).when(eq).setItemInOffHandDropChance(anyFloat());
+        doAnswer(inv -> { kit.chances.put(EquipmentSlot.HEAD, inv.getArgument(0)); return null; }).when(eq).setHelmetDropChance(anyFloat());
+        doAnswer(inv -> { kit.chances.put(EquipmentSlot.CHEST, inv.getArgument(0)); return null; }).when(eq).setChestplateDropChance(anyFloat());
+        doAnswer(inv -> { kit.chances.put(EquipmentSlot.LEGS, inv.getArgument(0)); return null; }).when(eq).setLeggingsDropChance(anyFloat());
+        doAnswer(inv -> { kit.chances.put(EquipmentSlot.FEET, inv.getArgument(0)); return null; }).when(eq).setBootsDropChance(anyFloat());
+
         PersistentDataContainer pdc = mock(PersistentDataContainer.class);
+        when(pdc.get(any(), eq(PersistentDataType.LONG))).thenAnswer(inv -> kit.pickupBlocked.get() == 0L ? null : kit.pickupBlocked.get());
         doAnswer(inv -> {
             kit.pickupBlocked.set(inv.getArgument(2));
             return null;
-        }).when(pdc).set(any(NamespacedKey.class), any(), any());
+        }).when(pdc).set(any(), eq(PersistentDataType.LONG), any());
         when(mob.getPersistentDataContainer()).thenReturn(pdc);
+
         return kit;
-    }
-
-    private static void chance(EntityEquipment equipment, Kit kit, EquipmentSlot slot) {
-        java.util.function.Supplier<Float> get = () -> kit.chances.getOrDefault(slot, 0.0F);
-        switch (slot) {
-            case HAND -> {
-                when(equipment.getItemInMainHandDropChance()).thenAnswer(inv -> get.get());
-                doAnswer(inv -> kit.chances.put(slot, inv.getArgument(0))).when(equipment).setItemInMainHandDropChance(anyFloat());
-            }
-            case OFF_HAND -> {
-                when(equipment.getItemInOffHandDropChance()).thenAnswer(inv -> get.get());
-                doAnswer(inv -> kit.chances.put(slot, inv.getArgument(0))).when(equipment).setItemInOffHandDropChance(anyFloat());
-            }
-            case HEAD -> {
-                when(equipment.getHelmetDropChance()).thenAnswer(inv -> get.get());
-                doAnswer(inv -> kit.chances.put(slot, inv.getArgument(0))).when(equipment).setHelmetDropChance(anyFloat());
-            }
-            case CHEST -> {
-                when(equipment.getChestplateDropChance()).thenAnswer(inv -> get.get());
-                doAnswer(inv -> kit.chances.put(slot, inv.getArgument(0))).when(equipment).setChestplateDropChance(anyFloat());
-            }
-            case LEGS -> {
-                when(equipment.getLeggingsDropChance()).thenAnswer(inv -> get.get());
-                doAnswer(inv -> kit.chances.put(slot, inv.getArgument(0))).when(equipment).setLeggingsDropChance(anyFloat());
-            }
-            case FEET -> {
-                when(equipment.getBootsDropChance()).thenAnswer(inv -> get.get());
-                doAnswer(inv -> kit.chances.put(slot, inv.getArgument(0))).when(equipment).setBootsDropChance(anyFloat());
-            }
-            default -> { }
-        }
-    }
-
-    private static String pdcString(ItemStack stack, NamespacedKey key) {
-        return stack.getItemMeta().getPersistentDataContainer().get(key, PersistentDataType.STRING);
     }
 
     private static final class Kit {
@@ -544,21 +599,16 @@ class MobDisarmerServiceTest {
             this.mob = mob;
         }
 
-        void equip(EquipmentSlot slot, Material material, float chance) {
-            items.put(slot, MockItemStacks.create(material));
-            chances.put(slot, chance);
+        void equip(EquipmentSlot slot, Material material, float dropChance) {
+            ItemStack stack = MockItemStacks.create(material);
+            items.put(slot, stack);
+            chances.put(slot, dropChance);
         }
     }
 
     private static final class TestEvent implements Cancellable {
-        boolean cancelled;
-
-        public boolean isCancelled() {
-            return cancelled;
-        }
-
-        public void setCancelled(boolean cancel) {
-            cancelled = cancel;
-        }
+        private boolean cancelled;
+        public boolean isCancelled() { return cancelled; }
+        public void setCancelled(boolean cancel) { this.cancelled = cancel; }
     }
 }

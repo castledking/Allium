@@ -40,6 +40,26 @@ public final class MessageManager {
         }
     }
 
+    /** Sends the text and sound at a lang key; {@code send(s, LangMessage.of(m))} is {@code send(s, m)}. */
+    public void send(CommandSender sender, LangMessage message, String... replacements) {
+        if (message.key().equals(message.fallback().getKey())) {
+            send(sender, message.fallback(), replacements);
+            return;
+        }
+        String text = resolve(message, replacements);
+        if (!text.isEmpty()) {
+            FormattedText formatted = TextFormatter.parse(text);
+            TextSender.send(sender, formatted);
+        }
+
+        if (sender instanceof Player player) {
+            MessageSoundSpec spec = langManager.getSound(message.key());
+            if (spec != null) {
+                playSound(player, spec);
+            }
+        }
+    }
+
     public void sendByKey(CommandSender sender, String key, String... replacements) {
         Messages message = Messages.fromKey(key);
         if (message != null) {
@@ -69,6 +89,18 @@ public final class MessageManager {
 
     public String resolve(Messages message, String... replacements) {
         String text = langManager.get(message);
+        return formatResolved(text, replacements);
+    }
+
+    public String resolve(LangMessage message, String... replacements) {
+        if (message.key().equals(message.fallback().getKey())) {
+            return resolve(message.fallback(), replacements);
+        }
+        String text = langManager.get(message.key(), message.fallback().getDefault());
+        return formatResolved(text, replacements);
+    }
+
+    private String formatResolved(String text, String... replacements) {
         if (text == null) {
             return "";
         }

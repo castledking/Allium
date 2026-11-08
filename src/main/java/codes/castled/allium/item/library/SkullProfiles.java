@@ -1,6 +1,7 @@
 package codes.castled.allium.item.library;
 
 import codes.castled.allium.core.FaultInjection;
+import codes.castled.allium.scheduler.BoundedPools;
 import org.bukkit.entity.Player;
 import org.bukkit.profile.PlayerProfile;
 
@@ -96,6 +97,14 @@ public final class SkullProfiles implements AutoCloseable {
     public SkullProfiles(Function<String, Player> onlinePlayers, Function<String, PlayerProfile> nameOnly, Lookup lookup,
                          long timeoutMillis, long ttlMillis, int capacity, LongSupplier clock, int maxLookupsPerMinute,
                          java.util.function.Predicate<PlayerProfile> hasSkin) {
+        this(onlinePlayers, nameOnly, lookup, timeoutMillis, ttlMillis, capacity, clock, maxLookupsPerMinute, hasSkin,
+                BoundedPools.create(POOL_NAME, POOL_THREADS, POOL_QUEUE));
+    }
+
+    /** @param executor the bounded lookup pool (the plugin's comes from its {@code TaskScheduler}); closed with this */
+    public SkullProfiles(Function<String, Player> onlinePlayers, Function<String, PlayerProfile> nameOnly, Lookup lookup,
+                         long timeoutMillis, long ttlMillis, int capacity, LongSupplier clock, int maxLookupsPerMinute,
+                         java.util.function.Predicate<PlayerProfile> hasSkin, ThreadPoolExecutor executor) {
         this.maxLookupsPerMinute = maxLookupsPerMinute;
         this.hasSkin = Objects.requireNonNull(hasSkin, "hasSkin");
         this.onlinePlayers = Objects.requireNonNull(onlinePlayers, "onlinePlayers");
@@ -113,13 +122,12 @@ public final class SkullProfiles implements AutoCloseable {
                 return evict;
             }
         };
-        this.executor = new ThreadPoolExecutor(2, 2, 30L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32), runnable -> {
-            Thread thread = new Thread(runnable, "Allium-SkullLookup");
-            thread.setDaemon(true);
-            return thread;
-        }, new ThreadPoolExecutor.AbortPolicy());
-        this.executor.allowCoreThreadTimeOut(true);
+        this.executor = Objects.requireNonNull(executor, "executor");
     }
+
+    public static final String POOL_NAME = "Allium-SkullLookup";
+    public static final int POOL_THREADS = 2;
+    public static final int POOL_QUEUE = 32;
 
     public CompletableFuture<Resolved> resolve(String rawName) {
         String name = rawName.trim();
@@ -229,8 +237,8 @@ public final class SkullProfiles implements AutoCloseable {
             return new CompletableFuture<>();
         }
         if (FaultInjection.trip(FaultInjection.SKULL_LOOKUP_SLOW)) {
-            Executor delayed = CompletableFuture.delayedExecutor(SLOW_FAULT_MILLIS, TimeUnit.MILLISECONDS);
-            return CompletableFuture.supplyAsync(() -> nameOnly.apply(name), delayed);
+            // Answers after the delay; completing a future needs no task thread.
+            return new CompletableFuture<PlayerProfile>().completeOnTimeout(nameOnly.apply(name), SLOW_FAULT_MILLIS, TimeUnit.MILLISECONDS);
         }
         return lookup.lookup(name);
     }

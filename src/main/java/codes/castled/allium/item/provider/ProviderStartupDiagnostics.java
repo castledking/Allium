@@ -8,7 +8,7 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
-import org.bukkit.scheduler.BukkitRunnable;
+import codes.castled.allium.scheduler.TaskScheduler;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,14 +34,10 @@ public final class ProviderStartupDiagnostics {
         this.warningLogger = warningLogger;
     }
 
-    public void install(Plugin host) {
+    public void install(TaskScheduler scheduler) {
         // Definitions/aliases registered during onEnable must be visible. CE can finish
         // asynchronously much later; a single next-tick check would miss its definitions.
-        new BukkitRunnable() {
-            @Override public void run() {
-                if (inspect()) cancel();
-            }
-        }.runTaskTimer(host, 1L, 20L);
+        scheduler.repeatOnServer(() -> !inspect(), TaskScheduler.MILLIS_PER_TICK, 1_000L);
     }
 
     /** @return whether all startup inspections are complete; LOADING providers stay pending. */

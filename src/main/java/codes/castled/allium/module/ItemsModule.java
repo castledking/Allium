@@ -55,11 +55,12 @@ public final class ItemsModule extends AbstractModule {
         int size = give == null ? 256 : Math.max(1, give.getInt("skull.cache-size", 256));
         skulls = new SkullProfiles(name -> Bukkit.getPlayerExact(name), Bukkit::createPlayerProfile,
                 name -> Bukkit.createPlayerProfile(name).update(), timeout, ttl, size, System::currentTimeMillis, perMinute,
-                profile -> profile.getTextures() != null && profile.getTextures().getSkin() != null);
+                profile -> profile.getTextures() != null && profile.getTextures().getSkin() != null,
+                plugin.getScheduler().boundedPool(SkullProfiles.POOL_NAME, SkullProfiles.POOL_THREADS, SkullProfiles.POOL_QUEUE));
         ServerVersion version = ServerVersion.parse(Bukkit.getBukkitVersion());
         ItemLibrary library = new ItemLibrary(plugin.getItemService(), new ComponentAdapter(version, Bukkit.getItemFactory()), skulls);
         ItemDeliveryService delivery = new ItemDeliveryService(
-                task -> Bukkit.getScheduler().runTask(plugin, task), Bukkit::isPrimaryThread, Bukkit::getPlayer,
+                plugin.getScheduler().serverExecutor(), plugin.getScheduler()::isServerThread, Bukkit::getPlayer,
                 Bukkit.getPluginManager(), () -> skullFallback);
         String route = registerGive(new GiveCommand(plugin, () -> parser, library, delivery, () -> overflow));
         plugin.logger().info("Item library enabled: /give harness (" + route + "), overflow " + overflow.configName() + ", skull fallback "

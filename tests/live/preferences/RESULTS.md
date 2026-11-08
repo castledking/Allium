@@ -7,6 +7,10 @@ login denied by another plugin, and `/stop` with the database unreachable (see
 [the follow-up](#follow-up-retries-fail-closed-denied-logins-and-shutdown-timeouts)). The
 evidence is in the [follow-up manifest](evidence/s03-followup-manifest.json).
 
+The M1 close-out ran the follow-up gate again on jar `57ff304f…`, which moved preference timers,
+retries and storage lanes onto Allium's `TaskScheduler`. It passed 224 checks again (54, 58, 54
+and 58), with 0 failures.
+
 The original gate passed with 188 live checks on jar `a5b6cb02…` (see the
 [manifest](evidence/s03-manifest.json)). Unit tests now: 61 core (the preference tests on
 SQLite and MariaDB) and 135 plugin, 0 failures.

@@ -292,6 +292,16 @@ def block_paths():
     replies['ignored'], quiet = blocked('blocked two', "can't receive")
     require(replies['ignored'] == replies['toggled off'] and quiet,
             'ignored: exactly the same sender message as toggled off, and silence for MsgB')
+    # allium.msg.bypass.ignore, granted explicitly, reaches a player who ignores the sender.
+    fixture('perm MsgA allium.msg.bypass.ignore true')
+    b_start = len(b.lines)
+    a.cmd('msg MsgB ignore bypass')
+    reached = b.chat(b_start, 'ignore bypass')
+    fixture('perm MsgA allium.msg.bypass.ignore unset')
+    again, quiet = blocked('blocked again', "can't receive")
+    require(reached['plain'] == '[MsgA → me] ignore bypass' and again == replies['ignored'] and quiet,
+            'allium.msg.bypass.ignore, granted explicitly, reaches a player who ignores the sender; '
+            'once it is unset the same send is blocked again, with silence for MsgB')
     b.cmd('unignore MsgA')
     b.chat(b_start, 'no longer ignoring')
 

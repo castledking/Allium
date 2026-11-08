@@ -371,5 +371,45 @@
         "PASS no listener or Allium exceptions in the server log: []"
       ]
     }
+  ],
+  "followUps": [
+    {
+      "name": "allium.msg.bypass.ignore live",
+      "date": "2026-11-08",
+      "run": "bypass-ignore-spigot-1.20.1",
+      "lane": "spigot-1.20.1",
+      "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+      "alliumJarSha256": "c877b78395d160571201c118a6505ac02200180b8df439c61eef5d5fdd3aca82",
+      "checks": 24,
+      "failures": [],
+      "driver": [
+        "BOOT initial",
+        "PASS initial: Allium's messaging module and the fixture enabled",
+        "PASS send: MsgB got \"[MsgA \u2192 me] hello there\" and MsgA saw \"[me \u2192 MsgB] hello there\"",
+        "PASS the recipient heard the received sound at 0.6 (its lang volume 0.6 x MsgB's volume 1.0): {'packet': 'sound_effect', 'name': 'minecraft:entity.experience_orb.pickup', 'id': None, 'volume': 0.6000000238418579, 'pitch': 1}",
+        "PASS reply: MsgB's /r reached MsgA, its last partner",
+        "PASS the console can send",
+        "PASS MsgA can reply to the console, and the console can reply (to MsgA, its last partner)",
+        "PASS toggled off: \"[Allium] MsgB can't receive messages right now.\", and MsgB saw and heard nothing",
+        "PASS ignored: exactly the same sender message as toggled off, and silence for MsgB",
+        "PASS allium.msg.bypass.ignore, granted explicitly, reaches a player who ignores the sender; once it is unset the same send is blocked again, with silence for MsgB",
+        "PASS vanished: MsgA sees \"[Allium] Player MsgB not found.\", word for word the offline message, and MsgB nothing",
+        "PASS tab completion: no vanished MsgB for MsgA (['MsgA']), but listed with allium.vanish.see (['MsgA', 'MsgB']) and after unvanishing",
+        "PASS with allium.vanish.see, MsgA can message the vanished MsgB",
+        "PASS muted sender: \"[Allium] You are muted.\", and MsgB nothing",
+        "PASS messaging yourself is refused",
+        "PASS allium.msg.bypass.toggle, granted explicitly, reaches a player with messages off",
+        "PASS unloaded preferences fail closed: \"[Allium] MsgB's settings are still loading. Try again shortly.\", and MsgB nothing",
+        "PASS a reply target that went offline is cleared: \"[Allium] You have nobody to reply to.\"",
+        "PASS without permissions every code, tag and the click attempt arrive literally, all in the template's white: \"&cRed <gradient:#ff0000:#00ff00>grad</gradient> #00ff00hex <b>bold</b> <click:run_command:/op MsgA>op me</click>\"",
+        "PASS URLs in a message arrive as plain text: no click or hover data reaches the recipient",
+        "PASS with allium.msg.color, &c applies, while the hex code (allium.msg.hex) stays literal",
+        "PASS console syntax: a bare /msgtoggle and bad arguments only print usage; others are set by name; a player without allium.msgtoggle.others is offered only on/off (['off', 'on'])",
+        "BOOT restart",
+        "PASS restart: Allium's messaging module and the fixture enabled",
+        "PASS after a restart: MsgB still ignores MsgA and still has messages off (a bare /msgtoggle turns them on); after /unignore the message arrives",
+        "PASS no listener or Allium exceptions in the server log: []"
+      ]
+    }
   ]
 }

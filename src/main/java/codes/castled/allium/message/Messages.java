@@ -139,7 +139,10 @@ public enum Messages {
     ITEM_GIVE_PRIVILEGED("item.give.privileged", "{prefix} &cGiving {item} ({behavior}) needs &f{permission}&c."),
     ITEM_GIVE_PENDING("item.give.pending", "{prefix} &7Resolving skull profiles for {player}..."),
     ITEM_GIVE_WARNING("item.give.warning", "{prefix} &eWarning: {warning}"),
-    ITEM_GIVE_RECEIVED("item.give.received", "{prefix} &aYou received &f{amount}x {item}&a.");
+    ITEM_GIVE_RECEIVED("item.give.received", "{prefix} &aYou received &f{amount}x {item}&a."),
+
+    // Preferences (shared by messages, payments and teleport requests)
+    PREFERENCES_UNAVAILABLE("preferences.unavailable", "{prefix} &c{player}'s settings are still loading. Try again shortly.");
 
     private static final Map<String, Messages> BY_KEY;
 

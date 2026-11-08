@@ -189,4 +189,28 @@ class TextFormatterTest {
         verify(paperSender).sendMessage(any(Component.class));
         verify(paperSender, never()).sendMessage(anyString());
     }
+
+    @Test
+    void notificationSoundsScaleByTheRecipientsVolumeAndZeroMutes() {
+        PluginStart plugin = mock(PluginStart.class);
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("sounds.defaults.volume", 0.8);
+        config.set("sounds.defaults.pitch", 1.2);
+        config.set("sounds.messages.fallback-volume", 0.5);
+        when(plugin.getConfig()).thenReturn(config);
+        MessageManager mm = new MessageManager(plugin, mock(LanguageManager.class));
+        Player player = mock(Player.class);
+        Location loc = new Location(null, 0, 64, 0);
+        when(player.getLocation()).thenReturn(loc);
+
+        // Authored 0.6, recipient 0.5: 0.3; the omitted pitch uses sounds.defaults.pitch.
+        mm.playNotificationSound(player, new MessageSoundSpec("minecraft:block.note_block.bell", 0.6, null), 0.5);
+        verify(player).playSound(eq(loc), eq("minecraft:block.note_block.bell"), eq(0.3f), eq(1.2f));
+        // Omitted volume: sounds.defaults.volume 0.8 x 0.5.
+        mm.playNotificationSound(player, new MessageSoundSpec("minecraft:block.note_block.chime", null, 0.7), 0.5);
+        verify(player).playSound(eq(loc), eq("minecraft:block.note_block.chime"), eq(0.4f), eq(0.7f));
+        // A recipient at 0 hears nothing.
+        mm.playNotificationSound(player, new MessageSoundSpec("minecraft:block.note_block.pling", 1.0, 1.0), 0.0);
+        verify(player, never()).playSound(eq(loc), eq("minecraft:block.note_block.pling"), anyFloat(), anyFloat());
+    }
 }

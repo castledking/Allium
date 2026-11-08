@@ -75,8 +75,18 @@ result and must preserve the existing uncommitted work.
       code. Gate passed 2026-11-07: 188 live checks on Spigot 1.20.1 and Paper 26.3 against
       SQLite and MariaDB (round trip, restart, reconnect during a slow load, failed load,
       two concurrent writers, shutdown drain, no default overwrite); see
-      [the results](tests/live/preferences/RESULTS.md). Not yet: offline lookups for
-      `/pay` and other offline-player uses, and cross-server push of other servers' writes.
+      [the results](tests/live/preferences/RESULTS.md). Follow-up passed 2026-11-07 with
+      224 live checks on the same lanes. It adds:
+      - background load retries with capped backoff, and fail-closed `acceptance`
+        (`UNAVAILABLE` plus `preferences.unavailable`);
+      - a live check that a login denied before `MONITOR` gets no session;
+      - a configurable shutdown timeout that names every unsaved write (checked live with
+        the database unreachable);
+      - notification sound levels (recipient volume times message volume).
+
+      Not yet: offline lookups for `/pay` and other offline-player uses, and cross-server
+      push of other servers' writes. Cross-server enforcement must read the authoritative
+      row (see the roadmap contract).
 - [x] **S04 / M1 — Item contract:** parse, create, identify, match, clone and
       serialize vanilla/Allium references; first-colon namespace split (`craftengine:<ns>:<id>`);
       bare names resolve to vanilla only; behavior ID separate from appearance;

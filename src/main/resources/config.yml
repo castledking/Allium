@@ -96,16 +96,23 @@ tools:
     # Sound played at the mob on a disarm; "" for none.
     sound: minecraft:item.shield.break
 
-# Message sounds. A message's own sound settings in the lang files override these.
+# Message sounds. A lang entry may declare a sound with its own volume and pitch; each one it
+# leaves out falls back separately to these defaults.
 sounds:
   defaults:
-    # Also the message sound volume for players who never set their own; 0 mutes by default.
+    # Volume of a message sound whose lang entry sets none (0 or more; 1.0 is normal).
     volume: 1.0
+    # Pitch of a message sound whose lang entry sets none (0.5 to 2.0).
     pitch: 1.0
+  messages:
+    # Private-message notification volume for players who never set their own with /mfx
+    # (0 to 1; 0 mutes notifications by default). It multiplies the message sound's own volume,
+    # so a player at 0.5 hears a sound authored at 0.8 at 0.4.
+    fallback-volume: 1.0
 
 # Player preferences, stored per UUID in the database above. Players who never chose a value
 # follow these defaults, and changing a default here changes it for them too (defaults are never
-# written to the database). The message sound volume default is sounds.defaults.volume above.
+# written to the database). The default message sound volume is sounds.messages.fallback-volume.
 preferences:
   defaults:
     accept-messages: true
@@ -114,10 +121,20 @@ preferences:
   # How long a joining player's login waits (off the server thread) for preferences to load,
   # 0 to 10000. A slower load finishes after join; nothing is enforced from defaults meanwhile.
   preload-wait-millis: 2000
+  # A failed load is retried in the background: up to this many times, first after
+  # first-delay-millis, then twice as long each time up to max-delay-millis. Until a load
+  # succeeds, messages, payments and teleport requests to that player are refused.
+  load-retry:
+    retries: 4
+    first-delay-millis: 1000
+    max-delay-millis: 15000
   storage:
     queue-capacity: 512
     # Parallel storage lanes on MySQL; each player's work always runs in order on one lane.
     mysql-lanes: 4
+    # How long shutdown waits for queued saves. Saves still unfinished then are logged one by
+    # one as not saved, and shutdown continues.
+    shutdown-timeout-millis: 10000
 
 # Item library and the M1 /give harness.
 items:

@@ -46,6 +46,7 @@ public final class PreferencesModule extends AbstractModule implements Listener 
     private PreferenceSessions sessions;
     private volatile PreferenceDefaults defaults;
     private long preloadWaitMillis;
+    private long shutdownTimeoutMillis;
     /** Sessions begun at pre-login and not yet joined: generation and start time. */
     private final Map<UUID, long[]> loginGenerations = new ConcurrentHashMap<>();
     private org.bukkit.scheduler.BukkitTask sweeper;
@@ -67,6 +68,8 @@ public final class PreferencesModule extends AbstractModule implements Listener 
         // Bounded: the wait holds the joining player's login thread.
         preloadWaitMillis = config == null ? 2000L : Math.max(0L, Math.min(10_000L, config.getLong("preload-wait-millis", 2000L)));
         int queue = config == null ? 512 : Math.max(16, config.getInt("storage.queue-capacity", 512));
+        shutdownTimeoutMillis = config == null ? 10_000L : Math.max(0L, Math.min(120_000L, config.getLong("storage.shutdown-timeout-millis", 10_000L)));
+        PreferenceSessions.RetryPolicy retry = readRetry(config);
         SqlDialect dialect = plugin.getDatabaseManager().dialect();
         int lanes = dialect == SqlDialect.SQLITE ? 1 : Math.max(1, config == null ? 4 : config.getInt("storage.mysql-lanes", 4));
         repository = new PreferenceRepository(plugin.getDatabaseManager().connectionSource(), dialect, System::currentTimeMillis);
@@ -88,7 +91,8 @@ public final class PreferencesModule extends AbstractModule implements Listener 
                 }
             }
         });
-        sessions = new PreferenceSessions(store, () -> defaults, plugin.logger()::warning);
+        sessions = new PreferenceSessions(store, () -> defaults, plugin.logger()::warning, retry,
+                (task, delayMillis) -> Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, task, Math.max(1L, (delayMillis + 49L) / 50L)));
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         for (Player online : Bukkit.getOnlinePlayers()) {
             connectionGenerations.put(online, sessions.begin(online.getUniqueId()));
@@ -97,16 +101,22 @@ public final class PreferencesModule extends AbstractModule implements Listener 
         // join fires no quit event. (PlayerLoginEvent is not used: Paper deprecates it for removal.)
         sweeper = Bukkit.getScheduler().runTaskTimer(plugin, this::sweepAbandonedLogins, 20L * 30, 20L * 30);
         plugin.logger().info("Preferences enabled: " + dialect + " schema v" + version + ", " + lanes + " storage lane(s), defaults "
-                + defaults + ", pre-login wait " + preloadWaitMillis + " ms.");
+                + defaults + ", pre-login wait " + preloadWaitMillis + " ms, load retries " + retry.retries()
+                + ", shutdown timeout " + shutdownTimeoutMillis + " ms.");
+    }
+
+    private PreferenceSessions.RetryPolicy readRetry(ConfigurationSection config) {
+        ConfigurationSection r = config == null ? null : config.getConfigurationSection("load-retry");
+        int retries = r == null ? 4 : Math.max(0, Math.min(10, r.getInt("retries", 4)));
+        long first = r == null ? 1_000L : Math.max(50L, Math.min(60_000L, r.getLong("first-delay-millis", 1_000L)));
+        long max = r == null ? 15_000L : Math.max(first, Math.min(300_000L, r.getLong("max-delay-millis", 15_000L)));
+        return new PreferenceSessions.RetryPolicy(retries, first, max);
     }
 
     private PreferenceDefaults readDefaults(ConfigurationSection config) {
         ConfigurationSection d = config == null ? null : config.getConfigurationSection("defaults");
-        double volume = plugin.getConfig().getDouble("sounds.defaults.volume", 1.0D);
-        if (!Double.isFinite(volume) || volume < 0.0D || volume > 1.0D) {
-            plugin.logger().warning("sounds.defaults.volume must be between 0 and 1; using 1.0 for message sounds.");
-            volume = 1.0D;
-        }
+        // The recipient side of a notification's volume; the message side is sounds.defaults.volume.
+        double volume = codes.castled.allium.message.SoundSettings.read(plugin.getConfig(), plugin.logger()::warning).messageFallbackVolume();
         return new PreferenceDefaults(
                 d == null || d.getBoolean("accept-messages", true),
                 d == null || d.getBoolean("accept-payments", true),
@@ -166,14 +176,34 @@ public final class PreferencesModule extends AbstractModule implements Listener 
         if (store != null) {
             int queued = store.pending();
             if (queued > 0) {
-                plugin.logger().info("Saving preferences: finishing " + queued + " queued storage task(s).");
+                plugin.logger().info("Saving preferences: finishing " + queued + " queued storage task(s), waiting up to "
+                        + shutdownTimeoutMillis + " ms.");
             }
-            if (!store.close(10_000L)) {
-                plugin.logger().warning("Preference storage did not finish within 10 s; " + store.pending() + " task(s) were still queued.");
+            PreferenceStore.CloseReport report = store.close(shutdownTimeoutMillis);
+            if (!report.completed()) {
+                // Shutdown continues; these are exactly the changes that did not reach the database.
+                plugin.logger().warning("Preference storage did not finish within " + shutdownTimeoutMillis + " ms. "
+                        + report.lostWrites().size() + " preference write(s) were not saved"
+                        + (report.inProgressWrites().isEmpty() ? "." : ", and " + report.inProgressWrites().size()
+                        + " may or may not have been saved:"));
+                report.lostWrites().forEach(w -> plugin.logger().warning("  not saved: " + w));
+                report.inProgressWrites().forEach(w -> plugin.logger().warning("  in progress, outcome unknown: " + w));
+                if (report.droppedLoads() > 0) {
+                    plugin.logger().info(report.droppedLoads() + " queued preference load(s) were dropped.");
+                }
             }
         }
         loginGenerations.clear();
         connectionGenerations.clear();
+    }
+
+    /**
+     * Whether an online player accepts messages, payments or teleport requests. Anything but
+     * ACCEPTS or REFUSES means their preferences are not loaded (or failed to load): refuse with
+     * {@code Messages.PREFERENCES_UNAVAILABLE} ("try again shortly"), never fall back to defaults.
+     */
+    public PreferenceSessions.Acceptance acceptance(UUID uuid, codes.castled.allium.preference.PreferenceKey flag) {
+        return sessions.acceptance(uuid, flag);
     }
 
     /**

@@ -48,8 +48,20 @@ public final class PreferenceChange {
         return entries.isEmpty();
     }
 
+    /** {@code {accept-messages=false, message-sound-restore=unset}}, in key order. */
+    public String describe() {
+        StringBuilder out = new StringBuilder("{");
+        for (Map.Entry<PreferenceKey, Optional<Object>> e : entries.entrySet()) {
+            if (out.length() > 1) {
+                out.append(", ");
+            }
+            out.append(e.getKey().configName()).append('=').append(e.getValue().map(String::valueOf).orElse("unset"));
+        }
+        return out.append('}').toString();
+    }
+
     @Override
     public String toString() {
-        return entries.toString();
+        return describe();
     }
 }

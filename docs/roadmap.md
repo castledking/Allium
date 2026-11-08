@@ -84,6 +84,11 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   enforced. Covers the three accept flags and the message sound volume with its restoration
   state. See [the results](../tests/live/preferences/RESULTS.md). The commands that change them
   arrive with S07/S08.
+  - S03 follow-up: failed loads retry in the background with capped backoff, and unloaded or
+    failed preferences fail closed (`acceptance` is `UNAVAILABLE`; see the contract below).
+    Shutdown drains with a configurable timeout and names every write it could not save. The
+    message-sound math (`SoundLevels` in `allium-core`, `MessageManager#playNotificationSound`)
+    follows the contract below.
 - Private messages, preference commands, addons and pack delivery are not implemented in this recode. Some config module names are
   placeholders; do not count them as working features.
 
@@ -174,7 +179,9 @@ behavior; do not return success before a durable operation is secured.
 Startup builds validated configuration snapshots before enabling services.
 Failures disable the affected capability with a useful diagnostic. Shutdown
 unregisters commands/listeners/services, cancels tasks, restores temporary player
-state and drains bounded persistence work. Config reload validates before swapping
+state and drains bounded persistence work with a configurable timeout (for
+preferences, `preferences.storage.shutdown-timeout-millis`). On timeout, every
+write that was not saved is logged by name, and shutdown continues. Config reload validates before swapping
 and keeps the old configuration on failure. Addon installation/removal requires
 restart; do not promise arbitrary plugin hot loading.
 
@@ -359,6 +366,30 @@ requests and cancels pending incoming requests; acceptance rechecks policy.
 Staff force-teleports use separate audited permissions. Preference bypasses are
 explicit, never implied by a message sender's display name or alias.
 
+**Fail closed (S03 contract for S07/S08 and M3).** A recipient whose preferences are
+not usable is never treated as accepting. That covers three cases: a load still in
+progress (`LOADING`), a load that failed (`FAILED`), or no session on this server.
+- Teleport requests, payments and private messages to that recipient are refused
+  with `preferences.unavailable` ("…settings are still loading. Try again
+  shortly."), and no notification sound plays.
+- Services ask `PreferencesModule#acceptance(uuid, flag)`, which answers `ACCEPTS`,
+  `REFUSES` or `UNAVAILABLE`. They never substitute configured defaults for an
+  unloaded player.
+- A failed load is retried in the background with exponential backoff and a
+  capped number of attempts (`preferences.load-retry`), so a database blip does
+  not last the whole session.
+- An offline recipient (for example, M3 `/pay` to an offline player) needs an
+  authoritative read of their stored row, with configured defaults applied to the
+  unset fields. If that read fails, the action fails closed the same way.
+
+**Cross-server enforcement reads authoritative values.** A session holds the row
+loaded at join plus its own writes. It sees another server's writes only through
+its own next write or the next join. Anything enforced across servers must read the
+authoritative row from the database, or use a future invalidation channel, never a
+session cached on another server. This includes a request or payment that starts
+on another backend and a proxy-wide `/msg`. Field-level patches mean concurrent
+writes are never lost, but a cached session can be stale for reads.
+
 `/messagesounds`, `/msounds` and `/mfx` are aliases:
 
 - No arguments reports current state and usage.
@@ -486,7 +517,7 @@ to exercise an API, but extraction must not postpone a stable core.
 | M3 — Movement and money | Safe TP service, requests/tptoggle/back/spawn/homes/warps; atomic economy/pay/paytoggle/Vault; kits via item service | Request expiry/movement cancellation/pending invalidation; safe destinations; offline preferences; no lost or duplicated funds on concurrent transfers or failures |
 | M4 — Complete core | Remaining staff/player utilities; handcuffs/Obliterator/renamer/CrowBar; signs; timed broadcasts; config parity and diagnostics | Core-only acceptance run passes; permissions checked at every entry point; rename failure spends nothing; broadcasts remain idle by default; bounded CrowBar/entity work |
 | M5 — Addon family | Native plugin API test addon, Fun Items; Harvest then Kitchen; Reliques; SpawnerCraft; Pregen Ores; Trading Cards; Party Locator | Each addon boots alone with its hard dependencies; core jar contains none of them; disabled/missing optional peers work; restart and migration checks pass |
-| M6 — Migration and release | Audited importers, staging migration, profiling, compatibility matrix, release automation and operator docs | Dry-run/backup/idempotency/rollback rehearsal; no unexplained data loss; published tested version/provider matrix; release artifacts and pack manifests verified |
+| M6 — Migration and release | Audited importers, staging migration, profiling, compatibility matrix, release automation and operator docs | Dry-run/backup/idempotency/rollback rehearsal (live SQLite snapshots via online backup or `VACUUM INTO`, never a raw copy); no unexplained data loss; published tested version/provider matrix; release artifacts and pack manifests verified |
 
 M0–M4 yield the core alpha. M5 can proceed in parallel after APIs stabilize, and
 each addon can release independently; core readiness does not require every addon.
@@ -544,6 +575,14 @@ checkpoints, repeat-run idempotency and conflict decisions. Leave source data
 untouched and produce a skipped/unmapped report. Remove no existing world content
 merely because an addon or provider is absent. Stage on a full world/database copy;
 rollback restores the complete pre-cutover snapshot, not just the plugin jar.
+Snapshots and backups of a live SQLite database use SQLite's online backup API or
+`VACUUM INTO`, never a raw copy of the files. Allium runs SQLite in WAL mode, so
+recent commits live in `allium.db-wal` until a checkpoint, and a raw copy of
+`allium.db` alone can miss them or be torn. A raw file copy is safe only after a
+clean server stop. MySQL snapshots use a consistent dump
+(`mysqldump --single-transaction`) or the operator's database backups. The
+rollback rehearsal restores from these snapshots and verifies the row counts
+and schema versions in `allium_schema`.
 `BackupManager` and all migration/cutover snapshots must include
 `plugins/Allium/.item-hmac-secret` (preserving `0600` POSIX permissions) alongside
 YAML and database backups so existing signed privileged items in player inventories,

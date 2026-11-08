@@ -30,6 +30,46 @@ items unless the pack is required.
   `kick-message`.
 - `prompt` is the text the client shows with the offer.
 
+> **`required: true` plus a host outage means nobody can join.** If the host goes down or serves
+> a different file after Allium's startup check, every joining player's download fails, and every
+> one of them is kicked. That lasts until the host is back, or until you set `required: false` and
+> run `/allium reload`. (If the host is already down at startup, the check fails, Allium sends
+> nothing, and players join without the pack instead.) Use a reliable host, or keep the pack
+> optional.
+
+### `/allium reload`
+
+`/allium reload` (permission `allium.reload`) reloads `config.yml` and the lang files, then
+applies the `resource-pack` settings:
+- It takes the URL, `required`, `prompt`, `kick-message` and `pack-file` from the reloaded
+  config, and re-exports the pack.
+- For `standalone`, it downloads the hosted file again and checks its SHA-1. On a match, Allium
+  sends the pack, including to online players who do not have it yet. On a mismatch, it stops
+  sending until the next successful check.
+- For `rpm-export`, it rewrites the mixer file; reload ResourcePackManager to merge it.
+- A changed `owner` is reported and takes effect only after a restart.
+
+### Another pack build (`pack-file`)
+
+The jar bundles Allium's own, distributable art. To deliver other art, such as SF's disarmer
+textures, build a pack from Allium's manifest with that art and point `resource-pack.pack-file`
+at it, relative to `plugins/Allium/`:
+
+```sh
+SF=/path/to/sf/plugins python3 pack/tools/sf_export.py   # writes build/sf-export/allium-core-pack-sf.zip (git-ignored)
+cp build/sf-export/allium-core-pack-sf.zip <server>/plugins/Allium/pack/
+# config.yml: resource-pack.pack-file: pack/allium-core-pack-sf.zip
+```
+
+- **Validation:** the file must keep the bundled pack's models, item definitions and
+  `pack.mcmeta`; only textures may differ. Otherwise Allium warns and delivers the bundled pack.
+- **Delivery:** `standalone` exports this file (so host the exported
+  `plugins/Allium/pack/allium-core-pack.zip`), and `rpm-export` writes it to the mixer.
+- **SF art stays out of git:** SF's art is server-only. `sf_export.py` builds it locally from
+  `$SF/Nexo/pack/assets/sf/textures/items/specials/`, and it is never committed or published. SF
+  has four disarmer textures (`mob_disarmer`, `_2-3`, `_1-3`, `_0-3`). They map to `full`,
+  `two_thirds`, `one_third` and `empty`, and `broken` reuses `empty`, since SF has no broken art.
+
 ### Several packs (1.20.3 and later)
 
 From 1.20.3 a client can hold several server packs at once.

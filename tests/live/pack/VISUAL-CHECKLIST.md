@@ -26,6 +26,20 @@ pg arena <you>     # four armed zombies with no AI in front of you
 
 Type `stop` in the console to end the run.
 
+## With SF's art instead
+
+On SF, the pack is the local SF-art build (`pack/tools/sf_export.py` and `resource-pack.pack-file`;
+see [pack delivery](../../../docs/pack-delivery.md)). With it, each state shows SF's existing
+staff-like disarmer textures, the same ones SF's Nexo items use today:
+- **full:** `mob_disarmer`;
+- **two_thirds:** `_2-3`;
+- **one_third:** `_1-3`;
+- **empty:** `_0-3`;
+- **broken:** also `_0-3`, since SF has no broken art.
+
+The rest of the checklist applies unchanged: same-stack charge changes, held like a sword, plain
+golden hoes vanilla, and no missing textures.
+
 ## What each item should look like
 
 Every item is named **Mob Disarmer** in gold without italics. Each should show a gold handle

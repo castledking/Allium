@@ -69,6 +69,20 @@ Open before M1 can close:
 - [x] **Pack delivery** (S06c, below).
 - [ ] **S06b visual check** in a real client (owner: the user).
 
+## Staging checklist (before deploying to SF)
+
+Run on a staging copy of SF (its world, plugins and configs), never on the live server.
+- [ ] **Real ResourcePackManager merge:** with `resource-pack.owner: rpm-export` (and
+      `pack-file` set to the SF-art build), start the staging server.
+      - ResourcePackManager must merge its full mixer, including `CraftEngine_resource_pack.zip`,
+        which only the server user can read.
+      - Confirm that the merged pack contains Allium's `golden_hoe` model and item definition.
+      - Confirm that RPM's priority order puts Allium's carrier files where intended; note the
+        `blaze_rod` collision with Nexo for when Phantom Obliterator ships.
+      - Load the merged pack in a real client and run the disarmer rows of the
+        [visual checklist](tests/live/pack/VISUAL-CHECKLIST.md).
+- [ ] **Visual checklist with SF art,** on SF's server version.
+
 ## First implementation queue
 
 These slices make the first coding sessions concrete. Each includes an observable

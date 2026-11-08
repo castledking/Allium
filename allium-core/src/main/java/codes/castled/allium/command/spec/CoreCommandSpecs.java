@@ -172,6 +172,31 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> ITEM_SPECS = List.of(GIVE);
 
+    /** {@code /allium}: plugin administration. {@code version} needs no permission; {@code reload} needs {@code allium.reload}. */
+    public static final CommandSpec ALLIUM = new CommandSpec(
+            "allium",
+            CommandSpec.DEFAULT_NAMESPACE,
+            "core",
+            List.of(),
+            "Allium administration",
+            "/allium <reload|version>",
+            "/allium <reload|version>",
+            null,
+            null,
+            List.of(),
+            List.of(
+                    new CommandNodeSpec("reload", List.of(), "allium.reload", "/allium reload", List.of(), List.of()),
+                    new CommandNodeSpec("version", List.of(), null, "/allium version", List.of(), List.of())
+            ),
+            CommandMessageKeys.ofOutcomes(Map.of(
+                    "reloaded", "core.reload-success",
+                    "reload-failed", "core.reload-failed",
+                    "version", "core.version"
+            ))
+    );
+
+    public static final List<CommandSpec> CORE_SPECS = List.of(ALLIUM);
+
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(
             HEAL,
             FEED,

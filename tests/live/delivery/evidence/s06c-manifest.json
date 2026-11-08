@@ -923,5 +923,209 @@
         "PASS no listener or Allium exceptions in the server log: []"
       ]
     }
-  ]
+  ],
+  "followUp": {
+    "date": "2026-11-08",
+    "note": "/allium reload re-checks the hosted pack; resource-pack.pack-file delivers a local build (SF art via sf_export.py, never committed)",
+    "checks": 70,
+    "runs": [
+      {
+        "run": "fu-spigot-1.20.1-1",
+        "lane": "spigot-1.20.1",
+        "scenario": "standalone",
+        "checks": 20,
+        "failures": [],
+        "alliumJar": "df1d53e47e68fef610adb877c650a2d68bf0080f7a43f7e9abd846850f29b7bd",
+        "testSources": {
+          "tests/live/delivery/client-mcp.cjs": "01e57d97c1f0a7d2180b16935c08c7e7f22d37504437e06b4cba392e7a6b0c90",
+          "tests/live/delivery/client-raw26.cjs": "f352057b9ef81d86237ed5b5af4574372bf9f1bbd99ebfbd44b157a9d7c8a59f",
+          "tests/live/delivery/pack-response.cjs": "7ef6e353a33d00b8c909b07673d210f3ca8232325300227ab79e9cf0107e0de6",
+          "tests/live/delivery/plugin/gate/DeliveryGate.java": "3ab5123271d67674329a6f236a17e0a1be5330bd1965509d8de3273b81d5d65a",
+          "tests/live/delivery/plugin/plugin.yml": "78ad9f52adf207cb80fe60517ee7888c0b66fa2eb0998ce01de43cc54144fde9",
+          "tests/live/delivery/run.py": "c46da4415a5030a5832d039a69a470494ab64bffa1ec6c558f510e6d66c8e3e5"
+        },
+        "evidence": {
+          "reload": {
+            "matched": "[06:03:37] [Server thread/INFO]: The hosted resource pack matches; sending it.",
+            "stale": "[06:03:41] [Server thread/INFO]: Not sending the resource pack: the file at http://127.0.0.1:25689/allium-core-pack.zip has SHA-1 82346f3254e626432cde8398c09eea649d8993a8, but Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing."
+          },
+          "override": {
+            "sha1": "4fc23460ace8234834fa2f7fe7a377fa12ef52c5",
+            "chosen": "[06:03:49] [Server thread/INFO]: [Allium] Delivering /tmp/allium-s06c-20261108/runs/fu-spigot-1.20.1-1/lane/plugins/Allium/pack/override-test.zip (SHA-1 4fc23460ace8234834fa2f7fe7a377fa12ef52c5) instead of the bundled core pack.",
+            "fallbackWarning": "[06:03:55] [Server thread/WARN]: [Allium] resource-pack.pack-file /tmp/allium-s06c-20261108/runs/fu-spigot-1.20.1-1/lane/plugins/Allium/pack/not-a-core-pack.zip lacks the core pack's [allium_item_definitions/assets/allium/items/mob_disarmer.json, allium_item_definitions/assets/minecraft/items/golden_hoe.json, assets/allium/models/item/mob_disarmer.json, assets/allium/models/item/mob_disarmer/broken.json, assets/allium/models/item/mob_disarmer/empty.json, assets/allium/models/item/mob_disarmer/full.json, assets/allium/models/item/mob_disarmer/one_third.json, assets/allium/models/item/mob_disarmer/two_thirds.json, assets/allium/models/item/vanilla/golden_hoe.json, assets/minecraft/models/item/golden_hoe.json]; it must be built from Allium's manifest (pack/tools/sf_export.py does that). Delivering the bundled core pack"
+          }
+        },
+        "driver": [
+          "BOOT standalone, optional",
+          "PASS Allium exported the bundled pack to plugins/Allium/pack/ (7055 bytes, SHA-1 2413dc172492\u2026)",
+          "PASS at startup Allium downloaded the hosted URL once and verified its SHA-1: 0.0.1:25689/allium-core-pack.zip: the hosted file matches (SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b), as the player's one server pack, optional.",
+          "PASS delivery is VERIFIED, as the one server pack (before 1.20.3)",
+          "PASS the bot was offered Allium's pack with its SHA-1, not forced, with the prompt: {'event': 'offer', 'phase': 'play', 'uuid': None, 'url': 'http://127.0.0.1:25689/allium-core-pack.zip', 'hash': '2413dc172492b961ccd67270f0e6a840ab35226b', 'forced': False, 'prompt': \"This pack shows Allium's custom tool models. Without it you see named vanilla items.\"}",
+          "PASS accept: the bot downloaded it, the SHA-1 matched, it loaded, and Allium logged it; the bot stays",
+          "PASS decline (optional): the bot downloaded nothing, Allium logged it, and the bot stays with the vanilla fallback items",
+          "PASS hash mismatch (optional): the hosted file was swapped after the startup check; the bot found the wrong SHA-1, reported FAILED_DOWNLOAD, and stays",
+          "BOOT standalone, required",
+          "PASS required: the offer is forced, and a bot that loads it stays",
+          "PASS required: a bot that declines is kicked with kick-message: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+          "PASS required: a hash mismatch is kicked the same way: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+          "BOOT standalone, stale hosted file",
+          "PASS a stale hosted file fails the startup check, with both SHA-1s: ut Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+          "PASS Allium then sends nothing (the player keeps the vanilla items)",
+          "PASS after the host is fixed, /allium reload re-checks the file and Allium sends again:  thread/INFO]: The hosted resource pack matches; sending it.",
+          "PASS a player joining after that reload gets and loads the pack",
+          "PASS a reload that finds a stale hosted file stops sending: oad plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+          "BOOT standalone with resource-pack.pack-file",
+          "PASS pack-file: Allium exported the local build (SHA-1 4fc23460ace8\u2026) instead of the bundled pack",
+          "PASS the hosted check and the offer use the local build's SHA-1, and the bot loads it",
+          "PASS a pack-file without the core models falls back to the bundled pack, with a warning: hoe.json]; it must be built from Allium's manifest (pack/tools/sf_export.py does that). Delivering the bundled core pack",
+          "BOOT standalone with a server.properties pack, before 1.20.3",
+          "PASS before 1.20.3 Allium warns that one delivery owner is mandatory: resource-pack, and Allium's pack replaces it for every player. Clear resource-pack in server.properties, or set resource-pack.owner to none.",
+          "PASS no listener or Allium exceptions in the server log: []"
+        ]
+      },
+      {
+        "run": "fu-paper-1.21.8-1",
+        "lane": "paper-1.21.8",
+        "scenario": "standalone",
+        "checks": 21,
+        "failures": [],
+        "alliumJar": "df1d53e47e68fef610adb877c650a2d68bf0080f7a43f7e9abd846850f29b7bd",
+        "testSources": {
+          "tests/live/delivery/client-mcp.cjs": "01e57d97c1f0a7d2180b16935c08c7e7f22d37504437e06b4cba392e7a6b0c90",
+          "tests/live/delivery/client-raw26.cjs": "f352057b9ef81d86237ed5b5af4574372bf9f1bbd99ebfbd44b157a9d7c8a59f",
+          "tests/live/delivery/pack-response.cjs": "7ef6e353a33d00b8c909b07673d210f3ca8232325300227ab79e9cf0107e0de6",
+          "tests/live/delivery/plugin/gate/DeliveryGate.java": "3ab5123271d67674329a6f236a17e0a1be5330bd1965509d8de3273b81d5d65a",
+          "tests/live/delivery/plugin/plugin.yml": "78ad9f52adf207cb80fe60517ee7888c0b66fa2eb0998ce01de43cc54144fde9",
+          "tests/live/delivery/run.py": "c46da4415a5030a5832d039a69a470494ab64bffa1ec6c558f510e6d66c8e3e5"
+        },
+        "evidence": {
+          "reload": {
+            "matched": "[06:05:00 INFO]: The hosted resource pack matches; sending it.",
+            "stale": "[06:05:05 INFO]: Not sending the resource pack: the file at http://127.0.0.1:25689/allium-core-pack.zip has SHA-1 82346f3254e626432cde8398c09eea649d8993a8, but Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing."
+          },
+          "override": {
+            "sha1": "4fc23460ace8234834fa2f7fe7a377fa12ef52c5",
+            "chosen": "[06:05:15 INFO]: [Allium] Delivering /tmp/allium-s06c-20261108/runs/fu-paper-1.21.8-1/lane/plugins/Allium/pack/override-test.zip (SHA-1 4fc23460ace8234834fa2f7fe7a377fa12ef52c5) instead of the bundled core pack.",
+            "fallbackWarning": "[06:05:20 WARN]: [Allium] resource-pack.pack-file /tmp/allium-s06c-20261108/runs/fu-paper-1.21.8-1/lane/plugins/Allium/pack/not-a-core-pack.zip lacks the core pack's [allium_item_definitions/assets/allium/items/mob_disarmer.json, allium_item_definitions/assets/minecraft/items/golden_hoe.json, assets/allium/models/item/mob_disarmer.json, assets/allium/models/item/mob_disarmer/broken.json, assets/allium/models/item/mob_disarmer/empty.json, assets/allium/models/item/mob_disarmer/full.json, assets/allium/models/item/mob_disarmer/one_third.json, assets/allium/models/item/mob_disarmer/two_thirds.json, assets/allium/models/item/vanilla/golden_hoe.json, assets/minecraft/models/item/golden_hoe.json]; it must be built from Allium's manifest (pack/tools/sf_export.py does that). Delivering the bundled core pack"
+          }
+        },
+        "driver": [
+          "BOOT standalone, optional, with a server.properties pack",
+          "PASS Allium exported the bundled pack to plugins/Allium/pack/ (7055 bytes, SHA-1 2413dc172492\u2026)",
+          "PASS at startup Allium downloaded the hosted URL once and verified its SHA-1: ed file matches (SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b), added by UUID ee490115-3c93-302b-9fa6-d01318ab7ef0 beside any other packs, optional.",
+          "PASS delivery is VERIFIED, adding packs by UUID (1.20.3+)",
+          "PASS the bot was offered Allium's pack with its SHA-1, not forced, with the prompt: {'event': 'offer', 'phase': 'play', 'uuid': 'ee490115-3c93-302b-9fa6-d01318ab7ef0', 'url': 'http://127.0.0.1:25689/allium-core-pack.zip', 'hash': '2413dc172492b961ccd67270f0e6a840ab35226b', 'forced': False, 'prompt': \"This pack shows Allium's custom tool models. Without it you see named vanilla items.\"}",
+          "PASS accept: the bot downloaded it, the SHA-1 matched, it loaded, and Allium logged it; the bot stays",
+          "PASS coexistence: the server.properties pack (configuration, 5e3c0d1e\u2026) and Allium's (play, ee490115\u2026) both arrived; nothing removed either",
+          "PASS Allium tracked only its own pack's status (SUCCESSFULLY_LOADED)",
+          "PASS decline (optional): the bot downloaded nothing, Allium logged it, and the bot stays with the vanilla fallback items",
+          "PASS hash mismatch (optional): the hosted file was swapped after the startup check; the bot found the wrong SHA-1, reported FAILED_DOWNLOAD, and stays",
+          "BOOT standalone, required",
+          "PASS required: the offer is forced, and a bot that loads it stays",
+          "PASS required: a bot that declines is kicked with kick-message: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+          "PASS required: a hash mismatch is kicked the same way: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+          "BOOT standalone, stale hosted file",
+          "PASS a stale hosted file fails the startup check, with both SHA-1s: ut Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+          "PASS Allium then sends nothing (the player keeps the vanilla items); the server.properties pack still arrives",
+          "PASS after the host is fixed, /allium reload re-checks the file and Allium sends again: 6:05:00 INFO]: The hosted resource pack matches; sending it.",
+          "PASS a player joining after that reload gets and loads the pack",
+          "PASS a reload that finds a stale hosted file stops sending: oad plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+          "BOOT standalone with resource-pack.pack-file",
+          "PASS pack-file: Allium exported the local build (SHA-1 4fc23460ace8\u2026) instead of the bundled pack",
+          "PASS the hosted check and the offer use the local build's SHA-1, and the bot loads it",
+          "PASS a pack-file without the core models falls back to the bundled pack, with a warning: hoe.json]; it must be built from Allium's manifest (pack/tools/sf_export.py does that). Delivering the bundled core pack",
+          "PASS no listener or Allium exceptions in the server log: []"
+        ]
+      },
+      {
+        "run": "fu-paper-26.3-1",
+        "lane": "paper-26.3",
+        "scenario": "standalone",
+        "checks": 21,
+        "failures": [],
+        "alliumJar": "df1d53e47e68fef610adb877c650a2d68bf0080f7a43f7e9abd846850f29b7bd",
+        "testSources": {
+          "tests/live/delivery/client-mcp.cjs": "01e57d97c1f0a7d2180b16935c08c7e7f22d37504437e06b4cba392e7a6b0c90",
+          "tests/live/delivery/client-raw26.cjs": "f352057b9ef81d86237ed5b5af4574372bf9f1bbd99ebfbd44b157a9d7c8a59f",
+          "tests/live/delivery/pack-response.cjs": "7ef6e353a33d00b8c909b07673d210f3ca8232325300227ab79e9cf0107e0de6",
+          "tests/live/delivery/plugin/gate/DeliveryGate.java": "3ab5123271d67674329a6f236a17e0a1be5330bd1965509d8de3273b81d5d65a",
+          "tests/live/delivery/plugin/plugin.yml": "78ad9f52adf207cb80fe60517ee7888c0b66fa2eb0998ce01de43cc54144fde9",
+          "tests/live/delivery/run.py": "c46da4415a5030a5832d039a69a470494ab64bffa1ec6c558f510e6d66c8e3e5"
+        },
+        "evidence": {
+          "reload": {
+            "matched": "[06:02:21 INFO]: The hosted resource pack matches; sending it.",
+            "stale": "[06:02:25 INFO]: Not sending the resource pack: the file at http://127.0.0.1:25689/allium-core-pack.zip has SHA-1 82346f3254e626432cde8398c09eea649d8993a8, but Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing."
+          },
+          "override": {
+            "sha1": "4fc23460ace8234834fa2f7fe7a377fa12ef52c5",
+            "chosen": "[06:02:33 INFO]: [Allium] Delivering /tmp/allium-s06c-20261108/runs/fu-paper-26.3-1/lane/plugins/Allium/pack/override-test.zip (SHA-1 4fc23460ace8234834fa2f7fe7a377fa12ef52c5) instead of the bundled core pack.",
+            "fallbackWarning": "[06:02:38 WARN]: [Allium] resource-pack.pack-file /tmp/allium-s06c-20261108/runs/fu-paper-26.3-1/lane/plugins/Allium/pack/not-a-core-pack.zip lacks the core pack's [allium_item_definitions/assets/allium/items/mob_disarmer.json, allium_item_definitions/assets/minecraft/items/golden_hoe.json, assets/allium/models/item/mob_disarmer.json, assets/allium/models/item/mob_disarmer/broken.json, assets/allium/models/item/mob_disarmer/empty.json, assets/allium/models/item/mob_disarmer/full.json, assets/allium/models/item/mob_disarmer/one_third.json, assets/allium/models/item/mob_disarmer/two_thirds.json, assets/allium/models/item/vanilla/golden_hoe.json, assets/minecraft/models/item/golden_hoe.json]; it must be built from Allium's manifest (pack/tools/sf_export.py does that). Delivering the bundled core pack"
+          }
+        },
+        "driver": [
+          "BOOT standalone, optional, with a server.properties pack",
+          "PASS Allium exported the bundled pack to plugins/Allium/pack/ (7055 bytes, SHA-1 2413dc172492\u2026)",
+          "PASS at startup Allium downloaded the hosted URL once and verified its SHA-1: ed file matches (SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b), added by UUID ee490115-3c93-302b-9fa6-d01318ab7ef0 beside any other packs, optional.",
+          "PASS delivery is VERIFIED, adding packs by UUID (1.20.3+)",
+          "PASS the bot was offered Allium's pack with its SHA-1, not forced, with the prompt: {'event': 'offer', 'phase': 'game', 'uuid': 'ee490115-3c93-302b-9fa6-d01318ab7ef0', 'url': 'http://127.0.0.1:25689/allium-core-pack.zip', 'hash': '2413dc172492b961ccd67270f0e6a840ab35226b', 'forced': False, 'prompt': \"This pack shows Allium's custom tool models. Without it you see named vanilla items.\"}",
+          "PASS accept: the bot downloaded it, the SHA-1 matched, it loaded, and Allium logged it; the bot stays",
+          "PASS coexistence: the server.properties pack (configuration, 5e3c0d1e\u2026) and Allium's (game, ee490115\u2026) both arrived; nothing removed either",
+          "PASS Allium tracked only its own pack's status (SUCCESSFULLY_LOADED)",
+          "PASS decline (optional): the bot downloaded nothing, Allium logged it, and the bot stays with the vanilla fallback items",
+          "PASS hash mismatch (optional): the hosted file was swapped after the startup check; the bot found the wrong SHA-1, reported FAILED_DOWNLOAD, and stays",
+          "BOOT standalone, required",
+          "PASS required: the offer is forced, and a bot that loads it stays",
+          "PASS required: a bot that declines is kicked with kick-message: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+          "PASS required: a hash mismatch is kicked the same way: \"This server requires its resource pack. Reconnect and accept it to play.\"",
+          "BOOT standalone, stale hosted file",
+          "PASS a stale hosted file fails the startup check, with both SHA-1s: ut Allium's bundled pack has SHA-1 2413dc172492b961ccd67270f0e6a840ab35226b. Upload plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+          "PASS Allium then sends nothing (the player keeps the vanilla items); the server.properties pack still arrives",
+          "PASS after the host is fixed, /allium reload re-checks the file and Allium sends again: 6:02:21 INFO]: The hosted resource pack matches; sending it.",
+          "PASS a player joining after that reload gets and loads the pack",
+          "PASS a reload that finds a stale hosted file stops sending: oad plugins/Allium/pack/allium-core-pack.zip there again; until then Allium sends nothing.",
+          "BOOT standalone with resource-pack.pack-file",
+          "PASS pack-file: Allium exported the local build (SHA-1 4fc23460ace8\u2026) instead of the bundled pack",
+          "PASS the hosted check and the offer use the local build's SHA-1, and the bot loads it",
+          "PASS a pack-file without the core models falls back to the bundled pack, with a warning: hoe.json]; it must be built from Allium's manifest (pack/tools/sf_export.py does that). Delivering the bundled core pack",
+          "PASS no listener or Allium exceptions in the server log: []"
+        ]
+      },
+      {
+        "run": "fu-rpm-paper-26.3-1",
+        "lane": "paper-26.3",
+        "scenario": "rpm",
+        "checks": 8,
+        "failures": [],
+        "alliumJar": "df1d53e47e68fef610adb877c650a2d68bf0080f7a43f7e9abd846850f29b7bd",
+        "testSources": {
+          "tests/live/delivery/client-mcp.cjs": "01e57d97c1f0a7d2180b16935c08c7e7f22d37504437e06b4cba392e7a6b0c90",
+          "tests/live/delivery/client-raw26.cjs": "f352057b9ef81d86237ed5b5af4574372bf9f1bbd99ebfbd44b157a9d7c8a59f",
+          "tests/live/delivery/pack-response.cjs": "7ef6e353a33d00b8c909b07673d210f3ca8232325300227ab79e9cf0107e0de6",
+          "tests/live/delivery/plugin/gate/DeliveryGate.java": "3ab5123271d67674329a6f236a17e0a1be5330bd1965509d8de3273b81d5d65a",
+          "tests/live/delivery/plugin/plugin.yml": "78ad9f52adf207cb80fe60517ee7888c0b66fa2eb0998ce01de43cc54144fde9",
+          "tests/live/delivery/run.py": "c46da4415a5030a5832d039a69a470494ab64bffa1ec6c558f510e6d66c8e3e5"
+        },
+        "evidence": {
+          "reload": null,
+          "override": null
+        },
+        "driver": [
+          "COPY 13 of 14 files from SF's mixer (unreadable, not copied: ['CraftEngine_resource_pack.zip'])",
+          "BOOT rpm-export dry run into a copy of SF's mixer",
+          "PASS the dry run read all 13 copied packs: mp/allium-s06c-20261108/runs/fu-rpm-paper-26.3-1/sf-mixer-copy for Allium's carrier files.",
+          "PASS it reports the blaze rod collision (Nexo defines assets/minecraft/items/blaze_rod.json, the carrier of the planned phantom_obliterator), and no collision for the shipped golden hoe: [\"d.json (blaze_rod), the carrier of Allium's planned phantom_obliterator. It does not affect the current pack, but will once phantom_obliterator ships.\"]",
+          "PASS the dry run wrote nothing: every file in the copy is byte-identical",
+          "BOOT rpm-export into the copy",
+          "PASS the export wrote only Allium_core_resource_pack.zip (the bundled pack, byte for byte); every other file, including SF's legacy Allium_resource_pack.zip, is unchanged",
+          "PASS with rpm-export Allium does not send the pack itself",
+          "BOOT rpm-export again, unchanged",
+          "PASS a second start keeps the identical file",
+          "PASS SF's live mixer directory is untouched (same files, sizes and modification times)",
+          "REMOVED the copy of SF's mixer",
+          "PASS no listener or Allium exceptions in the server log: []"
+        ]
+      }
+    ]
+  }
 }

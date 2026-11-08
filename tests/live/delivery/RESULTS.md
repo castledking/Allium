@@ -78,6 +78,30 @@ offer are in the [manifest](evidence/s06c-manifest.json). Run logs and summaries
 - **SF's live mixer** was untouched: the same files, sizes and modification times before and
   after. The copy was deleted after the run and is not part of the persisted evidence.
 
+## Follow-up: `/allium reload`, `pack-file` and the SF-art build (2026-11-08)
+
+**70 live checks, 0 failures** on Allium.jar `df1d53e4…`: 20 on Spigot 1.20.1, 21 on Paper 1.21.8,
+21 on Paper 26.3, and 8 for rpm-export. Every earlier check passed again.
+
+- **`/allium reload`** is new (`allium.reload`). It reloads `config.yml`, the lang files and
+  `disabled-commands`, then re-applies the `resource-pack` settings.
+  - After a stale hosted file had failed the startup check, the host was fixed and the reload
+    re-checked it: "The hosted resource pack matches; sending it." A player who joined next got
+    the pack and loaded it.
+  - With the host stale again, a reload logged "Not sending the resource pack: the file at … has
+    SHA-1 …", and the next player was sent nothing.
+- **`resource-pack.pack-file`:**
+  - A local build, the bundled pack with one texture swapped (standing in for SF's art), was
+    exported, checked at startup and offered with its own SHA-1. The bot loaded it.
+  - A `pack-file` without the core models, applied by a reload, logged "lacks the core pack's
+    […]", and Allium went back to the bundled pack. The next offer carried the bundled SHA-1.
+- **SF's art:** `pack/tools/sf_export.py` builds `build/sf-export/allium-core-pack-sf.zip`
+  (8,932 bytes, SHA-1 `417076f4…`) locally from SF's four disarmer textures. It is git-ignored
+  and was not used in the gate, so no SF art is in the evidence.
+- **Docs:** [pack delivery](../../../docs/pack-delivery.md) now covers reload and `pack-file`. It
+  also warns that `required: true` plus a host outage after startup means nobody can join. The real
+  ResourcePackManager merge is on the staging checklist in `todo.md`.
+
 ## Scope and limits
 
 - **No real merge:** ResourcePackManager itself was not run against the copy. The gate shows what

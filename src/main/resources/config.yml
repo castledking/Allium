@@ -168,6 +168,11 @@ resource-pack:
   # Before 1.20.3 a player holds one server pack, so exactly one delivery owner is mandatory there.
   # From 1.20.3 Allium adds its pack beside others (server.properties, other plugins) by its own UUID.
   owner: none
+  # Deliver a local pack instead of the bundled one, relative to plugins/Allium/ (for example
+  # pack/allium-core-pack-sf.zip, built with SF's art by pack/tools/sf_export.py). It must keep the
+  # bundled pack's models and item definitions; only textures may differ. Otherwise Allium warns
+  # and delivers the bundled pack. Leave empty for the bundled pack.
+  pack-file: ""
   standalone:
     # Where you host plugins/Allium/pack/allium-core-pack.zip (http or https).
     url: ""

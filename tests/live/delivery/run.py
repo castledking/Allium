@@ -166,7 +166,7 @@ def write_lane():
     (lane / 'bukkit.yml').write_text('settings:\n  allow-end: false\n  connection-throttle: 0\n')
 
 
-def configure(owner='standalone', required=False, server_pack=False, dry_run=False, mixer=None):
+def configure(owner='standalone', required=False, server_pack=False, dry_run=False, mixer=None, pack_file=None):
     text = (REPO / 'src/main/resources/config.yml').read_text()
     replacements = [('  owner: none\n', f'  owner: {owner}\n'),
                     ('    url: ""\n', f'    url: "http://127.0.0.1:{HTTP_PORT}/allium-core-pack.zip"\n'),
@@ -175,6 +175,8 @@ def configure(owner='standalone', required=False, server_pack=False, dry_run=Fal
                     ('    dry-run: false\n', f'    dry-run: {str(dry_run).lower()}\n')]
     if mixer is not None:
         replacements.append(('    mixer-directory: ResourcePackManager/mixer\n', f'    mixer-directory: "{mixer}"\n'))
+    if pack_file is not None:
+        replacements.append(('  pack-file: ""\n', f'  pack-file: "{pack_file}"\n'))
     for old, new in replacements:
         if old not in text:
             raise RuntimeError('config injection failed: ' + old.strip())
@@ -376,6 +378,13 @@ def required_boot():
     stop_server()
 
 
+def reload_cmd(expect, timeout=30):
+    """Runs /allium reload from the console and waits for the given reply."""
+    start = len(logs)
+    console('allium reload')
+    return wait(lambda: line_with(expect, start), 'reload: ' + expect, timeout), start
+
+
 def startup_mismatch_boot():
     hosting['mode'] = 'tampered'
     configure(required=False, server_pack=spec['multi'])
@@ -384,11 +393,76 @@ def startup_mismatch_boot():
     require(f"but Allium's bundled pack has SHA-1 {PACK_SHA1}" in refused,
             f'a stale hosted file fails the startup check, with both SHA-1s: {refused[-170:]}')
     seen = join('accept', 'join after the failed check')
-    hosting['mode'] = 'exported'
     require(allium_offer(seen) is None and seen['connected'] and state()['hosted'] == 'MISMATCH',
             'Allium then sends nothing (the player keeps the vanilla items)'
             + ('; the server.properties pack still arrives' if spec['multi'] and any(o['url'].endswith('/second-pack.zip') for o in seen['offers']) else ''))
     evidence['startupMismatch'] = {'log': refused, 'seen': seen}
+    leave()
+
+    # /allium reload re-checks the hosted file: fixed host -> sending; stale again -> not sending.
+    hosting['mode'] = 'exported'
+    matched, _ = reload_cmd('The hosted resource pack matches; sending it.')
+    require(state()['hosted'] == 'VERIFIED', f'after the host is fixed, /allium reload re-checks the file and Allium sends again: {matched[-60:]}')
+    seen = join('accept', 'join after the reload fixed it')
+    require(allium_offer(seen) is not None and line_with(f"{BOT} loaded Allium's resource pack.", seen['log_start']) is not None,
+            'a player joining after that reload gets and loads the pack')
+    leave()
+    hosting['mode'] = 'tampered'
+    stale, _ = reload_cmd('Not sending the resource pack: the file at')
+    seen = join('accept', 'join after the reload found it stale')
+    hosting['mode'] = 'exported'
+    require(state()['hosted'] == 'MISMATCH' and allium_offer(seen) is None,
+            f'a reload that finds a stale hosted file stops sending: {stale[-90:]}')
+    evidence['reload'] = {'matched': matched, 'stale': stale}
+    leave()
+    stop_server()
+
+
+def tampered_pack(source, entry, replacement_entry):
+    """The bundled pack with one texture replaced by another (a stand-in for a local art build)."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(source)) as zin, zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zout:
+        swap = zin.read(replacement_entry)
+        for info in zin.infolist():
+            zout.writestr(info, swap if info.filename == entry else zin.read(info.filename))
+    return out.getvalue()
+
+
+def override_boot():
+    texture = 'assets/allium/textures/item/mob_disarmer/'
+    override = tampered_pack(PACK, texture + 'full.png', texture + 'empty.png')
+    override_sha1 = hashlib.sha1(override).hexdigest()
+    target = lane / 'plugins/Allium/pack/override-test.zip'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(override)
+    configure(required=False, server_pack=False, pack_file='pack/override-test.zip')
+    start = boot('standalone with resource-pack.pack-file')
+    chosen = line_with('instead of the bundled core pack', start)
+    exported = (lane / 'plugins/Allium/pack/allium-core-pack.zip').read_bytes()
+    require(chosen is not None and override_sha1 in chosen and exported == override,
+            f'pack-file: Allium exported the local build (SHA-1 {override_sha1[:12]}…) instead of the bundled pack')
+    verified = wait(lambda: line_with("Sending Allium's resource pack from", start), 'override hosted check', 30)
+    seen = join('accept', 'accept the local build')
+    offer = allium_offer(seen)
+    require(f'SHA-1 {override_sha1}' in verified and offer is not None and offer['hash'] == override_sha1
+            and line_with(f"{BOT} loaded Allium's resource pack.", seen['log_start']) is not None,
+            'the hosted check and the offer use the local build\'s SHA-1, and the bot loads it')
+    leave()
+    # A pack-file without the core structure falls back to the bundled pack (here applied by reload).
+    bad = lane / 'plugins/Allium/pack/not-a-core-pack.zip'
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w') as z:
+        z.writestr('pack.mcmeta', '{}')
+    bad.write_bytes(buf.getvalue())
+    configure(required=False, server_pack=False, pack_file='pack/not-a-core-pack.zip')
+    _, start = reload_cmd('The hosted resource pack matches; sending it.')
+    warned = line_with('lacks the core pack', start)
+    seen = join('accept', 'accept after falling back')
+    offer = allium_offer(seen)
+    require(warned is not None and (lane / 'plugins/Allium/pack/allium-core-pack.zip').read_bytes() == PACK
+            and offer is not None and offer['hash'] == PACK_SHA1,
+            f'a pack-file without the core models falls back to the bundled pack, with a warning: {(warned or "")[-120:]}')
+    evidence['override'] = {'sha1': override_sha1, 'chosen': chosen, 'fallbackWarning': warned}
     leave()
     stop_server()
 
@@ -477,6 +551,7 @@ try:
         optional_boot()
         required_boot()
         startup_mismatch_boot()
+        override_boot()
         if not spec['multi']:
             one_owner_boot()
 except BaseException as e:
@@ -493,7 +568,7 @@ finally:
         failures.append('server cleanup ' + repr(e))
     if httpd is not None:
         httpd.shutdown()
-    expected = lambda x: "Not sending Allium's resource pack" in x
+    expected = lambda x: "Not sending Allium's resource pack" in x or 'Not sending the resource pack' in x
     errors = [x.strip() for x in logs if not expected(x) and ('Could not pass event' in x or ('Allium' in x and re.search(r'Exception|SEVERE', x)))]
     require(not errors, 'no listener or Allium exceptions in the server log: ' + json.dumps(errors[:5]))
     version = next((m.group(0) for x in logs for m in [re.search(r'This server is running .*', x)] if m), None)

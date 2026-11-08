@@ -2,8 +2,9 @@
 
 This directory is the source of Allium's core resource pack. The build generates the pack and
 bundles it in `Allium.jar`, under `pack/allium-core-pack.zip` with `.sha1` and `.json` info files.
-Allium does not send or export it yet: `resource-pack.owner` defaults to `none`, and delivery is a
-separate step.
+Delivery is configured by `resource-pack.owner` (default `none`); see
+[pack delivery](../docs/pack-delivery.md). There, `resource-pack.pack-file` delivers a local build
+with other art, such as SF's from `tools/sf_export.py`, instead of the bundled one.
 
 | Path | What it is |
 | --- | --- |

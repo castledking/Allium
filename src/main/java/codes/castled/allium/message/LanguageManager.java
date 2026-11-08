@@ -98,31 +98,47 @@ public final class LanguageManager {
     }
 
     public String get(Messages message) {
+        return get(message.getKey(), message.getDefault());
+    }
+
+    /** The text at {@code key} in the active locale, then the default locale, else {@code defaultText}. */
+    public String get(String key, String defaultText) {
         FileConfiguration active = loadedLocales.get(activeLocale);
-        String value = readText(active, message.getKey());
+        String value = readText(active, key);
         if (value != null) {
             return value;
         }
 
         FileConfiguration fallback = loadedLocales.get(DEFAULT_LOCALE);
-        value = readText(fallback, message.getKey());
+        value = readText(fallback, key);
         if (value != null) {
             return value;
         }
 
-        return message.getDefault();
+        return defaultText;
     }
 
     @Nullable
     public MessageSoundSpec getSound(Messages message) {
+        return getSound(message.getKey());
+    }
+
+    @Nullable
+    public MessageSoundSpec getSound(String key) {
         FileConfiguration active = loadedLocales.get(activeLocale);
-        MessageSoundSpec spec = readSound(active, message.getKey());
+        MessageSoundSpec spec = readSound(active, key);
         if (spec != null) {
             return spec;
         }
 
         FileConfiguration fallback = loadedLocales.get(DEFAULT_LOCALE);
-        return readSound(fallback, message.getKey());
+        return readSound(fallback, key);
+    }
+
+    /** Whether the active or default locale has a message (text or sound) at {@code key}. */
+    public boolean hasKey(String key) {
+        return readText(loadedLocales.get(activeLocale), key) != null
+                || readText(loadedLocales.get(DEFAULT_LOCALE), key) != null;
     }
 
     @Nullable

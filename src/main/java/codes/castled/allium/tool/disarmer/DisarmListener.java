@@ -18,18 +18,18 @@ import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import java.util.Objects;
 
 /**
- * Routes Bukkit events to {@link MobDisarmerService}.
+ * Routes Bukkit events to {@link DisarmBehavior}, for every loaded disarm tool.
  *
  * <p>{@link PlayerInteractEntityEvent} is handled at {@link EventPriority#HIGH} and skipped when
  * already cancelled, so protection plugins that cancel the interaction itself are honored. Its
  * {@code PlayerInteractAtEntityEvent} subclass has its own handler list and is not received
  * here, so one click reaches this listener once per hand; only the main hand acts.
  */
-public final class MobDisarmerListener implements Listener {
+public final class DisarmListener implements Listener {
 
-    private final MobDisarmerService service;
+    private final DisarmBehavior service;
 
-    public MobDisarmerListener(MobDisarmerService service) {
+    public DisarmListener(DisarmBehavior service) {
         this.service = Objects.requireNonNull(service, "service");
     }
 

@@ -37,3 +37,7 @@ local.properties
 !tests/live/providers/evidence/*.log
 /run/
 .item-hmac-secret
+
+# Python bytecode from the live harnesses
+__pycache__/
+*.pyc

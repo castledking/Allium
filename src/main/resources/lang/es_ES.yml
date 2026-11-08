@@ -107,3 +107,31 @@ utility:
 
 preferences:
   unavailable: "{prefix} &cLos ajustes de {player} aun se estan cargando. Intentalo de nuevo en un momento."
+
+messaging:
+  sent: "&7[&fyo &7→ &f{recipient}&7] &f{message}"
+  received:
+    text: "&7[&f{sender} &7→ &fyo&7] &f{message}"
+    sound: minecraft:entity.experience_orb.pickup
+    volume: 0.6
+  cannot-receive: "{prefix} &c{player} no puede recibir mensajes ahora mismo."
+  no-reply-target: "{prefix} &cNo tienes a quien responder."
+  muted: "{prefix} &cEstas silenciado."
+  self: "{prefix} &cNo puedes enviarte mensajes a ti mismo."
+  console-name: "Consola"
+  ignore:
+    added: "{prefix} &aAhora ignoras los mensajes privados de &f{player}&a."
+    removed: "{prefix} &aYa no ignoras a &f{player}&a."
+    already: "{prefix} &cYa ignoras a &f{player}&c."
+    not-ignored: "{prefix} &cNo ignoras a &f{player}&c."
+    self: "{prefix} &cNo puedes ignorarte a ti mismo."
+    full: "{prefix} &cTu lista de ignorados esta llena."
+    failed: "{prefix} &cNo se pudo guardar tu lista de ignorados; se deshizo el cambio."
+    list: "{prefix} &7Ignoras a: &f{players}"
+    list-empty: "{prefix} &7No ignoras a nadie."
+  toggle:
+    on: "{prefix} &aAhora aceptas mensajes privados."
+    off: "{prefix} &cYa no aceptas mensajes privados."
+    other-on: "{prefix} &f{player} &aahora acepta mensajes privados."
+    other-off: "{prefix} &f{player} &cya no acepta mensajes privados."
+    disabled: "{prefix} &cLas preferencias de mensajes estan desactivadas en este servidor."

@@ -229,10 +229,29 @@ result and must preserve the existing uncommitted work.
       lanes, coexistence with a second pack on 1.20.3+, and an rpm-export dry run and export
       against a copy of SF's mixer); see [the results](tests/live/delivery/RESULTS.md) and
       [docs/pack-delivery.md](docs/pack-delivery.md).
-- [ ] **S07 / M2 — Messaging:** msg/reply, acceptance/ignore/mute/vanish rules,
-      `/msgtoggle [on|off]`, per-recipient notifications. Gate: blocked sends are
-      silent; replies obey the same policy; preference persists; console/others
-      permissions and invalid arguments behave predictably.
+- [x] **S07 / M2 — Messaging:** `/msg` (`tell`, `w`, `whisper`, `m`, `t`), `/reply` (`r`),
+      `/ignore`, `/unignore` and `/msgtoggle [on|off] [player]`; see
+      [docs/messaging.md](docs/messaging.md).
+      - **Policy:** one `MessagePolicy` in `allium-core`, shared by msg and reply and checked
+        again at delivery. It covers mute, vanish, self, ignore and acceptance, and unloaded
+        preferences or ignore lists fail closed.
+      - **Privacy:** toggled-off and ignoring recipients give the same generic sender message.
+        A vanished recipient looks offline. A blocked send gives the recipient no message and no
+        sound. Bypass needs explicit permissions (`allium.msg.bypass.toggle`,
+        `allium.msg.bypass.ignore`, both default false).
+      - **Untrusted bodies:** formatting is shown literally unless the sender has
+        `allium.msg.color`, `.hex` or `.gradient`, and nothing interactive can be injected. On
+        Spigot, bodies are sent as explicit components, so URLs are not auto-linked.
+      - **Storage and hooks:** ignore lists are in their own table, `allium_ignores`. Mute and
+        vanish are hooks with no-op defaults, plus a reader for the `vanished` player metadata.
+      - **Reply target:** the most recent partner, cleared when they go offline. The console can
+        send and reply.
+
+      Gate passed 2026-11-08: 46 live checks on Spigot 1.20.1 and Paper 26.3, with two bots and
+      the console; see [the results](tests/live/messaging/RESULTS.md). It found and fixed a bug:
+      Spigot turned URLs in message bodies into clickable links.
+- [ ] **S07 follow-up — Social spy:** a separate small slice. It must never reveal vanished or
+      ignored context.
 - [ ] **S08 / M2 — Sound preferences:** omitted volume/pitch defaults, legacy
       lang.yml importer, `/messagesounds` aliases `/msounds` and `/mfx`,
       volume/toggle/reset. Gate: zero, finite ranges, independent defaults,

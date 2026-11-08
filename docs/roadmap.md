@@ -81,8 +81,8 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
 - **S03 (player preferences):** per-UUID storage with schema migrations, configured defaults
   that are never written, bounded storage lanes and sessions that load before anything is
   enforced. Covers the three accept flags and the message sound volume with its restoration
-  state. See [the results](../tests/live/preferences/RESULTS.md). The commands that change them
-  arrive with S07/S08.
+  state. See [the results](../tests/live/preferences/RESULTS.md). `/msgtoggle` arrived with S07;
+  the sound commands arrive with S08.
   - S03 follow-up: failed loads retry in the background with capped backoff, and unloaded or
     failed preferences fail closed (`acceptance` is `UNAVAILABLE`; see the contract below).
     Shutdown drains with a configurable timeout and names every write it could not save. The
@@ -111,8 +111,14 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   ResourcePackManager's mixer and reports carrier collisions. From 1.20.3 Allium's pack is added
   by UUID beside other packs. See [pack delivery](pack-delivery.md) and
   [the results](../tests/live/delivery/RESULTS.md).
-- Private messages, preference commands and the M5 addons are not implemented in this recode. Some config module names are
-  placeholders; do not count them as working features.
+- **S07 (private messaging):** `/msg`, `/reply`, `/ignore`, `/unignore` and `/msgtoggle`. They
+  share one policy, rechecked at delivery: acceptance (failing closed), ignore, and mute and vanish
+  hooks. Blocked sends are silent for the recipient and look the same to the sender, and message
+  bodies are untrusted input. See [messaging](messaging.md) and
+  [the results](../tests/live/messaging/RESULTS.md).
+- Social spy, `/paytoggle`, `/tptoggle`, the `/mfx` commands and the M5 addons are not
+  implemented in this recode yet. Some config module names are placeholders; do not count them
+  as working features.
 
 ## Architecture decisions
 

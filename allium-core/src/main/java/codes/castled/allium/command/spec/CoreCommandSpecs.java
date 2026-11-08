@@ -197,6 +197,42 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> CORE_SPECS = List.of(ALLIUM);
 
+    /** {@code /msg} with Essentials' aliases. */
+    public static final CommandSpec MSG = new CommandSpec(
+            "msg", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of("tell", "w", "whisper", "m", "t"),
+            "Send a private message", "/msg <player> <message>", "/msg <player> <message>", "allium.msg", null,
+            List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
+                    CommandArgSpec.required("message", null, SuggestionSpec.none())),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec REPLY = new CommandSpec(
+            "reply", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of("r"),
+            "Reply to your last private message", "/reply <message>", "/reply <message>", "allium.reply", null,
+            List.of(CommandArgSpec.required("message", null, SuggestionSpec.none())),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec IGNORE = new CommandSpec(
+            "ignore", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of(),
+            "Ignore a player's private messages, or list who you ignore", "/ignore [player]", "/ignore [player]", "allium.ignore", null,
+            List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec UNIGNORE = new CommandSpec(
+            "unignore", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of(),
+            "Stop ignoring a player", "/unignore <player>", "/unignore <player>", "allium.ignore", null,
+            List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec MSGTOGGLE = new CommandSpec(
+            "msgtoggle", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of(),
+            "Turn receiving private messages on or off", "/msgtoggle [on|off] [player]", "/msgtoggle [on|off] <player>",
+            "allium.msgtoggle", "allium.msgtoggle.others",
+            List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
+                    CommandArgSpec.optional("player", "allium.msgtoggle.others", SuggestionSpec.onlinePlayers("allium.msgtoggle.others"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> MESSAGING_SPECS = List.of(MSG, REPLY, IGNORE, UNIGNORE, MSGTOGGLE);
+
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(
             HEAL,
             FEED,

@@ -33,6 +33,8 @@ database:
 modules:
   # Player preferences (accept messages/payments/teleport requests, message sound volume).
   preferences: true
+  # Private messages: /msg, /reply, /ignore, /unignore, /msgtoggle.
+  messaging: true
   # Item library and the M1 /give harness.
   items: true
   teleportation: true

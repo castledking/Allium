@@ -43,6 +43,32 @@ public final class TextSender {
         sender.sendMessage(formatted.toLegacy());
     }
 
+    /**
+     * Sends text that contains untrusted input, such as a player's private message. On Paper this
+     * is the same component path as {@link #send}. On Spigot a player gets explicit chat components
+     * instead of a legacy string, because Spigot turns http(s) URLs in legacy chat strings into
+     * clickable links; untrusted text must never become interactive. The console gets plain text.
+     */
+    public static void sendLiteral(CommandSender sender, FormattedText formatted) {
+        if (sender == null || formatted == null || formatted.isEmpty()) {
+            return;
+        }
+        if (ADVENTURE_AVAILABLE) {
+            try {
+                if (AdventureTextBridge.trySend(sender, formatted)) {
+                    return;
+                }
+            } catch (Throwable ignored) {
+                // Fall through to the Spigot component path.
+            }
+        }
+        if (sender instanceof org.bukkit.entity.Player player) {
+            player.spigot().sendMessage(SpigotComponents.of(formatted));
+        } else {
+            sender.sendMessage(formatted.toPlainText());
+        }
+    }
+
     private static boolean detectAdventure() {
         try {
             Class.forName("net.kyori.adventure.audience.Audience");

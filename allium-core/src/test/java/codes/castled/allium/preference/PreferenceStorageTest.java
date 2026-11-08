@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -102,7 +103,7 @@ class PreferenceStorageTest {
             tb.join();
             all.addAll(allB);
             CompletableFuture.allOf(all.toArray(CompletableFuture[]::new)).get(60, TimeUnit.SECONDS);
-            assertTrue(a.close(10_000L) && b.close(10_000L));
+            assertTrue(a.close(10_000L).completed() && b.close(10_000L).completed());
             StoredPreferences row = repository(db).load(uuid).orElseThrow();
             assertEquals(Boolean.FALSE, row.acceptMessages(), db.name() + ": session A's last write (i=39) kept");
             assertEquals(Boolean.TRUE, row.acceptPayments(), db.name() + ": session B's last write (i=39) kept");
@@ -153,7 +154,7 @@ class PreferenceStorageTest {
             StoredPreferences after = repository.load(uuid).orElseThrow();
             assertEquals(new StoredPreferences(uuid, false, false, null, 0.3D, null, before.version() + 1), after,
                     db.name() + ": loads wrote nothing; only the one patch changed the row");
-            assertTrue(store.close(10_000L));
+            assertTrue(store.close(10_000L).completed());
             assertTrue(diagnostics.isEmpty(), diagnostics.toString());
         }
     }
@@ -226,7 +227,7 @@ class PreferenceStorageTest {
         assertEquals(PreferenceSessions.State.FAILED, view.state());
         assertNull(view.effective());
         assertEquals(1, diagnostics.size());
-        assertTrue(store.close(5_000L));
+        assertTrue(store.close(5_000L).completed());
     }
 
     @Test
@@ -249,7 +250,7 @@ class PreferenceStorageTest {
             assertEquals(Boolean.FALSE, between.get().stored().acceptPayments(), db.name() + ": the pending second patch stays visible");
             StoredPreferences done = sessions.view(uuid).orElseThrow().stored();
             assertEquals(new StoredPreferences(uuid, false, false, null, null, null, 2L), done, db.name());
-            assertTrue(store.close(5_000L));
+            assertTrue(store.close(5_000L).completed());
         }
     }
 
@@ -280,7 +281,143 @@ class PreferenceStorageTest {
         assertEquals(1, diagnostics.size());
         broken.set(false);
         assertEquals(Boolean.FALSE, repository.load(uuid).orElseThrow().acceptMessages());
-        assertTrue(store.close(5_000L));
+        assertTrue(store.close(5_000L).completed());
+    }
+
+    /** Runs retries at once on a fresh thread and records the requested delays. */
+    private static PreferenceSessions.Delayer immediate(List<Long> delays) {
+        return (task, delay) -> {
+            synchronized (delays) {
+                delays.add(delay);
+            }
+            new Thread(task, "test-retry").start();
+        };
+    }
+
+    private static codes.castled.allium.storage.ConnectionSource failingFirst(Databases.Db db, java.util.concurrent.atomic.AtomicInteger failures) {
+        return () -> {
+            if (failures.getAndUpdate(n -> n > 0 ? n - 1 : 0) > 0) {
+                throw new SQLException("database unavailable (test)");
+            }
+            return db.source().connection();
+        };
+    }
+
+    @Test
+    void retryDelaysDoubleUpToTheCap() {
+        PreferenceSessions.RetryPolicy policy = new PreferenceSessions.RetryPolicy(5, 1_000L, 15_000L);
+        assertEquals(List.of(1_000L, 2_000L, 4_000L, 8_000L, 15_000L),
+                List.of(policy.delayMillis(1), policy.delayMillis(2), policy.delayMillis(3), policy.delayMillis(4), policy.delayMillis(5)));
+        assertThrows(IllegalArgumentException.class, () -> new PreferenceSessions.RetryPolicy(-1, 0L, 0L));
+    }
+
+    @Test
+    void aFailedLoadIsRetriedWithBackoffAndRecovers() throws Exception {
+        Databases.Db db = Databases.sqlite(dir.resolve("blip.db"));
+        java.util.concurrent.atomic.AtomicInteger failures = new java.util.concurrent.atomic.AtomicInteger();
+        PreferenceRepository repository = new PreferenceRepository(failingFirst(db, failures), db.dialect(), System::currentTimeMillis);
+        repository.migrate();
+        UUID uuid = UUID.randomUUID();
+        repository.apply(uuid, PreferenceChange.set(PreferenceKey.ACCEPT_PAYMENTS, false));
+        PreferenceStore store = new PreferenceStore(repository, 1, 8, u -> { });
+        List<Long> delays = new ArrayList<>();
+        List<String> diagnostics = new ArrayList<>();
+        PreferenceSessions sessions = new PreferenceSessions(store, () -> DEFAULTS, diagnostics::add,
+                new PreferenceSessions.RetryPolicy(4, 100L, 1_000L), immediate(delays));
+        failures.set(2);
+        sessions.begin(uuid);
+        PreferenceSessions.View view = sessions.whenReady(uuid).get(10, TimeUnit.SECONDS);
+        assertEquals(PreferenceSessions.State.READY, view.state());
+        assertEquals(3, view.loadAttempts());
+        assertEquals(Boolean.FALSE, view.stored().acceptPayments(), "the real row, not defaults");
+        assertEquals(List.of(100L, 200L), delays);
+        assertEquals(2L, sessions.stats().loadRetries());
+        assertEquals(1L, sessions.stats().loadsRecovered());
+        assertEquals(2, diagnostics.size(), "one line for the first failure, one for the recovery: " + diagnostics);
+        assertEquals(PreferenceSessions.Acceptance.REFUSES, sessions.acceptance(uuid, PreferenceKey.ACCEPT_PAYMENTS));
+        assertTrue(store.close(5_000L).completed());
+    }
+
+    @Test
+    void retriesAreCappedAndTheSessionStaysUnavailable() throws Exception {
+        Databases.Db db = Databases.sqlite(dir.resolve("down.db"));
+        java.util.concurrent.atomic.AtomicInteger failures = new java.util.concurrent.atomic.AtomicInteger(Integer.MAX_VALUE);
+        PreferenceStore store = new PreferenceStore(new PreferenceRepository(failingFirst(db, failures), db.dialect(), System::currentTimeMillis), 1, 8, u -> { });
+        List<Long> delays = new ArrayList<>();
+        List<String> diagnostics = new ArrayList<>();
+        PreferenceSessions sessions = new PreferenceSessions(store, () -> DEFAULTS, diagnostics::add,
+                new PreferenceSessions.RetryPolicy(3, 100L, 250L), immediate(delays));
+        UUID uuid = UUID.randomUUID();
+        sessions.begin(uuid);
+        assertThrows(Exception.class, () -> sessions.whenReady(uuid).get(10, TimeUnit.SECONDS));
+        PreferenceSessions.View view = sessions.view(uuid).orElseThrow();
+        assertEquals(PreferenceSessions.State.FAILED, view.state());
+        assertEquals(4, view.loadAttempts(), "the first load plus three retries, then no more");
+        assertEquals(List.of(100L, 200L, 250L), delays);
+        assertNull(view.effective());
+        assertEquals(PreferenceSessions.Acceptance.UNAVAILABLE, sessions.acceptance(uuid, PreferenceKey.ACCEPT_MESSAGES));
+        assertEquals(2, diagnostics.size(), "the first failure and the give-up: " + diagnostics);
+        assertTrue(diagnostics.get(1).contains("Gave up"), diagnostics.get(1));
+        assertTrue(store.close(5_000L).completed());
+    }
+
+    @Test
+    void acceptanceFailsClosedUntilTheSessionIsReady() throws Exception {
+        Databases.Db db = Databases.sqlite(dir.resolve("accept.db"));
+        repository(db).migrate();
+        CountDownLatch release = new CountDownLatch(1);
+        PreferenceStore store = new PreferenceStore(repository(db), 1, 8, u -> await(release));
+        PreferenceSessions sessions = new PreferenceSessions(store, () -> new PreferenceDefaults(true, false, true, 1.0D), m -> { });
+        UUID uuid = UUID.randomUUID();
+        assertEquals(PreferenceSessions.Acceptance.UNAVAILABLE, sessions.acceptance(uuid, PreferenceKey.ACCEPT_MESSAGES), "no session");
+        sessions.begin(uuid);
+        for (PreferenceKey flag : List.of(PreferenceKey.ACCEPT_MESSAGES, PreferenceKey.ACCEPT_PAYMENTS, PreferenceKey.ACCEPT_TELEPORT_REQUESTS)) {
+            assertEquals(PreferenceSessions.Acceptance.UNAVAILABLE, sessions.acceptance(uuid, flag), "LOADING: " + flag);
+        }
+        release.countDown();
+        sessions.whenReady(uuid).get(10, TimeUnit.SECONDS);
+        assertEquals(PreferenceSessions.Acceptance.ACCEPTS, sessions.acceptance(uuid, PreferenceKey.ACCEPT_MESSAGES));
+        assertEquals(PreferenceSessions.Acceptance.REFUSES, sessions.acceptance(uuid, PreferenceKey.ACCEPT_PAYMENTS), "the configured default");
+        assertThrows(IllegalArgumentException.class, () -> sessions.acceptance(uuid, PreferenceKey.MESSAGE_SOUND_VOLUME));
+        assertTrue(store.close(5_000L).completed());
+    }
+
+    @Test
+    void aShutdownTimeoutNamesEveryWriteItCouldNotFinish() throws Exception {
+        Databases.Db db = Databases.sqlite(dir.resolve("stuck.db"));
+        CountDownLatch release = new CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicBoolean stuck = new java.util.concurrent.atomic.AtomicBoolean();
+        codes.castled.allium.storage.ConnectionSource source = () -> {
+            if (stuck.get()) {
+                await(release);
+            }
+            return db.source().connection();
+        };
+        PreferenceRepository repository = new PreferenceRepository(source, db.dialect(), System::currentTimeMillis);
+        repository.migrate();
+        PreferenceStore store = new PreferenceStore(repository, 1, 16, u -> { });
+        UUID uuid = UUID.randomUUID();
+        stuck.set(true);
+        CompletableFuture<StoredPreferences> running = store.apply(uuid, PreferenceChange.set(PreferenceKey.ACCEPT_MESSAGES, false));
+        CompletableFuture<StoredPreferences> queued1 = store.apply(uuid, PreferenceChange.set(PreferenceKey.MESSAGE_SOUND_VOLUME, 0.25D));
+        CompletableFuture<StoredPreferences> queued2 = store.apply(uuid, PreferenceChange.unset(PreferenceKey.ACCEPT_PAYMENTS));
+        store.load(uuid);
+        Thread.sleep(100L);
+        long started = System.nanoTime();
+        PreferenceStore.CloseReport report = store.close(300L);
+        assertTrue(System.nanoTime() - started < TimeUnit.SECONDS.toNanos(2), "close returns after its timeout");
+        assertFalse(report.completed());
+        assertEquals(List.of(uuid + " {message-sound-volume=0.25}", uuid + " {accept-payments=unset}"), report.lostWrites());
+        assertEquals(List.of(uuid + " {accept-messages=false}"), report.inProgressWrites());
+        assertEquals(1, report.droppedLoads());
+        ExecutionException dropped = assertThrows(ExecutionException.class, () -> queued1.get(1, TimeUnit.SECONDS));
+        assertInstanceOf(PreferenceStore.DroppedAtShutdownException.class, dropped.getCause());
+        assertTrue(queued2.isCompletedExceptionally());
+        assertInstanceOf(PreferenceStore.StoreBusyException.class,
+                assertThrows(ExecutionException.class, () -> store.apply(uuid, PreferenceChange.unset(PreferenceKey.ACCEPT_MESSAGES)).get()).getCause(),
+                "work after close is refused");
+        release.countDown();
+        running.handle((r, e) -> null).get(10, TimeUnit.SECONDS);
     }
 
     private static void await(CountDownLatch latch) {

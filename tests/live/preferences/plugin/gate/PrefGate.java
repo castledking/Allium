@@ -19,6 +19,7 @@ import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -48,6 +49,16 @@ public final class PrefGate extends JavaPlugin implements Listener {
 
     private PreferencesModule module;
     private final List<Map<String, Object>> joins = Collections.synchronizedList(new ArrayList<>());
+    private final java.util.concurrent.atomic.AtomicBoolean denyNext = new java.util.concurrent.atomic.AtomicBoolean();
+
+    /** "Another plugin" denying a login before Allium's MONITOR listener sees it. */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPreLogin(AsyncPlayerPreLoginEvent event) {
+        if (denyNext.getAndSet(false)) {
+            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, "S03 gate: another plugin denied this login");
+            getLogger().info("S03G-DENIED " + event.getName());
+        }
+    }
 
     @Override
     public void onEnable() {
@@ -103,6 +114,22 @@ public final class PrefGate extends JavaPlugin implements Listener {
                 }
             }
             case "stats" -> done(text, sessions.stats());
+            case "deny-next" -> {
+                denyNext.set(true);
+                done(text, Map.of("denyNext", true));
+            }
+            case "accept" -> {
+                PreferenceKey flag = PreferenceKey.fromName(args[2]).orElseThrow(() -> new IllegalArgumentException("unknown key " + args[2]));
+                PreferenceSessions.Acceptance acceptance = module.acceptance(offline(args[1]), flag);
+                Map<String, Object> out = new LinkedHashMap<>();
+                out.put("acceptance", acceptance.name());
+                if (acceptance == PreferenceSessions.Acceptance.UNAVAILABLE) {
+                    PluginStart allium = (PluginStart) getServer().getPluginManager().getPlugin("Allium");
+                    out.put("message", allium.getLanguageManager().get(codes.castled.allium.message.Messages.PREFERENCES_UNAVAILABLE)
+                            .replace("{player}", args[1]));
+                }
+                done(text, out);
+            }
             case "fault" -> {
                 FaultInjection.arm(args[1], Integer.parseInt(args[2]));
                 done(text, Map.of("armed", args[1], "count", args[2]));
@@ -261,6 +288,7 @@ public final class PrefGate extends JavaPlugin implements Listener {
             EffectivePreferences effective = v.effective();
             out.put("effective", effective);
             out.put("failure", v.failure());
+            out.put("loadAttempts", v.loadAttempts());
         }, () -> out.put("state", "NONE"));
         return out;
     }

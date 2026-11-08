@@ -101,6 +101,9 @@ class Server:
         self.dir = run / name
         self.logs = []
         self.proc = None
+        self.log_thread = None
+        # Log lines from here on belong to a deliberate database outage and are not error-checked.
+        self.quiet_from = None
 
     def write(self):
         lane = self.dir
@@ -126,6 +129,13 @@ class Server:
                 if old not in config:
                     raise RuntimeError('config injection failed: ' + old.strip())
                 config = config.replace(old, new)
+        # Retry timings for the gate: 1.5 s, then 3 s, then 3 s (three retries).
+        for old, new in [('    first-delay-millis: 1000\n', '    first-delay-millis: 1500\n'),
+                         ('    max-delay-millis: 15000\n', '    max-delay-millis: 3000\n'),
+                         ('    retries: 4\n', '    retries: 3\n')]:
+            if old not in config:
+                raise RuntimeError('retry config injection failed: ' + old.strip())
+            config = config.replace(old, new)
         (plugins / 'Allium/config.yml').write_text(config)
         (lane / 'eula.txt').write_text('eula=true\n')
         (lane / 'server.properties').write_text(f'''server-ip=127.0.0.1
@@ -149,6 +159,13 @@ max-tick-time=120000
 ''')
         # connection-throttle 0: the gate reconnects within seconds on purpose.
         (lane / 'bukkit.yml').write_text('settings:\n  allow-end: false\n  connection-throttle: 0\n')
+
+    def set_line(self, old, new):
+        path = self.dir / 'plugins/Allium/config.yml'
+        text = path.read_text()
+        if old not in text:
+            raise RuntimeError('config line not found: ' + old.strip())
+        path.write_text(text.replace(old, new, 1))
 
     def set_default(self, key, value):
         path = self.dir / 'plugins/Allium/config.yml'
@@ -179,7 +196,8 @@ max-tick-time=120000
         start = len(self.logs)
         self.proc = subprocess.Popen(self.argv(), cwd=self.dir, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT, text=True, bufsize=1)
-        threading.Thread(target=pump, args=(self.proc, run / f'server-{self.name}.log', self.logs), daemon=True).start()
+        self.log_thread = threading.Thread(target=pump, args=(self.proc, run / f'server-{self.name}.log', self.logs), daemon=True)
+        self.log_thread.start()
         wait(lambda: any('Done (' in x for x in self.logs[start:]), self.name + ' Done', 300, self)
         require(any('S03G-GATE READY' in x and 'module=true' in x for x in self.logs[start:]), f'{self.name} {label}: fixture and preferences module enabled')
         line = next((x for x in self.logs[start:] if 'Preferences enabled:' in x), '')
@@ -245,6 +263,25 @@ class Bot:
         threading.Thread(target=pump, args=(self.proc, run / f'client-{s.name}.log', self.logs), daemon=True).start()
         wait(lambda: any('S04G-WIRE READY' in x for x in self.logs[start:]), f'{s.name} {label} client READY', 90, s)
         wait(lambda: s.view()['online'], f'{s.name} {label} bot online', 30, s)
+
+    def connect_denied(self, label):
+        """Starts a client whose login is expected to be refused; returns its log once it exits."""
+        s = self.server
+        script = 'client-raw26.cjs' if spec['client'] == 'raw26' else 'client-mcp.cjs'
+        args = ['node', str(CLIENTS / script), str(s.dir), str(s.port)] + ([] if spec['client'] == 'raw26' else [spec['client']]) + [BOT]
+        env = dict(os.environ, S04G_BUNGEE='0', S04G_WIRE_IDS=str(s.dir / 'plugins/PrefGate/wire-ids.json'))
+        start = len(self.logs)
+        proc = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, bufsize=1, env=env)
+        thread = threading.Thread(target=pump, args=(proc, run / f'client-{s.name}.log', self.logs), daemon=True)
+        thread.start()
+        try:
+            proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            raise RuntimeError(label + ': the client was not refused')
+        thread.join(timeout=5)
+        return self.logs[start:]
 
     def disconnect(self):
         proc, self.proc = self.proc, None
@@ -429,23 +466,86 @@ def slow_reconnect(A, bot):
                                  'rowBefore': before, 'rowAfter': db}
 
 
-def failed_load(A, bot):
+def load_retries(A, bot):
+    """Failed loads: retried in the background with backoff (1.5 s, 3 s, 3 s), capped, never defaults."""
     before = db_row()
+    stats0 = A.pg('stats')
+    accept = lambda: A.pg(f'accept {BOT} accept-messages')
+
     bot.disconnect()
     A.pg('fault preferences.load-fail 1')
     start = len(A.logs)
-    bot.connect('join with a failing load')
+    bot.connect('join through a one-load blip')
+    join = A.pg('joins')[-1]
     v = A.view()
-    require(v['state'] == 'FAILED' and v['effective'] is None and 'fault injection' in str(v['failure']),
-            f'a failed load leaves the session FAILED with no effective preferences: {v["failure"]}')
+    require(join['state'] == 'READY' and v['loadAttempts'] == 2 and fields(v['stored']) == fields(before)
+            and any(f'Loaded preferences for {UUID} on attempt 2' in x for x in A.logs[start:]),
+            'a load that failed once was retried 1.5 s later inside the 2 s pre-login wait: READY at join with the real row')
+
+    bot.disconnect()
+    A.pg('fault preferences.load-fail 2')
+    t0 = time.monotonic()
+    bot.connect('join during a longer outage')
+    join = A.pg('joins')[-1]
+    v = A.view()
+    a = accept()
+    require(join['state'] == 'FAILED' and v['state'] == 'FAILED' and v['effective'] is None,
+            f'two failed loads: the player joins with preferences FAILED and nothing effective ({time.monotonic() - t0:.1f} s)')
+    require(a['acceptance'] == 'UNAVAILABLE' and 'Try again shortly' in a.get('message', ''),
+            f'fail closed: messages to them are refused as unavailable, with "{a.get("message", "")[-60:]}"')
     message = A.pg(f'toggle {BOT}', expect_fail=True)
     require('FAILED' in message, 'a toggle on a FAILED session is refused')
-    require(any('Could not load preferences for ' + UUID in x for x in A.logs[start:]), 'the failure is reported once in the log')
-    require(db_row() == before, 'a failed load wrote nothing')
+    v = wait(lambda: (lambda x: x if x['state'] == 'READY' else None)(A.view()), 'background recovery', 15, A)
+    recovered = time.monotonic() - t0
+    require(v['loadAttempts'] == 3 and fields(v['stored']) == fields(before) and accept()['acceptance'] == 'REFUSES',
+            f'the third attempt, in the background {recovered:.1f} s after joining began, loaded the real row '
+            '(accept-messages false: REFUSES, not the default)')
+
     bot.disconnect()
-    bot.connect('rejoin after the failure')
+    A.pg('fault preferences.load-fail 10')
+    start = len(A.logs)
+    t0 = time.monotonic()
+    bot.connect('join during an outage that outlasts the retries')
+    gave_up = wait(lambda: next((x.strip() for x in A.logs[start:] if f'Gave up loading preferences for {UUID}' in x), None),
+                   'give up', 20, A)
+    elapsed = time.monotonic() - t0
+    time.sleep(4.0)
+    tripped = A.pg('tripped preferences.load-fail')['tripped']
     v = A.view()
-    require(v['state'] == 'READY' and fields(v['stored']) == fields(before), 'the next join loads the real row')
+    require(v['state'] == 'FAILED' and v['loadAttempts'] == 4 and tripped == 4 and accept()['acceptance'] == 'UNAVAILABLE'
+            and 'after 4 attempts' in gave_up,
+            f'retries are capped: 4 attempts in {elapsed:.1f} s, none in the next 4 s; still FAILED and unavailable')
+    A.pg('fault preferences.load-fail 0')
+    bot.disconnect()
+    bot.connect('rejoin after the outage')
+    v = A.view()
+    stats = A.pg('stats')
+    require(v['state'] == 'READY' and fields(v['stored']) == fields(before) and db_row() == before,
+            'the next join loads the real row, and none of the failures wrote anything')
+    evidence['loadRetries'] = {'statsBefore': stats0, 'statsAfter': stats, 'recoveredSeconds': round(recovered, 2),
+                               'gaveUp': gave_up[-160:], 'gaveUpSeconds': round(elapsed, 2)}
+
+
+def denied_login(A, bot):
+    """Another plugin denies the login before Allium's MONITOR listener: no session, no load."""
+    bot.disconnect()
+    stats0 = A.pg('stats')
+    A.pg('deny-next')
+    start = len(A.logs)
+    client = bot.connect_denied('a login another plugin denies')
+    stats = A.pg('stats')
+    v = A.view()
+    denied = any('S03G-DENIED ' + BOT in x for x in A.logs[start:])
+    shown = any('another plugin denied this login' in x for x in client + A.logs[start:])
+    require(denied and shown and not any('S04G-WIRE READY' in x for x in client),
+            'the fixture denied the login at pre-login (HIGH) and the client was refused with its reason')
+    require(stats['sessionsBegun'] == stats0['sessionsBegun'] and stats['loads'] == stats0['loads'] and v['state'] == 'NONE',
+            f'Allium began no session and ran no load for the denied login (sessions {stats0["sessionsBegun"]} -> {stats["sessionsBegun"]})')
+    evidence['deniedLogin'] = {'priority': 'HIGH', 'statsBefore': stats0, 'statsAfter': stats,
+                               'stateAfter': v['state'], 'clientRefused': denied and shown,
+                               'clientReady': any('S04G-WIRE READY' in x for x in client)}
+    bot.connect('join after the denial')
+    require(A.view()['state'] == 'READY', 'the next, allowed login loads normally')
 
 
 def concurrent(A, bot):
@@ -535,6 +635,82 @@ def drain_on_stop(A, bot):
     evidence['drainOnStop'] = {'count': count, 'queuedAtDisable': queued, 'rowBefore': before, 'rowAfter': db}
 
 
+def expected_writes(count):
+    """Writer A's patches, as the fixture builds them."""
+    return [{'accept-messages': i % 2 == 1, 'message-sound-volume': round((i + 1) / 1000.0, 3)} for i in range(count)]
+
+
+def parse_write(description):
+    uuid, body = description.split(' ', 1)
+    out = {}
+    for part in body.strip('{}').split(', '):
+        key, value = part.split('=', 1)
+        out[key] = None if value == 'unset' else (value == 'true' if value in ('true', 'false') else round(float(value), 3))
+    return uuid, out
+
+
+def unreachable_at_stop(A, bot):
+    """/stop while the database is unreachable: the 3 s timeout fires, every unsaved write is named, shutdown continues."""
+    A.set_line('    shutdown-timeout-millis: 10000\n', '    shutdown-timeout-millis: 3000\n')
+    A.boot('restart with a 3 s shutdown timeout')
+    bot.connect('join before the database goes away')
+    before = db_row()
+    A.quiet_from = len(A.logs)
+    count = 20
+    lock = None
+    if mysql:
+        subprocess.run(['docker', 'pause', MARIADB['container']], check=True, capture_output=True)
+        how = 'MariaDB paused (docker pause)'
+    else:
+        lock = sqlite3.connect(str(A.dir / 'plugins/Allium/allium.db'), isolation_level=None, timeout=10)
+        lock.execute('BEGIN EXCLUSIVE')
+        how = 'another process holds the SQLite write lock'
+    try:
+        start = len(A.logs)
+        t0 = time.monotonic()
+        A.console(f'pg burst {BOT} A {count}\nstop')
+        A.proc.wait(timeout=120)
+        stopped = time.monotonic() - t0
+        code = A.proc.returncode
+        A.proc = None
+        A.log_thread.join(timeout=5)
+        # Capture the cutoff before restoring either database. Shutdown must finish while the
+        # outage persists, including when the database never returns during the server's life.
+        if A.log_thread.is_alive():
+            raise RuntimeError('server log pump did not finish after shutdown')
+        lines = list(A.logs[start:])
+    finally:
+        if mysql:
+            subprocess.run(['docker', 'unpause', MARIADB['container']], check=True, capture_output=True)
+        else:
+            lock.rollback()
+            lock.close()
+    try:
+        bot.proc.wait(timeout=20)
+    except subprocess.TimeoutExpired:
+        bot.proc.kill()
+    bot.proc = None
+    header = next((x.strip() for x in lines if 'Preference storage did not finish within 3000 ms' in x), None)
+    lost = [x.split('not saved: ', 1)[1].strip() for x in lines if 'not saved: ' in x and 'preference write' not in x]
+    unknown = [x.split('outcome unknown: ', 1)[1].strip() for x in lines if 'outcome unknown: ' in x]
+    db = wait(db_row, 'database reachable again', 30)
+    saved = db['version'] - before['version']
+    patches = expected_writes(count)
+    listed = [parse_write(d) for d in unknown + lost]
+    # The named writes are exactly the last ones submitted, in order; the database holds the rest
+    # (plus, at most, the one that was in progress).
+    exact = (len(lost) == 19 and len(unknown) == 1 and all(u == UUID for u, _ in listed)
+             and [w for _, w in listed] == patches and saved == 0
+             and header is not None and '19 preference write(s) were not saved, and 1 may or may not' in header)
+    require(header is not None and code == 0 and stopped < 60,
+            f'{how}: shutdown waited the 3 s timeout, logged it and exited normally in {stopped:.1f} s')
+    require(exact, f'the log names exactly the writes that were not saved: {len(lost)} not saved, {len(unknown)} in progress, '
+                   f'and the database holds the other {saved} of {count}')
+    evidence['unreachableAtStop'] = {'how': how, 'stopSeconds': round(stopped, 1), 'header': header, 'notSaved': len(lost),
+                                     'inProgress': unknown, 'notSavedWrites': lost, 'saved': saved, 'rowBefore': before,
+                                     'rowAfter': db, 'databaseUnavailableUntilExit': True, 'serverExitCode': code}
+
+
 summary = {}
 try:
     for port in PORTS:
@@ -553,9 +729,11 @@ try:
     round_trip(A, bot)
     restart(A, bot)
     slow_reconnect(A, bot)
-    failed_load(A, bot)
+    load_retries(A, bot)
+    denied_login(A, bot)
     concurrent(A, bot)
     drain_on_stop(A, bot)
+    unreachable_at_stop(A, bot)
 except BaseException as e:
     failures.append('HARNESS ' + repr(e))
     emit('ERROR ' + repr(e))
@@ -571,7 +749,7 @@ finally:
             s.stop()
         except Exception as e:
             failures.append(f'{s.name} cleanup ' + repr(e))
-    logs = [x for s in servers for x in s.logs]
+    logs = [x for s in servers for x in s.logs[:s.quiet_from]]
     expected = lambda x: 'S03G' in x or 'fault injection' in x
     allium_errors = [x.strip() for x in logs if not expected(x)
                      and ('Could not pass event' in x or ('Allium' in x and re.search(r'Exception|SEVERE', x)))]
@@ -582,7 +760,9 @@ finally:
         hashes = {x.name: hashlib.sha256(x.read_bytes()).hexdigest() for x in (servers[0].dir / 'plugins').glob('*.jar')}
     summary = {'lane': a.lane, 'backend': a.backend, 'ports': PORTS if mysql else PORTS[:1], 'server': version,
                'client': spec['client'], 'uuid': UUID, 'checks': sum(1 for x in driver if x.startswith(('PASS ', 'FAIL '))),
-               'failures': failures, 'hashes': hashes, 'evidence': evidence}
+               'failures': failures, 'hashes': hashes, 'evidence': evidence,
+               'testSources': {str(p.relative_to(REPO)): hashlib.sha256(p.read_bytes()).hexdigest()
+                               for p in [HERE / 'run.py', HERE / 'plugin/gate/PrefGate.java']}}
     (run / 'summary.json').write_text(json.dumps(summary, indent=2))
     (run / 'driver.log').write_text('\n'.join(driver) + '\n')
     for s in servers:

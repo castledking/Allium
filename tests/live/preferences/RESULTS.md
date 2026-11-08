@@ -1,21 +1,26 @@
 # S03: player preferences gate
 
-**PASS on 2026-11-07: 188 live checks, 0 failures**, on Spigot 1.20.1 and Paper 26.3, each
-against SQLite and MySQL (MariaDB 10.11.16). All runs used Allium.jar SHA-256 `a5b6cb02…`.
-Unit tests: 184 in total (50 core, 134 plugin), 0 failures. The core preference tests ran on both
-SQLite and MariaDB. Versions, every check and the evidence rows are in the
-[manifest](evidence/s03-manifest.json).
+**Follow-up PASS on 2026-11-07: 224 live checks, 0 failures**, on Spigot 1.20.1 and Paper 26.3,
+each against SQLite and MySQL (MariaDB 10.11.16), all with Allium.jar SHA-256 `9354d8a7…`. These
+runs repeat every check of the original gate and add load retries, fail-closed acceptance, a
+login denied by another plugin, and `/stop` with the database unreachable (see
+[the follow-up](#follow-up-retries-fail-closed-denied-logins-and-shutdown-timeouts)). The
+evidence is in the [follow-up manifest](evidence/s03-followup-manifest.json).
+
+The original gate passed with 188 live checks on jar `a5b6cb02…` (see the
+[manifest](evidence/s03-manifest.json)). Unit tests now: 61 core (the preference tests on
+SQLite and MariaDB) and 135 plugin, 0 failures.
 
 Run logs, summaries and the SQLite files are kept on persistent storage in
 `/mnt/storage/.allium-validation/20261107/preferences-gate/`. The test database password is
 redacted there.
 
-| Lane | Backend | Client | Checks |
-| --- | --- | --- | --- |
-| Spigot 1.20.1 (3871-d2eba2c), Java 17 | SQLite (sqlite-jdbc 3.42.0.0) | minecraft-protocol 1.68.0, protocol 763 | 45 |
-| Spigot 1.20.1 | MariaDB (mysql-connector-j 8.0.33), two servers | same | 49 |
-| Paper 26.3-141, Java 25 | SQLite (sqlite-jdbc 3.49.1.0) | owned raw client, protocol 777 | 45 |
-| Paper 26.3-141 | MariaDB (mysql-connector-j 9.2.0), two servers | same | 49 |
+| Lane | Backend | Client | Original | Follow-up |
+| --- | --- | --- | --- | --- |
+| Spigot 1.20.1 (3871-d2eba2c), Java 17 | SQLite (sqlite-jdbc 3.42.0.0) | minecraft-protocol 1.68.0, protocol 763 | 45 | 54 |
+| Spigot 1.20.1 | MariaDB (mysql-connector-j 8.0.33), two servers | same | 49 | 58 |
+| Paper 26.3-141, Java 25 | SQLite (sqlite-jdbc 3.49.1.0) | owned raw client, protocol 777 | 45 | 54 |
+| Paper 26.3-141 | MariaDB (mysql-connector-j 9.2.0), two servers | same | 49 | 58 |
 
 ## What S03 adds
 
@@ -46,8 +51,9 @@ redacted there.
     `message-sound-volume`, plus its restoration state.
   - The sound rules (`/mfx volume|toggle|reset`) are implemented and tested here; the commands
     arrive in S07/S08.
-  - The configured defaults are `preferences.defaults.*`, with `sounds.defaults.volume` as the
-    sound fallback.
+  - The configured defaults are `preferences.defaults.*`. The recipient's sound fallback is
+    `sounds.messages.fallback-volume` (since the follow-up; the original gate used
+    `sounds.defaults.volume`).
 
 ## How it runs
 
@@ -83,10 +89,7 @@ the container. Fault points (`-Dallium.fault-injection=true`) make a load take 6
     - The first load was **discarded as stale**.
     - The new session became READY with the **real row plus that one change**, not defaults.
     - The database changed by exactly that patch (version +1).
-- **Failed load:**
-  - The session was `FAILED`, with no effective preferences, a refused toggle, one log
-    diagnostic and no write.
-  - The next join loaded the real row.
+- **Failed load:** see the follow-up below; since then, failed loads are retried.
 - **Concurrent writes from two sessions:** 100 + 100 writes. Each writer flipped its own field
   (A `accept-messages`, B `accept-payments`) and both wrote the shared volume.
   - **MySQL:**
@@ -106,6 +109,42 @@ the container. Fault points (`-Dallium.fault-injection=true`) make a load take 6
   - `/stop` arrived while a slow load held the player's lane and 400 writes were queued behind
     it. 401 tasks were queued when Allium disabled.
   - All 400 writes were saved before the pool closed (version 209 → 609).
+
+## Follow-up: retries, fail closed, denied logins and shutdown timeouts
+
+- **Sound volume:** a private-message notification's volume is the recipient's volume (their
+  `/mfx` override, else `sounds.messages.fallback-volume`) times the message's own volume (else
+  `sounds.defaults.volume`). Pitch is the message's own, else `sounds.defaults.pitch`.
+  - Volume and pitch fall back independently, and a zero on either side mutes.
+  - This lives in `SoundLevels` (allium-core) and `MessageManager#playNotificationSound`. The
+    unit tests cover zero, reset, omitted and invalid values; it is not exercised live until
+    S07 sends private messages.
+- **Load retries:** the gate lanes retry 3 times, after 1.5 s, then 3 s, then 3 s. The default
+  is 4 retries, after 1 s, then doubling up to 15 s.
+  - **One failed load:** it was retried inside the 2 s pre-login wait, and the player joined
+    READY with the real row.
+  - **Two failed loads:** the player joined `FAILED`. `acceptance` was `UNAVAILABLE`, with
+    "PrefBot's settings are still loading. Try again shortly.", and a toggle was refused. The
+    third attempt then loaded the real row in the background, 4.5–4.8 s after the join began,
+    and `acceptance` became `REFUSES` (the stored false, not the default).
+  - **An outage longer than the retries:** exactly 4 attempts in 7.5–7.8 s, then nothing more in
+    the next 4 s. The session stayed `FAILED` and unavailable, with one "Gave up" line.
+  - The next join loaded the real row, and none of these failures wrote anything. Over the
+    three cases there were 7 load failures, 6 retries and 2 recoveries.
+- **Login denied by another plugin:** the fixture disallowed the login at `HIGH`, before
+  Allium's `MONITOR` listener. The client was refused with the fixture's reason. Allium began no
+  session and ran no load (`sessionsBegun` 7 → 7). The next login loaded normally.
+- **`/stop` with the database unreachable:** MariaDB was paused with `docker pause`, or, on
+  SQLite, another process held the write lock. Twenty writes were queued just before `/stop`,
+  with `shutdown-timeout-millis: 3000`.
+  - Shutdown logged "did not finish within 3000 ms. 19 preference write(s) were not saved, and 1
+    may or may not have been saved". It then named the in-progress write and each of the 19
+    others, with UUID and fields, in order.
+  - The server exited normally in 3.5–4.0 s, while the database was still unreachable.
+  - Afterwards the database held none of the 20.
+- **Unchanged from the original gate:** every original check passed again. The concurrent
+  writers overlapped on every lane (their last writes landed at versions 151/209, 209/197, 119/209
+  and 209/174).
 
 ## Scope and limits
 
@@ -129,6 +168,9 @@ python3 tests/live/preferences/run.py --lane spigot-1.20.1 --backend mysql --run
 python3 tests/live/preferences/run.py --lane paper-26.3 --backend sqlite --run-name <name>
 python3 tests/live/preferences/run.py --lane paper-26.3 --backend mysql --run-name <name>
 ```
+
+Pass `--allium-jar <path>` to run against a pinned copy of the jar (the follow-up runs did, so a
+rebuild during the runs could not change what was tested).
 
 The runs use owned loopback ports 25680–25681. They start servers with
 `-Dallium.fault-injection=true`, delete their copied server files afterwards, and exit nonzero

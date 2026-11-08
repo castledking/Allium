@@ -104,3 +104,6 @@ utility:
   seen-offline: "{prefix} &f{player} &cfue visto por ultima vez hace &f{time}&c."
   near: "{prefix} &fJugadores cercanos: &d{players}"
   near-none: "{prefix} &cNo hay jugadores cercanos."
+
+preferences:
+  unavailable: "{prefix} &cLos ajustes de {player} aun se estan cargando. Intentalo de nuevo en un momento."

@@ -141,3 +141,6 @@ item:
     pending: "{prefix} &7Resolving skull profiles for {player}..."
     warning: "{prefix} &eWarning: {warning}"
     received: "{prefix} &aYou received &f{amount}x {item}&a."
+
+preferences:
+  unavailable: "{prefix} &c{player}'s settings are still loading. Try again shortly."

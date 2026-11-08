@@ -1,6 +1,7 @@
 package codes.castled.allium.message;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.sound.SoundLevels;
 import codes.castled.allium.text.FormattedText;
 import codes.castled.allium.text.TextFormatter;
 import codes.castled.allium.text.TextSender;
@@ -107,26 +108,43 @@ public final class MessageManager {
         }
     }
 
+    /** Plays a message sound at its own (or the default) volume and pitch. */
     public void playSound(Player player, MessageSoundSpec spec) {
         if (player == null || spec == null) {
             return;
         }
-        FileConfiguration config = plugin.getConfig();
-        double defaultVol = config != null ? config.getDouble("sounds.defaults.volume", 1.0) : 1.0;
-        double defaultPitch = config != null ? config.getDouble("sounds.defaults.pitch", 1.0) : 1.0;
+        SoundLevels.message(spec.volume(), spec.pitch(), soundDefaults(spec)).ifPresent(level -> play(player, spec, level));
+    }
 
-        double rawVol = spec.volume() != null ? spec.volume() : defaultVol;
-        double rawPitch = spec.pitch() != null ? spec.pitch() : defaultPitch;
-
-        if (!Double.isFinite(rawVol) || rawVol <= 0.0) {
+    /**
+     * Plays a private-message notification sound, scaled by the recipient's message sound volume
+     * ({@code EffectivePreferences#messageSoundVolume()}: their override, else
+     * {@code sounds.messages.fallback-volume}). Callers pass a loaded value only; a recipient whose
+     * preferences are not loaded gets no notification at all.
+     */
+    public void playNotificationSound(Player player, MessageSoundSpec spec, double recipientVolume) {
+        if (player == null || spec == null) {
             return;
         }
-        if (!Double.isFinite(rawPitch) || rawPitch <= 0.0) {
-            rawPitch = 1.0;
-        }
-        float volume = (float) rawVol;
-        float pitch = (float) Math.max(0.5, Math.min(2.0, rawPitch));
+        SoundLevels.notification(recipientVolume, spec.volume(), spec.pitch(), soundDefaults(spec)).ifPresent(level -> play(player, spec, level));
+    }
 
+    private SoundLevels.Defaults soundDefaults(MessageSoundSpec spec) {
+        String problem = SoundLevels.problem(spec.volume(), spec.pitch());
+        if (problem != null && warnedSoundIds.add("level:" + spec.soundId() + ":" + problem)) {
+            plugin.logger().warning("Message sound '" + spec.soundId() + "': " + problem + "; the configured default is used instead.");
+        }
+        FileConfiguration config = plugin.getConfig();
+        return SoundSettings.read(config, warning -> {
+            if (warnedSoundIds.add("config:" + warning)) {
+                plugin.logger().warning(warning);
+            }
+        });
+    }
+
+    private void play(Player player, MessageSoundSpec spec, SoundLevels.Level level) {
+        float volume = level.volume();
+        float pitch = level.pitch();
         Location loc = player.getLocation();
         if (loc == null) {
             return;

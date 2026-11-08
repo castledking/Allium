@@ -469,6 +469,25 @@ class ItemServiceContractTest {
     }
 
     @Test
+    void anAddonDefinitionsDefaultStateAppliesHoweverTheStackIsCreatedAndUnregisterRemovesIt() {
+        itemService.registerAlliumItem(new AlliumItemDefinition("gate_wand", Material.STICK, "addongate:gate_wand", false,
+                7_700_001, "Gate Wand", Map.of("uses", "3"), true));
+        ProviderKey key = ProviderKey.allium("gate_wand");
+        // The item library builds a bare reference; parseRef carries the default state itself.
+        ItemStack bare = itemService.create(new ItemRef(key, null, 1, Map.of())).itemStack().orElseThrow();
+        ItemStack parsed = itemService.create(itemService.parseRef("allium:gate_wand")).itemStack().orElseThrow();
+        for (ItemStack stack : List.of(bare, parsed)) {
+            ItemRef ref = itemService.identify(stack).orElseThrow();
+            assertEquals(Optional.of("addongate:gate_wand"), ref.behaviorId());
+            assertEquals(Map.of("uses", "3"), ref.stateData());
+        }
+        itemService.unregisterAlliumItem("gate_wand");
+        assertTrue(itemService.getAlliumItem("gate_wand").isEmpty());
+        assertFalse(itemService.isSignedBehavior("addongate:gate_wand"));
+        assertTrue(itemService.create(itemService.parseRef("allium:gate_wand")).itemStack().isEmpty());
+    }
+
+    @Test
     void strictProviderCarrierNonMatchingAndAntiSpoofing() {
         ItemStack disarmerStack = itemService.create(itemService.parseRef("allium:mob_disarmer")).itemStack().orElseThrow();
         assertEquals(Material.GOLDEN_HOE, disarmerStack.getType());

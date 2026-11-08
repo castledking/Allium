@@ -8,3 +8,4 @@ pluginManagement {
 rootProject.name = "Allium"
 
 include("allium-core")
+include("allium-api")

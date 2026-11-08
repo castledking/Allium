@@ -45,6 +45,7 @@ public final class PluginStart extends JavaPlugin {
     private ListenerManager listenerManager;
     private AssetManifest packManifest;
     private AlliumScheduler scheduler;
+    private codes.castled.allium.addon.AlliumApiService addonApi;
 
     @Override
     public void onEnable() {
@@ -120,6 +121,9 @@ public final class PluginStart extends JavaPlugin {
         listenerManager.registerAll();
         new ProviderStartupDiagnostics(itemService, getServer().getPluginManager(), logger::warning).install(scheduler);
         new ItemSigningKeyAudit(hmacSigner, logger::severe).install(this, scheduler);
+        // Addons (depend: [Allium]) are loaded but not yet enabled here, so each is checked before it starts.
+        addonApi = new codes.castled.allium.addon.AlliumApiService(this);
+        addonApi.install();
         logger.info("Item signing keyring loaded: active=" + hmacSigner.activeKeyId()
                 + ", verification keys=" + hmacSigner.keyIds()
                 + ". Loaded inventories are audited for unknown key IDs.");
@@ -147,6 +151,7 @@ public final class PluginStart extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (addonApi != null) addonApi.closeAll();
         if (moduleManager != null) moduleManager.unloadModules();
         if (databaseManager != null) databaseManager.shutdown();
         if (scheduler != null) {

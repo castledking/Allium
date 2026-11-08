@@ -1,0 +1,7 @@
+name: FutureAddon
+version: 1.0.0
+main: futureaddon.FutureAddon
+api-version: '1.20'
+depend: [Allium]
+allium-api: "^2.0"
+description: S09 test addon only (needs an API major this Allium does not provide). Never install on a production server.

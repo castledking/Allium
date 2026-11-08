@@ -111,6 +111,41 @@ public final class ItemService {
         }
     }
 
+    /**
+     * Removes an Allium item definition (an addon's, when the addon disables). Existing stacks keep
+     * their stamps; they identify again once the definition is registered again.
+     */
+    public void unregisterAlliumItem(String id) {
+        AlliumItemDefinition definition = alliumDefinitions.remove(id.trim().toLowerCase(Locale.ROOT));
+        if (definition == null || definition.behaviorId() == null) {
+            return;
+        }
+        appearanceToBehavior.remove(definition.providerKey(), definition.behaviorId());
+        behaviorPreferredAppearance.remove(definition.behaviorId(), definition.providerKey());
+        signedBehaviors.remove(definition.behaviorId());
+        privilegedBehaviors.remove(definition.behaviorId());
+    }
+
+    /**
+     * The definition whose behavior this is. Built-in behaviors are {@code allium:<id>}; an addon's
+     * are {@code <addon>:<id>}, so the lookup goes by behavior, not by namespace.
+     */
+    @Nullable
+    private AlliumItemDefinition definitionForBehavior(String behaviorId) {
+        if (behaviorId.startsWith(ProviderKey.ALLIUM + ":")) {
+            AlliumItemDefinition def = alliumDefinitions.get(behaviorId.substring((ProviderKey.ALLIUM + ":").length()));
+            if (def != null && behaviorId.equals(def.behaviorId())) {
+                return def;
+            }
+        }
+        for (AlliumItemDefinition def : alliumDefinitions.values()) {
+            if (behaviorId.equals(def.behaviorId())) {
+                return def;
+            }
+        }
+        return null;
+    }
+
     public void registerPrivilegedBehavior(String behaviorId) {
         String normalized = ItemRef.normalizeBehaviorId(behaviorId);
         if (normalized != null) {
@@ -275,9 +310,8 @@ public final class ItemService {
             } else if (boundBehavior == null) {
                 boundBehavior = key.asString();
             }
-        } else if (boundBehavior != null && boundBehavior.startsWith(ProviderKey.ALLIUM + ":")) {
-            String localId = boundBehavior.substring((ProviderKey.ALLIUM + ":").length());
-            AlliumItemDefinition def = alliumDefinitions.get(localId);
+        } else if (boundBehavior != null) {
+            AlliumItemDefinition def = definitionForBehavior(boundBehavior);
             if (def != null) {
                 defaultState = def.defaultState();
             }
@@ -362,12 +396,9 @@ public final class ItemService {
         String effectiveBehaviorId = ref.behaviorId()
                 .orElseGet(() -> useAppearanceBinding ? appearanceToBehavior.get(appearance) : null);
         Map<String, String> mergedState = new LinkedHashMap<>();
-        if (effectiveBehaviorId != null && effectiveBehaviorId.startsWith(ProviderKey.ALLIUM + ":")) {
-            String localBehaviorName = effectiveBehaviorId.substring((ProviderKey.ALLIUM + ":").length());
-            AlliumItemDefinition def = alliumDefinitions.get(localBehaviorName);
-            if (def != null) {
-                mergedState.putAll(def.defaultState());
-            }
+        AlliumItemDefinition stateDefinition = effectiveBehaviorId == null ? null : definitionForBehavior(effectiveBehaviorId);
+        if (stateDefinition != null) {
+            mergedState.putAll(stateDefinition.defaultState());
         }
         mergedState.putAll(ref.stateData());
 

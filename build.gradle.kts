@@ -13,6 +13,9 @@ val spigotApiVersion = providers.gradleProperty("spigotApiVersion").get()
 val targetJavaVersion = providers.gradleProperty("targetJavaVersion").get().toInt()
 val coreProject = project(":allium-core")
 evaluationDependsOn(":allium-core")
+val apiProject = project(":allium-api")
+evaluationDependsOn(":allium-api")
+val alliumApiVersion = providers.gradleProperty("alliumApiVersion").get()
 
 repositories {
     mavenLocal()
@@ -91,6 +94,7 @@ configurations.testRuntimeClasspath {
 
 dependencies {
     implementation(coreProject)
+    implementation(apiProject)
 
     add("nexoAdapterCompileOnly", "com.nexomc:nexo:1.29.1") { isTransitive = false }
     add("craftengineAdapterCompileOnly", "net.momirealms:craft-engine-core:26.9.1") { isTransitive = false }
@@ -154,6 +158,24 @@ val corePack = tasks.register<JavaExec>("corePack") {
     args("build", file("pack/manifest.json").absolutePath, file("pack").absolutePath, corePackDir.get().asFile.absolutePath)
 }
 
+// The addon API jar: allium-api plus the allium-core types its signatures use (command specs and the
+// scheduler interfaces). Addons compile against it with compileOnly; Allium.jar provides it at runtime.
+val apiJar = tasks.register<Jar>("apiJar") {
+    group = "build"
+    description = "Builds the Allium addon API jar (compileOnly for addons; never shade it)."
+    archiveFileName.set("Allium-API-$alliumApiVersion.jar")
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
+    from(apiProject.the<SourceSetContainer>()["main"].output)
+    from(coreProject.the<SourceSetContainer>()["main"].output) {
+        include("codes/castled/allium/command/spec/**")
+        exclude("codes/castled/allium/command/spec/CoreCommandSpecs*", "codes/castled/allium/command/spec/CommandFamilyPolicy*")
+        include("codes/castled/allium/scheduler/TaskScheduler*.class", "codes/castled/allium/scheduler/TaskHandle*.class")
+    }
+    manifest {
+        attributes("Allium-API-Version" to alliumApiVersion)
+    }
+}
+
 tasks {
     withType<JavaCompile>().configureEach {
         options.encoding = "UTF-8"
@@ -190,6 +212,7 @@ tasks {
         // Preserve reflectively loaded InvUI version modules and HikariCP internals, and all allium-core classes
         minimize {
             exclude(project(":allium-core"))
+            exclude(project(":allium-api"))
             exclude(dependency("xyz.xenondevs.invui:.*:.*"))
             exclude(dependency("com.zaxxer:HikariCP:.*"))
         }
@@ -202,7 +225,7 @@ tasks {
     }
 
     build {
-        dependsOn(shadowJar)
+        dependsOn(shadowJar, apiJar)
     }
 
     test {

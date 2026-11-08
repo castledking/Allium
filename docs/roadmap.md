@@ -101,8 +101,12 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   uses the Bukkit scheduler, anywhere else. It does not make Allium Folia-ready; that still
   needs per-feature thread-ownership tests.
 - **M1 status:** see the [M1 close-out in the checklist](../todo.md#m1-status-close-out-2026-11-07).
-  All five M1 gates are met. The minimal versioned addon API (proposed S09) and pack delivery
-  are open. The S06b visual check is pending in a real client.
+  All five M1 gates are met. Pack delivery is open, and the S06b visual check is pending in a
+  real client.
+- **S09 (minimal addon API):** `allium-api` 1.0.0, with item definitions and create/identify,
+  command specs, the scheduler boundary and text. Addons declare `allium-api` ranges in
+  `plugin.yml`; mismatched and shaded addons are refused. See
+  [the addon API](addon-api.md) and [the results](../tests/live/addons/RESULTS.md).
 - Private messages, preference commands, addons and pack delivery are not implemented in this recode. Some config module names are
   placeholders; do not count them as working features.
 
@@ -208,6 +212,15 @@ versioned Allium API. Kitchen additionally depends on Harvest. Bukkit owns
 classloading and lifecycle; Allium supplies registration contracts and compatibility
 checks. This replaces the earlier `plugins/Allium/addons/` custom-loader proposal.
 API compatibility checks still run with native plugin loading.
+
+As built in S09 ([addon API](addon-api.md)):
+- Addons compile against `Allium-API-<apiVersion>.jar` with `compileOnly`.
+- Each declares `allium-api: "<range>"` in its `plugin.yml`.
+- Allium checks every plugin once, when Allium enables. It refuses a range that excludes its API
+  version, and a jar that bundles the API classes; Allium and the other addons keep running.
+- The API version is semantic and separate from the plugin version. Deprecated members survive
+  until the next major.
+- Installing, updating or removing an addon needs a server restart.
 
 Publish `Allium-<version>.jar`, `Addon-FunItems-<version>.jar`,
 `Addon-Reliques-<version>.jar`, `Addon-Harvest-<version>.jar`,

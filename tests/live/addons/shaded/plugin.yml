@@ -1,0 +1,7 @@
+name: ShadedAddon
+version: 1.0.0
+main: shadedaddon.ShadedAddon
+api-version: '1.20'
+depend: [Allium]
+allium-api: "^1.0"
+description: S09 test addon only (bundles its own copy of the Allium API). Never install on a production server.

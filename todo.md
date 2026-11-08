@@ -18,15 +18,14 @@ checks appropriate to each slice.
 
 ## M1 status (close-out, 2026-11-07)
 
-M1 is **not complete**. Eight of its nine roadmap deliverables are built and have recorded
-evidence, and all five M1 gates are met. Two items are open: the minimal versioned addon API
-(proposed as S09 below), and pack delivery, which this queue also lists under M1. Two items wait
-on others: the S06b visual checklist (a manual run in a real client), and stock CraftEngine,
-since deployment needs the patched build.
+M1 is **not complete**. All nine roadmap deliverables are built and have recorded evidence
+(the minimal API since S09), and all five M1 gates are met. One item is open: pack delivery,
+which this queue also lists under M1. Two items wait on others: the S06b visual checklist (a
+manual run in a real client), and stock CraftEngine, since deployment needs the patched build.
 
 | M1 deliverable | Status | Evidence |
 | --- | --- | --- |
-| Minimal API | **Open**: no versioned API, version check or API jar; addons can only reach internals through `PluginStart`. Proposed slice: S09 below | — |
+| Minimal API | Done (S09): `allium-api` with item definitions and create/identify, command specs, the scheduler boundary and text; semantic API version 1.0.0, `allium-api` ranges in `plugin.yml`, refusal of mismatched and shaded addons; [docs/addon-api.md](docs/addon-api.md) | [S09 results](tests/live/addons/RESULTS.md): 38 live checks on Spigot 1.20.1 and Paper 26.3 |
 | Preferences repository | Done (S03 and follow-up) | [preferences results](tests/live/preferences/RESULTS.md): 188, then 224 live checks; `1c67312`, `52ebe48` |
 | Command-family policy | Done (S02) | [command-client gate](tests/live/command-client/README.md) and its `evidence/*.json` (Spigot 1.20.1, Paper 1.20.6, Paper 26.3); `de46a45`, `3be33f9` |
 | Scheduler boundary | Done (this close-out): `TaskScheduler`/`AlliumScheduler` in `allium-core`, `BukkitServerThread`, all call sites migrated, `SchedulerBoundaryTest` forbids bypasses | `AlliumSchedulerTest` (6), `SchedulerBoundaryTest`; on jar `57ff304f`, the preference gate (224 checks, four lanes) and the item gate (105 checks, three lanes) passed again |
@@ -45,24 +44,21 @@ since deployment needs the patched build.
 | No vanilla-carrier false matches | Met | `ItemServiceContractTest#strictProviderCarrierNonMatchingAndAntiSpoofing`. Live (close-out): on Spigot 1.20.1, Paper 1.21.8 and Paper 26.3, a plain golden hoe and one with the disarmer's name and model data 2577020 are both identified as no Allium item ([items results](tests/live/items/RESULTS.md)) |
 
 Open before M1 can close:
-- [ ] **S09 / M1 — Minimal versioned addon API** (proposed). Scope:
-      - An `allium-api` artifact that addons compile against with `compileOnly`. It holds
-        interfaces and value types only, no implementation, and the core jar implements it.
-      - An `AlliumApi` service, registered in Bukkit's `ServicesManager`, with a
-        `major.minor` API version.
-      - A compatibility check: an addon declares the API version it needs, and a mismatch
+- [x] **S09 / M1 — Minimal versioned addon API.** The surface is cut to what Fun Items needs:
+      - `allium-api`: item definitions (`allium:<id>`, behavior `<addon>:<id>`) with
+        create/identify, command-spec registration for commands in the addon's `plugin.yml`, the
+        scheduler boundary scoped to the addon, and Allium's text formatting. Exposed through
+        Bukkit's `ServicesManager`.
+      - Versioning: semantic API version 1.0.0, separate from the plugin version. Addons declare
+        `allium-api: "^1.0"` (or `">=A <B"`), and a mismatched, shaded or invalid declaration
         disables only that addon, with a diagnostic.
-      - Only the surfaces later slices already consume: `ItemService` (create, identify, match,
-        `ItemRef`), item delivery with its outcomes, `ProtectionService` checks, preference
-        `acceptance`/effective values, `TaskScheduler`, and the existing events
-        (`ItemGiveEvent`, `AlliumProtectionCheckEvent`).
+      - `Allium-API-1.0.0.jar` holds only API types; addons use it `compileOnly`.
+      - Restart-only installation and the deprecation policy are in
+        [docs/addon-api.md](docs/addon-api.md).
 
-      Gate:
-      - A test addon built only against the API jar boots with Allium on Spigot 1.20.1 and
-        Paper 26.3 and uses each surface once.
-      - An addon that needs a newer minor is refused while Allium keeps running.
-      - The API jar contains no implementation classes, and `Allium.jar` contains no addon
-        classes.
+      Gate passed 2026-11-08: 38 live checks on Spigot 1.20.1 and Paper 26.3; see
+      [the results](tests/live/addons/RESULTS.md). It found and fixed a bug: addon items given
+      through `/give` lost their default state.
 - [ ] **Pack delivery** (below).
 - [ ] **S06b visual check** in a real client (owner: the user).
 

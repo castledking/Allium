@@ -1,0 +1,14 @@
+name: AddonGate
+version: 1.0.0
+main: addongate.AddonGate
+api-version: '1.20'
+depend: [Allium]
+allium-api: "^1.0"
+description: S09 test addon only, built against the Allium API jar. Never install on a production server.
+commands:
+  addongate:
+    description: S09 test addon command
+    # No permission here: Allium's command spec enforces addongate.use, with Allium's message.
+permissions:
+  addongate.use:
+    default: op

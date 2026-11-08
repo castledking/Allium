@@ -27,10 +27,36 @@ dependencies {
 }
 ```
 
+Extend `AlliumAddon` (recommended):
+
+```java
+public final class FunItems extends AlliumAddon {
+    @Override
+    protected void onAddonEnable(AddonConnection allium) {
+        allium.items().define(new ItemDefinition("launch_wand", Material.BLAZE_ROD, "&6Launch Wand", null, Map.of(), true));
+        allium.commands().register(spec, context -> allium.text().send(context.sender(), "&aHello"));
+        allium.scheduler().runOnServerLater(() -> { /* ... */ }, 1_000L);
+    }
+
+    @Override
+    protected void onAddonDisable() {
+        // optional; Allium releases items, commands and scheduled work by itself
+    }
+}
+```
+
+- **The base class:** `AlliumAddon` makes `onEnable` and `onDisable` final.
+  - `onEnable` calls `AlliumApi.get().connect(this)` first, and only on success calls
+    `onAddonEnable`.
+  - A refused addon (wrong API range, shaded API, no declaration) logs Allium's reason and disables
+    itself. It never reaches its own code, so it cannot register anything.
+- **An addon that extends `JavaPlugin` directly must call `connect` first**, before anything
+  else in `onEnable`, and stop if it throws:
+
 ```java
 @Override
 public void onEnable() {
-    AlliumAddon allium;
+    AddonConnection allium;
     try {
         allium = AlliumApi.get().connect(this);
     } catch (AddonRefusedException | IllegalStateException e) {
@@ -38,13 +64,11 @@ public void onEnable() {
         getServer().getPluginManager().disablePlugin(this);
         return;
     }
-    allium.items().define(new ItemDefinition("launch_wand", Material.BLAZE_ROD, "&6Launch Wand", null, Map.of(), true));
-    allium.commands().register(spec, context -> allium.text().send(context.sender(), "&aHello"));
-    allium.scheduler().runOnServerLater(() -> { /* ... */ }, 1_000L);
+    // only now register anything
 }
 ```
 
-`connect` returns the addon's handle, an `AlliumAddon`, with four parts:
+`connect` returns the addon's handle, an `AddonConnection`, with four parts:
 
 | Part | What it does |
 | --- | --- |
@@ -64,7 +88,11 @@ executors and scheduled work.
   policy);
 - `TaskScheduler` and `TaskHandle`.
 
-It holds no implementation: `Allium.jar` provides all of it at runtime.
+It holds no implementation, only the abstract `AlliumAddon` base class: `Allium.jar` provides
+everything else at runtime.
+
+Before release, the per-addon handle was renamed from `AlliumAddon` to `AddonConnection`, so the
+base class could take the name. API 1.0.0 has not been released, so its version is unchanged.
 
 ## Versioning
 
@@ -107,9 +135,13 @@ are loaded but not yet enabled.
 - **Shading check:** Allium detects shading by asking the addon's own classloader for
   `AlliumApi`, `CommandSpec` and `TaskScheduler`. If any of them comes back as a class other than
   Allium's, the jar bundled it.
-- **Why the addon still enables:** Bukkit has no way to veto another plugin's enable. So a refused
-  addon's `onEnable` still runs, its `connect` fails, and Allium disables it right after. Allium
-  and every other addon keep running.
+- **Why the addon still enables:** Bukkit has no way to veto another plugin's enable, so a refused
+  addon's `onEnable` still runs.
+  - An `AlliumAddon` stops there: its `connect` fails and it disables itself before its own code.
+  - A raw `JavaPlugin` addon that calls `connect` first does the same.
+  - One that does not is disabled by Allium right after it enables, but could already have run
+    code.
+  - Allium and every other addon keep running.
 
 ## Installing and updating addons
 

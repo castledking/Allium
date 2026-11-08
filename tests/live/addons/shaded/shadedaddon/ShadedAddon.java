@@ -1,22 +1,20 @@
 package shadedaddon;
 
-import codes.castled.allium.api.AlliumApi;
-import org.bukkit.plugin.java.JavaPlugin;
+import codes.castled.allium.api.AddonConnection;
+import codes.castled.allium.api.AlliumAddon;
+import codes.castled.allium.api.ItemDefinition;
+import org.bukkit.Material;
 
-/** Its jar bundles the API classes, as an addon that used implementation/shadow instead of compileOnly would. */
-public final class ShadedAddon extends JavaPlugin {
-    @Override
-    public void onEnable() {
-        try {
-            AlliumApi.get().connect(this);
-            getLogger().info("SHADED-CONNECTED (should not happen)");
-        } catch (RuntimeException e) {
-            getLogger().info("SHADED-NO-SERVICE " + e.getMessage());
-        }
-    }
+import java.util.Map;
 
+/**
+ * Its jar bundles the API classes, as an addon that used implementation/shadow instead of
+ * compileOnly would. Its copy of AlliumAddon finds no Allium service, so this hook never runs.
+ */
+public final class ShadedAddon extends AlliumAddon {
     @Override
-    public void onDisable() {
-        getLogger().info("SHADED-DISABLED");
+    protected void onAddonEnable(AddonConnection allium) {
+        getLogger().info("SHADED-HOOK-REACHED (should not happen)");
+        allium.items().define(new ItemDefinition("shaded_item", Material.STICK, "Shaded", null, Map.of(), false));
     }
 }

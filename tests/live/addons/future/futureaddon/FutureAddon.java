@@ -1,23 +1,24 @@
 package futureaddon;
 
-import codes.castled.allium.api.AddonRefusedException;
-import codes.castled.allium.api.AlliumApi;
-import org.bukkit.plugin.java.JavaPlugin;
+import codes.castled.allium.api.AddonConnection;
+import codes.castled.allium.api.AlliumAddon;
+import codes.castled.allium.api.ItemDefinition;
+import org.bukkit.Material;
 
-/** Declares allium-api "^2.0"; Allium (API 1.x) refuses it. */
-public final class FutureAddon extends JavaPlugin {
-    @Override
-    public void onEnable() {
-        try {
-            AlliumApi.get().connect(this);
-            getLogger().info("FUTURE-CONNECTED (should not happen)");
-        } catch (AddonRefusedException e) {
-            getLogger().info("FUTURE-REFUSED " + e.getMessage());
-        }
-    }
+import java.util.Map;
 
+/**
+ * Declares allium-api "^2.0"; Allium (API 1.x) refuses it. Its hook would define an item, start a
+ * repeating task and log markers, so the gate can show that a refused AlliumAddon registered nothing.
+ */
+public final class FutureAddon extends AlliumAddon {
     @Override
-    public void onDisable() {
-        getLogger().info("FUTURE-DISABLED");
+    protected void onAddonEnable(AddonConnection allium) {
+        getLogger().info("FUTURE-HOOK-REACHED (should not happen)");
+        allium.items().define(new ItemDefinition("future_item", Material.STICK, "Future", null, Map.of(), false));
+        allium.scheduler().repeatOnServer(() -> {
+            getLogger().info("FUTURE-TICK (should not happen)");
+            return true;
+        }, 50L, 1_000L);
     }
 }

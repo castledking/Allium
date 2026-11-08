@@ -232,5 +232,101 @@
       "failures": 0,
       "run": "/tmp/allium-base-20261108/runs/s09-paper-26.3"
     }
+  },
+  "followUpBaseClass": {
+    "date": "2026-11-08",
+    "note": "test addons on the AlliumAddon base class; refused addons registered nothing",
+    "runs": [
+      {
+        "lane": "spigot-1.20.1",
+        "checks": 21,
+        "failures": [],
+        "hashes": {
+          "Allium.jar": "a48773e68f5452e8ac465094744f7f406bdc38c7d0221fdc944814467752d4a0",
+          "Allium-API-1.0.0-a48773e6.jar": "dea26f61a6629e3c554c08e5898668265fa9ef9b85fb2bd9928545ecbda9d720"
+        },
+        "testSources": {
+          "tests/live/addons/client-mcp.cjs": "7e23433c3f75d7ea1e19d9d67d93580a0f33ebdfee71184e547fbd9dc7888644",
+          "tests/live/addons/client-raw26.cjs": "49eec020c93c46cc5b3091aa8e91f019bf7a2754941bcdb93c47635d694160ea",
+          "tests/live/addons/future/futureaddon/FutureAddon.java": "5e27ccdbe975e2841ae27999ed2cda611d01c163489f7dd6377e350ed12f7ac8",
+          "tests/live/addons/future/plugin.yml": "23b0297ee45903887729f4d4ec5f452dc835bafe702a8ef4fa8ed7f9d54553a1",
+          "tests/live/addons/good/addongate/AddonGate.java": "a64097485087c8286c6f100abf0fd9b7984bad35869ea55570d6bbe76d796ea0",
+          "tests/live/addons/good/plugin.yml": "111fe365c6c76ec6c1fd4a8f8e5516f5a3b342c296c848d55038ca79dfe38fd2",
+          "tests/live/addons/run.py": "e0f434632bb1c4ee62fb4b7a9db0d2f331a05b467c49d9a21c124177e8308002",
+          "tests/live/addons/shaded/plugin.yml": "26b1e3903df5ad6aa948498c3d4d921121cee35555a16058ad8f7c9163e83668",
+          "tests/live/addons/shaded/shadedaddon/ShadedAddon.java": "059ad6228075f2f55e0bfbae9efe5fa69246aca73cfa01698ca1398b319cb763"
+        },
+        "driver": [
+          "PASS Allium-API-1.0.0-a48773e6.jar holds only API types (27 entries: the api package, command specs, TaskScheduler and TaskHandle), no implementation classes",
+          "PASS Allium.jar contains no addon classes (0) and provides the API at runtime",
+          "BOOT Allium with AddonGate, FutureAddon and ShadedAddon",
+          "PASS Allium registered API 1.0.0 and accepted AddonGate: [05:49:28] [Server thread/INFO]: [Allium] Allium API 1.0.0 ready; addons: AddonGate (^1.0).",
+          "PASS FutureAddon was refused at startup with the version diagnostic: stall an Allium whose API version is in that range, or a build of FutureAddon made for API 1.0. It will be disabled when it enables; Allium and other addons keep running.",
+          "PASS ShadedAddon was refused at startup as shaded: TaskScheduler). Allium refuses it: rebuild it with the Allium API as compileOnly, never shaded. It will be disabled when it enables; Allium and other addons keep running.",
+          "PASS FutureAddon (an AlliumAddon): the base class's connect was refused, so it logged Allium's reason and disabled itself",
+          "PASS ShadedAddon (an AlliumAddon, shaded): its own copy of AlliumApi.get() found no service, so it disabled itself",
+          "PASS neither refused addon reached its own onAddonEnable hook: no hook marker, no definition, no command and no scheduled task in 2.5 s",
+          "PASS AddonGate connected, defined allium:gate_wand and registered /addongate",
+          "PASS Allium and AddonGate keep running; the two refused addons are disabled: {'Allium': True, 'ShadedAddon': False, 'FutureAddon': False, 'AddonGate': True}",
+          "PASS the addon's scheduler ran its server task 5 times on the server thread, then it stopped itself; its async task ran on Allium-Timer",
+          "PASS the reply went through Allium's text API: [05:49:32] [Server thread/INFO]: AddonGate runs=5 async=Allium-Timer",
+          "PASS the addon created allium:gate_wand through the API: {'status': 'CREATED', 'given': 'AddonBot'}",
+          "PASS Allium's own /give knows the addon's item: ] [Server thread/INFO]: [Allium] Gave 1x allium:gate_wand to AddonBot.",
+          "PASS both wands identify as allium:gate_wand with behavior addongate:gate_wand, state uses=3, model 7700001 and the formatted name: [{'appearance': 'allium:gate_wand', 'behavior': 'addongate:gate_wand', 'state': {'uses': '3'}, 'name': '\u00a7x\u00a75\u00a75\u00a7F\u00a7F\u00a7F\u00a7FG\u00a7x\u00a75\u00a75\u00a7E\u00a7A\u00a7F\u00a7Fa\u00a7x\u00a75\u00a75\u00a7D\u00a75\u00a7F\u00a7Ft\u00a7x\u00a75\u00a75\u00a7B\u00a7F\u00a7F\u00a7Fe\u00a7x\u00a75\u00a75\u00a7A\u00a7A\u00a7F\u00a7F \u00a7x\u00a75\u00a75\u00a79\u00a75\u00a7F\u00a7FW\u00a7x\u00a75\u00a75\u00a78\u00a70\u00a7F\u00a7Fa\u00a7x\u00a75\u00a75\u00a76\u00a7A\u00a7F\u00a7Fn\u00a7x\u00a75\u00a75\u00a75\u00a75\u00a7F\u00a7Fd', 'modelData': 7700001}, {'appearance': 'allium:gate_wand', 'behavior': 'addongate:gate_wand', 'state': {'uses': '3'}, 'name': '\u00a7x\u00a75\u00a75\u00a7F\u00a7F\u00a7F\u00a7FG\u00a7x\u00a75\u00a75\u00a7E\u00a7A\u00a7F\u00a7Fa\u00a7x\u00a75\u00a75\u00a7D\u00a75\u00a7F\u00a7Ft\u00a7x\u00a75\u00a75\u00a7B\u00a7F\u00a7F\u00a7Fe\u00a7x\u00a75\u00a75\u00a7A\u00a7A\u00a7F\u00a7F \u00a7x\u00a75\u00a75\u00a79\u00a75\u00a7F\u00a7FW\u00a7x\u00a75\u00a75\u00a78\u00a70\u00a7F\u00a7Fa\u00a7x\u00a75\u00a75\u00a76\u00a7A\u00a7F\u00a7Fn\u00a7x\u00a75\u00a75\u00a75\u00a75\u00a7F\u00a7Fd', 'modelData': 7700001}]",
+          "PASS a plain stick has no behavior, and an undefined allium id is UNKNOWN_ID (no air fallback)",
+          "PASS the items the refused addons' hooks would have defined do not exist (allium:future_item and allium:shaded_item are UNKNOWN_ID)",
+          "PASS a non-op player is refused by Allium's command spec before the handler runs: \"[Allium] You don't have permission to do that.\"",
+          "PASS on shutdown Allium released AddonGate's item, command and scheduled work",
+          "BOOT AddonGate without Allium",
+          "PASS without Allium, Bukkit refuses AddonGate with its depend message: org.bukkit.plugin.UnknownDependencyException: Unknown dependency Allium. Please download and install Allium to run this plugin.",
+          "PASS no listener, enable or Allium exceptions while Allium ran: []"
+        ]
+      },
+      {
+        "lane": "paper-26.3",
+        "checks": 21,
+        "failures": [],
+        "hashes": {
+          "Allium.jar": "a48773e68f5452e8ac465094744f7f406bdc38c7d0221fdc944814467752d4a0",
+          "Allium-API-1.0.0-a48773e6.jar": "dea26f61a6629e3c554c08e5898668265fa9ef9b85fb2bd9928545ecbda9d720"
+        },
+        "testSources": {
+          "tests/live/addons/client-mcp.cjs": "7e23433c3f75d7ea1e19d9d67d93580a0f33ebdfee71184e547fbd9dc7888644",
+          "tests/live/addons/client-raw26.cjs": "49eec020c93c46cc5b3091aa8e91f019bf7a2754941bcdb93c47635d694160ea",
+          "tests/live/addons/future/futureaddon/FutureAddon.java": "5e27ccdbe975e2841ae27999ed2cda611d01c163489f7dd6377e350ed12f7ac8",
+          "tests/live/addons/future/plugin.yml": "23b0297ee45903887729f4d4ec5f452dc835bafe702a8ef4fa8ed7f9d54553a1",
+          "tests/live/addons/good/addongate/AddonGate.java": "a64097485087c8286c6f100abf0fd9b7984bad35869ea55570d6bbe76d796ea0",
+          "tests/live/addons/good/plugin.yml": "111fe365c6c76ec6c1fd4a8f8e5516f5a3b342c296c848d55038ca79dfe38fd2",
+          "tests/live/addons/run.py": "e0f434632bb1c4ee62fb4b7a9db0d2f331a05b467c49d9a21c124177e8308002",
+          "tests/live/addons/shaded/plugin.yml": "26b1e3903df5ad6aa948498c3d4d921121cee35555a16058ad8f7c9163e83668",
+          "tests/live/addons/shaded/shadedaddon/ShadedAddon.java": "059ad6228075f2f55e0bfbae9efe5fa69246aca73cfa01698ca1398b319cb763"
+        },
+        "driver": [
+          "PASS Allium-API-1.0.0-a48773e6.jar holds only API types (27 entries: the api package, command specs, TaskScheduler and TaskHandle), no implementation classes",
+          "PASS Allium.jar contains no addon classes (0) and provides the API at runtime",
+          "BOOT Allium with AddonGate, FutureAddon and ShadedAddon",
+          "PASS Allium registered API 1.0.0 and accepted AddonGate: [05:49:47 INFO]: [Allium] Allium API 1.0.0 ready; addons: AddonGate (^1.0).",
+          "PASS FutureAddon was refused at startup with the version diagnostic: stall an Allium whose API version is in that range, or a build of FutureAddon made for API 1.0. It will be disabled when it enables; Allium and other addons keep running.",
+          "PASS ShadedAddon was refused at startup as shaded: TaskScheduler). Allium refuses it: rebuild it with the Allium API as compileOnly, never shaded. It will be disabled when it enables; Allium and other addons keep running.",
+          "PASS FutureAddon (an AlliumAddon): the base class's connect was refused, so it logged Allium's reason and disabled itself",
+          "PASS ShadedAddon (an AlliumAddon, shaded): its own copy of AlliumApi.get() found no service, so it disabled itself",
+          "PASS neither refused addon reached its own onAddonEnable hook: no hook marker, no definition, no command and no scheduled task in 2.5 s",
+          "PASS AddonGate connected, defined allium:gate_wand and registered /addongate",
+          "PASS Allium and AddonGate keep running; the two refused addons are disabled: {'Allium': True, 'AddonGate': True, 'FutureAddon': False, 'ShadedAddon': False}",
+          "PASS the addon's scheduler ran its server task 5 times on the server thread, then it stopped itself; its async task ran on Allium-Timer",
+          "PASS the reply went through Allium's text API: [05:49:51 INFO]: AddonGate runs=5 async=Allium-Timer",
+          "PASS the addon created allium:gate_wand through the API: {'status': 'CREATED', 'given': 'AddonBot'}",
+          "PASS Allium's own /give knows the addon's item: [05:49:52 INFO]: [Allium] Gave 1x allium:gate_wand to AddonBot.",
+          "PASS both wands identify as allium:gate_wand with behavior addongate:gate_wand, state uses=3, model 7700001 and the formatted name: [{'appearance': 'allium:gate_wand', 'behavior': 'addongate:gate_wand', 'state': {'uses': '3'}, 'name': '\u00a7bG\u00a7x\u00a75\u00a75\u00a7E\u00a7A\u00a7F\u00a7Fa\u00a7x\u00a75\u00a75\u00a7D\u00a75\u00a7F\u00a7Ft\u00a7x\u00a75\u00a75\u00a7B\u00a7F\u00a7F\u00a7Fe\u00a7x\u00a75\u00a75\u00a7A\u00a7A\u00a7F\u00a7F \u00a7x\u00a75\u00a75\u00a79\u00a75\u00a7F\u00a7FW\u00a7x\u00a75\u00a75\u00a78\u00a70\u00a7F\u00a7Fa\u00a7x\u00a75\u00a75\u00a76\u00a7A\u00a7F\u00a7Fn\u00a79d', 'modelData': 7700001}, {'appearance': 'allium:gate_wand', 'behavior': 'addongate:gate_wand', 'state': {'uses': '3'}, 'name': '\u00a7bG\u00a7x\u00a75\u00a75\u00a7E\u00a7A\u00a7F\u00a7Fa\u00a7x\u00a75\u00a75\u00a7D\u00a75\u00a7F\u00a7Ft\u00a7x\u00a75\u00a75\u00a7B\u00a7F\u00a7F\u00a7Fe\u00a7x\u00a75\u00a75\u00a7A\u00a7A\u00a7F\u00a7F \u00a7x\u00a75\u00a75\u00a79\u00a75\u00a7F\u00a7FW\u00a7x\u00a75\u00a75\u00a78\u00a70\u00a7F\u00a7Fa\u00a7x\u00a75\u00a75\u00a76\u00a7A\u00a7F\u00a7Fn\u00a79d', 'modelData': 7700001}]",
+          "PASS a plain stick has no behavior, and an undefined allium id is UNKNOWN_ID (no air fallback)",
+          "PASS the items the refused addons' hooks would have defined do not exist (allium:future_item and allium:shaded_item are UNKNOWN_ID)",
+          "PASS a non-op player is refused by Allium's command spec before the handler runs: \"[Allium] You don't have permission to do that.\"",
+          "PASS on shutdown Allium released AddonGate's item, command and scheduled work",
+          "BOOT AddonGate without Allium",
+          "PASS without Allium, Bukkit refuses AddonGate with its depend message: .bukkit.plugin.UnknownDependencyException: Unknown/missing dependency plugins: [Allium]. Please download and install these plugins to run 'AddonGate'.",
+          "PASS no listener, enable or Allium exceptions while Allium ran: []"
+        ]
+      }
+    ]
   }
 }

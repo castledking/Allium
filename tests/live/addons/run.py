@@ -239,12 +239,17 @@ def with_allium():
     shaded = line_with('Refusing addon ShadedAddon', start)
     require(shaded is not None and 'bundles its own copy of the Allium API' in shaded and 'compileOnly' in shaded,
             f'ShadedAddon was refused at startup as shaded: {(shaded or "")[-170:]}')
-    require(line_with('FUTURE-REFUSED', start) is not None and line_with('Disabling refused addon FutureAddon', start) is not None
-            and line_with('FUTURE-DISABLED', start) is not None,
-            'FutureAddon\'s connect threw AddonRefusedException, and Allium disabled it right after it enabled')
-    require(line_with('SHADED-NO-SERVICE The Allium API service was not found', start) is not None
-            and line_with('Disabling refused addon ShadedAddon', start) is not None and line_with('SHADED-DISABLED', start) is not None,
-            'ShadedAddon\'s own copy of AlliumApi.get() found no service, and Allium disabled it')
+    future_base = line_with('[FutureAddon] Not enabling: FutureAddon needs Allium API ^2.0', start)
+    shaded_base = line_with('[ShadedAddon] Not enabling: The Allium API service was not found', start)
+    require(future_base is not None and line_with('Refused addon FutureAddon disabled itself', start) is not None,
+            'FutureAddon (an AlliumAddon): the base class\'s connect was refused, so it logged Allium\'s reason and disabled itself')
+    require(shaded_base is not None and line_with('Refused addon ShadedAddon disabled itself', start) is not None,
+            'ShadedAddon (an AlliumAddon, shaded): its own copy of AlliumApi.get() found no service, so it disabled itself')
+    time.sleep(2.5)
+    reached = [x.strip() for x in logs[start:] if 'HOOK-REACHED' in x or 'FUTURE-TICK' in x
+               or re.search(r'(FutureAddon|ShadedAddon) (defined|registered)', x)]
+    require(not reached, 'neither refused addon reached its own onAddonEnable hook: no hook marker, no definition, '
+                         'no command and no scheduled task in 2.5 s')
     require(line_with('ADDONG-READY api=1.0.0', start) is not None and line_with('AddonGate defined allium:gate_wand', start) is not None
             and line_with('AddonGate registered /addongate through Allium', start) is not None,
             'AddonGate connected, defined allium:gate_wand and registered /addongate')
@@ -275,6 +280,8 @@ def with_allium():
             f'and the formatted name: {sticks}')
     require(found['plainStickBehavior'] is None and found['missing'] == 'UNKNOWN_ID',
             'a plain stick has no behavior, and an undefined allium id is UNKNOWN_ID (no air fallback)')
+    require(found['futureItem'] == 'UNKNOWN_ID' and found['shadedItem'] == 'UNKNOWN_ID',
+            'the items the refused addons\' hooks would have defined do not exist (allium:future_item and allium:shaded_item are UNKNOWN_ID)')
     start = len(client_logs)
     log_start = len(logs)
     client.stdin.write('cmd addongate status\n')
@@ -330,7 +337,7 @@ finally:
         stop_server()
     except Exception as e:
         failures.append('server cleanup ' + repr(e))
-    expected = lambda x: 'Refusing addon' in x or 'Disabling refused addon' in x
+    expected = lambda x: 'Refusing addon' in x or 'Disabling refused addon' in x or 'Not enabling:' in x
     checked = logs[:quiet_from] if quiet_from is not None else logs
     errors = [x.strip() for x in checked if not expected(x) and ('Could not pass event' in x or 'Error occurred while enabling' in x
                                                                or ('Allium' in x and re.search(r'Exception|SEVERE', x)))]

@@ -1,25 +1,71 @@
 package codes.castled.allium.api;
 
-import codes.castled.allium.scheduler.TaskScheduler;
-import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 
-/** One addon's connection to Allium; see {@link AlliumApi#connect}. */
-public interface AlliumAddon {
+/**
+ * Base class for Allium addons. Its {@code onEnable} is final: it calls
+ * {@link AlliumApi#connect} first, and only on success calls {@link #onAddonEnable}. A refused
+ * addon (an API range this Allium does not provide, a shaded copy of the API, or no
+ * {@code allium-api} declaration) never reaches its own code: it logs Allium's reason and
+ * disables itself, having registered nothing.
+ *
+ * <pre>{@code
+ * public final class FunItems extends AlliumAddon {
+ *     @Override
+ *     protected void onAddonEnable(AddonConnection allium) {
+ *         allium.items().define(...);
+ *     }
+ * }
+ * }</pre>
+ *
+ * <p>An addon that extends {@code JavaPlugin} directly must do the same itself: call
+ * {@code AlliumApi.get().connect(this)} before anything else in {@code onEnable}, and stop if it
+ * throws.
+ */
+public abstract class AlliumAddon extends JavaPlugin {
 
-    Plugin plugin();
+    private AddonConnection allium;
 
-    /** Item definitions owned by this addon, and Allium's item create/identify. */
-    AddonItems items();
+    @Override
+    public final void onEnable() {
+        AddonConnection connection;
+        try {
+            connection = AlliumApi.get().connect(this);
+        } catch (AddonRefusedException | IllegalStateException e) {
+            getLogger().severe("Not enabling: " + e.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        allium = connection;
+        onAddonEnable(connection);
+    }
 
-    /** Command families declared in this addon's {@code plugin.yml}, run through Allium's command specs. */
-    AddonCommands commands();
+    /** Called once Allium accepted the addon; register items, commands and scheduled work here. */
+    protected abstract void onAddonEnable(AddonConnection allium);
+
+    @Override
+    public final void onDisable() {
+        if (allium != null) {
+            try {
+                onAddonDisable();
+            } finally {
+                allium = null;
+            }
+        }
+    }
 
     /**
-     * Allium's scheduler boundary, scoped to this addon: its server-thread tasks belong to the addon,
-     * and everything still scheduled is cancelled when the addon disables.
+     * Called when an accepted addon disables, before Allium releases what it registered. Not
+     * called for a refused addon.
      */
-    TaskScheduler scheduler();
+    protected void onAddonDisable() {
+    }
 
-    /** Allium's text formatting and delivery. */
-    AddonText text();
+    /** This addon's connection; only valid between {@link #onAddonEnable} and {@link #onAddonDisable}. */
+    protected final AddonConnection allium() {
+        if (allium == null) {
+            throw new IllegalStateException(getName() + " is not connected to Allium");
+        }
+        return allium;
+    }
 }

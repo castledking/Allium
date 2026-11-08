@@ -28,6 +28,9 @@ commands:
     usage: /<command> <mode> [player]
     aliases: [gm]
     permission: allium.gamemode
+  allium:
+    description: Allium administration
+    usage: /<command> <reload|version>
   give:
     description: Give items (M1 item-library harness)
     usage: /<command> <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
@@ -53,6 +56,10 @@ permissions:
       allium.mobdisarmer.bypass: true
       allium.give: true
       allium.give.privileged: true
+      allium.reload: true
+  allium.reload:
+    description: Allows /allium reload
+    default: op
   allium.heal:
     description: Allows use of /heal
     default: op

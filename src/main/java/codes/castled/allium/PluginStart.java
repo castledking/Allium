@@ -46,6 +46,7 @@ public final class PluginStart extends JavaPlugin {
     private AssetManifest packManifest;
     private AlliumScheduler scheduler;
     private codes.castled.allium.pack.delivery.PackDelivery packDelivery;
+    private ResourcePackSettings.Owner startupPackOwner = ResourcePackSettings.Owner.NONE;
     private codes.castled.allium.addon.AlliumApiService addonApi;
 
     @Override
@@ -118,6 +119,7 @@ public final class PluginStart extends JavaPlugin {
         moduleManager = new ModuleManager(this);
         moduleManager.loadModules();
 
+        commandManager.register(new codes.castled.allium.command.AlliumCommand(this));
         commandManager.registerAll();
         listenerManager.registerAll();
         new ProviderStartupDiagnostics(itemService, getServer().getPluginManager(), logger::warning).install(scheduler);
@@ -152,24 +154,41 @@ public final class PluginStart extends JavaPlugin {
         if (settings.owner() == ResourcePackSettings.Owner.NONE) {
             return;
         }
-        byte[] pack = bundledPack();
-        if (pack == null) {
-            getLogger().warning("The core resource pack is missing from the plugin jar; nothing was exported.");
-            return;
+        exportPack(settings, new codes.castled.allium.pack.delivery.PackExport.Logs(getLogger()::info, getLogger()::warning));
+    }
+
+    /** The pack to deliver: {@code resource-pack.pack-file} if it is a valid core-pack build, else the bundled pack. */
+    @org.jetbrains.annotations.Nullable
+    private codes.castled.allium.pack.delivery.PackSource packSource(ResourcePackSettings settings, java.util.function.Consumer<String> warn) {
+        byte[] bundled = bundledPack();
+        if (bundled == null) {
+            warn.accept("The core resource pack is missing from the plugin jar; nothing was exported or sent.");
+            return null;
         }
-        codes.castled.allium.pack.delivery.PackExport.Logs logs =
-                new codes.castled.allium.pack.delivery.PackExport.Logs(getLogger()::info, getLogger()::warning);
+        return codes.castled.allium.pack.delivery.PackSource.choose(getDataFolder().toPath(), settings.packFile(), bundled, warn);
+    }
+
+    private codes.castled.allium.pack.delivery.PackSource exportPack(ResourcePackSettings settings,
+                                                                     codes.castled.allium.pack.delivery.PackExport.Logs logs) {
+        codes.castled.allium.pack.delivery.PackSource source = packSource(settings, logs.warning());
+        if (source == null || settings.owner() == ResourcePackSettings.Owner.NONE) {
+            return source;
+        }
+        if (source.override()) {
+            logs.info().accept("Delivering " + source.source() + " (SHA-1 " + source.sha1() + ") instead of the bundled core pack.");
+        }
         try {
             if (settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
-                codes.castled.allium.pack.delivery.PackExport.exportStandalone(getDataFolder().toPath(), pack, logs);
+                codes.castled.allium.pack.delivery.PackExport.exportStandalone(getDataFolder().toPath(), source.bytes(), logs);
             } else {
                 AssetManifest manifest = CoreItems.loadManifest(getClassLoader());
-                codes.castled.allium.pack.delivery.PackExport.exportToMixer(getDataFolder().toPath().getParent(), settings, pack,
+                codes.castled.allium.pack.delivery.PackExport.exportToMixer(getDataFolder().toPath().getParent(), settings, source.bytes(),
                         manifest.tools(), logs);
             }
         } catch (IOException | RuntimeException e) {
-            getLogger().warning("Could not export the core resource pack for " + settings.owner().configName() + ": " + e);
+            logs.warning().accept("Could not export the core resource pack for " + settings.owner().configName() + ": " + e);
         }
+        return source;
     }
 
     /** Logs the bundled core pack and, when Allium owns delivery (standalone), starts sending it. */
@@ -189,12 +208,60 @@ public final class PluginStart extends JavaPlugin {
                 case RPM_EXPORT -> "rpm-export, so ResourcePackManager merges and sends it";
             };
             logger.info("Core resource pack " + info.get("sha1") + " (" + info.get("bytes") + " bytes) is bundled; delivery owner " + owner + ".");
+            startupPackOwner = settings.owner();
             if (settings.sendsUrl()) {
-                packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, String.valueOf(info.get("sha1")));
-                packDelivery.enable();
+                codes.castled.allium.pack.delivery.PackSource source = packSource(settings, message -> { });
+                if (source != null) {
+                    packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, source);
+                    packDelivery.enable();
+                }
             }
         } catch (IOException | IllegalArgumentException e) {
             logger.warning("Could not read the bundled core resource pack info: " + e.getMessage());
+        }
+    }
+
+    /**
+     * {@code /allium reload}: reloads config.yml, the lang files and disabled-commands dispatch, and
+     * re-applies resource-pack settings. It re-exports the pack and, for standalone, re-checks the
+     * hosted file. Owner changes and module settings take effect on restart.
+     *
+     * @param reply receives progress lines for the command sender
+     * @return whether the reload succeeded
+     */
+    public boolean reloadConfiguration(java.util.function.Consumer<String> reply) {
+        try {
+            configManager.reloadAll();
+            languageManager.reload();
+            commandManager.reload();
+            ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
+            settings.warnings().forEach(logger::warning);
+            if (settings.owner() != startupPackOwner) {
+                String message = "resource-pack.owner changed from " + startupPackOwner.configName() + " to " + settings.owner().configName()
+                        + "; owner changes take effect after a restart.";
+                logger.warning(message);
+                reply.accept(message);
+                return true;
+            }
+            if (settings.owner() == ResourcePackSettings.Owner.NONE) {
+                return true;
+            }
+            codes.castled.allium.pack.delivery.PackSource source = exportPack(settings,
+                    new codes.castled.allium.pack.delivery.PackExport.Logs(logger::info, logger::warning));
+            if (settings.owner() == ResourcePackSettings.Owner.RPM_EXPORT) {
+                reply.accept("Re-exported the core resource pack to ResourcePackManager's mixer; reload ResourcePackManager to merge it.");
+            } else if (source != null) {
+                if (packDelivery == null) {
+                    packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, source);
+                    packDelivery.enable();
+                } else {
+                    packDelivery.reload(settings, source, reply);
+                }
+            }
+            return true;
+        } catch (RuntimeException e) {
+            logger.severe("Reload failed: " + e);
+            return false;
         }
     }
 

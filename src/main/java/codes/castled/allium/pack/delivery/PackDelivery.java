@@ -62,9 +62,9 @@ public final class PackDelivery implements Listener {
     }
 
     private final PluginStart plugin;
-    private final ResourcePackSettings settings;
-    private final String sha1;
-    private final byte[] hash;
+    private volatile ResourcePackSettings settings;
+    private volatile String sha1;
+    private volatile byte[] hash;
     private final TaskScheduler scheduler;
     private final @Nullable Method addResourcePack;
     private final @Nullable Method statusId;
@@ -75,11 +75,11 @@ public final class PackDelivery implements Listener {
     private final Map<UUID, String> lastStatus = new ConcurrentHashMap<>();
     private ThreadPoolExecutor checkPool;
 
-    public PackDelivery(PluginStart plugin, ResourcePackSettings settings, String sha1) {
+    public PackDelivery(PluginStart plugin, ResourcePackSettings settings, PackSource pack) {
         this.plugin = plugin;
         this.settings = settings;
-        this.sha1 = sha1;
-        this.hash = HexFormat.of().parseHex(sha1);
+        this.sha1 = pack.sha1();
+        this.hash = HexFormat.of().parseHex(pack.sha1());
         this.scheduler = plugin.getScheduler();
         this.addResourcePack = method(Player.class, "addResourcePack", UUID.class, String.class, byte[].class, String.class, boolean.class);
         this.statusId = method(PlayerResourcePackStatusEvent.class, "getID");
@@ -99,11 +99,16 @@ public final class PackDelivery implements Listener {
         return addResourcePack != null;
     }
 
+    private boolean listening;
+
     public void enable() {
         if (!settings.sendsUrl()) {
             return;
         }
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        if (!listening) {
+            plugin.getServer().getPluginManager().registerEvents(this, plugin);
+            listening = true;
+        }
         String serverPack = Bukkit.getResourcePack();
         if (!multiplePacks() && serverPack != null && !serverPack.isBlank()) {
             plugin.logger().warning("This server version gives each player one server resource pack, so it needs exactly one delivery "
@@ -116,9 +121,46 @@ public final class PackDelivery implements Listener {
                     + "verify-hosted-file is off)" + mode() + ".");
             return;
         }
+        startCheck(message -> { });
+    }
+
+    private void startCheck(java.util.function.Consumer<String> reply) {
         hosted = Hosted.VERIFYING;
-        checkPool = scheduler.boundedPool("Allium-PackCheck", 1, 2);
-        checkPool.execute(this::verifyHostedFile);
+        if (checkPool == null) {
+            checkPool = scheduler.boundedPool("Allium-PackCheck", 1, 2);
+        }
+        checkPool.execute(() -> verifyHostedFile(reply));
+    }
+
+    /**
+     * {@code /allium reload}: applies new URL, required, prompt and kick-message settings and the
+     * (possibly new) pack, then checks the hosted file again. Until the check finishes, joining
+     * players wait for its result. If it now matches, online players who do not have the pack yet
+     * are sent it.
+     */
+    public void reload(ResourcePackSettings next, PackSource pack, java.util.function.Consumer<String> reply) {
+        settings = next;
+        if (!pack.sha1().equals(sha1)) {
+            sentTo.clear(); // a different pack: everyone online gets it once it verifies
+        }
+        sha1 = pack.sha1();
+        hash = HexFormat.of().parseHex(pack.sha1());
+        if (!next.sendsUrl()) {
+            hosted = Hosted.OFF;
+            reply.accept("resource-pack.standalone.url is not set; Allium sends no pack until it is.");
+            return;
+        }
+        if (!listening) {
+            enable();
+            return;
+        }
+        if (!next.verifyHostedFile()) {
+            hosted = Hosted.UNVERIFIED;
+            reply.accept("Sending " + next.url() + " (SHA-1 " + sha1 + ") without checking it: verify-hosted-file is off.");
+            return;
+        }
+        reply.accept("Checking the hosted resource pack at " + next.url() + "...");
+        startCheck(reply);
     }
 
     private String mode() {
@@ -126,9 +168,11 @@ public final class PackDelivery implements Listener {
                 + (settings.required() ? ", required" : ", optional");
     }
 
-    private void verifyHostedFile() {
+    private void verifyHostedFile(java.util.function.Consumer<String> reply) {
         Hosted result;
         String detail;
+        ResourcePackSettings settings = this.settings;
+        String sha1 = this.sha1;
         try {
             String found = download(settings.url());
             if (found.equals(sha1)) {
@@ -150,14 +194,16 @@ public final class PackDelivery implements Listener {
             hostedDetail = finalDetail;
             if (finalResult == Hosted.VERIFIED) {
                 plugin.logger().info("Sending Allium's resource pack from " + settings.url() + ": " + finalDetail + mode() + ".");
-                for (UUID id : waiting) {
-                    Player player = Bukkit.getPlayer(id);
-                    if (player != null) {
+                reply.accept("The hosted resource pack matches; sending it.");
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    // Players who joined during the check, and (after a reload) anyone online without it yet.
+                    if (waiting.contains(player.getUniqueId()) || !sentTo.contains(player.getUniqueId())) {
                         send(player);
                     }
                 }
             } else {
                 plugin.logger().severe("Not sending Allium's resource pack: " + finalDetail + ".");
+                reply.accept("Not sending the resource pack: " + finalDetail + ".");
             }
             waiting.clear();
         });
@@ -218,6 +264,7 @@ public final class PackDelivery implements Listener {
     }
 
     void send(Player player) {
+        ResourcePackSettings settings = this.settings;
         String prompt = settings.prompt() == null || settings.prompt().isBlank() ? null : TextFormatter.parse(settings.prompt()).toLegacy();
         try {
             if (addResourcePack != null) {

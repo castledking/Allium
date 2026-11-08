@@ -141,6 +141,29 @@ public enum Messages {
     ITEM_GIVE_WARNING("item.give.warning", "{prefix} &eWarning: {warning}"),
     ITEM_GIVE_RECEIVED("item.give.received", "{prefix} &aYou received &f{amount}x {item}&a."),
 
+    // Private messages (S07)
+    MSG_SENT("messaging.sent", "&7[&fme &7→ &f{recipient}&7] &f{message}"),
+    MSG_RECEIVED("messaging.received", "&7[&f{sender} &7→ &fme&7] &f{message}"),
+    MSG_CANNOT_RECEIVE("messaging.cannot-receive", "{prefix} &c{player} can't receive messages right now."),
+    MSG_NO_REPLY_TARGET("messaging.no-reply-target", "{prefix} &cYou have nobody to reply to."),
+    MSG_MUTED("messaging.muted", "{prefix} &cYou are muted."),
+    MSG_SELF("messaging.self", "{prefix} &cYou can't message yourself."),
+    MSG_CONSOLE_NAME("messaging.console-name", "Console"),
+    IGNORE_ADDED("messaging.ignore.added", "{prefix} &aYou are now ignoring &f{player}&a's private messages."),
+    IGNORE_REMOVED("messaging.ignore.removed", "{prefix} &aYou are no longer ignoring &f{player}&a."),
+    IGNORE_ALREADY("messaging.ignore.already", "{prefix} &cYou are already ignoring &f{player}&c."),
+    IGNORE_NOT_IGNORED("messaging.ignore.not-ignored", "{prefix} &cYou are not ignoring &f{player}&c."),
+    IGNORE_SELF("messaging.ignore.self", "{prefix} &cYou can't ignore yourself."),
+    IGNORE_FULL("messaging.ignore.full", "{prefix} &cYour ignore list is full."),
+    IGNORE_FAILED("messaging.ignore.failed", "{prefix} &cYour ignore list could not be saved; the change was undone."),
+    IGNORE_LIST("messaging.ignore.list", "{prefix} &7You are ignoring: &f{players}"),
+    IGNORE_LIST_EMPTY("messaging.ignore.list-empty", "{prefix} &7You are not ignoring anyone."),
+    MSGTOGGLE_ON("messaging.toggle.on", "{prefix} &aYou now accept private messages."),
+    MSGTOGGLE_OFF("messaging.toggle.off", "{prefix} &cYou no longer accept private messages."),
+    MSGTOGGLE_OTHER_ON("messaging.toggle.other-on", "{prefix} &f{player} &anow accepts private messages."),
+    MSGTOGGLE_OTHER_OFF("messaging.toggle.other-off", "{prefix} &f{player} &cno longer accepts private messages."),
+    MSGTOGGLE_DISABLED("messaging.toggle.disabled", "{prefix} &cMessage preferences are disabled on this server."),
+
     // Preferences (shared by messages, payments and teleport requests)
     PREFERENCES_UNAVAILABLE("preferences.unavailable", "{prefix} &c{player}'s settings are still loading. Try again shortly.");
 

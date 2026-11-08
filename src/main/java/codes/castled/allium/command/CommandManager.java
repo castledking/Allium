@@ -24,6 +24,8 @@ public final class CommandManager {
         this.plugin = plugin;
         this.familyPolicy.registerSpecs(CoreCommandSpecs.ESSENTIALS_PROOF_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.ITEM_SPECS);
+        this.familyPolicy.registerSpecs(CoreCommandSpecs.MESSAGING_SPECS);
+        this.familyPolicy.registerSpecs(CoreCommandSpecs.CORE_SPECS);
         initializePolicyFromConfig();
     }
 

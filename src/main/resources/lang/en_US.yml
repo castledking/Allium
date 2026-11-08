@@ -144,3 +144,31 @@ item:
 
 preferences:
   unavailable: "{prefix} &c{player}'s settings are still loading. Try again shortly."
+
+messaging:
+  sent: "&7[&fme &7→ &f{recipient}&7] &f{message}"
+  received:
+    text: "&7[&f{sender} &7→ &fme&7] &f{message}"
+    sound: minecraft:entity.experience_orb.pickup
+    volume: 0.6
+  cannot-receive: "{prefix} &c{player} can't receive messages right now."
+  no-reply-target: "{prefix} &cYou have nobody to reply to."
+  muted: "{prefix} &cYou are muted."
+  self: "{prefix} &cYou can't message yourself."
+  console-name: "Console"
+  ignore:
+    added: "{prefix} &aYou are now ignoring &f{player}&a's private messages."
+    removed: "{prefix} &aYou are no longer ignoring &f{player}&a."
+    already: "{prefix} &cYou are already ignoring &f{player}&c."
+    not-ignored: "{prefix} &cYou are not ignoring &f{player}&c."
+    self: "{prefix} &cYou can't ignore yourself."
+    full: "{prefix} &cYour ignore list is full."
+    failed: "{prefix} &cYour ignore list could not be saved; the change was undone."
+    list: "{prefix} &7You are ignoring: &f{players}"
+    list-empty: "{prefix} &7You are not ignoring anyone."
+  toggle:
+    on: "{prefix} &aYou now accept private messages."
+    off: "{prefix} &cYou no longer accept private messages."
+    other-on: "{prefix} &f{player} &anow accepts private messages."
+    other-off: "{prefix} &f{player} &cno longer accepts private messages."
+    disabled: "{prefix} &cMessage preferences are disabled on this server."

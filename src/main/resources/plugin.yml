@@ -28,6 +28,28 @@ commands:
     usage: /<command> <mode> [player]
     aliases: [gm]
     permission: allium.gamemode
+  msg:
+    description: Send a private message
+    usage: /<command> <player> <message>
+    aliases: [tell, w, whisper, m, t]
+    permission: allium.msg
+  reply:
+    description: Reply to your last private message
+    usage: /<command> <message>
+    aliases: [r]
+    permission: allium.reply
+  ignore:
+    description: Ignore a player's private messages, or list who you ignore
+    usage: /<command> [player]
+    permission: allium.ignore
+  unignore:
+    description: Stop ignoring a player
+    usage: /<command> <player>
+    permission: allium.ignore
+  msgtoggle:
+    description: Turn receiving private messages on or off
+    usage: /<command> [on|off] [player]
+    permission: allium.msgtoggle
   allium:
     description: Allium administration
     usage: /<command> <reload|version>
@@ -60,6 +82,39 @@ permissions:
   allium.reload:
     description: Allows /allium reload
     default: op
+  allium.msg:
+    description: Allows /msg
+    default: true
+  allium.reply:
+    description: Allows /reply
+    default: true
+  allium.ignore:
+    description: Allows /ignore and /unignore
+    default: true
+  allium.msgtoggle:
+    description: Allows /msgtoggle for yourself
+    default: true
+  allium.msgtoggle.others:
+    description: Allows /msgtoggle for other players
+    default: op
+  allium.msg.color:
+    description: Lets & colour and formatting codes in private messages take effect
+    default: op
+  allium.msg.hex:
+    description: Lets hex colours in private messages take effect
+    default: op
+  allium.msg.gradient:
+    description: Lets gradient and rainbow tags in private messages take effect
+    default: op
+  allium.vanish.see:
+    description: See vanished players (messages, tab completion)
+    default: op
+  allium.msg.bypass.toggle:
+    description: Message players who turned messages off. Explicit only; not given to ops or allium.*
+    default: false
+  allium.msg.bypass.ignore:
+    description: Message players who ignore you. Explicit only; not given to ops or allium.*
+    default: false
   allium.heal:
     description: Allows use of /heal
     default: op

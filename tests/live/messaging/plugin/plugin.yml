@@ -1,0 +1,13 @@
+name: MsgGate
+version: 1.0.0
+main: gate.MsgGate
+api-version: '1.20'
+depend: [Allium]
+description: S07 messaging gate fixture only. Never install on a production server.
+commands:
+  mgg:
+    description: S07 messaging gate fixture
+    permission: msggate.console
+permissions:
+  msggate.console:
+    default: op

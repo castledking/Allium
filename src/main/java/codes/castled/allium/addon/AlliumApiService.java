@@ -2,7 +2,7 @@ package codes.castled.allium.addon;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.api.AddonRefusedException;
-import codes.castled.allium.api.AlliumAddon;
+import codes.castled.allium.api.AddonConnection;
 import codes.castled.allium.api.AlliumApi;
 import codes.castled.allium.api.ApiVersion;
 import codes.castled.allium.command.spec.CommandSpec;
@@ -110,7 +110,7 @@ public final class AlliumApiService implements AlliumApi, Listener {
     }
 
     @Override
-    public AlliumAddon connect(Plugin addon) {
+    public AddonConnection connect(Plugin addon) {
         AddonVerdict verdict = check(addon);
         if (verdict.status() == AddonVerdict.Status.NOT_AN_ADDON) {
             throw new AddonRefusedException(addon.getName() + " must declare the Allium API range it needs in its plugin.yml, "
@@ -128,9 +128,15 @@ public final class AlliumApiService implements AlliumApi, Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEnable(PluginEnableEvent event) {
         AddonVerdict verdict = verdicts.get(event.getPlugin().getName());
-        if (verdict != null && verdict.refused()) {
+        if (verdict == null || !verdict.refused()) {
+            return;
+        }
+        if (event.getPlugin().isEnabled()) {
             allium.logger().warning("Disabling refused addon " + event.getPlugin().getName() + ": " + verdict.status() + ".");
             allium.getServer().getPluginManager().disablePlugin(event.getPlugin());
+        } else {
+            // An AlliumAddon disables itself when connect refuses it, before its own code runs.
+            allium.logger().info("Refused addon " + event.getPlugin().getName() + " disabled itself (" + verdict.status() + ").");
         }
     }
 

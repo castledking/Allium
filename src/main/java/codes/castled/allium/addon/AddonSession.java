@@ -4,7 +4,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.api.AddonCommands;
 import codes.castled.allium.api.AddonItems;
 import codes.castled.allium.api.AddonText;
-import codes.castled.allium.api.AlliumAddon;
+import codes.castled.allium.api.AddonConnection;
 import codes.castled.allium.api.ItemDefinition;
 import codes.castled.allium.api.ItemIdentity;
 import codes.castled.allium.api.ItemResult;
@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /** One connected addon: everything it registers or schedules is owned here and released on {@link #close}. */
-final class AddonSession implements AlliumAddon {
+final class AddonSession implements AddonConnection {
 
     private final PluginStart allium;
     private final Plugin addon;

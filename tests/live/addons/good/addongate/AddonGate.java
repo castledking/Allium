@@ -1,7 +1,7 @@
 package addongate;
 
 import codes.castled.allium.api.AddonCommands;
-import codes.castled.allium.api.AddonRefusedException;
+import codes.castled.allium.api.AddonConnection;
 import codes.castled.allium.api.AlliumAddon;
 import codes.castled.allium.api.AlliumApi;
 import codes.castled.allium.api.ItemDefinition;
@@ -17,7 +17,6 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,23 +25,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** S09 test addon: compiled against Allium-API-<version>.jar only. */
-public final class AddonGate extends JavaPlugin {
+/** S09 test addon: compiled against Allium-API-<version>.jar only, on the AlliumAddon base class. */
+public final class AddonGate extends AlliumAddon {
 
-    private AlliumAddon allium;
+    private AddonConnection allium;
     private final AtomicInteger serverRuns = new AtomicInteger();
     private volatile boolean ranOnServerThread = true;
     private volatile String asyncThread;
 
     @Override
-    public void onEnable() {
-        try {
-            allium = AlliumApi.get().connect(this);
-        } catch (AddonRefusedException | IllegalStateException e) {
-            getLogger().severe("ADDONG-REFUSED " + e.getMessage());
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
+    protected void onAddonEnable(AddonConnection connection) {
+        allium = connection;
         allium.items().define(new ItemDefinition("gate_wand", Material.STICK, "<gradient:#55ffff:#5555ff>Gate Wand</gradient>",
                 7_700_001, Map.of("uses", "3"), true));
         CommandSpec spec = new CommandSpec("addongate", "addongate", "addongate", List.of(), "S09 test addon",
@@ -111,6 +104,9 @@ public final class AddonGate extends JavaPlugin {
                 ItemIdentity plain = allium.items().identify(new ItemStack(Material.STICK)).orElse(null);
                 out.put("plainStickBehavior", plain == null ? "none" : plain.behavior().orElse(null));
                 out.put("missing", allium.items().create("allium:not_defined_anywhere", 1).status().name());
+                // What the refused addons would have defined, had their hooks run.
+                out.put("futureItem", allium.items().create("allium:future_item", 1).status().name());
+                out.put("shadedItem", allium.items().create("allium:shaded_item", 1).status().name());
             }
             case "plugins" -> {
                 for (Plugin p : Bukkit.getPluginManager().getPlugins()) out.put(p.getName(), p.isEnabled());
@@ -121,7 +117,7 @@ public final class AddonGate extends JavaPlugin {
     }
 
     @Override
-    public void onDisable() {
+    protected void onAddonDisable() {
         getLogger().info("ADDONG-DISABLED");
     }
 

@@ -22,7 +22,7 @@ public interface AlliumApi {
      *
      * @throws AddonRefusedException if Allium refused the addon; the message explains why
      */
-    AlliumAddon connect(Plugin addon);
+    AddonConnection connect(Plugin addon);
 
     /**
      * Allium's API service.

@@ -66,6 +66,22 @@ creating the item, and also unregistering one. On this jar, the item-library gat
 (31, 43 and 31 checks on Spigot 1.20.1, Paper 1.21.8 with all providers, and Paper 26.3), and so
 did the baseline gate on Paper 26.3 (31 checks).
 
+## Follow-up: the AlliumAddon base class (2026-11-08)
+
+- **What changed:** all three test addons now extend `AlliumAddon`. FutureAddon's and
+  ShadedAddon's hooks would log a marker, define `allium:future_item` / `allium:shaded_item` and
+  start a repeating task.
+- **Run:** 42 checks, 21 on each lane, 0 failures, on Allium.jar `a48773e6…`.
+- **FutureAddon:** the base class's `connect` was refused. It logged "Not enabling: FutureAddon
+  needs Allium API ^2.0 …" and disabled itself. Allium logged "Refused addon FutureAddon disabled
+  itself".
+- **ShadedAddon:** its own copy of `AlliumApi.get()` found no service, so it disabled itself the
+  same way.
+- **Nothing registered:** in 2.5 s there was no hook marker, no item definition, no command and
+  no scheduled task from either addon. `allium:future_item` and `allium:shaded_item` are
+  `UNKNOWN_ID`.
+- **Everything else** in the original gate passed again.
+
 ## Scope and limits
 
 - **Surface:** the API is what Fun Items needs: item definitions with create/identify, command

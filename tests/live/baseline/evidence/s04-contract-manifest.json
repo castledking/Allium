@@ -1,0 +1,1842 @@
+{
+  "date": "2026-11-07",
+  "alliumJarSha256": "57ff304f31704c1a1199508d65b42487d8dd0750dd1a325560211d8d80343a33",
+  "harness": "tests/live/baseline/run.py (BaseGate fixture)",
+  "persistedEvidence": "/mnt/storage/.allium-validation/20261107/baseline-gate/",
+  "environment": {
+    "spigot-1.20.1": {
+      "serverJar": "spigot-1.20.1.jar (BuildTools 3871-Spigot-d2eba2c)",
+      "java": 17,
+      "client": "minecraft-protocol 1.68.0 (protocol 763)",
+      "serverJarSha256": "1416cd67e2337e42058def6035260f6a42e294adb4a148707b87591cddfbb760",
+      "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)"
+    },
+    "paper-1.20": {
+      "serverJar": "paper-1.20-17.jar (fill.papermc.io)",
+      "java": 17,
+      "client": "minecraft-protocol 1.68.0 (protocol 763)",
+      "serverJarSha256": "1e4ccfc0599f491ee6fee4455d3722332ac5d78584fccd55cbb3b51e11504505",
+      "server": "This server is running Paper version git-Paper-17 (MC: 1.20) (Implementing API version 1.20-R0.1-SNAPSHOT) (Git: c287e92)"
+    },
+    "paper-1.20.6": {
+      "serverJar": "paper-1.20.6-151.jar (fill.papermc.io)",
+      "java": 21,
+      "client": "minecraft-protocol 1.68.0 (protocol 766)",
+      "serverJarSha256": "4b011f5adb5f6c72007686a223174fce82f31aeb4b34faf4652abc840b47e640",
+      "server": "This server is running Paper version 1.20.6-151-ver/1.20.6@a4f0f5c (2024-10-30T19:13:22Z) (Implementing API version 1.20.6-R0.1-SNAPSHOT)"
+    },
+    "spigot-26.3": {
+      "serverJar": "spigot-26.3.jar (BuildTools #201, 4664-Spigot-bed90fc-e89124d)",
+      "java": 25,
+      "client": "owned raw client (protocol 777)",
+      "serverJarSha256": "6f84dad54f97dcea066c307a7e7168d7d2dcb7788aa505329cb6a2094d7dfe2a",
+      "server": "This server is running Spigot version 4664-Spigot-bed90fc-e89124d (MC: 26.3) (Implementing API version 26.3-R0.1-SNAPSHOT)"
+    },
+    "paper-26.3": {
+      "serverJar": "Paper 26.3-141 lane template (libraries + versions)",
+      "java": 25,
+      "client": "owned raw client (protocol 777)",
+      "serverJarSha256": "template /tmp/allium-s05-20261105/provider-gate/lane",
+      "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)"
+    }
+  },
+  "gate": "S04 item contract on real servers, with a restart",
+  "checks": 100,
+  "runs": [
+    {
+      "lane": "spigot-1.20.1",
+      "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+      "failures": [],
+      "contract": [
+        {
+          "name": "create: allium:mob_disarmer carries schema 1, behavior, instance UUID and a v2 signature",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f035d9e-47d3-4d16-b1f5-31b27659baf6",
+            "signature": "v2:k1:651619f2e218b6ffd02f35b10d05f2f6bdf97eb89cc9452bbf50be974ab4b1d7"
+          }
+        },
+        {
+          "name": "ItemRef serialize/deserialize round-trips and rebuilds the same identity",
+          "ok": true,
+          "detail": {
+            "rebuilt": {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "f314b387-936a-4865-8401-b234064d0d41",
+              "signature": "v2:k1:ffcab9ef9a363bd850b92c2118c98911f30d9de0983f037b336ca47b681685cb"
+            },
+            "serialized": {
+              "schema-version": 1,
+              "ref": "allium:mob_disarmer",
+              "behavior-id": "allium:mob_disarmer",
+              "amount": 1
+            }
+          }
+        },
+        {
+          "name": "Bukkit YAML serialization keeps the signed identity (same UUID and MAC, still verified)",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f035d9e-47d3-4d16-b1f5-31b27659baf6",
+            "signature": "v2:k1:651619f2e218b6ffd02f35b10d05f2f6bdf97eb89cc9452bbf50be974ab4b1d7"
+          }
+        },
+        {
+          "name": "clone and cloneItem keep a verified identity",
+          "ok": true,
+          "detail": {
+            "clone": {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "4f035d9e-47d3-4d16-b1f5-31b27659baf6",
+              "signature": "v2:k1:651619f2e218b6ffd02f35b10d05f2f6bdf97eb89cc9452bbf50be974ab4b1d7"
+            },
+            "cloneItem": {
+              "material": "GOLDEN_HOE",
+              "amount": 2,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "4f035d9e-47d3-4d16-b1f5-31b27659baf6",
+              "signature": "v2:k1:651619f2e218b6ffd02f35b10d05f2f6bdf97eb89cc9452bbf50be974ab4b1d7"
+            }
+          }
+        },
+        {
+          "name": "updateState re-signs: the new state verifies, with the same UUID and a new MAC",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "4f035d9e-47d3-4d16-b1f5-31b27659baf6",
+            "signature": "v2:k1:db938bd1232a2b28ba38c4aca70cc976ef6c8cfce26cfdeee455fe573a8f7b80"
+          }
+        },
+        {
+          "name": "a state edited without re-signing is rejected (plain golden hoe)",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f035d9e-47d3-4d16-b1f5-31b27659baf6",
+            "signature": "v2:k1:db938bd1232a2b28ba38c4aca70cc976ef6c8cfce26cfdeee455fe573a8f7b80"
+          }
+        },
+        {
+          "name": "updateState refuses to launder a rejected stack",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f035d9e-47d3-4d16-b1f5-31b27659baf6",
+            "signature": "v2:k1:db938bd1232a2b28ba38c4aca70cc976ef6c8cfce26cfdeee455fe573a8f7b80"
+          }
+        },
+        {
+          "name": "a tampered identity (instance UUID changed) is rejected",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "86a0b7bd-04d7-4f02-bc5c-e6fd93943856",
+            "signature": "v2:k1:651619f2e218b6ffd02f35b10d05f2f6bdf97eb89cc9452bbf50be974ab4b1d7"
+          }
+        },
+        {
+          "name": "privileged allium:handcuffs is minted signed",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "66dac2b2-9a56-483b-b8f9-09ec4492edb0",
+            "signature": "v2:k1:c6373f31a0adb549e517d01eb04b3ef45825fb22d0dbc4979c602296db48219a"
+          }
+        },
+        {
+          "name": "privileged handcuffs without a signature are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "66dac2b2-9a56-483b-b8f9-09ec4492edb0",
+            "signature": null
+          }
+        },
+        {
+          "name": "handcuffs signed with an unknown key ID are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "66dac2b2-9a56-483b-b8f9-09ec4492edb0",
+            "signature": "v2:forged:90e67897a435e465289ebe7cdc3cbd061317438f0e1f5e98e4f8e4f805521bf7"
+          }
+        },
+        {
+          "name": "handcuffs forged under the active key ID with another secret are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "66dac2b2-9a56-483b-b8f9-09ec4492edb0",
+            "signature": "v2:k1:680c2380307af0fc3dfd7e5c1c635a9f6514a3a1bf869d3f7e91287629fa1d59"
+          }
+        },
+        {
+          "name": "an appearance swap keeps the behavior and instance UUID and re-signs",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "66dac2b2-9a56-483b-b8f9-09ec4492edb0",
+            "signature": "v2:k1:08c632f64775a301af27466855192caf62a0fcfce8cc05eb7976cbc677c9c239"
+          }
+        },
+        {
+          "name": "strict carriers: a disarmer is not minecraft:golden_hoe, and plain or dressed golden hoes are not disarmers",
+          "ok": true,
+          "detail": {
+            "spoofModelData": "2577020"
+          }
+        },
+        {
+          "name": "no AIR fallback: unknown references resolve to nothing, and bare names resolve to vanilla",
+          "ok": true,
+          "detail": {
+            "bare": "UNKNOWN_ID",
+            "allium": "UNKNOWN_ID",
+            "stone": "RESOLVED"
+          }
+        }
+      ],
+      "persistence": {
+        "stored": [
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "0ce770f1-d482-4bb9-a99d-92761662ea7d",
+            "signature": "v2:k1:f2c19dd5df00672860aeb975df4d3b09a3f5a2fce83895651d64d0dc7e5a31d4"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "4f282244-2061-4895-b128-3d2e0c4dfecb",
+            "signature": "v2:k1:56474b70d68d15b95a0f18dd437ede3fe9a81db71f95c4eb868aaa0c85646e9a"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "5f230ad4-28d4-4125-b6a7-63cb8419c7b7",
+            "signature": "v2:k1:6208a3376950358fbfb1f79d9e01ba5f59ddd5ffeafff6e09ed793716de25200"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "e9ab482d-e481-40eb-84d8-288317d866be",
+            "signature": "v2:k1:6545c8d7025b60d0274af2a76b35c0926f5131ded9f31b35b77add7141b8f232"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f282244-2061-4895-b128-3d2e0c4dfecb",
+            "signature": "v2:k1:56474b70d68d15b95a0f18dd437ede3fe9a81db71f95c4eb868aaa0c85646e9a"
+          }
+        ],
+        "found": [
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "0ce770f1-d482-4bb9-a99d-92761662ea7d",
+            "signature": "v2:k1:f2c19dd5df00672860aeb975df4d3b09a3f5a2fce83895651d64d0dc7e5a31d4"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "4f282244-2061-4895-b128-3d2e0c4dfecb",
+            "signature": "v2:k1:56474b70d68d15b95a0f18dd437ede3fe9a81db71f95c4eb868aaa0c85646e9a"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "5f230ad4-28d4-4125-b6a7-63cb8419c7b7",
+            "signature": "v2:k1:6208a3376950358fbfb1f79d9e01ba5f59ddd5ffeafff6e09ed793716de25200"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "e9ab482d-e481-40eb-84d8-288317d866be",
+            "signature": "v2:k1:6545c8d7025b60d0274af2a76b35c0926f5131ded9f31b35b77add7141b8f232"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f282244-2061-4895-b128-3d2e0c4dfecb",
+            "signature": "v2:k1:56474b70d68d15b95a0f18dd437ede3fe9a81db71f95c4eb868aaa0c85646e9a"
+          }
+        ]
+      },
+      "checks": [
+        "PASS item contract: create: allium:mob_disarmer carries schema 1, behavior, instance UUID and a v2 signature",
+        "PASS item contract: ItemRef serialize/deserialize round-trips and rebuilds the same identity",
+        "PASS item contract: Bukkit YAML serialization keeps the signed identity (same UUID and MAC, still verified)",
+        "PASS item contract: clone and cloneItem keep a verified identity",
+        "PASS item contract: updateState re-signs: the new state verifies, with the same UUID and a new MAC",
+        "PASS item contract: a state edited without re-signing is rejected (plain golden hoe)",
+        "PASS item contract: updateState refuses to launder a rejected stack",
+        "PASS item contract: a tampered identity (instance UUID changed) is rejected",
+        "PASS item contract: privileged allium:handcuffs is minted signed",
+        "PASS item contract: privileged handcuffs without a signature are rejected",
+        "PASS item contract: handcuffs signed with an unknown key ID are rejected",
+        "PASS item contract: handcuffs forged under the active key ID with another secret are rejected",
+        "PASS item contract: an appearance swap keeps the behavior and instance UUID and re-signs",
+        "PASS item contract: strict carriers: a disarmer is not minecraft:golden_hoe, and plain or dressed golden hoes are not disarmers",
+        "PASS item contract: no AIR fallback: unknown references resolve to nothing, and bare names resolve to vanilla",
+        "PASS after a restart, a full disarmer reads back identically and still verifies",
+        "PASS after a restart, a spent disarmer (state re-signed) reads back identically and still verifies",
+        "PASS after a restart, privileged handcuffs reads back identically and still verifies",
+        "PASS after a restart, handcuffs with a swapped appearance reads back identically and still verifies",
+        "PASS after a restart, a disarmer whose state was edited without re-signing reads back identically and is still rejected"
+      ]
+    },
+    {
+      "lane": "paper-1.20",
+      "server": "This server is running Paper version git-Paper-17 (MC: 1.20) (Implementing API version 1.20-R0.1-SNAPSHOT) (Git: c287e92)",
+      "failures": [],
+      "contract": [
+        {
+          "name": "create: allium:mob_disarmer carries schema 1, behavior, instance UUID and a v2 signature",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "98748fa1-b027-4ee8-99ea-d590d5f570f6",
+            "signature": "v2:k1:9997c1e2f83ec3343f778eb42368ea199c27dbf9b4064ac7f507afbf3a057619"
+          }
+        },
+        {
+          "name": "ItemRef serialize/deserialize round-trips and rebuilds the same identity",
+          "ok": true,
+          "detail": {
+            "serialized": {
+              "schema-version": 1,
+              "ref": "allium:mob_disarmer",
+              "behavior-id": "allium:mob_disarmer",
+              "amount": 1
+            },
+            "rebuilt": {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "7e48f0ec-287a-458a-a452-d34d98ffe58a",
+              "signature": "v2:k1:61e2ce0cd16a1ba1a6dda2ca68e17ca3dac027111014ade798763e97644d61e2"
+            }
+          }
+        },
+        {
+          "name": "Bukkit YAML serialization keeps the signed identity (same UUID and MAC, still verified)",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "98748fa1-b027-4ee8-99ea-d590d5f570f6",
+            "signature": "v2:k1:9997c1e2f83ec3343f778eb42368ea199c27dbf9b4064ac7f507afbf3a057619"
+          }
+        },
+        {
+          "name": "clone and cloneItem keep a verified identity",
+          "ok": true,
+          "detail": {
+            "clone": {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "98748fa1-b027-4ee8-99ea-d590d5f570f6",
+              "signature": "v2:k1:9997c1e2f83ec3343f778eb42368ea199c27dbf9b4064ac7f507afbf3a057619"
+            },
+            "cloneItem": {
+              "material": "GOLDEN_HOE",
+              "amount": 2,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "98748fa1-b027-4ee8-99ea-d590d5f570f6",
+              "signature": "v2:k1:9997c1e2f83ec3343f778eb42368ea199c27dbf9b4064ac7f507afbf3a057619"
+            }
+          }
+        },
+        {
+          "name": "updateState re-signs: the new state verifies, with the same UUID and a new MAC",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "98748fa1-b027-4ee8-99ea-d590d5f570f6",
+            "signature": "v2:k1:389e3c859b1d095fbb912b76fb16c3ab50ed3cf433c35dce147dcb2f63e2c38e"
+          }
+        },
+        {
+          "name": "a state edited without re-signing is rejected (plain golden hoe)",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "98748fa1-b027-4ee8-99ea-d590d5f570f6",
+            "signature": "v2:k1:389e3c859b1d095fbb912b76fb16c3ab50ed3cf433c35dce147dcb2f63e2c38e"
+          }
+        },
+        {
+          "name": "updateState refuses to launder a rejected stack",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "98748fa1-b027-4ee8-99ea-d590d5f570f6",
+            "signature": "v2:k1:389e3c859b1d095fbb912b76fb16c3ab50ed3cf433c35dce147dcb2f63e2c38e"
+          }
+        },
+        {
+          "name": "a tampered identity (instance UUID changed) is rejected",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "7065355b-1e9f-49cb-a776-2e53d63e710c",
+            "signature": "v2:k1:9997c1e2f83ec3343f778eb42368ea199c27dbf9b4064ac7f507afbf3a057619"
+          }
+        },
+        {
+          "name": "privileged allium:handcuffs is minted signed",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f028938-88c0-4d3a-ac8a-253564bab324",
+            "signature": "v2:k1:42f9d258d37eae011c46bd6e3181db8c2a05828b05d3d972d7e8791bf8de4c69"
+          }
+        },
+        {
+          "name": "privileged handcuffs without a signature are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f028938-88c0-4d3a-ac8a-253564bab324",
+            "signature": null
+          }
+        },
+        {
+          "name": "handcuffs signed with an unknown key ID are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f028938-88c0-4d3a-ac8a-253564bab324",
+            "signature": "v2:forged:d0e3be79afd196b43efb0966c3dd4dd9d6363c526a2b28bcec8381df959c790c"
+          }
+        },
+        {
+          "name": "handcuffs forged under the active key ID with another secret are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f028938-88c0-4d3a-ac8a-253564bab324",
+            "signature": "v2:k1:7fc60c8c1675e6f6174588cb59a717cb4aec7bee0e05cb0fb6f6dc33e2aec933"
+          }
+        },
+        {
+          "name": "an appearance swap keeps the behavior and instance UUID and re-signs",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "4f028938-88c0-4d3a-ac8a-253564bab324",
+            "signature": "v2:k1:f0bd84df825e07d6a060743a795473871def7ace28580820a4d7693d7a089f87"
+          }
+        },
+        {
+          "name": "strict carriers: a disarmer is not minecraft:golden_hoe, and plain or dressed golden hoes are not disarmers",
+          "ok": true,
+          "detail": {
+            "spoofModelData": "2577020"
+          }
+        },
+        {
+          "name": "no AIR fallback: unknown references resolve to nothing, and bare names resolve to vanilla",
+          "ok": true,
+          "detail": {
+            "bare": "UNKNOWN_ID",
+            "stone": "RESOLVED",
+            "allium": "UNKNOWN_ID"
+          }
+        }
+      ],
+      "persistence": {
+        "stored": [
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "f6e92636-e831-42b6-b79e-70bc781f51d0",
+            "signature": "v2:k1:563d63d70a2c655575aeb1831fe0d647bec906b637f950e74e60bda011621510"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "c4d8ad8f-a9eb-46b7-bda5-032464a8ee59",
+            "signature": "v2:k1:029a0046d737b895b66553a8a0786d4e23a4a389fe04f08fb9db37cea0dbd527"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "376af08f-8761-4d9b-a836-5a1159fb0704",
+            "signature": "v2:k1:cd4a6665e823c14b8c98467de14f0ba90e49d2b1149e104a4e83e5c5324bec18"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "c749f054-3540-48e7-9521-64b62d9dab65",
+            "signature": "v2:k1:c23f8dbd32d4b2eb0410357c322c55d6e27cc6c5ebba217f8681f81cf8682901"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "c4d8ad8f-a9eb-46b7-bda5-032464a8ee59",
+            "signature": "v2:k1:029a0046d737b895b66553a8a0786d4e23a4a389fe04f08fb9db37cea0dbd527"
+          }
+        ],
+        "found": [
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "f6e92636-e831-42b6-b79e-70bc781f51d0",
+            "signature": "v2:k1:563d63d70a2c655575aeb1831fe0d647bec906b637f950e74e60bda011621510"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "c4d8ad8f-a9eb-46b7-bda5-032464a8ee59",
+            "signature": "v2:k1:029a0046d737b895b66553a8a0786d4e23a4a389fe04f08fb9db37cea0dbd527"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "376af08f-8761-4d9b-a836-5a1159fb0704",
+            "signature": "v2:k1:cd4a6665e823c14b8c98467de14f0ba90e49d2b1149e104a4e83e5c5324bec18"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "c749f054-3540-48e7-9521-64b62d9dab65",
+            "signature": "v2:k1:c23f8dbd32d4b2eb0410357c322c55d6e27cc6c5ebba217f8681f81cf8682901"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "c4d8ad8f-a9eb-46b7-bda5-032464a8ee59",
+            "signature": "v2:k1:029a0046d737b895b66553a8a0786d4e23a4a389fe04f08fb9db37cea0dbd527"
+          }
+        ]
+      },
+      "checks": [
+        "PASS item contract: create: allium:mob_disarmer carries schema 1, behavior, instance UUID and a v2 signature",
+        "PASS item contract: ItemRef serialize/deserialize round-trips and rebuilds the same identity",
+        "PASS item contract: Bukkit YAML serialization keeps the signed identity (same UUID and MAC, still verified)",
+        "PASS item contract: clone and cloneItem keep a verified identity",
+        "PASS item contract: updateState re-signs: the new state verifies, with the same UUID and a new MAC",
+        "PASS item contract: a state edited without re-signing is rejected (plain golden hoe)",
+        "PASS item contract: updateState refuses to launder a rejected stack",
+        "PASS item contract: a tampered identity (instance UUID changed) is rejected",
+        "PASS item contract: privileged allium:handcuffs is minted signed",
+        "PASS item contract: privileged handcuffs without a signature are rejected",
+        "PASS item contract: handcuffs signed with an unknown key ID are rejected",
+        "PASS item contract: handcuffs forged under the active key ID with another secret are rejected",
+        "PASS item contract: an appearance swap keeps the behavior and instance UUID and re-signs",
+        "PASS item contract: strict carriers: a disarmer is not minecraft:golden_hoe, and plain or dressed golden hoes are not disarmers",
+        "PASS item contract: no AIR fallback: unknown references resolve to nothing, and bare names resolve to vanilla",
+        "PASS after a restart, a full disarmer reads back identically and still verifies",
+        "PASS after a restart, a spent disarmer (state re-signed) reads back identically and still verifies",
+        "PASS after a restart, privileged handcuffs reads back identically and still verifies",
+        "PASS after a restart, handcuffs with a swapped appearance reads back identically and still verifies",
+        "PASS after a restart, a disarmer whose state was edited without re-signing reads back identically and is still rejected"
+      ]
+    },
+    {
+      "lane": "paper-1.20.6",
+      "server": "This server is running Paper version 1.20.6-151-ver/1.20.6@a4f0f5c (2024-10-30T19:13:22Z) (Implementing API version 1.20.6-R0.1-SNAPSHOT)",
+      "failures": [],
+      "contract": [
+        {
+          "name": "create: allium:mob_disarmer carries schema 1, behavior, instance UUID and a v2 signature",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "ec4c5201-e743-443b-9cd5-0a6bb7c7ddaf",
+            "signature": "v2:k1:730034fcc749440cfb93f4a54134c1d996de4593135705e79308a00b4843f4b1"
+          }
+        },
+        {
+          "name": "ItemRef serialize/deserialize round-trips and rebuilds the same identity",
+          "ok": true,
+          "detail": {
+            "serialized": {
+              "schema-version": 1,
+              "ref": "allium:mob_disarmer",
+              "behavior-id": "allium:mob_disarmer",
+              "amount": 1
+            },
+            "rebuilt": {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "516ccb2b-d95e-4e8e-9f32-b0950b87ac4b",
+              "signature": "v2:k1:66cff15af8cf1541a47078dc91c2fb343dab723aad4ce7c4d2e8b79303c74bb3"
+            }
+          }
+        },
+        {
+          "name": "Bukkit YAML serialization keeps the signed identity (same UUID and MAC, still verified)",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "ec4c5201-e743-443b-9cd5-0a6bb7c7ddaf",
+            "signature": "v2:k1:730034fcc749440cfb93f4a54134c1d996de4593135705e79308a00b4843f4b1"
+          }
+        },
+        {
+          "name": "clone and cloneItem keep a verified identity",
+          "ok": true,
+          "detail": {
+            "clone": {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "ec4c5201-e743-443b-9cd5-0a6bb7c7ddaf",
+              "signature": "v2:k1:730034fcc749440cfb93f4a54134c1d996de4593135705e79308a00b4843f4b1"
+            },
+            "cloneItem": {
+              "material": "GOLDEN_HOE",
+              "amount": 2,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "ec4c5201-e743-443b-9cd5-0a6bb7c7ddaf",
+              "signature": "v2:k1:730034fcc749440cfb93f4a54134c1d996de4593135705e79308a00b4843f4b1"
+            }
+          }
+        },
+        {
+          "name": "updateState re-signs: the new state verifies, with the same UUID and a new MAC",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "ec4c5201-e743-443b-9cd5-0a6bb7c7ddaf",
+            "signature": "v2:k1:5d869f4472498fa6438d904bb69b675ea3e97afd6b26109acea61875d1915103"
+          }
+        },
+        {
+          "name": "a state edited without re-signing is rejected (plain golden hoe)",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "ec4c5201-e743-443b-9cd5-0a6bb7c7ddaf",
+            "signature": "v2:k1:5d869f4472498fa6438d904bb69b675ea3e97afd6b26109acea61875d1915103"
+          }
+        },
+        {
+          "name": "updateState refuses to launder a rejected stack",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "ec4c5201-e743-443b-9cd5-0a6bb7c7ddaf",
+            "signature": "v2:k1:5d869f4472498fa6438d904bb69b675ea3e97afd6b26109acea61875d1915103"
+          }
+        },
+        {
+          "name": "a tampered identity (instance UUID changed) is rejected",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "289a22d2-4682-4292-a831-d5a299323c69",
+            "signature": "v2:k1:730034fcc749440cfb93f4a54134c1d996de4593135705e79308a00b4843f4b1"
+          }
+        },
+        {
+          "name": "privileged allium:handcuffs is minted signed",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "59819b6e-f923-42f1-9a57-9e95680cc815",
+            "signature": "v2:k1:26f2bf8fcc908d9e325abb12adb84c537d1f38a246b9c1f69a981a84fac031dd"
+          }
+        },
+        {
+          "name": "privileged handcuffs without a signature are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "59819b6e-f923-42f1-9a57-9e95680cc815",
+            "signature": null
+          }
+        },
+        {
+          "name": "handcuffs signed with an unknown key ID are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "59819b6e-f923-42f1-9a57-9e95680cc815",
+            "signature": "v2:forged:b4a72391693cd612acf498385c9f137587ff68fa403c3a8d8259f0017b3c2891"
+          }
+        },
+        {
+          "name": "handcuffs forged under the active key ID with another secret are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "59819b6e-f923-42f1-9a57-9e95680cc815",
+            "signature": "v2:k1:e98c3e40ec16630a3e1f8209590a02b456b8e386296d0928daeb24867b2d8f62"
+          }
+        },
+        {
+          "name": "an appearance swap keeps the behavior and instance UUID and re-signs",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "59819b6e-f923-42f1-9a57-9e95680cc815",
+            "signature": "v2:k1:df444a7a5d8f94fe376ea18f9dbd1fc468329655355b5dbaa86280560c0102d8"
+          }
+        },
+        {
+          "name": "strict carriers: a disarmer is not minecraft:golden_hoe, and plain or dressed golden hoes are not disarmers",
+          "ok": true,
+          "detail": {
+            "spoofModelData": "2577020"
+          }
+        },
+        {
+          "name": "no AIR fallback: unknown references resolve to nothing, and bare names resolve to vanilla",
+          "ok": true,
+          "detail": {
+            "bare": "UNKNOWN_ID",
+            "stone": "RESOLVED",
+            "allium": "UNKNOWN_ID"
+          }
+        }
+      ],
+      "persistence": {
+        "stored": [
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "6453bdbd-4532-47f5-bdb6-3dd1c4377bb9",
+            "signature": "v2:k1:6f549fbeb238229643c788f750b42ab01d4229a52326b6fe7552aeaef14bad77"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "130c964f-1e0a-4c4d-8bd7-475a1838e91d",
+            "signature": "v2:k1:1da4e7b0de677e8d80ba2c8f081cfa229d9ab5cb52957b149b45ae25008924b9"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "3ca31581-0184-4d1d-b7bd-57ba09b34bf6",
+            "signature": "v2:k1:62883f97f8ed5ae4b9427371cbde5cc571dbda0fe15a7251f1035cb761a35fb9"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "638fd749-d1aa-4b62-bf23-b99ee4ae1ad9",
+            "signature": "v2:k1:bea409cd158830d780c163c0b114c11d32fc5561d3ae6560911cff4cecaa614b"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "130c964f-1e0a-4c4d-8bd7-475a1838e91d",
+            "signature": "v2:k1:1da4e7b0de677e8d80ba2c8f081cfa229d9ab5cb52957b149b45ae25008924b9"
+          }
+        ],
+        "found": [
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "6453bdbd-4532-47f5-bdb6-3dd1c4377bb9",
+            "signature": "v2:k1:6f549fbeb238229643c788f750b42ab01d4229a52326b6fe7552aeaef14bad77"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "130c964f-1e0a-4c4d-8bd7-475a1838e91d",
+            "signature": "v2:k1:1da4e7b0de677e8d80ba2c8f081cfa229d9ab5cb52957b149b45ae25008924b9"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "3ca31581-0184-4d1d-b7bd-57ba09b34bf6",
+            "signature": "v2:k1:62883f97f8ed5ae4b9427371cbde5cc571dbda0fe15a7251f1035cb761a35fb9"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "638fd749-d1aa-4b62-bf23-b99ee4ae1ad9",
+            "signature": "v2:k1:bea409cd158830d780c163c0b114c11d32fc5561d3ae6560911cff4cecaa614b"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "130c964f-1e0a-4c4d-8bd7-475a1838e91d",
+            "signature": "v2:k1:1da4e7b0de677e8d80ba2c8f081cfa229d9ab5cb52957b149b45ae25008924b9"
+          }
+        ]
+      },
+      "checks": [
+        "PASS item contract: create: allium:mob_disarmer carries schema 1, behavior, instance UUID and a v2 signature",
+        "PASS item contract: ItemRef serialize/deserialize round-trips and rebuilds the same identity",
+        "PASS item contract: Bukkit YAML serialization keeps the signed identity (same UUID and MAC, still verified)",
+        "PASS item contract: clone and cloneItem keep a verified identity",
+        "PASS item contract: updateState re-signs: the new state verifies, with the same UUID and a new MAC",
+        "PASS item contract: a state edited without re-signing is rejected (plain golden hoe)",
+        "PASS item contract: updateState refuses to launder a rejected stack",
+        "PASS item contract: a tampered identity (instance UUID changed) is rejected",
+        "PASS item contract: privileged allium:handcuffs is minted signed",
+        "PASS item contract: privileged handcuffs without a signature are rejected",
+        "PASS item contract: handcuffs signed with an unknown key ID are rejected",
+        "PASS item contract: handcuffs forged under the active key ID with another secret are rejected",
+        "PASS item contract: an appearance swap keeps the behavior and instance UUID and re-signs",
+        "PASS item contract: strict carriers: a disarmer is not minecraft:golden_hoe, and plain or dressed golden hoes are not disarmers",
+        "PASS item contract: no AIR fallback: unknown references resolve to nothing, and bare names resolve to vanilla",
+        "PASS after a restart, a full disarmer reads back identically and still verifies",
+        "PASS after a restart, a spent disarmer (state re-signed) reads back identically and still verifies",
+        "PASS after a restart, privileged handcuffs reads back identically and still verifies",
+        "PASS after a restart, handcuffs with a swapped appearance reads back identically and still verifies",
+        "PASS after a restart, a disarmer whose state was edited without re-signing reads back identically and is still rejected"
+      ]
+    },
+    {
+      "lane": "spigot-26.3",
+      "server": "This server is running Spigot version 4664-Spigot-bed90fc-e89124d (MC: 26.3) (Implementing API version 26.3-R0.1-SNAPSHOT)",
+      "failures": [],
+      "contract": [
+        {
+          "name": "create: allium:mob_disarmer carries schema 1, behavior, instance UUID and a v2 signature",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "f8a63344-ae93-4f3b-9cc2-7bd417ef8f6e",
+            "signature": "v2:k1:7c533402f342af41c31dec71a18f451ae796bca7bc22b9821aa332c8e6252a8b"
+          }
+        },
+        {
+          "name": "ItemRef serialize/deserialize round-trips and rebuilds the same identity",
+          "ok": true,
+          "detail": {
+            "rebuilt": {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "274dca71-3bb9-4ef6-97c3-11dea3dd889e",
+              "signature": "v2:k1:299f5d6d6af62996f141c61818c167f163428c50921f1bc0368843b393ee92e5"
+            },
+            "serialized": {
+              "schema-version": 1,
+              "ref": "allium:mob_disarmer",
+              "behavior-id": "allium:mob_disarmer",
+              "amount": 1
+            }
+          }
+        },
+        {
+          "name": "Bukkit YAML serialization keeps the signed identity (same UUID and MAC, still verified)",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "f8a63344-ae93-4f3b-9cc2-7bd417ef8f6e",
+            "signature": "v2:k1:7c533402f342af41c31dec71a18f451ae796bca7bc22b9821aa332c8e6252a8b"
+          }
+        },
+        {
+          "name": "clone and cloneItem keep a verified identity",
+          "ok": true,
+          "detail": {
+            "clone": {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "f8a63344-ae93-4f3b-9cc2-7bd417ef8f6e",
+              "signature": "v2:k1:7c533402f342af41c31dec71a18f451ae796bca7bc22b9821aa332c8e6252a8b"
+            },
+            "cloneItem": {
+              "material": "GOLDEN_HOE",
+              "amount": 2,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "f8a63344-ae93-4f3b-9cc2-7bd417ef8f6e",
+              "signature": "v2:k1:7c533402f342af41c31dec71a18f451ae796bca7bc22b9821aa332c8e6252a8b"
+            }
+          }
+        },
+        {
+          "name": "updateState re-signs: the new state verifies, with the same UUID and a new MAC",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "f8a63344-ae93-4f3b-9cc2-7bd417ef8f6e",
+            "signature": "v2:k1:6f783b44ba6c9cc0b0f9f940e426e90d8848f441dd116d494b149e066743c7eb"
+          }
+        },
+        {
+          "name": "a state edited without re-signing is rejected (plain golden hoe)",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "f8a63344-ae93-4f3b-9cc2-7bd417ef8f6e",
+            "signature": "v2:k1:6f783b44ba6c9cc0b0f9f940e426e90d8848f441dd116d494b149e066743c7eb"
+          }
+        },
+        {
+          "name": "updateState refuses to launder a rejected stack",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "f8a63344-ae93-4f3b-9cc2-7bd417ef8f6e",
+            "signature": "v2:k1:6f783b44ba6c9cc0b0f9f940e426e90d8848f441dd116d494b149e066743c7eb"
+          }
+        },
+        {
+          "name": "a tampered identity (instance UUID changed) is rejected",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "9168dcd5-fd67-4cb2-9271-d27b6486095e",
+            "signature": "v2:k1:7c533402f342af41c31dec71a18f451ae796bca7bc22b9821aa332c8e6252a8b"
+          }
+        },
+        {
+          "name": "privileged allium:handcuffs is minted signed",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "d0e02e1a-27b4-4fd7-88ae-03f3fda8206c",
+            "signature": "v2:k1:52e1af045dd9dc9ab58ff5f89ee736ab276cb3d1a38d19c8c2f68ad14db8b455"
+          }
+        },
+        {
+          "name": "privileged handcuffs without a signature are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "d0e02e1a-27b4-4fd7-88ae-03f3fda8206c",
+            "signature": null
+          }
+        },
+        {
+          "name": "handcuffs signed with an unknown key ID are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "d0e02e1a-27b4-4fd7-88ae-03f3fda8206c",
+            "signature": "v2:forged:535aa3c01c2c7b92f442f6de8eb1e12fe2d9d9251bc541cbef387d1c8904431f"
+          }
+        },
+        {
+          "name": "handcuffs forged under the active key ID with another secret are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "d0e02e1a-27b4-4fd7-88ae-03f3fda8206c",
+            "signature": "v2:k1:1dace80a3a802fa331d052488b7ab656776eba00468b82c357de8962b8c90170"
+          }
+        },
+        {
+          "name": "an appearance swap keeps the behavior and instance UUID and re-signs",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "d0e02e1a-27b4-4fd7-88ae-03f3fda8206c",
+            "signature": "v2:k1:4245fa8c1706e6916a91733bf1413ed80f5a7fb1f53fac97764f85ba386fe26e"
+          }
+        },
+        {
+          "name": "strict carriers: a disarmer is not minecraft:golden_hoe, and plain or dressed golden hoes are not disarmers",
+          "ok": true,
+          "detail": {
+            "spoofModelData": "2577020"
+          }
+        },
+        {
+          "name": "no AIR fallback: unknown references resolve to nothing, and bare names resolve to vanilla",
+          "ok": true,
+          "detail": {
+            "allium": "UNKNOWN_ID",
+            "bare": "UNKNOWN_ID",
+            "stone": "RESOLVED"
+          }
+        }
+      ],
+      "persistence": {
+        "stored": [
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "1261dc93-559a-4003-83a1-c52ffcfc7748",
+            "signature": "v2:k1:73c6983971cdcd9c50c410c55f90a1d6d189fe707c69d1f9c60178599342c886"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "9661b6aa-ee03-40d5-9dab-e297cf5a11dc",
+            "signature": "v2:k1:eea5a237c83af81d695295edf7bca50d384bd6a5faa53da59bf58f53ace03c17"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "b9f5b75e-066f-476c-8c82-4b5cdf60168b",
+            "signature": "v2:k1:8d83ea015753d7d2f973742eb1f023fd7c8d1f54042a517c824608f1c142a354"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "1367ed14-066b-4fe3-9ee0-3e5227c0b9f9",
+            "signature": "v2:k1:88d1d1fca05a1fd757f93fd2ef9d1f0c628aaab0a8919cca91c3351778395eb3"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "9661b6aa-ee03-40d5-9dab-e297cf5a11dc",
+            "signature": "v2:k1:eea5a237c83af81d695295edf7bca50d384bd6a5faa53da59bf58f53ace03c17"
+          }
+        ],
+        "found": [
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "1261dc93-559a-4003-83a1-c52ffcfc7748",
+            "signature": "v2:k1:73c6983971cdcd9c50c410c55f90a1d6d189fe707c69d1f9c60178599342c886"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "9661b6aa-ee03-40d5-9dab-e297cf5a11dc",
+            "signature": "v2:k1:eea5a237c83af81d695295edf7bca50d384bd6a5faa53da59bf58f53ace03c17"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "b9f5b75e-066f-476c-8c82-4b5cdf60168b",
+            "signature": "v2:k1:8d83ea015753d7d2f973742eb1f023fd7c8d1f54042a517c824608f1c142a354"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "1367ed14-066b-4fe3-9ee0-3e5227c0b9f9",
+            "signature": "v2:k1:88d1d1fca05a1fd757f93fd2ef9d1f0c628aaab0a8919cca91c3351778395eb3"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "9661b6aa-ee03-40d5-9dab-e297cf5a11dc",
+            "signature": "v2:k1:eea5a237c83af81d695295edf7bca50d384bd6a5faa53da59bf58f53ace03c17"
+          }
+        ]
+      },
+      "checks": [
+        "PASS item contract: create: allium:mob_disarmer carries schema 1, behavior, instance UUID and a v2 signature",
+        "PASS item contract: ItemRef serialize/deserialize round-trips and rebuilds the same identity",
+        "PASS item contract: Bukkit YAML serialization keeps the signed identity (same UUID and MAC, still verified)",
+        "PASS item contract: clone and cloneItem keep a verified identity",
+        "PASS item contract: updateState re-signs: the new state verifies, with the same UUID and a new MAC",
+        "PASS item contract: a state edited without re-signing is rejected (plain golden hoe)",
+        "PASS item contract: updateState refuses to launder a rejected stack",
+        "PASS item contract: a tampered identity (instance UUID changed) is rejected",
+        "PASS item contract: privileged allium:handcuffs is minted signed",
+        "PASS item contract: privileged handcuffs without a signature are rejected",
+        "PASS item contract: handcuffs signed with an unknown key ID are rejected",
+        "PASS item contract: handcuffs forged under the active key ID with another secret are rejected",
+        "PASS item contract: an appearance swap keeps the behavior and instance UUID and re-signs",
+        "PASS item contract: strict carriers: a disarmer is not minecraft:golden_hoe, and plain or dressed golden hoes are not disarmers",
+        "PASS item contract: no AIR fallback: unknown references resolve to nothing, and bare names resolve to vanilla",
+        "PASS after a restart, a full disarmer reads back identically and still verifies",
+        "PASS after a restart, a spent disarmer (state re-signed) reads back identically and still verifies",
+        "PASS after a restart, privileged handcuffs reads back identically and still verifies",
+        "PASS after a restart, handcuffs with a swapped appearance reads back identically and still verifies",
+        "PASS after a restart, a disarmer whose state was edited without re-signing reads back identically and is still rejected"
+      ]
+    },
+    {
+      "lane": "paper-26.3",
+      "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+      "failures": [],
+      "contract": [
+        {
+          "name": "create: allium:mob_disarmer carries schema 1, behavior, instance UUID and a v2 signature",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "a6a2499d-7536-4850-83b4-42356b936366",
+            "signature": "v2:k1:6e1d9b4b63820342a7dbaf24b2a9ecc6cf3aa12e2f19daf341a99919fb95d2fe"
+          }
+        },
+        {
+          "name": "ItemRef serialize/deserialize round-trips and rebuilds the same identity",
+          "ok": true,
+          "detail": {
+            "rebuilt": {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "e6648774-75f1-4013-bc48-c9e6386a15e4",
+              "signature": "v2:k1:500f1543ddb7e558204b746f46e9211b850a6aac5bc0f55ba645b343d9f035ca"
+            },
+            "serialized": {
+              "schema-version": 1,
+              "ref": "allium:mob_disarmer",
+              "behavior-id": "allium:mob_disarmer",
+              "amount": 1
+            }
+          }
+        },
+        {
+          "name": "Bukkit YAML serialization keeps the signed identity (same UUID and MAC, still verified)",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "a6a2499d-7536-4850-83b4-42356b936366",
+            "signature": "v2:k1:6e1d9b4b63820342a7dbaf24b2a9ecc6cf3aa12e2f19daf341a99919fb95d2fe"
+          }
+        },
+        {
+          "name": "clone and cloneItem keep a verified identity",
+          "ok": true,
+          "detail": {
+            "clone": {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "a6a2499d-7536-4850-83b4-42356b936366",
+              "signature": "v2:k1:6e1d9b4b63820342a7dbaf24b2a9ecc6cf3aa12e2f19daf341a99919fb95d2fe"
+            },
+            "cloneItem": {
+              "material": "GOLDEN_HOE",
+              "amount": 2,
+              "appearance": "allium:mob_disarmer",
+              "behavior": "allium:mob_disarmer",
+              "state": {},
+              "schemaVersion": 1,
+              "instanceUuid": "a6a2499d-7536-4850-83b4-42356b936366",
+              "signature": "v2:k1:6e1d9b4b63820342a7dbaf24b2a9ecc6cf3aa12e2f19daf341a99919fb95d2fe"
+            }
+          }
+        },
+        {
+          "name": "updateState re-signs: the new state verifies, with the same UUID and a new MAC",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "a6a2499d-7536-4850-83b4-42356b936366",
+            "signature": "v2:k1:126f9fdaf691e6c879906f6e4793f146cfd45b654d52197cfc5350be6e8b49d1"
+          }
+        },
+        {
+          "name": "a state edited without re-signing is rejected (plain golden hoe)",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "a6a2499d-7536-4850-83b4-42356b936366",
+            "signature": "v2:k1:126f9fdaf691e6c879906f6e4793f146cfd45b654d52197cfc5350be6e8b49d1"
+          }
+        },
+        {
+          "name": "updateState refuses to launder a rejected stack",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "a6a2499d-7536-4850-83b4-42356b936366",
+            "signature": "v2:k1:126f9fdaf691e6c879906f6e4793f146cfd45b654d52197cfc5350be6e8b49d1"
+          }
+        },
+        {
+          "name": "a tampered identity (instance UUID changed) is rejected",
+          "ok": true,
+          "detail": {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "193e1c06-28b8-4a5f-98f1-728ada20860d",
+            "signature": "v2:k1:6e1d9b4b63820342a7dbaf24b2a9ecc6cf3aa12e2f19daf341a99919fb95d2fe"
+          }
+        },
+        {
+          "name": "privileged allium:handcuffs is minted signed",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "dba3da51-53b5-435e-9680-45d32ae6914e",
+            "signature": "v2:k1:e8f33d5a644d2e0ed97c7a458afafe029884cc31f9b63d2e7af6be8ae46c07fc"
+          }
+        },
+        {
+          "name": "privileged handcuffs without a signature are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "dba3da51-53b5-435e-9680-45d32ae6914e",
+            "signature": null
+          }
+        },
+        {
+          "name": "handcuffs signed with an unknown key ID are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "dba3da51-53b5-435e-9680-45d32ae6914e",
+            "signature": "v2:forged:887986730fd7a96e56ed3fd6c56a76797863d83d860876082bb112c6b2d7da3c"
+          }
+        },
+        {
+          "name": "handcuffs forged under the active key ID with another secret are rejected",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "minecraft:iron_shovel",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "dba3da51-53b5-435e-9680-45d32ae6914e",
+            "signature": "v2:k1:feec3c97929cedfc99bd2fed4731214425327c55484c39203b7a2499a73872d2"
+          }
+        },
+        {
+          "name": "an appearance swap keeps the behavior and instance UUID and re-signs",
+          "ok": true,
+          "detail": {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "dba3da51-53b5-435e-9680-45d32ae6914e",
+            "signature": "v2:k1:b0012fd1df7dc82dcbe7b8e6468dcd3c4b0575bf533c726b4f4bd273274017c3"
+          }
+        },
+        {
+          "name": "strict carriers: a disarmer is not minecraft:golden_hoe, and plain or dressed golden hoes are not disarmers",
+          "ok": true,
+          "detail": {
+            "spoofModelData": "2577020"
+          }
+        },
+        {
+          "name": "no AIR fallback: unknown references resolve to nothing, and bare names resolve to vanilla",
+          "ok": true,
+          "detail": {
+            "allium": "UNKNOWN_ID",
+            "bare": "UNKNOWN_ID",
+            "stone": "RESOLVED"
+          }
+        }
+      ],
+      "persistence": {
+        "stored": [
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "5d062dd5-d3c6-42ec-aa0c-b35b486783d7",
+            "signature": "v2:k1:a51fc64b44b0a2907a6f6f7432e0cbf441514c52e711d00410ac4a3c98c08ab9"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "52995690-c053-4b12-a85c-8f80402a43b9",
+            "signature": "v2:k1:6d077f4ee7e8b58bd49a742a1282ed1bc99b80d68a7715159e4e118eefef6c4d"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "2d8bb20a-0fec-4ea5-bda9-36cdc8a67c60",
+            "signature": "v2:k1:867a0c7edc6f1e1cecea6ac452d66326f0a35216cc11c24b8bce708566de6907"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "ba12a969-0009-4254-95e6-e19e0d7a9df1",
+            "signature": "v2:k1:5295d905e4d8334dbe6fc42b054ccc75e27816cf3e750efe5919fd4185467554"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "52995690-c053-4b12-a85c-8f80402a43b9",
+            "signature": "v2:k1:6d077f4ee7e8b58bd49a742a1282ed1bc99b80d68a7715159e4e118eefef6c4d"
+          }
+        ],
+        "found": [
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "5d062dd5-d3c6-42ec-aa0c-b35b486783d7",
+            "signature": "v2:k1:a51fc64b44b0a2907a6f6f7432e0cbf441514c52e711d00410ac4a3c98c08ab9"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "allium:mob_disarmer",
+            "behavior": "allium:mob_disarmer",
+            "state": {
+              "charges": "1"
+            },
+            "schemaVersion": 1,
+            "instanceUuid": "52995690-c053-4b12-a85c-8f80402a43b9",
+            "signature": "v2:k1:6d077f4ee7e8b58bd49a742a1282ed1bc99b80d68a7715159e4e118eefef6c4d"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "allium:handcuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "2d8bb20a-0fec-4ea5-bda9-36cdc8a67c60",
+            "signature": "v2:k1:867a0c7edc6f1e1cecea6ac452d66326f0a35216cc11c24b8bce708566de6907"
+          },
+          {
+            "material": "IRON_SHOVEL",
+            "amount": 1,
+            "appearance": "basegate:cuffs",
+            "behavior": "allium:handcuffs",
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "ba12a969-0009-4254-95e6-e19e0d7a9df1",
+            "signature": "v2:k1:5295d905e4d8334dbe6fc42b054ccc75e27816cf3e750efe5919fd4185467554"
+          },
+          {
+            "material": "GOLDEN_HOE",
+            "amount": 1,
+            "appearance": "minecraft:golden_hoe",
+            "behavior": null,
+            "state": {},
+            "schemaVersion": 1,
+            "instanceUuid": "52995690-c053-4b12-a85c-8f80402a43b9",
+            "signature": "v2:k1:6d077f4ee7e8b58bd49a742a1282ed1bc99b80d68a7715159e4e118eefef6c4d"
+          }
+        ]
+      },
+      "checks": [
+        "PASS item contract: create: allium:mob_disarmer carries schema 1, behavior, instance UUID and a v2 signature",
+        "PASS item contract: ItemRef serialize/deserialize round-trips and rebuilds the same identity",
+        "PASS item contract: Bukkit YAML serialization keeps the signed identity (same UUID and MAC, still verified)",
+        "PASS item contract: clone and cloneItem keep a verified identity",
+        "PASS item contract: updateState re-signs: the new state verifies, with the same UUID and a new MAC",
+        "PASS item contract: a state edited without re-signing is rejected (plain golden hoe)",
+        "PASS item contract: updateState refuses to launder a rejected stack",
+        "PASS item contract: a tampered identity (instance UUID changed) is rejected",
+        "PASS item contract: privileged allium:handcuffs is minted signed",
+        "PASS item contract: privileged handcuffs without a signature are rejected",
+        "PASS item contract: handcuffs signed with an unknown key ID are rejected",
+        "PASS item contract: handcuffs forged under the active key ID with another secret are rejected",
+        "PASS item contract: an appearance swap keeps the behavior and instance UUID and re-signs",
+        "PASS item contract: strict carriers: a disarmer is not minecraft:golden_hoe, and plain or dressed golden hoes are not disarmers",
+        "PASS item contract: no AIR fallback: unknown references resolve to nothing, and bare names resolve to vanilla",
+        "PASS after a restart, a full disarmer reads back identically and still verifies",
+        "PASS after a restart, a spent disarmer (state re-signed) reads back identically and still verifies",
+        "PASS after a restart, privileged handcuffs reads back identically and still verifies",
+        "PASS after a restart, handcuffs with a swapped appearance reads back identically and still verifies",
+        "PASS after a restart, a disarmer whose state was edited without re-signing reads back identically and is still rejected"
+      ]
+    }
+  ]
+}

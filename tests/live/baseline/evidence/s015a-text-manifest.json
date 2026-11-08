@@ -1,0 +1,1136 @@
+{
+  "date": "2026-11-07",
+  "alliumJarSha256": "57ff304f31704c1a1199508d65b42487d8dd0750dd1a325560211d8d80343a33",
+  "harness": "tests/live/baseline/run.py (BaseGate fixture)",
+  "persistedEvidence": "/mnt/storage/.allium-validation/20261107/baseline-gate/",
+  "environment": {
+    "spigot-1.20.1": {
+      "serverJar": "spigot-1.20.1.jar (BuildTools 3871-Spigot-d2eba2c)",
+      "java": 17,
+      "client": "minecraft-protocol 1.68.0 (protocol 763)",
+      "serverJarSha256": "1416cd67e2337e42058def6035260f6a42e294adb4a148707b87591cddfbb760",
+      "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)"
+    },
+    "paper-1.20": {
+      "serverJar": "paper-1.20-17.jar (fill.papermc.io)",
+      "java": 17,
+      "client": "minecraft-protocol 1.68.0 (protocol 763)",
+      "serverJarSha256": "1e4ccfc0599f491ee6fee4455d3722332ac5d78584fccd55cbb3b51e11504505",
+      "server": "This server is running Paper version git-Paper-17 (MC: 1.20) (Implementing API version 1.20-R0.1-SNAPSHOT) (Git: c287e92)"
+    },
+    "paper-1.20.6": {
+      "serverJar": "paper-1.20.6-151.jar (fill.papermc.io)",
+      "java": 21,
+      "client": "minecraft-protocol 1.68.0 (protocol 766)",
+      "serverJarSha256": "4b011f5adb5f6c72007686a223174fce82f31aeb4b34faf4652abc840b47e640",
+      "server": "This server is running Paper version 1.20.6-151-ver/1.20.6@a4f0f5c (2024-10-30T19:13:22Z) (Implementing API version 1.20.6-R0.1-SNAPSHOT)"
+    },
+    "spigot-26.3": {
+      "serverJar": "spigot-26.3.jar (BuildTools #201, 4664-Spigot-bed90fc-e89124d)",
+      "java": 25,
+      "client": "owned raw client (protocol 777)",
+      "serverJarSha256": "6f84dad54f97dcea066c307a7e7168d7d2dcb7788aa505329cb6a2094d7dfe2a",
+      "server": "This server is running Spigot version 4664-Spigot-bed90fc-e89124d (MC: 26.3) (Implementing API version 26.3-R0.1-SNAPSHOT)"
+    },
+    "paper-26.3": {
+      "serverJar": "Paper 26.3-141 lane template (libraries + versions)",
+      "java": 25,
+      "client": "owned raw client (protocol 777)",
+      "serverJarSha256": "template /tmp/allium-s05-20261105/provider-gate/lane",
+      "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)"
+    }
+  },
+  "gate": "S01.5a static text formatter: boot and localized messages",
+  "checks": 55,
+  "crossLane": {
+    "feedIdenticalOnAllLanes": true,
+    "gradientEntryIdenticalOnAllLanes": true
+  },
+  "runs": [
+    {
+      "lane": "spigot-1.20.1",
+      "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+      "failures": [],
+      "feed": {
+        "plain": "[Allium] Has sido alimentado.",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Has sido alimentado.",
+            "color": "#55ff55"
+          }
+        ],
+        "overlay": false
+      },
+      "heal": {
+        "chat": {
+          "plain": "[Allium] Curado por completo ok",
+          "colors": [
+            "#aaaaaa",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#aaaaaa",
+            "#aaaaaa",
+            "#ff0000",
+            "#f1000e",
+            "#e3001c",
+            "#d5002b",
+            "#c60039",
+            "#b80047",
+            "#aa0055",
+            "#9c0063",
+            "#8e0071",
+            "#800080",
+            "#71008e",
+            "#63009c",
+            "#5500aa",
+            "#4700b8",
+            "#3900c6",
+            "#2b00d5",
+            "#1c00e3",
+            "#0e00f1",
+            "#0000ff",
+            "#aaaaaa",
+            "#00ff88",
+            "#00ff88"
+          ],
+          "runs": [
+            {
+              "text": "[",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "Allium",
+              "color": "#ff55ff"
+            },
+            {
+              "text": "] ",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "C",
+              "color": "#ff0000"
+            },
+            {
+              "text": "u",
+              "color": "#f1000e"
+            },
+            {
+              "text": "r",
+              "color": "#e3001c"
+            },
+            {
+              "text": "a",
+              "color": "#d5002b"
+            },
+            {
+              "text": "d",
+              "color": "#c60039"
+            },
+            {
+              "text": "o",
+              "color": "#b80047"
+            },
+            {
+              "text": " ",
+              "color": "#aa0055"
+            },
+            {
+              "text": "p",
+              "color": "#9c0063"
+            },
+            {
+              "text": "o",
+              "color": "#8e0071"
+            },
+            {
+              "text": "r",
+              "color": "#800080"
+            },
+            {
+              "text": " ",
+              "color": "#71008e"
+            },
+            {
+              "text": "c",
+              "color": "#63009c"
+            },
+            {
+              "text": "o",
+              "color": "#5500aa"
+            },
+            {
+              "text": "m",
+              "color": "#4700b8"
+            },
+            {
+              "text": "p",
+              "color": "#3900c6"
+            },
+            {
+              "text": "l",
+              "color": "#2b00d5"
+            },
+            {
+              "text": "e",
+              "color": "#1c00e3"
+            },
+            {
+              "text": "t",
+              "color": "#0e00f1"
+            },
+            {
+              "text": "o",
+              "color": "#0000ff"
+            },
+            {
+              "text": " ",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "ok",
+              "color": "#00ff88"
+            }
+          ],
+          "overlay": false
+        },
+        "sound": {
+          "packet": "sound_effect",
+          "name": "minecraft:entity.experience_orb.pickup",
+          "id": null,
+          "volume": 0.5,
+          "pitch": 1
+        }
+      },
+      "checks": [
+        "PASS Allium.jar contains no Takion (me.croabeast) or Adventure (net.kyori) classes (0)",
+        "BOOT initial",
+        "PASS initial: Allium and the fixture enabled",
+        "PASS initial: the es_ES locale loaded",
+        "PASS the shipped Spanish /feed message arrives as \"[Allium] Has sido alimentado.\" with the &7/&d/&a colours of every visible character",
+        "PASS the gradient test entry arrives as \"[Allium] Curado por completo ok\"",
+        "PASS <gradient:#ff0000:#0000ff> gives each of the 17 letters its own colour, from #ff0000 to #0000ff",
+        "PASS &#00ff88 gives \"ok\" the hex colour #00ff88",
+        "PASS Allium played the message sound itself: {'packet': 'sound_effect', 'name': 'minecraft:entity.experience_orb.pickup', 'id': None, 'volume': 0.5, 'pitch': 1}",
+        "BOOT restart",
+        "PASS restart: Allium and the fixture enabled",
+        "PASS restart: the es_ES locale loaded",
+        "PASS no listener or Allium exceptions in the server log: []"
+      ]
+    },
+    {
+      "lane": "paper-1.20",
+      "server": "This server is running Paper version git-Paper-17 (MC: 1.20) (Implementing API version 1.20-R0.1-SNAPSHOT) (Git: c287e92)",
+      "failures": [],
+      "feed": {
+        "plain": "[Allium] Has sido alimentado.",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Has sido alimentado.",
+            "color": "#55ff55"
+          }
+        ],
+        "overlay": false
+      },
+      "heal": {
+        "chat": {
+          "plain": "[Allium] Curado por completo ok",
+          "colors": [
+            "#aaaaaa",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#aaaaaa",
+            "#aaaaaa",
+            "#ff0000",
+            "#f1000e",
+            "#e3001c",
+            "#d5002b",
+            "#c60039",
+            "#b80047",
+            "#aa0055",
+            "#9c0063",
+            "#8e0071",
+            "#800080",
+            "#71008e",
+            "#63009c",
+            "#5500aa",
+            "#4700b8",
+            "#3900c6",
+            "#2b00d5",
+            "#1c00e3",
+            "#0e00f1",
+            "#0000ff",
+            "#aaaaaa",
+            "#00ff88",
+            "#00ff88"
+          ],
+          "runs": [
+            {
+              "text": "[",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "Allium",
+              "color": "#ff55ff"
+            },
+            {
+              "text": "] ",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "C",
+              "color": "#ff0000"
+            },
+            {
+              "text": "u",
+              "color": "#f1000e"
+            },
+            {
+              "text": "r",
+              "color": "#e3001c"
+            },
+            {
+              "text": "a",
+              "color": "#d5002b"
+            },
+            {
+              "text": "d",
+              "color": "#c60039"
+            },
+            {
+              "text": "o",
+              "color": "#b80047"
+            },
+            {
+              "text": " ",
+              "color": "#aa0055"
+            },
+            {
+              "text": "p",
+              "color": "#9c0063"
+            },
+            {
+              "text": "o",
+              "color": "#8e0071"
+            },
+            {
+              "text": "r",
+              "color": "#800080"
+            },
+            {
+              "text": " ",
+              "color": "#71008e"
+            },
+            {
+              "text": "c",
+              "color": "#63009c"
+            },
+            {
+              "text": "o",
+              "color": "#5500aa"
+            },
+            {
+              "text": "m",
+              "color": "#4700b8"
+            },
+            {
+              "text": "p",
+              "color": "#3900c6"
+            },
+            {
+              "text": "l",
+              "color": "#2b00d5"
+            },
+            {
+              "text": "e",
+              "color": "#1c00e3"
+            },
+            {
+              "text": "t",
+              "color": "#0e00f1"
+            },
+            {
+              "text": "o",
+              "color": "#0000ff"
+            },
+            {
+              "text": " ",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "ok",
+              "color": "#00ff88"
+            }
+          ],
+          "overlay": false
+        },
+        "sound": {
+          "packet": "sound_effect",
+          "name": "minecraft:entity.experience_orb.pickup",
+          "id": null,
+          "volume": 0.5,
+          "pitch": 1
+        }
+      },
+      "checks": [
+        "PASS Allium.jar contains no Takion (me.croabeast) or Adventure (net.kyori) classes (0)",
+        "BOOT initial",
+        "PASS initial: Allium and the fixture enabled",
+        "PASS initial: the es_ES locale loaded",
+        "PASS the shipped Spanish /feed message arrives as \"[Allium] Has sido alimentado.\" with the &7/&d/&a colours of every visible character",
+        "PASS the gradient test entry arrives as \"[Allium] Curado por completo ok\"",
+        "PASS <gradient:#ff0000:#0000ff> gives each of the 17 letters its own colour, from #ff0000 to #0000ff",
+        "PASS &#00ff88 gives \"ok\" the hex colour #00ff88",
+        "PASS Allium played the message sound itself: {'packet': 'sound_effect', 'name': 'minecraft:entity.experience_orb.pickup', 'id': None, 'volume': 0.5, 'pitch': 1}",
+        "BOOT restart",
+        "PASS restart: Allium and the fixture enabled",
+        "PASS restart: the es_ES locale loaded",
+        "PASS no listener or Allium exceptions in the server log: []"
+      ]
+    },
+    {
+      "lane": "paper-1.20.6",
+      "server": "This server is running Paper version 1.20.6-151-ver/1.20.6@a4f0f5c (2024-10-30T19:13:22Z) (Implementing API version 1.20.6-R0.1-SNAPSHOT)",
+      "failures": [],
+      "feed": {
+        "plain": "[Allium] Has sido alimentado.",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Has sido alimentado.",
+            "color": "#55ff55"
+          }
+        ],
+        "overlay": false
+      },
+      "heal": {
+        "chat": {
+          "plain": "[Allium] Curado por completo ok",
+          "colors": [
+            "#aaaaaa",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#aaaaaa",
+            "#aaaaaa",
+            "#ff0000",
+            "#f1000e",
+            "#e3001c",
+            "#d5002b",
+            "#c60039",
+            "#b80047",
+            "#aa0055",
+            "#9c0063",
+            "#8e0071",
+            "#800080",
+            "#71008e",
+            "#63009c",
+            "#5500aa",
+            "#4700b8",
+            "#3900c6",
+            "#2b00d5",
+            "#1c00e3",
+            "#0e00f1",
+            "#0000ff",
+            "#aaaaaa",
+            "#00ff88",
+            "#00ff88"
+          ],
+          "runs": [
+            {
+              "text": "[",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "Allium",
+              "color": "#ff55ff"
+            },
+            {
+              "text": "] ",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "C",
+              "color": "#ff0000"
+            },
+            {
+              "text": "u",
+              "color": "#f1000e"
+            },
+            {
+              "text": "r",
+              "color": "#e3001c"
+            },
+            {
+              "text": "a",
+              "color": "#d5002b"
+            },
+            {
+              "text": "d",
+              "color": "#c60039"
+            },
+            {
+              "text": "o",
+              "color": "#b80047"
+            },
+            {
+              "text": " ",
+              "color": "#aa0055"
+            },
+            {
+              "text": "p",
+              "color": "#9c0063"
+            },
+            {
+              "text": "o",
+              "color": "#8e0071"
+            },
+            {
+              "text": "r",
+              "color": "#800080"
+            },
+            {
+              "text": " ",
+              "color": "#71008e"
+            },
+            {
+              "text": "c",
+              "color": "#63009c"
+            },
+            {
+              "text": "o",
+              "color": "#5500aa"
+            },
+            {
+              "text": "m",
+              "color": "#4700b8"
+            },
+            {
+              "text": "p",
+              "color": "#3900c6"
+            },
+            {
+              "text": "l",
+              "color": "#2b00d5"
+            },
+            {
+              "text": "e",
+              "color": "#1c00e3"
+            },
+            {
+              "text": "t",
+              "color": "#0e00f1"
+            },
+            {
+              "text": "o",
+              "color": "#0000ff"
+            },
+            {
+              "text": " ",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "ok",
+              "color": "#00ff88"
+            }
+          ],
+          "overlay": false
+        },
+        "sound": {
+          "packet": "sound_effect",
+          "name": "minecraft:entity.experience_orb.pickup",
+          "id": null,
+          "volume": 0.5,
+          "pitch": 1
+        }
+      },
+      "checks": [
+        "PASS Allium.jar contains no Takion (me.croabeast) or Adventure (net.kyori) classes (0)",
+        "BOOT initial",
+        "PASS initial: Allium and the fixture enabled",
+        "PASS initial: the es_ES locale loaded",
+        "PASS the shipped Spanish /feed message arrives as \"[Allium] Has sido alimentado.\" with the &7/&d/&a colours of every visible character",
+        "PASS the gradient test entry arrives as \"[Allium] Curado por completo ok\"",
+        "PASS <gradient:#ff0000:#0000ff> gives each of the 17 letters its own colour, from #ff0000 to #0000ff",
+        "PASS &#00ff88 gives \"ok\" the hex colour #00ff88",
+        "PASS Allium played the message sound itself: {'packet': 'sound_effect', 'name': 'minecraft:entity.experience_orb.pickup', 'id': None, 'volume': 0.5, 'pitch': 1}",
+        "BOOT restart",
+        "PASS restart: Allium and the fixture enabled",
+        "PASS restart: the es_ES locale loaded",
+        "PASS no listener or Allium exceptions in the server log: []"
+      ]
+    },
+    {
+      "lane": "spigot-26.3",
+      "server": "This server is running Spigot version 4664-Spigot-bed90fc-e89124d (MC: 26.3) (Implementing API version 26.3-R0.1-SNAPSHOT)",
+      "failures": [],
+      "feed": {
+        "plain": "[Allium] Has sido alimentado.",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Has sido alimentado.",
+            "color": "#55ff55"
+          }
+        ],
+        "overlay": false
+      },
+      "heal": {
+        "chat": {
+          "plain": "[Allium] Curado por completo ok",
+          "colors": [
+            "#aaaaaa",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#aaaaaa",
+            "#aaaaaa",
+            "#ff0000",
+            "#f1000e",
+            "#e3001c",
+            "#d5002b",
+            "#c60039",
+            "#b80047",
+            "#aa0055",
+            "#9c0063",
+            "#8e0071",
+            "#800080",
+            "#71008e",
+            "#63009c",
+            "#5500aa",
+            "#4700b8",
+            "#3900c6",
+            "#2b00d5",
+            "#1c00e3",
+            "#0e00f1",
+            "#0000ff",
+            "#aaaaaa",
+            "#00ff88",
+            "#00ff88"
+          ],
+          "runs": [
+            {
+              "text": "[",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "Allium",
+              "color": "#ff55ff"
+            },
+            {
+              "text": "] ",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "C",
+              "color": "#ff0000"
+            },
+            {
+              "text": "u",
+              "color": "#f1000e"
+            },
+            {
+              "text": "r",
+              "color": "#e3001c"
+            },
+            {
+              "text": "a",
+              "color": "#d5002b"
+            },
+            {
+              "text": "d",
+              "color": "#c60039"
+            },
+            {
+              "text": "o",
+              "color": "#b80047"
+            },
+            {
+              "text": " ",
+              "color": "#aa0055"
+            },
+            {
+              "text": "p",
+              "color": "#9c0063"
+            },
+            {
+              "text": "o",
+              "color": "#8e0071"
+            },
+            {
+              "text": "r",
+              "color": "#800080"
+            },
+            {
+              "text": " ",
+              "color": "#71008e"
+            },
+            {
+              "text": "c",
+              "color": "#63009c"
+            },
+            {
+              "text": "o",
+              "color": "#5500aa"
+            },
+            {
+              "text": "m",
+              "color": "#4700b8"
+            },
+            {
+              "text": "p",
+              "color": "#3900c6"
+            },
+            {
+              "text": "l",
+              "color": "#2b00d5"
+            },
+            {
+              "text": "e",
+              "color": "#1c00e3"
+            },
+            {
+              "text": "t",
+              "color": "#0e00f1"
+            },
+            {
+              "text": "o",
+              "color": "#0000ff"
+            },
+            {
+              "text": " ",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "ok",
+              "color": "#00ff88"
+            }
+          ],
+          "overlay": false
+        },
+        "sound": {
+          "packet": "sound",
+          "name": "minecraft:entity.experience_orb.pickup",
+          "id": null,
+          "volume": 0.5,
+          "pitch": 1
+        }
+      },
+      "checks": [
+        "PASS Allium.jar contains no Takion (me.croabeast) or Adventure (net.kyori) classes (0)",
+        "BOOT initial",
+        "PASS initial: Allium and the fixture enabled",
+        "PASS initial: the es_ES locale loaded",
+        "PASS the shipped Spanish /feed message arrives as \"[Allium] Has sido alimentado.\" with the &7/&d/&a colours of every visible character",
+        "PASS the gradient test entry arrives as \"[Allium] Curado por completo ok\"",
+        "PASS <gradient:#ff0000:#0000ff> gives each of the 17 letters its own colour, from #ff0000 to #0000ff",
+        "PASS &#00ff88 gives \"ok\" the hex colour #00ff88",
+        "PASS Allium played the message sound itself: {'packet': 'sound', 'name': 'minecraft:entity.experience_orb.pickup', 'id': None, 'volume': 0.5, 'pitch': 1}",
+        "BOOT restart",
+        "PASS restart: Allium and the fixture enabled",
+        "PASS restart: the es_ES locale loaded",
+        "PASS no listener or Allium exceptions in the server log: []"
+      ]
+    },
+    {
+      "lane": "paper-26.3",
+      "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+      "failures": [],
+      "feed": {
+        "plain": "[Allium] Has sido alimentado.",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Has sido alimentado.",
+            "color": "#55ff55"
+          }
+        ],
+        "overlay": false
+      },
+      "heal": {
+        "chat": {
+          "plain": "[Allium] Curado por completo ok",
+          "colors": [
+            "#aaaaaa",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#ff55ff",
+            "#aaaaaa",
+            "#aaaaaa",
+            "#ff0000",
+            "#f1000e",
+            "#e3001c",
+            "#d5002b",
+            "#c60039",
+            "#b80047",
+            "#aa0055",
+            "#9c0063",
+            "#8e0071",
+            "#800080",
+            "#71008e",
+            "#63009c",
+            "#5500aa",
+            "#4700b8",
+            "#3900c6",
+            "#2b00d5",
+            "#1c00e3",
+            "#0e00f1",
+            "#0000ff",
+            "#aaaaaa",
+            "#00ff88",
+            "#00ff88"
+          ],
+          "runs": [
+            {
+              "text": "[",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "Allium",
+              "color": "#ff55ff"
+            },
+            {
+              "text": "] ",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "C",
+              "color": "#ff0000"
+            },
+            {
+              "text": "u",
+              "color": "#f1000e"
+            },
+            {
+              "text": "r",
+              "color": "#e3001c"
+            },
+            {
+              "text": "a",
+              "color": "#d5002b"
+            },
+            {
+              "text": "d",
+              "color": "#c60039"
+            },
+            {
+              "text": "o",
+              "color": "#b80047"
+            },
+            {
+              "text": " ",
+              "color": "#aa0055"
+            },
+            {
+              "text": "p",
+              "color": "#9c0063"
+            },
+            {
+              "text": "o",
+              "color": "#8e0071"
+            },
+            {
+              "text": "r",
+              "color": "#800080"
+            },
+            {
+              "text": " ",
+              "color": "#71008e"
+            },
+            {
+              "text": "c",
+              "color": "#63009c"
+            },
+            {
+              "text": "o",
+              "color": "#5500aa"
+            },
+            {
+              "text": "m",
+              "color": "#4700b8"
+            },
+            {
+              "text": "p",
+              "color": "#3900c6"
+            },
+            {
+              "text": "l",
+              "color": "#2b00d5"
+            },
+            {
+              "text": "e",
+              "color": "#1c00e3"
+            },
+            {
+              "text": "t",
+              "color": "#0e00f1"
+            },
+            {
+              "text": "o",
+              "color": "#0000ff"
+            },
+            {
+              "text": " ",
+              "color": "#aaaaaa"
+            },
+            {
+              "text": "ok",
+              "color": "#00ff88"
+            }
+          ],
+          "overlay": false
+        },
+        "sound": {
+          "packet": "sound",
+          "name": "minecraft:entity.experience_orb.pickup",
+          "id": null,
+          "volume": 0.5,
+          "pitch": 1
+        }
+      },
+      "checks": [
+        "PASS Allium.jar contains no Takion (me.croabeast) or Adventure (net.kyori) classes (0)",
+        "BOOT initial",
+        "PASS initial: Allium and the fixture enabled",
+        "PASS initial: the es_ES locale loaded",
+        "PASS the shipped Spanish /feed message arrives as \"[Allium] Has sido alimentado.\" with the &7/&d/&a colours of every visible character",
+        "PASS the gradient test entry arrives as \"[Allium] Curado por completo ok\"",
+        "PASS <gradient:#ff0000:#0000ff> gives each of the 17 letters its own colour, from #ff0000 to #0000ff",
+        "PASS &#00ff88 gives \"ok\" the hex colour #00ff88",
+        "PASS Allium played the message sound itself: {'packet': 'sound', 'name': 'minecraft:entity.experience_orb.pickup', 'id': None, 'volume': 0.5, 'pitch': 1}",
+        "BOOT restart",
+        "PASS restart: Allium and the fixture enabled",
+        "PASS restart: the es_ES locale loaded",
+        "PASS no listener or Allium exceptions in the server log: []"
+      ]
+    }
+  ]
+}

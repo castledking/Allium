@@ -1,0 +1,13 @@
+name: BaseGate
+version: 1.0.0
+main: gate.BaseGate
+api-version: '1.20'
+depend: [Allium]
+description: Baseline gate fixture (text formatter boot, localized messages, item contract). Never install on a production server.
+commands:
+  bg:
+    description: Baseline gate fixture
+    permission: basegate.console
+permissions:
+  basegate.console:
+    default: op

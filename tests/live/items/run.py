@@ -336,6 +336,27 @@ def disarmer_cases():
             'amount 3 mints three single disarmers with distinct instance UUIDs')
 
 
+def carrier_cases():
+    """No vanilla-carrier false matches: a golden hoe, even one dressed as a disarmer (its name and
+    exact model data), is never identified as allium:mob_disarmer."""
+    gg('clear')
+    line, _ = give('GateBot golden_hoe', ['Gave 1x', 'Could not give'])
+    require('Gave 1x' in line, f'a plain golden hoe was given: {line.strip()[-60:]}')
+    if spec['components']:
+        dressed = 'golden_hoe[custom_name={text:"Mob Disarmer",color:"gold",italic:false},custom_model_data={floats:[2577020f]}]'
+    else:
+        dressed = 'golden_hoe{display:{Name:\'{"text":"Mob Disarmer","color":"gold","italic":false}\'},CustomModelData:2577020}'
+    line, _ = give('GateBot ' + dressed, ['Gave 1x', 'Could not give'])
+    require('Gave 1x' in line, f'a golden hoe with the disarmer\'s name and model data was given: {line.strip()[-60:]}')
+    snap = snapshot('carrier-spoof')
+    hoes = slots_of(snap, 'GOLDEN_HOE')
+    spoof = [h for h in hoes if h.get('customModelData') == 2577020]
+    require(len(hoes) == 2 and len(spoof) == 1 and 'Mob Disarmer' in str(spoof[0].get('name')),
+            f'both carriers arrived, one with model data 2577020 and the name "Mob Disarmer": {[(h.get("name"), h.get("customModelData")) for h in hoes]}')
+    require(all(h['behavior'] is None and h['signature'] is None and h['instanceUuid'] is None for h in hoes),
+            'neither is identified as allium:mob_disarmer (no behavior, signature or instance UUID): no vanilla-carrier false match')
+
+
 def overflow_cases():
     gg('fill 1')
     line, _ = give('GateBot diamond 100 --overflow=refuse', ['cannot hold', 'Gave'])
@@ -666,6 +687,7 @@ try:
         compat_cases()
     else:
         disarmer_cases()
+        carrier_cases()
         overflow_cases()
         raw_cases()
         token_cases()

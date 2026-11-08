@@ -16,6 +16,56 @@ checks appropriate to each slice.
 - [x] Database setup and economy/Vault scaffolding.
 - [x] Heal, feed, fly, god and gamemode executors (ported onto platform-neutral `CommandSpec` + `BukkitCommandRenderer` and verified across `self`, `other`, and `console` on Spigot 1.20.1, Paper 1.20, Paper 1.20.6, Spigot 26.3, and Paper 26.3).
 
+## M1 status (close-out, 2026-11-07)
+
+M1 is **not complete**. Eight of its nine roadmap deliverables are built and have recorded
+evidence, and all five M1 gates are met. Two items are open: the minimal versioned addon API
+(proposed as S09 below), and pack delivery, which this queue also lists under M1. Two items wait
+on others: the S06b visual checklist (a manual run in a real client), and stock CraftEngine,
+since deployment needs the patched build.
+
+| M1 deliverable | Status | Evidence |
+| --- | --- | --- |
+| Minimal API | **Open**: no versioned API, version check or API jar; addons can only reach internals through `PluginStart`. Proposed slice: S09 below | — |
+| Preferences repository | Done (S03 and follow-up) | [preferences results](tests/live/preferences/RESULTS.md): 188, then 224 live checks; `1c67312`, `52ebe48` |
+| Command-family policy | Done (S02) | [command-client gate](tests/live/command-client/README.md) and its `evidence/*.json` (Spigot 1.20.1, Paper 1.20.6, Paper 26.3); `de46a45`, `3be33f9` |
+| Scheduler boundary | Done (this close-out): `TaskScheduler`/`AlliumScheduler` in `allium-core`, `BukkitServerThread`, all call sites migrated, `SchedulerBoundaryTest` forbids bypasses | `AlliumSchedulerTest` (6), `SchedulerBoundaryTest`; on jar `57ff304f`, the preference gate (224 checks, four lanes) and the item gate (105 checks, three lanes) passed again |
+| Static text formatting, Takion retired | Done (S01.5a) | `TextFormatterTest`; `Allium.jar` has 0 `me.croabeast` and 0 `net.kyori` classes (rechecked at close-out); `092e89d`. The min/max-lane boot is recorded only in that commit; there is no results file |
+| Give/Enchant/Skull/Potion library | Done (S04 follow-up) | [items results](tests/live/items/RESULTS.md): 93 + 36 live checks. Not yet: `/i`, aliases, kits, `queue` overflow |
+| Built-in/vanilla and three provider adapters | Done, conditionally (S05) | [provider matrix](docs/s05-provider-matrix.md), `tests/live/providers/evidence/`. Stock CE reset updaters lose stack counts; deploying requires the verified CE fix |
+| Mob Disarmer across providers | Done (S06a) | [disarmer results](tests/live/tools/disarmer/RESULTS.md): 58 cases, 862 checks |
+| Core pack generation | Done; **visual check pending** (S06b) | [pack results](tests/live/pack/RESULTS.md): 125 live checks; [visual checklist](tests/live/pack/VISUAL-CHECKLIST.md) for a real client. Delivery is the separate open item below |
+
+| M1 gate | Status | Evidence |
+| --- | --- | --- |
+| Core is the only required plugin | Met | `plugin.yml` has `softdepend` only. Allium booted and passed with no item provider on S01's five lanes and on the Spigot 1.20.1 and Paper 26.3 lanes of S03, S04, S06a and S06b (S06a's 26.3 lane added only the optional GriefPrevention3D) |
+| One behavior works standalone and with each supported provider | Met | S06a (built-in, Nexo, CraftEngine and Oraxen appearances on every case); S04 follow-up (each provider's disarmer given and signed) |
+| Round-trip metadata/charges | Met | `ItemCoreContractTest`, `ItemServiceContractTest`; live in S06a (charges, UUID, MAC and PDC field by field after provider reloads and a restart) and S06b (recharge visuals) |
+| Provider readiness/reload safe | Met, for the recorded matrix | S05: `reload-cycle-final.log` and `restart-*.log` in `tests/live/providers/evidence/`; S06a persistence after `nexo`/`ce`/`oraxen` reloads. Conditional on the patched CE build |
+| No vanilla-carrier false matches | Met | `ItemServiceContractTest#strictProviderCarrierNonMatchingAndAntiSpoofing`. Live (close-out): on Spigot 1.20.1, Paper 1.21.8 and Paper 26.3, a plain golden hoe and one with the disarmer's name and model data 2577020 are both identified as no Allium item ([items results](tests/live/items/RESULTS.md)) |
+
+Open before M1 can close:
+- [ ] **S09 / M1 — Minimal versioned addon API** (proposed). Scope:
+      - An `allium-api` artifact that addons compile against with `compileOnly`. It holds
+        interfaces and value types only, no implementation, and the core jar implements it.
+      - An `AlliumApi` service, registered in Bukkit's `ServicesManager`, with a
+        `major.minor` API version.
+      - A compatibility check: an addon declares the API version it needs, and a mismatch
+        disables only that addon, with a diagnostic.
+      - Only the surfaces later slices already consume: `ItemService` (create, identify, match,
+        `ItemRef`), item delivery with its outcomes, `ProtectionService` checks, preference
+        `acceptance`/effective values, `TaskScheduler`, and the existing events
+        (`ItemGiveEvent`, `AlliumProtectionCheckEvent`).
+
+      Gate:
+      - A test addon built only against the API jar boots with Allium on Spigot 1.20.1 and
+        Paper 26.3 and uses each surface once.
+      - An addon that needs a newer minor is refused while Allium keeps running.
+      - The API jar contains no implementation classes, and `Allium.jar` contains no addon
+        classes.
+- [ ] **Pack delivery** (below).
+- [ ] **S06b visual check** in a real client (owner: the user).
+
 ## First implementation queue
 
 These slices make the first coding sessions concrete. Each includes an observable

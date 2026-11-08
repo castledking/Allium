@@ -49,7 +49,7 @@ public final class PreferencesModule extends AbstractModule implements Listener 
     private long shutdownTimeoutMillis;
     /** Sessions begun at pre-login and not yet joined: generation and start time. */
     private final Map<UUID, long[]> loginGenerations = new ConcurrentHashMap<>();
-    private org.bukkit.scheduler.BukkitTask sweeper;
+    private codes.castled.allium.scheduler.TaskHandle sweeper;
     private final Map<Player, Long> connectionGenerations = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
 
     public PreferencesModule(PluginStart plugin) {
@@ -90,16 +90,20 @@ public final class PreferencesModule extends AbstractModule implements Listener 
                     Thread.currentThread().interrupt();
                 }
             }
-        });
+        }, plugin.getScheduler()::boundedPool);
         sessions = new PreferenceSessions(store, () -> defaults, plugin.logger()::warning, retry,
-                (task, delayMillis) -> Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, task, Math.max(1L, (delayMillis + 49L) / 50L)));
+                // A retry only queues a load on the store, so it runs on the scheduler's timer thread.
+                (task, delayMillis) -> plugin.getScheduler().runAsyncLater(task, delayMillis));
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         for (Player online : Bukkit.getOnlinePlayers()) {
             connectionGenerations.put(online, sessions.begin(online.getUniqueId()));
         }
         // A login refused after pre-login (ban, whitelist, full) or a connection that drops before
         // join fires no quit event. (PlayerLoginEvent is not used: Paper deprecates it for removal.)
-        sweeper = Bukkit.getScheduler().runTaskTimer(plugin, this::sweepAbandonedLogins, 20L * 30, 20L * 30);
+        sweeper = plugin.getScheduler().repeatOnServer(() -> {
+            sweepAbandonedLogins();
+            return true;
+        }, 30_000L, 30_000L);
         plugin.logger().info("Preferences enabled: " + dialect + " schema v" + version + ", " + lanes + " storage lane(s), defaults "
                 + defaults + ", pre-login wait " + preloadWaitMillis + " ms, load retries " + retry.retries()
                 + ", shutdown timeout " + shutdownTimeoutMillis + " ms.");

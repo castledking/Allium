@@ -110,6 +110,22 @@ checks and Paper 26.3 passed 19.
     network call, and reported `DEGRADED`.
   - Counters at the end: 1 remote lookup, 1 resolved, 1 cache hit, 1 rate-limited.
 
+## M1 close-out rerun (2026-11-07): scheduler boundary and carrier non-match
+
+The gate was run again on Allium.jar `57ff304f…`, the jar that moved scheduling onto
+`TaskScheduler`: item delivery's server-thread hop and the bounded skull-lookup pool. It
+passed 105 checks with 0 failures: 31 on Spigot 1.20.1, 43 on Paper 1.21.8 with all three
+providers, and 31 on Paper 26.3.
+
+Each lane adds one case for the M1 gate "no vanilla-carrier false matches":
+- A plain `golden_hoe` was given.
+- A second golden hoe was dressed as a disarmer: the gold name "Mob Disarmer" and the
+  disarmer's exact model data 2577020. Paper 1.21.8 and 26.3 set them with
+  `[custom_name=…,custom_model_data={floats:[2577020f]}]`, Spigot 1.20.1 with
+  `{display:{Name:…},CustomModelData:2577020}` NBT.
+- Both arrived as given, and `identify` found neither to be `allium:mob_disarmer`: no
+  behavior, signature or instance UUID.
+
 ## Scope and limits
 
 - **Skull lookups:** only one real Mojang lookup is run, in the compat scenario; the main gate's

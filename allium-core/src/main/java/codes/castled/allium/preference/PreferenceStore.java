@@ -1,12 +1,12 @@
 package codes.castled.allium.preference;
 
+import codes.castled.allium.scheduler.PoolFactory;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -94,17 +94,16 @@ public final class PreferenceStore implements AutoCloseable {
 
     /** @param beforeLoad runs on the lane before each load (test-only fault hooks; no-op in production) */
     public PreferenceStore(PreferenceRepository repository, int laneCount, int queueCapacity, Consumer<UUID> beforeLoad) {
+        this(repository, laneCount, queueCapacity, beforeLoad, PoolFactory.STANDALONE);
+    }
+
+    /** @param pools creates each lane (one thread, bounded queue); the plugin passes its scheduler's */
+    public PreferenceStore(PreferenceRepository repository, int laneCount, int queueCapacity, Consumer<UUID> beforeLoad,
+                           PoolFactory pools) {
         this.repository = repository;
         this.beforeLoad = beforeLoad;
         for (int i = 0; i < Math.max(1, laneCount); i++) {
-            int index = i;
-            ThreadPoolExecutor executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
-                    new ArrayBlockingQueue<>(Math.max(1, queueCapacity)), runnable -> {
-                        Thread thread = new Thread(runnable, "Allium-Preferences-" + index);
-                        thread.setDaemon(true);
-                        return thread;
-                    }, new ThreadPoolExecutor.AbortPolicy());
-            lanes.add(new Lane(executor));
+            lanes.add(new Lane(pools.create("Allium-Preferences-" + i, 1, Math.max(1, queueCapacity))));
         }
     }
 

@@ -8,7 +8,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
+import codes.castled.allium.scheduler.TaskScheduler;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;
@@ -26,19 +26,16 @@ public final class ItemSigningKeyAudit implements Listener {
         this.criticalLogger = criticalLogger;
     }
 
-    public void install(JavaPlugin plugin) {
+    public void install(JavaPlugin plugin, TaskScheduler scheduler) {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         var online = new ArrayDeque<>(plugin.getServer().getOnlinePlayers());
         if (!online.isEmpty()) {
             // One inventory per tick on late enable; avoid a large synchronous startup scan.
-            new BukkitRunnable() {
-                @Override public void run() {
-                    Player player = online.poll();
-                    if (player == null) { cancel(); return; }
-                    if (player.isOnline()) auditPlayer(player);
-                    if (online.isEmpty()) cancel();
-                }
-            }.runTaskTimer(plugin, 1L, 1L);
+            scheduler.repeatOnServer(() -> {
+                Player player = online.poll();
+                if (player != null && player.isOnline()) auditPlayer(player);
+                return !online.isEmpty();
+            }, TaskScheduler.MILLIS_PER_TICK, TaskScheduler.MILLIS_PER_TICK);
         }
     }
 

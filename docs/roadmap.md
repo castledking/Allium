@@ -89,6 +89,20 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
     Shutdown drains with a configurable timeout and names every write it could not save. The
     message-sound math (`SoundLevels` in `allium-core`, `MessageManager#playNotificationSound`)
     follows the contract below.
+- **Scheduler boundary (M1 close-out):** `TaskScheduler`, implemented by `AlliumScheduler` in
+  `allium-core`, is the one owner of Allium's work:
+  - server-thread tasks, through `BukkitServerThread`, the only class that touches
+    `BukkitScheduler`;
+  - delayed async follow-ups on one `Allium-Timer` thread;
+  - named bounded worker pools.
+
+  `PluginStart#getScheduler` hands it to every slice, and `PluginStart` closes it last.
+  `SchedulerBoundaryTest` fails the build if production code creates threads or executors, or
+  uses the Bukkit scheduler, anywhere else. It does not make Allium Folia-ready; that still
+  needs per-feature thread-ownership tests.
+- **M1 status:** see the [M1 close-out in the checklist](../todo.md#m1-status-close-out-2026-11-07).
+  All five M1 gates are met. The minimal versioned addon API (proposed S09) and pack delivery
+  are open. The S06b visual check is pending in a real client.
 - Private messages, preference commands, addons and pack delivery are not implemented in this recode. Some config module names are
   placeholders; do not count them as working features.
 
@@ -170,7 +184,9 @@ Extract APIs when a concrete consumer needs them, not a framework for every clas
 
 Use UUIDs for player identity. Preferences, requests, balances and item state have
 explicit schemas and migrations. Database/file work runs on bounded executors;
-Bukkit entity/world/inventory operations run on the server thread. SQLite has a
+Bukkit entity/world/inventory operations run on the server thread. All of it goes
+through `TaskScheduler`: `runOnServer`, `runAsyncLater` and `boundedPool`. No slice
+creates its own threads or uses the Bukkit scheduler directly. SQLite has a
 serialized write path; MySQL has proper transactions. Money uses a declared scale
 and rounding policy, atomic conditional withdrawals, and transactional transfers.
 Vault's synchronous API needs an explicit consistency strategy and measured

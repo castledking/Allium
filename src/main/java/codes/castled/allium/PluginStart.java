@@ -9,6 +9,9 @@ import codes.castled.allium.database.DatabaseManager;
 import codes.castled.allium.item.ItemHmacSigner;
 import codes.castled.allium.item.ItemService;
 import codes.castled.allium.item.ItemSigningKeyAudit;
+import codes.castled.allium.scheduler.AlliumScheduler;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.item.provider.ProviderAdapterBootstrap;
 import codes.castled.allium.item.provider.ProviderStartupDiagnostics;
 import codes.castled.allium.listener.ListenerManager;
@@ -41,6 +44,7 @@ public final class PluginStart extends JavaPlugin {
     private CommandManager commandManager;
     private ListenerManager listenerManager;
     private AssetManifest packManifest;
+    private AlliumScheduler scheduler;
 
     @Override
     public void onEnable() {
@@ -48,6 +52,8 @@ public final class PluginStart extends JavaPlugin {
 
         logger = new AlliumLogger(this);
         logger.info("Starting Allium...");
+        // The one owner of Allium's server-thread tasks, timers and worker pools; closed last.
+        scheduler = new AlliumScheduler(new BukkitServerThread(this), logger::severe);
         if (FaultInjection.enabled()) {
             logger.warning("Fault injection is enabled (-D" + FaultInjection.PROPERTY + "=true). This is for disposable "
                     + "test servers only: armed fault points make Allium operations fail on purpose.");
@@ -112,8 +118,8 @@ public final class PluginStart extends JavaPlugin {
 
         commandManager.registerAll();
         listenerManager.registerAll();
-        new ProviderStartupDiagnostics(itemService, getServer().getPluginManager(), logger::warning).install(this);
-        new ItemSigningKeyAudit(hmacSigner, logger::severe).install(this);
+        new ProviderStartupDiagnostics(itemService, getServer().getPluginManager(), logger::warning).install(scheduler);
+        new ItemSigningKeyAudit(hmacSigner, logger::severe).install(this, scheduler);
         logger.info("Item signing keyring loaded: active=" + hmacSigner.activeKeyId()
                 + ", verification keys=" + hmacSigner.keyIds()
                 + ". Loaded inventories are audited for unknown key IDs.");
@@ -143,9 +149,21 @@ public final class PluginStart extends JavaPlugin {
     public void onDisable() {
         if (moduleManager != null) moduleManager.unloadModules();
         if (databaseManager != null) databaseManager.shutdown();
+        if (scheduler != null) {
+            // Modules drain their own pools first; anything still running here is stopped.
+            java.util.List<String> unfinished = scheduler.close(5_000L);
+            if (!unfinished.isEmpty()) {
+                logger.warning("Stopped Allium worker pools that were still busy at shutdown: " + unfinished);
+            }
+        }
 
         logger.info("Allium disabled.");
         instance = null;
+    }
+
+    /** Where Allium's work runs: server-thread tasks, timers and bounded worker pools. */
+    public TaskScheduler getScheduler() {
+        return scheduler;
     }
 
     public static PluginStart getInstance() {

@@ -27,8 +27,8 @@ plugin, with no separate library plugin or required item editor.
 
 Gameplay systems ship separately:
 
-- Fun Items: configurable actions, cooldowns and novelty items inspired by ItemTag.
-- Reliques: equipment, slots and effects.
+- Curios: custom items with actions, custom enchantments, and equipment slots with relics, on one
+  shared engine. Each part can be turned off.
 - Harvest: crops, soil, growth, fertilizers and sprinklers.
 - Kitchen: cooking and preparation; depends on Harvest.
 - Pregen Ores: generation jobs and ore placement.
@@ -43,7 +43,7 @@ plugins/
   Allium-<version>.jar
   Addon-Harvest-<version>.jar
   Addon-Kitchen-<version>.jar
-  Addon-FunItems-<version>.jar
+  Addon-Curios-<version>.jar
 ```
 
 Other addons follow the same naming. Publish them as assets on the same GitHub

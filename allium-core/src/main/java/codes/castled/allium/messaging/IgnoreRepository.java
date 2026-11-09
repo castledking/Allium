@@ -42,7 +42,7 @@ public final class IgnoreRepository {
     public Set<UUID> load(UUID owner) throws SQLException {
         Set<UUID> out = new LinkedHashSet<>();
         try (Connection c = source.connection();
-             PreparedStatement s = c.prepareStatement("SELECT ignored FROM " + TABLE + " WHERE owner = ? ORDER BY created_at")) {
+             PreparedStatement s = c.prepareStatement("SELECT ignored FROM " + TABLE + " WHERE owner = ? ORDER BY created_at, ignored")) {
             s.setString(1, owner.toString());
             try (ResultSet r = s.executeQuery()) {
                 while (r.next()) {

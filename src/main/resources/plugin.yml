@@ -50,9 +50,14 @@ commands:
     description: Turn receiving private messages on or off
     usage: /<command> [on|off] [player]
     permission: allium.msgtoggle
+  messagesounds:
+    description: Your private-message sound volume
+    usage: /<command> [volume <0-1>|toggle|reset]
+    aliases: [msounds, mfx]
+    permission: allium.messagesounds
   allium:
     description: Allium administration
-    usage: /<command> <reload|version>
+    usage: /<command> <reload|version|import lang [apply]>
   give:
     description: Give items (M1 item-library harness)
     usage: /<command> <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
@@ -79,9 +84,16 @@ permissions:
       allium.give: true
       allium.give.privileged: true
       allium.reload: true
+      allium.import: true
   allium.reload:
     description: Allows /allium reload
     default: op
+  allium.import:
+    description: Allows /allium import (pre-recode data imports; dry run unless 'apply')
+    default: op
+  allium.messagesounds:
+    description: Allows /messagesounds (/msounds, /mfx) for your own message sound volume
+    default: true
   allium.msg:
     description: Allows /msg
     default: true

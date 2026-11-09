@@ -197,6 +197,14 @@ public final class MessagingService implements Listener {
         // The literal path: on Spigot, a legacy string would turn URLs in the body into clickable links.
         TextSender.sendLiteral(sender, UntrustedText.insert(sent, text));
         TextSender.sendLiteral(recipient, UntrustedText.insert(received, text));
+        if (sender instanceof Player self) {
+            // The sender's own confirmation sound, when the lang entry has one: an ordinary message
+            // sound, not a notification, so /mfx (incoming messages) does not scale it.
+            MessageSoundSpec sentSound = plugin.getLanguageManager().getSound(Messages.MSG_SENT);
+            if (sentSound != null) {
+                plugin.getMessageManager().playSound(self, sentSound);
+            }
+        }
         if (recipient instanceof Player target) {
             MessageSoundSpec sound = plugin.getLanguageManager().getSound(Messages.MSG_RECEIVED);
             if (sound != null) {

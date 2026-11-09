@@ -179,14 +179,18 @@ public final class CoreCommandSpecs {
             "core",
             List.of(),
             "Allium administration",
-            "/allium <reload|version>",
-            "/allium <reload|version>",
+            "/allium <reload|version|import lang [apply]>",
+            "/allium <reload|version|import lang [apply]>",
             null,
             null,
             List.of(),
             List.of(
                     new CommandNodeSpec("reload", List.of(), "allium.reload", "/allium reload", List.of(), List.of()),
-                    new CommandNodeSpec("version", List.of(), null, "/allium version", List.of(), List.of())
+                    new CommandNodeSpec("version", List.of(), null, "/allium version", List.of(), List.of()),
+                    new CommandNodeSpec("import", List.of(), "allium.import", "/allium import lang [apply]", List.of(), List.of(
+                            new CommandNodeSpec("lang", List.of(), "allium.import", "/allium import lang [apply]",
+                                    List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null))),
+                                    List.of())))
             ),
             CommandMessageKeys.ofOutcomes(Map.of(
                     "reloaded", "core.reload-success",
@@ -231,7 +235,24 @@ public final class CoreCommandSpecs {
                     CommandArgSpec.optional("player", "allium.msgtoggle.others", SuggestionSpec.onlinePlayers("allium.msgtoggle.others"))),
             List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
 
-    public static final List<CommandSpec> MESSAGING_SPECS = List.of(MSG, REPLY, IGNORE, UNIGNORE, MSGTOGGLE);
+    /**
+     * {@code /messagesounds} ({@code /msounds}, {@code /mfx}): the player's private-message sound
+     * volume. No arguments reports it; {@code volume <0-1>}, {@code toggle} and {@code reset} change it.
+     */
+    public static final CommandSpec MESSAGESOUNDS = new CommandSpec(
+            "messagesounds", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of("msounds", "mfx"),
+            "Your private-message sound volume", "/mfx [volume <0-1>|toggle|reset]", "/mfx [volume <0-1>|toggle|reset]",
+            "allium.messagesounds", null,
+            List.of(),
+            List.of(
+                    new CommandNodeSpec("volume", List.of(), null, "/mfx volume <0-1>",
+                            List.of(CommandArgSpec.required("volume", null, SuggestionSpec.literals(List.of("0", "0.25", "0.5", "0.75", "1"), null))),
+                            List.of()),
+                    new CommandNodeSpec("toggle", List.of(), null, "/mfx toggle", List.of(), List.of()),
+                    new CommandNodeSpec("reset", List.of(), null, "/mfx reset", List.of(), List.of())),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> MESSAGING_SPECS = List.of(MSG, REPLY, IGNORE, UNIGNORE, MSGTOGGLE, MESSAGESOUNDS);
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(
             HEAL,

@@ -109,6 +109,19 @@ public final class PreferencesModule extends AbstractModule implements Listener 
                 + ", shutdown timeout " + shutdownTimeoutMillis + " ms.");
     }
 
+    /**
+     * Re-reads {@code preferences.defaults} and {@code sounds.messages.fallback-volume} for
+     * {@code /allium reload}. Effective preferences are computed from the current defaults, so a
+     * player with no override (after {@code /mfx reset}, or who never set one) follows the new values
+     * at once; stored overrides are untouched. Storage settings still need a restart.
+     *
+     * @return the new defaults, for the reload report
+     */
+    public PreferenceDefaults reloadDefaults() {
+        defaults = readDefaults(plugin.getConfig().getConfigurationSection("preferences"));
+        return defaults;
+    }
+
     private PreferenceSessions.RetryPolicy readRetry(ConfigurationSection config) {
         ConfigurationSection r = config == null ? null : config.getConfigurationSection("load-retry");
         int retries = r == null ? 4 : Math.max(0, Math.min(10, r.getInt("retries", 4)));

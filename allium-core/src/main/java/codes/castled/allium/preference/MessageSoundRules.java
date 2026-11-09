@@ -1,8 +1,8 @@
 package codes.castled.allium.preference;
 
 /**
- * The message-sound volume rules behind {@code /mfx volume|toggle|reset} (commands arrive in a
- * later slice; the stored state and its restoration live here so it survives reconnects).
+ * The message-sound volume rules behind {@code /mfx volume|toggle|reset} ({@code MessageSoundsCommand});
+ * the stored state and its restoration live here, so they survive reconnects and restarts.
  */
 public final class MessageSoundRules {
 
@@ -63,6 +63,28 @@ public final class MessageSoundRules {
         return new Toggle(change, defaults.messageSoundVolume(),
                 defaults.messageSoundVolume() > 0.0D ? Outcome.FALLBACK : Outcome.FALLBACK_SILENT);
     }
+
+    /**
+     * Parses the {@code <0-1>} of {@code /mfx volume}. Only plain decimals are accepted
+     * ({@code 0}, {@code 0.35}, {@code .5}, {@code 1}): no sign, exponent, hex, type suffix,
+     * {@code NaN} or infinity, which Java's number parser would otherwise take.
+     *
+     * @return the volume, or empty when the input is not a finite number from 0 to 1
+     */
+    public static java.util.OptionalDouble parseVolume(String raw) {
+        if (raw == null) {
+            return java.util.OptionalDouble.empty();
+        }
+        String trimmed = raw.trim();
+        if (!PLAIN_DECIMAL.matcher(trimmed).matches()) {
+            return java.util.OptionalDouble.empty();
+        }
+        double value = Double.parseDouble(trimmed);
+        return Double.isFinite(value) && value >= 0.0D && value <= 1.0D
+                ? java.util.OptionalDouble.of(value) : java.util.OptionalDouble.empty();
+    }
+
+    private static final java.util.regex.Pattern PLAIN_DECIMAL = java.util.regex.Pattern.compile("(?:\\d{1,9}(?:\\.\\d{1,9})?|\\.\\d{1,9})");
 
     /** {@code /mfx reset}: removes the override and the restoration state. */
     public static PreferenceChange reset() {

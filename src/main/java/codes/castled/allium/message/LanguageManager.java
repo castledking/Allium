@@ -173,7 +173,8 @@ public final class LanguageManager {
             return null;
         }
         String soundId = section.getString("sound");
-        if (soundId == null || soundId.isBlank()) {
+        // "none" (or "off") switches a message's sound off without a diagnostic.
+        if (soundId == null || soundId.isBlank() || soundId.trim().equalsIgnoreCase("none") || soundId.trim().equalsIgnoreCase("off")) {
             return null;
         }
         Double volume = section.contains("volume") ? section.getDouble("volume") : null;

@@ -164,6 +164,27 @@ public enum Messages {
     MSGTOGGLE_OTHER_OFF("messaging.toggle.other-off", "{prefix} &f{player} &cno longer accepts private messages."),
     MSGTOGGLE_DISABLED("messaging.toggle.disabled", "{prefix} &cMessage preferences are disabled on this server."),
 
+    // -- Message sounds (/messagesounds, /msounds, /mfx) --
+    SOUNDS_STATUS_OVERRIDE("messaging.sounds.status-override", "{prefix} &7Message sound volume: &f{volume} &7(your setting)."),
+    SOUNDS_STATUS_DEFAULT("messaging.sounds.status-default", "{prefix} &7Message sound volume: &f{volume} &7(the server default)."),
+    SOUNDS_STATUS_MUTED("messaging.sounds.status-muted", "{prefix} &7Message sounds are &cmuted&7. &f/mfx toggle &7turns them back on at &f{volume}&7."),
+    SOUNDS_USAGE("messaging.sounds.usage", "{prefix} &7Use &f/mfx volume <0-1>&7, &f/mfx toggle &7or &f/mfx reset&7."),
+    SOUNDS_VOLUME_SET("messaging.sounds.volume-set", "{prefix} &aMessage sound volume set to &f{volume}&a."),
+    SOUNDS_VOLUME_INVALID("messaging.sounds.volume-invalid", "{prefix} &c'{input}' is not a volume from 0 to 1; nothing changed."),
+    SOUNDS_MUTED("messaging.sounds.muted", "{prefix} &cMessage sounds muted. &7/mfx toggle turns them back on."),
+    SOUNDS_RESTORED("messaging.sounds.restored", "{prefix} &aMessage sounds are back on at &f{volume}&a."),
+    SOUNDS_FALLBACK("messaging.sounds.fallback", "{prefix} &aMessage sounds are back on at the server default, &f{volume}&a."),
+    SOUNDS_FALLBACK_SILENT("messaging.sounds.fallback-silent", "{prefix} &cThe server default volume is 0, so message sounds stay muted. &7Use &f/mfx volume <0-1>&7."),
+    SOUNDS_RESET("messaging.sounds.reset", "{prefix} &aYou now follow the server's message sound volume, &f{volume}&a."),
+    SOUNDS_DISABLED("messaging.sounds.disabled", "{prefix} &cMessage sound preferences are disabled on this server."),
+
+    // -- Legacy imports (/allium import) --
+    IMPORT_LANG_NO_SOURCE("core.import.lang-no-source", "{prefix} &cNo pre-recode lang file at &f{file}&c."),
+    IMPORT_LANG_REPORT("core.import.lang-report", "{prefix} &7{mode}: &f{write} &7to write, &f{same} &7already imported, &f{kept} &7kept (customized), &f{unmapped} &7not portable yet. Details are in the console."),
+    IMPORT_LANG_APPLIED("core.import.lang-applied", "{prefix} &aImported &f{write} &amessage(s) into &f{file}&a; the old file is backed up as &f{backup}&a."),
+    IMPORT_LANG_NOTHING("core.import.lang-nothing", "{prefix} &aNothing to import; &f{file} &ais up to date."),
+    IMPORT_LANG_FAILED("core.import.lang-failed", "{prefix} &cThe lang import failed: &f{reason}"),
+
     // Preferences (shared by messages, payments and teleport requests)
     PREFERENCES_UNAVAILABLE("preferences.unavailable", "{prefix} &c{player}'s settings are still loading. Try again shortly.");
 

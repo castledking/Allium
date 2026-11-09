@@ -8,6 +8,12 @@ core:
   reload-success: "{prefix} &aConfiguration reloaded."
   reload-failed: "{prefix} &cReload failed. Check console for details."
   version: "{prefix} &fRunning Allium &dv{version}&f."
+  import:
+    lang-no-source: "{prefix} &cNo pre-recode lang file at &f{file}&c."
+    lang-report: "{prefix} &7{mode}: &f{write} &7to write, &f{same} &7already imported, &f{kept} &7kept (customized), &f{unmapped} &7not portable yet. Details are in the console."
+    lang-applied: "{prefix} &aImported &f{write} &amessage(s) into &f{file}&a; the old file is backed up as &f{backup}&a."
+    lang-nothing: "{prefix} &aNothing to import; &f{file} &ais up to date."
+    lang-failed: "{prefix} &cThe lang import failed: &f{reason}"
 
 error:
   no-permission: "{prefix} &cYou don't have permission to do that."
@@ -172,3 +178,16 @@ messaging:
     other-on: "{prefix} &f{player} &anow accepts private messages."
     other-off: "{prefix} &f{player} &cno longer accepts private messages."
     disabled: "{prefix} &cMessage preferences are disabled on this server."
+  sounds:
+    status-override: "{prefix} &7Message sound volume: &f{volume} &7(your setting)."
+    status-default: "{prefix} &7Message sound volume: &f{volume} &7(the server default)."
+    status-muted: "{prefix} &7Message sounds are &cmuted&7. &f/mfx toggle &7turns them back on at &f{volume}&7."
+    usage: "{prefix} &7Use &f/mfx volume <0-1>&7, &f/mfx toggle &7or &f/mfx reset&7."
+    volume-set: "{prefix} &aMessage sound volume set to &f{volume}&a."
+    volume-invalid: "{prefix} &c'{input}' is not a volume from 0 to 1; nothing changed."
+    muted: "{prefix} &cMessage sounds muted. &7/mfx toggle turns them back on."
+    restored: "{prefix} &aMessage sounds are back on at &f{volume}&a."
+    fallback: "{prefix} &aMessage sounds are back on at the server default, &f{volume}&a."
+    fallback-silent: "{prefix} &cThe server default volume is 0, so message sounds stay muted. &7Use &f/mfx volume <0-1>&7."
+    reset: "{prefix} &aYou now follow the server's message sound volume, &f{volume}&a."
+    disabled: "{prefix} &cMessage sound preferences are disabled on this server."

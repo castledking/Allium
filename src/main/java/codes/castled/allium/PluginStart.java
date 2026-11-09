@@ -222,8 +222,9 @@ public final class PluginStart extends JavaPlugin {
     }
 
     /**
-     * {@code /allium reload}: reloads config.yml, the lang files and disabled-commands dispatch, and
-     * re-applies resource-pack settings. It re-exports the pack and, for standalone, re-checks the
+     * {@code /allium reload}: reloads config.yml, the lang files, disabled-commands dispatch and the
+     * preference defaults (including {@code sounds.messages.fallback-volume}), and re-applies
+     * resource-pack settings. It re-exports the pack and, for standalone, re-checks the
      * hosted file. Owner changes and module settings take effect on restart.
      *
      * @param reply receives progress lines for the command sender
@@ -234,6 +235,10 @@ public final class PluginStart extends JavaPlugin {
             configManager.reloadAll();
             languageManager.reload();
             commandManager.reload();
+            if (moduleManager.getModule("preferences") instanceof codes.castled.allium.module.PreferencesModule preferences
+                    && preferences.isEnabled()) {
+                logger.info("Preference defaults reloaded: " + preferences.reloadDefaults());
+            }
             ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
             settings.warnings().forEach(logger::warning);
             if (settings.owner() != startupPackOwner) {

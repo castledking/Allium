@@ -116,8 +116,17 @@ it; the legacy repository is a reference, not a directory to copy wholesale.
   hooks. Blocked sends are silent for the recipient and look the same to the sender, and message
   bodies are untrusted input. See [messaging](messaging.md) and
   [the results](../tests/live/messaging/RESULTS.md).
-- Social spy, `/paytoggle`, `/tptoggle`, the `/mfx` commands and the M5 addons are not
-  implemented in this recode yet. Some config module names are placeholders; do not count them
+- **S08 (message sounds):** `/messagesounds` (`/msounds`, `/mfx`) with `volume`, `toggle` and
+  `reset`.
+  - **Persistence:** the setting and its restoration state survive restarts.
+  - **Reload:** `/allium reload` applies new `sounds.*` values and preference defaults at once.
+  - **Lang entries:** an entry's omitted volume and pitch fall back separately (and lang sync no
+    longer puts them back), and `sound: none` turns a sound off.
+  - **Import:** a dry-run-first `/allium import lang [apply]` imports a pre-recode `lang.yml`.
+  - See [message sounds](sounds.md), [lang import](lang-import.md) and
+    [the results](../tests/live/sounds/RESULTS.md).
+- Social spy, `/paytoggle`, `/tptoggle` and the M5 addons are not implemented in this recode
+  yet. Some config module names are placeholders; do not count them
   as working features.
 
 ## Architecture decisions
@@ -442,7 +451,8 @@ writes are never lost, but a cached session can be stale for reads.
 Support legacy `lang.yml` imports into the recode's `lang/<locale>.yml` files.
 Messages may stay plain strings or declare text plus a sound. A sound ID alone is
 valid. Missing volume and pitch resolve **independently** from `config.yml`.
-Example target schema (planned, not current runtime configuration):
+Example schema. The `sounds` and lang parts are built (S08: [message sounds](sounds.md),
+[lang import](lang-import.md)); signs and broadcasts are still planned:
 
 ```yaml
 # config.yml

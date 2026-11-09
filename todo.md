@@ -284,10 +284,24 @@ result and must preserve the existing uncommitted work.
       - [Custom enchantment design](docs/curios-enchants-design.md), with AdvancedEnchantments
         and EcoEnchants as references.
       - [Lazy Axe port](docs/lazy-axe-design.md) and [Phantom Obliterator port](docs/phantom-obliterator-design.md).
-- [ ] **S08 / M2 — Sound preferences:** omitted volume/pitch defaults, legacy
-      lang.yml importer, `/messagesounds` aliases `/msounds` and `/mfx`,
-      volume/toggle/reset. Gate: zero, finite ranges, independent defaults,
-      restoration and config changes; Allium owns message sound playback directly.
+- [x] **S08 / M2 — Sound preferences:** `/messagesounds` (`/msounds`, `/mfx`) with `volume <0-1>`,
+      `toggle` and `reset`; see [docs/sounds.md](docs/sounds.md).
+      - **Input:** only plain decimals from 0 to 1 are accepted; anything else changes nothing.
+      - **Storage:** the setting and its restoration state persist, and they fail closed while a
+        player's preferences load.
+      - **Reload:** `/allium reload` re-reads the preference defaults, so a reset player follows a
+        changed `sounds.messages.fallback-volume` at once.
+      - **Lang entries:** an entry's omitted volume and pitch fall back separately to
+        `sounds.defaults`. Lang sync no longer puts back a removed `volume` or `pitch`.
+        `sound: none` turns a sound off. `messaging.sent`'s sound, if any, plays for the sender.
+      - **Import:** `/allium import lang [apply]` imports a pre-recode `lang.yml`; it is a dry run
+        unless `apply`, backs up the target, keeps customized messages, can be rerun, and reports
+        what it dropped. See [docs/lang-import.md](docs/lang-import.md).
+
+      Gate passed 2026-11-09: 110 live checks (55 on each of Spigot 1.20.1 and Paper 26.3), with
+      two bots and the console; see [the results](tests/live/sounds/RESULTS.md). It found and
+      fixed two bugs: lang sync re-added omitted sound values, and preference defaults were read
+      only at startup.
 - [ ] **S10 / M4 — Tools: Phantom Obliterator and Lazy Axe** (after S08), implemented from the
       [Obliterator](docs/phantom-obliterator-design.md) and [Lazy Axe](docs/lazy-axe-design.md)
       designs, as `allium:obliterate_phantoms` and `allium:fell_tree` definitions. The Lazy Axe

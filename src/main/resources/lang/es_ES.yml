@@ -8,6 +8,12 @@ core:
   reload-success: "{prefix} &aConfiguracion recargada."
   reload-failed: "{prefix} &cFallo al recargar. Revisa la consola."
   version: "{prefix} &fEjecutando Allium &dv{version}&f."
+  import:
+    lang-no-source: "{prefix} &cNo hay un archivo de idioma anterior en &f{file}&c."
+    lang-report: "{prefix} &7{mode}: &f{write} &7por escribir, &f{same} &7ya importados, &f{kept} &7conservados (personalizados), &f{unmapped} &7aun no portables. Los detalles estan en la consola."
+    lang-applied: "{prefix} &aImportados &f{write} &amensaje(s) en &f{file}&a; el archivo anterior se guardo como &f{backup}&a."
+    lang-nothing: "{prefix} &aNada que importar; &f{file} &aesta al dia."
+    lang-failed: "{prefix} &cLa importacion del idioma fallo: &f{reason}"
 
 error:
   no-permission: "{prefix} &cNo tienes permiso para hacer eso."
@@ -135,3 +141,16 @@ messaging:
     other-on: "{prefix} &f{player} &aahora acepta mensajes privados."
     other-off: "{prefix} &f{player} &cya no acepta mensajes privados."
     disabled: "{prefix} &cLas preferencias de mensajes estan desactivadas en este servidor."
+  sounds:
+    status-override: "{prefix} &7Volumen de los sonidos de mensajes: &f{volume} &7(tu ajuste)."
+    status-default: "{prefix} &7Volumen de los sonidos de mensajes: &f{volume} &7(el predeterminado del servidor)."
+    status-muted: "{prefix} &7Los sonidos de mensajes estan &csilenciados&7. &f/mfx toggle &7los vuelve a activar a &f{volume}&7."
+    usage: "{prefix} &7Usa &f/mfx volume <0-1>&7, &f/mfx toggle &7o &f/mfx reset&7."
+    volume-set: "{prefix} &aVolumen de los sonidos de mensajes: &f{volume}&a."
+    volume-invalid: "{prefix} &c'{input}' no es un volumen entre 0 y 1; no se ha cambiado nada."
+    muted: "{prefix} &cSonidos de mensajes silenciados. &7/mfx toggle los vuelve a activar."
+    restored: "{prefix} &aLos sonidos de mensajes vuelven a sonar a &f{volume}&a."
+    fallback: "{prefix} &aLos sonidos de mensajes vuelven al volumen predeterminado del servidor, &f{volume}&a."
+    fallback-silent: "{prefix} &cEl volumen predeterminado del servidor es 0, asi que los sonidos siguen silenciados. &7Usa &f/mfx volume <0-1>&7."
+    reset: "{prefix} &aAhora sigues el volumen de mensajes del servidor, &f{volume}&a."
+    disabled: "{prefix} &cLas preferencias de sonido de mensajes estan desactivadas en este servidor."

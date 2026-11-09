@@ -69,8 +69,9 @@ A message body is untrusted input.
 ## Sound
 
 The recipient hears the `messaging.received` sound from the lang file. Its volume is the sound's
-own volume times the recipient's message sound volume: their `/mfx` override, or
-`sounds.messages.fallback-volume`. The `/mfx` commands arrive with S08.
+own volume times the recipient's message sound volume: their `/mfx` setting, or
+`sounds.messages.fallback-volume`. The sender hears `messaging.sent`'s sound, if it has one, as
+an ordinary message sound. See [message sounds and `/mfx`](sounds.md).
 
 ## /msgtoggle
 

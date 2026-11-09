@@ -53,7 +53,12 @@ public final class ResourceSyncManager {
         return added;
     }
 
-    private int mergeDefaults(ConfigurationSection defaults, ConfigurationSection target, String path) {
+    /**
+     * Adds keys the installed file is missing. A message entry ({@code text}/{@code sound}/
+     * {@code volume}/{@code pitch}) is one value: once the file has it in any form, its parts are
+     * the operator's, so a deliberately omitted volume or pitch is never put back.
+     */
+    int mergeDefaults(ConfigurationSection defaults, ConfigurationSection target, String path) {
         int added = 0;
         Set<String> keys = defaults.getKeys(false);
 
@@ -63,6 +68,13 @@ public final class ResourceSyncManager {
             if (defaults.isConfigurationSection(key)) {
                 ConfigurationSection defaultSection = defaults.getConfigurationSection(key);
                 if (defaultSection == null) continue;
+                if (isMessageEntry(defaultSection)) {
+                    if (!target.contains(key)) {
+                        target.set(key, defaults.get(key));
+                        added++;
+                    }
+                    continue;
+                }
 
                 if (!target.isConfigurationSection(key)) {
                     if (!target.contains(key)) {
@@ -87,5 +99,11 @@ public final class ResourceSyncManager {
         }
 
         return added;
+    }
+
+    static boolean isMessageEntry(ConfigurationSection section) {
+        Set<String> keys = section.getKeys(false);
+        return (keys.contains("text") || keys.contains("sound"))
+                && Set.of("text", "sound", "volume", "pitch").containsAll(keys);
     }
 }

@@ -55,7 +55,9 @@ class ReplyTargetsAndIgnoresTest {
     @Test
     void ignoreListsRoundTripInTheirOwnTable() throws Exception {
         String url = "jdbc:sqlite:" + dir.resolve("ignores.db");
-        IgnoreRepository repository = new IgnoreRepository(() -> DriverManager.getConnection(url), SqlDialect.SQLITE, System::currentTimeMillis);
+        // A ticking clock: two adds inside one millisecond would otherwise tie on created_at.
+        java.util.concurrent.atomic.AtomicLong clock = new java.util.concurrent.atomic.AtomicLong(1_000L);
+        IgnoreRepository repository = new IgnoreRepository(() -> DriverManager.getConnection(url), SqlDialect.SQLITE, clock::incrementAndGet);
         assertEquals(1, repository.migrate());
         assertEquals(1, repository.migrate(), "idempotent");
         assertTrue(repository.add(A, B));

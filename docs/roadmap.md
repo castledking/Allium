@@ -16,19 +16,19 @@ available throughout core and addons wherever items are accepted or produced.
 
 | Ship in core | Ship as a separate addon |
 | --- | --- |
-| Commands, permissions, config/migrations, locale/messages/sounds, scheduler, player preferences, storage and public API | Configurable Fun Items: click/consume actions, cooldowns, effects and novelty items |
-| Homes, warps, spawn, teleport requests/back, kits, economy, chat/private messages/mail, moderation and staff utilities | Reliques: equipment, slots, effects, loot and its own UI |
-| Item references, provider adapters, serialization, matching and pack coordination | Harvest: crops, soil, growth, fertilizers, sprinklers and crop rendering |
-| Handcuffs, Mob Disarmer, Phantom Obliterator, rename service and consumable renamer | Kitchen: cooking, food preparation, stations and bags; depends on Harvest |
-| Staff CrowBar feed, independent of parties | Pregen Ores: terrain jobs and custom ore placement, separately configurable |
-| Signs, optional timed broadcasts, diagnostics and import tools | SpawnerCraft: cores, heads and spawner recipes |
-| Core pack assets for core tools; provider bindings are configurable | Trading Cards: collection, boosts, upgrades, trade-ins and morphing |
-| Shared item/provider and location-visibility contracts | Party Locator: membership, party locator bar and optional mcMMO sync |
+| Commands, permissions, config/migrations, locale/messages/sounds, scheduler, player preferences, storage and public API | Curios: custom items with actions (the former Fun Items), custom enchantments, and equipment slots with their UI and loot (the Reliques port), on one engine; each part can be turned off |
+| Homes, warps, spawn, teleport requests/back, kits, economy, chat/private messages/mail, moderation and staff utilities | Harvest: crops, soil, growth, fertilizers, sprinklers and crop rendering |
+| Item references, provider adapters, serialization, matching and pack coordination | Kitchen: cooking, food preparation, stations and bags; depends on Harvest |
+| Handcuffs, Mob Disarmer, Phantom Obliterator, Lazy Axe (off by default), rename service and consumable renamer | Pregen Ores: terrain jobs and custom ore placement, separately configurable |
+| Staff CrowBar feed, independent of parties | SpawnerCraft: cores, heads and spawner recipes |
+| Signs, optional timed broadcasts, diagnostics and import tools | Trading Cards: collection, boosts, upgrades, trade-ins and morphing |
+| Core pack assets for core tools; provider bindings are configurable | Party Locator: membership, party locator bar and optional mcMMO sync |
+| Shared item/provider and location-visibility contracts | |
 
 Core modules can be disabled; addon implementation and assets are absent from the
 core artifact. SpawnerCraft remains its own addon even if small. Kitchen is never
 required to use Harvest. Optional cross-addon integrations must not create
-dependency cycles. Trading Cards' Reliques slot, Harvest boosts and party radius
+dependency cycles. Trading Cards' Curios equipment slot, Harvest boosts and party radius
 hooks activate only when those APIs are available; standalone cards retain their
 base functionality.
 
@@ -232,8 +232,7 @@ As built in S09 ([addon API](addon-api.md)):
   until the next major.
 - Installing, updating or removing an addon needs a server restart.
 
-Publish `Allium-<version>.jar`, `Addon-FunItems-<version>.jar`,
-`Addon-Reliques-<version>.jar`, `Addon-Harvest-<version>.jar`,
+Publish `Allium-<version>.jar`, `Addon-Curios-<version>.jar`, `Addon-Harvest-<version>.jar`,
 `Addon-Kitchen-<version>.jar`, `Addon-PregenOres-<version>.jar`,
 `Addon-SpawnerCraft-<version>.jar`, `Addon-TradingCards-<version>.jar` and
 `Addon-PartyLocator-<version>.jar` as assets on the same GitHub release.
@@ -540,10 +539,16 @@ Key contracts of this pattern:
    whole with path-specific diagnostics and never half-loaded with fallback defaults.
 4. **Model for Handcuffs and Phantom Obliterator:** This architecture serves as the direct template
    for Handcuffs (`allium:cuff`) and Phantom Obliterator (`allium:obliterate_phantoms`).
-5. **Bridge to M5 Fun Items:** In Milestone 5, Fun Items will expose core behaviors as typed,
-   reusable action primitives that can be bound to arbitrary custom item activators and conditions.
+5. **Bridge to M5 Curios:** In Milestone 5, the Curios addon will expose core behaviors as typed
+   actions (`disarm`, `fell_tree`, `obliterate_phantoms`) that its items, enchantments and
+   equipment slots can trigger. Curios calls the core behavior; it never reimplements it.
 
-### Timed broadcasts and configurable Fun Items
+Port designs for the next two core tools follow this pattern:
+- **Phantom Obliterator** (`allium:obliterate_phantoms`): [design](phantom-obliterator-design.md).
+- **Lazy Axe** (`allium:fell_tree`, off by default): [design](lazy-axe-design.md). It is the
+  legacy `tree_axe`.
+
+### Timed broadcasts
 
 Timed broadcasts ship in core with `enabled: false`. Define ordered/random groups,
 interval/start delay, audience/world/permission filters, minimum player count,
@@ -552,13 +557,58 @@ before replacing them; no catch-up spam after downtime. Sending uses the shared
 message/sound pipeline. A normal broadcast is text delivery, not arbitrary console
 command execution.
 
-Fun Items is an optional action engine inspired by ItemTag. Start with right-click
-air/block/entity, left-click, sneak variants and consumption; give actions typed
-player/target/location/hand context and ordered outcomes. Definitions can use any
-core item provider. Cooldowns have explicit shared-group, player and item-instance
-scopes; material cooldown visuals are separate from authoritative cooldown state.
-Support messages/sounds, effects, particles, projectiles, bounded delays and
-allowlisted player/console commands. Never temporarily OP a player.
+### Curios addon: custom items, enchants and equipment
+
+**Curios** (`Addon-Curios-<version>.jar`, plugin name `Curios`, `depend: [Allium]`) merges three
+addons planned separately so far:
+- **Fun Items:** custom items with actions.
+- **Custom enchantments:** a new feature.
+- **Reliques:** equipment slots, relic items, their loot and UI.
+
+They share one **trigger → conditions → actions** engine, with cooldowns and usage, and attach
+it in three places:
+
+| Attachment point | Where definitions live | When its triggers fire | Examples |
+| --- | --- | --- | --- |
+| **The item itself** | `curios/items/<id>.yml`: a signed Curios item on any core provider appearance | The item is used: right/left click on air, a block or an entity (sneak variants included), consume, launch | A launch wand, confetti, ported legacy novelty items |
+| **An enchant on an item** | `curios/enchants/<id>.yml`, with settings per level | The enchanted item is used or worn: melee hit, bow or trident hit, mine block, take damage, hold, an equip interval | A lifesteal sword enchant, a vein-mining pickaxe enchant |
+| **An equipped slot** | `curios/slots.yml` and `curios/relics/<id>.yml`, the Reliques port | The item sits in a Curios slot (charm, head, chest, belt, ring and so on): a passive interval, on hit, on damage taken, on kill | Relic abilities, passive attributes, the Trading Cards slot |
+
+**The engine:**
+- **Triggers:** each trigger declares which attachment points it supports, so a misplaced
+  trigger is a load-time error.
+- **Conditions and actions:** one implementation serves all three points.
+- **Cooldowns:** scoped by shared group, player or item instance. An enchant cooldown is keyed by
+  enchant and player, and a slot cooldown by slot item and player.
+- **Vanilla enchantments on equipped relics** keep counting toward their effects, as in legacy
+  Reliques.
+
+**Module toggles:** `curios/config.yml` has `modules.items`, `modules.enchants` and
+`modules.slots`.
+- **Turning one off** unregisters its listeners, commands and definitions.
+- **Item state is untouched:** nothing on any item is deleted or rewritten. Enchant state and
+  lore stay, equipped items stay in storage, and items stay inert until the module is back.
+- **Each module boots alone,** with the others off.
+
+**Core behaviors are typed actions.**
+- **The actions:** `disarm`, `fell_tree` and `obliterate_phantoms` call the core behaviors
+  through the addon API. The core behavior owns its transaction (taking before dropping,
+  rollback, charges only on success, protection), and Curios supplies only the context and that
+  behavior's declared parameters.
+- **No reimplementation:** Curios never reimplements a core tool, and core tools never require
+  Curios.
+- **API version:** this needs a backwards-compatible minor version of the addon API, 1.1, that
+  exposes registered core behaviors as invokable typed actions.
+
+**Rules carried over from the Fun Items contract (they apply to all three points):**
+- **Items:** definitions can use any core item provider.
+- **Cooldown visuals:** material cooldown visuals are separate from the authoritative cooldown
+  state.
+- **Effects:** messages and sounds, effects, particles, projectiles, bounded delays and
+  allowlisted player or console commands are supported.
+- **No OP:** a player is never temporarily made OP. No action grants permissions.
+- **Commands:** typed actions come first, and a command is an allowlisted escape hatch. See the
+  [ExecutableItems comparison](fun-items-reference.md) for what to adopt and reject.
 
 Respect cancelled/protected interactions and distinguish hands. Validate configured
 actions at load time; use server-owned definitions rather than executable commands
@@ -568,6 +618,22 @@ consumption follows a documented success outcome; arbitrary command sequences ar
 not rollback-safe transactions. Start with small presets such as launch wand and
 confetti, then port suitable legacy novelty items. Specialized core tools call
 their own domain services and never require this addon.
+
+**Ported from Reliques:**
+- **Content:** the ten Antiquities relics, the slot layout and death rules, loot rolls, the
+  textured equipment UI, and the inventory regression fix below. The fix is required.
+- **Trading Cards:** its optional equipment-slot hook targets Curios. With Curios absent, cards
+  keep their base functionality.
+
+**Custom enchantments:** see the [enchantment design](curios-enchants-design.md). Item-stored
+state, rendered in lore, is the source of truth on every lane. Registry-backed 1.21+
+enchantments are an optional later layer. Anvil, grindstone, enchanting table and villager trade
+rules are explicit.
+
+**Build order inside M5:**
+1. The engine with items, plus the core-behavior actions.
+2. Slots (the Reliques port, its import and the UX fix).
+3. Enchantments.
 
 ## Delivery sequence and completion gates
 
@@ -582,7 +648,7 @@ to exercise an API, but extraction must not postpone a stable core.
 | M2 — Communication and preferences | `/msg`, `/reply`, ignore/mute/social spy, `/msgtoggle`, sound defaults and `/mfx` aliases; mail and notification routing | Overrides survive restart; zero/default/reset/omitted pitch-volume work; failed or blocked sends are silent; privacy, console and permission cases covered |
 | M3 — Movement and money | Safe TP service, requests/tptoggle/back/spawn/homes/warps; atomic economy/pay/paytoggle/Vault; kits via item service | Request expiry/movement cancellation/pending invalidation; safe destinations; offline preferences; no lost or duplicated funds on concurrent transfers or failures |
 | M4 — Complete core | Remaining staff/player utilities; handcuffs/Obliterator/renamer/CrowBar; signs; timed broadcasts; config parity and diagnostics | Core-only acceptance run passes; permissions checked at every entry point; rename failure spends nothing; broadcasts remain idle by default; bounded CrowBar/entity work |
-| M5 — Addon family | Native plugin API test addon, Fun Items; Harvest then Kitchen; Reliques; SpawnerCraft; Pregen Ores; Trading Cards; Party Locator | Each addon boots alone with its hard dependencies; core jar contains none of them; disabled/missing optional peers work; restart and migration checks pass |
+| M5 — Addon family | Native plugin API test addon; Curios (engine and items, then equipment slots, then enchantments); Harvest then Kitchen; SpawnerCraft; Pregen Ores; Trading Cards; Party Locator | Each addon boots alone with its hard dependencies; core jar contains none of them; disabled/missing optional peers work; restart and migration checks pass |
 | M6 — Migration and release | Audited importers, staging migration, profiling, compatibility matrix, release automation and operator docs | Dry-run/backup/idempotency/rollback rehearsal (live SQLite snapshots via online backup or `VACUUM INTO`, never a raw copy); no unexplained data loss; published tested version/provider matrix; release artifacts and pack manifests verified |
 
 M0–M4 yield the core alpha. M5 can proceed in parallel after APIs stabilize, and
@@ -615,8 +681,9 @@ Acceptance includes the reported SF case: a base 2-token quest with a +6.225
 quest bonus must not still credit 2. Pin the intended integer payout/rounding rule
 and verify it against the displayed reward. Optional providers must remain optional.
 
-Reliques inventory UX has a known legacy regression: removing a card from its
-equipped slot in `/relics` leaves it impossible to place in the player's inventory
+The legacy Reliques inventory UX, now ported to Curios' equipment slots, has a known
+regression: removing a card from its equipped slot in `/relics` leaves it impossible to place in
+the player's inventory
 until the menu closes. Treat this as a required addon fix, not an acceptable
 workaround. Equipment, cursor and player-inventory state must commit together and
 be synchronized immediately. Acceptance: unequip, place into any valid inventory
@@ -627,8 +694,8 @@ apply/remove boosts once; reject invalid moves without trapping, losing or
 duplicating the card. Add a regression check at the real menu transaction boundary
 and a live client check for cursor synchronization.
 
-Inspect legacy H2 `database/sfcore`, Harvest's separate database, Reliques equipment
-YAML, serialized ItemStacks, Trading Cards pending payouts, and item/entity/chunk
+Inspect legacy H2 `database/sfcore`, Harvest's separate database, legacy Reliques equipment
+YAML (imported by Curios), serialized ItemStacks, Trading Cards pending payouts, and item/entity/chunk
 PDC. Essentials userdata is a separate import source. Preserve UUIDs, item IDs,
 existing `allium:custom_item_id`/`alliumcards` tags, model variants, crop ownership
 and ore-generated markers. Harvest's spawner overlays and SpawnerCraft's recipes

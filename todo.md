@@ -252,12 +252,72 @@ result and must preserve the existing uncommitted work.
       Spigot turned URLs in message bodies into clickable links.
 - [ ] **S07 follow-up — Social spy:** a separate small slice. It must never reveal vanished or
       ignored context.
+- [x] **Data-driven core tools (before S08):** the Mob Disarmer is `tools/mob_disarmer.yml`,
+      bound to the one Java behavior `allium:disarm`, which owns the transaction.
+      - **Validation:** definitions are validated at load time with path-specific diagnostics,
+        and an invalid one is rejected whole.
+      - **Several definitions per behavior:** each has its own signed identity and state (unit
+        tests).
+      - **Migration:** config.yml's old `tools.mob-disarmer` section moves to the file on first
+        start, and existing stacks keep their IDs, state and MACs (unit tests).
+      - **Live:** 153 checks on each of Spigot 1.20.1 and Paper 26.3, with Allium.jar
+        `b334b1e0…` (runs in `/tmp/allium-s06a-20261108/runs/`). Every existing S06a case passed
+        with the YAML-defined default. The pattern is in the
+        [roadmap](docs/roadmap.md#data-driven-core-tool-architecture-pluginsalliumtoolsyml).
+- [ ] **Data-driven tools: gate gaps.** These were checked only partly, or not at all:
+      - The second definition (`allium:wand_disarmer`) was checked only by its boot log line. It
+        was never used live, so its own charges (5) and radius (10) are untested.
+      - The invalid definition was checked only for an "is invalid" log line, not for its
+        path-specific diagnostic.
+      - The 26.3 run had no GriefPrevention3D, so the claim case was skipped. The 18.4.5 jar is
+        gone; SF's 19.0.5 is at `/tmp/allium-s06a-20261108/artifacts/`.
+      - No live upgrade from a pre-definition jar with a customized `tools.mob-disarmer`.
+      - `tests/live/tools/disarmer/RESULTS.md` and its manifest were not updated for these runs.
+        The operator reference is now [docs/tools.md](docs/tools.md).
+
+      Close these with live cases before (or as part of) S10.
+- [x] **Design slice (docs only, before S08):**
+      - [ExecutableItems comparison](docs/fun-items-reference.md).
+      - The **Curios** addon restructure in the [roadmap](docs/roadmap.md#curios-addon-custom-items-enchants-and-equipment):
+        Fun Items, custom enchantments and Reliques become one addon with one engine and three
+        attachment points.
+      - [Custom enchantment design](docs/curios-enchants-design.md), with AdvancedEnchantments
+        and EcoEnchants as references.
+      - [Lazy Axe port](docs/lazy-axe-design.md) and [Phantom Obliterator port](docs/phantom-obliterator-design.md).
 - [ ] **S08 / M2 — Sound preferences:** omitted volume/pitch defaults, legacy
       lang.yml importer, `/messagesounds` aliases `/msounds` and `/mfx`,
       volume/toggle/reset. Gate: zero, finite ranges, independent defaults,
       restoration and config changes; Allium owns message sound playback directly.
+- [ ] **S10 / M4 — Tools: Phantom Obliterator and Lazy Axe** (after S08), implemented from the
+      [Obliterator](docs/phantom-obliterator-design.md) and [Lazy Axe](docs/lazy-axe-design.md)
+      designs, as `allium:obliterate_phantoms` and `allium:fell_tree` definitions. The Lazy Axe
+      is off by default.
+      - **Shared work first:** move the charge state and its `charges` block into a shared
+        tool-charges package; add a `particles` slot type; add an ItemService "adopt this stack"
+        operation, so legacy imports keep their enchantments; add a block-break check to
+        `ProtectionService`.
+      - **Core pack:** allocate `lazy_axe` on a `netherite_axe` carrier, run the carrier
+        collision audit, and add Allium's own art.
+      - **Gate:** live checks like the disarmer's, on Spigot 1.20.1 and Paper 26.3 (with
+        GriefPrevention3D). They must include a player-built log structure that is not felled, a
+        tree crossing a claim border, and the largest vanilla tree at the block cap, plus every
+        case listed in the two designs.
 
 ### Recorded inputs for later slices
+
+- [ ] **Curios (M5):** one addon (`Addon-Curios-<version>.jar`) in place of the separately
+      planned Fun Items and Reliques addons, plus custom enchantments. See the
+      [roadmap](docs/roadmap.md#curios-addon-custom-items-enchants-and-equipment).
+      - **Engine:** one trigger, condition, action and cooldown engine, attached to the item
+        itself, an enchantment on an item, or an equipped slot.
+      - **Toggles:** each module can be turned off, without touching item state.
+      - **Core behaviors** are typed actions (`disarm`, `fell_tree`, `obliterate_phantoms`) and
+        are never reimplemented. This needs addon API 1.1.
+      - **Trading Cards:** its optional slot hook targets Curios.
+      - **Order:** the engine and items first, then the slots (the Reliques port, with its import
+        and the inventory UX fix), then enchantments.
+      - **SF:** keep the enchantment module off while AdvancedEnchantments is installed, until a
+        migration is decided.
 
 - [ ] **Handcuffs (M4):** port the behavior onto `allium:handcuffs`. Recorded from the
       [SF inventory](docs/s06b-sf-inventory.md): SF's four handcuff variants have collapsed

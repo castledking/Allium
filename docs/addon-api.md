@@ -1,8 +1,8 @@
 # Allium addon API
 
-The addon API is how separate plugins (the M5 addons, starting with Fun Items) build on Allium. It
-is deliberately small. It covers what Fun Items needs, and more is extracted only when a real
-consumer needs it.
+The addon API is how separate plugins (the M5 addons, starting with Curios) build on Allium. It is
+deliberately small. It covers what Curios' item engine needs, and more is extracted only when a
+real consumer needs it.
 
 ## Using it
 
@@ -10,14 +10,14 @@ An addon is an ordinary Bukkit plugin.
 
 ```yaml
 # plugin.yml
-name: FunItems
-main: example.FunItems
+name: Curios
+main: example.Curios
 api-version: '1.20'
 depend: [Allium]          # required: Allium enables first
 allium-api: "^1.0"        # the Allium API range this build needs
 commands:
-  funitems:               # Bukkit registers it; Allium runs it through a command spec
-    permission: funitems.use
+  curios:                 # Bukkit registers it; Allium runs it through a command spec
+    permission: curios.use
 ```
 
 ```kotlin
@@ -30,7 +30,7 @@ dependencies {
 Extend `AlliumAddon` (recommended):
 
 ```java
-public final class FunItems extends AlliumAddon {
+public final class Curios extends AlliumAddon {
     @Override
     protected void onAddonEnable(AddonConnection allium) {
         allium.items().define(new ItemDefinition("launch_wand", Material.BLAZE_ROD, "&6Launch Wand", null, Map.of(), true));

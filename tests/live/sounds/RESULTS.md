@@ -83,11 +83,24 @@ each lane. Two real protocol bots (`MsgA`, `MsgB`) and the console took part.
   - **Live result:**
     - `MsgB` now sees "(From MsgA) …".
     - `MsgB` hears the imported `minecraft:block.note_block.pling` at 0.5, pitch 1.5.
-    - `MsgA` hears the imported sent sound at 0.5, pitch 2.
+    - `MsgA` hears the imported sent sound at 0.5, pitch 2. That was before the follow-up below
+      scaled it by the sender's volume.
   - **Second apply:** said "Nothing to import", and the legacy file was untouched.
   - **Notes:** the import reported the dropped `[particle]` line, and the `{cmd}` placeholder in
     `no-permission` and `player-only-command`, which Allium's own texts do not use.
 - **Log:** there were no listener or Allium exceptions in either server log.
+
+## Follow-up: `/mfx` covers the sender's sent sound too (2026-11-09)
+
+**58 checks, 0 failures** on Spigot 1.20.1, with Allium.jar `4bd39274…`. The 55 checks above passed
+again, plus these. `messaging.sent`'s sound now follows the sender's own `/mfx` volume, through
+`sounds.messages.scale-sent-sound`, which defaults to `true`.
+- **Scaled:** with `/mfx` at 0.8, `MsgA` heard its imported sent sound at 0.4 (0.5 × 0.8), pitch
+  2.
+- **Muting:** after `/mfx toggle` `MsgA` heard no sent sound, while `MsgB` still heard its received
+  sound. `/mfx volume 0` was silent as well.
+- **Switched off:** with `scale-sent-sound: false` and a reload, the muted `MsgA` heard the sent
+  sound at its own 0.5.
 
 ## Found and fixed during this slice
 

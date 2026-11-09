@@ -37,6 +37,7 @@ sounds:
     pitch: 1.0
   messages:
     fallback-volume: 1.0   # each player's message sound volume until they set their own
+    scale-sent-sound: true # /mfx also scales the sender's own sent sound
 ```
 
 ## Private-message notifications
@@ -50,8 +51,12 @@ The sound a recipient hears for a private message plays at:
 - **Zero on either side mutes reliably.** For example, a recipient at 0.5 hears an entry
   authored at 0.6 at 0.3.
 - **The pitch** is the entry's own, or `sounds.defaults.pitch`.
-- **The sender's sound:** if `messaging.sent` has a sound, the sender hears it as an ordinary
-  message sound. `/mfx` only scales incoming messages.
+- **The sender's sound:** if `messaging.sent` has a sound, the sender hears it scaled the same
+  way, by their own message sound volume. `/mfx toggle` and `/mfx volume 0` therefore silence both
+  directions.
+  - **`sounds.messages.scale-sent-sound: false`** makes the sent sound an ordinary message sound
+    that `/mfx` does not touch.
+  - **Preferences still loading:** the sent sound is silent until they load.
 - **Blocked sends are silent:** no sound plays for a send that was blocked (messages off,
   ignored, vanished, settings still loading).
 

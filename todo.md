@@ -293,7 +293,9 @@ result and must preserve the existing uncommitted work.
         changed `sounds.messages.fallback-volume` at once.
       - **Lang entries:** an entry's omitted volume and pitch fall back separately to
         `sounds.defaults`. Lang sync no longer puts back a removed `volume` or `pitch`.
-        `sound: none` turns a sound off. `messaging.sent`'s sound, if any, plays for the sender.
+        `sound: none` turns a sound off. `messaging.sent`'s sound, if any, plays for the sender,
+        scaled by their own `/mfx` volume (`sounds.messages.scale-sent-sound`, default true; live
+        check on Spigot 1.20.1).
       - **Import:** `/allium import lang [apply]` imports a pre-recode `lang.yml`; it is a dry run
         unless `apply`, backs up the target, keeps customized messages, can be rerun, and reports
         what it dropped. See [docs/lang-import.md](docs/lang-import.md).

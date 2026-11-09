@@ -66,6 +66,10 @@ sounds:
     # (0 to 1; 0 mutes notifications by default). It multiplies the message sound's own volume,
     # so a player at 0.5 hears a sound authored at 0.8 at 0.4.
     fallback-volume: 1.0
+    # Whether a player's message sound volume (/mfx) also scales the sound they hear when they send
+    # a private message (messaging.sent's sound, if it has one). true: /mfx toggle and /mfx volume 0
+    # silence both directions. false: only incoming messages follow /mfx.
+    scale-sent-sound: true
 
 # Player preferences, stored per UUID in the database above. Players who never chose a value
 # follow these defaults, and changing a default here changes it for them too (defaults are never

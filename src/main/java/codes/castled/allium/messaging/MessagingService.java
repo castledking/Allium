@@ -198,11 +198,18 @@ public final class MessagingService implements Listener {
         TextSender.sendLiteral(sender, UntrustedText.insert(sent, text));
         TextSender.sendLiteral(recipient, UntrustedText.insert(received, text));
         if (sender instanceof Player self) {
-            // The sender's own confirmation sound, when the lang entry has one: an ordinary message
-            // sound, not a notification, so /mfx (incoming messages) does not scale it.
+            // The sender's own confirmation sound, when the lang entry has one. By default it follows
+            // the sender's /mfx volume too (sounds.messages.scale-sent-sound), so muting silences both.
             MessageSoundSpec sentSound = plugin.getLanguageManager().getSound(Messages.MSG_SENT);
             if (sentSound != null) {
-                plugin.getMessageManager().playSound(self, sentSound);
+                if (plugin.getConfig().getBoolean("sounds.messages.scale-sent-sound", true)) {
+                    double volume = senderVolume(self.getUniqueId());
+                    if (volume > 0.0D) {
+                        plugin.getMessageManager().playNotificationSound(self, sentSound, volume);
+                    }
+                } else {
+                    plugin.getMessageManager().playSound(self, sentSound);
+                }
             }
         }
         if (recipient instanceof Player target) {
@@ -212,6 +219,18 @@ public final class MessagingService implements Listener {
             }
         }
         replies.delivered(idOf(sender), idOf(recipient));
+    }
+
+    /**
+     * The sender's own message sound volume. While their preferences are not loaded it is 0, so a
+     * player who muted is never surprised by a sound before their setting arrives.
+     */
+    private double senderVolume(UUID player) {
+        PreferencesModule preferences = preferences();
+        if (preferences == null) {
+            return SoundSettings.read(plugin.getConfig(), message -> { }).messageFallbackVolume();
+        }
+        return preferences.effective(player).map(EffectivePreferences::messageSoundVolume).orElse(0.0D);
     }
 
     private double recipientVolume(UUID player) {

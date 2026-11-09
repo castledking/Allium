@@ -497,13 +497,34 @@ def legacy_import():
             and abs(sounds[0]['volume'] - 0.5) < 1e-4 and abs(sounds[0]['pitch'] - 1.5) < 1e-4,
             f'the imported format and its [sound] line are live: "{line["plain"]}" {sounds}')
     a_bot = bots[A]
-    a_start = len(a_bot.lines)
-    a_bot.cmd('msg MsgB sent-sound')
-    a_bot.chat(a_start, 'sent-sound')
-    time.sleep(1.2)
-    sent = a_bot.sounds(a_start, PLING)
-    require(len(sent) == 1 and abs(sent[0]['volume'] - 0.5) < 1e-4 and abs(sent[0]['pitch'] - 2.0) < 1e-4,
-            f'the sender hears the imported msg.sent sound (0.5, 2): {sent}')
+
+    def sent_sound(tag):
+        a_start, b_start = len(a_bot.lines), len(bots[B].lines)
+        a_bot.cmd(f'msg MsgB {tag}')
+        a_bot.chat(a_start, tag)
+        bots[B].chat(b_start, tag)
+        time.sleep(1.2)
+        return a_bot.sounds(a_start, PLING), bots[B].sounds(b_start, PLING)
+
+    sent, _ = sent_sound('sent-sound')
+    require(len(sent) == 1 and abs(sent[0]['volume'] - 0.4) < 1e-4 and abs(sent[0]['pitch'] - 2.0) < 1e-4,
+            f'the sender hears the imported msg.sent sound scaled by their own /mfx 0.8 (0.5 x 0.8 = 0.4, pitch 2): {sent}')
+    a_bot.says('mfx toggle', 'muted')
+    sent, received = sent_sound('sent-muted')
+    require(not sent and len(received) == 1 and abs(received[0]['volume'] - 0.5) < 1e-4,
+            f'after /mfx toggle the sender hears no sent sound, and the recipient still hears theirs: {sent} {received}')
+    a_bot.says('mfx volume 0', 'muted')
+    sent, _ = sent_sound('sent-zero')
+    require(not sent, f'/mfx volume 0 silences the sent sound too: {sent}')
+    path = lane / 'plugins/Allium/config.yml'
+    path.write_text(path.read_text().replace('    scale-sent-sound: true\n', '    scale-sent-sound: false\n', 1))
+    reload()
+    sent, _ = sent_sound('sent-unscaled')
+    require(len(sent) == 1 and abs(sent[0]['volume'] - 0.5) < 1e-4,
+            f'with scale-sent-sound: false, a muted sender hears the sent sound at its own 0.5: {sent}')
+    path.write_text(path.read_text().replace('    scale-sent-sound: false\n', '    scale-sent-sound: true\n', 1))
+    reload()
+    a_bot.says('mfx reset', 'You now follow')
     start = len(logs)
     console('allium import lang apply')
     console_says('Nothing to import', start)

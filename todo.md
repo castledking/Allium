@@ -264,18 +264,15 @@ result and must preserve the existing uncommitted work.
         `b334b1e0…` (runs in `/tmp/allium-s06a-20261108/runs/`). Every existing S06a case passed
         with the YAML-defined default. The pattern is in the
         [roadmap](docs/roadmap.md#data-driven-core-tool-architecture-pluginsalliumtoolsyml).
-- [ ] **Data-driven tools: gate gaps.** These were checked only partly, or not at all:
-      - The second definition (`allium:wand_disarmer`) was checked only by its boot log line. It
-        was never used live, so its own charges (5) and radius (10) are untested.
-      - The invalid definition was checked only for an "is invalid" log line, not for its
-        path-specific diagnostic.
-      - The 26.3 run had no GriefPrevention3D, so the claim case was skipped. The 18.4.5 jar is
-        gone; SF's 19.0.5 is at `/tmp/allium-s06a-20261108/artifacts/`.
-      - No live upgrade from a pre-definition jar with a customized `tools.mob-disarmer`.
-      - `tests/live/tools/disarmer/RESULTS.md` and its manifest were not updated for these runs.
-        The operator reference is now [docs/tools.md](docs/tools.md).
-
-      Close these with live cases before (or as part of) S10.
+- [x] **Data-driven tools: gate gaps** (closed in S10, 486 live checks; see the
+      [disarmer results](tests/live/tools/disarmer/RESULTS.md#s10-data-driven-definitions-the-gaps-closed-2026-11-09)):
+      - `allium:wand_disarmer` used live, with its own charges, radius and drop rule.
+      - The invalid definition's six path-specific diagnostics checked word for word, and it
+        registered nothing.
+      - The claim case on 26.3 with GriefPrevention3D 19.0.5.
+      - A live upgrade from the S07 jar: state and MAC intact, and `recharge-seconds: 90` moved
+        and applied.
+      - Provider appearances on 1.21.8.
 - [x] **Design slice (docs only, before S08):**
       - [ExecutableItems comparison](docs/fun-items-reference.md).
       - The **Curios** addon restructure in the [roadmap](docs/roadmap.md#curios-addon-custom-items-enchants-and-equipment):

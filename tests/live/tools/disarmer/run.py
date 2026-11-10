@@ -34,6 +34,15 @@ APPEARANCES = {
     'craftengine': 'craftengine:allium_gate:mob_disarmer',
     'oraxen': 'oraxen:Gate_Disarmer',
 }
+# Every problem in tools/invalid_tool.yml, each reported with the file and the setting's path.
+INVALID_DIAGNOSTICS = [
+    'Tool definition tools/invalid_tool.yml is invalid and was not loaded:',
+    'tools/invalid_tool.yml: schema: must be 1; this Allium reads tool definition schema 1 (got 99)',
+    'tools/invalid_tool.yml: item: is required: allium:invalid_tool is not a core pack item',
+    'tools/invalid_tool.yml: charges.max: must be between 1 and 1000 (got 0)',
+    "tools/invalid_tool.yml: targets.excluded-mobs[0]: 'zombi' is not an entity type",
+    'tools/invalid_tool.yml: targets.radious: unknown setting; expected one of radius, excluded-mobs, exclude-npcs',
+]
 NEXO_VARIANTS = {'3': 'nexo:mob_disarmer', '2': 'nexo:mob_disarmer_2-3', '1': 'nexo:mob_disarmer_1-3', '0': 'nexo:mob_disarmer_0-3'}
 SLOTS = ['HAND', 'OFF_HAND', 'HEAD', 'CHEST', 'LEGS', 'FEET']
 DROPPED = ['CHEST', 'HAND', 'LEGS']  # chances 2.0, 1.0, 1.0; the others are 0.0
@@ -47,6 +56,8 @@ p.add_argument('--run-name', required=True)
 p.add_argument('--run-root', type=Path, default=Path('/tmp/allium-s06a-20261106/runs'))
 p.add_argument('--allium-jar', type=Path, default=REPO / 'build/libs/Allium.jar')
 p.add_argument('--griefprevention', type=Path, help='GriefPrevention or GriefPrevention3D jar; adds the live claim check')
+p.add_argument('--upgrade-from', type=Path, help='an Allium jar from before tool definitions: run the upgrade scenario instead')
+p.add_argument('--quick', action='store_true', help='one authorized disarm per appearance, no persistence (provider appearance check)')
 a = p.parse_args()
 if not re.fullmatch('[a-zA-Z0-9_.-]+', a.run_name):
     p.error('invalid run-name')
@@ -185,7 +196,7 @@ charges:
   break-chance:
     preset: none
 targets:
-  radius: 10.0
+  radius: 3.0
   excluded-mobs: []
   exclude-npcs: false
 disarm:
@@ -211,6 +222,13 @@ id: allium:invalid_tool
 name: Invalid Tool
 behavior: allium:disarm
 enabled: true
+appearance:
+  aliases: [nexo:invalid_tool_alias]
+charges:
+  max: 0
+targets:
+  radious: 4
+  excluded-mobs: [zombi]
 ''')
     for provider in providers:
         shutil.copy2(PROVIDER_JARS[provider], plugins / (provider + '.jar'))
@@ -304,7 +322,7 @@ def argv():
             FAULTS, '-jar', 'server.jar', '--nogui']
 
 
-def boot(label):
+def boot(label, old=False, migrated=False):
     global server, server_thread
     emit('BOOT ' + label)
     start = len(logs)
@@ -315,8 +333,10 @@ def boot(label):
     wait(lambda: any('Done (' in x for x in logs[start:]), 'server Done', 300)
     require(any('S06A-GATE READY' in x for x in logs[start:]), label + ' fixture enabled')
     require(any('Mob Disarmer enabled' in x for x in logs[start:]), label + ' Allium Mob Disarmer enabled')
-    require(any('Disarm Wand enabled' in x for x in logs[start:]), label + ' second disarmer definition enabled')
-    require(any('Tool definition tools/invalid_tool.yml is invalid' in x for x in logs[start:]), label + ' invalid definition rejected without half-loading')
+    if not old and not migrated:
+        require(any('Disarm Wand enabled' in x for x in logs[start:]), label + ' second disarmer definition enabled')
+        for line in INVALID_DIAGNOSTICS:
+            require(any(line in x for x in logs[start:]), f'{label} invalid definition diagnostic: "{line}"')
     require(any('Fault injection is enabled' in x for x in logs[start:]), label + ' Allium logged the fault-injection warning')
     if a.griefprevention:
         require(any('Protection hook enabled: GriefPrevention' in x for x in logs[start:]), label + ' GriefPrevention hook loaded')
@@ -363,9 +383,9 @@ def interacts(observation, hand=None):
     return [x for x in observation['interactions'] if x['kind'] == 'interact' and (hand is None or x['hand'] == hand)]
 
 
-def play(name, appearance, layout, kit, veto, action='click'):
+def play(name, appearance, layout, kit, veto, action='click', distance=None):
     base_path = result(name + '-baseline')
-    cmd(f'dg setup {name} {appearance} {layout} {kit} {veto}')
+    cmd(f'dg setup {name} {appearance} {layout} {kit} {veto}' + (f' {distance}' if distance is not None else ''))
     base = read(base_path)
     clicks = 2 if action == 'double' else 1
     packet(f'{action} {base["entityId"]}')
@@ -503,6 +523,43 @@ def run_cases():
             write_fault()
 
 
+def definition_cases():
+    """A second definition bound to allium:disarm applies its own charges and radius; the invalid one registered nothing."""
+    wand = 'allium:wand_disarmer'
+    name = 'wand-authorized'
+    base, obs = play(name, wand, 'main', 'full', 'none')
+    require(base['main']['behavior'] == wand and base['main']['uuid'] and base['main']['signature'] and base['main']['material'] == 'STICK',
+            f'{name} the wand is its own signed identity on its own built-in item: {base["main"]["behavior"]} {base["main"]["material"]}')
+    require(obs['main'].get('behavior') == wand and obs['main']['state'].get('charges') == '4' and obs['main']['state'].get('uses') == '1',
+            f'{name} its own 5 charges: one spent leaves 4 ({obs["main"]["state"]})')
+    require(obs['main']['uuid'] == base['main']['uuid'] and obs['main']['signature'] != base['main']['signature'], name + ' UUID kept, re-signed')
+    mob = obs['mob']
+    everything = sorted(f'{name}:{s}' for s in SLOTS)
+    located = sorted(obs['ground'] + mine(obs['playerInventory'], name))
+    require(all(mob[s]['item'] is None for s in SLOTS) and located == everything,
+            f'{name} its own drop-rule (always): all six pieces exist exactly once: {located}')
+
+    name = 'wand-too-far'
+    base, obs = play(name, wand, 'main', 'full', 'none', distance=4.5)
+    same_tool(base['main'], obs['main'], name)
+    equipment_intact(obs, name)
+    require(obs['checkEvents'] == 0, name + ' its own 3-block radius refused a mob 4.5 blocks away before protection')
+
+    name = 'mob-disarmer-4.5'
+    base, obs = play(name, APPEARANCES['allium'], 'main', 'full', 'none', distance=4.5)
+    spent_once(base['main'], obs['main'], name, APPEARANCES['allium'])
+    disarmed(obs, name)
+    require(obs['checkEvents'] == 1, name + ' the Mob Disarmer\'s 6-block radius reaches the same mob at 4.5')
+
+    for identity in ('allium:invalid_tool', 'nexo:invalid_tool_alias'):
+        path = result('probe')
+        cmd('dg probe ' + identity)
+        probe = read(path)
+        require(not probe['builtInItem'] and probe['boundBehavior'] is None and not probe['signedBehavior']
+                and not probe['useNodeRegistered'] and not probe['creates'],
+                f'the rejected definition registered nothing for {identity}: {probe}')
+
+
 def write_fault():
     # One rejected ItemService.updateState in the middle of a real disarm: after protection and
     # the recheck, with every piece already taken off the mob.
@@ -585,6 +642,77 @@ def griefprevention_claim():
     return claim
 
 
+def quick_cases():
+    """One authorized disarm per appearance: the provider appearance check on 1.21.8."""
+    for label in labels:
+        name = label + '-authorized'
+        base, obs = play(name, APPEARANCES[label], 'main', 'full', 'none')
+        require(base['main']['behavior'] == 'allium:mob_disarmer' and base['main']['uuid'] and base['main']['signature'],
+                f'{name} fresh {APPEARANCES[label]} tool is a signed allium:mob_disarmer (native {base["main"].get("native")})')
+        spent_once(base['main'], obs['main'], name, appearance_after(label, 2))
+        disarmed(obs, name)
+        require(obs['checkEvents'] == 1, name + ' protection check event fired once')
+
+
+OLD_CONFIG_RECHARGE = 90
+
+
+def upgrade():
+    """A disarmer made by a jar from before tool definitions keeps working on this jar.
+
+    The old jar runs with its own config.yml, customized (recharge-seconds 90). It makes a spent
+    keeper; then only Allium.jar is replaced. The keeper must be byte-for-byte the same tool
+    (identity, state, UUID, MAC, all allium PDC), the config section must move into
+    tools/mob_disarmer.yml, and both the tool and the moved setting must work.
+    """
+    plugins = lane / 'plugins'
+    shutil.rmtree(plugins / 'Allium/tools')
+    old_config = subprocess.run(['git', '-C', str(REPO), 'show', '6a74e7f:src/main/resources/config.yml'],
+                                check=True, capture_output=True, text=True).stdout
+    customized = old_config.replace('    recharge-seconds: 120\n', f'    recharge-seconds: {OLD_CONFIG_RECHARGE}\n', 1)
+    if customized == old_config or '  mob-disarmer:' not in customized:
+        raise RuntimeError('could not customize the old config')
+    (plugins / 'Allium/config.yml').write_text(customized)
+    shutil.copy2(a.upgrade_from, plugins / 'Allium.jar')
+    emit('UPGRADE old jar ' + hashlib.sha256(a.upgrade_from.read_bytes()).hexdigest()[:12])
+    boot('old-jar', old=True)
+    cmd('dg prepare')
+    connect('old-jar')
+    name = 'keep-old'
+    base, obs = play(name, APPEARANCES['allium'], 'main', 'full', 'none')
+    spent_once(base['main'], obs['main'], name, APPEARANCES['allium'])
+    cmd('dg keep 9')
+    path = result('before-upgrade')
+    cmd('dg snapshot before-upgrade')
+    before = read(path)
+    shutdown()
+    shutil.copy2(a.allium_jar, plugins / 'Allium.jar')
+    start = len(logs)
+    boot('upgraded', old=False, migrated=True)
+    moved = [x.strip() for x in logs[start:] if 'Mob Disarmer setting(s) from config.yml' in x]
+    definition = (plugins / 'Allium/tools/mob_disarmer.yml').read_text()
+    require(bool(moved) and f'recharge-seconds: {OLD_CONFIG_RECHARGE}' in definition,
+            f'the old tools.mob-disarmer section moved into tools/mob_disarmer.yml with its customized recharge: {moved}')
+    connect('upgraded')
+    path = result('after-upgrade')
+    cmd('dg snapshot after-upgrade')
+    after = read(path)
+    same_tool(before['9'], after['9'], 'upgraded keeper')
+    require(after['9'].get('behavior') == 'allium:mob_disarmer', 'the old jar\'s keeper verifies on the new jar')
+    cmd('dg take 9')
+    name = 'reuse-upgraded'
+    base, obs = play(name, APPEARANCES['allium'], 'held', 'full', 'none')
+    require(base['main']['uuid'] == before['9']['uuid'], name + ' the old jar\'s keeper is in hand')
+    spent_once(base['main'], obs['main'], name, APPEARANCES['allium'], charges=1, uses=2)
+    disarmed(obs, name)
+    name = 'reuse-upgraded-last'
+    base, obs = play(name, APPEARANCES['allium'], 'held', 'full', 'none')
+    state = obs['main']['state']
+    remaining = int(state.get('recharge_at', '0')) - obs['now']
+    require(state.get('charges') == '0' and abs(remaining - OLD_CONFIG_RECHARGE * 1000) < 5000,
+            f'{name} the last charge starts the moved {OLD_CONFIG_RECHARGE}s recharge (recharge_at in {remaining} ms)')
+
+
 summary = {}
 try:
     with socket.socket() as s:
@@ -592,13 +720,20 @@ try:
         s.bind(('127.0.0.1', port))
     build_fixture()
     write_lane()
-    boot('initial')
-    cmd('dg prepare')
-    connect('initial')
-    run_cases()
-    keepers_and_persistence()
-    if a.griefprevention:
-        griefprevention_claim()
+    if a.upgrade_from:
+        upgrade()
+    else:
+        boot('initial')
+        cmd('dg prepare')
+        connect('initial')
+        if a.quick:
+            quick_cases()
+        else:
+            run_cases()
+            definition_cases()
+            keepers_and_persistence()
+            if a.griefprevention:
+                griefprevention_claim()
 except BaseException as e:
     failures.append('HARNESS ' + repr(e))
     emit('ERROR ' + repr(e))

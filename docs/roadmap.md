@@ -541,7 +541,8 @@ Key contracts of this pattern:
    (default, provider aliases, charge-variant sets), permissions, messages, and sounds.
 2. **Multiple Definitions per Behavior:** Multiple distinct tool definitions can bind to the same
    core behavior with independent parameters (e.g. a standard `allium:mob_disarmer` with 3 charges
-   and 6m radius alongside a custom `allium:wand_disarmer` with 5 charges and 10m radius). Each
+   and a 6-block radius alongside a custom `allium:wand_disarmer` with 5 charges and a 3-block
+   radius, as the live gate uses). Each
    tool keeps its own identity, state, and click-guard windows.
 3. **Strict Rejection without Half-Loading:** Every definition file is validated against its schema
    and registered behavior type at startup. If any setting or reference is invalid (e.g. unknown

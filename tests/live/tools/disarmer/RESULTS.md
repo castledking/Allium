@@ -64,6 +64,63 @@ Fault injection exists only for disposable lanes: the runner starts each server 
 `-Dallium.fault-injection=true`, Allium logs a warning at startup, and the point is inert unless
 the fixture arms it. Nothing in config or in-game can enable it.
 
+## S10: data-driven definitions, the gaps closed (2026-11-09)
+
+**PASS: 486 live checks, 0 failures**, all with Allium.jar `4bd39274…`. Every case above ran
+again with the Mob Disarmer defined by `tools/mob_disarmer.yml`, the shipped default. The details
+are in the [S10 manifest](evidence/s10-gaps-manifest.json). Runs are kept in
+`/mnt/storage/.allium-validation/20261109/s10-disarmer/`.
+
+| Run | Lane | Cases | Checks |
+| --- | --- | --- | --- |
+| `gaps-spigot` | Spigot 1.20.1 | 13 | 191 |
+| `gaps-paper26` | Paper 26.3 + GriefPrevention3D 19.0.5 | 14 | 207 |
+| `upgrade-spigot` | Spigot 1.20.1: the S07 jar, then this jar | 3 | 33 |
+| `quick-paper1218` | Paper 1.21.8, Nexo, CraftEngine and Oraxen (one authorized disarm each) | 4 | 55 |
+
+- **A second definition, used live:** `allium:wand_disarmer` (5 charges, a 3-block radius,
+  `drop-rule: always`, built-in item `stick`).
+  - **Identity:** its stack is its own signed identity on its own item.
+  - **Charges:** one disarm leaves 4 charges.
+  - **Drops:** all six pieces exist exactly once (its own drop rule).
+  - **Radius:** a mob 4.5 blocks away is refused by its own 3-block radius before protection is
+    asked, while the Mob Disarmer's 6-block radius reaches the same mob. The wand's radius sits
+    inside server reach, so the difference is observable; the server never accepts an
+    interaction beyond about 6 blocks.
+- **The invalid definition's diagnostics,** each checked word for word, at startup and after the
+  restart. `tools/invalid_tool.yml` has six problems, and the log names the file and each
+  setting:
+  - `schema: must be 1; this Allium reads tool definition schema 1 (got 99)`
+  - `item: is required: allium:invalid_tool is not a core pack item…`
+  - `charges.max: must be between 1 and 1000 (got 0)`
+  - `targets.excluded-mobs[0]: 'zombi' is not an entity type`
+  - `targets.radious: unknown setting; expected one of radius, excluded-mobs, exclude-npcs`
+
+  A probe shows it registered nothing: no built-in item, no binding for its identity or its alias
+  `nexo:invalid_tool_alias`, no signed behavior, no permission node, and nothing can be created
+  for it.
+- **The claim case on 26.3,** with GriefPrevention3D 19.0.5 (a binary copy of SF's jar; S06a's
+  18.4.5 is no longer retained).
+  - **The claim:** GriefPrevention's public `createClaim` made an admin claim.
+  - **Inside it:** the disarm changed nothing.
+  - **Which layer denied it:** the generic check event never fired, so Allium's GriefPrevention
+    hook denied it.
+- **A live upgrade:**
+  - **The setup:** the S07 jar (`c877b783…`, from before tool definitions) ran with its own
+    `config.yml`, customized to `recharge-seconds: 90`, and made a spent keeper. Then only
+    `Allium.jar` was replaced.
+  - **The migration:** this jar moved 17 settings from `tools.mob-disarmer` into
+    `tools/mob_disarmer.yml`, with `recharge-seconds: 90`.
+  - **The keeper:** it was field-for-field the same tool: behavior, appearance, state, UUID, MAC
+    and all `allium:*` PDC. It verified and disarmed again (`charges=1, uses=2`).
+  - **The moved setting:** spending its last charge set a recharge about 90 s away (88.4 s
+    measured), so the migrated value is live.
+- **Provider appearances on 1.21.8:** a fresh tool of each appearance is a signed
+  `allium:mob_disarmer` with its provider's native ID, and each disarm spent exactly one charge:
+  - Nexo: `mob_disarmer`, swapped to `_2-3`.
+  - CraftEngine: `allium_gate:mob_disarmer`.
+  - Oraxen: `Gate_Disarmer`.
+
 ## Scope and limits
 
 - Providers were exercised on 1.21.8 only, with the supplied Nexo/Oraxen builds and official CE
@@ -71,8 +128,8 @@ the fixture arms it. Nothing in config or in-game can enable it.
 - The click guard, legacy import, break chances, recharge expiry, bypass, `drop-rule: always`
   and the villager guarantee are covered by unit tests, not by live cases. In live double-clicks, the second click
   found nothing left to remove.
-- Only upstream-compatible GriefPrevention API was used, and only GP3D 18.4.5 was run. No
-  separate upstream GriefPrevention run was made.
+- Only upstream-compatible GriefPrevention API was used. GP3D 18.4.5 (S06a) and 19.0.5 (S10)
+  were run; no separate upstream GriefPrevention run was made.
 - No resource pack was generated or sent; S06b owns visuals.
 
 ## Rerun
@@ -87,6 +144,9 @@ python3 tests/live/tools/disarmer/run.py --lane spigot-1.20.1 --run-name <name>
 python3 tests/live/tools/disarmer/run.py --lane paper-1.21.8 --run-name <name>
 python3 tests/live/tools/disarmer/run.py --lane paper-26.3 --run-name <name> \
   --griefprevention /path/to/GriefPrevention3D.jar
+python3 tests/live/tools/disarmer/run.py --lane spigot-1.20.1 --run-name <name> \
+  --upgrade-from /path/to/Allium-before-definitions.jar     # the upgrade scenario
+python3 tests/live/tools/disarmer/run.py --lane paper-1.21.8 --run-name <name> --quick   # one disarm per appearance
 ```
 
 The runner builds the fixture with `javac --release 17`. It copies only binaries, immutable

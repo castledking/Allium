@@ -97,7 +97,8 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
             switch (args[0]) {
                 case "prepare" -> prepare();
                 case "status" -> write("status", status());
-                case "setup" -> setup(args[1], args[2], args[3], args[4], args[5]);
+                case "setup" -> setup(args[1], args[2], args[3], args[4], args[5], args.length > 6 ? Double.parseDouble(args[6]) : 2.0);
+                case "probe" -> write("probe", probe(args[1]));
                 case "observe" -> write(args[1] + "-observe", observe());
                 case "kill" -> kill(args[1]);
                 case "keep" -> move(0, Integer.parseInt(args[1]));
@@ -142,7 +143,7 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
      * @param kit    full | empty
      * @param veto   none | check-event | interact | write-fault (arm one rejected item state write)
      */
-    private void setup(String name, String appearance, String layout, String kit, String veto) throws IOException {
+    private void setup(String name, String appearance, String layout, String kit, String veto, double distance) throws IOException {
         Player bot = requireBot();
         World world = bot.getWorld();
         for (Entity entity : world.getEntities()) {
@@ -164,7 +165,7 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
             if (layout.equals("main") || layout.equals("both")) inventory.setItem(0, tool(appearance));
             if (layout.equals("offhand") || layout.equals("both")) inventory.setItemInOffHand(tool(appearance));
         }
-        mob = (Zombie) world.spawnEntity(base.clone().add(2.0, 0.0, 0.0), org.bukkit.entity.EntityType.ZOMBIE);
+        mob = (Zombie) world.spawnEntity(base.clone().add(distance, 0.0, 0.0), org.bukkit.entity.EntityType.ZOMBIE);
         mob.setAI(false);
         mob.setSilent(true);
         mob.setPersistent(true);
@@ -188,8 +189,10 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
         write(name + "-baseline", baseline);
     }
 
+    /** A tool as its definition would issue it: the identity bound to the appearance, else the Mob Disarmer. */
     private ItemStack tool(String appearance) {
-        ResolutionResult result = items.create(new ItemRef(ProviderKey.parse(appearance), BEHAVIOR, 1, Map.of()));
+        ItemRef bound = items.refForKey(ProviderKey.parse(appearance));
+        ResolutionResult result = items.create(bound.behaviorId().isPresent() ? bound : bound.withBehaviorId(BEHAVIOR));
         if (!result.isResolved()) throw new IllegalStateException(appearance + ": " + result.diagnosticMessage());
         return result.itemStack().orElseThrow();
     }
@@ -200,6 +203,20 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
         meta.getPersistentDataContainer().set(marker, PersistentDataType.STRING, name + ":" + SLOTS[index].name());
         stack.setItemMeta(meta);
         return stack;
+    }
+
+    /** What Allium registered for an identity that a definition claimed: nothing, for a rejected one. */
+    private Map<String, Object> probe(String identity) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        ProviderKey key = ProviderKey.parse(identity);
+        out.put("identity", identity);
+        out.put("builtInItem", items.getAlliumItem(key.id()).isPresent());
+        out.put("boundBehavior", items.resolveBoundBehaviorId(key).orElse(null));
+        out.put("signedBehavior", items.isSignedBehavior(identity));
+        out.put("useNodeRegistered", getServer().getPluginManager().getPermission("allium.tool." + key.id() + ".use") != null);
+        ResolutionResult created = items.createForBehavior(identity, 1);
+        out.put("creates", created.isResolved());
+        return out;
     }
 
     private void kill(String name) {
@@ -280,6 +297,7 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
         out.put("spawnedMarkers", new ArrayList<>(spawnedMarkers));
         out.put("interactions", new ArrayList<>(interactions));
         out.put("checkEvents", checkEvents);
+        out.put("now", System.currentTimeMillis());
         Map<String, Object> fault = new LinkedHashMap<>();
         fault.put("enabled", FaultInjection.enabled());
         fault.put("armed", FaultInjection.armed(FaultInjection.ITEM_STATE_WRITE));

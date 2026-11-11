@@ -14,6 +14,11 @@ public interface ToolEnvironment {
     /** Whether {@code entityType} (namespaced, e.g. {@code minecraft:zombie}) exists. */
     boolean isEntityType(String entityType);
 
+    /** Whether {@code particle} (a vanilla particle name, e.g. {@code soul_fire_flame}) exists on this server. */
+    default boolean isParticle(String particle) {
+        return true;
+    }
+
     /** Whether the default or active lang file has {@code key}. */
     boolean hasLangKey(String key);
 

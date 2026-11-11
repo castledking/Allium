@@ -1,0 +1,90 @@
+# Phantom Obliterator: a tool definition (see mob_disarmer.yml for how definitions work, and
+# docs/tools.md for every setting). Right-click air with it in your main hand to kill the unnamed
+# phantoms around you.
+#
+# The behavior, allium:obliterate_phantoms, owns the steps:
+# - It reads only loaded entities and asks protection plugins about each target.
+# - It re-reads the held tool before committing, then writes the spent charge before anything dies.
+# - A use that kills nothing costs nothing.
+# The tool is privileged: only a stack Allium signed acts, and look-alikes never do.
+schema: 1
+
+# The tool's signed item identity. Never change it once tools exist: stacks carry it.
+id: allium:phantom_obliterator
+name: Phantom Obliterator
+behavior: allium:obliterate_phantoms
+enabled: true
+
+appearance:
+  # What new and imported tools look like: allium:phantom_obliterator (built-in) or a provider item.
+  default: allium:phantom_obliterator
+  aliases: []
+  # Optional charge-variant sets, as for the Mob Disarmer. SF's Nexo models, for example:
+  charge-variants: {}
+  #  sf:
+  #    '3': nexo:phantom_obliterator
+  #    '2': nexo:phantom_obliterator_2-3
+  #    '1': nexo:phantom_obliterator_1-3
+  #    '0': nexo:phantom_obliterator_0-3
+
+charges:
+  max: 3
+  # Spending the last charge starts one timer; the tool refills completely when it ends.
+  recharge-seconds: 120
+  break-chance:
+    # none: never breaks. legacy: 3% per spent charge, 5% on the final charge (pre-recode Allium).
+    # custom: the values below.
+    preset: none
+    per-charge: 0.0
+    final-charge: 0.0
+
+targets:
+  # A sphere around the player, in blocks (1 to 128). Only entities in loaded chunks are seen.
+  radius: 64.0
+  entity-types: [phantom]
+  # Spare named phantoms (name tags, plugins that name their mobs).
+  require-unnamed: true
+  # Spare entities other plugins mark as NPCs.
+  exclude-npcs: true
+  # At most this many targets per use, the nearest first.
+  max-targets: 64
+
+# attributed: each target is damaged by the player, so protection, arenas and other plugins see
+#   it and can spare a target, and loot and experience drop as from a player kill.
+# silent: the target's health is set to 0, as pre-recode Allium did; no damage event fires.
+kill: attributed
+
+timing:
+  click-guard-millis: 200
+  # Minimum milliseconds between refusal and status messages (recharging, nothing in range).
+  status-cooldown-millis: 1000
+
+legacy:
+  # Adopt pre-recode Phantom Obliterators in place when first used. It keeps their charges,
+  # recharge time, uses and enchantments. Only a netherite sword whose allium:custom_item_id and
+  # nexo:id both name the same variant qualifies.
+  import: true
+
+sounds:
+  obliterate:
+    sound: minecraft:entity.evoker.cast_spell
+    volume: 1.0
+    pitch: 0.65
+  recharging:
+    sound: minecraft:block.note_block.bass
+    volume: 0.6
+    pitch: 0.6
+
+particles:
+  # At each obliterated target, and around the player. [] for none.
+  target: [soul_fire_flame, reverse_portal]
+  user: [enchant]
+
+permissions:
+  use: allium.phantomobliterator.use
+  bypass: allium.phantomobliterator.bypass
+
+# Lang keys for this tool's messages. Each one left out uses tool.phantom-obliterator.<name>.
+# Names: no-permission, obliterated, obliterated-bypass, nothing-in-range, protected, last-charge,
+# broke, broken, recharging, single-item, update-failed.
+messages: {}

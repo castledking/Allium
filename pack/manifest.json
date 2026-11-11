@@ -96,7 +96,7 @@
     {
       "id": "phantom_obliterator",
       "behavior": "allium:phantom_obliterator",
-      "carrier": "blaze_rod",
+      "carrier": "phantom_membrane",
       "name": "§bPhantom Obliterator",
       "status": "planned",
       "allocation": {

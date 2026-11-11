@@ -18,10 +18,11 @@ public final class BukkitToolEnvironment implements ToolEnvironment {
 
     /**
      * The behavior each core pack tool is reserved for. Core tools that are not implemented yet
-     * (handcuffs, the Phantom Obliterator, the item renamer) are absent, so no definition can
-     * claim their identities.
+     * (handcuffs, the item renamer) are absent, so no definition can claim their identities.
      */
-    static final Map<String, String> CORE_TOOL_BEHAVIORS = Map.of("mob_disarmer", DisarmBehaviorType.ID);
+    static final Map<String, String> CORE_TOOL_BEHAVIORS = Map.of(
+            "mob_disarmer", DisarmBehaviorType.ID,
+            "phantom_obliterator", codes.castled.allium.tool.obliterator.ObliterateBehaviorType.ID);
 
     private final Set<String> coreItems;
     private final Predicate<String> langKeys;
@@ -61,6 +62,11 @@ public final class BukkitToolEnvironment implements ToolEnvironment {
             }
             return false;
         }
+    }
+
+    @Override
+    public boolean isParticle(String particle) {
+        return BukkitParticles.resolve(particle).isPresent();
     }
 
     @Override

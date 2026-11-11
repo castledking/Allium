@@ -500,14 +500,16 @@ def rpm_scenario():
     start = boot('rpm-export dry run into a copy of SF\'s mixer')
     lines = logs[start:]
     checked = line_with('[rpm-export dry run] Checked', start)
-    blaze = [x.strip() for x in lines if 'Carrier collision ahead' in x and 'blaze_rod' in x]
+    ahead = [x.strip() for x in lines if 'Carrier collision ahead' in x]
     current = [x.strip() for x in lines if 'Carrier collision:' in x]
     would = line_with('[rpm-export dry run] Would write', start)
     require(checked is not None and f'Checked {len(before)} pack(s)' in checked,
             f'the dry run read all {len(before)} copied packs: {checked[-90:] if checked else None}')
-    require(blaze and any('Nexo_resource_pack.zip' in x and 'phantom_obliterator' in x for x in blaze) and not current,
-            f'it reports the blaze rod collision (Nexo defines assets/minecraft/items/blaze_rod.json, the carrier of the planned '
-            f'phantom_obliterator), and no collision for the shipped golden hoe: {[x[-150:] for x in blaze]}')
+    # S10 moved the planned Phantom Obliterator off blaze_rod (which SF's Nexo pack overrides) to
+    # phantom_membrane, which no readable SF pack touches; the planned carriers report no collision now.
+    require(not any('phantom_obliterator' in x for x in ahead) and not any('blaze_rod' in x for x in ahead) and not current,
+            f'no collision for the shipped golden hoe, and none for the planned Phantom Obliterator\'s new carrier '
+            f'(phantom_membrane): {[x[-150:] for x in ahead]}')
     require(would is not None and 'no such file exists yet' in would and 'Nothing was written.' in would and snapshot(copy) == before,
             'the dry run wrote nothing: every file in the copy is byte-identical')
     stop_server()
@@ -532,7 +534,7 @@ def rpm_scenario():
     # The copy holds SF's own packs: it is not evidence, so it does not outlive the run.
     shutil.rmtree(copy)
     emit('REMOVED the copy of SF\'s mixer')
-    evidence['rpm'] = {'copied': len(before), 'skippedUnreadable': skipped, 'checked': checked, 'blazeRod': blaze, 'wouldWrite': would,
+    evidence['rpm'] = {'copied': len(before), 'skippedUnreadable': skipped, 'checked': checked, 'carrierAhead': ahead, 'wouldWrite': would,
                        'wrote': wrote, 'added': added}
 
 

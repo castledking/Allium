@@ -47,9 +47,13 @@ public final class ToolDefinitionLoader {
     public static final String DIRECTORY = "tools";
     public static final String MOB_DISARMER_FILE = "mob_disarmer.yml";
     public static final String MOB_DISARMER_RESOURCE = DIRECTORY + "/" + MOB_DISARMER_FILE;
+    /** Which bundled defaults were installed once, so a default the operator deleted stays deleted. */
+    public static final String INSTALLED_FILE = ".defaults";
 
     private final File dataFolder;
     private final Supplier<InputStream> bundledMobDisarmer;
+    private final Function<String, InputStream> resources;
+    private final List<String> bundledDefaults;
     private final Consumer<String> info;
     private final Consumer<String> warning;
 
@@ -57,8 +61,19 @@ public final class ToolDefinitionLoader {
      * @param bundledMobDisarmer opens the jar's {@code tools/mob_disarmer.yml}
      */
     public ToolDefinitionLoader(File dataFolder, Supplier<InputStream> bundledMobDisarmer, Consumer<String> info, Consumer<String> warning) {
+        this(dataFolder, path -> MOB_DISARMER_RESOURCE.equals(path) ? bundledMobDisarmer.get() : null, List.of(MOB_DISARMER_FILE), info, warning);
+    }
+
+    /**
+     * @param resources       opens a jar resource such as {@code tools/phantom_obliterator.yml}
+     * @param bundledDefaults the default definition files the jar ships, {@code mob_disarmer.yml} first
+     */
+    public ToolDefinitionLoader(File dataFolder, Function<String, InputStream> resources, List<String> bundledDefaults,
+                                Consumer<String> info, Consumer<String> warning) {
         this.dataFolder = Objects.requireNonNull(dataFolder, "dataFolder");
-        this.bundledMobDisarmer = Objects.requireNonNull(bundledMobDisarmer, "bundledMobDisarmer");
+        this.resources = Objects.requireNonNull(resources, "resources");
+        this.bundledMobDisarmer = () -> resources.apply(MOB_DISARMER_RESOURCE);
+        this.bundledDefaults = List.copyOf(bundledDefaults);
         this.info = Objects.requireNonNull(info, "info");
         this.warning = Objects.requireNonNull(warning, "warning");
     }
@@ -90,8 +105,56 @@ public final class ToolDefinitionLoader {
                 warning.accept("config.yml still has a tools.mob-disarmer section, which is no longer read; the Mob Disarmer"
                         + " is defined in " + MOB_DISARMER_RESOURCE + ".");
             }
+            installNewDefaults(directory);
             return;
         }
+        installMobDisarmer(directory, legacy);
+        installNewDefaults(directory);
+    }
+
+    /**
+     * Each bundled default other than the Mob Disarmer is installed once, the first time this
+     * Allium sees it, and recorded in {@code tools/.defaults}. A server from before that file existed
+     * had only the Mob Disarmer's default; a default the operator later deleted is not put back.
+     */
+    private void installNewDefaults(File directory) throws IOException {
+        File record = new File(directory, INSTALLED_FILE);
+        java.util.LinkedHashSet<String> installed = new java.util.LinkedHashSet<>();
+        if (record.isFile()) {
+            Files.readAllLines(record.toPath(), StandardCharsets.UTF_8).stream().map(String::trim)
+                    .filter(line -> !line.isEmpty() && !line.startsWith("#")).forEach(installed::add);
+        } else {
+            installed.add(MOB_DISARMER_FILE);
+        }
+        boolean changed = !record.isFile();
+        for (String name : bundledDefaults) {
+            if (installed.contains(name)) {
+                continue;
+            }
+            File target = new File(directory, name);
+            if (!target.exists()) {
+                try (InputStream in = resources.apply(DIRECTORY + "/" + name)) {
+                    if (in == null) {
+                        warning.accept(DIRECTORY + "/" + name + " is missing from the plugin jar; not installed.");
+                        continue;
+                    }
+                    Files.copy(in, target.toPath());
+                }
+                info.accept("Created " + DIRECTORY + "/" + name + ", a new default tool definition.");
+            }
+            installed.add(name);
+            changed = true;
+        }
+        if (changed) {
+            List<String> lines = new ArrayList<>();
+            lines.add("# Default tool definitions Allium has installed once. A default listed here is not");
+            lines.add("# installed again, so deleting its file removes the tool for good.");
+            lines.addAll(installed);
+            Files.write(record.toPath(), lines, StandardCharsets.UTF_8);
+        }
+    }
+
+    private void installMobDisarmer(File directory, @Nullable ConfigurationSection legacy) throws IOException {
         if (!directory.mkdirs() && !directory.isDirectory()) {
             throw new IOException("could not create " + directory);
         }

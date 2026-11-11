@@ -22,11 +22,30 @@ function click(target) {
     client.write('use_entity', {target, mouse: 0, hand, sneaking: false});
   }
 }
+let sequence = 1;
+// Right-click on air with the main hand: the vanilla client sends a use-item packet for any held item.
+function use() {
+  client.write('arm_animation', {hand: 0});
+  client.write('use_item', version === '1.20.1' ? {hand: 0, sequence: sequence++} : {hand: 0, sequence: sequence++, rotation: {x: 0, y: 0}});
+}
+// Start breaking a block from above; with an instant-mine tool the server breaks it on this packet alone.
+function dig(x, y, z) {
+  client.write('block_dig', {status: 0, location: {x, y, z}, face: 1, sequence: sequence++});
+  client.write('arm_animation', {hand: 0});
+}
 require('node:readline').createInterface({input: process.stdin}).on('line', line => { try {
-  const [action, arg] = line.trim().split(/\s+/);
+  const [action, ...args] = line.trim().split(/\s+/);
   if (action === 'stop') { client.end('gate finished'); return; }
   if (!ready) throw Error('wait for READY');
-  const target = Number(arg);
+  if (action === 'use') { use(); console.log('S06A-WIRE SEND use'); return; }
+  if (action === 'dig') {
+    const [x, y, z] = args.map(Number);
+    if (![x, y, z].every(Number.isInteger)) throw Error('dig x y z');
+    dig(x, y, z);
+    console.log('S06A-WIRE SEND dig ' + [x, y, z].join(' '));
+    return;
+  }
+  const target = Number(args[0]);
   if (!Number.isInteger(target)) throw Error('entity id required');
   if (action === 'click') click(target);
   else if (action === 'double') { click(target); click(target); }

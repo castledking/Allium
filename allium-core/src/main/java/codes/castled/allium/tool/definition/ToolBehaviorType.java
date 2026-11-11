@@ -23,6 +23,11 @@ public interface ToolBehaviorType<P extends ToolParameters> {
     /** Sound slots (e.g. {@code disarm}) and their defaults. */
     Map<String, ToolSound> soundSlots();
 
+    /** Particle slots (e.g. {@code target}) and their default particle names; none by default. */
+    default Map<String, java.util.List<String>> particleSlots() {
+        return Map.of();
+    }
+
     /**
      * Reads this behavior's own settings from the definition's root section. Problems are
      * recorded on the reader; the returned value is only used when there are none.

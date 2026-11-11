@@ -146,6 +146,7 @@ class DisarmBehaviorTest {
                 perms,
                 msgs,
                 sounds,
+                Map.of(),
                 params
         );
         return new DisarmTool(def, nanos::get);

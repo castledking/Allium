@@ -21,6 +21,11 @@ import codes.castled.allium.tool.disarmer.DisarmParameters;
 import codes.castled.allium.tool.disarmer.DisarmTool;
 import codes.castled.allium.tool.disarmer.DisarmerCharges;
 import codes.castled.allium.tool.disarmer.DisarmerVisualState;
+import codes.castled.allium.tool.obliterator.ObliterateBehavior;
+import codes.castled.allium.tool.obliterator.ObliterateBehaviorType;
+import codes.castled.allium.tool.obliterator.ObliterateListener;
+import codes.castled.allium.tool.obliterator.ObliterateParameters;
+import codes.castled.allium.tool.obliterator.ObliterateTool;
 import org.bukkit.Material;
 import org.bukkit.event.HandlerList;
 import org.bukkit.permissions.Permission;
@@ -45,13 +50,20 @@ import java.util.stream.Collectors;
  */
 public final class ToolsModule extends AbstractModule {
 
-    private static final Map<String, ToolBehaviorType<?>> BEHAVIORS = Map.of(DisarmBehaviorType.ID, new DisarmBehaviorType());
+    private static final Map<String, ToolBehaviorType<?>> BEHAVIORS = Map.of(
+            DisarmBehaviorType.ID, new DisarmBehaviorType(),
+            ObliterateBehaviorType.ID, new ObliterateBehaviorType());
+
+    /** The default definitions the jar ships, each installed once (tools/.defaults). */
+    static final List<String> BUNDLED_DEFAULTS = List.of("mob_disarmer.yml", "phantom_obliterator.yml");
 
     private final List<String> registeredItems = new ArrayList<>();
     private final List<String> registeredPermissions = new ArrayList<>();
     private final List<String> modelSelectors = new ArrayList<>();
     private DisarmListener disarmListener;
     private DisarmBehavior disarm;
+    private ObliterateListener obliterateListener;
+    private ObliterateBehavior obliterate;
     private ToolDefinitionLoader.Loaded loaded;
 
     public ToolsModule(PluginStart plugin) {
@@ -65,8 +77,8 @@ public final class ToolsModule extends AbstractModule {
 
     @Override
     public void onEnable() {
-        ToolDefinitionLoader loader = new ToolDefinitionLoader(plugin.getDataFolder(),
-                () -> plugin.getResource(ToolDefinitionLoader.MOB_DISARMER_RESOURCE), plugin.logger()::info, plugin.logger()::warning);
+        ToolDefinitionLoader loader = new ToolDefinitionLoader(plugin.getDataFolder(), plugin::getResource,
+                BUNDLED_DEFAULTS, plugin.logger()::info, plugin.logger()::warning);
         try {
             loader.install(plugin.getConfig().getConfigurationSection("tools.mob-disarmer"));
         } catch (IOException e) {
@@ -89,12 +101,16 @@ public final class ToolsModule extends AbstractModule {
         }
 
         List<DisarmTool> disarmTools = new ArrayList<>();
+        List<ObliterateTool> obliterateTools = new ArrayList<>();
         for (ToolDefinition definition : loaded.enabled()) {
             register(items, definition);
             if (DisarmBehaviorType.ID.equals(definition.behavior())) {
                 disarmTools.add(new DisarmTool(definition, System::nanoTime));
+            } else if (ObliterateBehaviorType.ID.equals(definition.behavior())) {
+                obliterateTools.add(new ObliterateTool(definition, System::nanoTime));
             }
         }
+        enableObliterate(items, obliterateTools);
         if (disarmTools.isEmpty()) {
             plugin.logger().info("No " + DisarmBehaviorType.ID + " tool is enabled.");
             return;
@@ -110,6 +126,24 @@ public final class ToolsModule extends AbstractModule {
                     + parameters.rules().maxCharges() + " charges, recharge " + parameters.rules().rechargeMillis() / 1000L
                     + "s, radius " + parameters.radius() + ", protection hooks " + plugin.getProtectionService().hookNames()
                     + " + check event.");
+        }
+    }
+
+    private void enableObliterate(ItemService items, List<ObliterateTool> tools) {
+        if (tools.isEmpty()) {
+            return;
+        }
+        obliterate = new ObliterateBehavior(items, plugin.getProtectionService(), plugin.getMessageManager()::send,
+                plugin.logger()::warning, System::currentTimeMillis, new Random(), tools);
+        obliterateListener = new ObliterateListener(obliterate);
+        plugin.getServer().getPluginManager().registerEvents(obliterateListener, plugin);
+        for (ObliterateTool tool : tools) {
+            ObliterateParameters parameters = tool.parameters();
+            plugin.logger().info(tool.name() + " enabled (" + tool.definition().file() + ", " + tool.id() + " -> "
+                    + ObliterateBehaviorType.ID + "): appearance " + tool.definition().appearance() + ", "
+                    + parameters.rules().maxCharges() + " charges, recharge " + parameters.rules().rechargeMillis() / 1000L
+                    + "s, radius " + parameters.radius() + ", targets " + parameters.entityTypes()
+                    + (parameters.attributedKill() ? ", kills as the player" : ", silent kills") + ".");
         }
     }
 
@@ -188,8 +222,18 @@ public final class ToolsModule extends AbstractModule {
             HandlerList.unregisterAll(disarmListener);
             disarmListener = null;
         }
+        if (obliterateListener != null) {
+            HandlerList.unregisterAll(obliterateListener);
+            obliterateListener = null;
+        }
         disarm = null;
+        obliterate = null;
         loaded = null;
+    }
+
+    /** The obliterate behavior, or {@code null} when no Phantom Obliterator is enabled. */
+    public ObliterateBehavior obliterate() {
+        return obliterate;
     }
 
     /** The disarm behavior, or {@code null} when no disarm tool is enabled. */

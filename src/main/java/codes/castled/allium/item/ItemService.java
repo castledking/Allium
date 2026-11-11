@@ -408,6 +408,34 @@ public final class ItemService {
     }
 
     /**
+     * Stamps an Allium identity onto an existing stack in place, keeping everything else it carries
+     * (material, enchantments, damage, name, lore, repair cost). Legacy imports use it so a
+     * player's enchanted tool stays theirs. The stack is signed like a new one of that behavior.
+     *
+     * @return false, and the stack untouched, when it already carries an Allium behavior
+     */
+    public boolean adopt(ItemStack stack, ProviderKey appearance, String behaviorId, Map<String, String> state) {
+        Objects.requireNonNull(stack, "stack");
+        Objects.requireNonNull(appearance, "appearance");
+        String normalized = ItemRef.normalizeBehaviorId(behaviorId);
+        if (normalized == null) {
+            throw new IllegalArgumentException("behaviorId must not be null or blank");
+        }
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null || meta.getPersistentDataContainer().has(KEY_BEHAVIOR_ID, PersistentDataType.STRING)) {
+            return false;
+        }
+        Map<String, String> merged = new LinkedHashMap<>();
+        AlliumItemDefinition definition = definitionForBehavior(normalized);
+        if (definition != null) {
+            merged.putAll(definition.defaultState());
+        }
+        merged.putAll(state);
+        stampMetadata(stack, ItemRef.CURRENT_SCHEMA_VERSION, appearance, normalized, merged, null, false);
+        return true;
+    }
+
+    /**
      * Identifies an {@link ItemStack} as a canonical {@link ItemRef}.
      *
      * <p>Enforces:

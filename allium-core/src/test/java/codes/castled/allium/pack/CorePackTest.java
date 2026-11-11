@@ -78,7 +78,7 @@ class CorePackTest {
         assertTrue(first.containsKey("assets/allium/models/item/mob_disarmer.json"), "1.21.2 item_model ns:id reads models/item/id");
         assertTrue(first.containsKey("allium_item_definitions/assets/allium/items/mob_disarmer.json"));
         assertTrue(first.containsKey("allium_item_definitions/assets/minecraft/items/golden_hoe.json"));
-        assertFalse(first.keySet().stream().anyMatch(p -> p.contains("blaze_rod") || p.contains("iron_shovel") || p.contains("name_tag")),
+        assertFalse(first.keySet().stream().anyMatch(p -> p.contains("blaze_rod") || p.contains("phantom_membrane") || p.contains("iron_shovel") || p.contains("name_tag")),
                 "planned tools reserve values but generate nothing");
     }
 

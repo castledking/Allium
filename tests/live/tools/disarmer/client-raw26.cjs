@@ -56,11 +56,37 @@ function click(target) {
   for (const hand of [0, 1]) game('interact', Buffer.concat([vi(target), vi(hand), Buffer.from([0]), Buffer.from([0])]));
   game('client_tick_end');
 }
+let sequence = 1;
+function f32(n) { const b = Buffer.alloc(4); b.writeFloatBE(n); return b; }
+function blockPos(x, y, z) {
+  const b = Buffer.alloc(8);
+  b.writeBigInt64BE((BigInt.asIntN(26, BigInt(x)) & 0x3FFFFFFn) << 38n | (BigInt.asIntN(26, BigInt(z)) & 0x3FFFFFFn) << 12n | (BigInt(y) & 0xFFFn));
+  return b;
+}
+// Right-click on air with the main hand: ServerboundUseItemPacket(hand, sequence, yRot, xRot).
+// No arm swing: it is cosmetic, and 26.x renamed its packet.
+function use() {
+  game('use_item', Buffer.concat([vi(0), vi(sequence++), f32(0), f32(0)]));
+  game('client_tick_end');
+}
+// ServerboundPlayerActionPacket START_DESTROY_BLOCK from above; an instant-mine tool breaks it at once.
+function dig(x, y, z) {
+  game('player_action', Buffer.concat([vi(0), blockPos(x, y, z), Buffer.from([1]), vi(sequence++)]));
+  game('client_tick_end');
+}
 require('node:readline').createInterface({input: process.stdin}).on('line', line => { try {
-  const [action, arg] = line.trim().split(/\s+/);
+  const [action, ...args] = line.trim().split(/\s+/);
   if (action === 'stop') { socket.end(); return; }
   if (!ready) throw Error('wait for READY');
-  const target = Number(arg);
+  if (action === 'use') { use(); console.log('S06A-WIRE SEND use'); return; }
+  if (action === 'dig') {
+    const [x, y, z] = args.map(Number);
+    if (![x, y, z].every(Number.isInteger)) throw Error('dig x y z');
+    dig(x, y, z);
+    console.log('S06A-WIRE SEND dig ' + [x, y, z].join(' '));
+    return;
+  }
+  const target = Number(args[0]);
   if (!Number.isInteger(target)) throw Error('entity id required');
   if (action === 'click') click(target);
   else if (action === 'double') { click(target); click(target); }

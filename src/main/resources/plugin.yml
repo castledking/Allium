@@ -81,6 +81,8 @@ permissions:
       allium.economy.*: true
       allium.mobdisarmer.use: true
       allium.mobdisarmer.bypass: true
+      allium.phantomobliterator.use: true
+      allium.phantomobliterator.bypass: true
       allium.give: true
       allium.give.privileged: true
       allium.reload: true
@@ -168,4 +170,10 @@ permissions:
     default: true
   allium.mobdisarmer.bypass:
     description: Mob Disarmer uses spend no charges and never break
+    default: op
+  allium.phantomobliterator.use:
+    description: Allows using a Phantom Obliterator
+    default: true
+  allium.phantomobliterator.bypass:
+    description: Phantom Obliterator uses spend no charges and never break
     default: op

@@ -207,6 +207,36 @@ The tool is privileged, so an import must not let a forged tag mint one.
   item already, which is accepted. A server can set `import-legacy: false` to disable runtime
   import and use the offline importer only.
 
+## As built (S10)
+
+Implemented as designed, with these decisions recorded:
+- **Carrier:**
+  - **The move:** the built-in item moved from `blaze_rod` to **`phantom_membrane`**. SF's Nexo
+    pack overrides `items/blaze_rod.json` (and also `echo_shard`, `amethyst_shard`,
+    `netherite_sword` and `netherite_axe`). No readable SF pack overrides the phantom membrane.
+  - **Why the phantom membrane:** it exists on 1.20, has no right-click use, and fits the tool.
+  - **Still to confirm:** SF's CraftEngine pack is mode 0600 and could not be read, so the staging
+    RPM merge confirms it.
+  - **No art yet:** the art does not ship yet. The item is a named phantom membrane with
+    `custom_model_data` 2577030.
+  - **Watch out:** like the blaze rod, the membrane is a brewing and anvil ingredient. Keeping core
+    tools out of crafting, brewing and anvils is a general follow-up for every tool.
+- **Protection is checked per target,** not once per use. The claim hooks and
+  `AlliumProtectionCheckEvent` run for every scanned target, and a denied target is dropped before
+  anything is spent. With `kill: attributed`, the damage event is a second, independent chance to
+  spare a target. If all are spared, the charge is refunded and the `protected` message is sent.
+- **`protected` message slot:** a scan that found targets which were all protected says so,
+  instead of "no unnamed phantoms in range".
+- **Loaded chunks only:** `World#getNearbyEntities` returns loaded entities and never loads a
+  chunk. The live gate counts chunk loads during every use, and there are none.
+  - **Why no unloaded-chunk test:** we tried putting a target inside an unloaded chunk. Spigot
+    1.20.1 would not unload a chunk holding a just-spawned entity, so that check was replaced by
+    the chunk-load count.
+- **Legacy import** adopts the stack in place through the new `ItemService#adopt`.
+- **Charge code:** the charge block is shared with the disarmer through
+  `tool.charge.ChargeSettings`. The state is still `DisarmerCharges`, to be renamed when a third
+  charged tool arrives.
+
 ## Live gate (tools slice)
 
 On Spigot 1.20.1 and Paper 26.3 (with GriefPrevention3D), with a real protocol bot. Fixture-spawned

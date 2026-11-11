@@ -121,9 +121,11 @@ public final class ToolDefinitionParser {
         Map<String, String> permissions = new LinkedHashMap<>();
         Map<String, String> messages = new LinkedHashMap<>();
         Map<String, ToolSound> sounds = new LinkedHashMap<>();
+        Map<String, List<String>> particles = new LinkedHashMap<>();
         ToolParameters parameters = null;
         if (type != null) {
             parseSlots(root, type, localId, environment, permissions, messages, sounds);
+            parseParticles(root, type, environment, particles);
             parameters = type.parse(root, environment);
             // Unknown-key checks need the behavior to have declared its settings.
             root.rejectUnknown();
@@ -133,7 +135,7 @@ public final class ToolDefinitionParser {
             return Result.rejected(file, root.errors().isEmpty() ? List.of("(file): could not be read") : root.errors());
         }
         return new Result(file, new ToolDefinition(file, id, name, type.id(), enabled, item, appearance, aliases,
-                permissions, messages, sounds, parameters), List.of());
+                permissions, messages, sounds, particles, parameters), List.of());
     }
 
     @Nullable
@@ -217,6 +219,39 @@ public final class ToolDefinitionParser {
             if (sound != null) {
                 sounds.put(slot.getKey(), sound);
             }
+        }
+    }
+
+    /** {@code particles.<slot>}: one particle name, a list of them, or {@code []} for none. */
+    private static void parseParticles(ConfigReader root, ToolBehaviorType<?> type, ToolEnvironment environment,
+                                       Map<String, List<String>> particles) {
+        if (type.particleSlots().isEmpty()) {
+            return;
+        }
+        ConfigReader section = root.section("particles");
+        for (Map.Entry<String, List<String>> slot : type.particleSlots().entrySet()) {
+            List<String> names;
+            Object raw = section.raw(slot.getKey()).orElse(null);
+            if (raw == null) {
+                names = slot.getValue();
+            } else if (raw instanceof String single) {
+                names = single.isBlank() ? List.of() : List.of(single.trim());
+            } else {
+                names = section.stringList(slot.getKey(), slot.getValue());
+            }
+            List<String> valid = new ArrayList<>();
+            for (int i = 0; i < names.size(); i++) {
+                String name = names.get(i).trim().toLowerCase(java.util.Locale.ROOT);
+                if (name.startsWith("minecraft:")) {
+                    name = name.substring("minecraft:".length());
+                }
+                if (environment.isParticle(name)) {
+                    valid.add(name);
+                } else {
+                    section.error(slot.getKey() + (raw instanceof List<?> ? "[" + i + "]" : ""), "'" + names.get(i) + "' is not a particle on this server");
+                }
+            }
+            particles.put(slot.getKey(), valid);
         }
     }
 

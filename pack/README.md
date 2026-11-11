@@ -24,7 +24,7 @@ values exactly. Planned tools reserve their values but generate nothing until th
 | --- | --- | --- | --- |
 | `allium:handcuffs` | iron shovel | 2577010–2577019 | planned |
 | `allium:mob_disarmer` | golden hoe | 2577020–2577029 | full 2577020, two_thirds 2577021, one_third 2577022, empty 2577023, broken 2577024 |
-| `allium:phantom_obliterator` | blaze rod | 2577030–2577039 | planned |
+| `allium:phantom_obliterator` | phantom membrane | 2577030–2577039 | planned |
 | `allium:item_renamer` | name tag | 2577040–2577049 | planned |
 
 Allium's built-in item definitions read the carrier, default model data and fallback name from
@@ -103,5 +103,6 @@ The pack replaces the vanilla `golden_hoe` model (1.20 to 1.21.3) and item defin
 Another pack that replaces the same files must be merged with this one, or one of them loses its
 golden-hoe models. `docs/s06b-sf-inventory.md` lists such files in SF's mixer. None touch the
 golden hoe today. SF's Nexo pack replaces `items/blaze_rod.json` with an unclosed
-`range_dispatch` from 1002, so the planned Phantom Obliterator carrier must be settled before its
-art ships.
+`range_dispatch` from 1002. So in S10 the planned Phantom Obliterator moved from the blaze rod to
+the phantom membrane, which no readable SF pack overrides. SF's CraftEngine pack could not be read;
+the staging RPM merge confirms it.

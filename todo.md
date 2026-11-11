@@ -77,8 +77,10 @@ Run on a staging copy of SF (its world, plugins and configs), never on the live 
       - ResourcePackManager must merge its full mixer, including `CraftEngine_resource_pack.zip`,
         which only the server user can read.
       - Confirm that the merged pack contains Allium's `golden_hoe` model and item definition.
-      - Confirm that RPM's priority order puts Allium's carrier files where intended; note the
-        `blaze_rod` collision with Nexo for when Phantom Obliterator ships.
+      - Confirm that RPM's priority order puts Allium's carrier files where intended.
+      - Confirm that CraftEngine's pack (unreadable here) does not override `phantom_membrane`, the
+        Phantom Obliterator's carrier since S10. If it does, move the carrier before the art ships.
+      - Check `netherite_axe`, which Nexo's pack overrides, before the Lazy Axe gets art.
       - Load the merged pack in a real client and run the disarmer rows of the
         [visual checklist](tests/live/pack/VISUAL-CHECKLIST.md).
 - [ ] **Visual checklist with SF art,** on SF's server version.
@@ -301,6 +303,13 @@ result and must preserve the existing uncommitted work.
       two bots and the console; see [the results](tests/live/sounds/RESULTS.md). It found and
       fixed two bugs: lang sync re-added omitted sound values, and preference defaults were read
       only at startup.
+- [x] **S10a — Phantom Obliterator:** `tools/phantom_obliterator.yml` on the core behavior
+      `allium:obliterate_phantoms`. Privileged signed identity, protection asked per target,
+      spend-first with a refund when nothing dies, in-place legacy import, and the carrier moved
+      from `blaze_rod` to `phantom_membrane`. Gate passed 2026-11-09: 157 live checks; see
+      [the results](tests/live/tools/obliterator/RESULTS.md).
+- [ ] **Core tools follow-up:** keep tool carriers out of crafting, brewing and anvils (the
+      phantom membrane is a brewing and anvil ingredient).
 - [ ] **S10 / M4 — Tools: Phantom Obliterator and Lazy Axe** (after S08), implemented from the
       [Obliterator](docs/phantom-obliterator-design.md) and [Lazy Axe](docs/lazy-axe-design.md)
       designs, as `allium:obliterate_phantoms` and `allium:fell_tree` definitions. The Lazy Axe

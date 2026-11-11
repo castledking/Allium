@@ -5,12 +5,19 @@ identity to a core behavior and supplies that behavior's settings. The behavior 
 tool acts, and no setting can change those steps.
 
 Allium reads every `.yml` file in `tools/` at startup, in file-name order. **Changes need a
-restart.** The first start creates `tools/` with `mob_disarmer.yml`.
+restart.**
+
+**Shipped defaults:**
+- **First start:** it creates `tools/` with the shipped defaults.
+- **Later updates:** each new default is installed once, the first time an Allium that ships it
+  starts.
+- **Deleting a default:** `tools/.defaults` remembers what was installed, so a default you delete
+  stays deleted.
 
 | Behavior | What it does | Shipped definition |
 | --- | --- | --- |
 | `allium:disarm` | Right-click a mob to take its equipment | `tools/mob_disarmer.yml` (enabled) |
-| `allium:obliterate_phantoms` | Planned for S10; see the [design](phantom-obliterator-design.md) | — |
+| `allium:obliterate_phantoms` | Right-click air to kill the unnamed phantoms around you | `tools/phantom_obliterator.yml` (enabled) |
 | `allium:fell_tree` | Planned for S10, off by default; see the [design](lazy-axe-design.md) | — |
 
 ## Validation
@@ -106,6 +113,64 @@ a 10-block radius.
 - **Pre-recode stacks** are imported only as `allium:mob_disarmer`. They stay untouched while
   that definition is not loaded.
 
+## `allium:obliterate_phantoms`
+
+The Phantom Obliterator: right-click air with the tool in the main hand.
+- **Privileged:** only a stack Allium signed acts. A phantom membrane with the right model data and
+  name, or a signed tool whose state was edited, does nothing.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `charges.*` | 3 charges, 120 s, `preset: none` | As for `allium:disarm`; `legacy` is the old 3% / 5% break chance. |
+| `appearance.charge-variants` | `{}` | As for `allium:disarm`, e.g. SF's four Nexo models. |
+| `targets.radius` | `64.0` | A sphere around the player, 1–128 blocks. Only entities in loaded chunks are seen; a use never loads a chunk. |
+| `targets.entity-types` | `[phantom]` | What counts as a target (players never). |
+| `targets.require-unnamed` | `true` | Spare named mobs (name tags, plugins). |
+| `targets.exclude-npcs` | `true` | Spare entities other plugins mark as NPCs. |
+| `targets.max-targets` | `64` | At most this many per use, the nearest first. |
+| `kill` | `attributed` | `attributed`: each target is damaged by the player. Protection, arenas and other plugins can spare a target, and loot and experience drop as from a player kill. `silent`: health is set to 0, as before the recode; no damage event fires. |
+| `timing.click-guard-millis`, `timing.status-cooldown-millis` | `200`, `1000` | As for `allium:disarm`. |
+| `legacy.import` | `true` | Adopt pre-recode Phantom Obliterators in place at first use (see below). |
+| `sounds.obliterate`, `sounds.recharging` | evoker cast spell (1.0, 0.65); note block bass (0.6, 0.6) | Played to the player. |
+| `particles.target`, `particles.user` | `[soul_fire_flame, reverse_portal]`, `[enchant]` | Vanilla particle names, checked against the server. `[]` for none. Particles that need extra data (colour, block) are refused. |
+| `permissions.use`, `permissions.bypass` | `allium.phantomobliterator.use`, `.bypass` | `bypass` obliterates without spending charges or breaking. |
+
+**Message slots:**
+- **Errors:** `no-permission`, `single-item`, `update-failed`.
+- **Results:** `obliterated`, `obliterated-bypass`, `nothing-in-range`, `protected`.
+- **Charges:** `last-charge`, `broke`, `broken`, `recharging`.
+
+### What the behavior owns
+
+1. Only the main hand acts, and only on air. Clicking a block does nothing.
+2. **Checks:** the permission, a single stack, broken or recharging, and the click guard.
+3. **The scan:** loaded entities inside the sphere, of the configured types, minus named ones and
+   NPCs. **Protection is asked for every target**: the claim hooks, then
+   `AlliumProtectionCheckEvent`.
+4. No target left: it says so and spends nothing.
+5. The held stack is read again, since protection listeners run arbitrary code. If it changed,
+   nothing happens.
+6. **Spend first:** the consumed charge is written before anything dies. If the write is
+   rejected, nothing is killed.
+7. **Kill:** if every target was spared (for example by a damage listener), the old state is
+   written back, so no charge is lost for nothing.
+
+### Pre-recode tools
+
+A pre-recode Phantom Obliterator is adopted in place the first time it is used: a netherite sword
+whose `allium:custom_item_id` **and** `nexo:id` name the same variant.
+- **What it keeps:** its charges, recharge time, broken flag and uses, plus its enchantments and
+  name.
+- **When Nexo is installed:** a stack Nexo recognizes keeps its Nexo appearance.
+- **Never imported:** a stack matched only by model data, or with just one of the two IDs. It does
+  nothing, and the log says why.
+
+### Carrier
+
+The built-in item is a **phantom membrane** (`custom_model_data` 2577030–2577039, art not shipped
+yet). It was a blaze rod until S10, but SF's Nexo pack overrides `items/blaze_rod.json`. No
+readable SF pack overrides the phantom membrane, and it has no right-click use.
+
 ## Upgrading from an older Allium
 
 Before tool definitions existed, the Mob Disarmer was configured in `config.yml` under
@@ -128,5 +193,5 @@ Before tool definitions existed, the Mob Disarmer was configured in `config.yml`
 **Existing stacks:** they keep working unchanged: the same identity, state and MACs.
 
 **Deleting a definition:** deleting `tools/mob_disarmer.yml` removes the tool. Its stacks stay
-in inventories, inert, until a definition with that `id` is loaded again. Allium recreates the
-default file only when the whole `tools/` folder is missing.
+in inventories, inert, until a definition with that `id` is loaded again. A shipped default is
+installed only once (see `tools/.defaults`), so a deleted one does not come back.

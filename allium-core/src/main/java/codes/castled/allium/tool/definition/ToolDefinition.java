@@ -26,6 +26,7 @@ import java.util.Set;
  * @param permissions permission node per behavior slot
  * @param messages    lang key per behavior message slot
  * @param sounds      sound per behavior sound slot
+ * @param particles   particle names per behavior particle slot
  */
 public record ToolDefinition(
         String file,
@@ -39,6 +40,7 @@ public record ToolDefinition(
         Map<String, String> permissions,
         Map<String, String> messages,
         Map<String, ToolSound> sounds,
+        Map<String, List<String>> particles,
         ToolParameters parameters
 ) {
     public ToolDefinition {
@@ -52,6 +54,18 @@ public record ToolDefinition(
         permissions = Map.copyOf(new LinkedHashMap<>(permissions));
         messages = Map.copyOf(new LinkedHashMap<>(messages));
         sounds = Map.copyOf(new LinkedHashMap<>(sounds));
+        Map<String, List<String>> copied = new LinkedHashMap<>();
+        particles.forEach((slot, names) -> copied.put(slot, List.copyOf(names)));
+        particles = Map.copyOf(copied);
+    }
+
+    /** The particle names for a slot; empty when the definition turned the slot off. */
+    public List<String> particles(String slot) {
+        List<String> names = particles.get(slot);
+        if (names == null) {
+            throw new IllegalArgumentException(id + " has no particle slot " + slot);
+        }
+        return names;
     }
 
     /** The {@code <id>} of {@code allium:<id>}. */

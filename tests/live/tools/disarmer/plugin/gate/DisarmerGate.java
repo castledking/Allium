@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.Optional;
 
 /**
@@ -73,6 +74,16 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
     private final List<String> deathMarkers = new ArrayList<>();
     private final List<String> spawnedMarkers = new ArrayList<>();
     private int checkEvents;
+    // Phantom Obliterator cases: the spawned targets by UUID, their marker, and what happened to them.
+    private static final double OB_X = 4000.5, OB_Z = 0.5;
+    private final Map<UUID, String> obTargets = new LinkedHashMap<>();
+    private final Map<String, String> obDeaths = new LinkedHashMap<>();
+    private final Map<String, Integer> obDamage = new LinkedHashMap<>();
+    private final Map<String, Integer> obSpared = new LinkedHashMap<>();
+    private final List<int[]> obUnloaded = new ArrayList<>();
+    /** Chunk loads since the last baseline: a use must load none. */
+    private int obChunkLoads;
+    private org.bukkit.permissions.PermissionAttachment attachment;
 
     @Override
     public void onEnable() {
@@ -99,12 +110,16 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
                 case "status" -> write("status", status());
                 case "setup" -> setup(args[1], args[2], args[3], args[4], args[5], args.length > 6 ? Double.parseDouble(args[6]) : 2.0);
                 case "probe" -> write("probe", probe(args[1]));
+                case "ob-setup" -> obSetup(args[1], args[2], args[3], args.length > 4 ? args[4] : "none");
+                case "ob-observe" -> write(args[1] + "-observe", obObserve());
+                case "ob-reload" -> obReload(args[1]);
+                case "perm" -> perm(args[1], args[2]);
                 case "observe" -> write(args[1] + "-observe", observe());
                 case "kill" -> kill(args[1]);
                 case "keep" -> move(0, Integer.parseInt(args[1]));
                 case "take" -> move(Integer.parseInt(args[1]), 0);
                 case "snapshot" -> write(args[1], inventorySnapshot());
-                case "gpclaim" -> write("gpclaim", griefPreventionAdminClaim());
+                case "gpclaim" -> write("gpclaim", griefPreventionAdminClaim(args.length > 1 ? Integer.parseInt(args[1]) : 0));
                 default -> throw new IllegalArgumentException("unknown " + args[0]);
             }
             getLogger().info("S06A-DONE " + String.join(" ", args));
@@ -205,6 +220,218 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
         return stack;
     }
 
+    /**
+     * @param tool  an item reference (allium:phantom_obliterator, nexo:...), {@code fake} (a phantom
+     *              membrane with the built-in's model data and name, no identity),
+     *              {@code legacy:<variant>:<charges>:<rechargeSeconds>:<uses>:<both|custom-only>} (a
+     *              pre-recode netherite sword) or {@code held} (keep the main hand)
+     * @param spec  comma list of kind@distance: p (unnamed phantom), named, guard (a damage listener
+     *              spares it), claimed (the protection check event denies it), zombie, unloaded (in a
+     *              chunk that is then unloaded)
+     */
+    /** Spawns now; unloads and writes the baseline two seconds later, once the new entities are in the world. */
+    private void obSetup(String name, String tool, String spec, String fault) throws IOException {
+        Player bot = requireBot();
+        World world = bot.getWorld();
+        for (UUID id : obTargets.keySet()) {
+            Entity old = getServer().getEntity(id);
+            if (old != null) old.remove();
+        }
+        obTargets.clear();
+        obDeaths.clear();
+        obDamage.clear();
+        obSpared.clear();
+        obUnloaded.clear();
+        Location base = new Location(world, OB_X, world.getHighestBlockYAt((int) Math.floor(OB_X), 0) + 1, OB_Z, -90.0F, 0.0F);
+        bot.teleport(base);
+        for (Entity entity : world.getNearbyEntities(base, 96, 64, 96)) {
+            if (!(entity instanceof Player)) entity.remove();
+        }
+        PlayerInventory inventory = bot.getInventory();
+        inventory.setHeldItemSlot(0);
+        if (!tool.equals("held")) {
+            inventory.setItem(0, obTool(tool));
+        }
+        int i = 0;
+        for (String part : spec.equals("none") ? new String[0] : spec.split(",")) {
+            String[] kd = part.split("@");
+            String kind = kd[0];
+            double distance = Double.parseDouble(kd[1]);
+            Location at = base.clone().add(distance, 3.0, 0.0);
+            if (kind.equals("unloaded")) {
+                // Spawn it as a player out there would see it, then come back: its chunk loses the
+                // player's ticket and unloads the normal way, with the phantom saved in it.
+                bot.teleport(at.clone().add(0.0, -3.0, 0.0));
+            }
+            org.bukkit.entity.EntityType type = kind.equals("zombie") ? org.bukkit.entity.EntityType.ZOMBIE : org.bukkit.entity.EntityType.PHANTOM;
+            org.bukkit.entity.LivingEntity mob = (org.bukkit.entity.LivingEntity) world.spawnEntity(at, type);
+            mob.setAI(false);
+            mob.setGravity(false);
+            mob.setSilent(true);
+            mob.setPersistent(true);
+            mob.setRemoveWhenFarAway(false);
+            if (kind.equals("named")) mob.setCustomName("Pet");
+            String tag = name + ":" + (i++) + ":" + kind;
+            mob.getPersistentDataContainer().set(marker, PersistentDataType.STRING, tag);
+            obTargets.put(mob.getUniqueId(), tag);
+            if (kind.equals("unloaded")) {
+                obUnloaded.add(new int[]{at.getBlockX() >> 4, at.getBlockZ() >> 4});
+                bot.teleport(base);
+            }
+        }
+        List<Boolean> unloaded = new ArrayList<>();
+        // The chunk system unloads over the next ticks, not when unloadChunk returns: ask at 2 s, look at 5 s.
+        getServer().getScheduler().runTaskLater(this, () -> {
+            for (int[] chunk : obUnloaded) unloaded.add(world.unloadChunk(chunk[0], chunk[1], true));
+        }, 40L);
+        getServer().getScheduler().runTaskLater(this, () -> {
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("unloadedChunks", unloaded);
+            List<Boolean> stillLoaded = new ArrayList<>();
+            for (int[] chunk : obUnloaded) stillLoaded.add(world.isChunkLoaded(chunk[0], chunk[1]));
+            out.put("chunksStillLoaded", stillLoaded);
+            if (FaultInjection.enabled()) FaultInjection.reset();
+            if (fault.equals("write-fault")) FaultInjection.arm(FaultInjection.ITEM_STATE_WRITE, 1);
+            checkEvents = 0;
+            obChunkLoads = 0;
+            out.putAll(obObserve());
+            try {
+                write(name + "-baseline", out);
+            } catch (IOException e) {
+                getLogger().severe("S06A-FAIL ob-setup write " + e);
+            }
+        }, 100L);
+    }
+
+    private ItemStack obTool(String tool) {
+        if (tool.equals("fake")) {
+            ItemStack fake = new ItemStack(Material.PHANTOM_MEMBRANE);
+            ItemMeta meta = fake.getItemMeta();
+            meta.setCustomModelData(2577030);
+            meta.setDisplayName("Phantom Obliterator");
+            fake.setItemMeta(meta);
+            return fake;
+        }
+        if (tool.startsWith("tampered:")) {
+            // A genuine signed tool whose charge state was then edited without re-signing.
+            ItemStack stack = obTool(tool.substring("tampered:".length()));
+            ItemMeta meta = stack.getItemMeta();
+            meta.getPersistentDataContainer().set(new NamespacedKey("allium", "state_charges"), PersistentDataType.STRING, "999");
+            stack.setItemMeta(meta);
+            return stack;
+        }
+        if (tool.startsWith("legacy:")) {
+            String[] p = tool.split(":");
+            ItemStack sword = new ItemStack(Material.NETHERITE_SWORD);
+            ItemMeta meta = sword.getItemMeta();
+            meta.setDisplayName("Phantom Obliterator");
+            meta.setCustomModelData(1011);
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.getByKey(NamespacedKey.minecraft("unbreaking")), 3, true);
+            PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            pdc.set(new NamespacedKey("allium", "custom_item_id"), PersistentDataType.STRING, p[1]);
+            if (p[5].equals("both")) pdc.set(new NamespacedKey("nexo", "id"), PersistentDataType.STRING, p[1]);
+            pdc.set(new NamespacedKey("allium", "phantom_obliterator_charges"), PersistentDataType.INTEGER, Integer.parseInt(p[2]));
+            long rechargeAt = Long.parseLong(p[3]) <= 0 ? 0L : System.currentTimeMillis() + Long.parseLong(p[3]) * 1000L;
+            pdc.set(new NamespacedKey("allium", "phantom_obliterator_recharge_at"), PersistentDataType.LONG, rechargeAt);
+            pdc.set(new NamespacedKey("allium", "phantom_obliterator_uses"), PersistentDataType.LONG, Long.parseLong(p[4]));
+            sword.setItemMeta(meta);
+            return sword;
+        }
+        ItemRef bound = items.refForKey(ProviderKey.parse(tool));
+        ResolutionResult result = items.create(bound.behaviorId().isPresent() ? bound : bound.withBehaviorId("allium:phantom_obliterator"));
+        if (!result.isResolved()) throw new IllegalStateException(tool + ": " + result.diagnosticMessage());
+        return result.itemStack().orElseThrow();
+    }
+
+    private Map<String, Object> obObserve() {
+        Player bot = requireBot();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("main", snapshot(bot.getInventory().getItemInMainHand()));
+        Map<String, Object> enchants = new LinkedHashMap<>();
+        ItemStack held = bot.getInventory().getItemInMainHand();
+        if (held != null && !held.getType().isAir()) held.getEnchantments().forEach((e, level) -> enchants.put(e.getKey().getKey(), level));
+        out.put("mainEnchantments", enchants);
+        List<Map<String, Object>> targets = new ArrayList<>();
+        for (Map.Entry<UUID, String> target : obTargets.entrySet()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            Entity entity = getServer().getEntity(target.getKey());
+            row.put("marker", target.getValue());
+            row.put("kind", target.getValue().split(":")[2]);
+            row.put("loaded", entity != null);
+            row.put("alive", entity != null && entity.isValid() && !entity.isDead());
+            row.put("killer", obDeaths.get(target.getValue()));
+            row.put("damage", obDamage.getOrDefault(target.getValue(), 0));
+            row.put("spared", obSpared.getOrDefault(target.getValue(), 0));
+            targets.add(row);
+        }
+        out.put("targets", targets);
+        out.put("checkEvents", checkEvents);
+        out.put("chunkLoads", obChunkLoads);
+        out.put("now", System.currentTimeMillis());
+        Map<String, Object> fault = new LinkedHashMap<>();
+        fault.put("enabled", FaultInjection.enabled());
+        fault.put("armed", FaultInjection.armed(FaultInjection.ITEM_STATE_WRITE));
+        fault.put("tripped", FaultInjection.tripped(FaultInjection.ITEM_STATE_WRITE));
+        out.put("stateWriteFault", fault);
+        return out;
+    }
+
+    @EventHandler
+    public void onChunkLoad(org.bukkit.event.world.ChunkLoadEvent event) {
+        obChunkLoads++;
+    }
+
+    /** Loads the chunks holding "unloaded" targets again and reports, a little later, which are alive. */
+    private void obReload(String name) {
+        World world = requireBot().getWorld();
+        for (int[] chunk : obUnloaded) world.getChunkAt(chunk[0], chunk[1]).load(true);
+        getServer().getScheduler().runTaskLater(this, () -> {
+            Map<String, Object> out = new LinkedHashMap<>();
+            List<String> alive = new ArrayList<>();
+            for (int[] chunk : obUnloaded) {
+                for (Entity entity : world.getChunkAt(chunk[0], chunk[1]).getEntities()) {
+                    String tag = entity.getPersistentDataContainer().get(marker, PersistentDataType.STRING);
+                    if (tag != null && entity.isValid() && !entity.isDead()) alive.add(tag);
+                }
+            }
+            out.put("aliveAfterReload", alive);
+            try {
+                write(name + "-reload", out);
+            } catch (IOException e) {
+                getLogger().severe("S06A-FAIL ob-reload write " + e);
+            }
+        }, 60L);
+    }
+
+    /** perm <node> true|false|unset on the bot, through one attachment. */
+    private void perm(String node, String value) {
+        Player bot = requireBot();
+        if (attachment == null) attachment = bot.addAttachment(this);
+        if (value.equals("unset")) attachment.unsetPermission(node);
+        else attachment.setPermission(node, Boolean.parseBoolean(value));
+        bot.recalculatePermissions();
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onTargetDamage(org.bukkit.event.entity.EntityDamageByEntityEvent event) {
+        String tag = event.getEntity().getPersistentDataContainer().get(marker, PersistentDataType.STRING);
+        if (tag == null || !(event.getDamager() instanceof Player)) return;
+        obDamage.merge(tag, 1, Integer::sum);
+        if (tag.endsWith(":guard")) {
+            event.setCancelled(true);
+            obSpared.merge(tag, 1, Integer::sum);
+        }
+    }
+
+    @EventHandler
+    public void onTargetDeath(EntityDeathEvent event) {
+        String tag = event.getEntity().getPersistentDataContainer().get(marker, PersistentDataType.STRING);
+        if (tag != null) {
+            Player killer = event.getEntity().getKiller();
+            obDeaths.put(tag, killer == null ? "(none)" : killer.getName());
+        }
+    }
+
     /** What Allium registered for an identity that a definition claimed: nothing, for a rejected one. */
     private Map<String, Object> probe(String identity) {
         Map<String, Object> out = new LinkedHashMap<>();
@@ -245,7 +472,7 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
     }
 
     /** Admin claim (no owner, so the bot has no trust) over the arena, through GriefPrevention's public API. */
-    private Map<String, Object> griefPreventionAdminClaim() throws Exception {
+    private Map<String, Object> griefPreventionAdminClaim(int centerX) throws Exception {
         org.bukkit.plugin.Plugin gp = getServer().getPluginManager().getPlugin("GriefPrevention");
         if (gp == null) gp = getServer().getPluginManager().getPlugin("GriefPrevention3D");
         if (gp == null) throw new IllegalStateException("GriefPrevention is not installed");
@@ -256,7 +483,7 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
         World world = getServer().getWorlds().get(0);
         java.lang.reflect.Method create = dataStore.getClass().getMethod("createClaim", World.class, int.class, int.class,
                 int.class, int.class, int.class, int.class, java.util.UUID.class, claim, Long.class, Player.class);
-        Object result = create.invoke(dataStore, world, -16, 16, world.getMinHeight(), world.getMaxHeight() - 1, -16, 16,
+        Object result = create.invoke(dataStore, world, centerX - 16, centerX + 16, world.getMinHeight(), world.getMaxHeight() - 1, -16, 16,
                 null, null, null, null);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("plugin", gp.getName() + " " + gp.getDescription().getVersion());
@@ -398,6 +625,9 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
     public void onCheck(AlliumProtectionCheckEvent event) {
         checkEvents++;
         if (veto.equals("check-event")) event.setCancelled(true);
+        Entity target = event.getTarget();
+        String tag = target == null ? null : target.getPersistentDataContainer().get(marker, PersistentDataType.STRING);
+        if (tag != null && tag.endsWith(":claimed")) event.setCancelled(true);
     }
 
     @EventHandler

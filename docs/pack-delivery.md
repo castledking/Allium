@@ -98,9 +98,10 @@ server's for every player.
   - for a carrier Allium's pack ships today, a warning, because RPM keeps one file per path;
   - for a carrier of a planned tool, a note that it will collide once that tool ships.
 
-  On SF this reports `Nexo_resource_pack.zip`'s `assets/minecraft/items/blaze_rod.json`, the
-  carrier of the planned Phantom Obliterator. RPM's pack priority decides which file wins; set it
-  deliberately.
+  On SF this used to report `Nexo_resource_pack.zip`'s `assets/minecraft/items/blaze_rod.json`,
+  then the planned Phantom Obliterator's carrier. S10 moved that tool to the phantom membrane,
+  which no readable SF pack overrides, so the audit now reports nothing on SF. Where it does
+  report a collision, RPM's pack priority decides which file wins; set it deliberately.
 - **Dry run:** `rpm-export.dry-run: true` reports the collisions and what would be written, with
   the existing file's SHA-1, and writes nothing.
 - **Unreadable packs:** a pack Allium cannot read, for example for permissions, is reported and

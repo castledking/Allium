@@ -128,6 +128,17 @@ tool:
     protected-reason: "{prefix} &c{reason}"
     single-item: "{prefix} &cHold a single Mob Disarmer, not a stack."
     update-failed: "{prefix} &cThe Mob Disarmer could not be updated, so nothing was used."
+  phantom-obliterator:
+    obliterated: "{prefix} &5Obliterated &d{count} &5unnamed phantom(s). &7Charges: &a{charges}&7/{max}"
+    obliterated-bypass: "{prefix} &5Obliterated &d{count} &5unnamed phantom(s)."
+    nothing-in-range: "{prefix} &7No unnamed phantoms within &d{radius} &7blocks. Charges: &a{charges}&7/{max}"
+    protected: "{prefix} &cThose phantoms are protected here, so nothing was spent."
+    last-charge: "{prefix} &cThat was the last charge. Fully recharged in &f{time}&c."
+    broke: "{prefix} &cThe Phantom Obliterator broke while in use."
+    broken: "{prefix} &cThis Phantom Obliterator is broken."
+    recharging: "{prefix} &cThe Phantom Obliterator is recharging. Ready in &f{time}&c."
+    single-item: "{prefix} &cHold a single Phantom Obliterator, not a stack."
+    update-failed: "{prefix} &cThe Phantom Obliterator could not be updated, so nothing was used."
 
 item:
   give:

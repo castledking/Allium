@@ -35,7 +35,7 @@ class CoreItemsTest {
         assertFalse(byId.get("mob_disarmer").privileged());
         assertEquals(Material.IRON_SHOVEL, byId.get("handcuffs").carrierMaterial());
         assertTrue(byId.get("handcuffs").privileged());
-        assertEquals(Material.BLAZE_ROD, byId.get("phantom_obliterator").carrierMaterial());
+        assertEquals(Material.PHANTOM_MEMBRANE, byId.get("phantom_obliterator").carrierMaterial(), "moved off blaze_rod, which SF's Nexo pack overrides");
         assertEquals(Map.of("charges", "3"), byId.get("phantom_obliterator").defaultState());
         assertEquals(Material.NAME_TAG, byId.get("item_renamer").carrierMaterial());
         assertEquals("§6Mob Disarmer", byId.get("mob_disarmer").displayName());

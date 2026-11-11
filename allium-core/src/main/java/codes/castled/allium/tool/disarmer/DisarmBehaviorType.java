@@ -1,6 +1,7 @@
 package codes.castled.allium.tool.disarmer;
 
 import codes.castled.allium.item.ProviderKey;
+import codes.castled.allium.tool.charge.ChargeSettings;
 import codes.castled.allium.tool.definition.ConfigReader;
 import codes.castled.allium.tool.definition.PermissionDefault;
 import codes.castled.allium.tool.definition.ToolBehaviorType;
@@ -85,24 +86,8 @@ public final class DisarmBehaviorType implements ToolBehaviorType<DisarmParamete
 
     @Override
     public DisarmParameters parse(ConfigReader root, ToolEnvironment environment) {
-        ConfigReader charges = root.section("charges");
-        int max = charges.integer("max", DEFAULT_MAX_CHARGES, 1, 1000);
-        long rechargeSeconds = charges.whole("recharge-seconds", DEFAULT_RECHARGE_SECONDS, 0L, MAX_SECONDS);
-        ConfigReader breakChance = charges.section("break-chance");
-        String preset = breakChance.choice("preset", "none", List.of("none", "legacy", "custom"));
-        double perCharge = breakChance.decimal("per-charge", 0.0D, 0.0D, 1.0D);
-        double finalCharge = breakChance.decimal("final-charge", 0.0D, 0.0D, 1.0D);
-        if (!preset.equals("custom")) {
-            if (perCharge != 0.0D) {
-                breakChance.error("per-charge", "is only used with preset: custom (preset is " + preset + ")");
-            }
-            if (finalCharge != 0.0D) {
-                breakChance.error("final-charge", "is only used with preset: custom (preset is " + preset + ")");
-            }
-            perCharge = preset.equals("legacy") ? DisarmerRules.LEGACY.perChargeBreakChance() : 0.0D;
-            finalCharge = preset.equals("legacy") ? DisarmerRules.LEGACY.finalChargeBreakChance() : 0.0D;
-        }
-        DisarmerRules rules = new DisarmerRules(max, rechargeSeconds * 1000L, perCharge, finalCharge);
+        DisarmerRules rules = ChargeSettings.rules(root, DEFAULT_MAX_CHARGES, DEFAULT_RECHARGE_SECONDS);
+        int max = rules.maxCharges();
 
         ConfigReader targets = root.section("targets");
         double radius = targets.decimal("radius", DEFAULT_RADIUS, 0.0D, 64.0D);
@@ -131,71 +116,10 @@ public final class DisarmBehaviorType implements ToolBehaviorType<DisarmParamete
         long clickGuard = timing.whole("click-guard-millis", DEFAULT_CLICK_GUARD_MILLIS, 0L, 10_000L);
         long statusCooldown = timing.whole("status-cooldown-millis", DEFAULT_STATUS_COOLDOWN_MILLIS, 0L, 3_600_000L);
 
-        List<Map<Integer, ProviderKey>> variants = chargeVariants(root.section("appearance"), max);
+        List<Map<Integer, ProviderKey>> variants = ChargeSettings.variants(root.section("appearance"), max);
 
         return new DisarmParameters(rules, variants, radius, new DisarmTargetPolicy(excluded, excludeNpcs), dropRule,
                 pickupBlockSeconds * 1000L, clickGuard, statusCooldown);
-    }
-
-    /**
-     * {@code appearance.charge-variants}: named sets mapping a charge count ({@code 0..max}) or
-     * {@code broken} to a provider item. An item may appear in one set only.
-     */
-    private static List<Map<Integer, ProviderKey>> chargeVariants(ConfigReader appearance, int max) {
-        List<Map<Integer, ProviderKey>> sets = new ArrayList<>();
-        if (!appearance.has("charge-variants")) {
-            return sets;
-        }
-        ConfigReader root = appearance.section("charge-variants");
-        Set<ProviderKey> seen = new LinkedHashSet<>();
-        for (String setName : root.keys()) {
-            ConfigReader set = root.section(setName);
-            Map<Integer, ProviderKey> parsed = new LinkedHashMap<>();
-            for (String countKey : set.keys()) {
-                Integer count = variantCount(countKey, max);
-                String raw = set.string(countKey, null);
-                if (count == null) {
-                    set.error(countKey, "must be a charge count from 0 to " + max + ", or broken");
-                    continue;
-                }
-                if (raw == null) {
-                    continue;
-                }
-                ProviderKey key;
-                try {
-                    key = ProviderKey.parse(raw.trim());
-                } catch (IllegalArgumentException e) {
-                    set.error(countKey, "invalid item reference '" + raw + "' (" + e.getMessage() + ")");
-                    continue;
-                }
-                if (key.isVanilla() || key.isAllium()) {
-                    set.error(countKey, "'" + raw + "' must be a provider item (nexo:, oraxen: or craftengine:);"
-                            + " built-in tools show their charges by model instead");
-                } else if (seen.contains(key) && !parsed.containsValue(key)) {
-                    set.error(countKey, key + " is already in another variant set");
-                } else {
-                    parsed.put(count, key);
-                }
-            }
-            seen.addAll(parsed.values());
-            if (!parsed.isEmpty()) {
-                sets.add(parsed);
-            }
-        }
-        return sets;
-    }
-
-    private static Integer variantCount(String raw, int max) {
-        String trimmed = raw.trim();
-        if ("broken".equals(trimmed.toLowerCase(Locale.ROOT))) {
-            return DisarmParameters.BROKEN_VARIANT;
-        }
-        try {
-            int count = Integer.parseInt(trimmed);
-            return count >= 0 && count <= max ? count : null;
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 
     /** Each slot's default is the Mob Disarmer's own lang entry, so a slot name is also its key suffix. */

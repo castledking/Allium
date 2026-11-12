@@ -42,6 +42,12 @@ class CoreItemsTest {
         assertEquals(2577050, byId.get("lazy_axe").customModelData());
         assertTrue(byId.get("lazy_axe").signed());
         assertFalse(byId.get("lazy_axe").privileged());
+        // A core tool item binds to its bundled definition's id (tools/<id>.yml), never to the
+        // behavior type: the loader otherwise sees the item as owned by another definition and
+        // rejects the shipped file once it is enabled.
+        assertEquals("allium:mob_disarmer", byId.get("mob_disarmer").behaviorId());
+        assertEquals("allium:phantom_obliterator", byId.get("phantom_obliterator").behaviorId());
+        assertEquals("allium:lazy_axe", byId.get("lazy_axe").behaviorId());
         assertEquals("§6Mob Disarmer", byId.get("mob_disarmer").displayName());
         assertNotNull(getClass().getClassLoader().getResource(CoreItems.PACK_RESOURCE), "the generated pack is bundled");
         assertNotNull(getClass().getClassLoader().getResource(CoreItems.PACK_INFO_RESOURCE));

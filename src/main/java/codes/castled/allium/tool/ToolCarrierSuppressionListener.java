@@ -6,7 +6,10 @@ import org.bukkit.block.BlastFurnace;
 import org.bukkit.block.BrewingStand;
 import org.bukkit.block.Furnace;
 import org.bukkit.block.Smoker;
+import org.bukkit.NamespacedKey;
+import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
+import org.bukkit.event.block.BlockEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
@@ -27,20 +30,27 @@ import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Method;
 import java.util.Objects;
 
 /**
- * Suppresses core tool carriers (phantom membrane, golden hoe, netherite axe) from crafting,
- * smelting, brewing, anvil repairs/sacrifice, smithing, grindstones, villager trading, and hopper
- * automation transfers.
+ * Keeps Allium tools (their carriers are a phantom membrane, a golden hoe, a netherite axe) from
+ * being used up as a material: crafting and the crafter, furnace, blast furnace and smoker smelting
+ * and fuel, brewing, the anvil's material (second) slot, smithing, grindstones, villager trades, and
+ * hopper or other automated transfers into those stations.
  *
- * <p>Only identified Allium tools are blocked; plain vanilla items are completely unaffected.
+ * <p>Only Allium tools are blocked: stacks carrying an Allium behavior, or a pre-recode tool ID.
+ * Plain items and other plugins' custom items are unaffected. A tool may still be repaired, renamed
+ * or combined with a book in the anvil's first slot, and enchanted on an enchanting table.
  */
 public final class ToolCarrierSuppressionListener implements Listener {
+
+    private static final NamespacedKey LEGACY_ITEM_ID = new NamespacedKey("allium", "custom_item_id");
 
     private final Plugin plugin;
     private final ItemService items;
@@ -60,10 +70,25 @@ public final class ToolCarrierSuppressionListener implements Listener {
     }
 
     public boolean isSuppressedTool(@Nullable ItemStack stack) {
-        if (stack == null || stack.getType() == Material.AIR || stack.getType().isAir()) {
+        if (stack == null || stack.getType() == Material.AIR || stack.getType().isAir() || !stack.hasItemMeta()) {
             return false;
         }
-        return items.isCustomItem(stack) || items.readLegacyMetadata(stack).legacyCustomItemId().isPresent();
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null) {
+            return false;
+        }
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        if (pdc.has(ItemService.KEY_BEHAVIOR_ID, PersistentDataType.STRING)) {
+            return true; // a tool, signed or not: a forged one must not be consumed either
+        }
+        String legacy = pdc.get(LEGACY_ITEM_ID, PersistentDataType.STRING);
+        return legacy != null && isLegacyToolId(legacy);
+    }
+
+    /** Pre-recode tool IDs (allium:custom_item_id) that import into a tool on first use. */
+    static boolean isLegacyToolId(String id) {
+        String lower = id.toLowerCase(java.util.Locale.ROOT);
+        return lower.equals("tree_axe") || lower.startsWith("phantom_obliterator") || lower.startsWith("mob_disarmer");
     }
 
     // -- Crafting ----------------------------------------------------------------------------
@@ -117,10 +142,10 @@ public final class ToolCarrierSuppressionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareAnvil(PrepareAnvilEvent event) {
+        // The first slot is the item being worked on: a tool may be repaired, renamed or given a
+        // book's enchantments there. Only the second slot is used up.
         AnvilInventory inv = event.getInventory();
-        ItemStack left = inv.getItem(0);
-        ItemStack right = inv.getItem(1);
-        if (isSuppressedTool(right) || isSuppressedTool(left)) {
+        if (isSuppressedTool(inv.getItem(1))) {
             event.setResult(null);
         }
     }
@@ -252,7 +277,6 @@ public final class ToolCarrierSuppressionListener implements Listener {
                 || type == InventoryType.SMOKER
                 || type == InventoryType.GRINDSTONE
                 || type == InventoryType.MERCHANT
-                || type == InventoryType.ANVIL
                 || type == InventoryType.SMITHING
                 || "CRAFTER".equals(type.name())) {
             for (int rawSlot : event.getRawSlots()) {
@@ -328,20 +352,19 @@ public final class ToolCarrierSuppressionListener implements Listener {
         }
     }
 
+    /** CrafterCraftEvent (1.21+) carries the crafter block, not its grid: read the grid from the block. */
     private void handleCrafterCraft(Event event) {
-        try {
-            Method getInventory = event.getClass().getMethod("getInventory");
-            Inventory inv = (Inventory) getInventory.invoke(event);
-            if (inv != null) {
-                for (ItemStack item : inv.getContents()) {
-                    if (isSuppressedTool(item)) {
-                        Method setCancelled = event.getClass().getMethod("setCancelled", boolean.class);
-                        setCancelled.invoke(event, true);
-                        return;
-                    }
-                }
+        if (!(event instanceof Cancellable cancellable) || !(event instanceof BlockEvent blockEvent)) {
+            return;
+        }
+        if (!(blockEvent.getBlock().getState() instanceof InventoryHolder holder)) {
+            return;
+        }
+        for (ItemStack item : holder.getInventory().getContents()) {
+            if (isSuppressedTool(item)) {
+                cancellable.setCancelled(true);
+                return;
             }
-        } catch (Exception ignored) {
         }
     }
 }

@@ -14,6 +14,10 @@ core:
     lang-applied: "{prefix} &aImported &f{write} &amessage(s) into &f{file}&a; the old file is backed up as &f{backup}&a."
     lang-nothing: "{prefix} &aNothing to import; &f{file} &ais up to date."
     lang-failed: "{prefix} &cThe lang import failed: &f{reason}"
+  adopt-window:
+    opened: "{prefix} &ePre-recode privileged tools are adopted on first use for the next &f{duration}&e. Every adoption is logged. Close it early with &f/allium adopt-window off&e."
+    closed: "{prefix} &aThe adoption window is closed."
+    status: "{prefix} &7The adoption window is &f{state}&7."
 
 error:
   no-permission: "{prefix} &cYou don't have permission to do that."

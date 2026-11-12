@@ -203,8 +203,9 @@ breaking a block.
     then finds those logs gone and skips them, so nothing breaks or drops twice.
   - **Jobs plugins** pay per log.
   - **Event-based anticheat checks** may cancel some breaks, and those logs stay.
-- **Recursion guard:** Allium's own listener ignores the events it causes, through a guard set
-  around each `breakBlock`, so a fell never starts another fell.
+- **Recursion guard:** Allium's own listener ignores the events it causes. The player is marked
+  as felling around each `breakBlock`, and a break event for a marked player never starts a fell,
+  so a fell never starts another fell.
 
 A server that wants none of these side effects sets `mode: direct` and accepts that logging and
 claims plugins see only the first log.
@@ -285,3 +286,27 @@ like the disarmer gate:
 - **Modes and import:**
   - `mode: direct` fires no break events after the first log.
   - A legacy `tree_axe` keeps its enchantments after import.
+
+## As built (S10b)
+
+The operator guide is [tools.md](tools.md#alliumfell_tree), and the gate results are in
+[tests/live/tools/lazyaxe/RESULTS.md](../tests/live/tools/lazyaxe/RESULTS.md).
+- **As designed:** detection, the paced bottom-up fell, the per-log recheck and protection check,
+  the two modes, `stop-before-break`, the sneak modes, the permission and the in-place legacy
+  import.
+- **Re-entry guard:** keyed by player, not by block. While Allium breaks a log for a player, a
+  break event for that player never starts a fell. Unit-tested with a `breakBlock` that fires the
+  event back into the behavior. Live, every log a fell broke fired a real `BlockBreakEvent` with
+  the guard set, and only one fell started.
+- **`LazyAxeFellEvent`:** fired once per fell before any log breaks, in both modes; cancelling it
+  leaves the tree standing.
+- **The job stops** when any chunk the tree touches unloads, and when the player swaps away from
+  the axe, quits, dies or changes world. Before each log, its block must still be a log of the
+  tree's species.
+- **`mode: direct` durability:** Allium sets the damage itself (1 per log, with Unbreaking's
+  chance). It does not fire `PlayerItemDamageEvent`.
+- **The core item** `lazy_axe` binds to the definition `allium:lazy_axe`. It was first bound to
+  the behavior type, which made the shipped file fail to load once enabled; the gate found it.
+- **Unchanged limits:** a tree touching a building block is never felled (the structure guard's
+  false negative), and logs carry no player-placed flag.
+

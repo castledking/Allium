@@ -61,6 +61,10 @@ class FellTreeBehaviorTest {
     private final List<String> diagnostics = new ArrayList<>();
     private final AtomicLong clock = new AtomicLong(1_000_000L);
     private final Set<TreeScanner.Pos> protectedPositions = new HashSet<>();
+    private final List<org.bukkit.event.Event> events = new ArrayList<>();
+    /** When set, every log the axe breaks fires a real BlockBreakEvent back into this behavior, as Player#breakBlock does. */
+    private final AtomicReference<FellTreeBehavior> listening = new AtomicReference<>();
+    private int reentrantEvents;
 
     static final class TestScheduler implements TaskScheduler {
         final List<BooleanSupplier> steps = new ArrayList<>();
@@ -188,6 +192,11 @@ class FellTreeBehaviorTest {
         doAnswer(inv -> {
             Block b = inv.getArgument(0);
             testWorld.brokenBlocks.add(new TreeScanner.Pos(b.getX(), b.getY(), b.getZ()));
+            FellTreeBehavior self = listening.get();
+            if (self != null) {
+                reentrantEvents++;
+                self.onBlockBreak(new BlockBreakEvent(b, player));
+            }
             testWorld.materials.put(new TreeScanner.Pos(b.getX(), b.getY(), b.getZ()), Material.AIR);
             ItemStack hand = player.getInventory().getItemInMainHand();
             if (hand != null && hand.getItemMeta() instanceof Damageable dmg) {
@@ -236,7 +245,7 @@ class FellTreeBehaviorTest {
         return new FellTreeBehavior(
                 items, protection, scheduler, (p, msg, rep) -> sent.add(msg.key()),
                 diagnostics::add, clock::get, random, id -> id.equals(player.getUniqueId()) ? player : null,
-                List.of(new FellTreeTool(definition))
+                events::add, List.of(new FellTreeTool(definition))
         );
     }
 
@@ -260,6 +269,44 @@ class FellTreeBehaviorTest {
         ), testWorld.brokenBlocks);
 
         assertEquals(0, scheduler.steps.size(), "job finished");
+    }
+
+    @Test
+    void logsBrokenByTheAxeNeverStartAnotherFell() {
+        FellTreeBehavior behavior = newBehavior(256, 2, true, "disables");
+        listening.set(behavior);
+        testWorld.setOak(5, false);
+        // Without the guard, each re-entrant event would scan what is left of the tree and start a
+        // second fell (or report busy while the first runs).
+        behavior.onBlockBreak(new BlockBreakEvent(testWorld.mockWorld.getBlockAt(0, 1, 0), player));
+        assertEquals(1, events.size(), "one fell event");
+        assertEquals(1, scheduler.steps.size(), "one job");
+
+        scheduler.tick();
+        scheduler.tick();
+        assertEquals(4, testWorld.brokenBlocks.size(), "the whole tree");
+        assertEquals(4, reentrantEvents, "every log broken by the axe fired a BlockBreakEvent into the behavior");
+        assertEquals(1, events.size(), "and none of them started a fell");
+        assertTrue(sent.isEmpty(), "nor reported busy: " + sent);
+        assertFalse(behavior.isFelling(player.getUniqueId()), "the guard is released after each break");
+        assertEquals(0, scheduler.steps.size());
+
+        // The guard is per break, not per job: the next tree the player chops fells normally.
+        testWorld.setOak(5, false);
+        behavior.onBlockBreak(new BlockBreakEvent(testWorld.mockWorld.getBlockAt(0, 1, 0), player));
+        assertEquals(2, events.size(), "a later manual break fells again");
+    }
+
+    @Test
+    void aCancelledFellEventLeavesTheTreeStanding() {
+        FellTreeBehavior behavior = new FellTreeBehavior(items, new ProtectionService(List.of(), null, diagnostics::add), scheduler,
+                (p, msg, rep) -> sent.add(msg.key()), diagnostics::add, clock::get, RandomGenerator.of("L64X128MixRandom"),
+                id -> player, event -> ((LazyAxeFellEvent) event).setCancelled(true),
+                newBehavior(256, 2, true, "disables").tools().stream().distinct().toList());
+        testWorld.setOak(5, false);
+        behavior.onBlockBreak(new BlockBreakEvent(testWorld.mockWorld.getBlockAt(0, 1, 0), player));
+        assertEquals(0, scheduler.steps.size());
+        assertTrue(testWorld.brokenBlocks.isEmpty());
     }
 
     @Test

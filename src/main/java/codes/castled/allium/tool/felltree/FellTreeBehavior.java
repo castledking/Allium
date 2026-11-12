@@ -16,6 +16,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
@@ -49,6 +50,18 @@ import java.util.random.RandomGenerator;
 public final class FellTreeBehavior {
 
     static final NamespacedKey LEGACY_ITEM_ID = new NamespacedKey("allium", "custom_item_id");
+    /** Looked up by key: the field was renamed (DURABILITY to UNBREAKING) in 1.20.5. */
+    @SuppressWarnings("deprecation")
+    private static final @Nullable Enchantment UNBREAKING = lookupUnbreaking();
+
+    @SuppressWarnings("deprecation")
+    private static @Nullable Enchantment lookupUnbreaking() {
+        try {
+            return Enchantment.getByKey(NamespacedKey.minecraft("unbreaking"));
+        } catch (RuntimeException | LinkageError e) {
+            return null; // no server registry (unit tests)
+        }
+    }
 
     @FunctionalInterface
     public interface Notifier {
@@ -99,11 +112,17 @@ public final class FellTreeBehavior {
     private final LongSupplier clock;
     private final RandomGenerator random;
     private final Function<UUID, Player> players;
+    private final Consumer<Event> events;
     private final Map<String, FellTreeTool> tools;
 
     private final Map<UUID, FellJob> activeJobs = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastUse = new ConcurrentHashMap<>();
-    private final Set<TreeScanner.Pos> recursionGuard = ConcurrentHashMap.newKeySet();
+    /**
+     * The re-entry guard: players whose logs Allium is breaking right now. {@code Player#breakBlock}
+     * fires a real {@code BlockBreakEvent} synchronously, into this behavior's own listener too; an
+     * event for a player in this set was caused by a fell, so it never starts another one.
+     */
+    private final Set<UUID> breakingFor = ConcurrentHashMap.newKeySet();
 
     public FellTreeBehavior(
             ItemService items,
@@ -115,7 +134,8 @@ public final class FellTreeBehavior {
             RandomGenerator random,
             Collection<FellTreeTool> tools
     ) {
-        this(items, protection, scheduler, notifier, diagnostics, clock, random, Bukkit::getPlayer, tools);
+        this(items, protection, scheduler, notifier, diagnostics, clock, random, Bukkit::getPlayer,
+                event -> Bukkit.getPluginManager().callEvent(event), tools);
     }
 
     public FellTreeBehavior(
@@ -127,6 +147,7 @@ public final class FellTreeBehavior {
             LongSupplier clock,
             RandomGenerator random,
             Function<UUID, Player> players,
+            Consumer<Event> events,
             Collection<FellTreeTool> tools
     ) {
         this.items = Objects.requireNonNull(items, "items");
@@ -137,6 +158,7 @@ public final class FellTreeBehavior {
         this.clock = Objects.requireNonNull(clock, "clock");
         this.random = Objects.requireNonNull(random, "random");
         this.players = Objects.requireNonNull(players, "players");
+        this.events = Objects.requireNonNull(events, "events");
         Map<String, FellTreeTool> byId = new LinkedHashMap<>();
         for (FellTreeTool tool : tools) {
             byId.put(tool.id(), tool);
@@ -150,13 +172,12 @@ public final class FellTreeBehavior {
     }
 
     public void onBlockBreak(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        if (breakingFor.contains(player.getUniqueId()) || event.isCancelled()) {
+            return; // a break this behavior caused: never a second fell
+        }
         Block broken = event.getBlock();
         TreeScanner.Pos brokenPos = new TreeScanner.Pos(broken.getX(), broken.getY(), broken.getZ());
-        if (recursionGuard.contains(brokenPos) || event.isCancelled()) {
-            return;
-        }
-
-        Player player = event.getPlayer();
         ItemStack held = player.getInventory().getItemInMainHand();
         if (held == null || held.getType().isAir()) {
             return;
@@ -250,6 +271,11 @@ public final class FellTreeBehavior {
                 scan.species()
         );
 
+        LazyAxeFellEvent fellEvent = new LazyAxeFellEvent(player, broken, tool.id(), scan.logs().size(), tool.parameters().breakAsPlayer());
+        events.accept(fellEvent);
+        if (fellEvent.isCancelled()) {
+            return;
+        }
         activeJobs.put(player.getUniqueId(), job);
         if (tool.parameters().cooldownMillis() > 0) {
             lastUse.put(player.getUniqueId(), now);
@@ -348,15 +374,20 @@ public final class FellTreeBehavior {
     }
 
     private void breakAsPlayer(Player player, Block block) {
-        TreeScanner.Pos pos = new TreeScanner.Pos(block.getX(), block.getY(), block.getZ());
-        recursionGuard.add(pos);
+        UUID id = player.getUniqueId();
+        breakingFor.add(id);
         try {
             player.breakBlock(block);
-        } catch (Throwable t) {
-            diagnostics.accept("player.breakBlock threw at " + block.getLocation() + ": " + t);
+        } catch (RuntimeException e) {
+            diagnostics.accept("player.breakBlock threw at " + block.getLocation() + ": " + e);
         } finally {
-            recursionGuard.remove(pos);
+            breakingFor.remove(id);
         }
+    }
+
+    /** Whether a break by this player right now was caused by a fell (the re-entry guard). */
+    public boolean isFelling(UUID playerId) {
+        return breakingFor.contains(playerId);
     }
 
     private void breakDirect(Player player, Block block, ItemStack axe) {
@@ -364,7 +395,7 @@ public final class FellTreeBehavior {
         if (player.getGameMode() != GameMode.CREATIVE) {
             ItemMeta meta = axe.getItemMeta();
             if (meta instanceof Damageable dmg && !meta.isUnbreakable()) {
-                int unbreaking = axe.getEnchantmentLevel(Enchantment.DURABILITY);
+                int unbreaking = UNBREAKING == null ? 0 : axe.getEnchantmentLevel(UNBREAKING);
                 if (unbreaking == 0 || random.nextInt(unbreaking + 1) == 0) {
                     dmg.setDamage(dmg.getDamage() + 1);
                     axe.setItemMeta(dmg);
@@ -404,7 +435,7 @@ public final class FellTreeBehavior {
         }
         activeJobs.clear();
         lastUse.clear();
-        recursionGuard.clear();
+        breakingFor.clear();
     }
 
     public Map<UUID, FellJob> activeJobs() {

@@ -14,7 +14,8 @@ import java.util.Locale;
 
 /**
  * {@code /allium version}, {@code /allium reload} (see {@link PluginStart#reloadConfiguration}) and
- * {@code /allium import lang [apply]} (see {@link LegacyLangImporter}).
+ * {@code /allium import lang [apply]} (see {@link LegacyLangImporter}) and
+ * {@code /allium adopt-window [<duration>|off]}.
  */
 public final class AlliumCommand implements SpecCommandHandler {
 
@@ -56,8 +57,73 @@ public final class AlliumCommand implements SpecCommandHandler {
                 }
                 importLang(sender, apply);
             }
+            case "adopt-window" -> adoptWindow(context);
             default -> context.sendInvalidArgs(spec().selfUsage());
         }
+    }
+
+    /** The longest window: it is meant to be open only briefly, during a migration. */
+    static final long MAX_ADOPT_WINDOW_MILLIS = 60L * 60L * 1000L;
+
+    /**
+     * {@code /allium adopt-window [<duration>|off]}: opens (or closes) the time-limited window in
+     * which pre-recode privileged tools (the Phantom Obliterator) are adopted on first use. Off by
+     * default, and every adoption is logged. The console may always use it. Anyone else needs
+     * {@code allium.adoptwindow}, which defaults to no one (Bukkit's {@code default: false} also
+     * leaves it off for the console's permission check, hence the explicit console case).
+     */
+    private void adoptWindow(BukkitCommandContext context) {
+        CommandSender sender = context.sender();
+        if (!(sender instanceof org.bukkit.command.ConsoleCommandSender) && !sender.hasPermission("allium.adoptwindow")) {
+            plugin.getMessageManager().sendByKey(sender, spec().messageKeys().noPermissionKey(), "{cmd}", "allium adopt-window");
+            return;
+        }
+        String[] args = context.args();
+        codes.castled.allium.item.ItemService items = plugin.getItemService();
+        if (args.length == 1) {
+            long left = items.privilegedAdoptionWindowRemainingMillis();
+            plugin.getMessageManager().send(sender, Messages.ADOPT_WINDOW_STATUS, "{state}",
+                    left > 0 ? "open for " + formatDuration(left) : "closed");
+            return;
+        }
+        if (args.length != 2) {
+            context.sendInvalidArgs("/allium adopt-window [<duration>|off]");
+            return;
+        }
+        if (args[1].equalsIgnoreCase("off")) {
+            items.disablePrivilegedAdoptionWindow();
+            plugin.logger().warning("Adoption window closed by " + sender.getName() + ".");
+            plugin.getMessageManager().send(sender, Messages.ADOPT_WINDOW_CLOSED);
+            return;
+        }
+        long millis = parseDuration(args[1]);
+        if (millis <= 0 || millis > MAX_ADOPT_WINDOW_MILLIS) {
+            context.sendInvalidArgs("/allium adopt-window <1s-1h, e.g. 10m>|off");
+            return;
+        }
+        items.enablePrivilegedAdoptionWindow(millis);
+        plugin.logger().warning("Adoption window opened by " + sender.getName() + " for " + formatDuration(millis)
+                + ": pre-recode privileged tools are adopted on first use, and each adoption is logged.");
+        plugin.getMessageManager().send(sender, Messages.ADOPT_WINDOW_OPENED, "{duration}", formatDuration(millis));
+    }
+
+    /** {@code 90s}, {@code 10m}, {@code 1h}; -1 when it is not one of those. */
+    static long parseDuration(String text) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d{1,7})([smh])").matcher(text.toLowerCase(Locale.ROOT));
+        if (!m.matches()) {
+            return -1;
+        }
+        long n = Long.parseLong(m.group(1));
+        return switch (m.group(2)) {
+            case "s" -> n * 1000L;
+            case "m" -> n * 60_000L;
+            default -> n * 3_600_000L;
+        };
+    }
+
+    static String formatDuration(long millis) {
+        long seconds = (millis + 999) / 1000;
+        return seconds >= 60 ? (seconds / 60) + "m " + (seconds % 60) + "s" : seconds + "s";
     }
 
     private void importLang(CommandSender sender, boolean apply) {

@@ -57,7 +57,7 @@ commands:
     permission: allium.messagesounds
   allium:
     description: Allium administration
-    usage: /<command> <reload|version|import lang [apply]>
+    usage: /<command> <reload|version|import lang [apply]|adopt-window [<duration>|off]>
   give:
     description: Give items (M1 item-library harness)
     usage: /<command> <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
@@ -83,6 +83,7 @@ permissions:
       allium.mobdisarmer.bypass: true
       allium.phantomobliterator.use: true
       allium.phantomobliterator.bypass: true
+      allium.treeaxe.use: true
       allium.give: true
       allium.give.privileged: true
       allium.reload: true
@@ -93,6 +94,12 @@ permissions:
   allium.import:
     description: Allows /allium import (pre-recode data imports; dry run unless 'apply')
     default: op
+  allium.adoptwindow:
+    description: Allows /allium adopt-window (adopt pre-recode privileged tools on first use for a short time). No one has it by default, so only the console can use it.
+    default: false
+  allium.treeaxe.use:
+    description: Lets the Lazy Axe fell whole trees (the pre-recode node)
+    default: true
   allium.messagesounds:
     description: Allows /messagesounds (/msounds, /mfx) for your own message sound volume
     default: true

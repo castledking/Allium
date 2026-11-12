@@ -129,7 +129,7 @@
     },
     {
       "id": "lazy_axe",
-      "behavior": "allium:fell_tree",
+      "behavior": "allium:lazy_axe",
       "carrier": "netherite_axe",
       "name": "§aLazy Axe",
       "status": "planned",

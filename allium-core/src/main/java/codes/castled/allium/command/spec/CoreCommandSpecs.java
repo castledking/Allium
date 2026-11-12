@@ -179,8 +179,8 @@ public final class CoreCommandSpecs {
             "core",
             List.of(),
             "Allium administration",
-            "/allium <reload|version|import lang [apply]>",
-            "/allium <reload|version|import lang [apply]>",
+            "/allium <reload|version|import lang [apply]|adopt-window [<duration>|off]>",
+            "/allium <reload|version|import lang [apply]|adopt-window [<duration>|off]>",
             null,
             null,
             List.of(),
@@ -190,7 +190,10 @@ public final class CoreCommandSpecs {
                     new CommandNodeSpec("import", List.of(), "allium.import", "/allium import lang [apply]", List.of(), List.of(
                             new CommandNodeSpec("lang", List.of(), "allium.import", "/allium import lang [apply]",
                                     List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null))),
-                                    List.of())))
+                                    List.of()))),
+                    new CommandNodeSpec("adopt-window", List.of(), "allium.adoptwindow", "/allium adopt-window [<duration>|off]",
+                            List.of(CommandArgSpec.optional("duration", "allium.adoptwindow", SuggestionSpec.literals(List.of("10m", "off"), null))),
+                            List.of())
             ),
             CommandMessageKeys.ofOutcomes(Map.of(
                     "reloaded", "core.reload-success",

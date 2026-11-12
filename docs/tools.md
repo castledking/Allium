@@ -18,7 +18,7 @@ restart.**
 | --- | --- | --- |
 | `allium:disarm` | Right-click a mob to take its equipment | `tools/mob_disarmer.yml` (enabled) |
 | `allium:obliterate_phantoms` | Right-click air to kill the unnamed phantoms around you | `tools/phantom_obliterator.yml` (enabled) |
-| `allium:fell_tree` | Planned for S10, off by default; see the [design](lazy-axe-design.md) | — |
+| `allium:fell_tree` | Break one log of a natural tree to fell the whole tree | `tools/lazy_axe.yml` (**disabled**: set `enabled: true`) |
 
 ## Validation
 
@@ -157,8 +157,23 @@ The Phantom Obliterator: right-click air with the tool in the main hand.
 
 ### Pre-recode tools
 
-A pre-recode Phantom Obliterator is adopted in place the first time it is used: a netherite sword
-whose `allium:custom_item_id` **and** `nexo:id` name the same variant.
+A pre-recode Phantom Obliterator is adopted in place the first time it is used **while the
+adoption window is open**: a netherite sword whose `allium:custom_item_id` **and** `nexo:id` name
+the same variant.
+- **The adoption window:** the Obliterator is privileged, so a tag alone must not mint one (anyone
+  in creative mode can write those tags). Adoption at first use happens only while an admin has
+  opened the window with `/allium adopt-window <duration>` (up to `1h`, e.g. `10m`; `off` closes
+  it, and no argument shows what is left).
+  - **Closed by default:** it is closed at every start.
+  - **Who can open it:** its permission, `allium.adoptwindow`, is granted to no one by default
+    (not even ops), so only the console can open it unless an admin grants it.
+  - **Logging:** opening and closing it are logged, and so is every adoption, with the player.
+  - **Open it briefly, only during the migration**, while players bring out their old tools.
+    While it is open, a forged tag on a netherite sword is adopted like a real one.
+  - **Outside the window,** a legacy Obliterator does nothing and stays as it is; Allium logs once
+    that it was refused.
+  - **No offline importer yet:** Allium has no offline importer for item data yet, so the window
+    is the only way in.
 - **What it keeps:** its charges, recharge time, broken flag and uses, plus its enchantments and
   name.
 - **When Nexo is installed:** a stack Nexo recognizes keeps its Nexo appearance.
@@ -170,6 +185,116 @@ whose `allium:custom_item_id` **and** `nexo:id` name the same variant.
 The built-in item is a **phantom membrane** (`custom_model_data` 2577030–2577039, art not shipped
 yet). It was a blaze rod until S10, but SF's Nexo pack overrides `items/blaze_rod.json`. No
 readable SF pack overrides the phantom membrane, and it has no right-click use.
+
+## `allium:fell_tree`
+
+The Lazy Axe: with the axe in your main hand, break one log of a natural tree and Allium fells the
+rest of it, bottom up, over the next ticks. The shipped `tools/lazy_axe.yml` is **disabled**; set
+`enabled: true` and restart. The design and its reasoning are in
+[lazy-axe-design.md](lazy-axe-design.md).
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `families` | `overworld_logs, mangrove, cherry, pale_oak` | Which trees it fells. `stems` (nether fungi) is off by default: a player could build one. |
+| `stripped` | `true` | Stripped logs and wood count as part of the tree. |
+| `search.max-blocks` | `256` (1–2048) | A tree with more logs than this is not felled at all; only the log you broke breaks. The largest vanilla tree is a mega jungle; the gate's had 55–105 logs. |
+| `search.max-radius` | `8` | How far from the broken log, horizontally, a log may be. |
+| `search.max-height` | `48` | How far above or below it. |
+| `search.min-natural-leaves` | `4` | Natural (non-persistent) leaves that must touch the logs. Leaves a player places are persistent, so a log build never fells. |
+| `breaking.blocks-per-tick` | `6` (1–64) | The per-tick budget: at most this many logs break in one server tick. |
+| `breaking.mode` | `break-as-player` | Or `direct`; see below. |
+| `breaking.stop-before-break` | `true` | Stop with 1 durability left instead of breaking the axe. With `false` the axe can break on a log, and the fell stops there. |
+| `sneak` | `disables` | `disables`: sneaking breaks one log, as vanilla does. `required`: only sneaking fells. `ignored`: no difference. |
+| `cooldown-millis` | `0` | Time between fells per player. |
+| `permissions.use` | `allium.treeaxe.use` | The pre-recode node, default everyone. Without it, one log breaks as usual. |
+| `legacy.import` | `true` | Adopt pre-recode `tree_axe` axes in place (see below). |
+| `messages.too-large`, `busy`, `stopped-axe` | `tool.lazy-axe.*` | Lang keys. |
+
+### What the behavior owns
+
+1. **The first log** is broken by vanilla, as always. Allium watches that break at `MONITOR` and
+   never cancels it.
+2. **Detection:** the log must belong to a natural tree:
+   - logs of the same species, joined through their 26 neighbours, within the search bounds, in
+     loaded chunks only;
+   - natural leaves touching them;
+   - the lowest log on the family's ground;
+   - no creaking heart in the trunk;
+   - no log touching a building block (planks, slabs, stairs, fences, doors, glass, ...).
+3. **One fell per player at a time.** Breaking a log while your fell runs says `busy`.
+4. **`LazyAxeFellEvent`** fires once per fell, before any other log breaks. It is cancellable, and
+   cancelling it leaves the tree standing.
+5. **Paced breaking:** bottom up, at most `blocks-per-tick` logs per tick. Before each log, Allium
+   rechecks:
+   - the chunk is still loaded, and the block is still a log of the tree's species;
+   - `ProtectionService` (claims and `AlliumProtectionCheckEvent`) lets the player break it.
+     A log it refuses is left; the others still fall. A tree across a claim border is felled up
+     to the border.
+6. **The fell stops** when:
+   - the player no longer holds the same axe (it changed slot, moved or broke);
+   - the player quits, dies or changes world;
+   - any chunk the tree touches unloads;
+   - `stop-before-break` keeps the last durability point.
+
+### The re-entry guard
+
+In `break-as-player` mode each log is broken with `Player#breakBlock`, which fires a real
+`BlockBreakEvent`, into Allium's own listener too. While Allium breaks a log for a player, that
+player is marked as felling, and a break event for them is never the start of another fell. A
+fell therefore never starts a second fell, however many logs it breaks.
+
+### `break-as-player` and `direct`
+
+| | `break-as-player` (default) | `direct` |
+| --- | --- | --- |
+| **Events per log** | A real `BlockBreakEvent` (and drop event) for every log | None: only the first log's own event, plus one `LazyAxeFellEvent` |
+| **Logging and claims plugins** | See every log (CoreProtect, claims, jobs, mcMMO) | **See only the first log.** CoreProtect and other block loggers do not record the other logs, so a fell in `direct` mode cannot be looked up or rolled back with them. |
+| **Durability** | Vanilla's own, per log, with Unbreaking | 1 per log, with Unbreaking's chance |
+| **Drops** | Vanilla's, with the axe's enchantments | `Block#breakNaturally(axe)`, with the axe's enchantments |
+
+Use `direct` only on a server with no block logging you rely on. Protection is still asked per
+log in both modes.
+
+### Pre-recode tools
+
+A netherite axe whose `allium:custom_item_id` is `tree_axe` is adopted **in place** the first time
+it breaks a block. It keeps everything it carries: its enchantments (Efficiency, Unbreaking,
+Fortune, Mending), damage, custom name and repair cost. The axe is not privileged, so no adoption
+window is needed. The log records each import.
+
+### Limits
+
+- **No "placed by a player" flag on logs:** player-placed logs that touch a natural tree's logs,
+  with nothing else touching them, fell with the tree.
+- **False negatives from the structure guard:** a tree with any log touching a building block
+  (planted flush against a wall, or used as a post) is never felled. Chop it by hand.
+- **Leaves that look natural:** leaves set by WorldEdit or pasted schematics are non-persistent,
+  so they count as natural.
+- **Folia** is not supported: the fell runs on the server thread.
+
+### Carrier
+
+`lazy_axe` is a **netherite axe** (`custom_model_data` 2577050–2577059, art not shipped yet). SF's
+Nexo pack overrides the netherite axe model, so this carrier is audited before the art ships.
+
+## Carriers are not materials
+
+An Allium tool is never used up as a material:
+- **Blocked:**
+  - crafting, including the repair-combine recipe, at a crafting table or a crafter;
+  - furnace, blast furnace and smoker smelting and fuel;
+  - brewing;
+  - the anvil's second (material) slot;
+  - smithing;
+  - the grindstone;
+  - villager trades;
+  - hoppers and other automated transfers into those stations.
+- **Still allowed:**
+  - repairing, renaming or applying a book to a tool in the anvil's **first** slot;
+  - enchanting it on an enchanting table.
+- **What counts as a tool:** only a stack carrying an Allium behavior, or a pre-recode tool ID
+  (`tree_axe`, `phantom_obliterator*`, `mob_disarmer*`). Plain items, and other plugins' custom
+  items on the same materials, are unaffected.
 
 ## Upgrading from an older Allium
 

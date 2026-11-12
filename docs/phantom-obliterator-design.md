@@ -206,8 +206,11 @@ The tool is privileged, so an import must not let a forged tag mint one.
   `charge-variants`.
 - **Legacy adoption and security:** runtime in-place adoption is allowed freely only for
   non-privileged behaviors. Because `allium:obliterate_phantoms` is a privileged behavior, legacy
-  items are adopted only by the offline importer, or during an explicit time-limited adoption window
-  (`ItemService#enablePrivilegedAdoptionWindow`) that is off by default and logs every adoption.
+  items are adopted only by an offline importer (not built yet), or during an explicit
+  time-limited adoption window that is off by default and logs every adoption. An admin opens it
+  with `/allium adopt-window <duration>` (at most `1h`). Its permission, `allium.adoptwindow`, is
+  granted to no one by default, so it is console-only unless granted. Open it briefly, only during
+  the migration.
   Creative-forged legacy tags at runtime are rejected, never adopted and never signed. Server-secret
   HMAC signing prevents unauthorized minting and editing; creative-mode stack duplication is an
   inventory/creative permission concern.

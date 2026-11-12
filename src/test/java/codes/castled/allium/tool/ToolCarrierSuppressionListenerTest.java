@@ -145,7 +145,7 @@ class ToolCarrierSuppressionListenerTest {
     }
 
     @Test
-    void anvilSuppressesResultWhenCustomToolUsedAsRepairMaterialOrBase() {
+    void anvilBlocksAToolOnlyAsTheConsumedSecondItem() {
         AnvilInventory inv = mock(AnvilInventory.class);
         PrepareAnvilEvent event = mock(PrepareAnvilEvent.class);
         when(event.getInventory()).thenReturn(inv);
@@ -167,13 +167,39 @@ class ToolCarrierSuppressionListenerTest {
         listener.onPrepareAnvil(event);
         verify(event, never()).setResult(null);
 
-        // Custom tool as base item in slot 0
+        // The tool in its own (first) slot, repaired with its material: allowed
         reset(event);
         when(event.getInventory()).thenReturn(inv);
         when(inv.getItem(0)).thenReturn(customHoe);
         when(inv.getItem(1)).thenReturn(gold);
         listener.onPrepareAnvil(event);
-        verify(event).setResult(null);
+        verify(event, never()).setResult(null);
+
+        // Renaming it alone: allowed
+        reset(event);
+        when(event.getInventory()).thenReturn(inv);
+        when(inv.getItem(0)).thenReturn(customHoe);
+        when(inv.getItem(1)).thenReturn(null);
+        listener.onPrepareAnvil(event);
+        verify(event, never()).setResult(null);
+    }
+
+    @Test
+    void onlyAlliumToolsAreSuppressedNotOtherCustomItems() {
+        // Another plugin's custom item (a provider appearance, no Allium behavior) is free to craft.
+        ItemStack providerItem = MockItemStacks.create(Material.PHANTOM_MEMBRANE);
+        providerItem.getItemMeta().getPersistentDataContainer().set(
+                new org.bukkit.NamespacedKey("nexo", "id"), org.bukkit.persistence.PersistentDataType.STRING, "some_item");
+        assertFalse(listener.isSuppressedTool(providerItem));
+        // A pre-recode tool is a tool before it is imported.
+        ItemStack legacyAxe = MockItemStacks.create(Material.NETHERITE_AXE);
+        legacyAxe.getItemMeta().getPersistentDataContainer().set(
+                new org.bukkit.NamespacedKey("allium", "custom_item_id"), org.bukkit.persistence.PersistentDataType.STRING, "tree_axe");
+        assertTrue(listener.isSuppressedTool(legacyAxe));
+        ItemStack legacyOther = MockItemStacks.create(Material.PAPER);
+        legacyOther.getItemMeta().getPersistentDataContainer().set(
+                new org.bukkit.NamespacedKey("allium", "custom_item_id"), org.bukkit.persistence.PersistentDataType.STRING, "some_relic");
+        assertFalse(listener.isSuppressedTool(legacyOther), "a pre-recode non-tool item is not a tool");
     }
 
     @Test

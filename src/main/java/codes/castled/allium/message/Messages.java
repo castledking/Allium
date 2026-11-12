@@ -197,6 +197,9 @@ public enum Messages {
     IMPORT_LANG_APPLIED("core.import.lang-applied", "{prefix} &aImported &f{write} &amessage(s) into &f{file}&a; the old file is backed up as &f{backup}&a."),
     IMPORT_LANG_NOTHING("core.import.lang-nothing", "{prefix} &aNothing to import; &f{file} &ais up to date."),
     IMPORT_LANG_FAILED("core.import.lang-failed", "{prefix} &cThe lang import failed: &f{reason}"),
+    ADOPT_WINDOW_OPENED("core.adopt-window.opened", "{prefix} &ePre-recode privileged tools are adopted on first use for the next &f{duration}&e. Every adoption is logged. Close it early with &f/allium adopt-window off&e."),
+    ADOPT_WINDOW_CLOSED("core.adopt-window.closed", "{prefix} &aThe adoption window is closed."),
+    ADOPT_WINDOW_STATUS("core.adopt-window.status", "{prefix} &7The adoption window is &f{state}&7."),
 
     // Preferences (shared by messages, payments and teleport requests)
     PREFERENCES_UNAVAILABLE("preferences.unavailable", "{prefix} &c{player}'s settings are still loading. Try again shortly.");

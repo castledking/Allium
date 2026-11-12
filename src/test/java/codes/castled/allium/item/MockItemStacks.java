@@ -93,6 +93,7 @@ public final class MockItemStacks {
             return null;
         }).when(stack).setAmount(anyInt());
         when(stack.getItemMeta()).thenReturn(meta);
+        when(stack.hasItemMeta()).thenReturn(true);
         when(stack.setItemMeta(any())).thenReturn(true);
         when(stack.clone()).thenAnswer(inv -> create(
                 material,

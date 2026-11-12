@@ -13,21 +13,9 @@ REPO = HERE.parents[3]
 sys.path.insert(0, str(REPO / 'tests/live/providers/trigger'))
 from process_cleanup import stop_process  # noqa: E402
 
-COEXIST = Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-1.21.8-coexist')
-LANES = {
-    'spigot-1.20.1': {'port': 25650, 'java': '/usr/lib/jvm/java-17-openjdk/bin/java', 'client': '1.20.1',
-                      'server': Path('/tmp/allium-server-cache/spigot-1.20.1.jar'), 'providers': []},
-    'paper-1.21.8': {'port': 25651, 'java': '/usr/lib/jvm/java-21-openjdk/bin/java', 'client': '1.21.8',
-                     'server': Path('/tmp/allium-s05-20261106/lanes/artifacts/paper-1.21.8-60.jar'),
-                     'providers': ['nexo', 'craftengine', 'oraxen']},
-    'paper-26.3': {'port': 25652, 'java': '/usr/lib/jvm/java-25-openjdk/bin/java', 'client': 'raw26',
-                   'template': Path('/tmp/allium-s05-20261105/provider-gate/lane'), 'providers': []},
-}
-PROVIDER_JARS = {
-    'nexo': Path('/tmp/allium-s05-20261106/supplied/nexo.jar'),
-    'craftengine': Path('/tmp/allium-s05-20261106/pins/ce/craft-engine-paper-plugin-26.9.1.jar'),
-    'oraxen': Path('/tmp/allium-s05-20261106/supplied/oraxen.jar'),
-}
+sys.path.insert(0, str(HERE.parent))
+from lanes import COEXIST, LANES, PROVIDER_JARS  # noqa: E402  (shared with the other S10 tool gates)
+
 APPEARANCES = {
     'allium': 'allium:mob_disarmer',
     'nexo': 'nexo:mob_disarmer',
@@ -153,12 +141,12 @@ def wait_providers_ready(timeout=120):
 
 
 def write_lane():
-    if a.lane == 'paper-26.3':
+    if 'template' in spec:
         for name in ['libraries', 'versions']:
             shutil.copytree(spec['template'] / name, lane / name)
-    elif a.lane == 'paper-1.21.8':
+    elif 'seed' in spec:
         for name in ['cache', 'libraries', 'versions']:
-            shutil.copytree(COEXIST / name, lane / name)
+            shutil.copytree(spec['seed'] / name, lane / name)
         shutil.copy2(spec['server'], lane / 'server.jar')
     else:
         shutil.copy2(spec['server'], lane / 'server.jar')
@@ -300,13 +288,13 @@ def build_fixture():
     api = '/tmp/allium-lane-spigot-1.20/bundler/libraries/spigot-api-1.20.1-R0.1-SNAPSHOT.jar'
     gson = next((LANES['paper-26.3']['template'] / 'libraries/com/google/code/gson').rglob('*.jar'))
     subprocess.run(['/usr/lib/jvm/java-21-openjdk/bin/javac', '--release', '17', '-cp',
-                    f'{api}:{gson}:{a.allium_jar}', '-d', str(classes), str(HERE / 'plugin/gate/DisarmerGate.java')], check=True)
+                    f'{api}:{gson}:{a.allium_jar}', '-d', str(classes), *map(str, sorted((HERE / 'plugin/gate').glob('*.java')))], check=True)
     shutil.copy2(HERE / 'plugin/plugin.yml', classes / 'plugin.yml')
     subprocess.run(['/usr/lib/jvm/java-21-openjdk/bin/jar', 'cf', str(out / 'DisarmerGate.jar'), '-C', str(classes), '.'], check=True)
 
 
 def argv():
-    if a.lane == 'paper-26.3':
+    if 'template' in spec:
         libs = {}
 
         def version(path):
@@ -315,7 +303,8 @@ def argv():
             artifact = jar.parent.parent
             if artifact not in libs or version(jar) > version(libs[artifact]):
                 libs[artifact] = jar
-        cp = ':'.join(str(x.relative_to(lane)) for x in [lane / 'versions/26.3/paper-26.3.jar', *libs.values()])
+        v = spec['version']
+        cp = ':'.join(str(x.relative_to(lane)) for x in [lane / f'versions/{v}/paper-{v}.jar', *libs.values()])
         return [spec['java'], '-Xms512M', '-Xmx1536M', '-Dterminal.jline=false', '-Dterminal.ansi=false',
                 FAULTS, '-cp', cp, 'org.bukkit.craftbukkit.Main', '--nogui']
     return [spec['java'], '-Xms512M', '-Xmx2G', '-Dterminal.jline=false', '-Dterminal.ansi=false',

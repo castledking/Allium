@@ -157,7 +157,12 @@ def cases():
     require(untouched(obs['targets']), f'{name} creative-forged legacy tag does nothing, targets untouched')
 
     # 2. Privileged legacy adoption with explicit active window
-    g.cmd('dg adopt-window 60000')
+    start = len(g.logs)
+    g.cmd_raw('allium adopt-window 60s')
+    import time
+    time.sleep(1.0)
+    require(any('Adoption window opened by CONSOLE' in x for x in g.logs[start:]),
+            'the console opened the adoption window with /allium adopt-window 60s, and Allium logged it')
 
     name = 'legacy-recharging'
     start = len(g.logs)
@@ -181,7 +186,14 @@ def cases():
     require(obs['main']['behavior'] is None and untouched(obs['targets']),
             f'{name} without a matching nexo:id it is never imported and does nothing')
 
-    g.cmd('dg adopt-window 0')
+    start = len(g.logs)
+    g.cmd_raw('allium adopt-window off')
+    time.sleep(1.0)
+    require(any('Adoption window closed by CONSOLE' in x for x in g.logs[start:]), '/allium adopt-window off closed it, and Allium logged it')
+    name = 'legacy-after-window'
+    base, obs = play(name, 'legacy:phantom_obliterator:3:0:4:both', 'p@6')
+    require(obs['main']['behavior'] is None and obs['main'].get('signature') is None and untouched(obs['targets']),
+            f'{name} once the window is closed, a legacy tag is again neither adopted nor signed')
 
     name = 'radius'
     base, obs = play(name, GATE_OB, 'p@10,p@20')

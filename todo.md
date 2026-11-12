@@ -303,29 +303,46 @@ result and must preserve the existing uncommitted work.
       two bots and the console; see [the results](tests/live/sounds/RESULTS.md). It found and
       fixed two bugs: lang sync re-added omitted sound values, and preference defaults were read
       only at startup.
-- [x] **S10a — Phantom Obliterator & Carrier Suppression:** `tools/phantom_obliterator.yml` on the core
-      behavior `allium:obliterate_phantoms`. Privileged signed identity, protection asked per target,
-      spend-first with refund bound to instance UUID, carrier moved from `blaze_rod` to `phantom_membrane`,
-      carrier suppression across crafting, crafter, furnace smelting & fuel, brewing, anvils, smithing,
-      grindstone, trading and hoppers, and privileged legacy adoption rules (offline import or explicit
-      active adoption window; creative forgery rejected). Gate passed 2026-11-11: 171 live checks; see
-      [the results](tests/live/tools/obliterator/RESULTS.md).
-- [x] **Core tools follow-up:** keep tool carriers out of crafting, brewing, anvils, smelting, smithing,
-      grindstone, trading and hopper automation transfers (live checked on Spigot 1.20.1 and Paper 26.3).
 - [x] **S10 / M4 — Tools: Phantom Obliterator and Lazy Axe** (after S08), implemented from the
       [Obliterator](docs/phantom-obliterator-design.md) and [Lazy Axe](docs/lazy-axe-design.md)
-      designs, as `allium:obliterate_phantoms` and `allium:fell_tree` definitions. The Lazy Axe
-      is off by default.
-      - **Shared work first:** move the charge state and its `charges` block into a shared
-        tool-charges package; add a `particles` slot type; add an ItemService "adopt this stack"
-        operation, so legacy imports keep their enchantments; add a block-break check to
-        `ProtectionService`.
-      - **Core pack:** allocate `lazy_axe` on a `netherite_axe` carrier, run the carrier
-        collision audit, and add Allium's own art.
-      - **Gate:** live checks like the disarmer's, on Spigot 1.20.1 and Paper 26.3 (with
-        GriefPrevention3D). They must include a player-built log structure that is not felled, a
-        tree crossing a claim border, and the largest vanilla tree at the block cap, plus every
-        case listed in the two designs.
+      designs as `allium:obliterate_phantoms` and `allium:fell_tree` definitions. The operator
+      guide is [docs/tools.md](docs/tools.md).
+      - **Phantom Obliterator** (`tools/phantom_obliterator.yml`, enabled):
+        - a privileged signed identity on a phantom membrane (moved off `blaze_rod`);
+        - protection asked per target, spend first, and refunds bound to the same instance UUID;
+        - pre-recode tools adopted in place only while `/allium adopt-window <duration>` is open.
+          The window is console-only by default and logged; a creative-forged tag is never
+          adopted or signed.
+      - **Lazy Axe** (`tools/lazy_axe.yml`, **off by default**):
+        - natural-tree detection, and a paced bottom-up fell within a per-tick budget;
+        - a re-entry guard and `LazyAxeFellEvent`;
+        - a protection check and recheck per log, and a stop on chunk unload, item swap or quit;
+        - `stop-before-break`, the sneak modes and `allium.treeaxe.use`;
+        - in-place `tree_axe` import.
+      - **Carrier suppression:** an Allium tool is never used up as a material. That covers
+        crafting and the crafter, smelting and fuel, brewing, the anvil's second slot, smithing,
+        the grindstone, trades and hopper transfers. Repairing or enchanting a tool in its own
+        slot still works.
+      - **Gates passed:**
+        - **2026-11-12, the Lazy Axe:** 251 live checks
+          ([results](tests/live/tools/lazyaxe/RESULTS.md)).
+        - **2026-11-12, suppression:** 63 ([results](tests/live/tools/suppression/RESULTS.md)).
+        - **Reruns on the same jar:** the Obliterator 177
+          ([results](tests/live/tools/obliterator/RESULTS.md)) and the disarmer gaps 486
+          ([results](tests/live/tools/disarmer/RESULTS.md)).
+        - **Lanes:** Spigot 1.20.1, Paper 26.3 with SF's GriefPrevention3D 19.0.5, and a Paper
+          1.21.8 provider appearance check per tool.
+      - **Fixed after the first S10b commit:**
+        - The shipped `lazy_axe.yml` failed to load once enabled: its core item was bound to the
+          behavior type.
+        - Suppression blocked every custom item and the anvil's first slot, and its crafter hook
+          never fired.
+        - The adoption window could only be opened from the test fixture.
+      - **Still open:**
+        - art for `lazy_axe` and the Obliterator's membrane;
+        - a carrier collision audit for `netherite_axe` (SF's Nexo pack overrides it) before the
+          axe art ships;
+        - an offline importer for privileged item data.
 
 ### Recorded inputs for later slices
 

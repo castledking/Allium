@@ -121,6 +121,28 @@ are in the [S10 manifest](evidence/s10-gaps-manifest.json). Runs are kept in
   - CraftEngine: `allium_gate:mob_disarmer`.
   - Oraxen: `Gate_Disarmer`.
 
+## S10b: the same gate on the S10b jar (2026-11-12)
+
+**PASS: 486 live checks, 0 failures**, all with Allium.jar `28cca311…`, the jar the Lazy Axe,
+suppression and Obliterator gates ran on. The cases, lanes and check counts are the same as
+the 2026-11-09 runs above. The details are in the
+[rerun manifest](evidence/s10b-rerun-manifest.json), and the runs are kept in
+`/mnt/storage/.allium-validation/20261112/s10-disarmer/`.
+
+| Run | Lane | Checks |
+| --- | --- | --- |
+| `gaps-spigot` | Spigot 1.20.1 | 191 |
+| `gaps-paper26` | Paper 26.3 + SF's GriefPrevention3D 19.0.5 | 207 |
+| `upgrade-spigot` | Spigot 1.20.1: the S07 jar, then this jar | 33 |
+| `quick-paper1218` | Paper 1.21.8-60, Nexo, CraftEngine and Oraxen | 55 |
+
+- **What these runs cover:** the definition's own charges and radius (`allium:wand_disarmer`),
+  the path-specific diagnostic text, the claim on 26.3, and the live upgrade.
+- **The upgrade's S07 jar** was rebuilt from commit `daf11a8`. It is byte-identical to the
+  `c877b783…` jar the first run used.
+- **Paper 1.21.8:** it now runs from the official paperclip (build 60, checksum verified),
+  seeded with the S05 lane's caches.
+
 ## Scope and limits
 
 - Providers were exercised on 1.21.8 only, with the supplied Nexo/Oraxen builds and official CE

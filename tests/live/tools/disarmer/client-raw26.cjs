@@ -43,6 +43,9 @@ socket.on('data', chunk => { try {
         const [tp, o] = read(payload);
         // 26.x acknowledges with the id plus the absolute position and rotation it received.
         game('accept_teleportation', Buffer.concat([vi(tp), payload.subarray(o, o + 24), payload.subarray(o + 48, o + 56)]));
+        // As a vanilla client does after a teleport: report the new position, standing on the ground
+        // (ServerboundMovePlayerPacket.PosRot: x, y, z, yRot, xRot, flags; 1 = on ground).
+        if (ready) { game('move_player_pos_rot', Buffer.concat([payload.subarray(o, o + 24), payload.subarray(o + 48, o + 56), Buffer.from([1])])); game('client_tick_end'); }
         console.log('S06A-WIRE TELEPORT_ACK ' + tp + ' ' + JSON.stringify([payload.readDoubleBE(o), payload.readDoubleBE(o + 8), payload.readDoubleBE(o + 16)]));
       }
       if (id === ids.game_CLIENTBOUND['minecraft:commands'] && !ready) { ready = true; game('player_loaded'); game('client_tick_end'); console.log('S06A-WIRE READY protocol777 port=' + port); }
@@ -74,11 +77,41 @@ function dig(x, y, z) {
   game('player_action', Buffer.concat([vi(0), blockPos(x, y, z), Buffer.from([1]), vi(sequence++)]));
   game('client_tick_end');
 }
+// Mines a block for real: START_DESTROY_BLOCK, wait for the server-side progress, STOP_DESTROY_BLOCK.
+// 26.x inserted CHANGE_DESTROY_DIRECTION at ordinal 1, so STOP is 3 (2 is now ABORT).
+function mine(x, y, z, ms) {
+  game('player_action', Buffer.concat([vi(0), blockPos(x, y, z), Buffer.from([1]), vi(sequence++)]));
+  game('client_tick_end');
+  setTimeout(() => {
+    game('player_action', Buffer.concat([vi(3), blockPos(x, y, z), Buffer.from([1]), vi(sequence++)]));
+    game('client_tick_end');
+    console.log('S06A-WIRE SEND mined ' + [x, y, z].join(' '));
+  }, ms);
+}
+// ServerboundUseItemOnPacket: hand, BlockHitResult(pos, face UP, cursor, inside, worldBorderHit), sequence.
+function useOn(x, y, z) {
+  game('use_item_on', Buffer.concat([vi(0), blockPos(x, y, z), vi(1), f32(0.5), f32(1), f32(0.5), Buffer.from([0, 0]), vi(sequence++)]));
+  game('client_tick_end');
+}
+const extra = {
+  mine: ([x, y, z, ms]) => mine(x, y, z, ms || 1500),
+  // ServerboundPlayerInputPacket: one byte of input flags; 0x20 is shift (sneak).
+  sneak: ([on]) => { game('player_input', Buffer.from([on ? 0x20 : 0])); game('client_tick_end'); },
+  slot: ([n]) => { const b = Buffer.alloc(2); b.writeInt16BE(n); game('set_carried_item', b); game('client_tick_end'); },
+  useon: ([x, y, z]) => useOn(x, y, z),
+};
 require('node:readline').createInterface({input: process.stdin}).on('line', line => { try {
   const [action, ...args] = line.trim().split(/\s+/);
   if (action === 'stop') { socket.end(); return; }
   if (!ready) throw Error('wait for READY');
   if (action === 'use') { use(); console.log('S06A-WIRE SEND use'); return; }
+  if (extra[action]) {
+    const nums = args.map(v => v === 'on' ? 1 : v === 'off' ? 0 : Number(v));
+    if (!nums.every(Number.isInteger)) throw Error(action + ' needs integer arguments');
+    extra[action](nums);
+    console.log('S06A-WIRE SEND ' + action + ' ' + args.join(' '));
+    return;
+  }
   if (action === 'dig') {
     const [x, y, z] = args.map(Number);
     if (![x, y, z].every(Number.isInteger)) throw Error('dig x y z');

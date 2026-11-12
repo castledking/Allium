@@ -1,48 +1,36 @@
 # S10: Phantom Obliterator live gate
 
-**PASS on 2026-11-11: 171 live checks, 0 failures**, with carrier suppression and privileged adoption rules.
+**PASS on 2026-11-12: 177 live checks, 0 failures**, all with Allium.jar `28cca311…` (the S10b jar;
+first passed on 2026-11-09 with 157 checks on `aaabac46…`).
 - **Bot:** a real protocol bot right-clicks air with the vanilla use-item packet.
 - **Fixture:** `DisarmerGate`, extended for tools, spawns marked targets 3 blocks above the arena
   at x = 4000. It records the bot's damage events, deaths and their killer, the protection check
   events, the chunk loads during the use, and the tool's signed state.
 
 The details are in the [manifest](evidence/s10-obliterator-manifest.json). Runs are kept in
-`/mnt/storage/.allium-validation/20261109/s10-obliterator/`. The operator guide is
+`/mnt/storage/.allium-validation/20261112/s10-obliterator/`. The operator guide is
 [docs/tools.md](../../../../docs/tools.md#alliumobliterate_phantoms), and the design is in
-[docs/phantom-obliterator-design.md](../../../../docs/phantom-obliterator-design.md).
+[docs/phantom-obliterator-design.md](../../../../docs/phantom-obliterator-design.md). Carrier
+suppression has its own gate: [suppression/RESULTS.md](../suppression/RESULTS.md).
 
 | Run | Lane | Checks |
 | --- | --- | --- |
-| `spigot-test1` | Spigot 1.20.1, minecraft-protocol 1.68.0 | 76 |
-| `paper26-test1` | Paper 26.3-141 + GriefPrevention3D 19.0.5, the owned raw client | 86 |
-| `final-quick-paper1218` | Paper 1.21.8 + Nexo, CraftEngine and Oraxen: a Nexo appearance | 9 |
+| `final-spigot` | Spigot 1.20.1, minecraft-protocol 1.68.0 | 79 |
+| `final-paper26` | Paper 26.3-141 + SF's GriefPrevention3D 19.0.5, the owned raw client | 89 |
+| `final-quick-paper1218` | Paper 1.21.8-60 + Nexo, CraftEngine and Oraxen: a Nexo appearance | 9 |
 
 ## What Spigot 1.20.1 and Paper 26.3 showed
 
-- **Carrier suppression (live checked on both lanes):**
-  - **Brewing stand:** hoppers feeding a brewing stand are blocked when transferring an identified
-    tool (Phantom Obliterator on `phantom_membrane`). The tool stays in the hopper. When a plain
-    vanilla phantom membrane is put in the hopper, it transfers into the brewing stand normally.
-  - **Furnace:** hoppers feeding a furnace are blocked when transferring an identified tool (Mob
-    Disarmer on `golden_hoe`). The tool stays in the hopper. A plain vanilla tool transfers normally.
-  - **Crafting, Anvils & Smithing:** unit and live checks confirm identified tools are blocked from
-    being used as crafting ingredients, crafter ingredients (1.21+), anvil repair material/sacrifice,
-    smithing recipes, grindstone combining, and villager trades. Plain items are unaffected.
-- **Privileged legacy adoption rules & creative forgery protection:**
-  - A creative-forged legacy tag (`allium:custom_item_id = phantom_obliterator`) is **rejected**
-    at runtime by default: it is not adopted, no behavior is assigned, no HMAC signature is minted,
-    and target phantoms are untouched.
-  - When an explicit time-limited adoption window is opened by an operator (`dg adopt-window 60000`),
-    legacy tools are adopted in place with their charges, depleted timestamps, uses, and enchantments
-    preserved, and Allium explicitly logs `ADOPTED PRIVILEGED ITEM`.
-  - Closing the adoption window returns to rejecting unmigrated privileged legacy items.
-- **Instance-bound refunds:**
-  - If a player swaps or drops their tool during an obliterate execution where all targets are spared,
-    Allium detects that the instance UUID has moved or is gone from the main hand, logs the failed
-    refund diagnostic, and credits nothing else.
-- **Security Scope:**
-  - Server-secret HMAC signing prevents unauthorized **minting** and **editing** of PDC tags and item
-    state; creative-mode stack duplication is an inventory/creative permission concern.
+- **Pre-recode tools and the adoption window:**
+  - **Window closed (the default):** a creative-forged legacy tag (`allium:custom_item_id` and
+    `nexo:id` `phantom_obliterator` on a netherite sword) was neither adopted nor signed, and
+    nothing died. Allium logged once that it refused the adoption.
+  - **The console opened it** with `/allium adopt-window 60s`, and Allium logged who opened it.
+    The legacy imports below then ran.
+  - **`/allium adopt-window off`** closed it, and Allium logged that too. A legacy tag was
+    again neither adopted nor signed.
+- **Hoppers** (this gate's own carrier case, kept from S10a): a hopper holding a tool never fed
+  a brewing stand or a furnace, while the plain items moved in.
 - **A use with six targets** (`authorized`): unnamed phantoms at 6 and 20 blocks, a named one at
   8, a guarded one at 10, a claimed one at 12 and a zombie at 5.
   - **Identity:** the fresh tool was a signed `allium:phantom_obliterator` on the phantom membrane
@@ -73,7 +61,7 @@ The details are in the [manifest](evidence/s10-obliterator-manifest.json). Runs 
     item claiming behavior 'allium:phantom_obliterator'"). It did nothing.
 - **Permission:** with `allium.phantomobliterator.use` set false nothing happened, and the tool was
   unchanged.
-- **Legacy import:**
+- **Legacy import, with the window open:**
   - **Recharging:** a pre-recode netherite sword with Unbreaking III, both IDs on
     `phantom_obliterator_0-3`, 0 charges, a recharge 30 s away and 7 uses.
     - It was adopted in place: still a netherite sword with Unbreaking III.
@@ -122,6 +110,11 @@ merge confirms it. The art does not ship yet.
   recheck are unit-tested (`ObliterateBehaviorTest`), as are the target cap and the nearest-first
   order.
 - **Break chances** are unit-tested; the shipped default never breaks.
+- **Refunds** go only to the same instance UUID. If that stack moved or is gone, the failed
+  refund is logged and nothing else is credited (`ObliterateBehaviorTest`).
+- **Scope of the signature:** server-secret HMAC signing prevents minting and editing a tool. It
+  does not prevent creative-mode duplication of an existing one; that is a creative-permission
+  concern.
 
 ## Rerun
 
@@ -132,4 +125,4 @@ python3 tests/live/tools/obliterator/run.py --lane paper-26.3 --run-name <name> 
 python3 tests/live/tools/obliterator/run.py --lane paper-1.21.8 --run-name <name> --quick
 ```
 
-The runs use the disarmer gate's owned ports 25650–25652 and its clients, and run one at a time.
+The runs use the disarmer gate's owned ports 25650–25652 and its clients; one run per lane at a time.

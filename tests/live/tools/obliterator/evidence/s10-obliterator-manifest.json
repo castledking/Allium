@@ -1,34 +1,53 @@
 {
-  "slice": "S10 Phantom Obliterator & Carrier Suppression",
-  "date": "2026-11-11",
-  "alliumJarSha256": "15a15a46f230abb5be66b66b126228bf0f84404131b716e05260c38ce5aa739f",
-  "griefPrevention": "GriefPrevention3D 19.0.5 (a binary copy of SF's jar)",
+  "slice": "S10 Phantom Obliterator (rerun on the S10b jar)",
+  "date": "2026-11-12",
+  "alliumJarSha256": "28cca311f09b7301b14f1f238b8ff38db09ba88815e609d8c64b0e977c18d80a",
+  "artifacts": {
+    "paper-1.21.8-60.jar": {
+      "sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+      "source": "fill.papermc.io, build 60, checksum matches the API"
+    },
+    "GriefPrevention3D-19.0.5.jar": {
+      "sha256": "da2cf6f8fd9969c1d0968293c8d00b91c22ea593804d2728aa1e0c223b5dea50",
+      "source": "a binary copy of SF's jar, no data"
+    }
+  },
+  "harness": {
+    "tests/live/tools/disarmer/client-mcp.cjs": "5841172ff761015e0f4a60349f838daf0f09eaa33a7788b24df1b6beff31543f",
+    "tests/live/tools/disarmer/client-raw26.cjs": "837832ec533ce5c2bc91a1b65d643555aa5fd69a9c1ff14789c20ec4b4566eb8",
+    "tests/live/tools/disarmer/plugin/gate/DisarmerGate.java": "ddab396a560f6f77e5b5a72c89a185e9c5abf24e3a4ae344b108f807a41f3193",
+    "tests/live/tools/disarmer/plugin/gate/ToolsGate.java": "407210c9724282362c2eacc2666bc1efe704569444a54c94b236f2d6d8c846f3",
+    "tests/live/tools/disarmer/plugin/plugin.yml": "02b7579c1f56ba489b2a9b0d547c7660f1e708b1b19168ccafa41056863ea48d",
+    "tests/live/tools/disarmer/run.py": "54917201407f1ee3451c4c6873d26afcd1297014dfc2ed970435ed784eb0c586",
+    "tests/live/tools/lanes.py": "ecdfcffaa9a04cc38c4db07e682eeb868774d53e52fe7de6f6da1a0bd5411e61",
+    "tests/live/tools/lazyaxe/run.py": "8acd0ba2b90c59c65b2c19ad41732527cc11276c41c38fb6c3ba7b2b6ba8389f",
+    "tests/live/tools/obliterator/run.py": "0d0af8305517653dd95123a9cb440b38080a412dcba42544577afe76beb37d0f",
+    "tests/live/tools/suppression/run.py": "7ab6f6f21c19584836e748caecef761cc8f51ef4e2e33c56333d188f86f83250"
+  },
+  "persistedEvidence": "/mnt/storage/.allium-validation/20261112/s10-obliterator/",
   "carrierAudit": {
     "run": "s10-carrier2 (tests/live/delivery, rpm scenario, a copy of SF's mixer)",
     "checks": 8,
     "failures": []
   },
-  "harness": {
-    "tests/live/tools/obliterator/run.py": "f67ec549bb0939612fac19f5c44d49a0da324e81ee985d0fc40417befb9d88fa",
-    "tests/live/tools/disarmer/client-mcp.cjs": "407f27ee0d5fe43ce98752d34b0d9fb8de5a8b257ba97242b5d377f44f9d71c8",
-    "tests/live/tools/disarmer/client-raw26.cjs": "c18f7814a8fdad6b7125d98a1e9540a27ce2c6540575682be5b4720dd21d6575",
-    "tests/live/tools/disarmer/plugin/gate/DisarmerGate.java": "6c61b38490d1c2cc741539ee24a9f69d88b10c90e3e4115a0a10733917289a51",
-    "tests/live/tools/disarmer/plugin/plugin.yml": "02b7579c1f56ba489b2a9b0d547c7660f1e708b1b19168ccafa41056863ea48d",
-    "tests/live/tools/disarmer/run.py": "d9701146eaab52d9354b54228a207257da44738a7727505f5fdac9e55426ffa4",
-    "tests/live/tools/lanes.py": "8988403c60ca420cb16f967d302c2ac650421e4d8c4c01479b698e1cbe674f47"
-  },
-  "persistedEvidence": "/mnt/storage/.allium-validation/20261111/s10-obliterator/",
+  "checks": 177,
+  "failures": 0,
   "runs": [
     {
-      "run": "spigot-test1",
       "lane": "spigot-1.20.1",
+      "port": 25650,
       "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
-      "checks": 76,
+      "client": "1.20.1",
+      "providers": [],
+      "checks": 79,
       "failures": [],
+      "serverLogErrors": [],
       "hashes": {
-        "DisarmerGate.jar": "2f80cafe6c2f84bb17ddae1c3a04965cfe3c1d7b140cc61910a0ef800eb75e2e",
-        "Allium.jar": "15a15a46f230abb5be66b66b126228bf0f84404131b716e05260c38ce5aa739f"
+        "DisarmerGate.jar": "68a524af9fb0e13a870616128d0b06327676366c48e8d77637d9ccf261ce153b",
+        "Allium.jar": "28cca311f09b7301b14f1f238b8ff38db09ba88815e609d8c64b0e977c18d80a"
       },
+      "tool": "allium:phantom_obliterator",
+      "run": "final-spigot",
       "driver": [
         "BOOT initial",
         "PASS initial fixture enabled",
@@ -78,18 +97,21 @@
         "PASS creative-forged-legacy-rejected creative-forged legacy tag has no behavior without adoption window",
         "PASS creative-forged-legacy-rejected creative-forged legacy tag is not signed",
         "PASS creative-forged-legacy-rejected creative-forged legacy tag does nothing, targets untouched",
-        "PASS legacy-recharging adopted in place: 0 charges, the depleted timestamp (22950 ms left), 7 uses, its Unbreaking III kept ({'recharge_at': '1794463670762', 'charges': '0', 'uses': '7', 'broken': 'false'})",
+        "PASS the console opened the adoption window with /allium adopt-window 60s, and Allium logged it",
+        "PASS legacy-recharging adopted in place: 0 charges, the depleted timestamp (22950 ms left), 7 uses, its Unbreaking III kept ({'recharge_at': '1794483924892', 'charges': '0', 'uses': '7', 'broken': 'false'})",
         "PASS legacy-recharging and it is still recharging, so nothing died",
         "PASS legacy-recharging Allium logged the import",
         "PASS legacy-full a charged legacy tool imports and works: 3 -> 2 charges, uses 4 -> 5 ({'recharge_at': '0', 'charges': '2', 'uses': '5', 'broken': 'false'})",
         "PASS legacy-model-only without a matching nexo:id it is never imported and does nothing",
+        "PASS /allium adopt-window off closed it, and Allium logged it",
+        "PASS legacy-after-window once the window is closed, a legacy tag is again neither adopted nor signed",
         "PASS radius a second definition's own 16-block radius: the phantom at 10 died, the one at 20 was never touched",
         "PASS radius exactly one charge spent: allium:gate_obliterator {'recharge_at': '0', 'uses': '1', 'charges': '2', 'broken': 'false'}",
         "PASS radius instance UUID kept, re-signed",
         "PASS charge-1 -> 2 charges ({'recharge_at': '0', 'uses': '1', 'charges': '2', 'broken': 'false'})",
         "PASS charge-2 -> 1 charges ({'recharge_at': '0', 'uses': '2', 'charges': '1', 'broken': 'false'})",
-        "PASS charge-3 -> 0 charges ({'recharge_at': '1794463808434', 'uses': '3', 'charges': '0', 'broken': 'false'})",
-        "PASS spending the last charge started the 120 s recharge (117972 ms)",
+        "PASS charge-3 -> 0 charges ({'recharge_at': '1794484070612', 'uses': '3', 'charges': '0', 'broken': 'false'})",
+        "PASS spending the last charge started the 120 s recharge (117970 ms)",
         "PASS recharging an empty tool kills nothing until it recharges",
         "PASS carrier-suppression tool blocked from hopper transfer into brewing stand",
         "PASS carrier-suppression plain phantom membrane transferred into brewing stand",
@@ -111,16 +133,21 @@
       ]
     },
     {
-      "run": "paper26-test1",
       "lane": "paper-26.3",
+      "port": 25652,
       "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
-      "checks": 86,
+      "client": "raw26",
+      "providers": [],
+      "checks": 89,
       "failures": [],
+      "serverLogErrors": [],
       "hashes": {
-        "GriefPrevention3D-Universal-19.0.5.jar": "548ec201290f6dc93eaf5b58d5f8b0801f14bbfb8cd4392c4a6b92a83d9a6a32",
-        "DisarmerGate.jar": "ed553ca4a73c1652bb277fbe78bc7e4bcdc6c8b844f36af17e738bb0057fd94d",
-        "Allium.jar": "15a15a46f230abb5be66b66b126228bf0f84404131b716e05260c38ce5aa739f"
+        "GriefPrevention3D-19.0.5.jar": "da2cf6f8fd9969c1d0968293c8d00b91c22ea593804d2728aa1e0c223b5dea50",
+        "DisarmerGate.jar": "68a524af9fb0e13a870616128d0b06327676366c48e8d77637d9ccf261ce153b",
+        "Allium.jar": "28cca311f09b7301b14f1f238b8ff38db09ba88815e609d8c64b0e977c18d80a"
       },
+      "tool": "allium:phantom_obliterator",
+      "run": "final-paper26",
       "driver": [
         "BOOT initial",
         "PASS initial fixture enabled",
@@ -171,18 +198,21 @@
         "PASS creative-forged-legacy-rejected creative-forged legacy tag has no behavior without adoption window",
         "PASS creative-forged-legacy-rejected creative-forged legacy tag is not signed",
         "PASS creative-forged-legacy-rejected creative-forged legacy tag does nothing, targets untouched",
-        "PASS legacy-recharging adopted in place: 0 charges, the depleted timestamp (22950 ms left), 7 uses, its Unbreaking III kept ({'charges': '0', 'uses': '7', 'broken': 'false', 'recharge_at': '1794463829688'})",
+        "PASS the console opened the adoption window with /allium adopt-window 60s, and Allium logged it",
+        "PASS legacy-recharging adopted in place: 0 charges, the depleted timestamp (22950 ms left), 7 uses, its Unbreaking III kept ({'charges': '0', 'uses': '7', 'broken': 'false', 'recharge_at': '1794483924000'})",
         "PASS legacy-recharging and it is still recharging, so nothing died",
         "PASS legacy-recharging Allium logged the import",
         "PASS legacy-full a charged legacy tool imports and works: 3 -> 2 charges, uses 4 -> 5 ({'charges': '2', 'uses': '5', 'broken': 'false', 'recharge_at': '0'})",
         "PASS legacy-model-only without a matching nexo:id it is never imported and does nothing",
+        "PASS /allium adopt-window off closed it, and Allium logged it",
+        "PASS legacy-after-window once the window is closed, a legacy tag is again neither adopted nor signed",
         "PASS radius a second definition's own 16-block radius: the phantom at 10 died, the one at 20 was never touched",
         "PASS radius exactly one charge spent: allium:gate_obliterator {'charges': '2', 'uses': '1', 'broken': 'false', 'recharge_at': '0'}",
         "PASS radius instance UUID kept, re-signed",
         "PASS charge-1 -> 2 charges ({'charges': '2', 'uses': '1', 'broken': 'false', 'recharge_at': '0'})",
         "PASS charge-2 -> 1 charges ({'charges': '1', 'uses': '2', 'broken': 'false', 'recharge_at': '0'})",
-        "PASS charge-3 -> 0 charges ({'charges': '0', 'uses': '3', 'broken': 'false', 'recharge_at': '1794463967367'})",
-        "PASS spending the last charge started the 120 s recharge (117979 ms)",
+        "PASS charge-3 -> 0 charges ({'charges': '0', 'uses': '3', 'broken': 'false', 'recharge_at': '1794484069786'})",
+        "PASS spending the last charge started the 120 s recharge (117986 ms)",
         "PASS recharging an empty tool kills nothing until it recharges",
         "PASS carrier-suppression tool blocked from hopper transfer into brewing stand",
         "PASS carrier-suppression plain phantom membrane transferred into brewing stand",
@@ -214,18 +244,27 @@
       ]
     },
     {
-      "run": "final-quick-paper1218",
       "lane": "paper-1.21.8",
+      "port": 25651,
       "server": "This server is running Paper version 1.21.8-60-main@29c8822 (2025-09-06T21:49:13Z) (Implementing API version 1.21.8-R0.1-SNAPSHOT)",
+      "client": "1.21.8",
+      "providers": [
+        "nexo",
+        "craftengine",
+        "oraxen"
+      ],
       "checks": 9,
       "failures": [],
+      "serverLogErrors": [],
       "hashes": {
         "oraxen.jar": "9994da9b78f2e86bea657eeaff5bff01865709d46a3b5828fae62bbc5aa17df2",
         "craftengine.jar": "021260c87e3546730d321f4360b1744e6e33caa1d68e98ae30dcdbbdc347ae0f",
         "nexo.jar": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b",
-        "DisarmerGate.jar": "57d651e9a299ad67616b5e15a4ac43613866a0076e26b4cb3018eb02afa5a17c",
-        "Allium.jar": "aaabac462e99b1a581f7c92191d51f210a28e1dcad18051211255efa30589a4a"
+        "DisarmerGate.jar": "20277bb94bb10697cb010120507f0915b6eb6872ae019ad97b4cdaa7c2a0cb46",
+        "Allium.jar": "28cca311f09b7301b14f1f238b8ff38db09ba88815e609d8c64b0e977c18d80a"
       },
+      "tool": "allium:phantom_obliterator",
+      "run": "final-quick-paper1218",
       "driver": [
         "BOOT initial",
         "PASS initial fixture enabled",

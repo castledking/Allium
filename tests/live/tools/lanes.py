@@ -14,18 +14,23 @@ DISARMER = TOOLS / 'disarmer'
 sys.path.insert(0, str(REPO / 'tests/live/providers/trigger'))
 from process_cleanup import stop_process  # noqa: E402
 
+# Immutable gate inputs live on persistent storage (/tmp is wiped on reboot): official server jars
+# (checksums in infra/README.md), the protocol client, the Spigot API for the fixture build, and a
+# binary copy of SF's GriefPrevention3D 19.0.5 (no data). Runs themselves stay disposable in /tmp.
+INFRA = Path('/mnt/storage/.allium-validation/infra')
 COEXIST = Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-1.21.8-coexist')
+SEED_263 = Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3')
 LANES = {
     'spigot-1.20.1': {'port': 25650, 'java': '/usr/lib/jvm/java-17-openjdk/bin/java', 'client': '1.20.1',
-                      'server': Path('/tmp/allium-server-cache/spigot-1.20.1.jar'), 'providers': []},
-    # Paper 1.21.8-60: the official paperclip (sha256 8de7c52c..., the build S05 used), seeded with the
-    # cache, libraries and versions the passing S05 coexist lane kept. Paperclip puts only the
-    # server's own libraries on the classpath; the plugins' downloaded libraries stay theirs.
+                      'server': INFRA / 'servers/spigot-1.20.1.jar', 'providers': []},
+    # Paper's official paperclips (sha256 8de7c52c... and 82e32117...), seeded with the caches and
+    # libraries the passing S05 lanes kept. Paperclip puts only the server's own libraries on the
+    # classpath; the plugins' downloaded libraries stay theirs.
     'paper-1.21.8': {'port': 25651, 'java': '/usr/lib/jvm/java-21-openjdk/bin/java', 'client': '1.21.8',
-                     'server': Path('/tmp/allium-s10-20261112/artifacts/paper-1.21.8-60.jar'), 'seed': COEXIST,
+                     'server': INFRA / 'servers/paper-1.21.8-60.jar', 'seed': COEXIST,
                      'providers': ['nexo', 'craftengine', 'oraxen']},
     'paper-26.3': {'port': 25652, 'java': '/usr/lib/jvm/java-25-openjdk/bin/java', 'client': 'raw26',
-                   'template': Path('/tmp/allium-s05-20261105/provider-gate/lane'), 'version': '26.3', 'providers': []},
+                   'server': INFRA / 'servers/paper-26.3-141.jar', 'seed': SEED_263, 'providers': []},
 }
 # The same provider binaries the S05 coexist lane passed with (CraftEngine 26.9.1).
 PROVIDER_JARS = {
@@ -33,8 +38,10 @@ PROVIDER_JARS = {
     'craftengine': COEXIST / 'plugins/craftengine.jar',
     'oraxen': COEXIST / 'plugins/oraxen.jar',
 }
-# SF's GriefPrevention3D 19.0.5 plugin binary (sha256 da2cf6f8...), copied alone: no data.
-GRIEFPREVENTION = Path('/tmp/allium-s10-20261112/artifacts/GriefPrevention3D-19.0.5.jar')
+GRIEFPREVENTION = INFRA / 'plugins/GriefPrevention3D-19.0.5.jar'
+SPIGOT_API = INFRA / 'api/spigot-api-1.20.1-R0.1-SNAPSHOT.jar'
+GSON = next((COEXIST / 'libraries/com/google/code/gson').rglob('gson-*.jar'))
+CLIENT_MODULE = INFRA / 'client/node_modules/minecraft-protocol'
 FAULTS = '-Dallium.fault-injection=true'
 
 
@@ -83,14 +90,14 @@ class Gate:
         out = self.run / 'fixture'
         classes = out / 'classes'
         classes.mkdir(parents=True)
-        api = '/tmp/allium-lane-spigot-1.20/bundler/libraries/spigot-api-1.20.1-R0.1-SNAPSHOT.jar'
-        gson = next((LANES['paper-26.3']['template'] / 'libraries/com/google/code/gson').rglob('*.jar'))
+        api, gson = SPIGOT_API, GSON
         subprocess.run(['/usr/lib/jvm/java-21-openjdk/bin/javac', '--release', '17', '-cp', f'{api}:{gson}:{self.allium_jar}',
                         '-d', str(classes), *map(str, sorted((DISARMER / 'plugin/gate').glob('*.java')))], check=True)
         shutil.copy2(DISARMER / 'plugin/plugin.yml', classes / 'plugin.yml')
         subprocess.run(['/usr/lib/jvm/java-21-openjdk/bin/jar', 'cf', str(out / 'DisarmerGate.jar'), '-C', str(classes), '.'], check=True)
 
-    def write_lane(self, tool_files, seed=7101109, providers_setup=None):
+    def write_lane(self, tool_files, seed=7101109, providers_setup=None, terrain='flat'):
+        """terrain: 'flat' (the default) or 'normal' (vanilla worldgen, for natural trees)."""
         """tool_files: {name: yaml text} written to plugins/Allium/tools/ before the first start."""
         lane, spec = self.lane, self.spec
         lane.mkdir(parents=True)
@@ -117,6 +124,9 @@ class Gate:
         if providers_setup:
             providers_setup(plugins)
         (lane / 'eula.txt').write_text('eula=true\n')
+        world = ('level-type=minecraft:normal\n' if terrain == 'normal' else
+                 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},'
+                 '{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\n')
         (lane / 'server.properties').write_text(f'''server-ip=127.0.0.1
 server-port={self.port}
 online-mode=false
@@ -131,9 +141,7 @@ view-distance=2
 simulation-distance=2
 level-name=world
 level-seed={seed}
-level-type=minecraft:flat
-generator-settings={{"layers":[{{"block":"minecraft:bedrock","height":1}},{{"block":"minecraft:dirt","height":2}},{{"block":"minecraft:grass_block","height":1}}],"biome":"minecraft:plains"}}
-generate-structures=false
+{world}generate-structures=false
 allow-nether=false
 pause-when-empty-seconds=-1
 max-tick-time=120000
@@ -189,8 +197,9 @@ network-compression-threshold=256
     def connect(self, label):
         start = len(self.client_logs)
         script = 'client-raw26.cjs' if self.spec['client'] == 'raw26' else 'client-mcp.cjs'
+        env = {**__import__('os').environ, 'MC_PROTOCOL_MODULE': str(CLIENT_MODULE)}
         args = ['node', str(DISARMER / script), str(self.lane), str(self.port)] + ([] if self.spec['client'] == 'raw26' else [self.spec['client']])
-        self.client = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        self.client = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, env=env)
         t = threading.Thread(target=self._pump, args=(self.client, self.run / 'client.log', self.client_logs), daemon=True)
         t.start()
         self.threads.append(t)

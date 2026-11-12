@@ -63,7 +63,7 @@ public final class CorePackMain {
         AssetManifest manifest = AssetManifest.parse(Files.readString(manifestPath));
         Path textures = textureRoot == null ? root : textureRoot;
         SortedMap<String, byte[]> files = CorePackBuilder.files(manifest, t -> Files.readAllBytes(textures.resolve(t.file())), textureRoot == null);
-        List<String> problems = PackValidator.structure(files, manifest);
+        List<String> problems = PackValidator.structure(files, manifest, textureRoot != null);
         if (!problems.isEmpty()) {
             problems.forEach(p -> System.err.println("INVALID " + p));
             return 1;
@@ -91,7 +91,8 @@ public final class CorePackMain {
         byte[] zip = Files.readAllBytes(Path.of(args[1]));
         AssetManifest manifest = AssetManifest.parse(Files.readString(Path.of(args[2])));
         SortedMap<String, byte[]> files = PackValidator.unzip(zip);
-        List<String> structure = PackValidator.structure(files, manifest);
+        boolean localExport = java.util.Arrays.asList(args).contains("--local-export");
+        List<String> structure = PackValidator.structure(files, manifest, localExport);
         List<Object> lanes = new ArrayList<>();
         boolean clean = structure.isEmpty();
         Path report = null;
@@ -113,6 +114,8 @@ public final class CorePackMain {
                 lane.put("renders", new java.util.TreeMap<>(result.renders()));
                 lanes.add(lane);
                 i += 4;
+            } else if (args[i].equals("--local-export")) {
+                i++;
             } else if (args[i].equals("--report") && i + 1 < args.length) {
                 report = Path.of(args[i + 1]);
                 i += 2;
@@ -158,7 +161,7 @@ public final class CorePackMain {
 
     private static void usage() {
         System.err.println("usage: build <manifest> <pack root> <out dir> [--texture-root <dir>] [--name <zip>]\n"
-                + "       validate <zip> <manifest> [--lane <label> <format> <client.jar>]... [--report <file>]\n"
+                + "       validate <zip> <manifest> [--lane <label> <format> <client.jar>]... [--report <file>] [--local-export]\n"
                 + "       mcmeta <client format> <pack.mcmeta>...");
         System.exit(2);
     }

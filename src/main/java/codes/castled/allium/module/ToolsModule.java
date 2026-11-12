@@ -196,7 +196,9 @@ public final class ToolsModule extends AbstractModule {
         }
         registerPermissions(definition);
         if (DisarmBehaviorType.ID.equals(definition.behavior())) {
-            installDisarmVisuals(items, definition);
+            installChargeVisuals(items, definition, definition.parameters(DisarmParameters.class).rules().maxCharges());
+        } else if (ObliterateBehaviorType.ID.equals(definition.behavior())) {
+            installChargeVisuals(items, definition, definition.parameters(ObliterateParameters.class).rules().maxCharges());
         }
     }
 
@@ -218,10 +220,10 @@ public final class ToolsModule extends AbstractModule {
     }
 
     /**
-     * A core pack tool (the built-in Mob Disarmer) shows its charge state by model selection from
-     * the pack manifest, scaled to its own definition's charges.
+     * A core pack tool with charges (the built-in Mob Disarmer and Phantom Obliterator) shows its
+     * charge state by model selection from the pack manifest, scaled to its own definition's charges.
      */
-    private void installDisarmVisuals(ItemService items, ToolDefinition definition) {
+    private void installChargeVisuals(ItemService items, ToolDefinition definition, int max) {
         if (definition.item() != null) {
             return;
         }
@@ -236,7 +238,6 @@ public final class ToolsModule extends AbstractModule {
         }
         Map<String, Integer> byState = new HashMap<>();
         tool.get().states().forEach(state -> byState.put(state.key(), state.customModelData()));
-        int max = definition.parameters(DisarmParameters.class).rules().maxCharges();
         items.setModelSelector(definition.localId(),
                 state -> byState.get(DisarmerVisualState.of(DisarmerCharges.fromState(state, max), max).key()));
         modelSelectors.add(definition.localId());
@@ -284,6 +285,19 @@ public final class ToolsModule extends AbstractModule {
     }
 
     /** The fell tree behavior, or {@code null} when no Lazy Axe is enabled. */
+    /**
+     * The disabled definition (enabled: false) that owns {@code appearance}, if any: its item still
+     * exists, but it has no behavior until the definition is enabled and the server restarts.
+     */
+    public java.util.Optional<ToolDefinition> disabledDefinitionFor(codes.castled.allium.item.ProviderKey appearance) {
+        if (loaded == null) {
+            return java.util.Optional.empty();
+        }
+        return loaded.definitions().stream()
+                .filter(d -> !d.enabled() && d.boundAppearances().contains(appearance))
+                .findFirst();
+    }
+
     public FellTreeBehavior fellTree() {
         return fellTree;
     }

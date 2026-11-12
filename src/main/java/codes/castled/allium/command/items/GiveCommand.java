@@ -91,6 +91,7 @@ public final class GiveCommand implements SpecCommandHandler {
             }
         }
         String itemText = spec.items().stream().map(ItemReference::text).collect(Collectors.joining(","));
+        warnDisabledTools(sender, spec);
         boolean mayGivePrivileged = sender.hasPermission(PERMISSION_PRIVILEGED);
         for (Player target : targets) {
             ItemLibrary.Prepared prepared;
@@ -113,6 +114,21 @@ public final class GiveCommand implements SpecCommandHandler {
             OverflowPolicy chosen = policy;
             delivery.deliver(sender, target, prepared, spec.equip(), chosen)
                     .whenComplete((outcome, error) -> report(sender, target, targetName, itemText, chosen, outcome, error));
+        }
+    }
+
+    /**
+     * Giving the item of a tool whose definition is disabled works, but the item then acts as its
+     * plain carrier (the Lazy Axe ships disabled): say so, rather than leave the giver guessing.
+     */
+    private void warnDisabledTools(CommandSender sender, GiveSpec spec) {
+        if (!(plugin.getModuleManager().getModule("tools") instanceof codes.castled.allium.module.ToolsModule tools)) {
+            return;
+        }
+        for (ItemReference item : spec.items()) {
+            tools.disabledDefinitionFor(item.key()).ifPresent(definition -> send(sender, "warning", "{warning}",
+                    definition.name() + " is disabled (" + definition.file() + ": enabled: false), so it works as a plain "
+                            + "item until you set enabled: true and restart."));
         }
     }
 

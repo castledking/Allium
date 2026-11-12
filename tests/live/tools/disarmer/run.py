@@ -14,7 +14,7 @@ sys.path.insert(0, str(REPO / 'tests/live/providers/trigger'))
 from process_cleanup import stop_process  # noqa: E402
 
 sys.path.insert(0, str(HERE.parent))
-from lanes import COEXIST, LANES, PROVIDER_JARS  # noqa: E402  (shared with the other S10 tool gates)
+from lanes import COEXIST, LANES, PROVIDER_JARS, SPIGOT_API, GSON, CLIENT_MODULE  # noqa: E402  (shared with the other S10 tool gates)
 
 APPEARANCES = {
     'allium': 'allium:mob_disarmer',
@@ -285,8 +285,7 @@ def build_fixture():
     out = run / 'fixture'
     classes = out / 'classes'
     classes.mkdir(parents=True)
-    api = '/tmp/allium-lane-spigot-1.20/bundler/libraries/spigot-api-1.20.1-R0.1-SNAPSHOT.jar'
-    gson = next((LANES['paper-26.3']['template'] / 'libraries/com/google/code/gson').rglob('*.jar'))
+    api, gson = SPIGOT_API, GSON
     subprocess.run(['/usr/lib/jvm/java-21-openjdk/bin/javac', '--release', '17', '-cp',
                     f'{api}:{gson}:{a.allium_jar}', '-d', str(classes), *map(str, sorted((HERE / 'plugin/gate').glob('*.java')))], check=True)
     shutil.copy2(HERE / 'plugin/plugin.yml', classes / 'plugin.yml')

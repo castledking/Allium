@@ -68,7 +68,15 @@ public final class PackValidator {
     // ---------------------------------------------------------------- lane-independent
 
     public static List<String> structure(SortedMap<String, byte[]> files, AssetManifest manifest) {
-        List<String> errors = new ArrayList<>(manifest(manifest));
+        return structure(files, manifest, false);
+    }
+
+    /**
+     * @param localExport a local server-only export ({@code build --texture-root}): its derived
+     *                    manifest may name non-distributable textures, since it is never committed
+     */
+    public static List<String> structure(SortedMap<String, byte[]> files, AssetManifest manifest, boolean localExport) {
+        List<String> errors = new ArrayList<>(manifest(manifest, localExport));
         Map<String, Object> parsed = new HashMap<>();
         for (Map.Entry<String, byte[]> file : files.entrySet()) {
             String path = file.getKey();
@@ -94,6 +102,10 @@ public final class PackValidator {
 
     /** Manifest rules: allocations are disjoint (used and reserved), inside the block, and ready tools are complete. */
     public static List<String> manifest(AssetManifest manifest) {
+        return manifest(manifest, false);
+    }
+
+    public static List<String> manifest(AssetManifest manifest, boolean localExport) {
         List<String> errors = new ArrayList<>();
         AssetManifest.Range block = manifest.customModelData();
         if (block.first() < 1 || block.last() >= FLOAT_EXACT_LIMIT) {
@@ -109,7 +121,7 @@ public final class PackValidator {
             if (!texture.file().equals(CorePackBuilder.texturePath(texture.id()))) {
                 errors.add("texture " + texture.id() + " must live at " + CorePackBuilder.texturePath(texture.id()));
             }
-            if (!texture.distributable()) {
+            if (!texture.distributable() && !localExport) {
                 errors.add("texture " + texture.id() + " is not distributable; server-only art belongs in a local export, not the manifest");
             }
         }

@@ -22,10 +22,12 @@ MINE_MS = 1500
 p = argparse.ArgumentParser()
 p.add_argument('--lane', choices=sorted(LANES), required=True)
 p.add_argument('--run-name', required=True)
-p.add_argument('--run-root', type=Path, default=Path('/tmp/allium-s10-20261112/lazyaxe'))
+p.add_argument('--run-root', type=Path, default=Path('/tmp/allium-s10-20261112/lazyaxe'))  # any /tmp/allium-s10-YYYYMMDD/lazyaxe
 p.add_argument('--allium-jar', type=Path, default=REPO / 'build/libs/Allium.jar')
 p.add_argument('--griefprevention', action='store_true', help="add SF's GriefPrevention3D 19.0.5 and the claim case")
 p.add_argument('--quick', action='store_true', help='one provider appearance check (1.21.8)')
+p.add_argument('--natural', action='store_true',
+               help='a fresh install on vanilla terrain: /give, a natural tree, disabled by default, then enabled')
 a = p.parse_args()
 if not re.fullmatch('[a-zA-Z0-9_.-]+', a.run_name):
     p.error('invalid run-name')
@@ -367,6 +369,48 @@ def claim_case():
             f'claim: all {len(outside)} logs outside it are felled')
 
 
+def natural_trial(label):
+    """Finds the nearest natural tree, gives the axe with /give as an admin would, and mines its base."""
+    tree = g.ask('la-find ' + label + ' 40', label + '-tree')
+    require(tree['found'] and tree['persistentLeaves'] == 0,
+            f'{label}: a natural tree near spawn: {tree.get("species")} at {tree.get("trunk")} in {tree.get("biome")}, '
+            f'{tree.get("logs")} logs in its area')
+    g.cmd('dg la-clear')  # an empty inventory, so /give fills the held slot 0
+    g.cmd_raw('give GateBot allium:lazy_axe')
+    time.sleep(1.5)
+    x, y, z = tree['trunk']
+    g.packet(f'mine {x} {y} {z} {MINE_MS}')
+    time.sleep(MINE_MS / 1000 + 0.3)
+    return tree, settle(label)
+
+
+def natural_install():
+    """The default install: tools/lazy_axe.yml ships enabled: false, so the axe is a plain axe."""
+    installed = (g.lane / 'plugins/Allium/tools/lazy_axe.yml').read_text()
+    require('\nenabled: false\n' in installed, 'natural: a fresh install creates tools/lazy_axe.yml with enabled: false')
+    require(any('Lazy Axe is disabled (tools/lazy_axe.yml: enabled: false)' in x for x in g.logs),
+            'natural: the startup log says the Lazy Axe is disabled and where to enable it')
+    tree, obs = natural_trial('natural-disabled')
+    require(obs['slot0'].get('behavior') == AXE and obs['slot0'].get('material') == 'NETHERITE_AXE',
+            f'natural-disabled: /give allium:lazy_axe gave a signed {AXE} ({obs["slot0"].get("material")})')
+    require(obs['breakEvents'] == 1 and not obs['fells'],
+            f'natural-disabled: while disabled it breaks one log, as a plain axe ({obs["breakEvents"]} breaks, {len(obs["fells"])} fells)')
+    require(any('so it works as a plain item until you set enabled: true and restart' in x for x in g.logs),
+            'natural-disabled: /give warned the console that the Lazy Axe is disabled')
+    g.shutdown()
+    f = g.lane / 'plugins/Allium/tools/lazy_axe.yml'
+    f.write_text(f.read_text().replace('\nenabled: false\n', '\nenabled: true\n', 1))
+    g.boot('enabled', ['Lazy Axe enabled'])
+    g.connect('enabled')
+    tree, obs = natural_trial('natural-enabled')
+    trunk = [p for p in tree['logPositions'] if p[0] == tree['trunk'][0] and p[2] == tree['trunk'][2]]
+    left = {tuple(p) for p in obs['leftPositions']}
+    require(len(obs['fells']) == 1 and obs['breaksByFell'] == obs['fells'][0]['logs'] > 0 and not any(tuple(p) in left for p in trunk),
+            f'natural-enabled: with enabled: true and a restart, the natural {tree["species"]} fell: '
+            f'{obs["breaksByFell"] + 1} logs, its whole trunk gone')
+    require(obs['leaves'] == obs['leavesBefore'], 'natural-enabled: no leaf was broken')
+
+
 def quick():
     x, tree = grow('nexo', 'tree', 124)
     b = give('nexo-axe', 'nexo:gate_axe')
@@ -383,17 +427,24 @@ try:
     setup = None
     if a.quick:
         setup = lambda plugins: nexo_items(plugins, 'gate_axe:\n  material: NETHERITE_AXE\n  itemname: Gate Nexo Axe\n')
-    g.write_lane(tools, providers_setup=setup)
-    markers = ['Lazy Axe enabled', 'Fault injection is enabled'] + ([] if a.quick else ['Gate Axe gate_axe_slow enabled'])
+    if a.natural:
+        g.write_lane({}, terrain='normal')  # a fresh install: Allium writes its shipped defaults
+    else:
+        g.write_lane(tools, providers_setup=setup)
+    markers = (['Fault injection is enabled'] if a.natural else
+               ['Lazy Axe enabled', 'Fault injection is enabled'] + ([] if a.quick else ['Gate Axe gate_axe_slow enabled']))
     if a.griefprevention:
         markers.append('Protection hook enabled: GriefPrevention')
     g.boot('initial', markers)
     g.cmd('dg prepare')
     g.connect('initial')
-    ground = g.ask('la-arena probe 4800 0', 'probe-arena')['ground']
-    if a.quick:
+    if a.natural:
+        natural_install()
+    elif a.quick:
+        ground = g.ask('la-arena probe 4800 0', 'probe-arena')['ground']
         quick()
     else:
+        ground = g.ask('la-arena probe 4800 0', 'probe-arena')['ground']
         cases()
         full, over = cap_setup()
         g.shutdown()

@@ -183,6 +183,18 @@ class CorePackTest {
     }
 
     @Test
+    void serverOnlyArtIsRefusedInTheCommittedManifestButAllowedInALocalExport() throws IOException {
+        AssetManifest manifest = manifest();
+        List<AssetManifest.Texture> textures = new java.util.ArrayList<>(manifest.textures());
+        AssetManifest.Texture first = textures.get(0);
+        textures.set(0, new AssetManifest.Texture(first.id(), first.file(), first.sha256(), "SF", "$SF/...", "server-only", false));
+        AssetManifest serverOnly = new AssetManifest(manifest.schema(), manifest.namespace(), manifest.pack(), manifest.customModelData(),
+                manifest.carriers(), manifest.tools(), textures);
+        assertTrue(PackValidator.manifest(serverOnly).stream().anyMatch(e -> e.contains("is not distributable")));
+        assertEquals(List.of(), PackValidator.manifest(serverOnly, true), "sf_export.py's derived manifest is never committed");
+    }
+
+    @Test
     void validatorRejectsAShadowedCarrierThatDriftsFromVanilla() throws IOException {
         AssetManifest manifest = manifest();
         SortedMap<String, byte[]> files = build(manifest);

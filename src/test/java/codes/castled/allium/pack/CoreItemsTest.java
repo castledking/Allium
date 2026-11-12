@@ -86,6 +86,23 @@ class CoreItemsTest {
     }
 
     @Test
+    void thePhantomObliteratorHasTheDisarmersChargeStatesInItsOwnRange() throws IOException {
+        AssetManifest manifest = CoreItems.loadManifest(getClass().getClassLoader());
+        List<AssetManifest.State> disarmer = manifest.tool("mob_disarmer").orElseThrow().states();
+        List<AssetManifest.State> obliterator = manifest.tool("phantom_obliterator").orElseThrow().states();
+        assertEquals(disarmer.stream().map(AssetManifest.State::key).toList(), obliterator.stream().map(AssetManifest.State::key).toList(),
+                "the same selector (full, two_thirds, one_third, empty, broken) picks its models");
+        for (int i = 0; i < obliterator.size(); i++) {
+            assertEquals(2577030 + i, obliterator.get(i).customModelData());
+        }
+        for (DisarmerCharges charges : List.of(DisarmerCharges.full(3), new DisarmerCharges(2, 0L, false, 1L),
+                new DisarmerCharges(1, 0L, false, 2L), new DisarmerCharges(0, 5L, false, 3L), new DisarmerCharges(0, 5L, true, 3L))) {
+            String key = DisarmerVisualState.of(charges, 3).key();
+            assertTrue(manifest.tool("phantom_obliterator").orElseThrow().state(key).isPresent(), key);
+        }
+    }
+
+    @Test
     void resourcePackSettingsDefaultToNoneAndParseEachOwner() throws Exception {
         assertEquals(ResourcePackSettings.Owner.NONE, ResourcePackSettings.parse(null).owner());
         YamlConfiguration shipped = new YamlConfiguration();

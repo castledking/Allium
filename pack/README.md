@@ -12,7 +12,7 @@ with other art, such as SF's from `tools/sf_export.py`, instead of the bundled o
 | `assets/` | Distributable textures, all original work for Allium |
 | `tools/draw_textures.py` | Source of the original pixel art; `--check` verifies the committed PNGs |
 | `tools/sf_inventory.py` | Read-only inventory of SF's Nexo items, Nexo pack and RPM mixer; writes [`docs/s06b-sf-inventory.md`](../docs/s06b-sf-inventory.md) |
-| `tools/sf_export.py` | Local recipe that builds the pack with SF's server-only art into the git-ignored `build/sf-export/`; never commit its output |
+| `tools/sf_export.py` | Local recipe that builds the pack with SF's server-only art (Mob Disarmer, Phantom Obliterator, and opt-in `--include-lazy-axe`) into the git-ignored `build/sf-export/`, and validates it against vanilla client jars with `--clients`; never commit its output |
 
 ## Allocation
 

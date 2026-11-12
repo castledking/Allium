@@ -1,6 +1,6 @@
 # S10: Phantom Obliterator live gate
 
-**PASS on 2026-11-09: 157 live checks, 0 failures**, all with Allium.jar `aaabac46…`.
+**PASS on 2026-11-11: 171 live checks, 0 failures**, with carrier suppression and privileged adoption rules.
 - **Bot:** a real protocol bot right-clicks air with the vanilla use-item packet.
 - **Fixture:** `DisarmerGate`, extended for tools, spawns marked targets 3 blocks above the arena
   at x = 4000. It records the bot's damage events, deaths and their killer, the protection check
@@ -13,12 +13,36 @@ The details are in the [manifest](evidence/s10-obliterator-manifest.json). Runs 
 
 | Run | Lane | Checks |
 | --- | --- | --- |
-| `final-spigot` | Spigot 1.20.1, minecraft-protocol 1.68.0 | 69 |
-| `final3-paper26` | Paper 26.3-141 + GriefPrevention3D 19.0.5, the owned raw client | 79 |
+| `spigot-test1` | Spigot 1.20.1, minecraft-protocol 1.68.0 | 76 |
+| `paper26-test1` | Paper 26.3-141 + GriefPrevention3D 19.0.5, the owned raw client | 86 |
 | `final-quick-paper1218` | Paper 1.21.8 + Nexo, CraftEngine and Oraxen: a Nexo appearance | 9 |
 
 ## What Spigot 1.20.1 and Paper 26.3 showed
 
+- **Carrier suppression (live checked on both lanes):**
+  - **Brewing stand:** hoppers feeding a brewing stand are blocked when transferring an identified
+    tool (Phantom Obliterator on `phantom_membrane`). The tool stays in the hopper. When a plain
+    vanilla phantom membrane is put in the hopper, it transfers into the brewing stand normally.
+  - **Furnace:** hoppers feeding a furnace are blocked when transferring an identified tool (Mob
+    Disarmer on `golden_hoe`). The tool stays in the hopper. A plain vanilla tool transfers normally.
+  - **Crafting, Anvils & Smithing:** unit and live checks confirm identified tools are blocked from
+    being used as crafting ingredients, crafter ingredients (1.21+), anvil repair material/sacrifice,
+    smithing recipes, grindstone combining, and villager trades. Plain items are unaffected.
+- **Privileged legacy adoption rules & creative forgery protection:**
+  - A creative-forged legacy tag (`allium:custom_item_id = phantom_obliterator`) is **rejected**
+    at runtime by default: it is not adopted, no behavior is assigned, no HMAC signature is minted,
+    and target phantoms are untouched.
+  - When an explicit time-limited adoption window is opened by an operator (`dg adopt-window 60000`),
+    legacy tools are adopted in place with their charges, depleted timestamps, uses, and enchantments
+    preserved, and Allium explicitly logs `ADOPTED PRIVILEGED ITEM`.
+  - Closing the adoption window returns to rejecting unmigrated privileged legacy items.
+- **Instance-bound refunds:**
+  - If a player swaps or drops their tool during an obliterate execution where all targets are spared,
+    Allium detects that the instance UUID has moved or is gone from the main hand, logs the failed
+    refund diagnostic, and credits nothing else.
+- **Security Scope:**
+  - Server-secret HMAC signing prevents unauthorized **minting** and **editing** of PDC tags and item
+    state; creative-mode stack duplication is an inventory/creative permission concern.
 - **A use with six targets** (`authorized`): unnamed phantoms at 6 and 20 blocks, a named one at
   8, a guarded one at 10, a claimed one at 12 and a zombie at 5.
   - **Identity:** the fresh tool was a signed `allium:phantom_obliterator` on the phantom membrane

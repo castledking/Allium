@@ -26,6 +26,7 @@ import codes.castled.allium.tool.obliterator.ObliterateBehaviorType;
 import codes.castled.allium.tool.obliterator.ObliterateListener;
 import codes.castled.allium.tool.obliterator.ObliterateParameters;
 import codes.castled.allium.tool.obliterator.ObliterateTool;
+import codes.castled.allium.tool.ToolCarrierSuppressionListener;
 import org.bukkit.Material;
 import org.bukkit.event.HandlerList;
 import org.bukkit.permissions.Permission;
@@ -64,6 +65,7 @@ public final class ToolsModule extends AbstractModule {
     private DisarmBehavior disarm;
     private ObliterateListener obliterateListener;
     private ObliterateBehavior obliterate;
+    private ToolCarrierSuppressionListener carrierSuppression;
     private ToolDefinitionLoader.Loaded loaded;
 
     public ToolsModule(PluginStart plugin) {
@@ -85,6 +87,8 @@ public final class ToolsModule extends AbstractModule {
             plugin.logger().warning("Could not create " + ToolDefinitionLoader.DIRECTORY + "/: " + e.getMessage());
         }
         ItemService items = plugin.getItemService();
+        carrierSuppression = new ToolCarrierSuppressionListener(plugin, items);
+        carrierSuppression.enable();
         Set<String> coreItems = CoreItems.definitions(plugin.getPackManifest()).stream()
                 .map(AlliumItemDefinition::id).collect(Collectors.toSet());
         BukkitToolEnvironment environment = new BukkitToolEnvironment(coreItems, plugin.getLanguageManager()::hasKey);
@@ -218,6 +222,10 @@ public final class ToolsModule extends AbstractModule {
         PluginManager manager = plugin.getServer().getPluginManager();
         registeredPermissions.forEach(manager::removePermission);
         registeredPermissions.clear();
+        if (carrierSuppression != null) {
+            carrierSuppression.disable();
+            carrierSuppression = null;
+        }
         if (disarmListener != null) {
             HandlerList.unregisterAll(disarmListener);
             disarmListener = null;

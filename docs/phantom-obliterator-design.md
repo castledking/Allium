@@ -170,8 +170,9 @@ listener does. Block clicks never fire. **Only the main hand acts**; legacy acce
    - **`silent`:** `setHealth(0)`, as legacy did, with no damage event, no XP and no
      attribution.
    - Kills are counted only for targets that actually died.
-9. **If nothing died** (every target cancelled), the pre-use state is written back: a refund. If
-   that write fails, it is logged once; the player then lost a charge, never gained one.
+9. **If nothing died** (every target cancelled), the pre-use state is written back to the same instance
+   UUID: a refund. If that stack has moved or is gone from the main hand, the failed refund is logged and
+   credit nothing else. If the write fails, it is logged once.
 10. **Feedback:** the effects, sounds and messages: the count killed and charges left, the last
     charge with the refill time, or "broke while in use".
 
@@ -203,9 +204,13 @@ The tool is privileged, so an import must not let a forged tag mint one.
 - **In place:** the stack is adopted in place (the "adopt this stack" operation the Lazy Axe also
   needs), so its enchantments and name survive. It keeps its Nexo appearance through
   `charge-variants`.
-- **Forgery:** survival players cannot write PDC. Creative players and operators can forge any
-  item already, which is accepted. A server can set `import-legacy: false` to disable runtime
-  import and use the offline importer only.
+- **Legacy adoption and security:** runtime in-place adoption is allowed freely only for
+  non-privileged behaviors. Because `allium:obliterate_phantoms` is a privileged behavior, legacy
+  items are adopted only by the offline importer, or during an explicit time-limited adoption window
+  (`ItemService#enablePrivilegedAdoptionWindow`) that is off by default and logs every adoption.
+  Creative-forged legacy tags at runtime are rejected, never adopted and never signed. Server-secret
+  HMAC signing prevents unauthorized minting and editing; creative-mode stack duplication is an
+  inventory/creative permission concern.
 
 ## As built (S10)
 
@@ -219,8 +224,12 @@ Implemented as designed, with these decisions recorded:
     RPM merge confirms it.
   - **No art yet:** the art does not ship yet. The item is a named phantom membrane with
     `custom_model_data` 2577030.
-  - **Watch out:** like the blaze rod, the membrane is a brewing and anvil ingredient. Keeping core
-    tools out of crafting, brewing and anvils is a general follow-up for every tool.
+  - **Carrier suppression:** like the blaze rod, the membrane is a brewing and anvil ingredient.
+    `ToolCarrierSuppressionListener` blocks core tool carriers from crafting tables, the Crafter (1.21+),
+    furnace/blast furnace/smoker smelting & fuel, brewing stands, anvil repair material/sacrifice,
+    smithing tables, grindstones, villager trading, and hopper or automation transfers
+    (`InventoryMoveItemEvent`) into those stations. Only identified Allium tools are blocked; plain
+    items are completely unaffected.
 - **Protection is checked per target,** not once per use. The claim hooks and
   `AlliumProtectionCheckEvent` run for every scanned target, and a denied target is dropped before
   anything is spent. With `kill: attributed`, the damage event is a second, independent chance to

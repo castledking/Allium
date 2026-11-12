@@ -48,6 +48,7 @@ public final class ItemService {
     private final Set<String> signedBehaviors = ConcurrentHashMap.newKeySet();
     private final Map<String, ModelSelector> modelSelectors = new ConcurrentHashMap<>();
     private final Set<String> warnedDiagnostics = ConcurrentHashMap.newKeySet();
+    private volatile long privilegedAdoptionWindowUntilEpochMillis = 0L;
 
     private final Function<Material, ItemStack> itemStackFactory;
     private final ItemHmacSigner hmacSigner;
@@ -414,7 +415,50 @@ public final class ItemService {
      *
      * @return false, and the stack untouched, when it already carries an Allium behavior
      */
+    /**
+     * Enables an explicit time-limited window during which privileged legacy items
+     * may be adopted at runtime. Every adoption during this window is logged for audit.
+     *
+     * @param durationMillis duration in milliseconds; <= 0 disables the window
+     */
+    public void enablePrivilegedAdoptionWindow(long durationMillis) {
+        if (durationMillis <= 0L) {
+            this.privilegedAdoptionWindowUntilEpochMillis = 0L;
+        } else {
+            this.privilegedAdoptionWindowUntilEpochMillis = System.currentTimeMillis() + durationMillis;
+        }
+    }
+
+    public void disablePrivilegedAdoptionWindow() {
+        this.privilegedAdoptionWindowUntilEpochMillis = 0L;
+    }
+
+    public boolean isPrivilegedAdoptionAllowed() {
+        return System.currentTimeMillis() < privilegedAdoptionWindowUntilEpochMillis;
+    }
+
+    public long privilegedAdoptionWindowRemainingMillis() {
+        long rem = privilegedAdoptionWindowUntilEpochMillis - System.currentTimeMillis();
+        return Math.max(0L, rem);
+    }
+
+    /**
+     * Stamps an Allium identity onto an existing stack in place, keeping everything else it carries
+     * (material, enchantments, damage, name, lore, repair cost). Legacy imports use it so a
+     * player's enchanted tool stays theirs.
+     *
+     * <p>Runtime in-place adoption is allowed freely for non-privileged behaviors. Privileged legacy
+     * items may be adopted only by the offline importer ({@code offlineImport = true}) or during an
+     * explicit active time-limited adoption window ({@link #isPrivilegedAdoptionAllowed()}).
+     *
+     * @return false, and the stack untouched, when it already carries an Allium behavior or when
+     *         privileged adoption is disallowed
+     */
     public boolean adopt(ItemStack stack, ProviderKey appearance, String behaviorId, Map<String, String> state) {
+        return adopt(stack, appearance, behaviorId, state, false);
+    }
+
+    public boolean adopt(ItemStack stack, ProviderKey appearance, String behaviorId, Map<String, String> state, boolean offlineImport) {
         Objects.requireNonNull(stack, "stack");
         Objects.requireNonNull(appearance, "appearance");
         String normalized = ItemRef.normalizeBehaviorId(behaviorId);
@@ -425,6 +469,12 @@ public final class ItemService {
         if (meta == null || meta.getPersistentDataContainer().has(KEY_BEHAVIOR_ID, PersistentDataType.STRING)) {
             return false;
         }
+        boolean privileged = isPrivilegedBehavior(normalized);
+        if (privileged && !offlineImport && !isPrivilegedAdoptionAllowed()) {
+            warnDiagnosticOnce("Refusing runtime adoption of privileged behavior '" + normalized
+                    + "': privileged items require the offline importer or an active adoption window.");
+            return false;
+        }
         Map<String, String> merged = new LinkedHashMap<>();
         AlliumItemDefinition definition = definitionForBehavior(normalized);
         if (definition != null) {
@@ -432,6 +482,11 @@ public final class ItemService {
         }
         merged.putAll(state);
         stampMetadata(stack, ItemRef.CURRENT_SCHEMA_VERSION, appearance, normalized, merged, null, false);
+        if (privileged) {
+            diagnosticLogger.accept("ADOPTED PRIVILEGED ITEM: behavior='" + normalized + "', appearance=" + appearance
+                    + (offlineImport ? " (offline importer)" : " (active adoption window)")
+                    + " for " + stack.getType());
+        }
         return true;
     }
 
@@ -656,6 +711,35 @@ public final class ItemService {
      */
     public Optional<String> identifyBehavior(@Nullable ItemStack stack) {
         return identify(stack).flatMap(ItemRef::behaviorId);
+    }
+
+    /**
+     * Reads the instance UUID stored in the item's PDC, if present.
+     */
+    public Optional<String> instanceUuid(@Nullable ItemStack stack) {
+        if (stack == null || stack.getType() == Material.AIR || stack.getType().isAir()) {
+            return Optional.empty();
+        }
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null) {
+            return Optional.empty();
+        }
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        String uuid = pdc.get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
+        return (uuid == null || uuid.isBlank()) ? Optional.empty() : Optional.of(uuid);
+    }
+
+    /**
+     * Returns true if {@code stack} carries an identified Allium custom item identity
+     * (either a registered behavior ID or a custom external provider appearance).
+     */
+    public boolean isCustomItem(@Nullable ItemStack stack) {
+        if (stack == null || stack.getType() == Material.AIR || stack.getType().isAir()) {
+            return false;
+        }
+        return identify(stack)
+                .map(ref -> ref.behaviorId().isPresent() || !ref.appearance().isVanilla())
+                .orElse(false);
     }
 
     /**

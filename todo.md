@@ -303,13 +303,15 @@ result and must preserve the existing uncommitted work.
       two bots and the console; see [the results](tests/live/sounds/RESULTS.md). It found and
       fixed two bugs: lang sync re-added omitted sound values, and preference defaults were read
       only at startup.
-- [x] **S10a — Phantom Obliterator:** `tools/phantom_obliterator.yml` on the core behavior
-      `allium:obliterate_phantoms`. Privileged signed identity, protection asked per target,
-      spend-first with a refund when nothing dies, in-place legacy import, and the carrier moved
-      from `blaze_rod` to `phantom_membrane`. Gate passed 2026-11-09: 157 live checks; see
+- [x] **S10a — Phantom Obliterator & Carrier Suppression:** `tools/phantom_obliterator.yml` on the core
+      behavior `allium:obliterate_phantoms`. Privileged signed identity, protection asked per target,
+      spend-first with refund bound to instance UUID, carrier moved from `blaze_rod` to `phantom_membrane`,
+      carrier suppression across crafting, crafter, furnace smelting & fuel, brewing, anvils, smithing,
+      grindstone, trading and hoppers, and privileged legacy adoption rules (offline import or explicit
+      active adoption window; creative forgery rejected). Gate passed 2026-11-11: 171 live checks; see
       [the results](tests/live/tools/obliterator/RESULTS.md).
-- [ ] **Core tools follow-up:** keep tool carriers out of crafting, brewing and anvils (the
-      phantom membrane is a brewing and anvil ingredient).
+- [x] **Core tools follow-up:** keep tool carriers out of crafting, brewing, anvils, smelting, smithing,
+      grindstone, trading and hopper automation transfers (live checked on Spigot 1.20.1 and Paper 26.3).
 - [ ] **S10 / M4 — Tools: Phantom Obliterator and Lazy Axe** (after S08), implemented from the
       [Obliterator](docs/phantom-obliterator-design.md) and [Lazy Axe](docs/lazy-axe-design.md)
       designs, as `allium:obliterate_phantoms` and `allium:fell_tree` definitions. The Lazy Axe

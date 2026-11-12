@@ -149,6 +149,16 @@ def cases():
     unchanged(base['main'], obs['main'], name)
     require(untouched(obs['targets']), name + ' without allium.phantomobliterator.use nothing happens')
 
+    # 1. Creative-forged legacy tag is rejected by default (adoption window closed)
+    name = 'creative-forged-legacy-rejected'
+    base, obs = play(name, 'legacy:phantom_obliterator:3:0:4:both', 'p@6')
+    require(obs['main']['behavior'] is None, f'{name} creative-forged legacy tag has no behavior without adoption window')
+    require(obs['main'].get('signature') is None, f'{name} creative-forged legacy tag is not signed')
+    require(untouched(obs['targets']), f'{name} creative-forged legacy tag does nothing, targets untouched')
+
+    # 2. Privileged legacy adoption with explicit active window
+    g.cmd('dg adopt-window 60000')
+
     name = 'legacy-recharging'
     start = len(g.logs)
     base, obs = play(name, 'legacy:phantom_obliterator_0-3:0:30:7:both', 'p@6')
@@ -158,7 +168,7 @@ def cases():
             and 20_000 < remaining <= 30_000 and obs['mainEnchantments'].get('unbreaking') == 3,
             f'{name} adopted in place: 0 charges, the depleted timestamp ({remaining} ms left), 7 uses, its Unbreaking III kept ({st})')
     require(untouched(obs['targets']), name + ' and it is still recharging, so nothing died')
-    require(any('Imported legacy Phantom Obliterator' in x for x in g.logs[start:]), name + ' Allium logged the import')
+    require(any('Imported legacy Phantom Obliterator' in x or 'ADOPTED PRIVILEGED ITEM' in x for x in g.logs[start:]), name + ' Allium logged the import')
 
     name = 'legacy-full'
     base, obs = play(name, 'legacy:phantom_obliterator:3:0:4:both', 'p@6')
@@ -170,6 +180,8 @@ def cases():
     base, obs = play(name, 'legacy:phantom_obliterator:3:0:0:custom-only', 'p@6')
     require(obs['main']['behavior'] is None and untouched(obs['targets']),
             f'{name} without a matching nexo:id it is never imported and does nothing')
+
+    g.cmd('dg adopt-window 0')
 
     name = 'radius'
     base, obs = play(name, GATE_OB, 'p@10,p@20')
@@ -189,6 +201,14 @@ def cases():
     name = 'recharging'
     base, obs = play(name, 'held', 'p@6')
     require(untouched(obs['targets']) and obs['main']['state'] == base['main']['state'], name + ' an empty tool kills nothing until it recharges')
+
+    # Carrier suppression checks (hoppers into brewing stand & furnace)
+    name = 'carrier-suppression'
+    carrier = g.ask(f'carrier-test {name}', name, timeout=40)
+    require(carrier.get('toolBlockedFromBrewing') is True, f'{name} tool blocked from hopper transfer into brewing stand')
+    require(carrier.get('plainMovedToBrewing') is True, f'{name} plain phantom membrane transferred into brewing stand')
+    require(carrier.get('toolBlockedFromFurnace') is True, f'{name} tool blocked from hopper transfer into furnace')
+    require(carrier.get('plainMovedToFurnace') is True, f'{name} plain golden hoe transferred into furnace')
 
 
 def claim_case():

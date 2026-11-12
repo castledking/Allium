@@ -196,6 +196,21 @@ class ObliterateBehaviorTest {
     }
 
     @Test
+    void whenStackMovesOrIsGoneDuringDamageRefundFailsAndCreditsNothing() {
+        LivingEntity spared = mob(Phantom.class, EntityType.PHANTOM, 4, null, true);
+        doAnswer(inv -> {
+            // Player moved or swapped the held item during the damage event
+            mainHand.set(MockItemStacks.create(Material.DIAMOND_SWORD, 1, new HashMap<>(), new AtomicReference<>(), new AtomicReference<>()));
+            return null;
+        }).when(spared).damage(anyDouble(), any(Entity.class));
+
+        assertEquals(ObliterateBehavior.Outcome.REFUNDED, behavior.handleUse(player, EquipmentSlot.HAND));
+        assertTrue(diagnostics.stream().anyMatch(d -> d.contains("refund failed: item with UUID") && d.contains("has moved or is gone")),
+                "failed refund was logged");
+        assertEquals(Material.DIAMOND_SWORD, mainHand.get().getType(), "main hand was not overwritten with the tool");
+    }
+
+    @Test
     void aRejectedWriteKillsNothing() {
         LivingEntity target = phantom(4);
         ItemService spy = spy(items);
@@ -243,7 +258,24 @@ class ObliterateBehaviorTest {
     }
 
     @Test
+    void creativeForgedLegacyToolsAreNotAdoptedWhenWindowIsClosed() {
+        Map<NamespacedKey, Object> legacy = new HashMap<>();
+        ItemStack forged = MockItemStacks.create(Material.NETHERITE_SWORD, 1, legacy, new AtomicReference<>("§5§lPhantom Obliterator"), new AtomicReference<>(1011));
+        legacy.put(ObliterateBehavior.LEGACY_ITEM_ID, "phantom_obliterator_0-3");
+        legacy.put(ObliterateBehavior.LEGACY_NEXO_ID, "phantom_obliterator_0-3");
+        legacy.put(ObliterateBehavior.LEGACY_CHARGES, 3);
+        legacy.put(ObliterateBehavior.LEGACY_RECHARGE_AT, 0L);
+        legacy.put(ObliterateBehavior.LEGACY_USES, 0L);
+        mainHand.set(forged);
+
+        assertEquals(ObliterateBehavior.Outcome.IGNORED, behavior.handleUse(player, EquipmentSlot.HAND), "adoption window is closed by default");
+        assertFalse(legacy.containsKey(ItemService.KEY_BEHAVIOR_ID), "no behavior stamped");
+        assertFalse(legacy.containsKey(ItemService.KEY_SIGNATURE), "no signature minted");
+    }
+
+    @Test
     void legacyToolsImportInPlaceWithTheirChargesTimestampAndUses() {
+        items.enablePrivilegedAdoptionWindow(60_000L);
         Map<NamespacedKey, Object> legacy = new HashMap<>();
         ItemStack old = MockItemStacks.create(Material.NETHERITE_SWORD, 1, legacy, new AtomicReference<>("§5§lPhantom Obliterator"), new AtomicReference<>(1011));
         legacy.put(ObliterateBehavior.LEGACY_ITEM_ID, "phantom_obliterator_0-3");

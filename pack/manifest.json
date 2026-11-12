@@ -29,6 +29,34 @@
           "model": "minecraft:item/golden_hoe"
         }
       }
+    },
+    "phantom_membrane": {
+      "vanillaModel": {
+        "parent": "minecraft:item/generated",
+        "textures": {
+          "layer0": "minecraft:item/phantom_membrane"
+        }
+      },
+      "vanillaItem": {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:item/phantom_membrane"
+        }
+      }
+    },
+    "netherite_axe": {
+      "vanillaModel": {
+        "parent": "minecraft:item/handheld",
+        "textures": {
+          "layer0": "minecraft:item/netherite_axe"
+        }
+      },
+      "vanillaItem": {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:item/netherite_axe"
+        }
+      }
     }
   },
   "tools": [
@@ -103,10 +131,32 @@
         "first": 2577030,
         "last": 2577039
       },
+      "modelParent": "minecraft:item/handheld",
       "states": [
         {
-          "key": "default",
-          "cmd": 2577030
+          "key": "full",
+          "cmd": 2577030,
+          "meaning": "every charge available"
+        },
+        {
+          "key": "two_thirds",
+          "cmd": 2577031,
+          "meaning": "some charges spent; about two thirds left"
+        },
+        {
+          "key": "one_third",
+          "cmd": 2577032,
+          "meaning": "one third or less of the charges left"
+        },
+        {
+          "key": "empty",
+          "cmd": 2577033,
+          "meaning": "no charges; recharging"
+        },
+        {
+          "key": "broken",
+          "cmd": 2577034,
+          "meaning": "the tool broke"
         }
       ]
     },
@@ -137,6 +187,7 @@
         "first": 2577050,
         "last": 2577059
       },
+      "modelParent": "minecraft:item/handheld",
       "states": [
         {
           "key": "default",

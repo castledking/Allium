@@ -3,7 +3,7 @@
 // interaction passes client-side: INTERACT_AT then INTERACT for the main hand, then the same for the off hand.
 const [lane, portText, version] = process.argv.slice(2), port = Number(portText);
 if (!lane || ![25650, 25651, 25652].includes(port) || !['1.20.1', '1.21.8'].includes(version)) throw Error('TEST ONLY: owned port 25650-25652 and version 1.20.1|1.21.8');
-const mc = require(process.env.MC_PROTOCOL_MODULE || '/tmp/allium-s05-20261105/client/node_modules/minecraft-protocol');
+const mc = require(process.env.MC_PROTOCOL_MODULE || '/mnt/storage/.allium-validation/infra/client/node_modules/minecraft-protocol');
 const client = mc.createClient({host: '127.0.0.1', port, username: 'GateBot', auth: 'offline', version});
 let ready = false, loaded = false, entityId = 0, windowId = 0, stateId = 0;
 client.on('packet', (packet, meta) => {

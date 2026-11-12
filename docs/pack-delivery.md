@@ -61,14 +61,49 @@ cp build/sf-export/allium-core-pack-sf.zip <server>/plugins/Allium/pack/
 # config.yml: resource-pack.pack-file: pack/allium-core-pack-sf.zip
 ```
 
-- **Validation:** the file must keep the bundled pack's models, item definitions and
-  `pack.mcmeta`; only textures may differ. Otherwise Allium warns and delivers the bundled pack.
+- **Validation:** the file must keep every model, item definition and `pack.mcmeta` of the bundled
+  pack. Textures may differ, and it may add models for tools the bundled pack has no art for yet
+  (the Phantom Obliterator and the Lazy Axe). Otherwise Allium warns and delivers the bundled pack.
 - **Delivery:** `standalone` exports this file (so host the exported
   `plugins/Allium/pack/allium-core-pack.zip`), and `rpm-export` writes it to the mixer.
 - **SF art stays out of git:** SF's art is server-only. `sf_export.py` builds it locally from
-  `$SF/Nexo/pack/assets/sf/textures/items/specials/`, and it is never committed or published. SF
-  has four disarmer textures (`mob_disarmer`, `_2-3`, `_1-3`, `_0-3`). They map to `full`,
-  `two_thirds`, `one_third` and `empty`, and `broken` reuses `empty`, since SF has no broken art.
+  `$SF/Nexo/pack/assets/sf/textures/items/`, and it is never committed or published.
+  - **How:** it writes a derived manifest (`build/sf-export/manifest-sf.json`) in which the SF
+    tools are ready, then builds and, with `--clients <dir>`, validates the pack against vanilla
+    client jars.
+  - **Mob Disarmer and Phantom Obliterator:** SF has four charge textures for each (`<id>`,
+    `_2-3`, `_1-3`, `_0-3`). They map to `full`, `two_thirds`, `one_third` and `empty`, and
+    `broken` reuses `empty`, since SF has no broken art.
+  - **Lazy Axe:** SF's `tree_axe` texture, only with `--include-lazy-axe`. The
+    default export excludes this tool's dispatch so it cannot shadow Nexo's axe.
+    Opt in only for standalone use or after choosing the merged dispatch owner.
+  - **Its carrier collides:** the Lazy Axe's carrier is the netherite axe, which SF's Nexo pack
+    also overrides (its `tree_axe`).
+    - **In a merged pack (ResourcePackManager),** one of the two netherite axe overrides wins, so
+      either Allium's Lazy Axe model or Nexo's `tree_axe` model shows as a plain netherite axe.
+    - **On SF,** keep the Lazy Axe on its Nexo appearance: a pre-recode `tree_axe` keeps
+      `nexo:tree_axe` when it is adopted. Do not serve both overrides until the merge order is
+      decided.
+
+### SF texture follow-up verification (2026-11-12)
+
+- **Automated pack validation:** the default local SF export contains Mob Disarmer
+  and Phantom Obliterator art (SHA-1 `682bdf1d917ae081eb5e2498c990ece3c80490f9`,
+  17,955 bytes). An explicit `--include-lazy-axe` export adds the axe (SHA-1
+  `85fe5dc51e3745072a74492525cb686b2828ba15`, 22,538 bytes). Structural/model
+  resolution checks pass against client jars 1.20.1, 1.21.8 and 26.3 with zero errors.
+  `--clients` requires all three client JARs; missing files fail before replacing
+  an existing export. Local provenance and validation remain in `build/sf-export/`
+  and `build/sf-export-with-lazy-axe/`; SF texture bytes
+  and the generated ZIP are not committed or published.
+- **Unit-tested:** local-export manifest validation accepts server-only art while
+  distributable builds continue rejecting it, and charge models select from the
+  manifest. See `CorePackTest`, `CoreItemsTest`, and
+  `python3 -m unittest discover -s pack/tools -p test_sf_export.py` for collision
+  opt-in and missing-input regressions.
+- **Not visually verified:** appearance in a rendered Minecraft client. No pack
+  was installed on SF, and no SF configuration was changed. The netherite-axe
+  carrier collision above still requires a deployment choice.
 
 ### Several packs (1.20.3 and later)
 

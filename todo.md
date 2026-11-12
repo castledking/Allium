@@ -338,11 +338,17 @@ result and must preserve the existing uncommitted work.
         - Suppression blocked every custom item and the anvil's first slot, and its crafter hook
           never fired.
         - The adoption window could only be opened from the test fixture.
-      - **Still open:**
-        - art for `lazy_axe` and the Obliterator's membrane;
-        - a carrier collision audit for `netherite_axe` (SF's Nexo pack overrides it) before the
-          axe art ships;
-        - an offline importer for privileged item data.
+      - **2026-11-12 follow-up, verification separated:**
+        - **Live:** 28 fresh-install checks (14 per lane, Spigot 1.20.1 and Paper 26.3)
+          show the shipped disabled axe breaks one log and, after enabling/restarting,
+          fells a world-generated spruce. `/give` warns when its definition is disabled.
+        - **Live, Spigot only:** 79 Obliterator regression checks after charge-model selection.
+        - **Automated pack validation:** a local SF export adds Lazy Axe and Obliterator
+          textures and resolves against client jars 1.20.1, 1.21.8 and 26.3. SF texture
+          bytes remain outside git; [scope and hashes](docs/pack-delivery.md).
+        - **Still unverified:** rendered client visuals and the deployment merge choice for
+          the confirmed `netherite_axe` carrier collision. No SF deployment was made.
+        - **Still open:** an offline importer for privileged item data.
 
 ### Recorded inputs for later slices
 

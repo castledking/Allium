@@ -101,6 +101,19 @@ S06c rpm-export dry run against a copy of SF's mixer was rerun on this jar and n
 carrier collision at all (8 checks, 0 failures). SF's CraftEngine pack could not be read; the staging RPM
 merge confirms it. The art does not ship yet.
 
+## Charge-model selector follow-up (2026-11-12)
+
+**Verified live on Spigot 1.20.1 only:** after adding the Obliterator's charge-state
+model selector, `selector-spigot` passed 79 checks with zero failures and no listener
+exceptions. Allium.jar SHA-256:
+`ba8fa8d316b995ee888cd2bfea1a370af955e1e48b194c10542bcc8dcdf5f80c`.
+The manifest retains its own summary, hashes and log locations. This is a Spigot
+regression run, not a new Paper or provider verification.
+
+**Unit-tested:** built-in charge-state custom-model-data selection and retention of
+unrelated item metadata. **Not visually verified:** the local SF-texture export in
+a Minecraft client. Its structural validation is documented in the pack delivery guide.
+
 ## Scope and limits
 
 - **Unloaded chunks:** "loaded chunks only" is shown by zero chunk loads during every use.

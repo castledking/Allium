@@ -352,5 +352,123 @@
         "PASS no listener or Allium exceptions in the server log: []"
       ]
     }
-  ]
+  ],
+  "enabledDefinitionFollowUp": {
+    "date": "2026-11-12",
+    "verification": "live",
+    "checks": 28,
+    "failures": 0,
+    "runs": [
+      {
+        "label": "natural-spigot",
+        "verification": "live",
+        "retained": "/mnt/storage/.allium-validation/20261112/s10-followup/natural-spigot",
+        "summary": {
+          "lane": "spigot-1.20.1",
+          "port": 25650,
+          "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+          "client": "1.20.1",
+          "providers": [],
+          "checks": 14,
+          "failures": [],
+          "serverLogErrors": [],
+          "hashes": {
+            "DisarmerGate.jar": "6b0c70cadc5814d2d40e7e587cf71622f4f461b619520cf74f4077f6b876de8b",
+            "Allium.jar": "23e61770713fa4adbac4632f1038f6a86deeb7330df3b9185ec4ebd67fd3bc03"
+          },
+          "tool": "allium:lazy_axe"
+        },
+        "files": {
+          "driver.log": "1a820aeee94aa623bde106e21410088504e9f9557ba7e494e43af14f590c8272",
+          "server.log": "27ea522d7372ccff5bf77076f2d64ee7db719c652952337ed350583b74009fbe",
+          "summary.json": "4fc608f5ba0db67b06f417b0b55d8d3112215f25175072f1bd5f7be6b19a3d98",
+          "client.log": "f81124a3173e1b0a9f417eda68ab5e3d3672964df2a24f5a610a25eb04ce9551"
+        }
+      },
+      {
+        "label": "natural-paper26",
+        "verification": "live",
+        "retained": "/mnt/storage/.allium-validation/20261112/s10-followup/natural-paper26",
+        "summary": {
+          "lane": "paper-26.3",
+          "port": 25652,
+          "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+          "client": "raw26",
+          "providers": [],
+          "checks": 14,
+          "failures": [],
+          "serverLogErrors": [],
+          "hashes": {
+            "DisarmerGate.jar": "6b0c70cadc5814d2d40e7e587cf71622f4f461b619520cf74f4077f6b876de8b",
+            "Allium.jar": "23e61770713fa4adbac4632f1038f6a86deeb7330df3b9185ec4ebd67fd3bc03"
+          },
+          "tool": "allium:lazy_axe"
+        },
+        "files": {
+          "driver.log": "10d037bbcaff4bc99e7efcb1528ee524be3c44e2bfe7ab51a779673fed9ff4cb",
+          "server.log": "cb1ce2268577fa9623c07ab78a9ead807808befc4ce7b8ba0f6936b9b5985154",
+          "summary.json": "0455720518c4381ed71ee53bd75a2181a9b1d41801c03517e15c1d6a3be49166",
+          "client.log": "aadc1b5542b274ffa9d3a849167300e8dd3fda5853411bb62fd358e8e30d59a2"
+        }
+      }
+    ],
+    "note": "Fresh vanilla-terrain runs use their own Allium.jar hash; original 251-case gate remains unchanged above. Disabled by default, then operator enables definition and restarts.",
+    "standardReruns": {
+      "checks": 239,
+      "runs": [
+        {
+          "verification": "live",
+          "retained": "/mnt/storage/.allium-validation/20261112/s10-followup/reviewed-spigot",
+          "summary": {
+            "lane": "spigot-1.20.1",
+            "port": 25650,
+            "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+            "client": "1.20.1",
+            "providers": [],
+            "checks": 112,
+            "failures": [],
+            "serverLogErrors": [],
+            "hashes": {
+              "DisarmerGate.jar": "75063b556628dc4199202d1d1d3ce80dc05d5eec828a9bb0ad92f53d426d1c55",
+              "Allium.jar": "ba8fa8d316b995ee888cd2bfea1a370af955e1e48b194c10542bcc8dcdf5f80c"
+            },
+            "tool": "allium:lazy_axe"
+          },
+          "files": {
+            "driver.log": "ca3e5ac22302ab4ccc1436093f3b0e2a989361cc1eb87db8eeebb6188e7795ae",
+            "server.log": "7f76680afbfbe240ca1fe1921f19a792ac0df748a64979b4969554e4ac250f7c",
+            "summary.json": "3127ffa0517c783cfce1354c1819905e4817e5c2ce312f29e32fd124ddb1aa62",
+            "client.log": "7388baa4a4dcb8a12e37758e33489e27d7029d1e025ebe569548a7134ab35429"
+          }
+        },
+        {
+          "verification": "live",
+          "retained": "/mnt/storage/.allium-validation/20261112/s10-followup/reviewed-paper26",
+          "summary": {
+            "lane": "paper-26.3",
+            "port": 25652,
+            "server": "This server is running Paper version 26.3-141-main@54024d3 (2026-10-01T15:55:33Z) (Implementing API version 26.3.build.141-beta)",
+            "client": "raw26",
+            "providers": [],
+            "checks": 127,
+            "failures": [],
+            "serverLogErrors": [],
+            "hashes": {
+              "GriefPrevention3D-19.0.5.jar": "da2cf6f8fd9969c1d0968293c8d00b91c22ea593804d2728aa1e0c223b5dea50",
+              "DisarmerGate.jar": "75063b556628dc4199202d1d1d3ce80dc05d5eec828a9bb0ad92f53d426d1c55",
+              "Allium.jar": "ba8fa8d316b995ee888cd2bfea1a370af955e1e48b194c10542bcc8dcdf5f80c"
+            },
+            "tool": "allium:lazy_axe"
+          },
+          "files": {
+            "driver.log": "a7a14dfdc838be593861b2c43fde02f1fb2ef827f459f0ec20fdcf75a5d48c9f",
+            "server.log": "cfc4157fca663bb53b48c3ab823ac6404c414fd509dad92a689a3d6a3a1aeaa2",
+            "summary.json": "eb6423fc324b7d960add423415492a3163e589054dd8f39a5b128a6b440f2ccb",
+            "client.log": "da09f2e4a94c23320f57cd7d47fe19a8672999cecf9d0ba8ce5ead8abf56a1cb"
+          }
+        }
+      ],
+      "note": "After renaming the new natural-install helper so it no longer shadows the standard grown-tree helper. Includes native-grown birch on both lanes; spontaneous worldgen fresh-install tests above used spruce only."
+    }
+  }
 }

@@ -93,6 +93,40 @@ The log counts are those of the seeded trees, the same on both lanes.
   - An axe issued as `nexo:gate_axe` is a signed `allium:lazy_axe` with the Nexo appearance.
   - It felled a 6-log oak in one fell: one `BlockBreakEvent` per log, one drop per log.
 
+## A fresh install on vanilla terrain (`--natural`, 2026-11-12)
+
+**PASS: 28 live checks, 0 failures** (14 on each lane: `natural-final-spigot` on Spigot 1.20.1,
+`natural-final-paper26` on Paper 26.3), on Allium.jar `23e61770713fa4adbac4632f1038f6a86deeb7330df3b9185ec4ebd67fd3bc03`,
+with the `/give` warning below. These runs and their hashes are retained separately in the
+manifest; they do not replace the original 251-check gate. This is how an
+admin meets the Lazy Axe:
+- **Setup:** no tool files are written beforehand, so Allium installs its shipped defaults. The
+  world is vanilla terrain, and the tree is the nearest natural (worldgen) tree to spawn, a spruce
+  on both lanes. The axe comes from the console's `/give GateBot allium:lazy_axe`.
+- **Disabled by default (live, both lanes):**
+  - **The shipped file:** the installed `tools/lazy_axe.yml` says `enabled: false`, and the
+    startup log says the Lazy Axe is disabled and names the file.
+  - **`/give`:** it gives a signed `allium:lazy_axe`, and now warns the giver that it is disabled
+    and works as a plain item until `enabled: true` and a restart.
+  - **Mining:** it breaks one log, as a plain axe.
+- **Enabled (live, both lanes):** after `enabled: true` and a restart, mining the base of a
+  natural spruce felled it, whole trunk included, and broke no leaf. That was 56 logs on one lane
+  and 7 on the other.
+- **The harness bug it found:** the raw 26.3 client encoded a block position with a negative x
+  as an out-of-range signed value and disconnected. The flat arenas above all sit at positive x,
+  which is why it never showed there.
+
+## Standard-gate regression after the fresh-install harness change
+
+**Verified live:** `reviewed-spigot` passed 112 checks on Spigot 1.20.1 and
+`reviewed-paper26` passed 127 on Paper 26.3 with GriefPrevention3D 19.0.5, both
+without failures or listener exceptions. They used Allium.jar
+`ba8fa8d316b995ee888cd2bfea1a370af955e1e48b194c10542bcc8dcdf5f80c`.
+The manifest retains these runs separately. This confirms the standard grown-tree
+cases still execute after renaming the fresh-install helper. The vanilla-grown
+birch case ran on both lanes; the spontaneous worldgen fresh-install cases above
+used spruce only. No new Paper 1.21.8 appearance run is claimed here.
+
 ## What the gate found and fixed
 
 - **The shipped `lazy_axe.yml` could not be enabled.** The core item `lazy_axe` was bound to the
@@ -119,8 +153,9 @@ The log counts are those of the seeded trees, the same on both lanes.
 python3 tests/live/tools/lazyaxe/run.py --lane spigot-1.20.1 --run-name <name>
 python3 tests/live/tools/lazyaxe/run.py --lane paper-26.3 --run-name <name> --griefprevention
 python3 tests/live/tools/lazyaxe/run.py --lane paper-1.21.8 --run-name <name> --quick
+python3 tests/live/tools/lazyaxe/run.py --lane <spigot-1.20.1|paper-26.3> --run-name <name> --natural
 ```
 
 The runs use the owned ports 25650–25652 and the disarmer gate's clients. Different lanes can run
 at the same time, but only one run per lane. The prerequisites are the artifacts named in
-`tests/live/tools/lanes.py`.
+`tests/live/tools/lanes.py`, kept in `/mnt/storage/.allium-validation/infra/`.

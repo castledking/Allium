@@ -278,5 +278,38 @@
         "PASS no listener or Allium exceptions in the server log: []"
       ]
     }
-  ]
+  ],
+  "chargeModelSelectorFollowUp": {
+    "date": "2026-11-12",
+    "verification": "live on Spigot 1.20.1 only",
+    "checks": 79,
+    "failures": 0,
+    "run": {
+      "label": "obliterator-selector-spigot",
+      "verification": "live",
+      "retained": "/mnt/storage/.allium-validation/20261112/s10-followup/obliterator-selector-spigot",
+      "summary": {
+        "lane": "spigot-1.20.1",
+        "port": 25650,
+        "server": "This server is running CraftBukkit version 3871-Spigot-d2eba2c-3f9263b (MC: 1.20.1) (Implementing API version 1.20.1-R0.1-SNAPSHOT)",
+        "client": "1.20.1",
+        "providers": [],
+        "checks": 79,
+        "failures": [],
+        "serverLogErrors": [],
+        "hashes": {
+          "DisarmerGate.jar": "e4db9c07332c2dcc2d10d94489526154ac7566aab96b521a7465378a74fbf8c5",
+          "Allium.jar": "ba8fa8d316b995ee888cd2bfea1a370af955e1e48b194c10542bcc8dcdf5f80c"
+        },
+        "tool": "allium:phantom_obliterator"
+      },
+      "files": {
+        "driver.log": "7be6853a8e6c6ff021cc3eb67a1119d6132a4ec92531e884dd3dd96f92eee651",
+        "server.log": "1b119c6759889fc0b6a768fd21891f53a0ad28c147db328d8884fce56b0dbfd8",
+        "summary.json": "c2257e8308cfb2dc088ef01f113f5b2fd1bf7adb80c97323573a038ef4c90664",
+        "client.log": "34bc073f613daaac44046ff40b980764f225258f7d742935fd2f49dee312b4c1"
+      }
+    },
+    "note": "Regression run after generalized charge-model selector. It does not claim a new Paper 26.3 or provider run."
+  }
 }

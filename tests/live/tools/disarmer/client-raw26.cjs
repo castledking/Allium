@@ -63,7 +63,8 @@ let sequence = 1;
 function f32(n) { const b = Buffer.alloc(4); b.writeFloatBE(n); return b; }
 function blockPos(x, y, z) {
   const b = Buffer.alloc(8);
-  b.writeBigInt64BE((BigInt.asIntN(26, BigInt(x)) & 0x3FFFFFFn) << 38n | (BigInt.asIntN(26, BigInt(z)) & 0x3FFFFFFn) << 12n | (BigInt(y) & 0xFFFn));
+  // Packed as an unsigned 64-bit value: negative x sets the top bit, which a signed write rejects.
+  b.writeBigUInt64BE(BigInt.asUintN(64, (BigInt(x) & 0x3FFFFFFn) << 38n | (BigInt(z) & 0x3FFFFFFn) << 12n | (BigInt(y) & 0xFFFn)));
   return b;
 }
 // Right-click on air with the main hand: ServerboundUseItemPacket(hand, sequence, yRot, xRot).

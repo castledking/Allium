@@ -109,6 +109,8 @@ final class ToolsGate implements Listener {
             case "la-arena" -> arena(args[1], Integer.parseInt(args[2]), Integer.parseInt(args[3]), args.length > 4 && args[4].equals("keep"));
             case "la-tree" -> tree(args[1], args[2], Integer.parseInt(args[3]), Integer.parseInt(args[4]), Long.parseLong(args[5]));
             case "la-build" -> build(args[1], args[2]);
+            case "la-find" -> find(args[1], Integer.parseInt(args[2]));
+            case "la-clear" -> { bot().getInventory().clear(); bot().getInventory().setHeldItemSlot(0); }
             case "la-give" -> give(args[1], args[2], Integer.parseInt(args[3]), args.length > 4 ? args[4] : "-");
             case "la-observe" -> writer.accept(args[1] + "-observe", observe());
             case "la-claim" -> writer.accept(args[1], claim(Integer.parseInt(args[2]), Integer.parseInt(args[3]),
@@ -206,6 +208,75 @@ final class ToolsGate implements Listener {
         out.put("lowest", caseLogs.stream().mapToInt(p -> p[1]).min().orElse(0));
         out.put("chunks", watchedChunks.size());
         writer.accept(name + "-tree", out);
+    }
+
+    /**
+     * Finds the natural (worldgen) tree nearest the bot in a vanilla-terrain world: a log on dirt or
+     * grass with logs above it and natural leaves near its top. Selects it as the case (not cleared)
+     * and stands the bot on free ground next to its trunk.
+     */
+    private void find(String name, int radius) {
+        Player bot = bot();
+        World world = bot.getWorld();
+        world.setGameRule(GameRule.RANDOM_TICK_SPEED, 0); // leaves must not decay during a case
+        Location origin = bot.getLocation();
+        int[] best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                int x = origin.getBlockX() + dx, z = origin.getBlockZ() + dz;
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                for (int y = world.getHighestBlockYAt(x, z); y > world.getMinHeight() + 1; y--) {
+                    Block b = world.getBlockAt(x, y, z);
+                    String m = b.getType().name().toLowerCase(Locale.ROOT);
+                    if (!isLog(m)) continue;
+                    String below = world.getBlockAt(x, y - 1, z).getType().name().toLowerCase(Locale.ROOT);
+                    if (isLog(below)) continue;
+                    boolean ground = List.of("dirt", "grass_block", "podzol", "coarse_dirt", "rooted_dirt", "mycelium", "moss_block").contains(below);
+                    boolean trunk = isLog(world.getBlockAt(x, y + 1, z).getType().name().toLowerCase(Locale.ROOT))
+                            && isLog(world.getBlockAt(x, y + 2, z).getType().name().toLowerCase(Locale.ROOT));
+                    double d = dx * dx + dz * dz;
+                    if (ground && trunk && d < bestDist && stand(world, x, y, z) != null) {
+                        best = new int[]{x, y, z};
+                        bestDist = d;
+                    }
+                    break;
+                }
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("found", best != null);
+        if (best != null) {
+            caseX = best[0];
+            caseZ = best[2];
+            ground = best[1] - 1;
+            Location stand = stand(world, best[0], best[1], best[2]);
+            bot.teleport(stand);
+            breaks.clear();
+            fells.clear();
+            scan();
+            out.put("trunk", List.of(best[0], best[1], best[2]));
+            out.put("stand", List.of(stand.getX(), stand.getY(), stand.getZ()));
+            out.put("species", world.getBlockAt(best[0], best[1], best[2]).getType().name());
+            out.put("biome", world.getBlockAt(best[0], best[1], best[2]).getBiome().toString());
+            out.put("logs", caseLogs.size());
+            out.put("logPositions", caseLogs);
+            out.put("leaves", caseLeaves);
+            out.put("persistentLeaves", leaves(true));
+        }
+        writer.accept(name + "-tree", out);
+    }
+
+    /** Free standing room (feet and head air, solid floor) two blocks from a trunk, or null. */
+    private static Location stand(World world, int x, int y, int z) {
+        for (int[] d : new int[][]{{-2, 0}, {2, 0}, {0, -2}, {0, 2}, {-2, -1}, {2, 1}}) {
+            Block feet = world.getBlockAt(x + d[0], y, z + d[1]);
+            if (feet.getType().isAir() && feet.getRelative(BlockFace.UP).getType().isAir() && feet.getRelative(BlockFace.DOWN).getType().isSolid()) {
+                float yaw = d[0] < 0 ? -90F : d[0] > 0 ? 90F : d[1] < 0 ? 0F : 180F;
+                return new Location(world, feet.getX() + 0.5, y, feet.getZ() + 0.5, yaw, 0F);
+            }
+        }
+        return null;
     }
 
     /**

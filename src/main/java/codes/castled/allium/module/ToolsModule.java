@@ -27,6 +27,11 @@ import codes.castled.allium.tool.obliterator.ObliterateListener;
 import codes.castled.allium.tool.obliterator.ObliterateParameters;
 import codes.castled.allium.tool.obliterator.ObliterateTool;
 import codes.castled.allium.tool.ToolCarrierSuppressionListener;
+import codes.castled.allium.tool.felltree.FellTreeBehavior;
+import codes.castled.allium.tool.felltree.FellTreeBehaviorType;
+import codes.castled.allium.tool.felltree.FellTreeListener;
+import codes.castled.allium.tool.felltree.FellTreeParameters;
+import codes.castled.allium.tool.felltree.FellTreeTool;
 import org.bukkit.Material;
 import org.bukkit.event.HandlerList;
 import org.bukkit.permissions.Permission;
@@ -53,10 +58,11 @@ public final class ToolsModule extends AbstractModule {
 
     private static final Map<String, ToolBehaviorType<?>> BEHAVIORS = Map.of(
             DisarmBehaviorType.ID, new DisarmBehaviorType(),
-            ObliterateBehaviorType.ID, new ObliterateBehaviorType());
+            ObliterateBehaviorType.ID, new ObliterateBehaviorType(),
+            FellTreeBehaviorType.ID, new FellTreeBehaviorType());
 
     /** The default definitions the jar ships, each installed once (tools/.defaults). */
-    static final List<String> BUNDLED_DEFAULTS = List.of("mob_disarmer.yml", "phantom_obliterator.yml");
+    static final List<String> BUNDLED_DEFAULTS = List.of("mob_disarmer.yml", "phantom_obliterator.yml", "lazy_axe.yml");
 
     private final List<String> registeredItems = new ArrayList<>();
     private final List<String> registeredPermissions = new ArrayList<>();
@@ -65,6 +71,8 @@ public final class ToolsModule extends AbstractModule {
     private DisarmBehavior disarm;
     private ObliterateListener obliterateListener;
     private ObliterateBehavior obliterate;
+    private FellTreeListener fellTreeListener;
+    private FellTreeBehavior fellTree;
     private ToolCarrierSuppressionListener carrierSuppression;
     private ToolDefinitionLoader.Loaded loaded;
 
@@ -106,15 +114,19 @@ public final class ToolsModule extends AbstractModule {
 
         List<DisarmTool> disarmTools = new ArrayList<>();
         List<ObliterateTool> obliterateTools = new ArrayList<>();
+        List<FellTreeTool> fellTreeTools = new ArrayList<>();
         for (ToolDefinition definition : loaded.enabled()) {
             register(items, definition);
             if (DisarmBehaviorType.ID.equals(definition.behavior())) {
                 disarmTools.add(new DisarmTool(definition, System::nanoTime));
             } else if (ObliterateBehaviorType.ID.equals(definition.behavior())) {
                 obliterateTools.add(new ObliterateTool(definition, System::nanoTime));
+            } else if (FellTreeBehaviorType.ID.equals(definition.behavior())) {
+                fellTreeTools.add(new FellTreeTool(definition));
             }
         }
         enableObliterate(items, obliterateTools);
+        enableFellTree(items, fellTreeTools);
         if (disarmTools.isEmpty()) {
             plugin.logger().info("No " + DisarmBehaviorType.ID + " tool is enabled.");
             return;
@@ -148,6 +160,24 @@ public final class ToolsModule extends AbstractModule {
                     + parameters.rules().maxCharges() + " charges, recharge " + parameters.rules().rechargeMillis() / 1000L
                     + "s, radius " + parameters.radius() + ", targets " + parameters.entityTypes()
                     + (parameters.attributedKill() ? ", kills as the player" : ", silent kills") + ".");
+        }
+    }
+
+    private void enableFellTree(ItemService items, List<FellTreeTool> tools) {
+        if (tools.isEmpty()) {
+            return;
+        }
+        fellTree = new FellTreeBehavior(items, plugin.getProtectionService(), plugin.getScheduler(),
+                plugin.getMessageManager()::send, plugin.logger()::warning, System::currentTimeMillis,
+                new Random(), tools);
+        fellTreeListener = new FellTreeListener(fellTree);
+        plugin.getServer().getPluginManager().registerEvents(fellTreeListener, plugin);
+        for (FellTreeTool tool : tools) {
+            FellTreeParameters parameters = tool.parameters();
+            plugin.logger().info(tool.name() + " enabled (" + tool.definition().file() + ", " + tool.id() + " -> "
+                    + FellTreeBehaviorType.ID + "): appearance " + tool.definition().appearance() + ", "
+                    + "max blocks " + parameters.maxBlocks() + ", speed " + parameters.blocksPerTick() + " b/t, mode "
+                    + (parameters.breakAsPlayer() ? "break-as-player" : "direct") + ".");
         }
     }
 
@@ -234,14 +264,28 @@ public final class ToolsModule extends AbstractModule {
             HandlerList.unregisterAll(obliterateListener);
             obliterateListener = null;
         }
+        if (fellTree != null) {
+            fellTree.disable();
+            fellTree = null;
+        }
+        if (fellTreeListener != null) {
+            HandlerList.unregisterAll(fellTreeListener);
+            fellTreeListener = null;
+        }
         disarm = null;
         obliterate = null;
+        fellTree = null;
         loaded = null;
     }
 
     /** The obliterate behavior, or {@code null} when no Phantom Obliterator is enabled. */
     public ObliterateBehavior obliterate() {
         return obliterate;
+    }
+
+    /** The fell tree behavior, or {@code null} when no Lazy Axe is enabled. */
+    public FellTreeBehavior fellTree() {
+        return fellTree;
     }
 
     /** The disarm behavior, or {@code null} when no disarm tool is enabled. */

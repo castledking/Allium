@@ -126,6 +126,23 @@
           "cmd": 2577040
         }
       ]
+    },
+    {
+      "id": "lazy_axe",
+      "behavior": "allium:fell_tree",
+      "carrier": "netherite_axe",
+      "name": "§aLazy Axe",
+      "status": "planned",
+      "allocation": {
+        "first": 2577050,
+        "last": 2577059
+      },
+      "states": [
+        {
+          "key": "default",
+          "cmd": 2577050
+        }
+      ]
     }
   ],
   "textures": [

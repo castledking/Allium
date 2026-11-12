@@ -38,6 +38,10 @@ class CoreItemsTest {
         assertEquals(Material.PHANTOM_MEMBRANE, byId.get("phantom_obliterator").carrierMaterial(), "moved off blaze_rod, which SF's Nexo pack overrides");
         assertEquals(Map.of("charges", "3"), byId.get("phantom_obliterator").defaultState());
         assertEquals(Material.NAME_TAG, byId.get("item_renamer").carrierMaterial());
+        assertEquals(Material.NETHERITE_AXE, byId.get("lazy_axe").carrierMaterial());
+        assertEquals(2577050, byId.get("lazy_axe").customModelData());
+        assertTrue(byId.get("lazy_axe").signed());
+        assertFalse(byId.get("lazy_axe").privileged());
         assertEquals("§6Mob Disarmer", byId.get("mob_disarmer").displayName());
         assertNotNull(getClass().getClassLoader().getResource(CoreItems.PACK_RESOURCE), "the generated pack is bundled");
         assertNotNull(getClass().getClassLoader().getResource(CoreItems.PACK_INFO_RESOURCE));

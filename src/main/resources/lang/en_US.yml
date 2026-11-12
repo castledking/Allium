@@ -139,6 +139,10 @@ tool:
     recharging: "{prefix} &cThe Phantom Obliterator is recharging. Ready in &f{time}&c."
     single-item: "{prefix} &cHold a single Phantom Obliterator, not a stack."
     update-failed: "{prefix} &cThe Phantom Obliterator could not be updated, so nothing was used."
+  lazy-axe:
+    too-large: "{prefix} &cThat tree is too large to fell (over {max} blocks)."
+    busy: "{prefix} &cYou are already felling a tree."
+    stopped-axe: "{prefix} &cStopped felling to keep your axe from breaking."
 
 item:
   give:

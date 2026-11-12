@@ -9,6 +9,8 @@ import codes.castled.allium.tool.definition.ToolSound;
 import codes.castled.allium.tool.disarmer.DisarmBehaviorType;
 import codes.castled.allium.tool.obliterator.ObliterateBehaviorType;
 import codes.castled.allium.tool.obliterator.ObliterateParameters;
+import codes.castled.allium.tool.felltree.FellTreeBehaviorType;
+import codes.castled.allium.tool.felltree.FellTreeParameters;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -27,13 +29,14 @@ class BundledToolDefinitionsTest {
 
     private static final Map<String, ToolBehaviorType<?>> BEHAVIORS = Map.of(
             DisarmBehaviorType.ID, new DisarmBehaviorType(),
-            ObliterateBehaviorType.ID, new ObliterateBehaviorType());
+            ObliterateBehaviorType.ID, new ObliterateBehaviorType(),
+            FellTreeBehaviorType.ID, new FellTreeBehaviorType());
 
     private static final ToolEnvironment ENV = new ToolEnvironment() {
         public boolean isItemMaterial(String material) { return true; }
         public boolean isEntityType(String entityType) { return entityType.startsWith("minecraft:"); }
         public boolean hasLangKey(String key) { return true; }
-        public boolean isCoreItem(String localId) { return Set.of("mob_disarmer", "phantom_obliterator").contains(localId); }
+        public boolean isCoreItem(String localId) { return Set.of("mob_disarmer", "phantom_obliterator", "lazy_axe").contains(localId); }
         public Optional<String> coreItemBehavior(String localId) {
             return Optional.ofNullable(BukkitToolEnvironment.CORE_TOOL_BEHAVIORS.get(localId));
         }
@@ -88,5 +91,25 @@ class BundledToolDefinitionsTest {
         }
         assertTrue(BukkitParticles.resolve("not_a_particle").isEmpty());
         assertTrue(BukkitParticles.resolve("dust").isEmpty(), "dust needs data, so it is refused");
+    }
+
+    @Test
+    void theLazyAxeDefaultParsesAndIsDisabledByDefault() throws Exception {
+        ToolDefinition definition = parse("tools/lazy_axe.yml");
+        assertEquals("allium:lazy_axe", definition.id());
+        assertEquals(FellTreeBehaviorType.ID, definition.behavior());
+        assertFalse(definition.enabled(), "Lazy Axe is disabled by default");
+        assertEquals(ProviderKey.allium("lazy_axe"), definition.appearance());
+        FellTreeParameters parameters = definition.parameters(FellTreeParameters.class);
+        assertEquals(256, parameters.maxBlocks());
+        assertEquals(8, parameters.maxRadius());
+        assertEquals(48, parameters.maxHeight());
+        assertEquals(4, parameters.minNaturalLeaves());
+        assertEquals(6, parameters.blocksPerTick());
+        assertTrue(parameters.breakAsPlayer());
+        assertTrue(parameters.stopBeforeBreak());
+        assertEquals("disables", parameters.sneak());
+        assertTrue(parameters.importLegacy());
+        assertEquals("allium.treeaxe.use", definition.permission("use"));
     }
 }

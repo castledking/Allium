@@ -312,7 +312,7 @@ result and must preserve the existing uncommitted work.
       [the results](tests/live/tools/obliterator/RESULTS.md).
 - [x] **Core tools follow-up:** keep tool carriers out of crafting, brewing, anvils, smelting, smithing,
       grindstone, trading and hopper automation transfers (live checked on Spigot 1.20.1 and Paper 26.3).
-- [ ] **S10 / M4 — Tools: Phantom Obliterator and Lazy Axe** (after S08), implemented from the
+- [x] **S10 / M4 — Tools: Phantom Obliterator and Lazy Axe** (after S08), implemented from the
       [Obliterator](docs/phantom-obliterator-design.md) and [Lazy Axe](docs/lazy-axe-design.md)
       designs, as `allium:obliterate_phantoms` and `allium:fell_tree` definitions. The Lazy Axe
       is off by default.

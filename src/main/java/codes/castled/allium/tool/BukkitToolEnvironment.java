@@ -22,7 +22,8 @@ public final class BukkitToolEnvironment implements ToolEnvironment {
      */
     static final Map<String, String> CORE_TOOL_BEHAVIORS = Map.of(
             "mob_disarmer", DisarmBehaviorType.ID,
-            "phantom_obliterator", codes.castled.allium.tool.obliterator.ObliterateBehaviorType.ID);
+            "phantom_obliterator", codes.castled.allium.tool.obliterator.ObliterateBehaviorType.ID,
+            "lazy_axe", codes.castled.allium.tool.felltree.FellTreeBehaviorType.ID);
 
     private final Set<String> coreItems;
     private final Predicate<String> langKeys;

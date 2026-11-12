@@ -153,8 +153,13 @@ log always breaks exactly as vanilla breaks it.
    fences, doors, trapdoors, glass, wool, carpet, concrete, bricks, beds, signs, chests,
    torches, lanterns and the like. Block tags are used where the version has them, with a
    name-based fallback.
-   - **Adjacency, not a cube:** a house beside a tree is fine. A log wall built into a tree
+   - **Adjacency, not a cube:** a house away from a tree is fine. A log wall built into a tree
      stops the fell.
+   - **Structure-guard false negatives:** when any log of a natural tree directly touches a player
+     structure (e.g. a tree planted directly flush against a wooden or stone wall, or a build using
+     the tree trunk as a pillar/support), the structure guard treats it as a build and intentionally
+     aborts the fell. This false negative is by design to ensure player builds are never accidentally
+     felled. Only the single broken log breaks as in vanilla.
 6. **Over the cap:** a tree over `max-blocks` (or past the radius or height) is **not felled at
    all**; only the first log broke, as in vanilla. The player is told the tree is too large.
    Legacy felled the first 100 logs, which left floating logs.
@@ -241,6 +246,9 @@ logs are gone.
   non-persistent leaves, the bounded search and the structure guard. A bare log build is never
   felled. But player-placed logs that touch a natural tree's logs, with no other building block
   touching them, are felled with the tree.
+- **Structure-guard false negatives:** a tree immediately beside a build (where any log touches a
+  building block) will not fell. This guarantees complete protection for player builds at the cost
+  of requiring players to fell trees touching their houses by hand.
 - **Leaves that look natural:** they are non-persistent but did not grow there. Leaves set by
   WorldEdit, debug sticks or worldgen-pasted schematics count as natural.
 - **Trees without leaves:** a tree whose leaves have decayed or were removed breaks one log at a

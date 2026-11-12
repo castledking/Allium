@@ -18,17 +18,23 @@ COEXIST = Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/pap
 LANES = {
     'spigot-1.20.1': {'port': 25650, 'java': '/usr/lib/jvm/java-17-openjdk/bin/java', 'client': '1.20.1',
                       'server': Path('/tmp/allium-server-cache/spigot-1.20.1.jar'), 'providers': []},
+    # Paper 1.21.8-60: the official paperclip (sha256 8de7c52c..., the build S05 used), seeded with the
+    # cache, libraries and versions the passing S05 coexist lane kept. Paperclip puts only the
+    # server's own libraries on the classpath; the plugins' downloaded libraries stay theirs.
     'paper-1.21.8': {'port': 25651, 'java': '/usr/lib/jvm/java-21-openjdk/bin/java', 'client': '1.21.8',
-                     'server': Path('/tmp/allium-s05-20261106/lanes/artifacts/paper-1.21.8-60.jar'),
+                     'server': Path('/tmp/allium-s10-20261112/artifacts/paper-1.21.8-60.jar'), 'seed': COEXIST,
                      'providers': ['nexo', 'craftengine', 'oraxen']},
     'paper-26.3': {'port': 25652, 'java': '/usr/lib/jvm/java-25-openjdk/bin/java', 'client': 'raw26',
-                   'template': Path('/tmp/allium-s05-20261105/provider-gate/lane'), 'providers': []},
+                   'template': Path('/tmp/allium-s05-20261105/provider-gate/lane'), 'version': '26.3', 'providers': []},
 }
+# The same provider binaries the S05 coexist lane passed with (CraftEngine 26.9.1).
 PROVIDER_JARS = {
-    'nexo': Path('/tmp/allium-s05-20261106/supplied/nexo.jar'),
-    'craftengine': Path('/tmp/allium-s05-20261106/pins/ce/craft-engine-paper-plugin-26.9.1.jar'),
-    'oraxen': Path('/tmp/allium-s05-20261106/supplied/oraxen.jar'),
+    'nexo': COEXIST / 'plugins/nexo.jar',
+    'craftengine': COEXIST / 'plugins/craftengine.jar',
+    'oraxen': COEXIST / 'plugins/oraxen.jar',
 }
+# SF's GriefPrevention3D 19.0.5 plugin binary (sha256 da2cf6f8...), copied alone: no data.
+GRIEFPREVENTION = Path('/tmp/allium-s10-20261112/artifacts/GriefPrevention3D-19.0.5.jar')
 FAULTS = '-Dallium.fault-injection=true'
 
 
@@ -80,7 +86,7 @@ class Gate:
         api = '/tmp/allium-lane-spigot-1.20/bundler/libraries/spigot-api-1.20.1-R0.1-SNAPSHOT.jar'
         gson = next((LANES['paper-26.3']['template'] / 'libraries/com/google/code/gson').rglob('*.jar'))
         subprocess.run(['/usr/lib/jvm/java-21-openjdk/bin/javac', '--release', '17', '-cp', f'{api}:{gson}:{self.allium_jar}',
-                        '-d', str(classes), str(DISARMER / 'plugin/gate/DisarmerGate.java')], check=True)
+                        '-d', str(classes), *map(str, sorted((DISARMER / 'plugin/gate').glob('*.java')))], check=True)
         shutil.copy2(DISARMER / 'plugin/plugin.yml', classes / 'plugin.yml')
         subprocess.run(['/usr/lib/jvm/java-21-openjdk/bin/jar', 'cf', str(out / 'DisarmerGate.jar'), '-C', str(classes), '.'], check=True)
 
@@ -88,12 +94,12 @@ class Gate:
         """tool_files: {name: yaml text} written to plugins/Allium/tools/ before the first start."""
         lane, spec = self.lane, self.spec
         lane.mkdir(parents=True)
-        if self.lane_name == 'paper-26.3':
+        if 'template' in spec:
             for name in ['libraries', 'versions']:
                 shutil.copytree(spec['template'] / name, lane / name)
-        elif self.lane_name == 'paper-1.21.8':
+        elif 'seed' in spec:
             for name in ['cache', 'libraries', 'versions']:
-                shutil.copytree(COEXIST / name, lane / name)
+                shutil.copytree(spec['seed'] / name, lane / name)
             shutil.copy2(spec['server'], lane / 'server.jar')
         else:
             shutil.copy2(spec['server'], lane / 'server.jar')
@@ -137,7 +143,7 @@ network-compression-threshold=256
 
     def argv(self):
         spec, lane = self.spec, self.lane
-        if self.lane_name == 'paper-26.3':
+        if 'template' in spec:
             libs = {}
 
             def version(path):
@@ -146,7 +152,8 @@ network-compression-threshold=256
                 artifact = jar.parent.parent
                 if artifact not in libs or version(jar) > version(libs[artifact]):
                     libs[artifact] = jar
-            cp = ':'.join(str(x.relative_to(lane)) for x in [lane / 'versions/26.3/paper-26.3.jar', *libs.values()])
+            v = spec['version']
+            cp = ':'.join(str(x.relative_to(lane)) for x in [lane / f'versions/{v}/paper-{v}.jar', *libs.values()])
             return [spec['java'], '-Xms512M', '-Xmx1536M', '-Dterminal.jline=false', '-Dterminal.ansi=false',
                     FAULTS, '-cp', cp, 'org.bukkit.craftbukkit.Main', '--nogui']
         return [spec['java'], '-Xms512M', '-Xmx2G', '-Dterminal.jline=false', '-Dterminal.ansi=false',

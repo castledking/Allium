@@ -84,12 +84,27 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
     /** Chunk loads since the last baseline: a use must load none. */
     private int obChunkLoads;
     private org.bukkit.permissions.PermissionAttachment attachment;
+    private ToolsGate toolsGate;
 
     @Override
     public void onEnable() {
         marker = new NamespacedKey(this, "piece");
         items = ((PluginStart) getServer().getPluginManager().getPlugin("Allium")).getItemService();
         getServer().getPluginManager().registerEvents(this, this);
+        try {
+            toolsGate = new ToolsGate(this, items, (name, value) -> {
+                try {
+                    write(name, value);
+                } catch (IOException e) {
+                    throw new java.io.UncheckedIOException(e);
+                }
+            });
+            getServer().getPluginManager().registerEvents(toolsGate, this);
+        } catch (LinkageError e) {
+            // An Allium jar from before the Lazy Axe (the upgrade scenario's first boot).
+            toolsGate = null;
+            getLogger().info("S06A tools cases unavailable on this Allium jar: " + e);
+        }
         try {
             write("wire-ids", Map.of("wirePackets", WireIds.dump()));
         } catch (Throwable e) {
@@ -121,8 +136,9 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
                 case "snapshot" -> write(args[1], inventorySnapshot());
                 case "gpclaim" -> write("gpclaim", griefPreventionAdminClaim(args.length > 1 ? Integer.parseInt(args[1]) : 0));
                 case "carrier-test" -> carrierTest(args[1]);
-                case "adopt-window" -> items.enablePrivilegedAdoptionWindow(Long.parseLong(args[1]));
-                default -> throw new IllegalArgumentException("unknown " + args[0]);
+                default -> {
+                    if (toolsGate == null || !toolsGate.handle(args)) throw new IllegalArgumentException("unknown " + args[0]);
+                }
             }
             getLogger().info("S06A-DONE " + String.join(" ", args));
         } catch (Exception e) {

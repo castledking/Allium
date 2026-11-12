@@ -232,12 +232,20 @@ public final class ObliterateBehavior {
             }
         }
         if (killed.isEmpty()) {
-            // Every target was spared by a damage listener: put the charge back.
-            if (!items.updateState(live, charges.toState())) {
+            // Every target was spared by a damage listener: put the charge back onto the same instance UUID.
+            ItemStack currentHand = inventory.getItemInMainHand();
+            String currentUuid = pdcString(currentHand, ItemService.KEY_INSTANCE_UUID);
+            if (uuid == null || !uuid.equals(currentUuid) || inventory.getHeldItemSlot() != slot) {
+                diagnostics.accept(tool.name() + " refund failed: item with UUID " + uuid
+                        + " has moved or is gone from " + player.getName() + "'s main hand; crediting nothing.");
+                status(player, tool, now, ObliterateBehaviorType.MSG_PROTECTED);
+                return Outcome.REFUNDED;
+            }
+            if (!items.updateState(currentHand, charges.toState())) {
                 warnOnce("refund:" + tool.id(), tool.name() + " could not refund " + player.getName()
                         + "'s charge after every target was spared.");
             }
-            inventory.setItemInMainHand(live);
+            inventory.setItemInMainHand(currentHand);
             status(player, tool, now, ObliterateBehaviorType.MSG_PROTECTED);
             return Outcome.REFUNDED;
         }

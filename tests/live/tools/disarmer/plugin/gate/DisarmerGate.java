@@ -120,6 +120,8 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
                 case "take" -> move(Integer.parseInt(args[1]), 0);
                 case "snapshot" -> write(args[1], inventorySnapshot());
                 case "gpclaim" -> write("gpclaim", griefPreventionAdminClaim(args.length > 1 ? Integer.parseInt(args[1]) : 0));
+                case "carrier-test" -> carrierTest(args[1]);
+                case "adopt-window" -> items.enablePrivilegedAdoptionWindow(Long.parseLong(args[1]));
                 default -> throw new IllegalArgumentException("unknown " + args[0]);
             }
             getLogger().info("S06A-DONE " + String.join(" ", args));
@@ -128,6 +130,95 @@ public final class DisarmerGate extends JavaPlugin implements Listener {
             e.printStackTrace();
         }
         return true;
+    }
+
+
+    private void carrierTest(String name) throws IOException {
+        Player bot = requireBot();
+        World world = bot.getWorld();
+        Location base = new Location(world, OB_X + 20.0, world.getHighestBlockYAt((int) Math.floor(OB_X + 20.0), 0) + 1, OB_Z + 20.0);
+
+        // 1. Brewing Stand + Hopper
+        org.bukkit.block.Block brewBlock = base.clone().add(0, 0, 0).getBlock();
+        brewBlock.setType(Material.BREWING_STAND);
+        org.bukkit.block.BrewingStand brewStand = (org.bukkit.block.BrewingStand) brewBlock.getState();
+
+        org.bukkit.block.Block hopperBrewBlock = base.clone().add(0, 1, 0).getBlock();
+        hopperBrewBlock.setType(Material.HOPPER);
+        org.bukkit.block.data.type.Hopper hopperBrewData = (org.bukkit.block.data.type.Hopper) hopperBrewBlock.getBlockData();
+        hopperBrewData.setFacing(org.bukkit.block.BlockFace.DOWN);
+        hopperBrewBlock.setBlockData(hopperBrewData);
+        org.bukkit.block.Hopper hopperBrew = (org.bukkit.block.Hopper) hopperBrewBlock.getState();
+
+        // 2. Furnace + Hopper
+        org.bukkit.block.Block furnaceBlock = base.clone().add(3, 0, 0).getBlock();
+        furnaceBlock.setType(Material.FURNACE);
+        org.bukkit.block.Furnace furnace = (org.bukkit.block.Furnace) furnaceBlock.getState();
+
+        org.bukkit.block.Block hopperFurnaceBlock = base.clone().add(3, 1, 0).getBlock();
+        hopperFurnaceBlock.setType(Material.HOPPER);
+        org.bukkit.block.data.type.Hopper hopperFurnaceData = (org.bukkit.block.data.type.Hopper) hopperFurnaceBlock.getBlockData();
+        hopperFurnaceData.setFacing(org.bukkit.block.BlockFace.DOWN);
+        hopperFurnaceBlock.setBlockData(hopperFurnaceData);
+        org.bukkit.block.Hopper hopperFurnace = (org.bukkit.block.Hopper) hopperFurnaceBlock.getState();
+
+        ItemStack toolMembrane = obTool("allium:phantom_obliterator");
+        ItemStack plainMembrane = new ItemStack(Material.PHANTOM_MEMBRANE);
+
+        ItemStack toolHoe = tool("allium:mob_disarmer");
+        ItemStack plainHoe = new ItemStack(Material.GOLDEN_HOE);
+
+        // Setup tool items in hoppers
+        hopperBrew.getInventory().clear();
+        brewStand.getInventory().clear();
+        hopperBrew.getInventory().setItem(0, toolMembrane);
+
+        hopperFurnace.getInventory().clear();
+        furnace.getInventory().clear();
+        hopperFurnace.getInventory().setItem(0, toolHoe);
+
+        // Wait 25 ticks for hopper transfer attempt
+        getServer().getScheduler().runTaskLater(this, () -> {
+            boolean toolBlockedFromBrewing = brewStand.getInventory().isEmpty()
+                    && hopperBrew.getInventory().getItem(0) != null;
+
+            boolean toolBlockedFromFurnace = furnace.getInventory().isEmpty()
+                    && hopperFurnace.getInventory().getItem(0) != null;
+
+            // Now put plain items
+            hopperBrew.getInventory().clear();
+            hopperBrew.getInventory().setItem(0, plainMembrane);
+
+            hopperFurnace.getInventory().clear();
+            hopperFurnace.getInventory().setItem(0, plainHoe);
+
+            // Wait another 25 ticks for plain items to transfer
+            getServer().getScheduler().runTaskLater(this, () -> {
+                boolean plainMovedToBrewing = brewStand.getInventory().getItem(3) != null
+                        || !brewStand.getInventory().isEmpty();
+
+                boolean plainMovedToFurnace = furnace.getInventory().getItem(0) != null
+                        || !furnace.getInventory().isEmpty();
+
+                // Clean up blocks
+                hopperBrewBlock.setType(Material.AIR);
+                brewBlock.setType(Material.AIR);
+                hopperFurnaceBlock.setType(Material.AIR);
+                furnaceBlock.setType(Material.AIR);
+
+                Map<String, Object> results = new LinkedHashMap<>();
+                results.put("toolBlockedFromBrewing", toolBlockedFromBrewing);
+                results.put("plainMovedToBrewing", plainMovedToBrewing);
+                results.put("toolBlockedFromFurnace", toolBlockedFromFurnace);
+                results.put("plainMovedToFurnace", plainMovedToFurnace);
+
+                try {
+                    write(name, results);
+                } catch (IOException e) {
+                    getLogger().severe("Failed to write carrier results " + e);
+                }
+            }, 25L);
+        }, 25L);
     }
 
     private void prepare() {

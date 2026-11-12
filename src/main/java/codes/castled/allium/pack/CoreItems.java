@@ -38,7 +38,8 @@ public final class CoreItems {
                 definition(manifest, "handcuffs", true, true, Map.of()),
                 definition(manifest, "mob_disarmer", false, true, Map.of()),
                 definition(manifest, "phantom_obliterator", true, true, Map.of("charges", "3")),
-                definition(manifest, "item_renamer", false, false, Map.of()));
+                definition(manifest, "item_renamer", false, false, Map.of()),
+                definition(manifest, "lazy_axe", false, true, Map.of()));
     }
 
     private static AlliumItemDefinition definition(AssetManifest manifest, String id, boolean privileged, boolean signed, Map<String, String> state) {

@@ -3,6 +3,7 @@ package codes.castled.allium.item;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 
@@ -24,7 +25,7 @@ public final class MockItemStacks {
     }
 
     public static ItemStack create(Material material) {
-        return create(material, 1, new HashMap<>(), new AtomicReference<>(null), new AtomicReference<>(null));
+        return create(material, 1, new HashMap<>(), new AtomicReference<>(null), new AtomicReference<>(null), new AtomicReference<>(0));
     }
 
     public static PersistentDataContainer container(Map<NamespacedKey, Object> backing) {
@@ -50,10 +51,21 @@ public final class MockItemStacks {
             AtomicReference<String> displayNameRef,
             AtomicReference<Integer> cmdRef
     ) {
+        return create(material, initialAmount, pdcMap, displayNameRef, cmdRef, new AtomicReference<>(0));
+    }
+
+    public static ItemStack create(
+            Material material,
+            int initialAmount,
+            Map<NamespacedKey, Object> pdcMap,
+            AtomicReference<String> displayNameRef,
+            AtomicReference<Integer> cmdRef,
+            AtomicReference<Integer> damageRef
+    ) {
         AtomicReference<Integer> amountRef = new AtomicReference<>(initialAmount);
         PersistentDataContainer pdc = container(pdcMap);
 
-        ItemMeta meta = mock(ItemMeta.class);
+        Damageable meta = mock(Damageable.class);
         when(meta.getPersistentDataContainer()).thenReturn(pdc);
         doAnswer(inv -> {
             displayNameRef.set(inv.getArgument(0));
@@ -66,6 +78,12 @@ public final class MockItemStacks {
         }).when(meta).setCustomModelData(any());
         when(meta.getCustomModelData()).thenAnswer(inv -> cmdRef.get() != null ? cmdRef.get() : 0);
         when(meta.hasCustomModelData()).thenAnswer(inv -> cmdRef.get() != null);
+        when(meta.getDamage()).thenAnswer(inv -> damageRef.get());
+        doAnswer(inv -> {
+            damageRef.set(inv.getArgument(0));
+            return null;
+        }).when(meta).setDamage(anyInt());
+        when(meta.hasDamage()).thenAnswer(inv -> damageRef.get() > 0);
 
         ItemStack stack = mock(ItemStack.class);
         when(stack.getType()).thenReturn(material);
@@ -81,7 +99,8 @@ public final class MockItemStacks {
                 amountRef.get(),
                 new HashMap<>(pdcMap),
                 new AtomicReference<>(displayNameRef.get()),
-                new AtomicReference<>(cmdRef.get())
+                new AtomicReference<>(cmdRef.get()),
+                new AtomicReference<>(damageRef.get())
         ));
         return stack;
     }

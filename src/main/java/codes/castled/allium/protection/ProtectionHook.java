@@ -1,5 +1,6 @@
 package codes.castled.allium.protection;
 
+import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -17,4 +18,11 @@ public interface ProtectionHook {
      * @param cause the event that triggered the action, passed to plugins that accept one
      */
     ProtectionDecision checkEntityInteraction(Player player, Entity target, @Nullable Event cause);
+
+    /**
+     * @param cause the event that triggered the action, passed to plugins that accept one
+     */
+    default ProtectionDecision checkBlockBreak(Player player, Location location, @Nullable Event cause) {
+        return ProtectionDecision.allow();
+    }
 }

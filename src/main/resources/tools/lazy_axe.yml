@@ -1,0 +1,44 @@
+# Lazy Axe: a tool definition (see mob_disarmer.yml and phantom_obliterator.yml for how
+# definitions work, and docs/lazy-axe-design.md for every setting). Breaking one log of a
+# natural tree with it in your main hand fells the entire tree bottom up.
+#
+# The behavior, allium:fell_tree, owns the steps:
+# - Detection verifies natural leaves, ground and structure isolation.
+# - Paced bottom-up breaking respects protection checks per log.
+# - The axe stops with 1 durability remaining when stop-before-break is true.
+schema: 1
+
+id: allium:lazy_axe
+name: Lazy Axe
+behavior: allium:fell_tree
+enabled: false
+
+appearance:
+  default: allium:lazy_axe
+  aliases: []
+
+families: [overworld_logs, mangrove, cherry, pale_oak]
+stripped: true
+
+search:
+  max-blocks: 256
+  max-radius: 8
+  max-height: 48
+  min-natural-leaves: 4
+
+breaking:
+  blocks-per-tick: 6
+  mode: break-as-player
+  stop-before-break: true
+
+sneak: disables
+cooldown-millis: 0
+
+permissions:
+  use: allium.treeaxe.use
+
+legacy:
+  import: true
+
+messages: {}
+sounds: {}

@@ -49,7 +49,7 @@ class CorePackTest {
     void manifestAllocatesEveryCoreToolInsideTheBlockWithoutCollisions() throws IOException {
         AssetManifest manifest = manifest();
         assertEquals(List.of(), PackValidator.manifest(manifest));
-        assertEquals(List.of("handcuffs", "mob_disarmer", "phantom_obliterator", "item_renamer"),
+        assertEquals(List.of("handcuffs", "mob_disarmer", "phantom_obliterator", "item_renamer", "lazy_axe"),
                 manifest.tools().stream().map(AssetManifest.Tool::id).toList());
         AssetManifest.Tool disarmer = manifest.tool("mob_disarmer").orElseThrow();
         assertTrue(disarmer.ready());
@@ -78,7 +78,7 @@ class CorePackTest {
         assertTrue(first.containsKey("assets/allium/models/item/mob_disarmer.json"), "1.21.2 item_model ns:id reads models/item/id");
         assertTrue(first.containsKey("allium_item_definitions/assets/allium/items/mob_disarmer.json"));
         assertTrue(first.containsKey("allium_item_definitions/assets/minecraft/items/golden_hoe.json"));
-        assertFalse(first.keySet().stream().anyMatch(p -> p.contains("blaze_rod") || p.contains("phantom_membrane") || p.contains("iron_shovel") || p.contains("name_tag")),
+        assertFalse(first.keySet().stream().anyMatch(p -> p.contains("blaze_rod") || p.contains("phantom_membrane") || p.contains("iron_shovel") || p.contains("name_tag") || p.contains("netherite_axe")),
                 "planned tools reserve values but generate nothing");
     }
 

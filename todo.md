@@ -86,6 +86,17 @@ The mute integration is a service hook; the moderation `/mute` command remains i
 M3 economy costs are reserved, not implemented by mail. Physical database outages and the pack's
 manual visual checklist remain outside the S12 live claims. S13 begins M3 after this close-out.
 
+## M3 status — in progress
+
+**S13 complete:** the local safe teleport/request/back/spawn slice passes its
+Spigot 1.20.1 and Paper 26.3 real-client gate; see [the contract](docs/teleport.md)
+and [results](tests/live/teleport/RESULTS.md). The report preserves Paper's original
+failures and their explicit closures: exact retained permission-response evidence
+and a focused live death-back rerun after natural respawn protection expired.
+All 488 unit tests pass. Homes, warps, kits and the economy implementation remain
+later work. S14 is a design-only
+economy document and does not make the existing Vault scaffold production ready.
+
 ## Staging checklist (before deploying to SF)
 
 Run on a staging copy of SF (its world, plugins and configs), never on the live server.
@@ -296,6 +307,12 @@ result and must preserve the existing uncommitted work.
         authoritative execution lookup, recipient acceptance/ignores and unloaded-state refusals.
       - One notification path for unread/new mail; no mail-body spying; reload keeps in-flight work.
       - Future M6 source mapping documented; no legacy importer and no M3 money debit implemented.
+- [x] **S13 / M3 — Safe teleports and requests:** one service for requests, back,
+      spawn and audited staff force moves; safety, cancellable warmups, cooldowns,
+      expiry, current privacy checks and persistent travel state. Gate: 15 named
+      cases on Spigot 1.20.1 and Paper 26.3, with a focused Paper death-back
+      supplement and retained-evidence audit. See [results](tests/live/teleport/RESULTS.md).
+      SQLite live only; no Folia, selectors or cross-server transport claim.
 - [x] **Data-driven core tools (before S08):** the Mob Disarmer is `tools/mob_disarmer.yml`,
       bound to the one Java behavior `allium:disarm`, which owns the transaction.
       - **Validation:** definitions are validated at load time with path-specific diagnostics,

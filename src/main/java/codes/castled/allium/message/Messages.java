@@ -34,6 +34,19 @@ public enum Messages {
     TELEPORT_NO_BACK("teleport.no-back", "{prefix} &cNo previous location to return to."),
     TELEPORT_NO_PENDING("teleport.no-pending", "{prefix} &cYou have no pending teleport requests."),
 
+    TELEPORT_HERE_RECEIVED("teleport.here-received", "{prefix} &f{player} &awants you to teleport to them. &f/tpaccept &aor &f/tpdeny"),
+    TELEPORT_REQUEST_CANCELLED("teleport.request-cancelled", "{prefix} &cTeleport request cancelled."),
+    TELEPORT_WARMUP("teleport.warmup", "{prefix} &eTeleporting in {time}s. Stay still and avoid damage."),
+    TELEPORT_INTERRUPTED("teleport.interrupted", "{prefix} &cTeleport cancelled: {reason}."),
+    TELEPORT_REFUSED("teleport.refused", "{prefix} &c{player} can't receive teleports right now."),
+    TELEPORT_LOADING("teleport.loading", "{prefix} &cYour teleport data is still loading. Try again shortly."),
+    TELEPORT_STORAGE_FAILED("teleport.storage-failed", "{prefix} &cTeleport data could not be saved. Try again shortly."),
+    TELEPORT_UNSAFE("teleport.unsafe", "{prefix} &cNo safe destination was found. Nothing was teleported."),
+    TELEPORT_BUSY("teleport.busy", "{prefix} &cA teleport is already pending. Try again shortly."),
+    TELEPORT_SELF("teleport.self", "{prefix} &cYou can't request a teleport to yourself."),
+    TELEPORT_TOGGLE_ON("teleport.toggle-on", "{prefix} &a{player} now accepts teleport requests."),
+    TELEPORT_TOGGLE_OFF("teleport.toggle-off", "{prefix} &c{player} no longer accepts teleport requests. Incoming requests cancelled."),
+
     // -- Homes --
     HOME_SET("home.set", "{prefix} &aHome &f{name} &aset."),
     HOME_DELETED("home.deleted", "{prefix} &aHome &f{name} &adeleted."),

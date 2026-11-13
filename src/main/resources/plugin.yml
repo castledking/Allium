@@ -71,6 +71,40 @@ commands:
     usage: /<command> <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
     permission: allium.give
 
+  tpa:
+    description: Allium safe teleport command
+    permission: allium.tpa
+  tpahere:
+    description: Allium safe teleport command
+    permission: allium.tpahere
+  tpaccept:
+    description: Allium safe teleport command
+    permission: allium.tpaccept
+  tpdeny:
+    description: Allium safe teleport command
+    permission: allium.tpdeny
+  tpacancel:
+    description: Allium safe teleport command
+    permission: allium.tpacancel
+  tptoggle:
+    description: Allium safe teleport command
+    permission: allium.tptoggle
+  back:
+    description: Allium safe teleport command
+    permission: allium.back
+  spawn:
+    description: Allium safe teleport command
+    permission: allium.spawn
+  setspawn:
+    description: Allium safe teleport command
+    permission: allium.setspawn
+  tp:
+    description: Allium safe teleport command
+    permission: allium.tp
+  tphere:
+    description: Allium safe teleport command
+    permission: allium.tphere
+
 permissions:
   allium.*:
     description: All Allium permissions
@@ -215,3 +249,42 @@ permissions:
   allium.phantomobliterator.bypass:
     description: Phantom Obliterator uses spend no charges and never break
     default: op
+
+  allium.tpa:
+    default: true
+  allium.tpahere:
+    default: true
+  allium.tpaccept:
+    default: true
+  allium.tpdeny:
+    default: true
+  allium.tpacancel:
+    default: true
+  allium.tptoggle:
+    default: true
+  allium.back:
+    default: true
+  allium.spawn:
+    default: true
+  allium.setspawn:
+    default: op
+  allium.tp:
+    default: op
+  allium.tphere:
+    default: op
+  allium.tp.others:
+    default: op
+  allium.tptoggle.others:
+    default: op
+  allium.teleport.bypass.toggle:
+    description: Explicit teleport toggle bypass (never granted implicitly to operators)
+    default: false
+  allium.teleport.bypass.ignore:
+    description: Explicit teleport ignore bypass (never granted implicitly to operators)
+    default: false
+  allium.teleport.bypass.warmup:
+    description: Explicit teleport warmup bypass (never granted implicitly to operators)
+    default: false
+  allium.teleport.bypass.cooldown:
+    description: Explicit teleport cooldown bypass (never granted implicitly to operators)
+    default: false

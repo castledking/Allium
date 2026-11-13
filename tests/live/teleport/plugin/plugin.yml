@@ -1,0 +1,9 @@
+name: TeleportGate
+version: 1.0.0
+main: gate.TeleportGate
+api-version: '1.20'
+depend: [Allium]
+description: S13 console-only disposable loopback fixtures and observations.
+commands:
+  s13g:
+    description: Console-only teleport fixture controls

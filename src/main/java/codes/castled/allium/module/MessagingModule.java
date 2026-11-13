@@ -49,8 +49,9 @@ public final class MessagingModule extends AbstractModule {
         plugin.getCommandManager().register(new IgnoreCommands.Ignore(plugin, messaging, ignores));
         plugin.getCommandManager().register(new IgnoreCommands.Unignore(plugin, ignores));
         plugin.getCommandManager().register(new MsgToggleCommand(plugin, messaging));
+        plugin.getCommandManager().register(new codes.castled.allium.command.messaging.SocialSpyCommand(plugin));
         plugin.getCommandManager().register(new codes.castled.allium.command.messaging.MessageSoundsCommand(plugin));
-        plugin.logger().info("Private messaging enabled: /msg, /reply, /ignore, /unignore, /msgtoggle, /messagesounds"
+        plugin.logger().info("Private messaging enabled: /msg, /reply, /ignore, /unignore, /msgtoggle, /messagesounds, /socialspy"
                 + (messagingPreferences() ? "." : "; the preferences module is off, so nobody can turn messages off."));
     }
 

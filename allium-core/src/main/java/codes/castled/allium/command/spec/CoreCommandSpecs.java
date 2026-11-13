@@ -255,7 +255,15 @@ public final class CoreCommandSpecs {
                     new CommandNodeSpec("reset", List.of(), null, "/mfx reset", List.of(), List.of())),
             CommandMessageKeys.ofOutcomes(Map.of()));
 
-    public static final List<CommandSpec> MESSAGING_SPECS = List.of(MSG, REPLY, IGNORE, UNIGNORE, MSGTOGGLE, MESSAGESOUNDS);
+    public static final CommandSpec SOCIALSPY = new CommandSpec(
+            "socialspy", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of(),
+            "Observe delivered private messages between other players", "/socialspy [on|off]", "/socialspy [on|off]",
+            "allium.socialspy", null,
+            List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of(
+                    "on", "messaging.socialspy.on", "off", "messaging.socialspy.off")));
+
+    public static final List<CommandSpec> MESSAGING_SPECS = List.of(MSG, REPLY, IGNORE, UNIGNORE, MSGTOGGLE, MESSAGESOUNDS, SOCIALSPY);
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(
             HEAL,

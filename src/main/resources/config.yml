@@ -167,3 +167,11 @@ addons:
 settings:
   debug: false
   locale: en_US
+
+# Private-message observation. Player spies must explicitly opt in with /socialspy.
+messaging:
+  socialspy:
+    # PRIVACY: enabling this records delivered PM bodies in console/server logs.
+    # Blocked attempts, exempt traffic, and console's own PMs are never copied.
+    # Console can see vanished players. Log retention/access is the operator's responsibility.
+    log-to-console: false

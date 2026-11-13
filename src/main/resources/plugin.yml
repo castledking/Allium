@@ -50,6 +50,10 @@ commands:
     description: Turn receiving private messages on or off
     usage: /<command> [on|off] [player]
     permission: allium.msgtoggle
+  socialspy:
+    description: Observe delivered private messages between other players
+    usage: /<command> [on|off]
+    permission: allium.socialspy
   messagesounds:
     description: Your private-message sound volume
     usage: /<command> [volume <0-1>|toggle|reset]
@@ -86,6 +90,7 @@ permissions:
       allium.treeaxe.use: true
       allium.give: true
       allium.give.privileged: true
+      allium.socialspy: true
       allium.reload: true
       allium.import: true
   allium.reload:
@@ -100,6 +105,12 @@ permissions:
   allium.treeaxe.use:
     description: Lets the Lazy Axe fell whole trees (the pre-recode node)
     default: true
+  allium.socialspy:
+    description: Allows opting into social spy; only delivered messages between others are shown
+    default: op
+  allium.socialspy.exempt:
+    description: Hides all traffic involving this player from social spy and optional console PM logging. Explicit only.
+    default: false
   allium.messagesounds:
     description: Allows /messagesounds (/msounds, /mfx) for your own message sound volume
     default: true

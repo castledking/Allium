@@ -36,8 +36,8 @@ class PreferenceStorageTest {
     void migrationsAreIdempotentAndANewerSchemaIsRefused() throws Exception {
         for (Databases.Db db : Databases.all(dir)) {
             PreferenceRepository repository = repository(db);
-            assertEquals(1, repository.migrate(), db.name());
-            assertEquals(1, repository.migrate(), db.name() + " second start");
+            assertEquals(2, repository.migrate(), db.name());
+            assertEquals(2, repository.migrate(), db.name() + " second start");
             try (Connection c = db.source().connection(); Statement s = c.createStatement()) {
                 s.executeUpdate("UPDATE " + SchemaMigrator.TABLE + " SET version = 7 WHERE component = 'preferences'");
             }
@@ -66,7 +66,7 @@ class PreferenceStorageTest {
             assertFalse(three.effective(DEFAULTS).acceptTeleportRequests());
 
             PreferenceRepository restarted = repository(db);
-            assertEquals(1, restarted.migrate());
+            assertEquals(2, restarted.migrate());
             assertEquals(Optional.of(three), restarted.load(uuid), db.name() + " after a restart");
         }
     }

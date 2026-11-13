@@ -1,0 +1,9 @@
+name: SpyGate
+version: 1.0.0
+main: gate.SpyGate
+api-version: '1.20'
+depend: [Allium]
+description: S11 disposable loopback fixture. Never install on a production server.
+commands:
+  s11g:
+    description: Console-only S11 fixture controls (onCommand refuses every non-console sender)

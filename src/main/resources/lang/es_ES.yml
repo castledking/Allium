@@ -115,6 +115,12 @@ preferences:
   unavailable: "{prefix} &cLos ajustes de {player} aun se estan cargando. Intentalo de nuevo en un momento."
 
 messaging:
+  socialspy:
+    message: "&8[Espía] &7[&f{sender} &7→ &f{recipient}&7] &f{message}"
+    "on": "{prefix} &aEspía social activado."
+    "off": "{prefix} &7Espía social desactivado."
+    disabled: "{prefix} &cLas preferencias de espía social están desactivadas en este servidor."
+    save-failed: "{prefix} &cNo se pudo guardar tu preferencia de espía social; se deshizo el cambio."
   sent: "&7[&fyo &7→ &f{recipient}&7] &f{message}"
   received:
     text: "&7[&f{sender} &7→ &fyo&7] &f{message}"

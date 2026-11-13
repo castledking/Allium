@@ -1,15 +1,11 @@
 package codes.castled.allium.messaging;
 
 import codes.castled.allium.PluginStart;
-import codes.castled.allium.message.MessageSoundSpec;
 import codes.castled.allium.message.Messages;
-import codes.castled.allium.message.SoundSettings;
 import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.preference.EffectivePreferences;
 import codes.castled.allium.preference.PreferenceKey;
-import codes.castled.allium.preference.PreferenceSessions;
 import codes.castled.allium.text.FormattedText;
-import codes.castled.allium.text.TextSender;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
@@ -22,6 +18,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,6 +39,7 @@ public final class MessagingService implements Listener {
 
     private final PluginStart plugin;
     private final IgnoreService ignores;
+    private final NotificationService notifications;
     private final ReplyTargets replies = new ReplyTargets();
     private volatile MuteSource mutes = MuteSource.NONE;
     private volatile VanishSource vanish = VanishSource.METADATA;
@@ -49,6 +47,15 @@ public final class MessagingService implements Listener {
     public MessagingService(PluginStart plugin, IgnoreService ignores) {
         this.plugin = plugin;
         this.ignores = ignores;
+        this.notifications = new NotificationRouter(plugin);
+    }
+
+    public NotificationService notifications() {
+        return notifications;
+    }
+
+    public boolean muted(UUID player) {
+        return mutes.isMuted(player);
     }
 
     public void enable() {
@@ -192,52 +199,51 @@ public final class MessagingService implements Listener {
 
     private void deliver(CommandSender sender, CommandSender recipient, String body) {
         FormattedText text = UntrustedText.parse(body, UntrustedText.Allow.of(sender::hasPermission));
-        String sent = plugin.getMessageManager().resolve(Messages.MSG_SENT, "{recipient}", nameOf(recipient));
-        String received = plugin.getMessageManager().resolve(Messages.MSG_RECEIVED, "{sender}", nameOf(sender));
-        // The literal path: on Spigot, a legacy string would turn URLs in the body into clickable links.
-        TextSender.sendLiteral(sender, UntrustedText.insert(sent, text));
-        TextSender.sendLiteral(recipient, UntrustedText.insert(received, text));
-        if (sender instanceof Player self) {
-            // The sender's own confirmation sound, when the lang entry has one. By default it follows
-            // the sender's /mfx volume too (sounds.messages.scale-sent-sound), so muting silences both.
-            MessageSoundSpec sentSound = plugin.getLanguageManager().getSound(Messages.MSG_SENT);
-            if (sentSound != null) {
-                if (plugin.getConfig().getBoolean("sounds.messages.scale-sent-sound", true)) {
-                    double volume = senderVolume(self.getUniqueId());
-                    if (volume > 0.0D) {
-                        plugin.getMessageManager().playNotificationSound(self, sentSound, volume);
-                    }
-                } else {
-                    plugin.getMessageManager().playSound(self, sentSound);
-                }
-            }
-        }
-        if (recipient instanceof Player target) {
-            MessageSoundSpec sound = plugin.getLanguageManager().getSound(Messages.MSG_RECEIVED);
-            if (sound != null) {
-                plugin.getMessageManager().playNotificationSound(target, sound, recipientVolume(target.getUniqueId()));
-            }
-        }
+        notifications.send(sender, new NotificationService.Notification(Messages.MSG_SENT,
+                Map.of("{recipient}", nameOf(recipient)), text, NotificationService.Sound.SENT));
+        notifications.send(recipient, new NotificationService.Notification(Messages.MSG_RECEIVED,
+                Map.of("{sender}", nameOf(sender)), text, NotificationService.Sound.MESSAGE));
         replies.delivered(idOf(sender), idOf(recipient));
+        notifySocialSpyDelivered(sender, recipient, text);
     }
 
     /**
-     * The sender's own message sound volume. While their preferences are not loaded it is 0, so a
-     * player who muted is never surprised by a sound before their setting arrives.
+     * Observes a successful delivery only. Never call for attempts or refusals: doing so could
+     * expose ignore/toggle relationships. Each observer must see both participants right now.
      */
-    private double senderVolume(UUID player) {
-        PreferencesModule preferences = preferences();
-        if (preferences == null) {
-            return SoundSettings.read(plugin.getConfig(), message -> { }).messageFallbackVolume();
+    public void notifySocialSpyDelivered(CommandSender sender, CommandSender recipient, FormattedText body) {
+        if (exempt(sender) || exempt(recipient)) {
+            return;
         }
-        return preferences.effective(player).map(EffectivePreferences::messageSoundVolume).orElse(0.0D);
+        NotificationService.Notification notification = new NotificationService.Notification(Messages.SOCIALSPY_MESSAGE,
+                Map.of("{sender}", nameOf(sender), "{recipient}", nameOf(recipient)), body, NotificationService.Sound.MESSAGE);
+        PreferencesModule preferences = preferences();
+        if (preferences != null) {
+            for (Player spy : plugin.getServer().getOnlinePlayers()) {
+                if (idOf(spy).equals(idOf(sender)) || idOf(spy).equals(idOf(recipient))
+                        || !spy.hasPermission("allium.socialspy")
+                        || !preferences.effective(spy.getUniqueId()).map(EffectivePreferences::socialSpy).orElse(false)
+                        || !participantVisible(spy, sender) || !participantVisible(spy, recipient)) {
+                    continue;
+                }
+                notifications.send(spy, notification);
+            }
+        }
+        // This explicit opt-in writes private content to server logs; console conversations are
+        // already delivered there and must not be duplicated. Console can see hidden players.
+        if (!(sender instanceof ConsoleCommandSender) && !(recipient instanceof ConsoleCommandSender)
+                && plugin.getConfig().getBoolean("messaging.socialspy.log-to-console", false)) {
+            notifications.send(plugin.getServer().getConsoleSender(), notification);
+        }
     }
 
-    private double recipientVolume(UUID player) {
-        PreferencesModule preferences = preferences();
-        EffectivePreferences effective = preferences == null ? null : preferences.effective(player).orElse(null);
-        return effective != null ? effective.messageSoundVolume()
-                : SoundSettings.read(plugin.getConfig(), message -> { }).messageFallbackVolume();
+    private boolean participantVisible(Player spy, CommandSender participant) {
+        return !(participant instanceof Player player) || visibleTo(spy, player);
+    }
+
+    private static boolean exempt(CommandSender participant) {
+        // Console reports permission=true for arbitrary nodes, so exemption belongs to players.
+        return participant instanceof Player player && player.hasPermission("allium.socialspy.exempt");
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

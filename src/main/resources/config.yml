@@ -37,6 +37,7 @@ modules:
   messaging: true
   # Mail: /mail text mail and gifts, to online and offline players.
   mail: true
+  teleport: true
   # Item library and the M1 /give harness.
   items: true
   teleportation: true
@@ -205,3 +206,29 @@ mail:
     on-join: true
     # A notice when new mail arrives while the recipient is online on this server.
     new-mail: true
+
+# Shared safe teleport pipeline. Bounds are validated before the settings snapshot is swapped.
+teleport:
+  warmup-seconds: 3
+  movement-tolerance: 0.1
+  request-expiry-seconds: 60
+  back:
+    include-death: false
+  cooldowns:
+    tpa: 0
+    tpahere: 0
+    back: 0
+    spawn: 0
+    tp: 0
+    tphere: 0
+  safety:
+    enabled: true
+    adjust: true
+    search-radius: 3
+    vertical-search: 4
+    avoid-lava: true
+    avoid-void: true
+    avoid-suffocation: true
+    avoid-falls: true
+    # False avoids blocking chunk generation; only loaded neighboring chunks are searched.
+    load-destination-chunk: false

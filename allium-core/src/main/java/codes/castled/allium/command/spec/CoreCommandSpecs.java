@@ -297,6 +297,31 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> MAIL_SPECS = List.of(MAIL);
 
+    public static final List<CommandSpec> TELEPORT_SPECS = List.of(
+            teleportSpec("tpa", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))),
+            teleportSpec("tpahere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))),
+            teleportSpec("tpaccept", List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null)))),
+            teleportSpec("tpdeny", List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null)))),
+            teleportSpec("tpacancel", List.of()),
+            teleportSpec("tptoggle", List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
+                    CommandArgSpec.optional("player", "allium.tptoggle.others", SuggestionSpec.onlinePlayers("allium.tptoggle.others")))),
+            teleportSpec("back", List.of()), teleportSpec("spawn", List.of()), teleportSpec("setspawn", List.of()),
+            teleportSpec("tp", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
+                    CommandArgSpec.optional("target", "allium.tp.others", SuggestionSpec.onlinePlayers("allium.tp.others")))),
+            teleportSpec("tphere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))));
+
+    private static CommandSpec teleportSpec(String command, List<CommandArgSpec> args) {
+        String usage = "/" + command + switch(command) {
+            case "tpa", "tpahere", "tphere" -> " <player>";
+            case "tpaccept", "tpdeny" -> " [requester]";
+            case "tp" -> " <player> [target]";
+            case "tptoggle" -> " [on|off] [player]";
+            default -> "";
+        };
+        return new CommandSpec(command, CommandSpec.DEFAULT_NAMESPACE, "teleport", List.of(), "Allium safe teleport: " + command,
+                usage, usage, "allium." + command, null, args, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+    }
+
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(
             HEAL,
             FEED,

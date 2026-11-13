@@ -252,6 +252,8 @@ public final class PluginStart extends JavaPlugin {
                     && preferences.isEnabled()) {
                 logger.info("Preference defaults reloaded: " + preferences.reloadDefaults());
             }
+            if (moduleManager.getModule("teleport") instanceof codes.castled.allium.module.TeleportModule tp && tp.isEnabled()
+                    && !tp.teleports().reloadSettings()) throw new IllegalArgumentException("invalid teleport configuration; previous teleport settings retained");
             ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
             settings.warnings().forEach(logger::warning);
             if (settings.owner() != startupPackOwner) {

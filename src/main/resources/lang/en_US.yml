@@ -40,6 +40,18 @@ teleport:
   back: "{prefix} &aReturned to your previous location."
   no-back: "{prefix} &cNo previous location to return to."
   no-pending: "{prefix} &cYou have no pending teleport requests."
+  here-received: "{prefix} &f{player} &awants you to teleport to them. &f/tpaccept &aor &f/tpdeny"
+  request-cancelled: "{prefix} &cTeleport request cancelled."
+  warmup: "{prefix} &eTeleporting in {time}s. Stay still and avoid damage."
+  interrupted: "{prefix} &cTeleport cancelled: {reason}."
+  refused: "{prefix} &c{player} can't receive teleports right now."
+  loading: "{prefix} &cYour teleport data is still loading. Try again shortly."
+  storage-failed: "{prefix} &cTeleport data could not be saved. Try again shortly."
+  unsafe: "{prefix} &cNo safe destination was found. Nothing was teleported."
+  busy: "{prefix} &cA teleport is already pending. Try again shortly."
+  self: "{prefix} &cYou can't request a teleport to yourself."
+  toggle-on: "{prefix} &a{player} now accepts teleport requests."
+  toggle-off: "{prefix} &c{player} no longer accepts teleport requests. Incoming requests cancelled."
 
 home:
   set: "{prefix} &aHome &f{name} &aset."

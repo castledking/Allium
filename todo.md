@@ -69,10 +69,12 @@ Open before M1 can close:
 - [x] **Pack delivery** (S06c, below).
 - [ ] **S06b visual check** in a real client (owner: the user).
 
-## M2 status (2026-11-13)
+## M2 status — done (2026-11-13)
 
 **Live verified:** the S07/S08/S11/S12 communication and preferences slices have passed their
-recorded gates. S11 is commit `caec390`. S12 adds mail/gifts, cached offline completion and shared
+recorded gates. The requested sender-disconnect and abrupt mid-claim process-termination cases
+ran live on both server lanes with SQLite and MySQL; the exact assertions are listed in
+[the M2 close-out](tests/live/mail/RESULTS.md#m2-close-out-requested-live-recovery-cases). S11 is commit `caec390`. S12 adds mail/gifts, cached offline completion and shared
 notifications: **541 checks** on Spigot 1.20.1 and Paper 26.3 with SQLite and MySQL, plus overlapping
 two-server MySQL claims and cross-version signed-item transfer. See [S12 results](tests/live/mail/RESULTS.md).
 
@@ -82,7 +84,7 @@ PDC, cancelled-kick quarantine, failed save proofs and interrupted schema migrat
 
 The mute integration is a service hook; the moderation `/mute` command remains in its later slice.
 M3 economy costs are reserved, not implemented by mail. Physical database outages and the pack's
-manual visual checklist remain outside the S12 live claims. No later implementation slice started.
+manual visual checklist remain outside the S12 live claims. S13 begins M3 after this close-out.
 
 ## Staging checklist (before deploying to SF)
 

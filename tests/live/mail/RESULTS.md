@@ -10,6 +10,23 @@
 - **mysql-paper — PASS**: 128/128 assertions passed, 0 failure(s). Runtime: `/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-paper-01`.
 - **shared-mysql — PASS**: 29/29 assertions passed, 0 failure(s). Runtime: `/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-shared-mysql-01`.
 
+## M2 close-out: requested live recovery cases
+
+Both cases below are **live verified**, not unit-only. Each ran in `sqlite-spigot`,
+`sqlite-paper`, `mysql-spigot`, and `mysql-paper`: Spigot 1.20.1 and Paper 26.3 on both backends.
+The assertion names in the manifest carry the corresponding lane prefix.
+
+| Requested case | Exact assertion names after the lane prefix | Observed result |
+| --- | --- | --- |
+| Sender disconnects mid-send | `send disconnect/immediate reconnect keeps inventory and cancels old-generation PENDING gift` | A real client disconnects during the slow send and reconnects immediately. Its eight items remain in inventory; the pending gift is cancelled and nothing is delivered twice. This is before escrow removal, so it retains the items rather than exercising a post-removal refund. |
+| Process dies mid-claim, before delivery | `deliberate mail.claim.halt-before-deliver crash exit=77`; `crash before delivery leaves inventory empty and gift claimable`; `pre-delivery recovery delivers exactly once` | `Runtime.halt(77)` abruptly terminates the actual JVM without shutdown hooks. After restart the unreceipted claim is released; claiming gives eight items exactly once. |
+| Process dies mid-claim, after delivery | `deliberate mail.claim.halt-after-deliver crash exit=77`; `crash after delivery finishes DB from receipt without redelivery`; `post-crash repeated claim cannot duplicate` | The actual JVM terminates after the inventory and receipt are saved. Stopped native playerdata and the exact claim token are captured before restart. Recovery acknowledges the eight already delivered items, and another claim cannot duplicate them. |
+
+The claim crashes are real abrupt process termination, not an in-memory state-machine simulation.
+They use JVM halt, not an external SIGKILL; the separate pre-escrow send crash uses SIGKILL.
+All four lanes passed both claim boundaries and the sender-disconnect case. No additional live
+run was needed for this close-out.
+
 Frozen artifact hash(es): `ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4`.
 
 Executed scope results:

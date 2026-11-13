@@ -94,8 +94,10 @@ and [results](tests/live/teleport/RESULTS.md). The report preserves Paper's orig
 failures and their explicit closures: exact retained permission-response evidence
 and a focused live death-back rerun after natural respawn protection expired.
 All 488 unit tests pass. Homes, warps, kits and the economy implementation remain
-later work. S14 is a design-only
-economy document and does not make the existing Vault scaffold production ready.
+later work. **S14 design complete:** [economy-design.md](docs/economy-design.md)
+defines the replacement and records measured JDBC commit costs. The Vault adapter
+remains unimplemented and release-gated; this does not make the existing scaffold
+production ready.
 
 ## Staging checklist (before deploying to SF)
 
@@ -313,6 +315,11 @@ result and must preserve the existing uncommitted work.
       cases on Spigot 1.20.1 and Paper 26.3, with a focused Paper death-back
       supplement and retained-evidence audit. See [results](tests/live/teleport/RESULTS.md).
       SQLite live only; no Folia, selectors or cross-server transport claim.
+- [x] **S14 / M3 — Economy design only:** exact minor units, atomic SQLite/MySQL
+      transfers, journal/recovery, authoritative offline payment policy, reserved
+      mail/kit costs and legacy import mapping. The disposable JDBC probe measured
+      both backends; the actual synchronous Vault adapter still requires its own
+      performance and failure gate. No economy implementation was added.
 - [x] **Data-driven core tools (before S08):** the Mob Disarmer is `tools/mob_disarmer.yml`,
       bound to the one Java behavior `allium:disarm`, which owns the transaction.
       - **Validation:** definitions are validated at load time with path-specific diagnostics,

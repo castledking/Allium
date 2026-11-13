@@ -1,0 +1,5442 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "missingSuites": [],
+  "artifactHashes": [
+    "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4"
+  ],
+  "runs": [
+    {
+      "manifest": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-sqlite-spigot-01/manifest.json",
+      "schema": 1,
+      "suite": "sqlite-spigot",
+      "status": "PASS",
+      "alliumJar": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-sqlite-spigot-01/Allium-under-test.jar",
+      "sha256": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+      "startedEpoch": 1794579778.3762448,
+      "finishedEpoch": 1794579911.352866,
+      "run": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-sqlite-spigot-01",
+      "checks": [
+        {
+          "label": "sqlite-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: online new-mail exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": [
+            {
+              "packet": "sound_effect",
+              "name": "minecraft:entity.experience_orb.pickup",
+              "id": null,
+              "volume": 0.6000000238418579,
+              "pitch": 1
+            }
+          ]
+        },
+        {
+          "label": "sqlite-spigot: text initially unread",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: read and delete remove text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: offline text joins with exactly one unread summary and sound",
+          "passed": true,
+          "detail": [
+            {
+              "packet": "sound_effect",
+              "name": "minecraft:entity.experience_orb.pickup",
+              "id": null,
+              "volume": 0.6000000238418579,
+              "pitch": 1
+            }
+          ]
+        },
+        {
+          "label": "sqlite-spigot: clear preserves unread text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: clear removes only read text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailA allium.msg.bypass.ignore=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: ignore-online refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "sqlite-spigot: ignore-online gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "sqlite-spigot: offline persisted ignore refuses without stored mail",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: msgtoggle-online refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "sqlite-spigot: msgtoggle-online gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "sqlite-spigot: offline persisted msgtoggle is authoritative",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: muted refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] You are muted."
+        },
+        {
+          "label": "sqlite-spigot: muted gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] You are muted."
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: fault confirms online preferences unloaded",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: unloaded-preferences refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now; try again shortly."
+        },
+        {
+          "label": "sqlite-spigot: unloaded-preferences gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now; try again shortly."
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: ignore and msgtoggle use identical generic refusal",
+          "passed": true,
+          "detail": [
+            "[Allium] MailB can't receive mail right now.",
+            "[Allium] MailB can't receive mail right now."
+          ]
+        },
+        {
+          "label": "sqlite-spigot: cached offline name offered by command completion",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: offline cached completion fast (median<250ms/max<1s)",
+          "passed": true,
+          "detail": [
+            25.11206300005142,
+            25.12660499996855,
+            25.08938500000113,
+            25.08008599988898,
+            25.10108099977515,
+            25.11137300007249,
+            25.128977999884228,
+            25.0775499998781
+          ]
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: cached known name obeys online vanish visibility",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailHidden allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: first-join vanished player absent from completion",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: vanished player becomes historical name after quit",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailA allium.mail.send=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: completion obeys send permission",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailA allium.mail.send=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: gift subsequent note args do not suggest names",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_offline_gift: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: offline gift delivered on later join and claim",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_cancel_event: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_cancel_event: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: cancelled shared delivery event keeps gift READY and delivers nothing",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: uncancelled gift can subsequently be claimed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: gift numeric amount keeps sender remainder and subsequent note intact",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: delete completion excludes gifts; claim completion includes gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: numeric amount gift claims exactly three",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: nonnumeric gift note sends the remaining held stack",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_one: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_one: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_two: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_two: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: claim all serially delivers both gifts exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_full_partial: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_full_partial: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: full inventory delivers no items and keeps gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: partial claim inserts exactly three into available room",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: remnant claim delivers exactly five, conserves original eight",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: repeated claim never duplicates items",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_reload_claim: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_reload_claim: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: actual successful reload acknowledged while target claim still held",
+          "passed": true,
+          "detail": "[06:23:52] [Server thread/INFO]: [Allium] Configuration reloaded."
+        },
+        {
+          "label": "sqlite-spigot: /allium reload keeps same mail service and in-flight claim exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: sender signed tool verifies before mail",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: signed source instance absent from sender after escrow before receiver claim",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: signed tool identity/MAC/state survive actual gift escrow and claim",
+          "passed": true,
+          "detail": [
+            {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "behavior": "allium:mob_disarmer",
+              "state": {
+                "gate": "s12-state"
+              },
+              "signature": "v2:k1:5b9862dab706bee4c4d55d982206411240632d851ad8403e8445d1ccb6e69b41",
+              "instance_uuid": "f0135723-2080-42b5-a5e1-24fa7e0ba75d",
+              "slot": 0
+            }
+          ]
+        },
+        {
+          "label": "sqlite-spigot: CostPolicy denial creates no escrow and takes no inventory",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: CostPolicy denial creates no escrow and takes no inventory",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: TEXT write-failure hook tripped exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: injected DB error TEXT performs exactly one non-debiting CostPolicy preflight",
+          "passed": true,
+          "detail": {
+            "before": {
+              "allows:TEXT": 9,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            },
+            "after": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            }
+          }
+        },
+        {
+          "label": "sqlite-spigot: TEXT DB error takes no items, stores no row, gives no recipient sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: GIFT write-failure hook tripped exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: injected DB error GIFT performs exactly one non-debiting CostPolicy preflight",
+          "passed": true,
+          "detail": {
+            "before": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            },
+            "after": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 15,
+              "allowed": true,
+              "sameService": true
+            }
+          }
+        },
+        {
+          "label": "sqlite-spigot: GIFT DB error takes no items, stores no row, gives no recipient sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: send disconnect/immediate reconnect keeps inventory and cancels old-generation PENDING gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_reconnect: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_reconnect: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: claim disconnect/immediate reconnect releases old-generation claim without delivery",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: new session claims released gift exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: deliberate pre-escrow SIGKILL exit=-9",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: exact target DB row/token and stopped native playerdata receipt/inventory match None",
+          "passed": true,
+          "detail": {
+            "lane": "sqlite-spigot",
+            "point": null,
+            "body": "S12_pre_escrow",
+            "target": null,
+            "rows": [],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "ec41faa2b4d370ee40b8e654c77f1e22bb7bd0c44526e9fe3eb735462090da6f"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "db51d5253564be804671ba6b6372cd74888ec6572e3759efcf4cc62f3dc2c456"
+              }
+            }
+          }
+        },
+        {
+          "label": "sqlite-spigot/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-spigot/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: crash before persistence/escrow preserves sender items and creates no gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: deliberate mail.send.halt-after-take crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: exact target DB row/token and stopped native playerdata receipt/inventory match mail.send.halt-after-take",
+          "passed": true,
+          "detail": {
+            "lane": "sqlite-spigot",
+            "point": "mail.send.halt-after-take",
+            "body": "S12_after_escrow",
+            "target": null,
+            "rows": [
+              {
+                "id": "ee458fb0-cee7-40d0-b871-6e3461472755",
+                "kind": "GIFT",
+                "body": "S12_after_escrow",
+                "state": "PENDING",
+                "claim_token": null,
+                "claim_owner": null,
+                "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/ee458fb0-cee7-40d0-b871-6e3461472755",
+                "inventory": [],
+                "fileSha256": "53f9a68de0f26bef9ee0a360c1e208841ce1596270d3bbc55928e3245c1be425"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "c0b2342d47a65fac79917c2380e28a6c04e2001404b22c0db576557f0a8c43dc"
+              }
+            }
+          }
+        },
+        {
+          "label": "sqlite-spigot/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-spigot/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: crash after escrow recovers READY gift without inventory duplication",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: recovered escrow delivered exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_before_delivery: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_before_delivery: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: exact before-delivery claim observed held under slow hook",
+          "passed": true,
+          "detail": {
+            "id": "bccd490d-c562-43d3-85bb-d63b8035c833",
+            "kind": "GIFT",
+            "body": "S12_before_delivery",
+            "state": "CLAIMING",
+            "claim_owner": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+            "claim_token": "529169cc-01d5-4900-aeb1-86e34ba21155",
+            "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+            "unread": true,
+            "encodedLength": 133
+          }
+        },
+        {
+          "label": "sqlite-spigot: deliberate mail.claim.halt-before-deliver crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: exact target DB row/token and stopped native playerdata receipt/inventory match mail.claim.halt-before-deliver",
+          "passed": true,
+          "detail": {
+            "lane": "sqlite-spigot",
+            "point": "mail.claim.halt-before-deliver",
+            "body": "S12_before_delivery",
+            "target": {
+              "id": "bccd490d-c562-43d3-85bb-d63b8035c833",
+              "kind": "GIFT",
+              "body": "S12_before_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+              "claim_token": "529169cc-01d5-4900-aeb1-86e34ba21155",
+              "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+              "unread": true,
+              "encodedLength": 133
+            },
+            "rows": [
+              {
+                "id": "bccd490d-c562-43d3-85bb-d63b8035c833",
+                "kind": "GIFT",
+                "body": "S12_before_delivery",
+                "state": "CLAIMING",
+                "claim_token": "529169cc-01d5-4900-aeb1-86e34ba21155",
+                "claim_owner": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+                "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/bccd490d-c562-43d3-85bb-d63b8035c833",
+                "inventory": [],
+                "fileSha256": "0ede96048cc0f9307cccfbb2eef99c2230a6dceba388817d03f64614bea8b48f"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "529a862f4b616a82326db57e4b33eaa8fd57aac2c127853bd216c4d0065699a6"
+              }
+            }
+          }
+        },
+        {
+          "label": "sqlite-spigot/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-spigot/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: crash before delivery leaves inventory empty and gift claimable",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: pre-delivery recovery delivers exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_after_delivery: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_after_delivery: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: exact after-delivery claim observed held under slow hook",
+          "passed": true,
+          "detail": {
+            "id": "230a49f8-d0bc-450f-8e55-cab9723a0295",
+            "kind": "GIFT",
+            "body": "S12_after_delivery",
+            "state": "CLAIMING",
+            "claim_owner": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+            "claim_token": "92a6da85-2e78-492f-a0a6-7de80898ce44",
+            "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+            "unread": true,
+            "encodedLength": 133
+          }
+        },
+        {
+          "label": "sqlite-spigot: deliberate mail.claim.halt-after-deliver crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: exact target DB row/token and stopped native playerdata receipt/inventory match mail.claim.halt-after-deliver",
+          "passed": true,
+          "detail": {
+            "lane": "sqlite-spigot",
+            "point": "mail.claim.halt-after-deliver",
+            "body": "S12_after_delivery",
+            "target": {
+              "id": "230a49f8-d0bc-450f-8e55-cab9723a0295",
+              "kind": "GIFT",
+              "body": "S12_after_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+              "claim_token": "92a6da85-2e78-492f-a0a6-7de80898ce44",
+              "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+              "unread": true,
+              "encodedLength": 133
+            },
+            "rows": [
+              {
+                "id": "230a49f8-d0bc-450f-8e55-cab9723a0295",
+                "kind": "GIFT",
+                "body": "S12_after_delivery",
+                "state": "CLAIMING",
+                "claim_token": "92a6da85-2e78-492f-a0a6-7de80898ce44",
+                "claim_owner": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+                "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/230a49f8-d0bc-450f-8e55-cab9723a0295",
+                "inventory": [],
+                "fileSha256": "eeca146bcb577ed0fb12aa0e27cd75a9f0f6577850ff089dfd7c7f62e84f9a3c"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": "C/230a49f8-d0bc-450f-8e55-cab9723a0295/92a6da85-2e78-492f-a0a6-7de80898ce44/8",
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "75f1c9a7745c7a83002edbec30c7990ea280a65b2e9b41113901f635cd95a0b8"
+              }
+            }
+          }
+        },
+        {
+          "label": "sqlite-spigot/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-spigot/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: crash after delivery finishes DB from receipt without redelivery",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: post-crash repeated claim cannot duplicate",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: second reconnect preserves exactly-once inventory with spent receipt removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: all remaining owned clients/server exited cleanly (zero, no forced termination)",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-spigot: no unexpected listener/plugin/thread exceptions",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "label": "executed harness sources and imported helpers unchanged since frozen snapshot",
+          "passed": true,
+          "detail": null
+        }
+      ],
+      "failures": [],
+      "scopes": [
+        {
+          "label": "sqlite-spigot text lifecycle/notifications",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-spigot policy",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-spigot completion",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-spigot gift/partial/reload/signed",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-spigot write-error inventory safety and cost policy",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-spigot session reconnect",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-spigot crash recovery",
+          "status": "PASS"
+        }
+      ],
+      "inputs": {
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/run.py": "a040fcd445585e779b00105a2cc72eedfa3549ae4428fe6e2a2931e80bbc13e3",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/plugin/gate/MailGate.java": "76ac035dd99b26436ef6b79da2a723c27d30dbd5b4d3426a2c701d9751b4ef20",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/plugin/plugin.yml": "5c93d65ea65a9752a8db5eba05cedadbbcd1d28947edd441b48789c54c411e89",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/client-mcp.cjs": "331201e68d81ee8519614b73f40497960cf147b2a9f9cf65b07c5893ac88ef54",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/client-raw26.cjs": "bcadb9928c84220601c24ff28ffd9106c417226ac1f90042c6bd166fd8419d61",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/playerdata.cjs": "605bc06770d4f1646d1ae24d7c6288bd9ea05ef178b47073117b91718d6940bc",
+        "/mnt/storage/repos/Allium-recode/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/repos/Allium-recode/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72",
+        "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-sqlite-spigot-01/Allium-under-test.jar": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+        "/mnt/storage/.allium-validation/infra/api/spigot-api-1.20.1-R0.1-SNAPSHOT.jar": "e79aa28bd17ed51a22dfd3457d67ca59bccff38f8b7226087b8e4213fc0f877c",
+        "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-sqlite-spigot-01/helper/MailGate.jar": "14f916c6f1253ee84069dbefeac1efa992b0a8890ec5eca1ea7f5c733a7d82dd",
+        "/mnt/storage/.allium-validation/infra/servers/spigot-1.20.1.jar": "1416cd67e2337e42058def6035260f6a42e294adb4a148707b87591cddfbb760",
+        "/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3/versions/26.3/paper-26.3.jar": "b2a93cb788ae8e2a91b1614cb5cd57ea602a74d291ca25d6acae34b19a234e1d"
+      },
+      "clientLibrary": "1.68.0",
+      "lanes": [
+        {
+          "name": "sqlite-spigot",
+          "kind": "spigot",
+          "port": 25720,
+          "database": null
+        }
+      ],
+      "boundaries": [
+        "Real protocol command/completion/chat/sound clients; console helper prepares inventory and observes DB/inventory",
+        "Pre-escrow crash is during slow-persist before row insert; not the PENDING-insert/before-take subwindow",
+        "Write error is injected SQLException, not a physical MySQL outage",
+        "Shared MySQL concurrency uses same offline UUID on two separate playerdata directories",
+        "Mail body spying is outside scope"
+      ],
+      "observations": {
+        "emptyCompletionFences": [
+          {
+            "lane": "sqlite-spigot",
+            "player": "MailA",
+            "text": "mail send MailH",
+            "requestId": 10,
+            "fenceId": 11
+          },
+          {
+            "lane": "sqlite-spigot",
+            "player": "MailA",
+            "text": "mail send Mail",
+            "requestId": 13,
+            "fenceId": 14
+          },
+          {
+            "lane": "sqlite-spigot",
+            "player": "MailA",
+            "text": "mail gift MailB 2 ",
+            "requestId": 15,
+            "fenceId": 16
+          },
+          {
+            "lane": "sqlite-spigot",
+            "player": "MailB",
+            "text": "mail delete ",
+            "requestId": 2,
+            "fenceId": 3
+          }
+        ],
+        "crashSnapshots": [
+          {
+            "lane": "sqlite-spigot",
+            "point": null,
+            "body": "S12_pre_escrow",
+            "target": null,
+            "rows": [],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "ec41faa2b4d370ee40b8e654c77f1e22bb7bd0c44526e9fe3eb735462090da6f"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "db51d5253564be804671ba6b6372cd74888ec6572e3759efcf4cc62f3dc2c456"
+              }
+            }
+          },
+          {
+            "lane": "sqlite-spigot",
+            "point": "mail.send.halt-after-take",
+            "body": "S12_after_escrow",
+            "target": null,
+            "rows": [
+              {
+                "id": "ee458fb0-cee7-40d0-b871-6e3461472755",
+                "kind": "GIFT",
+                "body": "S12_after_escrow",
+                "state": "PENDING",
+                "claim_token": null,
+                "claim_owner": null,
+                "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/ee458fb0-cee7-40d0-b871-6e3461472755",
+                "inventory": [],
+                "fileSha256": "53f9a68de0f26bef9ee0a360c1e208841ce1596270d3bbc55928e3245c1be425"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "c0b2342d47a65fac79917c2380e28a6c04e2001404b22c0db576557f0a8c43dc"
+              }
+            }
+          },
+          {
+            "lane": "sqlite-spigot",
+            "point": "mail.claim.halt-before-deliver",
+            "body": "S12_before_delivery",
+            "target": {
+              "id": "bccd490d-c562-43d3-85bb-d63b8035c833",
+              "kind": "GIFT",
+              "body": "S12_before_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+              "claim_token": "529169cc-01d5-4900-aeb1-86e34ba21155",
+              "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+              "unread": true,
+              "encodedLength": 133
+            },
+            "rows": [
+              {
+                "id": "bccd490d-c562-43d3-85bb-d63b8035c833",
+                "kind": "GIFT",
+                "body": "S12_before_delivery",
+                "state": "CLAIMING",
+                "claim_token": "529169cc-01d5-4900-aeb1-86e34ba21155",
+                "claim_owner": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+                "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/bccd490d-c562-43d3-85bb-d63b8035c833",
+                "inventory": [],
+                "fileSha256": "0ede96048cc0f9307cccfbb2eef99c2230a6dceba388817d03f64614bea8b48f"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "529a862f4b616a82326db57e4b33eaa8fd57aac2c127853bd216c4d0065699a6"
+              }
+            }
+          },
+          {
+            "lane": "sqlite-spigot",
+            "point": "mail.claim.halt-after-deliver",
+            "body": "S12_after_delivery",
+            "target": {
+              "id": "230a49f8-d0bc-450f-8e55-cab9723a0295",
+              "kind": "GIFT",
+              "body": "S12_after_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+              "claim_token": "92a6da85-2e78-492f-a0a6-7de80898ce44",
+              "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+              "unread": true,
+              "encodedLength": 133
+            },
+            "rows": [
+              {
+                "id": "230a49f8-d0bc-450f-8e55-cab9723a0295",
+                "kind": "GIFT",
+                "body": "S12_after_delivery",
+                "state": "CLAIMING",
+                "claim_token": "92a6da85-2e78-492f-a0a6-7de80898ce44",
+                "claim_owner": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e",
+                "origin": "server-d2c97d08-1086-4fba-8143-d97b9dd80f3e"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/230a49f8-d0bc-450f-8e55-cab9723a0295",
+                "inventory": [],
+                "fileSha256": "eeca146bcb577ed0fb12aa0e27cd75a9f0f6577850ff089dfd7c7f62e84f9a3c"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": "C/230a49f8-d0bc-450f-8e55-cab9723a0295/92a6da85-2e78-492f-a0a6-7de80898ce44/8",
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "75f1c9a7745c7a83002edbec30c7990ea280a65b2e9b41113901f635cd95a0b8"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "manifest": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-sqlite-paper-01/manifest.json",
+      "schema": 1,
+      "suite": "sqlite-paper",
+      "status": "PASS",
+      "alliumJar": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-sqlite-paper-01/Allium-under-test.jar",
+      "sha256": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+      "startedEpoch": 1794579911.479135,
+      "finishedEpoch": 1794580036.7865248,
+      "run": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-sqlite-paper-01",
+      "checks": [
+        {
+          "label": "sqlite-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: online new-mail exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": [
+            {
+              "packet": "sound",
+              "name": "minecraft:entity.experience_orb.pickup",
+              "id": null,
+              "volume": 0.6000000238418579,
+              "pitch": 1
+            }
+          ]
+        },
+        {
+          "label": "sqlite-paper: text initially unread",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: read and delete remove text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: offline text joins with exactly one unread summary and sound",
+          "passed": true,
+          "detail": [
+            {
+              "packet": "sound",
+              "name": "minecraft:entity.experience_orb.pickup",
+              "id": null,
+              "volume": 0.6000000238418579,
+              "pitch": 1
+            }
+          ]
+        },
+        {
+          "label": "sqlite-paper: clear preserves unread text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: clear removes only read text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailA allium.msg.bypass.ignore=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: ignore-online refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "sqlite-paper: ignore-online gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "sqlite-paper: offline persisted ignore refuses without stored mail",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: msgtoggle-online refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "sqlite-paper: msgtoggle-online gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "sqlite-paper: offline persisted msgtoggle is authoritative",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: muted refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] You are muted."
+        },
+        {
+          "label": "sqlite-paper: muted gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] You are muted."
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: fault confirms online preferences unloaded",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: unloaded-preferences refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now; try again shortly."
+        },
+        {
+          "label": "sqlite-paper: unloaded-preferences gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now; try again shortly."
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: ignore and msgtoggle use identical generic refusal",
+          "passed": true,
+          "detail": [
+            "[Allium] MailB can't receive mail right now.",
+            "[Allium] MailB can't receive mail right now."
+          ]
+        },
+        {
+          "label": "sqlite-paper: cached offline name offered by command completion",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: offline cached completion fast (median<250ms/max<1s)",
+          "passed": true,
+          "detail": [
+            25.068531999977495,
+            25.066259999903195,
+            45.16235599999163,
+            55.281482999816944,
+            45.19057200013776,
+            45.1762200000303,
+            55.2354959997956,
+            45.18193300009443
+          ]
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: cached known name obeys online vanish visibility",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailHidden allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: first-join vanished player absent from completion",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: vanished player becomes historical name after quit",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailA allium.mail.send=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: completion obeys send permission",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailA allium.mail.send=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: gift subsequent note args do not suggest names",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_offline_gift: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: offline gift delivered on later join and claim",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_cancel_event: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_cancel_event: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: cancelled shared delivery event keeps gift READY and delivers nothing",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: uncancelled gift can subsequently be claimed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: gift numeric amount keeps sender remainder and subsequent note intact",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: delete completion excludes gifts; claim completion includes gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: numeric amount gift claims exactly three",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: nonnumeric gift note sends the remaining held stack",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_one: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_one: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_two: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_two: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: claim all serially delivers both gifts exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_full_partial: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_full_partial: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: full inventory delivers no items and keeps gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: partial claim inserts exactly three into available room",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: remnant claim delivers exactly five, conserves original eight",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: repeated claim never duplicates items",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_reload_claim: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_reload_claim: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: actual successful reload acknowledged while target claim still held",
+          "passed": true,
+          "detail": "[06:26:03 INFO]: [Allium] Configuration reloaded."
+        },
+        {
+          "label": "sqlite-paper: /allium reload keeps same mail service and in-flight claim exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: sender signed tool verifies before mail",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: signed source instance absent from sender after escrow before receiver claim",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: signed tool identity/MAC/state survive actual gift escrow and claim",
+          "passed": true,
+          "detail": [
+            {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "behavior": "allium:mob_disarmer",
+              "state": {
+                "gate": "s12-state"
+              },
+              "signature": "v2:k1:c4848e2e13e36349ced237815b0759e12fd953ebc7bdcd0bd619c49cbe257dd6",
+              "instance_uuid": "207aa115-24d1-4178-a33e-1729533d87b1",
+              "slot": 0
+            }
+          ]
+        },
+        {
+          "label": "sqlite-paper: CostPolicy denial creates no escrow and takes no inventory",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: CostPolicy denial creates no escrow and takes no inventory",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: TEXT write-failure hook tripped exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: injected DB error TEXT performs exactly one non-debiting CostPolicy preflight",
+          "passed": true,
+          "detail": {
+            "before": {
+              "allows:TEXT": 9,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            },
+            "after": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            }
+          }
+        },
+        {
+          "label": "sqlite-paper: TEXT DB error takes no items, stores no row, gives no recipient sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: GIFT write-failure hook tripped exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: injected DB error GIFT performs exactly one non-debiting CostPolicy preflight",
+          "passed": true,
+          "detail": {
+            "before": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            },
+            "after": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 15,
+              "allowed": true,
+              "sameService": true
+            }
+          }
+        },
+        {
+          "label": "sqlite-paper: GIFT DB error takes no items, stores no row, gives no recipient sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: send disconnect/immediate reconnect keeps inventory and cancels old-generation PENDING gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_reconnect: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_reconnect: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: claim disconnect/immediate reconnect releases old-generation claim without delivery",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: new session claims released gift exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: deliberate pre-escrow SIGKILL exit=-9",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: exact target DB row/token and stopped native playerdata receipt/inventory match None",
+          "passed": true,
+          "detail": {
+            "lane": "sqlite-paper",
+            "point": null,
+            "body": "S12_pre_escrow",
+            "target": null,
+            "rows": [],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "d40fee4981df4caa8ebed5aa9cceee029a5b61634cc984d9ea3e14d140f08631"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "3e4da4e7b91e97a3bfc26aa53a11bbeabe3e91898f5729a43380c79a73e4434e"
+              }
+            }
+          }
+        },
+        {
+          "label": "sqlite-paper/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-paper/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: crash before persistence/escrow preserves sender items and creates no gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: deliberate mail.send.halt-after-take crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: exact target DB row/token and stopped native playerdata receipt/inventory match mail.send.halt-after-take",
+          "passed": true,
+          "detail": {
+            "lane": "sqlite-paper",
+            "point": "mail.send.halt-after-take",
+            "body": "S12_after_escrow",
+            "target": null,
+            "rows": [
+              {
+                "id": "46ac6d64-3c05-497e-845c-bc8cc7be74d4",
+                "kind": "GIFT",
+                "body": "S12_after_escrow",
+                "state": "PENDING",
+                "claim_token": null,
+                "claim_owner": null,
+                "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/46ac6d64-3c05-497e-845c-bc8cc7be74d4",
+                "inventory": [],
+                "fileSha256": "74e2d63f7ee807f6ac23d1b19ee8d986ceaa59bc16a2ea29eb6ce0f1d394a861"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "1cff4b06039cbae2d350c9ce5e943e897fe1b69060dabbed93296ac68af28312"
+              }
+            }
+          }
+        },
+        {
+          "label": "sqlite-paper/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-paper/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: crash after escrow recovers READY gift without inventory duplication",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: recovered escrow delivered exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_before_delivery: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_before_delivery: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: exact before-delivery claim observed held under slow hook",
+          "passed": true,
+          "detail": {
+            "id": "23346168-3178-4b62-8c1e-8093e38c7100",
+            "kind": "GIFT",
+            "body": "S12_before_delivery",
+            "state": "CLAIMING",
+            "claim_owner": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+            "claim_token": "a4f987e9-b892-47a5-bc6a-32d1c29a8d9b",
+            "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+            "unread": true,
+            "encodedLength": 170
+          }
+        },
+        {
+          "label": "sqlite-paper: deliberate mail.claim.halt-before-deliver crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: exact target DB row/token and stopped native playerdata receipt/inventory match mail.claim.halt-before-deliver",
+          "passed": true,
+          "detail": {
+            "lane": "sqlite-paper",
+            "point": "mail.claim.halt-before-deliver",
+            "body": "S12_before_delivery",
+            "target": {
+              "id": "23346168-3178-4b62-8c1e-8093e38c7100",
+              "kind": "GIFT",
+              "body": "S12_before_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+              "claim_token": "a4f987e9-b892-47a5-bc6a-32d1c29a8d9b",
+              "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+              "unread": true,
+              "encodedLength": 170
+            },
+            "rows": [
+              {
+                "id": "23346168-3178-4b62-8c1e-8093e38c7100",
+                "kind": "GIFT",
+                "body": "S12_before_delivery",
+                "state": "CLAIMING",
+                "claim_token": "a4f987e9-b892-47a5-bc6a-32d1c29a8d9b",
+                "claim_owner": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+                "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/23346168-3178-4b62-8c1e-8093e38c7100",
+                "inventory": [],
+                "fileSha256": "286e65e628695c5ba2953f6de913d366f3f2065c70b0f93d0256be1885d74269"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "2931bbd25458562e45f37a82b75d9b7e2977f82a9b65e1ec51f0d393752af447"
+              }
+            }
+          }
+        },
+        {
+          "label": "sqlite-paper/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-paper/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: crash before delivery leaves inventory empty and gift claimable",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: pre-delivery recovery delivers exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_after_delivery: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_after_delivery: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: exact after-delivery claim observed held under slow hook",
+          "passed": true,
+          "detail": {
+            "id": "b3245649-e72e-4a42-80e4-e692a31dd1b9",
+            "kind": "GIFT",
+            "body": "S12_after_delivery",
+            "state": "CLAIMING",
+            "claim_owner": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+            "claim_token": "2f49e8ad-d40b-45e9-9970-33db0c3e86b6",
+            "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+            "unread": true,
+            "encodedLength": 170
+          }
+        },
+        {
+          "label": "sqlite-paper: deliberate mail.claim.halt-after-deliver crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: exact target DB row/token and stopped native playerdata receipt/inventory match mail.claim.halt-after-deliver",
+          "passed": true,
+          "detail": {
+            "lane": "sqlite-paper",
+            "point": "mail.claim.halt-after-deliver",
+            "body": "S12_after_delivery",
+            "target": {
+              "id": "b3245649-e72e-4a42-80e4-e692a31dd1b9",
+              "kind": "GIFT",
+              "body": "S12_after_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+              "claim_token": "2f49e8ad-d40b-45e9-9970-33db0c3e86b6",
+              "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+              "unread": true,
+              "encodedLength": 170
+            },
+            "rows": [
+              {
+                "id": "b3245649-e72e-4a42-80e4-e692a31dd1b9",
+                "kind": "GIFT",
+                "body": "S12_after_delivery",
+                "state": "CLAIMING",
+                "claim_token": "2f49e8ad-d40b-45e9-9970-33db0c3e86b6",
+                "claim_owner": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+                "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/b3245649-e72e-4a42-80e4-e692a31dd1b9",
+                "inventory": [],
+                "fileSha256": "fea22b44b1c93dbc535175f701a577144fe913427693a55188f9bdb2b855b363"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": "C/b3245649-e72e-4a42-80e4-e692a31dd1b9/2f49e8ad-d40b-45e9-9970-33db0c3e86b6/8",
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "c0724100e3d82a6de2daf4b19ca4ebff1b2b1f04f54e42ab8e766e35b3d8657f"
+              }
+            }
+          }
+        },
+        {
+          "label": "sqlite-paper/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-paper/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "sqlite-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: crash after delivery finishes DB from receipt without redelivery",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: post-crash repeated claim cannot duplicate",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: second reconnect preserves exactly-once inventory with spent receipt removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: all remaining owned clients/server exited cleanly (zero, no forced termination)",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "sqlite-paper: no unexpected listener/plugin/thread exceptions",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "label": "executed harness sources and imported helpers unchanged since frozen snapshot",
+          "passed": true,
+          "detail": null
+        }
+      ],
+      "failures": [],
+      "scopes": [
+        {
+          "label": "sqlite-paper text lifecycle/notifications",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-paper policy",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-paper completion",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-paper gift/partial/reload/signed",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-paper write-error inventory safety and cost policy",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-paper session reconnect",
+          "status": "PASS"
+        },
+        {
+          "label": "sqlite-paper crash recovery",
+          "status": "PASS"
+        }
+      ],
+      "inputs": {
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/run.py": "a040fcd445585e779b00105a2cc72eedfa3549ae4428fe6e2a2931e80bbc13e3",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/plugin/gate/MailGate.java": "76ac035dd99b26436ef6b79da2a723c27d30dbd5b4d3426a2c701d9751b4ef20",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/plugin/plugin.yml": "5c93d65ea65a9752a8db5eba05cedadbbcd1d28947edd441b48789c54c411e89",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/client-mcp.cjs": "331201e68d81ee8519614b73f40497960cf147b2a9f9cf65b07c5893ac88ef54",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/client-raw26.cjs": "bcadb9928c84220601c24ff28ffd9106c417226ac1f90042c6bd166fd8419d61",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/playerdata.cjs": "605bc06770d4f1646d1ae24d7c6288bd9ea05ef178b47073117b91718d6940bc",
+        "/mnt/storage/repos/Allium-recode/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/repos/Allium-recode/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72",
+        "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-sqlite-paper-01/Allium-under-test.jar": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+        "/mnt/storage/.allium-validation/infra/api/spigot-api-1.20.1-R0.1-SNAPSHOT.jar": "e79aa28bd17ed51a22dfd3457d67ca59bccff38f8b7226087b8e4213fc0f877c",
+        "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-sqlite-paper-01/helper/MailGate.jar": "b61249dc38bba672fe8ef1647c71c08ec1f1b32f2bd07cf175e2ec5f6ec2f3d5",
+        "/mnt/storage/.allium-validation/infra/servers/spigot-1.20.1.jar": "1416cd67e2337e42058def6035260f6a42e294adb4a148707b87591cddfbb760",
+        "/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3/versions/26.3/paper-26.3.jar": "b2a93cb788ae8e2a91b1614cb5cd57ea602a74d291ca25d6acae34b19a234e1d"
+      },
+      "clientLibrary": "1.68.0",
+      "lanes": [
+        {
+          "name": "sqlite-paper",
+          "kind": "paper",
+          "port": 25721,
+          "database": null
+        }
+      ],
+      "boundaries": [
+        "Real protocol command/completion/chat/sound clients; console helper prepares inventory and observes DB/inventory",
+        "Pre-escrow crash is during slow-persist before row insert; not the PENDING-insert/before-take subwindow",
+        "Write error is injected SQLException, not a physical MySQL outage",
+        "Shared MySQL concurrency uses same offline UUID on two separate playerdata directories",
+        "Mail body spying is outside scope"
+      ],
+      "observations": {
+        "emptyCompletionFences": [
+          {
+            "lane": "sqlite-paper",
+            "player": "MailA",
+            "text": "mail send MailH",
+            "requestId": 10,
+            "fenceId": 11
+          },
+          {
+            "lane": "sqlite-paper",
+            "player": "MailA",
+            "text": "mail send Mail",
+            "requestId": 13,
+            "fenceId": 14
+          },
+          {
+            "lane": "sqlite-paper",
+            "player": "MailA",
+            "text": "mail gift MailB 2 ",
+            "requestId": 15,
+            "fenceId": 16
+          },
+          {
+            "lane": "sqlite-paper",
+            "player": "MailB",
+            "text": "mail delete ",
+            "requestId": 2,
+            "fenceId": 3
+          }
+        ],
+        "crashSnapshots": [
+          {
+            "lane": "sqlite-paper",
+            "point": null,
+            "body": "S12_pre_escrow",
+            "target": null,
+            "rows": [],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "d40fee4981df4caa8ebed5aa9cceee029a5b61634cc984d9ea3e14d140f08631"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "3e4da4e7b91e97a3bfc26aa53a11bbeabe3e91898f5729a43380c79a73e4434e"
+              }
+            }
+          },
+          {
+            "lane": "sqlite-paper",
+            "point": "mail.send.halt-after-take",
+            "body": "S12_after_escrow",
+            "target": null,
+            "rows": [
+              {
+                "id": "46ac6d64-3c05-497e-845c-bc8cc7be74d4",
+                "kind": "GIFT",
+                "body": "S12_after_escrow",
+                "state": "PENDING",
+                "claim_token": null,
+                "claim_owner": null,
+                "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/46ac6d64-3c05-497e-845c-bc8cc7be74d4",
+                "inventory": [],
+                "fileSha256": "74e2d63f7ee807f6ac23d1b19ee8d986ceaa59bc16a2ea29eb6ce0f1d394a861"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "1cff4b06039cbae2d350c9ce5e943e897fe1b69060dabbed93296ac68af28312"
+              }
+            }
+          },
+          {
+            "lane": "sqlite-paper",
+            "point": "mail.claim.halt-before-deliver",
+            "body": "S12_before_delivery",
+            "target": {
+              "id": "23346168-3178-4b62-8c1e-8093e38c7100",
+              "kind": "GIFT",
+              "body": "S12_before_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+              "claim_token": "a4f987e9-b892-47a5-bc6a-32d1c29a8d9b",
+              "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+              "unread": true,
+              "encodedLength": 170
+            },
+            "rows": [
+              {
+                "id": "23346168-3178-4b62-8c1e-8093e38c7100",
+                "kind": "GIFT",
+                "body": "S12_before_delivery",
+                "state": "CLAIMING",
+                "claim_token": "a4f987e9-b892-47a5-bc6a-32d1c29a8d9b",
+                "claim_owner": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+                "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/23346168-3178-4b62-8c1e-8093e38c7100",
+                "inventory": [],
+                "fileSha256": "286e65e628695c5ba2953f6de913d366f3f2065c70b0f93d0256be1885d74269"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "2931bbd25458562e45f37a82b75d9b7e2977f82a9b65e1ec51f0d393752af447"
+              }
+            }
+          },
+          {
+            "lane": "sqlite-paper",
+            "point": "mail.claim.halt-after-deliver",
+            "body": "S12_after_delivery",
+            "target": {
+              "id": "b3245649-e72e-4a42-80e4-e692a31dd1b9",
+              "kind": "GIFT",
+              "body": "S12_after_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+              "claim_token": "2f49e8ad-d40b-45e9-9970-33db0c3e86b6",
+              "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+              "unread": true,
+              "encodedLength": 170
+            },
+            "rows": [
+              {
+                "id": "b3245649-e72e-4a42-80e4-e692a31dd1b9",
+                "kind": "GIFT",
+                "body": "S12_after_delivery",
+                "state": "CLAIMING",
+                "claim_token": "2f49e8ad-d40b-45e9-9970-33db0c3e86b6",
+                "claim_owner": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f",
+                "origin": "server-3ebb7bc2-282d-444f-93c2-4fea13969a6f"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/b3245649-e72e-4a42-80e4-e692a31dd1b9",
+                "inventory": [],
+                "fileSha256": "fea22b44b1c93dbc535175f701a577144fe913427693a55188f9bdb2b855b363"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": "C/b3245649-e72e-4a42-80e4-e692a31dd1b9/2f49e8ad-d40b-45e9-9970-33db0c3e86b6/8",
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "c0724100e3d82a6de2daf4b19ca4ebff1b2b1f04f54e42ab8e766e35b3d8657f"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "manifest": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-spigot-01/manifest.json",
+      "schema": 1,
+      "suite": "mysql-spigot",
+      "status": "PASS",
+      "alliumJar": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-spigot-01/Allium-under-test.jar",
+      "sha256": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+      "startedEpoch": 1794580036.912533,
+      "finishedEpoch": 1794580166.3256302,
+      "run": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-spigot-01",
+      "checks": [
+        {
+          "label": "mysql-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: online new-mail exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": [
+            {
+              "packet": "sound_effect",
+              "name": "minecraft:entity.experience_orb.pickup",
+              "id": null,
+              "volume": 0.6000000238418579,
+              "pitch": 1
+            }
+          ]
+        },
+        {
+          "label": "mysql-spigot: text initially unread",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: read and delete remove text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: offline text joins with exactly one unread summary and sound",
+          "passed": true,
+          "detail": [
+            {
+              "packet": "sound_effect",
+              "name": "minecraft:entity.experience_orb.pickup",
+              "id": null,
+              "volume": 0.6000000238418579,
+              "pitch": 1
+            }
+          ]
+        },
+        {
+          "label": "mysql-spigot: clear preserves unread text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: clear removes only read text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailA allium.msg.bypass.ignore=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: ignore-online refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "mysql-spigot: ignore-online gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "mysql-spigot: offline persisted ignore refuses without stored mail",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: msgtoggle-online refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "mysql-spigot: msgtoggle-online gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "mysql-spigot: offline persisted msgtoggle is authoritative",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: muted refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] You are muted."
+        },
+        {
+          "label": "mysql-spigot: muted gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] You are muted."
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: fault confirms online preferences unloaded",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: unloaded-preferences refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now; try again shortly."
+        },
+        {
+          "label": "mysql-spigot: unloaded-preferences gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now; try again shortly."
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: ignore and msgtoggle use identical generic refusal",
+          "passed": true,
+          "detail": [
+            "[Allium] MailB can't receive mail right now.",
+            "[Allium] MailB can't receive mail right now."
+          ]
+        },
+        {
+          "label": "mysql-spigot: cached offline name offered by command completion",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: offline cached completion fast (median<250ms/max<1s)",
+          "passed": true,
+          "detail": [
+            25.07244800017361,
+            25.064437000082762,
+            25.063624000040363,
+            25.07898099997874,
+            25.0692759998401,
+            25.063149000061458,
+            25.080035999963002,
+            25.09162399996967
+          ]
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: cached known name obeys online vanish visibility",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailHidden allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: first-join vanished player absent from completion",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: vanished player becomes historical name after quit",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailA allium.mail.send=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: completion obeys send permission",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailA allium.mail.send=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: gift subsequent note args do not suggest names",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_offline_gift: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: offline gift delivered on later join and claim",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_cancel_event: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_cancel_event: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: cancelled shared delivery event keeps gift READY and delivers nothing",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: uncancelled gift can subsequently be claimed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: gift numeric amount keeps sender remainder and subsequent note intact",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: delete completion excludes gifts; claim completion includes gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: numeric amount gift claims exactly three",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: nonnumeric gift note sends the remaining held stack",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_one: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_one: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_two: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_two: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: claim all serially delivers both gifts exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_full_partial: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_full_partial: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: full inventory delivers no items and keeps gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: partial claim inserts exactly three into available room",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: remnant claim delivers exactly five, conserves original eight",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: repeated claim never duplicates items",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_reload_claim: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_reload_claim: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: actual successful reload acknowledged while target claim still held",
+          "passed": true,
+          "detail": "[06:28:12] [Server thread/INFO]: [Allium] Configuration reloaded."
+        },
+        {
+          "label": "mysql-spigot: /allium reload keeps same mail service and in-flight claim exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: sender signed tool verifies before mail",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: signed source instance absent from sender after escrow before receiver claim",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: signed tool identity/MAC/state survive actual gift escrow and claim",
+          "passed": true,
+          "detail": [
+            {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "behavior": "allium:mob_disarmer",
+              "state": {
+                "gate": "s12-state"
+              },
+              "signature": "v2:k1:90f17cd7c5d90eef06a0ca2408fc512dd771ad46b894802f75829c9ed0904d5a",
+              "instance_uuid": "e2c06a6f-8e1a-4746-85e5-f1a8641726c2",
+              "slot": 0
+            }
+          ]
+        },
+        {
+          "label": "mysql-spigot: CostPolicy denial creates no escrow and takes no inventory",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: CostPolicy denial creates no escrow and takes no inventory",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: TEXT write-failure hook tripped exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: injected DB error TEXT performs exactly one non-debiting CostPolicy preflight",
+          "passed": true,
+          "detail": {
+            "before": {
+              "allows:TEXT": 9,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            },
+            "after": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            }
+          }
+        },
+        {
+          "label": "mysql-spigot: TEXT DB error takes no items, stores no row, gives no recipient sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: GIFT write-failure hook tripped exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: injected DB error GIFT performs exactly one non-debiting CostPolicy preflight",
+          "passed": true,
+          "detail": {
+            "before": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            },
+            "after": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 15,
+              "allowed": true,
+              "sameService": true
+            }
+          }
+        },
+        {
+          "label": "mysql-spigot: GIFT DB error takes no items, stores no row, gives no recipient sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: send disconnect/immediate reconnect keeps inventory and cancels old-generation PENDING gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_reconnect: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_reconnect: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: claim disconnect/immediate reconnect releases old-generation claim without delivery",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: new session claims released gift exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: deliberate pre-escrow SIGKILL exit=-9",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: exact target DB row/token and stopped native playerdata receipt/inventory match None",
+          "passed": true,
+          "detail": {
+            "lane": "mysql-spigot",
+            "point": null,
+            "body": "S12_pre_escrow",
+            "target": null,
+            "rows": [],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "b7a6fc77276b5f9db6e4528b2d8488652b73a9a897c232dd6404366f5c8e2b97"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "eaf84a5750f358e8bc5dabc1e312cf13e51f9b63e27fb7c51684f91812de3db2"
+              }
+            }
+          }
+        },
+        {
+          "label": "mysql-spigot/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-spigot/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: crash before persistence/escrow preserves sender items and creates no gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: deliberate mail.send.halt-after-take crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: exact target DB row/token and stopped native playerdata receipt/inventory match mail.send.halt-after-take",
+          "passed": true,
+          "detail": {
+            "lane": "mysql-spigot",
+            "point": "mail.send.halt-after-take",
+            "body": "S12_after_escrow",
+            "target": null,
+            "rows": [
+              {
+                "id": "ee4aa1eb-dd68-44ad-886d-54910e9c14d6",
+                "body": "S12_after_escrow",
+                "kind": "GIFT",
+                "state": "PENDING",
+                "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+                "claim_owner": null,
+                "claim_token": null
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/ee4aa1eb-dd68-44ad-886d-54910e9c14d6",
+                "inventory": [],
+                "fileSha256": "0d09b72d7fc543d9ad72a2a72cd74d74181f2a25c2bbd0757af673905003bc34"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "35276236bfb0f500ca8cb83a05611df8aba4d1bd287e4021b34d3f8d11abb543"
+              }
+            }
+          }
+        },
+        {
+          "label": "mysql-spigot/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-spigot/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: crash after escrow recovers READY gift without inventory duplication",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: recovered escrow delivered exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_before_delivery: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_before_delivery: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: exact before-delivery claim observed held under slow hook",
+          "passed": true,
+          "detail": {
+            "id": "14a4662e-b828-4cc8-96a7-d33a5ed6e0b5",
+            "kind": "GIFT",
+            "body": "S12_before_delivery",
+            "state": "CLAIMING",
+            "claim_owner": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+            "claim_token": "9f5212d1-7536-4d65-8ee3-474771bcd791",
+            "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+            "unread": true,
+            "encodedLength": 133
+          }
+        },
+        {
+          "label": "mysql-spigot: deliberate mail.claim.halt-before-deliver crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: exact target DB row/token and stopped native playerdata receipt/inventory match mail.claim.halt-before-deliver",
+          "passed": true,
+          "detail": {
+            "lane": "mysql-spigot",
+            "point": "mail.claim.halt-before-deliver",
+            "body": "S12_before_delivery",
+            "target": {
+              "id": "14a4662e-b828-4cc8-96a7-d33a5ed6e0b5",
+              "kind": "GIFT",
+              "body": "S12_before_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+              "claim_token": "9f5212d1-7536-4d65-8ee3-474771bcd791",
+              "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+              "unread": true,
+              "encodedLength": 133
+            },
+            "rows": [
+              {
+                "id": "14a4662e-b828-4cc8-96a7-d33a5ed6e0b5",
+                "body": "S12_before_delivery",
+                "kind": "GIFT",
+                "state": "CLAIMING",
+                "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+                "claim_owner": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+                "claim_token": "9f5212d1-7536-4d65-8ee3-474771bcd791"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/14a4662e-b828-4cc8-96a7-d33a5ed6e0b5",
+                "inventory": [],
+                "fileSha256": "c5fa320cde1e11207de4611485dab3945b928820ed3bdd47a5d4a8d93ff5bee9"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "1a61dbd0741af133a75c6bad8c554bebe569b90ef69463a40391540f33cc6078"
+              }
+            }
+          }
+        },
+        {
+          "label": "mysql-spigot/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-spigot/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: crash before delivery leaves inventory empty and gift claimable",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: pre-delivery recovery delivers exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_after_delivery: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_after_delivery: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: exact after-delivery claim observed held under slow hook",
+          "passed": true,
+          "detail": {
+            "id": "6510dd7c-b25b-423f-b0de-60db1efffc77",
+            "kind": "GIFT",
+            "body": "S12_after_delivery",
+            "state": "CLAIMING",
+            "claim_owner": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+            "claim_token": "a8f473bd-6747-4b37-bdca-eed70ae1ae2a",
+            "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+            "unread": true,
+            "encodedLength": 133
+          }
+        },
+        {
+          "label": "mysql-spigot: deliberate mail.claim.halt-after-deliver crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: exact target DB row/token and stopped native playerdata receipt/inventory match mail.claim.halt-after-deliver",
+          "passed": true,
+          "detail": {
+            "lane": "mysql-spigot",
+            "point": "mail.claim.halt-after-deliver",
+            "body": "S12_after_delivery",
+            "target": {
+              "id": "6510dd7c-b25b-423f-b0de-60db1efffc77",
+              "kind": "GIFT",
+              "body": "S12_after_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+              "claim_token": "a8f473bd-6747-4b37-bdca-eed70ae1ae2a",
+              "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+              "unread": true,
+              "encodedLength": 133
+            },
+            "rows": [
+              {
+                "id": "6510dd7c-b25b-423f-b0de-60db1efffc77",
+                "body": "S12_after_delivery",
+                "kind": "GIFT",
+                "state": "CLAIMING",
+                "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+                "claim_owner": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+                "claim_token": "a8f473bd-6747-4b37-bdca-eed70ae1ae2a"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/6510dd7c-b25b-423f-b0de-60db1efffc77",
+                "inventory": [],
+                "fileSha256": "3d1a5135cdb887fd39621bdc360018287db016513ec23dccb1c2ed10149139dd"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": "C/6510dd7c-b25b-423f-b0de-60db1efffc77/a8f473bd-6747-4b37-bdca-eed70ae1ae2a/8",
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "0debe79a89112a1b2c66b3a69881750f57b50c0f48d45f2ab4bda6b446c00db4"
+              }
+            }
+          }
+        },
+        {
+          "label": "mysql-spigot/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-spigot/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: crash after delivery finishes DB from receipt without redelivery",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: post-crash repeated claim cannot duplicate",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: second reconnect preserves exactly-once inventory with spent receipt removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: all remaining owned clients/server exited cleanly (zero, no forced termination)",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: no unexpected listener/plugin/thread exceptions",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "label": "executed harness sources and imported helpers unchanged since frozen snapshot",
+          "passed": true,
+          "detail": null
+        }
+      ],
+      "failures": [],
+      "scopes": [
+        {
+          "label": "mysql-spigot text lifecycle/notifications",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-spigot policy",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-spigot completion",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-spigot gift/partial/reload/signed",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-spigot write-error inventory safety and cost policy",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-spigot session reconnect",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-spigot crash recovery",
+          "status": "PASS"
+        }
+      ],
+      "inputs": {
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/run.py": "a040fcd445585e779b00105a2cc72eedfa3549ae4428fe6e2a2931e80bbc13e3",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/plugin/gate/MailGate.java": "76ac035dd99b26436ef6b79da2a723c27d30dbd5b4d3426a2c701d9751b4ef20",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/plugin/plugin.yml": "5c93d65ea65a9752a8db5eba05cedadbbcd1d28947edd441b48789c54c411e89",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/client-mcp.cjs": "331201e68d81ee8519614b73f40497960cf147b2a9f9cf65b07c5893ac88ef54",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/client-raw26.cjs": "bcadb9928c84220601c24ff28ffd9106c417226ac1f90042c6bd166fd8419d61",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/playerdata.cjs": "605bc06770d4f1646d1ae24d7c6288bd9ea05ef178b47073117b91718d6940bc",
+        "/mnt/storage/repos/Allium-recode/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/repos/Allium-recode/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72",
+        "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-spigot-01/Allium-under-test.jar": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+        "/mnt/storage/.allium-validation/infra/api/spigot-api-1.20.1-R0.1-SNAPSHOT.jar": "e79aa28bd17ed51a22dfd3457d67ca59bccff38f8b7226087b8e4213fc0f877c",
+        "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-spigot-01/helper/MailGate.jar": "9cd8aaeee6549e2ef6cee027ee90845eb8c7797bbd0806d709290e62ca99856d",
+        "/mnt/storage/.allium-validation/infra/servers/spigot-1.20.1.jar": "1416cd67e2337e42058def6035260f6a42e294adb4a148707b87591cddfbb760",
+        "/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3/versions/26.3/paper-26.3.jar": "b2a93cb788ae8e2a91b1614cb5cd57ea602a74d291ca25d6acae34b19a234e1d"
+      },
+      "clientLibrary": "1.68.0",
+      "lanes": [
+        {
+          "name": "mysql-spigot",
+          "kind": "spigot",
+          "port": 25724,
+          "database": "allium_s12_pdc_mysql_spigot_01"
+        }
+      ],
+      "boundaries": [
+        "Real protocol command/completion/chat/sound clients; console helper prepares inventory and observes DB/inventory",
+        "Pre-escrow crash is during slow-persist before row insert; not the PENDING-insert/before-take subwindow",
+        "Write error is injected SQLException, not a physical MySQL outage",
+        "Shared MySQL concurrency uses same offline UUID on two separate playerdata directories",
+        "Mail body spying is outside scope"
+      ],
+      "observations": {
+        "emptyCompletionFences": [
+          {
+            "lane": "mysql-spigot",
+            "player": "MailA",
+            "text": "mail send MailH",
+            "requestId": 10,
+            "fenceId": 11
+          },
+          {
+            "lane": "mysql-spigot",
+            "player": "MailA",
+            "text": "mail send Mail",
+            "requestId": 13,
+            "fenceId": 14
+          },
+          {
+            "lane": "mysql-spigot",
+            "player": "MailA",
+            "text": "mail gift MailB 2 ",
+            "requestId": 15,
+            "fenceId": 16
+          },
+          {
+            "lane": "mysql-spigot",
+            "player": "MailB",
+            "text": "mail delete ",
+            "requestId": 2,
+            "fenceId": 3
+          }
+        ],
+        "crashSnapshots": [
+          {
+            "lane": "mysql-spigot",
+            "point": null,
+            "body": "S12_pre_escrow",
+            "target": null,
+            "rows": [],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "b7a6fc77276b5f9db6e4528b2d8488652b73a9a897c232dd6404366f5c8e2b97"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "eaf84a5750f358e8bc5dabc1e312cf13e51f9b63e27fb7c51684f91812de3db2"
+              }
+            }
+          },
+          {
+            "lane": "mysql-spigot",
+            "point": "mail.send.halt-after-take",
+            "body": "S12_after_escrow",
+            "target": null,
+            "rows": [
+              {
+                "id": "ee4aa1eb-dd68-44ad-886d-54910e9c14d6",
+                "body": "S12_after_escrow",
+                "kind": "GIFT",
+                "state": "PENDING",
+                "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+                "claim_owner": null,
+                "claim_token": null
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/ee4aa1eb-dd68-44ad-886d-54910e9c14d6",
+                "inventory": [],
+                "fileSha256": "0d09b72d7fc543d9ad72a2a72cd74d74181f2a25c2bbd0757af673905003bc34"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "35276236bfb0f500ca8cb83a05611df8aba4d1bd287e4021b34d3f8d11abb543"
+              }
+            }
+          },
+          {
+            "lane": "mysql-spigot",
+            "point": "mail.claim.halt-before-deliver",
+            "body": "S12_before_delivery",
+            "target": {
+              "id": "14a4662e-b828-4cc8-96a7-d33a5ed6e0b5",
+              "kind": "GIFT",
+              "body": "S12_before_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+              "claim_token": "9f5212d1-7536-4d65-8ee3-474771bcd791",
+              "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+              "unread": true,
+              "encodedLength": 133
+            },
+            "rows": [
+              {
+                "id": "14a4662e-b828-4cc8-96a7-d33a5ed6e0b5",
+                "body": "S12_before_delivery",
+                "kind": "GIFT",
+                "state": "CLAIMING",
+                "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+                "claim_owner": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+                "claim_token": "9f5212d1-7536-4d65-8ee3-474771bcd791"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/14a4662e-b828-4cc8-96a7-d33a5ed6e0b5",
+                "inventory": [],
+                "fileSha256": "c5fa320cde1e11207de4611485dab3945b928820ed3bdd47a5d4a8d93ff5bee9"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "1a61dbd0741af133a75c6bad8c554bebe569b90ef69463a40391540f33cc6078"
+              }
+            }
+          },
+          {
+            "lane": "mysql-spigot",
+            "point": "mail.claim.halt-after-deliver",
+            "body": "S12_after_delivery",
+            "target": {
+              "id": "6510dd7c-b25b-423f-b0de-60db1efffc77",
+              "kind": "GIFT",
+              "body": "S12_after_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+              "claim_token": "a8f473bd-6747-4b37-bdca-eed70ae1ae2a",
+              "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+              "unread": true,
+              "encodedLength": 133
+            },
+            "rows": [
+              {
+                "id": "6510dd7c-b25b-423f-b0de-60db1efffc77",
+                "body": "S12_after_delivery",
+                "kind": "GIFT",
+                "state": "CLAIMING",
+                "origin": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+                "claim_owner": "server-db9c2707-6ecb-44b3-8f5d-2f524f62f4f0",
+                "claim_token": "a8f473bd-6747-4b37-bdca-eed70ae1ae2a"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 3465,
+                "receipts": "S/6510dd7c-b25b-423f-b0de-60db1efffc77",
+                "inventory": [],
+                "fileSha256": "3d1a5135cdb887fd39621bdc360018287db016513ec23dccb1c2ed10149139dd"
+              },
+              "MailB": {
+                "dataVersion": 3465,
+                "receipts": "C/6510dd7c-b25b-423f-b0de-60db1efffc77/a8f473bd-6747-4b37-bdca-eed70ae1ae2a/8",
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "0debe79a89112a1b2c66b3a69881750f57b50c0f48d45f2ab4bda6b446c00db4"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "manifest": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-paper-01/manifest.json",
+      "schema": 1,
+      "suite": "mysql-paper",
+      "status": "PASS",
+      "alliumJar": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-paper-01/Allium-under-test.jar",
+      "sha256": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+      "startedEpoch": 1794580166.4493616,
+      "finishedEpoch": 1794580288.1877747,
+      "run": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-paper-01",
+      "checks": [
+        {
+          "label": "mysql-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: online new-mail exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": [
+            {
+              "packet": "sound",
+              "name": "minecraft:entity.experience_orb.pickup",
+              "id": null,
+              "volume": 0.6000000238418579,
+              "pitch": 1
+            }
+          ]
+        },
+        {
+          "label": "mysql-paper: text initially unread",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: read and delete remove text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: offline text joins with exactly one unread summary and sound",
+          "passed": true,
+          "detail": [
+            {
+              "packet": "sound",
+              "name": "minecraft:entity.experience_orb.pickup",
+              "id": null,
+              "volume": 0.6000000238418579,
+              "pitch": 1
+            }
+          ]
+        },
+        {
+          "label": "mysql-paper: clear preserves unread text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: clear removes only read text",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailA allium.msg.bypass.ignore=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: ignore-online refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "mysql-paper: ignore-online gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "mysql-paper: offline persisted ignore refuses without stored mail",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: msgtoggle-online refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "mysql-paper: msgtoggle-online gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now."
+        },
+        {
+          "label": "mysql-paper: offline persisted msgtoggle is authoritative",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: muted refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] You are muted."
+        },
+        {
+          "label": "mysql-paper: muted gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] You are muted."
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: fault confirms online preferences unloaded",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: unloaded-preferences refuses generically without row or recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now; try again shortly."
+        },
+        {
+          "label": "mysql-paper: unloaded-preferences gift has same refusal, no escrow/item removal/recipient notification",
+          "passed": true,
+          "detail": "[Allium] MailB can't receive mail right now; try again shortly."
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: ignore and msgtoggle use identical generic refusal",
+          "passed": true,
+          "detail": [
+            "[Allium] MailB can't receive mail right now.",
+            "[Allium] MailB can't receive mail right now."
+          ]
+        },
+        {
+          "label": "mysql-paper: cached offline name offered by command completion",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: offline cached completion fast (median<250ms/max<1s)",
+          "passed": true,
+          "detail": [
+            25.072584000099596,
+            25.071701000115354,
+            25.067035000120086,
+            55.170256000110385,
+            45.14772199991057,
+            55.14992999997048,
+            45.143757999994705,
+            55.18715199991675
+          ]
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: cached known name obeys online vanish visibility",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailHidden allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: first-join vanished player absent from completion",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: vanished player becomes historical name after quit",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailA allium.mail.send=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: completion obeys send permission",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailA allium.mail.send=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: gift subsequent note args do not suggest names",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_offline_gift: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: offline gift delivered on later join and claim",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_cancel_event: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_cancel_event: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: cancelled shared delivery event keeps gift READY and delivers nothing",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: uncancelled gift can subsequently be claimed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: gift numeric amount keeps sender remainder and subsequent note intact",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: delete completion excludes gifts; claim completion includes gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: numeric amount gift claims exactly three",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: nonnumeric gift note sends the remaining held stack",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_one: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_one: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_two: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_all_two: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: claim all serially delivers both gifts exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_full_partial: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_full_partial: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: full inventory delivers no items and keeps gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: partial claim inserts exactly three into available room",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: remnant claim delivers exactly five, conserves original eight",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: repeated claim never duplicates items",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_reload_claim: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_reload_claim: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: actual successful reload acknowledged while target claim still held",
+          "passed": true,
+          "detail": "[06:30:20 INFO]: [Allium] Configuration reloaded."
+        },
+        {
+          "label": "mysql-paper: /allium reload keeps same mail service and in-flight claim exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: sender signed tool verifies before mail",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: signed source instance absent from sender after escrow before receiver claim",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: signed tool identity/MAC/state survive actual gift escrow and claim",
+          "passed": true,
+          "detail": [
+            {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "behavior": "allium:mob_disarmer",
+              "state": {
+                "gate": "s12-state"
+              },
+              "signature": "v2:k1:59cb361ec78e51aec452530dc57292fc41ce56f1ca98816c4a57da5fbeed2390",
+              "instance_uuid": "41155f2f-b518-48f8-b8a4-95edb8ef3e5b",
+              "slot": 0
+            }
+          ]
+        },
+        {
+          "label": "mysql-paper: CostPolicy denial creates no escrow and takes no inventory",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: CostPolicy denial creates no escrow and takes no inventory",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: TEXT write-failure hook tripped exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: injected DB error TEXT performs exactly one non-debiting CostPolicy preflight",
+          "passed": true,
+          "detail": {
+            "before": {
+              "allows:TEXT": 9,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            },
+            "after": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            }
+          }
+        },
+        {
+          "label": "mysql-paper: TEXT DB error takes no items, stores no row, gives no recipient sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: GIFT write-failure hook tripped exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: injected DB error GIFT performs exactly one non-debiting CostPolicy preflight",
+          "passed": true,
+          "detail": {
+            "before": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 14,
+              "allowed": true,
+              "sameService": true
+            },
+            "after": {
+              "allows:TEXT": 10,
+              "allows:GIFT": 15,
+              "allowed": true,
+              "sameService": true
+            }
+          }
+        },
+        {
+          "label": "mysql-paper: GIFT DB error takes no items, stores no row, gives no recipient sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: send disconnect/immediate reconnect keeps inventory and cancels old-generation PENDING gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_reconnect: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_claim_reconnect: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: claim disconnect/immediate reconnect releases old-generation claim without delivery",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: new session claims released gift exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: deliberate pre-escrow SIGKILL exit=-9",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: exact target DB row/token and stopped native playerdata receipt/inventory match None",
+          "passed": true,
+          "detail": {
+            "lane": "mysql-paper",
+            "point": null,
+            "body": "S12_pre_escrow",
+            "target": null,
+            "rows": [],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "1d8846cdc1733bcc0bbb36c2b7dceb629efab215f7ebcc241430d117b46bbc8c"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "a705b082cc79b32795e8b4391a9384791d8ccc63b4beb4243b9b39a46cd68638"
+              }
+            }
+          }
+        },
+        {
+          "label": "mysql-paper/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-paper/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: crash before persistence/escrow preserves sender items and creates no gift",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: deliberate mail.send.halt-after-take crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: exact target DB row/token and stopped native playerdata receipt/inventory match mail.send.halt-after-take",
+          "passed": true,
+          "detail": {
+            "lane": "mysql-paper",
+            "point": "mail.send.halt-after-take",
+            "body": "S12_after_escrow",
+            "target": null,
+            "rows": [
+              {
+                "id": "a30d513a-b058-4978-8e62-d808bfba8b18",
+                "body": "S12_after_escrow",
+                "kind": "GIFT",
+                "state": "PENDING",
+                "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+                "claim_owner": null,
+                "claim_token": null
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/a30d513a-b058-4978-8e62-d808bfba8b18",
+                "inventory": [],
+                "fileSha256": "5d0630fe68dbd6f7453ef76ed53dde08b79f61ea63b655efcf70e75fb35941dc"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "0f1067a5e3a336bae2d3a936170eccd58171a264d1aa180f70d730508e11cfbb"
+              }
+            }
+          }
+        },
+        {
+          "label": "mysql-paper/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-paper/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: crash after escrow recovers READY gift without inventory duplication",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: recovered escrow delivered exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_before_delivery: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_before_delivery: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: exact before-delivery claim observed held under slow hook",
+          "passed": true,
+          "detail": {
+            "id": "1c2b1a9d-7a80-458a-b8a4-ca5b62730db2",
+            "kind": "GIFT",
+            "body": "S12_before_delivery",
+            "state": "CLAIMING",
+            "claim_owner": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+            "claim_token": "83e9eda1-3484-4e9f-8c40-8f6c5ad588c2",
+            "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+            "unread": true,
+            "encodedLength": 170
+          }
+        },
+        {
+          "label": "mysql-paper: deliberate mail.claim.halt-before-deliver crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: exact target DB row/token and stopped native playerdata receipt/inventory match mail.claim.halt-before-deliver",
+          "passed": true,
+          "detail": {
+            "lane": "mysql-paper",
+            "point": "mail.claim.halt-before-deliver",
+            "body": "S12_before_delivery",
+            "target": {
+              "id": "1c2b1a9d-7a80-458a-b8a4-ca5b62730db2",
+              "kind": "GIFT",
+              "body": "S12_before_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+              "claim_token": "83e9eda1-3484-4e9f-8c40-8f6c5ad588c2",
+              "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+              "unread": true,
+              "encodedLength": 170
+            },
+            "rows": [
+              {
+                "id": "1c2b1a9d-7a80-458a-b8a4-ca5b62730db2",
+                "body": "S12_before_delivery",
+                "kind": "GIFT",
+                "state": "CLAIMING",
+                "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+                "claim_owner": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+                "claim_token": "83e9eda1-3484-4e9f-8c40-8f6c5ad588c2"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/1c2b1a9d-7a80-458a-b8a4-ca5b62730db2",
+                "inventory": [],
+                "fileSha256": "c2fe7a55dc8d00e5d25d54740ba89949a7935c289c8bf1a90e431e9b06f1d129"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "f9d3ebc3d627688608cc65f6feceb3670635413936c13f8a6d0118be248cd4eb"
+              }
+            }
+          }
+        },
+        {
+          "label": "mysql-paper/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-paper/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: crash before delivery leaves inventory empty and gift claimable",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: pre-delivery recovery delivers exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_after_delivery: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_after_delivery: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: exact after-delivery claim observed held under slow hook",
+          "passed": true,
+          "detail": {
+            "id": "338b8b4b-b319-47e6-945b-38d8419f6518",
+            "kind": "GIFT",
+            "body": "S12_after_delivery",
+            "state": "CLAIMING",
+            "claim_owner": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+            "claim_token": "45a74655-e2c6-4a7b-b7d9-84368a7b0f1c",
+            "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+            "unread": true,
+            "encodedLength": 170
+          }
+        },
+        {
+          "label": "mysql-paper: deliberate mail.claim.halt-after-deliver crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: exact target DB row/token and stopped native playerdata receipt/inventory match mail.claim.halt-after-deliver",
+          "passed": true,
+          "detail": {
+            "lane": "mysql-paper",
+            "point": "mail.claim.halt-after-deliver",
+            "body": "S12_after_delivery",
+            "target": {
+              "id": "338b8b4b-b319-47e6-945b-38d8419f6518",
+              "kind": "GIFT",
+              "body": "S12_after_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+              "claim_token": "45a74655-e2c6-4a7b-b7d9-84368a7b0f1c",
+              "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+              "unread": true,
+              "encodedLength": 170
+            },
+            "rows": [
+              {
+                "id": "338b8b4b-b319-47e6-945b-38d8419f6518",
+                "body": "S12_after_delivery",
+                "kind": "GIFT",
+                "state": "CLAIMING",
+                "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+                "claim_owner": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+                "claim_token": "45a74655-e2c6-4a7b-b7d9-84368a7b0f1c"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/338b8b4b-b319-47e6-945b-38d8419f6518",
+                "inventory": [],
+                "fileSha256": "abf2b8390fd5cfa1ecd6481f9494cf4ff9156603b3f915fc5e4ae694a0a55d0c"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": "C/338b8b4b-b319-47e6-945b-38d8419f6518/45a74655-e2c6-4a7b-b7d9-84368a7b0f1c/8",
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "3fb83d152c77bf3d3ea20fc1b448eb366dc3788935a7082a36deabae35949782"
+              }
+            }
+          }
+        },
+        {
+          "label": "mysql-paper/MailA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-paper/MailB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "mysql-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: crash after delivery finishes DB from receipt without redelivery",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: post-crash repeated claim cannot duplicate",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: second reconnect preserves exactly-once inventory with spent receipt removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: all remaining owned clients/server exited cleanly (zero, no forced termination)",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: no unexpected listener/plugin/thread exceptions",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "label": "executed harness sources and imported helpers unchanged since frozen snapshot",
+          "passed": true,
+          "detail": null
+        }
+      ],
+      "failures": [],
+      "scopes": [
+        {
+          "label": "mysql-paper text lifecycle/notifications",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-paper policy",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-paper completion",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-paper gift/partial/reload/signed",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-paper write-error inventory safety and cost policy",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-paper session reconnect",
+          "status": "PASS"
+        },
+        {
+          "label": "mysql-paper crash recovery",
+          "status": "PASS"
+        }
+      ],
+      "inputs": {
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/run.py": "a040fcd445585e779b00105a2cc72eedfa3549ae4428fe6e2a2931e80bbc13e3",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/plugin/gate/MailGate.java": "76ac035dd99b26436ef6b79da2a723c27d30dbd5b4d3426a2c701d9751b4ef20",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/plugin/plugin.yml": "5c93d65ea65a9752a8db5eba05cedadbbcd1d28947edd441b48789c54c411e89",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/client-mcp.cjs": "331201e68d81ee8519614b73f40497960cf147b2a9f9cf65b07c5893ac88ef54",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/client-raw26.cjs": "bcadb9928c84220601c24ff28ffd9106c417226ac1f90042c6bd166fd8419d61",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/playerdata.cjs": "605bc06770d4f1646d1ae24d7c6288bd9ea05ef178b47073117b91718d6940bc",
+        "/mnt/storage/repos/Allium-recode/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/repos/Allium-recode/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72",
+        "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-paper-01/Allium-under-test.jar": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+        "/mnt/storage/.allium-validation/infra/api/spigot-api-1.20.1-R0.1-SNAPSHOT.jar": "e79aa28bd17ed51a22dfd3457d67ca59bccff38f8b7226087b8e4213fc0f877c",
+        "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-mysql-paper-01/helper/MailGate.jar": "79dd5014add1edaaef8a7855fb25590c930769d55faf8e6470a8e6952a2bb1ac",
+        "/mnt/storage/.allium-validation/infra/servers/spigot-1.20.1.jar": "1416cd67e2337e42058def6035260f6a42e294adb4a148707b87591cddfbb760",
+        "/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3/versions/26.3/paper-26.3.jar": "b2a93cb788ae8e2a91b1614cb5cd57ea602a74d291ca25d6acae34b19a234e1d"
+      },
+      "clientLibrary": "1.68.0",
+      "lanes": [
+        {
+          "name": "mysql-paper",
+          "kind": "paper",
+          "port": 25725,
+          "database": "allium_s12_pdc_mysql_paper_01"
+        }
+      ],
+      "boundaries": [
+        "Real protocol command/completion/chat/sound clients; console helper prepares inventory and observes DB/inventory",
+        "Pre-escrow crash is during slow-persist before row insert; not the PENDING-insert/before-take subwindow",
+        "Write error is injected SQLException, not a physical MySQL outage",
+        "Shared MySQL concurrency uses same offline UUID on two separate playerdata directories",
+        "Mail body spying is outside scope"
+      ],
+      "observations": {
+        "emptyCompletionFences": [
+          {
+            "lane": "mysql-paper",
+            "player": "MailA",
+            "text": "mail send MailH",
+            "requestId": 10,
+            "fenceId": 11
+          },
+          {
+            "lane": "mysql-paper",
+            "player": "MailA",
+            "text": "mail send Mail",
+            "requestId": 13,
+            "fenceId": 14
+          },
+          {
+            "lane": "mysql-paper",
+            "player": "MailA",
+            "text": "mail gift MailB 2 ",
+            "requestId": 15,
+            "fenceId": 16
+          },
+          {
+            "lane": "mysql-paper",
+            "player": "MailB",
+            "text": "mail delete ",
+            "requestId": 2,
+            "fenceId": 3
+          }
+        ],
+        "crashSnapshots": [
+          {
+            "lane": "mysql-paper",
+            "point": null,
+            "body": "S12_pre_escrow",
+            "target": null,
+            "rows": [],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "1d8846cdc1733bcc0bbb36c2b7dceb629efab215f7ebcc241430d117b46bbc8c"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "a705b082cc79b32795e8b4391a9384791d8ccc63b4beb4243b9b39a46cd68638"
+              }
+            }
+          },
+          {
+            "lane": "mysql-paper",
+            "point": "mail.send.halt-after-take",
+            "body": "S12_after_escrow",
+            "target": null,
+            "rows": [
+              {
+                "id": "a30d513a-b058-4978-8e62-d808bfba8b18",
+                "body": "S12_after_escrow",
+                "kind": "GIFT",
+                "state": "PENDING",
+                "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+                "claim_owner": null,
+                "claim_token": null
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/a30d513a-b058-4978-8e62-d808bfba8b18",
+                "inventory": [],
+                "fileSha256": "5d0630fe68dbd6f7453ef76ed53dde08b79f61ea63b655efcf70e75fb35941dc"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "0f1067a5e3a336bae2d3a936170eccd58171a264d1aa180f70d730508e11cfbb"
+              }
+            }
+          },
+          {
+            "lane": "mysql-paper",
+            "point": "mail.claim.halt-before-deliver",
+            "body": "S12_before_delivery",
+            "target": {
+              "id": "1c2b1a9d-7a80-458a-b8a4-ca5b62730db2",
+              "kind": "GIFT",
+              "body": "S12_before_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+              "claim_token": "83e9eda1-3484-4e9f-8c40-8f6c5ad588c2",
+              "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+              "unread": true,
+              "encodedLength": 170
+            },
+            "rows": [
+              {
+                "id": "1c2b1a9d-7a80-458a-b8a4-ca5b62730db2",
+                "body": "S12_before_delivery",
+                "kind": "GIFT",
+                "state": "CLAIMING",
+                "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+                "claim_owner": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+                "claim_token": "83e9eda1-3484-4e9f-8c40-8f6c5ad588c2"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/1c2b1a9d-7a80-458a-b8a4-ca5b62730db2",
+                "inventory": [],
+                "fileSha256": "c2fe7a55dc8d00e5d25d54740ba89949a7935c289c8bf1a90e431e9b06f1d129"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": null,
+                "inventory": [],
+                "fileSha256": "f9d3ebc3d627688608cc65f6feceb3670635413936c13f8a6d0118be248cd4eb"
+              }
+            }
+          },
+          {
+            "lane": "mysql-paper",
+            "point": "mail.claim.halt-after-deliver",
+            "body": "S12_after_delivery",
+            "target": {
+              "id": "338b8b4b-b319-47e6-945b-38d8419f6518",
+              "kind": "GIFT",
+              "body": "S12_after_delivery",
+              "state": "CLAIMING",
+              "claim_owner": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+              "claim_token": "45a74655-e2c6-4a7b-b7d9-84368a7b0f1c",
+              "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+              "unread": true,
+              "encodedLength": 170
+            },
+            "rows": [
+              {
+                "id": "338b8b4b-b319-47e6-945b-38d8419f6518",
+                "body": "S12_after_delivery",
+                "kind": "GIFT",
+                "state": "CLAIMING",
+                "origin": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+                "claim_owner": "server-32bab53a-63b4-4a03-b0e9-c46e2b965d6f",
+                "claim_token": "45a74655-e2c6-4a7b-b7d9-84368a7b0f1c"
+              }
+            ],
+            "savedPlayers": {
+              "MailA": {
+                "dataVersion": 5023,
+                "receipts": "S/338b8b4b-b319-47e6-945b-38d8419f6518",
+                "inventory": [],
+                "fileSha256": "abf2b8390fd5cfa1ecd6481f9494cf4ff9156603b3f915fc5e4ae694a0a55d0c"
+              },
+              "MailB": {
+                "dataVersion": 5023,
+                "receipts": "C/338b8b4b-b319-47e6-945b-38d8419f6518/45a74655-e2c6-4a7b-b7d9-84368a7b0f1c/8",
+                "inventory": [
+                  {
+                    "slot": 0,
+                    "id": "minecraft:diamond",
+                    "count": 8,
+                    "data": null
+                  }
+                ],
+                "fileSha256": "3fb83d152c77bf3d3ea20fc1b448eb366dc3788935a7082a36deabae35949782"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "manifest": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-shared-mysql-01/manifest.json",
+      "schema": 1,
+      "suite": "shared-mysql",
+      "status": "PASS",
+      "alliumJar": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-shared-mysql-01/Allium-under-test.jar",
+      "sha256": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+      "startedEpoch": 1794579680.1044247,
+      "finishedEpoch": 1794579716.951889,
+      "run": "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-shared-mysql-01",
+      "checks": [
+        {
+          "label": "mysql-spigot: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: mail module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailA allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: effective MailB allium.mail.bypass.limits=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_shared_concurrent: new gift exactly one line and one NotificationService sound",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_shared_concurrent: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "shared MySQL: target row owner is paused winning claimant under tripped slow hook",
+          "passed": true,
+          "detail": {
+            "id": "594e7ad9-3229-45b7-9b46-bd061ea5837a",
+            "kind": "GIFT",
+            "body": "S12_shared_concurrent",
+            "state": "CLAIMING",
+            "claim_owner": "server-20ac8031-7a1d-4dec-a3a5-543d261c80b6",
+            "claim_token": "7d97c1ea-e8ec-4272-ae70-dd56f0d1e8be",
+            "origin": "server-20ac8031-7a1d-4dec-a3a5-543d261c80b6",
+            "unread": true,
+            "encodedLength": 134
+          }
+        },
+        {
+          "label": "shared MySQL: loser refused before paused winner delivered/finalized, exact row token/owner unchanged",
+          "passed": true,
+          "detail": {
+            "held": {
+              "id": "594e7ad9-3229-45b7-9b46-bd061ea5837a",
+              "kind": "GIFT",
+              "body": "S12_shared_concurrent",
+              "state": "CLAIMING",
+              "claim_owner": "server-20ac8031-7a1d-4dec-a3a5-543d261c80b6",
+              "claim_token": "7d97c1ea-e8ec-4272-ae70-dd56f0d1e8be",
+              "origin": "server-20ac8031-7a1d-4dec-a3a5-543d261c80b6",
+              "unread": true,
+              "encodedLength": 134
+            },
+            "current": {
+              "id": "594e7ad9-3229-45b7-9b46-bd061ea5837a",
+              "kind": "GIFT",
+              "body": "S12_shared_concurrent",
+              "state": "CLAIMING",
+              "claim_owner": "server-20ac8031-7a1d-4dec-a3a5-543d261c80b6",
+              "claim_token": "7d97c1ea-e8ec-4272-ae70-dd56f0d1e8be",
+              "origin": "server-20ac8031-7a1d-4dec-a3a5-543d261c80b6",
+              "unread": true,
+              "encodedLength": 134
+            },
+            "loser": {
+              "plain": "[Allium] Gift 594e7ad9 is already being claimed.",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Gift ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "594e7ad9 ",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": "is already being claimed.",
+                  "color": "#ff5555"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "shared MySQL: concurrent same-UUID claims on two live servers deliver exactly once",
+          "passed": true,
+          "detail": {
+            "amounts": [
+              16,
+              0
+            ],
+            "responses": [
+              [
+                {
+                  "plain": "{chat.type.advancement.task}",
+                  "colors": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ],
+                  "runs": [
+                    {
+                      "text": "{chat.type.advancement.task}",
+                      "color": null
+                    }
+                  ],
+                  "overlay": false,
+                  "interactive": true
+                },
+                {
+                  "plain": "[Allium] Claimed gift 594e7ad9: 16 item(s).",
+                  "colors": [
+                    "#aaaaaa",
+                    "#ff55ff",
+                    "#ff55ff",
+                    "#ff55ff",
+                    "#ff55ff",
+                    "#ff55ff",
+                    "#ff55ff",
+                    "#aaaaaa",
+                    "#aaaaaa",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#55ff55",
+                    "#55ff55",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55",
+                    "#55ff55"
+                  ],
+                  "runs": [
+                    {
+                      "text": "[",
+                      "color": "#aaaaaa"
+                    },
+                    {
+                      "text": "Allium",
+                      "color": "#ff55ff"
+                    },
+                    {
+                      "text": "] ",
+                      "color": "#aaaaaa"
+                    },
+                    {
+                      "text": "Claimed gift ",
+                      "color": "#55ff55"
+                    },
+                    {
+                      "text": "594e7ad9",
+                      "color": "#ffffff"
+                    },
+                    {
+                      "text": ": ",
+                      "color": "#55ff55"
+                    },
+                    {
+                      "text": "16 ",
+                      "color": "#ffffff"
+                    },
+                    {
+                      "text": "item(s).",
+                      "color": "#55ff55"
+                    }
+                  ],
+                  "overlay": false,
+                  "interactive": false
+                }
+              ],
+              [
+                {
+                  "plain": "[Allium] Gift 594e7ad9 is already being claimed.",
+                  "colors": [
+                    "#aaaaaa",
+                    "#ff55ff",
+                    "#ff55ff",
+                    "#ff55ff",
+                    "#ff55ff",
+                    "#ff55ff",
+                    "#ff55ff",
+                    "#aaaaaa",
+                    "#aaaaaa",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ffffff",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555",
+                    "#ff5555"
+                  ],
+                  "runs": [
+                    {
+                      "text": "[",
+                      "color": "#aaaaaa"
+                    },
+                    {
+                      "text": "Allium",
+                      "color": "#ff55ff"
+                    },
+                    {
+                      "text": "] ",
+                      "color": "#aaaaaa"
+                    },
+                    {
+                      "text": "Gift ",
+                      "color": "#ff5555"
+                    },
+                    {
+                      "text": "594e7ad9 ",
+                      "color": "#ffffff"
+                    },
+                    {
+                      "text": "is already being claimed.",
+                      "color": "#ff5555"
+                    }
+                  ],
+                  "overlay": false,
+                  "interactive": false
+                }
+              ]
+            ]
+          }
+        },
+        {
+          "label": "shared MySQL: one client receives success and one refuses",
+          "passed": true,
+          "detail": [
+            [
+              {
+                "plain": "{chat.type.advancement.task}",
+                "colors": [
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null
+                ],
+                "runs": [
+                  {
+                    "text": "{chat.type.advancement.task}",
+                    "color": null
+                  }
+                ],
+                "overlay": false,
+                "interactive": true
+              },
+              {
+                "plain": "[Allium] Claimed gift 594e7ad9: 16 item(s).",
+                "colors": [
+                  "#aaaaaa",
+                  "#ff55ff",
+                  "#ff55ff",
+                  "#ff55ff",
+                  "#ff55ff",
+                  "#ff55ff",
+                  "#ff55ff",
+                  "#aaaaaa",
+                  "#aaaaaa",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#55ff55",
+                  "#55ff55",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55",
+                  "#55ff55"
+                ],
+                "runs": [
+                  {
+                    "text": "[",
+                    "color": "#aaaaaa"
+                  },
+                  {
+                    "text": "Allium",
+                    "color": "#ff55ff"
+                  },
+                  {
+                    "text": "] ",
+                    "color": "#aaaaaa"
+                  },
+                  {
+                    "text": "Claimed gift ",
+                    "color": "#55ff55"
+                  },
+                  {
+                    "text": "594e7ad9",
+                    "color": "#ffffff"
+                  },
+                  {
+                    "text": ": ",
+                    "color": "#55ff55"
+                  },
+                  {
+                    "text": "16 ",
+                    "color": "#ffffff"
+                  },
+                  {
+                    "text": "item(s).",
+                    "color": "#55ff55"
+                  }
+                ],
+                "overlay": false,
+                "interactive": false
+              }
+            ],
+            [
+              {
+                "plain": "[Allium] Gift 594e7ad9 is already being claimed.",
+                "colors": [
+                  "#aaaaaa",
+                  "#ff55ff",
+                  "#ff55ff",
+                  "#ff55ff",
+                  "#ff55ff",
+                  "#ff55ff",
+                  "#ff55ff",
+                  "#aaaaaa",
+                  "#aaaaaa",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ffffff",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555",
+                  "#ff5555"
+                ],
+                "runs": [
+                  {
+                    "text": "[",
+                    "color": "#aaaaaa"
+                  },
+                  {
+                    "text": "Allium",
+                    "color": "#ff55ff"
+                  },
+                  {
+                    "text": "] ",
+                    "color": "#aaaaaa"
+                  },
+                  {
+                    "text": "Gift ",
+                    "color": "#ff5555"
+                  },
+                  {
+                    "text": "594e7ad9 ",
+                    "color": "#ffffff"
+                  },
+                  {
+                    "text": "is already being claimed.",
+                    "color": "#ff5555"
+                  }
+                ],
+                "overlay": false,
+                "interactive": false
+              }
+            ]
+          ]
+        },
+        {
+          "label": "shared MySQL: left recipient cache demonstrably still accepts while right persisted off",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "shared MySQL: remote_online_toggle overrides stale left online cache for text/gift with no escrow or recipient notification",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "shared MySQL: left recipient ignore cache demonstrably stale while right persisted ignore",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "shared MySQL: remote_online_ignore overrides stale left online cache for text/gift with no escrow or recipient notification",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "shared MySQL: offline-on-sender recipient uses authoritative persisted remote msgtoggle and gives no notification",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "S12_old_to_new: durable escrow READY and sender items removed",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "shared MySQL codec: Spigot 1.20.1 gift upgraded and claimed on Paper 26.3",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "shared signed codec: 1.20.1 source tool verifies",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "shared signed codec: source instance absent from sender before cross-version claim",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "shared signed codec: 1.20.1 to 26.3 preserves verified tool identity/MAC/state with shared disposable keyring",
+          "passed": true,
+          "detail": [
+            {
+              "material": "GOLDEN_HOE",
+              "amount": 1,
+              "behavior": "allium:mob_disarmer",
+              "state": {
+                "gate": "s12-state"
+              },
+              "signature": "v2:k1:194af11267b87dd7a4768cd2b5e426ca23aafc1764ae04e2f30bcc617f1d9836",
+              "instance_uuid": "3409e207-ebd0-4f33-9ba1-ea29db803010",
+              "slot": 0
+            }
+          ]
+        },
+        {
+          "label": "shared MySQL codec: newer gift refused on 1.20.1 with no delivery and row preserved",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "shared MySQL codec: refused newer gift remains claimable on compatible Paper",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: all remaining owned clients/server exited cleanly (zero, no forced termination)",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-paper: all remaining owned clients/server exited cleanly (zero, no forced termination)",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "mysql-spigot: no unexpected listener/plugin/thread exceptions",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "label": "mysql-paper: no unexpected listener/plugin/thread exceptions",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "label": "executed harness sources and imported helpers unchanged since frozen snapshot",
+          "passed": true,
+          "detail": null
+        }
+      ],
+      "failures": [],
+      "scopes": [
+        {
+          "label": "shared-mysql protocol/codec/concurrency",
+          "status": "PASS"
+        }
+      ],
+      "inputs": {
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/run.py": "a040fcd445585e779b00105a2cc72eedfa3549ae4428fe6e2a2931e80bbc13e3",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/plugin/gate/MailGate.java": "76ac035dd99b26436ef6b79da2a723c27d30dbd5b4d3426a2c701d9751b4ef20",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/plugin/plugin.yml": "5c93d65ea65a9752a8db5eba05cedadbbcd1d28947edd441b48789c54c411e89",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/client-mcp.cjs": "331201e68d81ee8519614b73f40497960cf147b2a9f9cf65b07c5893ac88ef54",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/client-raw26.cjs": "bcadb9928c84220601c24ff28ffd9106c417226ac1f90042c6bd166fd8419d61",
+        "/mnt/storage/repos/Allium-recode/tests/live/mail/playerdata.cjs": "605bc06770d4f1646d1ae24d7c6288bd9ea05ef178b47073117b91718d6940bc",
+        "/mnt/storage/repos/Allium-recode/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/repos/Allium-recode/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72",
+        "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-shared-mysql-01/Allium-under-test.jar": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+        "/mnt/storage/.allium-validation/infra/api/spigot-api-1.20.1-R0.1-SNAPSHOT.jar": "e79aa28bd17ed51a22dfd3457d67ca59bccff38f8b7226087b8e4213fc0f877c",
+        "/mnt/storage/.allium-validation/20261113/s12-mail/runs/pdc-shared-mysql-01/helper/MailGate.jar": "275f4cad8e9544f1a57402fcfc1714afc73b6d6c02c707cc1dfca924e4315c44",
+        "/mnt/storage/.allium-validation/infra/servers/spigot-1.20.1.jar": "1416cd67e2337e42058def6035260f6a42e294adb4a148707b87591cddfbb760",
+        "/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3/versions/26.3/paper-26.3.jar": "b2a93cb788ae8e2a91b1614cb5cd57ea602a74d291ca25d6acae34b19a234e1d"
+      },
+      "clientLibrary": "1.68.0",
+      "lanes": [
+        {
+          "name": "mysql-spigot",
+          "kind": "spigot",
+          "port": 25722,
+          "database": "allium_s12_pdc_shared_mysql_01"
+        },
+        {
+          "name": "mysql-paper",
+          "kind": "paper",
+          "port": 25723,
+          "database": "allium_s12_pdc_shared_mysql_01"
+        }
+      ],
+      "boundaries": [
+        "Real protocol command/completion/chat/sound clients; console helper prepares inventory and observes DB/inventory",
+        "Pre-escrow crash is during slow-persist before row insert; not the PENDING-insert/before-take subwindow",
+        "Write error is injected SQLException, not a physical MySQL outage",
+        "Shared MySQL concurrency uses same offline UUID on two separate playerdata directories",
+        "Mail body spying is outside scope"
+      ],
+      "observations": {
+        "sharedSigningKeyringCopied": true
+      }
+    }
+  ],
+  "unitVerification": {
+    "verification": "unit only",
+    "artifactSha256": "ac8d49a7a7fbf9273c8b6686a105b89c018e0a6778f0e8bebb722a7dc0ab0df4",
+    "tests": {
+      "build/test-results/test": {
+        "tests": 290,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "allium-core/build/test-results/test": {
+        "tests": 147,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "allium-api/build/test-results/test": {
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "sourceTreeDigest": "3b9b592f7cc21d14bc2cd3650bd9ada3d9ff360b1f87bb0043cfde899d8736ff",
+    "buildLog": "/mnt/storage/.allium-validation/20261113/s12-mail/unit/final-build.log",
+    "mysqlSelectedTests": {
+      "status": "PASS",
+      "scope": "mail and preferences against SQLite and disposable MySQL8.4.13",
+      "counts": {
+        "tests": 50,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "log": "/mnt/storage/.allium-validation/20261113/s12-mail/unit/mysql-mail-preferences.log"
+    }
+  }
+}

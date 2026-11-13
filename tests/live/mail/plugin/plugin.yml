@@ -1,0 +1,9 @@
+name: MailGate
+version: 1.0.0
+main: gate.MailGate
+api-version: '1.20'
+depend: [Allium]
+description: S12 console-only disposable loopback fixture.
+commands:
+  s12g:
+    description: Console-only mail fixture controls

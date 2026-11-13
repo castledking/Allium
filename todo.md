@@ -69,6 +69,21 @@ Open before M1 can close:
 - [x] **Pack delivery** (S06c, below).
 - [ ] **S06b visual check** in a real client (owner: the user).
 
+## M2 status (2026-11-13)
+
+**Live verified:** the S07/S08/S11/S12 communication and preferences slices have passed their
+recorded gates. S11 is commit `caec390`. S12 adds mail/gifts, cached offline completion and shared
+notifications: **541 checks** on Spigot 1.20.1 and Paper 26.3 with SQLite and MySQL, plus overlapping
+two-server MySQL claims and cross-version signed-item transfer. See [S12 results](tests/live/mail/RESULTS.md).
+
+**Unit only:** the final build passes **441 tests** and `shadowJar`; 50 selected mail/preference
+repository checks also passed against SQLite and disposable MySQL. Unit coverage includes typed
+PDC, cancelled-kick quarantine, failed save proofs and interrupted schema migrations.
+
+The mute integration is a service hook; the moderation `/mute` command remains in its later slice.
+M3 economy costs are reserved, not implemented by mail. Physical database outages and the pack's
+manual visual checklist remain outside the S12 live claims. No later implementation slice started.
+
 ## Staging checklist (before deploying to SF)
 
 Run on a staging copy of SF (its world, plugins and configs), never on the live server.
@@ -271,6 +286,14 @@ result and must preserve the existing uncommitted work.
       with three bots and the console, including persistence across a restart; see
       [the results](tests/live/socialspy/RESULTS.md). Unit tests: 78 new, covering the policy,
       the router, the command and the storage migration.
+- [x] **S12 / M2 — Mail and gifts:** `/mail read|send|gift|claim|delete|clear`; see
+      [docs/mail.md](docs/mail.md). Live verified: 541 checks, zero failures, with the same final artifact across five suites.
+      - Pending escrow and conditional claim tokens; exact current payload, shared item-delivery
+        cancellation/plans, remainder retained, immutable acknowledgements and saved-receipt readback.
+      - Bounded memory-only name and mailbox-ID completion with permission/visibility filtering;
+        authoritative execution lookup, recipient acceptance/ignores and unloaded-state refusals.
+      - One notification path for unread/new mail; no mail-body spying; reload keeps in-flight work.
+      - Future M6 source mapping documented; no legacy importer and no M3 money debit implemented.
 - [x] **Data-driven core tools (before S08):** the Mob Disarmer is `tools/mob_disarmer.yml`,
       bound to the one Java behavior `allium:disarm`, which owns the transaction.
       - **Validation:** definitions are validated at load time with path-specific diagnostics,

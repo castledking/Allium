@@ -29,6 +29,16 @@ public record SuggestionSpec(
         return new SuggestionSpec(SuggestionSource.ONLINE_PLAYERS, List.of(), requiredPermission);
     }
 
+    /** Known players, online or offline (mail, payments): see {@link SuggestionSource#KNOWN_PLAYERS}. */
+    public static SuggestionSpec knownPlayers(String requiredPermission) {
+        return new SuggestionSpec(SuggestionSource.KNOWN_PLAYERS, List.of(), requiredPermission);
+    }
+
+    public static SuggestionSpec mailIds(boolean claimableOnly) {
+        return new SuggestionSpec(claimableOnly ? SuggestionSource.MAIL_CLAIM_IDS : SuggestionSource.MAIL_DELETE_IDS,
+                List.of(), "allium.mail");
+    }
+
     public static SuggestionSpec gamemodes() {
         return new SuggestionSpec(SuggestionSource.GAMEMODES, DEFAULT_GAMEMODES, null);
     }

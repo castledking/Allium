@@ -37,6 +37,7 @@ public final class PluginStart extends JavaPlugin {
     private ConfigManager configManager;
     private LanguageManager languageManager;
     private MessageManager messageManager;
+    private codes.castled.allium.naming.PlayerNameService playerNames;
     private DatabaseManager databaseManager;
     private ItemService itemService;
     private ProtectionService protectionService;
@@ -111,6 +112,18 @@ public final class PluginStart extends JavaPlugin {
             logger.severe("Failed to initialize database: " + e.getMessage());
             getServer().getPluginManager().disablePlugin(this);
             return;
+        }
+
+        playerNames = new codes.castled.allium.naming.PlayerNameService(this,
+                new codes.castled.allium.naming.PlayerNameRepository(databaseManager.connectionSource(), databaseManager.dialect(),
+                        System::currentTimeMillis),
+                Math.max(1, Math.min(1_000_000, getConfig().getInt("player-names.cache-size", 10_000))),
+                scheduler.boundedPool("Allium-Names", 1, 1024));
+        try {
+            playerNames.enable();
+        } catch (java.sql.SQLException e) {
+            logger.warning("The player name index is unavailable (mail and offline-name completion are off): " + e.getMessage());
+            playerNames = null;
         }
 
         commandManager = new CommandManager(this);
@@ -317,6 +330,12 @@ public final class PluginStart extends JavaPlugin {
 
     public MessageManager getMessageManager() {
         return messageManager;
+    }
+
+    /** The shared index of known player names (mail, and M3's /pay); {@code null} if storage failed. */
+    @org.jetbrains.annotations.Nullable
+    public codes.castled.allium.naming.PlayerNameService getPlayerNames() {
+        return playerNames;
     }
 
     public DatabaseManager getDatabaseManager() {

@@ -18,4 +18,18 @@ public interface CommandCompletionContext {
      * (excluding vanished/hidden players the sender cannot see).
      */
     List<String> visibleOnlinePlayers();
+
+    /**
+     * Known player names (online or offline) starting with {@code prefix}, from memory only.
+     * Online targets must be filtered using this sender's current visibility.
+     * Without a name index this is the visible online players.
+     */
+    default List<String> knownPlayers(String prefix) {
+        return visibleOnlinePlayers();
+    }
+
+    /** Short IDs from this sender's previously loaded mailbox snapshot; never performs I/O. */
+    default List<String> mailIds(boolean claimableOnly) {
+        return List.of();
+    }
 }

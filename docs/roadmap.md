@@ -371,6 +371,16 @@ diagnostic on failure. Keep disabled-command registration changes restart-scoped
 initially; config reload can immediately guard dispatch but must report when a
 restart is needed to yield labels. Do not implement a global command blocker by accident.
 
+Mail/gift persistence is implemented through conditional ownership and player-data receipts.
+Before a receipt advances database escrow/claim state, verify its saved player-data contents;
+`Player.saveData()` returning alone is insufficient because platform save failures may be logged
+internally. Recovery must verify any same-session receipt too, retain it on database read failure,
+and require immutable acknowledgement when a row has already been removed. Cross-server mail
+acceptance/ignore enforcement reads authoritative values as well as pending local refusals. Keep
+playerdata, database, server ownership ID and signing keys in a coordinated M6 rollback snapshot;
+SQLite uses online backup or `VACUUM INTO`, never a raw copy of an open WAL database. See
+[mail contracts and import mapping](mail.md).
+
 Every player-target argument has position-aware tab completion, including
 `/mail gift <player>` and subsequent gift arguments. Filter by sender permission,
 vanish/visibility and prefix; support quoted/multiword arguments where needed.

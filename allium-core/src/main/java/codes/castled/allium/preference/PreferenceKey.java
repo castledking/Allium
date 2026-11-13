@@ -6,6 +6,7 @@ import java.util.Optional;
 /** A stored per-player preference; unset means the configured default applies. */
 public enum PreferenceKey {
 
+    SOCIAL_SPY("social-spy", "social_spy", Kind.BOOLEAN),
     ACCEPT_MESSAGES("accept-messages", "accept_messages", Kind.BOOLEAN),
     ACCEPT_PAYMENTS("accept-payments", "accept_payments", Kind.BOOLEAN),
     ACCEPT_TELEPORT_REQUESTS("accept-teleport-requests", "accept_teleport_requests", Kind.BOOLEAN),

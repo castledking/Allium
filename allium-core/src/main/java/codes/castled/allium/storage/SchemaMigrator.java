@@ -54,7 +54,17 @@ public final class SchemaMigrator {
                 }
                 try (Statement statement = connection.createStatement()) {
                     for (String sql : migration.statements().get(dialect)) {
-                        statement.execute(sql);
+                        try {
+                            statement.execute(sql);
+                        } catch (SQLException error) {
+                            // MySQL DDL commits before the version record, and SQLite can also
+                            // restart between DDL and record(). Concurrent starters may reach the
+                            // same ADD COLUMN. Only the dialect's duplicate-column error is safe
+                            // to accept; all other migration failures still abort startup.
+                            if (!duplicateAddedColumn(sql, error)) {
+                                throw error;
+                            }
+                        }
                     }
                 }
                 record(connection, component, current, migration.version());
@@ -62,6 +72,17 @@ public final class SchemaMigrator {
             }
             return current;
         }
+    }
+
+    private boolean duplicateAddedColumn(String sql, SQLException error) {
+        if (!sql.matches("(?is)^\\s*ALTER\\s+TABLE\\s+[A-Za-z0-9_]+\\s+ADD\\s+COLUMN\\s+.*")) {
+            return false;
+        }
+        return switch (dialect) {
+            case MYSQL -> error.getErrorCode() == 1060 && "42S21".equals(error.getSQLState());
+            case SQLITE -> error.getErrorCode() == 1 && error.getMessage() != null
+                    && error.getMessage().contains("duplicate column name:");
+        };
     }
 
     public int version(String component) throws SQLException {

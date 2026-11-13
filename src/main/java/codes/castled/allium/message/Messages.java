@@ -155,6 +155,11 @@ public enum Messages {
     ITEM_GIVE_RECEIVED("item.give.received", "{prefix} &aYou received &f{amount}x {item}&a."),
 
     // Private messages (S07)
+    SOCIALSPY_MESSAGE("messaging.socialspy.message", "&8[Spy] &7[&f{sender} &7→ &f{recipient}&7] &f{message}"),
+    SOCIALSPY_ON("messaging.socialspy.on", "{prefix} &aSocial spy enabled."),
+    SOCIALSPY_OFF("messaging.socialspy.off", "{prefix} &7Social spy disabled."),
+    SOCIALSPY_DISABLED("messaging.socialspy.disabled", "{prefix} &cSocial spy preferences are disabled on this server."),
+    SOCIALSPY_SAVE_FAILED("messaging.socialspy.save-failed", "{prefix} &cYour social spy setting could not be saved; the change was undone."),
     MSG_SENT("messaging.sent", "&7[&fme &7→ &f{recipient}&7] &f{message}"),
     MSG_RECEIVED("messaging.received", "&7[&f{sender} &7→ &fme&7] &f{message}"),
     MSG_CANNOT_RECEIVE("messaging.cannot-receive", "{prefix} &c{player} can't receive messages right now."),

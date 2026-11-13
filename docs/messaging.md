@@ -2,6 +2,7 @@
 
 | Command | Aliases | Permission (default) |
 | --- | --- | --- |
+| `/socialspy [on\|off]` | | `allium.socialspy` (op); self only, opt-in defaults off |
 | `/msg <player> <message>` | `tell`, `w`, `whisper`, `m`, `t` | `allium.msg` (everyone) |
 | `/reply <message>` | `r` | `allium.reply` (everyone) |
 | `/ignore [player]` | | `allium.ignore` (everyone); without a name, lists who you ignore |
@@ -97,5 +98,38 @@ migration under the component `ignores`.
 
 ## Not yet
 
-- **Social spy:** a small follow-up. It must never reveal vanished or ignored context.
 - **Ignoring:** works for online players only, and staff cannot be made exempt from it.
+
+## Social spy (S11)
+
+`/socialspy` flips your saved opt-in; `on` and `off` set it explicitly and are idempotent.
+Only players can use it. It requires loaded preferences; with preferences disabled, player social
+spy is unavailable. The opt-in is stored by UUID in `allium_preferences.social_spy` (preferences
+migration v2); existing rows stay unchanged and unset means off. A save failure rolls the change
+back and reports the failure. Removing the permission stops observation immediately without
+changing the saved setting.
+
+A spy sees only successful `/msg` and `/reply` deliveries involving other participants, including
+PMs with the console. They never get a second copy of their own conversations. Blocked attempts
+produce no spy line or sound, so spy does not reveal ignore or message-toggle relationships.
+`allium.socialspy.exempt` on **either** player participant suppresses observation entirely. That
+permission defaults to nobody, including ops, and is not a child of `allium.*`.
+
+A spy must be able to see **both** participants under the same metadata/Bukkit-hidePlayer and
+`allium.vanish.see` rules as messaging. Hidden sender traffic is protected as well as hidden
+recipient traffic. Bodies use the sender's untrusted text parser and literal component delivery;
+URLs and interaction tags do not gain click or hover actions.
+
+`messaging.socialspy.log-to-console` defaults to **false**. Opting in records successful PM bodies
+in console/server logs, subject to participant exemptions; blocked attempts and the console's own
+PMs are never duplicated. Console can see vanished players. This exposes private content to anyone
+who can read logs, backups or log exports; operators must choose access and retention accordingly.
+Turning logging off cannot remove copies already recorded. Console participants still receive their
+own messages normally when logging is off.
+
+PM confirmations, received PMs, and spy copies share `NotificationService`/`NotificationRouter`:
+one literal text send and at most one configured sound. Spy's `messaging.socialspy.message` has no
+sound by default. If configured as a sound-bearing lang entry, it follows the observer's `/mfx`
+volume; unloaded/failed preference sessions are silent. This service is reusable by later messaging
+modules using a lang key, trusted placeholders and a separately parsed body. Mail bodies are
+outside this observer; sharing the notification router does not add mail-body spying.

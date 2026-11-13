@@ -252,8 +252,25 @@ result and must preserve the existing uncommitted work.
       Gate passed 2026-11-08: 46 live checks on Spigot 1.20.1 and Paper 26.3, with two bots and
       the console; see [the results](tests/live/messaging/RESULTS.md). It found and fixed a bug:
       Spigot turned URLs in message bodies into clickable links.
-- [ ] **S07 follow-up — Social spy:** a separate small slice. It must never reveal vanished or
-      ignored context.
+- [x] **S11 / M2 — Social spy:** `/socialspy [on|off]` (`allium.socialspy`, default op), a
+      per-UUID opt-in in the preferences table (migration v2, `social_spy`); see
+      [docs/messaging.md](docs/messaging.md#social-spy-s11).
+      - **What a spy sees:** delivered `/msg` and `/reply` traffic between others, including the
+        console. Never their own conversations, and never a blocked attempt (toggle, ignore,
+        mute, offline, self). Both are verified live.
+      - **Exempt and vanished:** `allium.socialspy.exempt` (default nobody, not under `allium.*`)
+        on either participant hides the traffic. A spy must be able to see both participants
+        (vanish metadata, Bukkit hidePlayer, `allium.vanish.see`). Both are verified live.
+      - **Console log:** `messaging.socialspy.log-to-console`, default off and documented as a
+        privacy setting. Verified live: off by default, and on only after an explicit opt-in.
+      - **Notifications:** messages and spy copies go through one `NotificationService` (one
+        text, at most one sound, scaled by the spy's `/mfx` volume). Verified live: the spy
+        copy has no sound by default; with a configured sound it follows `/mfx`.
+
+      Gate passed 2026-11-12: 734 live checks (367 on each of Spigot 1.20.1 and Paper 26.3),
+      with three bots and the console, including persistence across a restart; see
+      [the results](tests/live/socialspy/RESULTS.md). Unit tests: 78 new, covering the policy,
+      the router, the command and the storage migration.
 - [x] **Data-driven core tools (before S08):** the Mob Disarmer is `tools/mob_disarmer.yml`,
       bound to the one Java behavior `allium:disarm`, which owns the transaction.
       - **Validation:** definitions are validated at load time with path-specific diagnostics,

@@ -42,7 +42,10 @@ public final class PreferenceRepository {
 
     /** Schema history; append only. */
     public static final List<Migration> MIGRATIONS = List.of(
-            Migration.of(1, "create " + TABLE, List.of(CREATE), List.of(CREATE)));
+            Migration.of(1, "create " + TABLE, List.of(CREATE), List.of(CREATE)),
+            Migration.of(2, "add social spy preference",
+                    List.of("ALTER TABLE " + TABLE + " ADD COLUMN social_spy BOOLEAN NULL"),
+                    List.of("ALTER TABLE " + TABLE + " ADD COLUMN social_spy BOOLEAN NULL")));
 
     private final ConnectionSource connections;
     private final SqlDialect dialect;
@@ -71,14 +74,14 @@ public final class PreferenceRepository {
 
     private static Optional<StoredPreferences> load(Connection connection, UUID uuid) throws SQLException {
         try (PreparedStatement select = connection.prepareStatement("SELECT accept_messages, accept_payments, "
-                + "accept_teleport_requests, message_sound_volume, message_sound_restore, version FROM " + TABLE + " WHERE uuid = ?")) {
+                + "accept_teleport_requests, message_sound_volume, message_sound_restore, social_spy, version FROM " + TABLE + " WHERE uuid = ?")) {
             select.setString(1, uuid.toString());
             try (ResultSet row = select.executeQuery()) {
                 if (!row.next()) {
                     return Optional.empty();
                 }
                 return Optional.of(new StoredPreferences(uuid, bool(row, 1), bool(row, 2), bool(row, 3),
-                        dbl(row, 4), dbl(row, 5), row.getLong(6)));
+                        dbl(row, 4), dbl(row, 5), bool(row, 6), row.getLong(7)));
             }
         }
     }

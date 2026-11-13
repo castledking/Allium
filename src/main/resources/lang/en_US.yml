@@ -171,6 +171,12 @@ preferences:
   unavailable: "{prefix} &c{player}'s settings are still loading. Try again shortly."
 
 messaging:
+  socialspy:
+    message: "&8[Spy] &7[&f{sender} &7→ &f{recipient}&7] &f{message}"
+    "on": "{prefix} &aSocial spy enabled."
+    "off": "{prefix} &7Social spy disabled."
+    disabled: "{prefix} &cSocial spy preferences are disabled on this server."
+    save-failed: "{prefix} &cYour social spy setting could not be saved; the change was undone."
   sent: "&7[&fme &7→ &f{recipient}&7] &f{message}"
   received:
     text: "&7[&f{sender} &7→ &fme&7] &f{message}"

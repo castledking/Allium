@@ -11,5 +11,14 @@ public enum SuggestionSource {
     /** Canonical gamemode literals (survival, creative, adventure, spectator). */
     GAMEMODES,
     /** Explicit literal list declared on the {@link SuggestionSpec}. */
-    LITERAL_LIST
+    LITERAL_LIST,
+    /**
+     * Every known player name, online or offline, from the bounded in-memory name index (never
+     * storage or the server's offline-player list). Online targets obey sender visibility.
+     */
+    KNOWN_PLAYERS,
+    /** Claimable gift IDs in the sender's memory-only mailbox snapshot, plus all when nonempty. */
+    MAIL_CLAIM_IDS,
+    /** Deletable text-mail IDs in the sender's memory-only mailbox snapshot. */
+    MAIL_DELETE_IDS
 }

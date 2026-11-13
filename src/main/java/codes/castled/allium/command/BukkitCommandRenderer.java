@@ -4,13 +4,15 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.spec.CommandCompletionContext;
 import codes.castled.allium.command.spec.CommandFamilyPolicy;
 import codes.castled.allium.command.spec.CommandSpec;
+import codes.castled.allium.module.MailModule;
+import codes.castled.allium.naming.PlayerNameService;
+import codes.castled.allium.naming.PlayerNameVisibility;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.metadata.MetadataValue;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -96,6 +98,25 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             public List<String> visibleOnlinePlayers() {
                 return collectVisibleOnlinePlayers(plugin.getServer(), sender);
             }
+
+            @Override
+            public List<String> knownPlayers(String prefix) {
+                PlayerNameService names = plugin.getPlayerNames();
+                return names == null ? collectVisibleOnlinePlayers(plugin.getServer(), sender).stream()
+                        .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith(prefix.toLowerCase(java.util.Locale.ROOT)))
+                        .limit(PlayerNameService.COMPLETION_LIMIT).toList()
+                        : names.complete(sender, prefix, PlayerNameService.COMPLETION_LIMIT);
+            }
+
+            @Override
+            public List<String> mailIds(boolean claimableOnly) {
+                if (!(sender instanceof Player player) || plugin.getModuleManager() == null
+                        || !(plugin.getModuleManager().getModule("mail") instanceof MailModule mail)
+                        || !mail.isEnabled() || mail.mail() == null) {
+                    return List.of();
+                }
+                return mail.mail().completeMailbox(player, claimableOnly);
+            }
         };
 
         return spec.complete(completionContext, args);
@@ -105,18 +126,12 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         if (server == null || server.getOnlinePlayers() == null) {
             return List.of();
         }
-        Player senderPlayer = sender instanceof Player p ? p : null;
-        boolean canSeeVanished = sender == null || !(sender instanceof Player) || sender.hasPermission("allium.vanish.see");
-
         List<String> names = new ArrayList<>();
         for (Player online : server.getOnlinePlayers()) {
             if (online == null) {
                 continue;
             }
-            if (senderPlayer != null && !senderPlayer.canSee(online)) {
-                continue;
-            }
-            if (!canSeeVanished && isMetadataVanished(online)) {
+            if (!PlayerNameVisibility.canSee(sender, online)) {
                 continue;
             }
             String name = online.getName();
@@ -126,20 +141,5 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         }
         names.sort(Comparator.comparing(s -> s.toLowerCase( java.util.Locale.ROOT)));
         return List.copyOf(names);
-    }
-
-    private static boolean isMetadataVanished(Player player) {
-        try {
-            List<MetadataValue> values = player.getMetadata("vanished");
-            if (values != null) {
-                for (MetadataValue val : values) {
-                    if (val != null && val.asBoolean()) {
-                        return true;
-                    }
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        return false;
     }
 }

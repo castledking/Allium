@@ -154,6 +154,17 @@ public record CommandSpec(
                 case NONE -> List.of();
                 case GAMEMODES, LITERAL_LIST -> suggestion.literals();
                 case ONLINE_PLAYERS -> context.visibleOnlinePlayers();
+                case KNOWN_PLAYERS -> context.knownPlayers(prefix);
+                case MAIL_DELETE_IDS -> context.mailIds(false);
+                case MAIL_CLAIM_IDS -> {
+                    List<String> ids = context.mailIds(true);
+                    if (ids.isEmpty()) {
+                        yield List.of();
+                    }
+                    List<String> claimable = new ArrayList<>(ids);
+                    claimable.add("all");
+                    yield claimable;
+                }
             };
 
             for (String candidate : rawSuggestions) {

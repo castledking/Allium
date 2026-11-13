@@ -35,6 +35,8 @@ modules:
   preferences: true
   # Private messages: /msg, /reply, /ignore, /unignore, /msgtoggle.
   messaging: true
+  # Mail: /mail text mail and gifts, to online and offline players.
+  mail: true
   # Item library and the M1 /give harness.
   items: true
   teleportation: true
@@ -175,3 +177,31 @@ messaging:
     # Blocked attempts, exempt traffic, and console's own PMs are never copied.
     # Console can see vanished players. Log retention/access is the operator's responsibility.
     log-to-console: false
+
+# The shared index of known player names (mail now, /pay later). Completion reads only this
+# in-memory cache; a name outside it still resolves when a command runs.
+player-names:
+  cache-size: 10000
+
+# /mail. Limits are read at the start of each send, so /allium reload applies them to the next
+# send and never to one already in progress.
+mail:
+  # Most mails (text and gifts) a mailbox holds.
+  mailbox-size: 50
+  # Longest text body or gift note, in characters.
+  body-max-length: 256
+  # Text mail is deleted this many days after it was sent; 0 keeps it forever. Gifts never expire,
+  # so expiry can never destroy items.
+  text-expiry-days: 30
+  rate-limit:
+    # At most this many mails per player in each window.
+    sends: 10
+    per-seconds: 60
+  gift:
+    # Most items (summed amounts) one gift may carry.
+    max-items: 64
+  notify:
+    # "You have N unread mail" on join.
+    on-join: true
+    # A notice when new mail arrives while the recipient is online on this server.
+    new-mail: true

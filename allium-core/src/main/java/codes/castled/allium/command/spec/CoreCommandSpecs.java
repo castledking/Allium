@@ -265,6 +265,38 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> MESSAGING_SPECS = List.of(MSG, REPLY, IGNORE, UNIGNORE, MSGTOGGLE, MESSAGESOUNDS, SOCIALSPY);
 
+    /**
+     * {@code /mail}: text mail and gifts, to online and offline players. Targets complete from the
+     * known-player index; the gift amount completes from common stack sizes.
+     */
+    public static final CommandSpec MAIL = new CommandSpec(
+            "mail", CommandSpec.DEFAULT_NAMESPACE, "mail", List.of(),
+            "Send and read mail, and gifts of items", "/mail <read|send|gift|claim|delete|clear>",
+            "/mail send <player> <message>",
+            "allium.mail", null,
+            List.of(),
+            List.of(
+                    new CommandNodeSpec("read", List.of(), "allium.mail", "/mail read", List.of(), List.of()),
+                    new CommandNodeSpec("send", List.of(), "allium.mail.send", "/mail send <player> <message>",
+                            List.of(CommandArgSpec.required("player", "allium.mail.send", SuggestionSpec.knownPlayers("allium.mail.send")),
+                                    CommandArgSpec.required("message", "allium.mail.send", SuggestionSpec.none())),
+                            List.of()),
+                    new CommandNodeSpec("gift", List.of(), "allium.mail.gift", "/mail gift <player> [amount] [note]",
+                            List.of(CommandArgSpec.required("player", "allium.mail.gift", SuggestionSpec.knownPlayers("allium.mail.gift")),
+                                    CommandArgSpec.optional("amount", "allium.mail.gift",
+                                            SuggestionSpec.literals(List.of("1", "8", "16", "32", "64"), null)),
+                                    CommandArgSpec.optional("note", "allium.mail.gift", SuggestionSpec.none())),
+                            List.of()),
+                    new CommandNodeSpec("claim", List.of(), "allium.mail", "/mail claim <id|all>",
+                            List.of(CommandArgSpec.required("id", "allium.mail", SuggestionSpec.mailIds(true))),
+                            List.of()),
+                    new CommandNodeSpec("delete", List.of(), "allium.mail", "/mail delete <id>",
+                            List.of(CommandArgSpec.required("id", "allium.mail", SuggestionSpec.mailIds(false))), List.of()),
+                    new CommandNodeSpec("clear", List.of(), "allium.mail", "/mail clear", List.of(), List.of())),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> MAIL_SPECS = List.of(MAIL);
+
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(
             HEAL,
             FEED,

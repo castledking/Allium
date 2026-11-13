@@ -29,6 +29,7 @@ public final class ModuleManager {
     public void loadModules() {
         registerModule(new PreferencesModule(plugin));
         registerModule(new MessagingModule(plugin));
+        registerModule(new codes.castled.allium.module.MailModule(plugin));
         registerModule(new EconomyModule(plugin));
         registerModule(new EssentialsModule(plugin));
         registerModule(new ToolsModule(plugin));

@@ -167,6 +167,52 @@ item:
     warning: "{prefix} &eWarning: {warning}"
     received: "{prefix} &aYou received &f{amount}x {item}&a."
 
+mail:
+  sent: "{prefix} &aMail sent to &f{player}&a."
+  gift-sent: "{prefix} &aGift of &f{amount} &aitem(s) sent to &f{player}&a."
+  gift-delayed: "{prefix} &eYour gift to &f{player} &eis safe and will arrive shortly."
+  too-long: "{prefix} &cThat is too long; mail holds at most &f{max} &ccharacters."
+  cost-refused: "{prefix} &cYou cannot pay for that mail."
+  failed: "{prefix} &cMail is unavailable right now. Nothing was sent or taken; try again shortly."
+  busy: "{prefix} &cYour last gift is still being sent."
+  gift-empty-hand: "{prefix} &cHold the item you want to send."
+  gift-too-many: "{prefix} &cA gift holds at most &f{max} &citems."
+  empty: "{prefix} &7You have no mail."
+  header: "{prefix} &fYour mail &7({count}):"
+  entry-text: "&7[&f{id}&7] &fFrom {sender} &7({age}): &f{message}"
+  entry-gift: "&7[&f{id}&7] &dGift from {sender} &7({age}), {count} stack(s): &f{message} &7- &f/mail claim {id}"
+  entry-claiming: "&7[&f{id}&7] &dGift from {sender} &7({age}): being claimed. &f{message}"
+  deleted: "{prefix} &aMail &f{id} &adeleted."
+  delete-gift: "{prefix} &cGift &f{id} &cstill holds items; claim it first."
+  not-found: "{prefix} &cYou have no mail &f{id}&c."
+  cleared: "{prefix} &aDeleted &f{count} &aread mail."
+  no-gifts: "{prefix} &7You have no gifts to claim."
+  not-a-gift: "{prefix} &cMail &f{id} &cis not a gift."
+  claim-taken: "{prefix} &cGift &f{id} &cis already being claimed."
+  claim-full: "{prefix} &cYour inventory is full; gift &f{id} &cstays in your mailbox."
+  claimed: "{prefix} &aClaimed gift &f{id}&a: &f{given} &aitem(s)."
+  claimed-part: "{prefix} &eClaimed &f{given} &eitem(s) of gift &f{id}&e; &f{kept} &edid not fit and stay in your mailbox."
+  unreadable: "{prefix} &cGift &f{id} &ccannot be claimed on this server: {reason}. It stays in your mailbox."
+  unread:
+    text: "{prefix} &eYou have &f{count} &eunread mail. &f/mail read"
+    sound: minecraft:entity.experience_orb.pickup
+    volume: 0.6
+  new:
+    text: "{prefix} &eNew mail from &f{sender}&e. &f/mail read"
+    sound: minecraft:entity.experience_orb.pickup
+    volume: 0.6
+  new-gift:
+    text: "{prefix} &dNew gift from &f{sender}&d. &f/mail read"
+    sound: minecraft:entity.experience_orb.pickup
+    volume: 0.6
+  unknown-player: "{prefix} &cNo player called &f{player} &chas played here."
+  self: "{prefix} &cYou can't mail yourself."
+  cannot-receive: "{prefix} &c{player} can't receive mail right now."
+  unavailable: "{prefix} &c{player} can't receive mail right now; try again shortly."
+  mailbox-full: "{prefix} &c{player}'s mailbox is full."
+  rate-limited: "{prefix} &cYou can send at most &f{sends} &cmail every &f{seconds}&cs."
+  disabled: "{prefix} &cMail is disabled on this server."
+
 preferences:
   unavailable: "{prefix} &c{player}'s settings are still loading. Try again shortly."
 

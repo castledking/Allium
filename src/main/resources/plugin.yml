@@ -50,6 +50,10 @@ commands:
     description: Turn receiving private messages on or off
     usage: /<command> [on|off] [player]
     permission: allium.msgtoggle
+  mail:
+    description: Send and read mail, and gifts of items
+    usage: /<command> <read|send|gift|claim|delete|clear>
+    permission: allium.mail
   socialspy:
     description: Observe delivered private messages between other players
     usage: /<command> [on|off]
@@ -91,6 +95,10 @@ permissions:
       allium.give: true
       allium.give.privileged: true
       allium.socialspy: true
+      allium.mail: true
+      allium.mail.send: true
+      allium.mail.gift: true
+      allium.mail.bypass.limits: true
       allium.reload: true
       allium.import: true
   allium.reload:
@@ -105,6 +113,18 @@ permissions:
   allium.treeaxe.use:
     description: Lets the Lazy Axe fell whole trees (the pre-recode node)
     default: true
+  allium.mail:
+    description: Allows /mail read, claim, delete and clear for your own mailbox
+    default: true
+  allium.mail.send:
+    description: Allows /mail send (text mail to online and offline players)
+    default: true
+  allium.mail.gift:
+    description: Allows /mail gift (send the held item by mail)
+    default: true
+  allium.mail.bypass.limits:
+    description: Sends past the mailbox size and rate limit
+    default: op
   allium.socialspy:
     description: Allows opting into social spy; only delivered messages between others are shown
     default: op

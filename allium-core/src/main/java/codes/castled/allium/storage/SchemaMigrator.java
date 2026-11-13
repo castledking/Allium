@@ -61,7 +61,7 @@ public final class SchemaMigrator {
                             // restart between DDL and record(). Concurrent starters may reach the
                             // same ADD COLUMN. Only the dialect's duplicate-column error is safe
                             // to accept; all other migration failures still abort startup.
-                            if (!duplicateAddedColumn(sql, error)) {
+                            if (!duplicateAddedColumn(sql, error) && !duplicateCreatedIndex(connection, sql, error)) {
                                 throw error;
                             }
                         }
@@ -83,6 +83,29 @@ public final class SchemaMigrator {
             case SQLITE -> error.getErrorCode() == 1 && error.getMessage() != null
                     && error.getMessage().contains("duplicate column name:");
         };
+    }
+
+    /** Interrupted/concurrent DDL is accepted only when the existing index has the requested definition. */
+    private boolean duplicateCreatedIndex(Connection connection, String sql, SQLException error) throws SQLException {
+        var match = java.util.regex.Pattern.compile("(?i)^\\s*CREATE\\s+(UNIQUE\\s+)?INDEX\\s+([A-Za-z0-9_]+)\\s+ON\\s+([A-Za-z0-9_]+)\\s*\\(([A-Za-z0-9_,\\s]+)\\)\\s*$").matcher(sql);
+        if (!match.matches()) return false;
+        boolean duplicate = dialect == SqlDialect.MYSQL ? error.getErrorCode() == 1061 && "42000".equals(error.getSQLState())
+                : error.getErrorCode() == 1 && error.getMessage() != null && error.getMessage().contains("already exists");
+        if (!duplicate) return false;
+        boolean unique = match.group(1) != null;
+        List<String> columns = java.util.Arrays.stream(match.group(4).split(","))
+                .map(String::trim).map(s -> s.toLowerCase(java.util.Locale.ROOT)).toList();
+        java.util.SortedMap<Short, String> existing = new java.util.TreeMap<>();
+        try (ResultSet rows = connection.getMetaData().getIndexInfo(connection.getCatalog(), null, match.group(3), false, false)) {
+            while (rows.next()) {
+                if (!match.group(2).equalsIgnoreCase(rows.getString("INDEX_NAME"))) continue;
+                if (unique == rows.getBoolean("NON_UNIQUE")) return false;
+                String column = rows.getString("COLUMN_NAME");
+                if (column == null) return false;
+                existing.put(rows.getShort("ORDINAL_POSITION"), column.toLowerCase(java.util.Locale.ROOT));
+            }
+        }
+        return columns.equals(List.copyOf(existing.values()));
     }
 
     public int version(String component) throws SQLException {

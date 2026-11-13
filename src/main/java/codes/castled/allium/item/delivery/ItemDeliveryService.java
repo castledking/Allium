@@ -69,6 +69,72 @@ public final class ItemDeliveryService {
                 .thenApplyAsync(ignored -> finish(source, targetId, prepared, equip, policy), serverThread);
     }
 
+    /** A mail delivery never drops overflow. The caller journals the remainder before applying. */
+    public record MailPlan(ItemStack[] before, ItemStack[] after, List<ItemStack> remaining, List<Integer> delivered) {
+        public MailPlan {
+            before = copy(before);
+            after = copy(after);
+            remaining = remaining.stream().map(ItemStack::clone).toList();
+            delivered = List.copyOf(delivered);
+        }
+        @Override public ItemStack[] before() { return copy(before); }
+        @Override public ItemStack[] after() { return copy(after); }
+        @Override public List<ItemStack> remaining() { return remaining.stream().map(ItemStack::clone).toList(); }
+        public int given() { return delivered.stream().mapToInt(Integer::intValue).sum(); }
+    }
+
+    /** Server thread only. Null means a plugin cancelled or changed the inventory during its callback. */
+    public MailPlan planMail(CommandSender source, Player target, List<ItemStack> items) {
+        if (!onServerThread.getAsBoolean()) throw new IllegalStateException("mail delivery requires the server thread");
+        ItemStack[] before = copy(target.getInventory().getStorageContents());
+        List<ItemStack> inserts = items.stream().map(ItemStack::clone).toList();
+        ItemGiveEvent event = new ItemGiveEvent(source, target, inserts, false);
+        events.callEvent(event);
+        if (event.isCancelled() || !java.util.Arrays.equals(before, target.getInventory().getStorageContents())) return null;
+        ItemStack[] after = copy(before);
+        List<ItemStack> remaining = new ArrayList<>();
+        List<Integer> delivered = new ArrayList<>();
+        for (ItemStack input : inserts) {
+            int left = input.getAmount();
+            int cap = Math.max(1, Math.min(input.getMaxStackSize(), target.getInventory().getMaxStackSize()));
+            for (int i = 0; i < after.length && left > 0; i++) {
+                ItemStack slot = after[i];
+                if (!isEmpty(slot) && slot.isSimilar(input)) {
+                    int moved = Math.min(left, Math.max(0, cap - slot.getAmount()));
+                    slot.setAmount(slot.getAmount() + moved);
+                    left -= moved;
+                }
+            }
+            for (int i = 0; i < after.length && left > 0; i++) {
+                if (isEmpty(after[i])) {
+                    int moved = Math.min(left, cap);
+                    after[i] = input.clone();
+                    after[i].setAmount(moved);
+                    left -= moved;
+                }
+            }
+            delivered.add(input.getAmount() - left);
+            if (left > 0) {
+                ItemStack rest = input.clone();
+                rest.setAmount(left);
+                remaining.add(rest);
+            }
+        }
+        return new MailPlan(before, after, remaining, delivered);
+    }
+
+    /** Revalidates the exact storage snapshot immediately before the journalled inventory mutation. */
+    public boolean applyMail(Player target, MailPlan plan) {
+        if (!onServerThread.getAsBoolean()) throw new IllegalStateException("mail delivery requires the server thread");
+        if (!target.isOnline() || !java.util.Arrays.equals(plan.before(), target.getInventory().getStorageContents())) return false;
+        target.getInventory().setStorageContents(plan.after());
+        return true;
+    }
+
+    private static ItemStack[] copy(ItemStack[] items) {
+        return java.util.Arrays.stream(items).map(s -> s == null ? null : s.clone()).toArray(ItemStack[]::new);
+    }
+
     /** Runs on the server thread. */
     DeliveryOutcome finish(CommandSender source, UUID targetId, ItemLibrary.Prepared prepared, boolean equip, OverflowPolicy policy) {
         List<String> warnings = new ArrayList<>(prepared.warnings());

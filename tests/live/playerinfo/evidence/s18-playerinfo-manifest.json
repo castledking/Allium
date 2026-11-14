@@ -1,0 +1,55 @@
+{
+  "slice": "S18",
+  "title": "Player info utilities (/list, /seen, /whois, /near, /afk) and /i,/item aliases built against real vanish",
+  "jarSha256": "5098ba4817791535ba17e55f007846053c0f35b352959b567779f18a5f129f99",
+  "lanes": {
+    "spigot": {
+      "runName": "spigot-03",
+      "manifestPath": "/mnt/storage/.allium-validation/20261114/s18-playerinfo/runs/spigot-03/manifest.json",
+      "manifestSha256": "9722fc14fc46a4771c123a9197f8e1ee93a7c7c47c819b748b2d8aec6b049c0e",
+      "passed": true,
+      "passedCount": 33,
+      "failedCount": 0,
+      "durationSeconds": 59.06,
+      "scopes": [
+        {
+          "label": "spigot",
+          "status": "PASS"
+        }
+      ],
+      "sourceHashes": {
+        "/mnt/storage/repos/Allium-recode/tests/live/playerinfo/run.py": "6e004dda65b17808ebe530183a204c07beff9b696d5bd47d199c54b7fff3ddb4",
+        "/mnt/storage/repos/Allium-recode/tests/live/playerinfo/plugin/gate/InfoGate.java": "a3ed226e513e2bb4e3019f83240be4391bdb6410b2fe7017daf5bd4257fbe5d8",
+        "/mnt/storage/repos/Allium-recode/tests/live/playerinfo/plugin/plugin.yml": "d86c5e0b30c1422ccf679ba122bca638e1fd2e7dbe7db30eb177db818e70cc68",
+        "/mnt/storage/repos/Allium-recode/tests/live/playerinfo/client-mcp.cjs": "07f4349ded4c3c44c10f284ad48d8c4d1d340c580d9f7b8255a00a822b3eb87a",
+        "/mnt/storage/repos/Allium-recode/tests/live/playerinfo/client-raw26.cjs": "d0f7a079251001a0767fb95bc1f3a3c4dce2a269df15ea3d4fdf60e264874f49",
+        "/mnt/storage/repos/Allium-recode/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/repos/Allium-recode/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72"
+      }
+    },
+    "paper": {
+      "runName": "paper-03",
+      "manifestPath": "/mnt/storage/.allium-validation/20261114/s18-playerinfo/runs/paper-03/manifest.json",
+      "manifestSha256": "b91afd3171c1959865c08e7acfa8b6f762257d0fa9a801e6409006d9b023e2ce",
+      "passed": true,
+      "passedCount": 33,
+      "failedCount": 0,
+      "durationSeconds": 52.84,
+      "scopes": [
+        {
+          "label": "paper",
+          "status": "PASS"
+        }
+      ],
+      "sourceHashes": {
+        "/mnt/storage/repos/Allium-recode/tests/live/playerinfo/run.py": "6e004dda65b17808ebe530183a204c07beff9b696d5bd47d199c54b7fff3ddb4",
+        "/mnt/storage/repos/Allium-recode/tests/live/playerinfo/plugin/gate/InfoGate.java": "a3ed226e513e2bb4e3019f83240be4391bdb6410b2fe7017daf5bd4257fbe5d8",
+        "/mnt/storage/repos/Allium-recode/tests/live/playerinfo/plugin/plugin.yml": "d86c5e0b30c1422ccf679ba122bca638e1fd2e7dbe7db30eb177db818e70cc68",
+        "/mnt/storage/repos/Allium-recode/tests/live/playerinfo/client-mcp.cjs": "07f4349ded4c3c44c10f284ad48d8c4d1d340c580d9f7b8255a00a822b3eb87a",
+        "/mnt/storage/repos/Allium-recode/tests/live/playerinfo/client-raw26.cjs": "d0f7a079251001a0767fb95bc1f3a3c4dce2a269df15ea3d4fdf60e264874f49",
+        "/mnt/storage/repos/Allium-recode/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/repos/Allium-recode/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72"
+      }
+    }
+  }
+}

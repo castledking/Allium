@@ -111,7 +111,12 @@ preload checks, opt-in live containers, and real MariaDB testing; see
 [docs/vanish-mute.md](docs/vanish-mute.md) and
 [S17 results](tests/live/moderation/RESULTS.md) (176/176 checks on Spigot 1.20.1 SQLite,
 176/176 on Paper 26.3 SQLite, and 71/71 on Spigot 1.20.1 MariaDB 10.11; 537 JUnit tests across
-all modules pass against SQLite and MariaDB).
+all modules pass against SQLite and MariaDB). **S18 complete:** vanish-aware `/list`,
+`/seen`, `/whois`, `/near`, `/afk` (auto-AFK, optional kick-on-afk, vanish-coordinated sleep ignore),
+and `/i`/`/item` self-use aliases over `/give` built on bounded SQLite/MySQL storage (`allium_player_info`,
+`allium_player_name_history` v2); see [docs/player-info.md](docs/player-info.md) and
+[S18 results](tests/live/playerinfo/RESULTS.md) (33/33 checks on Spigot 1.20.1 and 33/33 on Paper 26.3;
+545 JUnit tests across all modules pass against SQLite and MariaDB 10.11).
 The economy implementation remains later work. **S14 design complete:** [economy-design.md](docs/economy-design.md)
 defines the replacement and records measured JDBC commit costs. The Vault adapter
 remains unimplemented and release-gated; this does not make the existing scaffold
@@ -392,6 +397,21 @@ result and must preserve the existing uncommitted work.
         `allium.vanish.container.live`, and visibility recomputation on join/`/vanish`/`/allium reload`.
       - Gate passed: 176/176 checks on Spigot 1.20.1 (SQLite), 176/176 on Paper 26.3 (SQLite),
         and 71/71 on Spigot 1.20.1 (MariaDB 10.11); 537 JUnit tests pass across SQLite and MariaDB.
+- [x] **S18 / M3 — Player info utilities and `/i`, `/item`:** vanish-aware `/list` (`/online`),
+      `/seen <player>`, `/whois <player>`, `/near [radius]`, `/afk [message]` (`/away`), and `/i`/`/item`
+      self-use aliases over `GiveCommand`; see [docs/player-info.md](docs/player-info.md) and
+      [S18 results](tests/live/playerinfo/RESULTS.md).
+      - **Looks-offline & visibility rule:** every lookup re-evaluates `PlayerNameVisibility#canSeeTarget`,
+        rendering offline-identical responses for vanished targets across `/list`, `/seen`, `/whois`
+        (even with `allium.whois.location`), `/near`, `/afk` broadcasts, and tab completion;
+        pre-vanish `last_seen` is preserved across vanished quit, relog, and server restart.
+      - **AFK & sleep coordination:** configurable `info.afk.auto-afk-seconds` and off-by-default
+        `kick-on-afk` (`allium.afk.kick.exempt`); shared `setSleepingIgnored(vanished || afkSleepIgnored)`
+        verified live with real-bed night skip.
+      - **Bounded SQL:** dedicated single-worker `Allium-PlayerInfo` pool (`allium_player_info` v1 and
+        `allium_player_name_history` v2) with zero sync SQL on the main thread.
+      - Gate passed: 33/33 live checks on Spigot 1.20.1 and 33/33 on Paper 26.3; 545 JUnit tests
+        pass against SQLite and MariaDB 10.11.
 - [ ] **Travel follow-up — Pet teleport.** Explicit future slice, not provided by S15.
 - [ ] **Travel follow-up — Offline home/restore administration and legacy import.**
       Explicit future slice, not provided by S15.

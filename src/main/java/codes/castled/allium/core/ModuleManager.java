@@ -32,6 +32,7 @@ public final class ModuleManager {
         registerModule(new PreferencesModule(plugin));
         registerModule(new MessagingModule(plugin));
         registerModule(new ModerationModule(plugin));
+        registerModule(new codes.castled.allium.module.PlayerInfoModule(plugin));
         registerModule(new codes.castled.allium.module.MailModule(plugin));
         registerModule(new codes.castled.allium.module.TeleportModule(plugin));
         registerModule(new codes.castled.allium.module.TravelModule(plugin));

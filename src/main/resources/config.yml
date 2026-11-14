@@ -49,6 +49,7 @@ modules:
   chat: true
   spawn: true
   moderation: true
+  info: true
   tools: true
 
 economy:
@@ -277,3 +278,27 @@ moderation:
       - /t
       - /mail send
       - /mail gift
+
+# Player info utilities (S18): /list, /seen, /whois, /near, /afk.
+info:
+  list:
+    # Group visible online players by permission group (allium.list.group.<name> or Vault primary group).
+    group-by-permission: true
+    default-group: "Players"
+    groups:
+      - owner
+      - admin
+      - mod
+      - staff
+      - vip
+  near:
+    default-radius: 200
+    max-radius: 500
+  afk:
+    # Seconds of inactivity before entering AFK automatically (0 disables auto-AFK).
+    auto-afk-seconds: 300
+    # Kick AFK players after kick-after-seconds (off by default).
+    kick-on-afk: false
+    kick-after-seconds: 600
+    broadcast: true
+    ignore-sleep: true

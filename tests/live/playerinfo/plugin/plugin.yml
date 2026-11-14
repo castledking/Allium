@@ -1,0 +1,8 @@
+name: InfoGate
+version: "1.0"
+main: gate.InfoGate
+api-version: "1.20"
+depend: [Allium]
+commands:
+  s18g:
+    description: S18 player info gate console fixture

@@ -216,6 +216,8 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
     private final AtomicLong generationCounter = new AtomicLong();
     private final Set<UUID> expiryQueued = ConcurrentHashMap.newKeySet();
     private volatile ModerationSettings settings;
+    private volatile @Nullable java.util.function.Predicate<Player> additionalSleepIgnoreCheck;
+    private volatile @Nullable BiConsumer<Player, Boolean> vanishTransitionListener;
     private TaskHandle tickHandle;
     private volatile boolean closed;
 
@@ -301,9 +303,10 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         connectionGenerations.clear();
         abandonedLoginTimes.clear();
         localMuteMutations.clear();
+        java.util.function.Predicate<Player> extraSleep = additionalSleepIgnoreCheck;
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             online.removeMetadata(METADATA_VANISHED, plugin);
-            online.setSleepingIgnored(false);
+            online.setSleepingIgnored(extraSleep != null && extraSleep.test(online));
             for (Player viewer : plugin.getServer().getOnlinePlayers()) {
                 if (!viewer.equals(online)) {
                     viewer.showPlayer(plugin, online);
@@ -316,6 +319,23 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
      * Re-reads {@code moderation.*} settings on {@code /allium reload} and recomputes visibility for
      * every online viewer/target pair on the server thread.
      */
+    public void setAdditionalSleepIgnoreCheck(@Nullable java.util.function.Predicate<Player> check) {
+        this.additionalSleepIgnoreCheck = check;
+    }
+
+    public void setVanishTransitionListener(@Nullable BiConsumer<Player, Boolean> listener) {
+        this.vanishTransitionListener = listener;
+    }
+
+    public void refreshSleepingIgnored(Player player) {
+        if (player == null) {
+            return;
+        }
+        java.util.function.Predicate<Player> extra = additionalSleepIgnoreCheck;
+        boolean ignored = isVanished(player) || (extra != null && extra.test(player));
+        player.setSleepingIgnored(ignored);
+    }
+
     public void reloadSettings() {
         reloadConfigSnapshot();
         runOnServer(this::syncAllOnlineVisibility);
@@ -473,6 +493,10 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
 
         applyPlayerVanishState(target);
         syncAllOnlineVisibility();
+        BiConsumer<Player, Boolean> transition = vanishTransitionListener;
+        if (transition != null && previous != next) {
+            transition.accept(target, next);
+        }
         if (next && plugin.getModuleManager() != null
                 && plugin.getModuleManager().getModule("teleport") instanceof TeleportModule teleportModule
                 && teleportModule.isEnabled()
@@ -528,12 +552,11 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         boolean vanished = vanishedPlayers.contains(player.getUniqueId());
         if (vanished) {
             player.setMetadata(METADATA_VANISHED, new FixedMetadataValue(plugin, true));
-            player.setSleepingIgnored(true);
             clearMobTargetsOn(player);
         } else {
             player.removeMetadata(METADATA_VANISHED, plugin);
-            player.setSleepingIgnored(false);
         }
+        refreshSleepingIgnored(player);
     }
 
     private void clearMobTargetsOn(Player vanishedPlayer) {
@@ -566,7 +589,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             boolean targetVanished = vanishedPlayers.contains(target.getUniqueId());
             if (targetVanished) {
                 target.setMetadata(METADATA_VANISHED, new FixedMetadataValue(plugin, true));
-                target.setSleepingIgnored(true);
+                refreshSleepingIgnored(target);
                 if (target.getName() != null) {
                     vanishedLowerNames.put(target.getUniqueId(), target.getName().toLowerCase(Locale.ROOT));
                 }

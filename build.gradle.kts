@@ -141,6 +141,7 @@ dependencies {
     testImplementation("org.mockito:mockito-junit-jupiter:5.16.0")
     testImplementation("org.mockito:mockito-inline:5.2.0")
     testImplementation("org.jetbrains:annotations:26.0.2")
+    testRuntimeOnly("org.xerial:sqlite-jdbc:3.49.1.0")
 }
 
 // Core resource pack: generated from pack/manifest.json by allium-core's CorePackMain.

@@ -13,6 +13,15 @@ public interface MuteSource {
 
     boolean isMuted(UUID player);
 
+    /**
+     * Whether {@code player}'s moderation mute state has loaded for the current session. Defaults to
+     * {@code true} for no-op sources; real moderation implementations return {@code false} while
+     * loading or after a load failure so speech fails closed.
+     */
+    default boolean isMuteStateReady(UUID player) {
+        return true;
+    }
+
     /** Returns the active mute record (including reason and remaining duration), if available. */
     default Optional<MuteRecord> activeMute(UUID player) {
         return Optional.empty();

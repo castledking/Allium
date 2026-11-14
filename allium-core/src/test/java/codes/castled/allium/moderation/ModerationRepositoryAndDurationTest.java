@@ -2,13 +2,10 @@ package codes.castled.allium.moderation;
 
 import codes.castled.allium.command.spec.CommandCompletionContext;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
-import codes.castled.allium.storage.ConnectionSource;
-import codes.castled.allium.storage.SqlDialect;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
-import java.sql.DriverManager;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -20,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/** Moderation persistence across SQLite and MariaDB/MySQL (when {@code ALLIUM_TEST_MYSQL_URL} is set) plus duration parsing. */
 class ModerationRepositoryAndDurationTest {
 
     @Test
@@ -39,6 +37,15 @@ class ModerationRepositoryAndDurationTest {
         assertTrue(DurationParser.parseMillis("10x").isEmpty());
         assertTrue(DurationParser.parseMillis("10m extra").isEmpty());
 
+        assertTrue(DurationParser.startsWithDigit("10x"));
+        assertTrue(DurationParser.startsWithDigit("0s"));
+        assertTrue(DurationParser.startsWithDigit(" 5foo"));
+        assertTrue(DurationParser.startsWithDigit("123"));
+        assertFalse(DurationParser.startsWithDigit("spam"));
+        assertFalse(DurationParser.startsWithDigit("-5m"));
+        assertFalse(DurationParser.startsWithDigit(""));
+        assertFalse(DurationParser.startsWithDigit(null));
+
         assertEquals("1s", DurationParser.formatRemaining(100L));
         assertEquals("45s", DurationParser.formatRemaining(45_000L));
         assertEquals("4m 59s", DurationParser.formatRemaining(299_000L));
@@ -48,56 +55,64 @@ class ModerationRepositoryAndDurationTest {
 
     @Test
     void repositoryPersistsVanishMutesExpiryAndAuditRecords(@TempDir Path tempDir) throws Exception {
-        String jdbcUrl = "jdbc:sqlite:" + tempDir.resolve("moderation.db");
-        ConnectionSource source = () -> DriverManager.getConnection(jdbcUrl);
-        AtomicLong clock = new AtomicLong(1_000_000L);
-        ModerationRepository repo = new ModerationRepository(source, SqlDialect.SQLITE, clock::get);
+        for (ModerationDatabases.Db db : ModerationDatabases.all(tempDir)) {
+            AtomicLong clock = new AtomicLong(1_000_000L);
+            ModerationRepository repo = new ModerationRepository(db.source(), db.dialect(), clock::get);
 
-        assertEquals(1, repo.migrate());
-        assertEquals(1, repo.migrate());
+            assertEquals(1, repo.migrate(), db.name());
+            assertEquals(1, repo.migrate(), db.name());
 
-        UUID staffA = UUID.randomUUID();
-        UUID staffB = UUID.randomUUID();
-        assertFalse(repo.loadVanished(staffA));
+            UUID staffA = UUID.randomUUID();
+            UUID staffB = UUID.randomUUID();
+            assertFalse(repo.loadVanished(staffA), db.name());
 
-        repo.setVanished(staffA, true, "Console");
-        repo.setVanished(staffB, true, "StaffA");
-        assertTrue(repo.loadVanished(staffA));
-        assertEquals(Set.of(staffA, staffB), repo.loadVanishedPlayers());
+            repo.setVanished(staffA, true, "Console");
+            repo.setVanished(staffB, true, "StaffA");
+            assertTrue(repo.loadVanished(staffA), db.name());
+            assertEquals(Set.of(staffA, staffB), repo.loadVanishedPlayers(), db.name());
 
-        repo.setVanished(staffA, false, "Console");
-        assertFalse(repo.loadVanished(staffA));
-        assertEquals(Set.of(staffB), repo.loadVanishedPlayers());
+            // Verify UPSERT on vanished player works cleanly on both SQLite and MariaDB/MySQL
+            repo.setVanished(staffB, true, "Console");
+            assertTrue(repo.loadVanished(staffB), db.name());
 
-        UUID mutedPerm = UUID.randomUUID();
-        UUID mutedTemp = UUID.randomUUID();
-        MuteRecord permRecord = new MuteRecord(mutedPerm, "PermBob", "Admin", "Spamming chat", clock.get(), null);
-        MuteRecord tempRecord = new MuteRecord(mutedTemp, "TempAlice", "Admin", "Cooldown", clock.get(), clock.get() + 5_000L);
+            repo.setVanished(staffA, false, "Console");
+            assertFalse(repo.loadVanished(staffA), db.name());
+            assertEquals(Set.of(staffB), repo.loadVanishedPlayers(), db.name());
 
-        repo.saveMute(permRecord);
-        repo.saveMute(tempRecord);
+            UUID mutedPerm = UUID.randomUUID();
+            UUID mutedTemp = UUID.randomUUID();
+            MuteRecord permRecord = new MuteRecord(mutedPerm, "PermBob", "Admin", "Spamming chat", clock.get(), null);
+            MuteRecord tempRecord = new MuteRecord(mutedTemp, "TempAlice", "Admin", "Cooldown", clock.get(), clock.get() + 5_000L);
 
-        assertEquals(2, repo.loadActiveMutes().size());
-        assertEquals(Optional.of(permRecord), repo.loadActiveMute(mutedPerm));
-        assertEquals(Optional.of(tempRecord), repo.loadActiveMute(mutedTemp));
+            repo.saveMute(permRecord);
+            repo.saveMute(tempRecord);
 
-        // Advance clock past tempRecord expiration
-        clock.addAndGet(6_000L);
-        assertTrue(repo.loadActiveMute(mutedTemp).isEmpty());
-        List<MuteRecord> remaining = repo.loadActiveMutes();
-        assertEquals(1, remaining.size());
-        assertEquals(mutedPerm, remaining.get(0).playerUuid());
+            // Verify UPSERT on existing mute works cleanly on both SQLite and MariaDB/MySQL
+            MuteRecord updatedPerm = new MuteRecord(mutedPerm, "PermBob", "Console", "Repeated spam", clock.get() + 100L, null);
+            repo.saveMute(updatedPerm);
 
-        assertTrue(repo.removeMute(mutedPerm));
-        assertFalse(repo.removeMute(mutedPerm));
-        assertTrue(repo.loadActiveMutes().isEmpty());
+            assertEquals(2, repo.loadActiveMutes().size(), db.name());
+            assertEquals(Optional.of(updatedPerm), repo.loadActiveMute(mutedPerm), db.name());
+            assertEquals(Optional.of(tempRecord), repo.loadActiveMute(mutedTemp), db.name());
 
-        repo.recordAudit("VANISH_ON", "StaffA", staffA, "StaffA", "vanished=true");
-        repo.recordAudit("MUTE", "Admin", mutedTemp, "TempAlice", "duration=5s reason=Cooldown");
-        List<ModerationAuditRecord> audits = repo.loadRecentAudit(10);
-        assertEquals(2, audits.size());
-        assertEquals("MUTE", audits.get(0).action());
-        assertEquals("VANISH_ON", audits.get(1).action());
+            // Advance clock past tempRecord expiration
+            clock.addAndGet(6_000L);
+            assertTrue(repo.loadActiveMute(mutedTemp).isEmpty(), db.name());
+            List<MuteRecord> remaining = repo.loadActiveMutes();
+            assertEquals(1, remaining.size(), db.name());
+            assertEquals(mutedPerm, remaining.get(0).playerUuid(), db.name());
+
+            assertTrue(repo.removeMute(mutedPerm), db.name());
+            assertFalse(repo.removeMute(mutedPerm), db.name());
+            assertTrue(repo.loadActiveMutes().isEmpty(), db.name());
+
+            repo.recordAudit("VANISH_ON", "StaffA", staffA, "StaffA", "vanished=true");
+            repo.recordAudit("MUTE", "Admin", mutedTemp, "TempAlice", "duration=5s reason=Cooldown");
+            List<ModerationAuditRecord> audits = repo.loadRecentAudit(10);
+            assertEquals(2, audits.size(), db.name());
+            assertEquals("MUTE", audits.get(0).action(), db.name());
+            assertEquals("VANISH_ON", audits.get(1).action(), db.name());
+        }
     }
 
     @Test
@@ -105,7 +120,7 @@ class ModerationRepositoryAndDurationTest {
         CommandCompletionContext staff = new CommandCompletionContext() {
             @Override
             public boolean hasPermission(String permissionNode) {
-                return Set.of("allium.vanish", "allium.vanish.others", "allium.mute", "allium.unmute").contains(permissionNode);
+                return Set.of("allium.vanish", "allium.vanish.others", "allium.vanish.see", "allium.mute", "allium.unmute").contains(permissionNode);
             }
 
             @Override

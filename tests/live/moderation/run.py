@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""S17 vanish and mute real-protocol gate on Spigot 1.20.1 and Paper 26.3.
+"""S17 vanish and mute real-protocol gate on Spigot 1.20.1, Paper 26.3, and MariaDB 10.11.
 Tests three bots (ModStaff vanished staff, ModNorm normal player, ModObs staff observer) plus console:
 - /vanish [on|off] [player], hidePlayer, tab list, ServerListPingEvent player count, join/quit
   message suppression, mob targeting suppression, item pickup suppression, pressure plate suppression,
-  silent container view, and relog/restart persistence without revealing the player.
+  silent container view vs opt-in allium.vanish.container.live, and relog/restart persistence.
 - Staff with allium.vanish.see see vanished players; normal players cannot discover vanished players
-  through tab completion (/msg, /tpa, /mail send, /heal, /kit), /msg errors, /reply, /ignore,
-  /msgtoggle, /tpa, /tpahere, /tpaccept, /tpdeny, or SocialSpy.
-- /mute, /unmute, /mutes (/mute list) covering public chat, /msg, /reply, /mail send, and /mail gift
-  with remaining duration, automatic timed mute expiration without restart, and SQL/console audit logs.
+  through tab completion (/msg, /tpa, /mail send, /heal, /kit, /minecraft:msg, /minecraft:tp, /tp),
+  vanilla /minecraft:list or /list, /minecraft:msg, /minecraft:tp, @a/@p selectors, Allium
+  "looks offline" commands, or SocialSpy.
+- Death/advancement suppression, XP orb attraction, vanished public chat toggle (default blocked),
+  mid-session permission limitation + /allium reload recomputation, and raw Bukkit online count behavior.
+- /mute, /unmute, /mutes (/mute list) covering HIGHEST chat re-cancel, configurable muted-commands
+  (/me, /say, /tell, /minecraft:msg, /teammsg, Allium's own), invalid digit-leading duration refusal,
+  fail-closed pre-login fault-injected load + retry recovery, timed expiry, and SQL/console audit.
+- Disposable MariaDB 10.11 live backend suite (--suite mariadb) verifying real MySQL-dialect persistence.
 """
 import argparse
 import fcntl
@@ -17,6 +22,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import signal
 import shutil
 import socket
@@ -37,7 +43,7 @@ sys.path.insert(0, str(REPO / 'tests/live/providers/trigger'))
 from process_cleanup import stop_process
 
 P = argparse.ArgumentParser(description=__doc__)
-P.add_argument('--suite', choices=['spigot', 'paper'], required=True)
+P.add_argument('--suite', choices=['spigot', 'paper', 'mariadb'], required=True)
 P.add_argument('--allium-jar', type=Path, required=True)
 P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash')
 P.add_argument('--run-name', required=True)
@@ -61,11 +67,11 @@ for p in [API, MCP / 'package.json', INFRA / 'servers/spigot-1.20.1.jar', A.pape
 A.run_root.parent.mkdir(parents=True, exist_ok=True)
 lock = open(str(A.run_root.parent / 'ports.lock'), 'a')
 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-for port in (25770, 25771):
+for port in (25770, 25771, 25772):
     with socket.socket() as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(('127.0.0.1', port))
-print('PREFLIGHT: SHA256 matched; 127.0.0.1:25770-25771 free and gate lock held', flush=True)
+print('PREFLIGHT: SHA256 matched; 127.0.0.1:25770-25772 free and gate lock held', flush=True)
 if A.check:
     sys.exit(0)
 
@@ -93,6 +99,10 @@ for source in SOURCE_FILES:
     os.chmod(dest, 0o444)
 HERE = RUN / 'harness/tests/live/moderation'
 started = time.time()
+
+MARIADB_CONTAINER = 'allium-gate-mariadb'
+MARIADB_PORT = 25734
+MARIADB_DB = 'allium_live_mod'
 
 
 def interrupted(signum, frame):
@@ -146,6 +156,29 @@ def alive():
                 raise RuntimeError(f'{lane.name}/{bot.name} client unexpected exit {bot.proc.returncode}')
 
 
+def prepare_mariadb_database():
+    env = dict(line.split('=', 1) for line in (INFRA / 'mysql.env').read_text().splitlines() if '=' in line and not line.startswith('#'))
+    password = shlex.split(env['MYSQL_ROOT_PASSWORD'])[0]
+    subprocess.run(['docker', 'start', MARIADB_CONTAINER], check=True, stdout=subprocess.DEVNULL)
+    for _ in range(30):
+        r = subprocess.run(
+            ['docker', 'exec', '-e', f'MYSQL_PWD={password}', MARIADB_CONTAINER,
+             'mariadb', '-uroot', '-e', f'DROP DATABASE IF EXISTS {MARIADB_DB}; CREATE DATABASE {MARIADB_DB};'],
+            capture_output=True, text=True
+        )
+        if r.returncode == 0:
+            return password
+        time.sleep(1)
+    raise RuntimeError('MariaDB container did not become ready')
+
+
+def query_mariadb(password, sql):
+    r = subprocess.run(
+        ['docker', 'exec', '-e', f'MYSQL_PWD={password}', MARIADB_CONTAINER,
+         'mariadb', '-uroot', '-N', '-B', MARIADB_DB, '-e', sql],
+        capture_output=True, text=True, check=True
+    )
+    return [line.split('\t') for line in r.stdout.splitlines() if line.strip()]
 
 
 def server_list_ping(port, protocol=763):
@@ -196,6 +229,7 @@ def server_list_ping(port, protocol=763):
         slen = read_varint(s)
         payload = recv_exact(s, slen).decode("utf-8")
         return json.loads(payload)
+
 
 def window(seconds=.4):
     end = time.monotonic() + seconds
@@ -312,8 +346,9 @@ class Bot:
 
 
 class Lane:
-    def __init__(self, name, kind, port):
+    def __init__(self, name, kind, port, mariadb_password=None):
         self.name, self.kind, self.port = name, kind, port
+        self.mariadb_password = mariadb_password
         self.path = RUN / name
         self.proc, self.logs, self.bots = None, [], {}
         self.path.mkdir()
@@ -325,6 +360,15 @@ class Lane:
             config = yaml.safe_load(z.read('config.yml'))
         for m in ['moderation', 'messaging', 'mail', 'teleport', 'travel', 'kits', 'preferences']:
             config.setdefault('modules', {})[m] = True
+        if mariadb_password is not None:
+            db_cfg = config.setdefault('database', {})
+            db_cfg['type'] = 'MYSQL'
+            mysql_cfg = db_cfg.setdefault('mysql', {})
+            mysql_cfg['host'] = '127.0.0.1'
+            mysql_cfg['port'] = MARIADB_PORT
+            mysql_cfg['database'] = MARIADB_DB
+            mysql_cfg['username'] = 'root'
+            mysql_cfg['password'] = mariadb_password
         (self.path / 'plugins/Allium/config.yml').write_text(yaml.safe_dump(config, sort_keys=False))
         os.chmod(self.path / 'plugins/Allium/config.yml', 0o600)
 
@@ -358,10 +402,18 @@ max-tick-time=120000
 ''')
         lanes.append(self)
 
+    def set_allow_vanish_public_chat(self, allow):
+        cfg_path = self.path / 'plugins/Allium/config.yml'
+        cfg = yaml.safe_load(cfg_path.read_text())
+        cfg.setdefault('moderation', {}).setdefault('vanish', {})['allow-public-chat'] = bool(allow)
+        cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+        os.chmod(cfg_path, 0o600)
+
     def argv(self):
         java = '/usr/lib/jvm/java-' + ('17' if self.kind == 'spigot' else '25') + '-openjdk/bin/java'
         cmd = [
             java, '-Xms256M', '-Xmx1200M', '-Dterminal.jline=false', '-Dterminal.ansi=false',
+            '-Dallium.fault-injection=true',
             '-Djava.io.tmpdir=' + str(self.path / 'tmp')
         ]
         if self.kind == 'spigot':
@@ -387,12 +439,21 @@ max-tick-time=120000
                                      stderr=subprocess.STDOUT, text=True, bufsize=1)
         threading.Thread(target=pump, args=(self.proc, RUN / (self.name + '-server.log'), self.logs), daemon=True).start()
         wait(lambda: any('Done (' in s for s in self.logs[start:]), self.name + ' startup', 600)
-        require(any('Moderation enabled' in s for s in self.logs[start:]) and any('S17G-GATE READY' in s for s in self.logs[start:]),
-                self.name + ': moderation module and helper enabled')
+        expected_db = 'Database connected (MYSQL)' if self.mariadb_password is not None else 'Database connected (SQLITE)'
+        require(any(expected_db in s for s in self.logs[start:])
+                and any('Moderation enabled' in s for s in self.logs[start:])
+                and any('S17G-GATE READY' in s for s in self.logs[start:]),
+                self.name + ': ' + expected_db + ', moderation module, and helper enabled')
 
     def console(self, s):
         self.proc.stdin.write(s + '\n')
         self.proc.stdin.flush()
+
+    def reload_allium(self):
+        start = len(self.logs)
+        self.console('allium reload')
+        return wait(lambda: any('Configuration reloaded.' in s for s in self.logs[start:]),
+                    self.name + ': allium reload')
 
     def fixture(self, s):
         start = len(self.logs)
@@ -408,8 +469,9 @@ max-tick-time=120000
         b.connect()
         return b
 
-    def perm(self, name, node, value):
-        r = self.fixture(f'perm {name} {node} {str(value).lower()}')
+    def perm(self, name, node, value, sync=True):
+        cmd = 'perm ' if sync else 'permraw '
+        r = self.fixture(f'{cmd}{name} {node} {str(value).lower()}')
         require(r['permission'] == value, self.name + ': effective ' + name + ' ' + node + '=' + str(value))
 
     def stop(self):
@@ -444,14 +506,16 @@ def case(label, fn):
 
 
 def setup_bot_permissions(lane):
-    # ModStaff: staff with vanish, vanish.others, vanish.see, mute, unmute
     for node in ['allium.vanish', 'allium.vanish.others', 'allium.vanish.see', 'allium.mute', 'allium.unmute']:
         lane.perm('ModStaff', node, True)
-    # ModObs: staff observer with vanish.see and socialspy
-    for node in ['allium.vanish.see', 'allium.socialspy', 'allium.heal', 'allium.heal.others', 'allium.kit.others', 'allium.kits.starter']:
+    for node in ['allium.vanish.see', 'allium.socialspy', 'allium.heal', 'allium.heal.others', 'allium.kit.others',
+                 'allium.kits.starter', 'minecraft.command.list', 'bukkit.command.list', 'minecraft.command.msg',
+                 'minecraft.command.teleport', 'minecraft.command.selector', 'allium.tp']:
         lane.perm('ModObs', node, True)
-    # ModNorm: normal player (explicitly also give heal.others / kit.others / socialspy to prove vanish still hides ModStaff!)
-    for node in ['allium.heal', 'allium.heal.others', 'allium.kit.others', 'allium.kits.starter', 'allium.socialspy']:
+    for node in ['allium.heal', 'allium.heal.others', 'allium.kit.others', 'allium.kits.starter', 'allium.socialspy',
+                 'allium.tp', 'minecraft.command.list', 'bukkit.command.list', 'minecraft.command.msg',
+                 'minecraft.command.teleport', 'minecraft.command.selector', 'minecraft.command.me',
+                 'minecraft.command.say', 'minecraft.command.teammsg']:
         lane.perm('ModNorm', node, True)
     lane.perm('ModNorm', 'allium.vanish.see', False)
 
@@ -460,11 +524,9 @@ def test_vanish_visibility_and_discovery(lane):
     staff, norm, obs = lane.bots['ModStaff'], lane.bots['ModNorm'], lane.bots['ModObs']
     setup_bot_permissions(lane)
 
-    # Enable socialspy on both ModObs (has vanish.see) and ModNorm (no vanish.see)
     obs.command('socialspy on', 'Social spy enabled')
     norm.command('socialspy on', 'Social spy enabled')
 
-    # Initially ModStaff is visible to both ModNorm and ModObs and included in real SLP count
     st0 = lane.fixture('state')
     slp0 = server_list_ping(lane.port, 763 if lane.kind == 'spigot' else 777)
     require(not st0['staffVanished'] and st0['normCanSeeStaff'] and st0['obsCanSeeStaff']
@@ -472,25 +534,21 @@ def test_vanish_visibility_and_discovery(lane):
             lane.name + ': before /vanish, ModStaff is visible to both ModNorm and ModObs (SLP online=3)',
             dict(state=st0, slpOnline=slp0.get('players', {}).get('online')))
 
-    # Normal player creates a pending /tpa request to ModStaff before ModStaff vanishes
     norm.command('tpa ModStaff', 'Teleport request sent to ModStaff')
 
-    # ModStaff runs /vanish
     norm_mark = len(norm.lines)
     staff.command('vanish', 'Vanish enabled')
     st1 = lane.fixture('state')
     require(st1['staffVanished'] and st1['staffMetadata'] and st1['staffSleepingIgnored']
             and not st1['normCanSeeStaff'] and st1['obsCanSeeStaff'],
-            lane.name + ': /vanish hides ModStaff from ModNorm (canSee=false) while ModObs (allium.vanish.see) still sees ModStaff',
+            lane.name + ': /vanish hides ModStaff from ModNorm while ModObs (allium.vanish.see) still sees ModStaff',
             st1)
 
-    # Pending /tpa from ModNorm to ModStaff is silently cleared (no cancel broadcast leak) and /tpacancel sees no pending request
     window(.2)
     require(not any('Teleport request cancelled' in c['plain'] for c in norm.chats(norm_mark)),
             lane.name + ': /vanish does not leak a cancel notification to ModNorm')
     norm.command('tpacancel', 'You have no pending teleport requests')
 
-    # ServerListPingEvent removes vanished ModStaff from real SLP ping player count (3 -> 2) and sample
     slp = server_list_ping(lane.port, 763 if lane.kind == 'spigot' else 777)
     sample_names = [entry['name'] for entry in slp.get('players', {}).get('sample', [])]
     online_count = slp.get('players', {}).get('online')
@@ -498,24 +556,22 @@ def test_vanish_visibility_and_discovery(lane):
             lane.name + ': ServerListPingEvent drops vanished ModStaff from real SLP count (3 -> 2) and sample',
             dict(online=online_count, sample=sample_names))
 
-    # Tab completions: ModNorm never sees ModStaff in /msg, /tpa, /mail send, /heal, or /kit starter
-    for cmd_prefix in ['msg Mod', 'tpa Mod', 'mail send Mod', 'heal Mod', 'kit starter Mod']:
+    for cmd_prefix in ['msg Mod', 'tpa Mod', 'mail send Mod', 'heal Mod', 'kit starter Mod', 'tp Mod']:
         norm_matches, _ = norm.tab(cmd_prefix)
         obs_matches, _ = obs.tab(cmd_prefix)
         require('ModStaff' not in norm_matches and 'ModStaff' in obs_matches,
                 f'{lane.name}: tab completion for "/{cmd_prefix}" hides ModStaff from ModNorm ({norm_matches}) and shows to ModObs ({obs_matches})')
 
-    # Every feature with a "looks offline" rule treats ModStaff as offline to ModNorm:
     norm.command('msg ModStaff hello?', 'Player ModStaff not found')
     norm.command('ignore ModStaff', 'Player ModStaff not found')
     norm.command('tpa ModStaff', 'Player ModStaff not found')
     norm.command('tpahere ModStaff', 'Player ModStaff not found')
     norm.command('tpaccept ModStaff', 'Player ModStaff not found')
     norm.command('tpdeny ModStaff', 'Player ModStaff not found')
+    norm.command('tp ModStaff', 'Player ModStaff not found')
     norm.command('heal ModStaff', 'Player ModStaff not found')
     norm.command('kit starter ModStaff', 'Player ModStaff not found')
 
-    # Meanwhile ModObs (with allium.vanish.see) CAN message and heal vanished ModStaff, and SocialSpy does NOT leak to ModNorm
     norm_spy_mark = len(norm.lines)
     staff_msg_mark = len(staff.lines)
     obs.command('msg ModStaff secret staff check', '[me \u2192 ModStaff] secret staff check')
@@ -524,7 +580,6 @@ def test_vanish_visibility_and_discovery(lane):
     require(not any('secret staff check' in c['plain'] for c in norm.chats(norm_spy_mark)),
             lane.name + ': SocialSpy does not leak messages involving vanished ModStaff to ModNorm without allium.vanish.see')
 
-    # Verify /reply looks offline to ModNorm ("You have nobody to reply to.") while ModStaff is vanished, without clearing ModObs's reply partner
     norm_pm_mark = len(norm.lines)
     staff.command('msg ModNorm hi from shadows', '[me \u2192 ModNorm] hi from shadows')
     norm.chat(norm_pm_mark, '[ModStaff \u2192 me] hi from shadows')
@@ -534,10 +589,151 @@ def test_vanish_visibility_and_discovery(lane):
     staff.chat(obs_reply_mark, '[ModObs \u2192 me] still visible to staff')
 
 
+def test_vanish_leaks_outside_allium(lane):
+    staff, norm, obs = lane.bots['ModStaff'], lane.bots['ModNorm'], lane.bots['ModObs']
+
+    # 1. Vanilla /minecraft:list & /list + raw plugin getOnlinePlayers().size() observation
+    norm_list = norm.command('minecraft:list', 'of a max of')
+    norm_plain_list = norm.command('list', 'of a max of')
+    obs_list_start = obs.cmd('minecraft:list')
+    obs_list = wait(lambda: next((c for c in obs.chats(obs_list_start)
+                                  if c.get('translate') == 'commands.list.players' or 'of a max of' in c['plain']), None),
+                    'ModObs: minecraft:list response')
+    obs_with = obs_list.get('withPlain', [])
+    obs_has_staff = ('ModStaff' in obs_list['plain']) or any('ModStaff' in w for w in obs_with)
+    obs_has_3 = ('There are 3 ' in obs_list['plain']) or (len(obs_with) >= 1 and obs_with[0] == '3')
+    counts = lane.fixture('counts')
+    observations.setdefault('counts', {})[lane.name] = counts
+    require('ModStaff' not in norm_list['plain'] and 'There are 2 ' in norm_list['plain']
+            and 'ModStaff' not in norm_plain_list['plain'] and 'There are 2 ' in norm_plain_list['plain']
+            and obs_has_staff and obs_has_3
+            and counts['rawOnlineCount'] == 3 and counts['visibleToNorm'] == 2 and counts['visibleToObs'] == 3,
+            lane.name + ': vanilla /minecraft:list and /list hide ModStaff from ModNorm (2) and show to ModObs (3); raw getOnlinePlayers().size() documented as 3',
+            dict(norm=norm_list, obs=obs_list, counts=counts))
+
+    # 2. /minecraft:msg, /minecraft:tp, @a/@p selectors, and tab suggestions
+    lane.fixture('tppos ModNorm 100.5 100.5')
+    lane.fixture('tppos ModStaff 101.5 100.5')
+    lane.fixture('tppos ModObs 110.5 100.5')
+    staff_mark = len(staff.lines)
+    norm_mc_msg = norm.command('minecraft:msg ModStaff vanish leak?', 'No player was found')
+    norm_mc_tp = norm.command('minecraft:tp ModStaff', 'No player was found')
+    norm_at_a = norm.command('minecraft:msg @a selector leak?', 'No player was found')
+    norm_at_p = norm.command('minecraft:tp ModNorm @p[distance=0.5..]', 'No player was found')
+    window(.2)
+    require(not any('vanish leak?' in c['plain'] or 'selector leak?' in c['plain'] for c in staff.chats(staff_mark)),
+            lane.name + ': /minecraft:msg, /minecraft:tp, and @a/@p selectors cannot reach or reveal vanished ModStaff',
+            dict(mcMsg=norm_mc_msg, mcTp=norm_mc_tp, atA=norm_at_a, atP=norm_at_p))
+
+    for prefix in ['minecraft:msg Mod', 'minecraft:tp Mod']:
+        norm_matches, _ = norm.tab(prefix)
+        obs_matches, _ = obs.tab(prefix)
+        observations.setdefault('vanillaTab', {}).setdefault(lane.name, {})[prefix] = dict(norm=norm_matches, obs=obs_matches)
+        if lane.kind == 'paper':
+            require('ModStaff' not in norm_matches and 'ModStaff' in obs_matches,
+                    f'{lane.name}: Paper vanilla "/{prefix}" tab completion hides ModStaff from ModNorm ({norm_matches}; obs={obs_matches})')
+        else:
+            require('ModStaff' in obs_matches,
+                    f'{lane.name}: Spigot 1.20.1 vanilla Brigadier "/{prefix}" bypasses TabCompleteEvent (documented leak: norm={norm_matches}; obs={obs_matches})')
+
+    # 3. Death and advancement messages
+    norm_death_mark = len(norm.lines)
+    obs_death_mark = len(obs.lines)
+    death = lane.fixture('death ModStaff')
+    wait(lambda: not lane.fixture('state')['staffDead'] and lane.fixture('state')['staffHealth'] > 0,
+         lane.name + ': ModStaff respawned after death', 10)
+    window(.2)
+    require(death['sawDeathEvent'] and death['deathMessage'] is None
+            and not any('ModStaff' in c['plain'] and ('died' in c['plain'] or 'fell' in c['plain'] or 'killed' in c['plain'])
+                        for c in norm.chats(norm_death_mark) + obs.chats(obs_death_mark)),
+            lane.name + ': vanished death message suppressed via PlayerDeathEvent#setDeathMessage(null)',
+            death)
+
+    norm_adv_mark = len(norm.lines)
+    obs_adv_mark = len(obs.lines)
+    adv = lane.fixture('adv ModStaff story/mine_stone')
+    window(.3)
+    norm_adv_msgs = [c for c in norm.chats(norm_adv_mark)
+                     if 'Stone Age' in c['plain'] or c.get('translate') == 'chat.type.advancement.task']
+    obs_adv_msgs = [c for c in obs.chats(obs_adv_mark)
+                    if 'Stone Age' in c['plain'] or c.get('translate') == 'chat.type.advancement.task']
+    observations.setdefault('advancement', {})[lane.name] = dict(adv=adv, normMsgs=norm_adv_msgs, obsMsgs=obs_adv_msgs)
+    if lane.kind == 'paper':
+        require(adv['done'] and not norm_adv_msgs and not obs_adv_msgs,
+                lane.name + ': vanished advancement broadcast suppressed on Paper 26.3 via PlayerAdvancementDoneEvent#message(null)',
+                observations['advancement'][lane.name])
+    else:
+        require(adv['done'],
+                lane.name + ': Spigot 1.20.1 advancement observed (lacks per-player suppression API; broadcast=' + str(bool(norm_adv_msgs)) + ')',
+                observations['advancement'][lane.name])
+
+    # 4. XP orb attraction
+    xp_spawn = lane.fixture('xp spawn ModStaff 2.5')
+    window(.8)
+    xp_check = lane.fixture('xp check ModStaff')
+    lane.fixture('xp cleanup ModStaff')
+    observations.setdefault('xpAttraction', {})[lane.name] = dict(spawn=xp_spawn, check=xp_check)
+    if lane.kind == 'paper':
+        require(xp_spawn['synthTargetCancelled'] and xp_check['expNow'] == xp_spawn['expBefore'] and xp_check['orbAlive'],
+                lane.name + ': Paper 26.3 XP orb attraction & pickup prevented for vanished ModStaff (EntityTargetEvent + PlayerPickupExperienceEvent)',
+                dict(spawn=xp_spawn, check=xp_check))
+    else:
+        require(xp_spawn['synthTargetCancelled']
+                and (not xp_check['realOrbTargetEvents'] or any('cancelled=true' in e for e in xp_check['realOrbTargetEvents'])),
+                lane.name + ': Spigot 1.20.1 XP orb homing cancelled via EntityTargetEvent (lacks PlayerPickupExperienceEvent on direct collision; expNow='
+                + str(xp_check['expNow']) + ')',
+                dict(spawn=xp_spawn, check=xp_check))
+
+    # 5. Vanished player's public chat switch (default blocked, reloadable allow-public-chat: true)
+    norm_vchat_mark = len(norm.lines)
+    staff_vchat_mark = len(staff.lines)
+    staff.say('vanished default blocked chat')
+    staff.chat(staff_vchat_mark, 'cannot send public chat while vanished')
+    window(.25)
+    require(not any('vanished default blocked chat' in c['plain'] for c in norm.chats(norm_vchat_mark)),
+            lane.name + ': vanished public chat is blocked by default (allow-public-chat: false)')
+
+    lane.set_allow_vanish_public_chat(True)
+    lane.reload_allium()
+    norm_vchat_on = len(norm.lines)
+    staff.say('vanished allowed chat')
+    wait(lambda: any('vanished allowed chat' in c['plain'] for c in norm.chats(norm_vchat_on))
+         or any('vanished allowed chat' in s for s in lane.logs[-20:]),
+         lane.name + ': vanished public chat delivered when allow-public-chat=true')
+    require(True, lane.name + ': vanished public chat config switch allows chat after /allium reload')
+
+    lane.set_allow_vanish_public_chat(False)
+    lane.reload_allium()
+    staff_vchat_back = len(staff.lines)
+    staff.say('vanished reblocked chat')
+    staff.chat(staff_vchat_back, 'cannot send public chat while vanished')
+
+    # 6. Opt-in container live permission (default false -> silent snapshot; allium.vanish.container.live -> live open)
+    c_default = lane.fixture('container ModStaff')
+    lane.perm('ModStaff', 'allium.vanish.container.live', True)
+    c_live = lane.fixture('container ModStaff')
+    lane.perm('ModStaff', 'allium.vanish.container.live', False)
+    require(c_default['chestInteractCancelled'] and c_default['silentContainerOpened'] and c_default['diamonds'] == 3
+            and not c_live['chestInteractCancelled'] and not c_live['silentContainerOpened'] and c_live['blockChestDiamonds'] == 3,
+            lane.name + ': default opens silent snapshot (SilentContainerHolder); opt-in allium.vanish.container.live opens live chest',
+            dict(default=c_default, live=c_live))
+
+    # 7. Mid-session permission change limitation + /allium reload recomputation
+    lane.perm('ModNorm', 'allium.vanish.see', True, sync=False)
+    st_mid = lane.fixture('state')
+    lane.reload_allium()
+    st_reloaded = lane.fixture('state')
+    lane.perm('ModNorm', 'allium.vanish.see', False, sync=False)
+    lane.reload_allium()
+    st_restored = lane.fixture('state')
+    require(not st_mid['normCanSeeStaff'] and st_reloaded['normCanSeeStaff'] and not st_restored['normCanSeeStaff'],
+            lane.name + ': mid-session permission grant stays hidden until /allium reload recomputes visibility pairs',
+            dict(mid=st_mid, reloaded=st_reloaded, restored=st_restored))
+
+
 def test_vanish_world_effects_relog_and_restart(lane):
     staff, norm, obs = lane.bots['ModStaff'], lane.bots['ModNorm'], lane.bots['ModObs']
 
-    # 1. Mob targeting, item pickup, pressure plate, and silent container opening
     fx = lane.fixture('effects ModStaff')
     require(fx['mobTargetCancelled'] and fx['mobTargetAfterEvent'] is None
             and fx['itemPickupCancelled']
@@ -546,7 +742,6 @@ def test_vanish_world_effects_relog_and_restart(lane):
             lane.name + ': vanished ModStaff suppresses mob targeting, item pickup, pressure plates, and opens lidded containers silently',
             fx)
 
-    # 2. Relog while vanished: quit message suppressed, join message suppressed, and relog never reveals ModStaff to ModNorm
     norm_quit_mark = len(norm.lines)
     obs_quit_mark = len(obs.lines)
     staff.disconnect()
@@ -567,7 +762,6 @@ def test_vanish_world_effects_relog_and_restart(lane):
             lane.name + ': relog suppresses join message and keeps ModStaff vanished and hidden from ModNorm',
             st_relog)
 
-    # 3. Full server restart: vanish state survives restart in SQL and ModStaff rejoins vanished without revealing
     lane.stop()
     lane.boot()
     norm = lane.bot('ModNorm')
@@ -586,59 +780,59 @@ def test_vanish_world_effects_relog_and_restart(lane):
 def test_mute_chat_msg_reply_mail_and_expiry(lane):
     staff, norm, obs = lane.bots['ModStaff'], lane.bots['ModNorm'], lane.bots['ModObs']
 
-    # Prepare reply target on ModNorm (ModObs messages ModNorm so ModNorm has a valid reply partner)
     norm_mark = len(norm.lines)
     obs.command('msg ModNorm hello normal player', '[me \u2192 ModNorm] hello normal player')
     norm.chat(norm_mark, '[ModObs \u2192 me] hello normal player')
 
-    # Give ModNorm emeralds in main hand to test /mail gift refusal while muted
     lane.fixture('give ModNorm EMERALD 4')
+
+    # 0. Digit-leading invalid duration token must be rejected with usage instead of becoming reason
+    staff.command('mute ModNorm 10x spam', 'Usage: /mute <player> [duration] [reason]')
+    require(not lane.fixture('state')['normMuted'],
+            lane.name + ': invalid digit-leading duration token "10x" is rejected with usage without muting ModNorm')
 
     # 1. Staff mutes ModNorm for 8s with a reason
     norm_mute_mark = len(norm.lines)
-    staff.command('mute ModNorm 8s Spamming global chat', 'ModNorm muted for')
+    staff.command('mute ModNorm 15s Spamming global chat', 'ModNorm muted for')
     norm.chat(norm_mute_mark, 'You have been muted')
 
-    # 2. Admin lists active mutes via /mutes and /mute list
     staff.command('mutes', 'Active mutes (1)')
     staff.command('mute list', 'Spamming global chat')
 
-    # 3. Public chat while muted is blocked and reports remaining time + reason
+    # 2. HIGHEST chat re-cancel even when another plugin un-cancels AsyncPlayerChatEvent at NORMAL
+    lane.fixture('sabotagechat true')
     obs_chat_mark = len(obs.lines)
     norm_chat_mark = len(norm.lines)
     norm.say('can anyone hear me while muted?')
     blocked_chat = norm.chat(norm_chat_mark, 'You are muted (')
     window(.25)
+    sab = lane.fixture('sabotagechat false')
     require('Spamming global chat' in blocked_chat['plain']
+            and sab['sabotagedCount'] >= 1
             and not any('can anyone hear me while muted?' in c['plain'] for c in obs.chats(obs_chat_mark)),
-            lane.name + ': muted public chat is blocked with remaining time and reason and not delivered to other players',
-            blocked_chat)
+            lane.name + ': HIGHEST chat listener re-cancels muted chat even after NORMAL un-cancel sabotage',
+            dict(blocked=blocked_chat, sabotage=sab))
 
-    # 4. /msg while muted is blocked with remaining time + reason
-    obs_pm_mark = len(obs.lines)
-    blocked_msg = norm.command('msg ModObs secret pm while muted', 'You are muted (')
-    require('Spamming global chat' in blocked_msg['plain']
-            and not any('secret pm while muted' in c['plain'] for c in obs.chats(obs_pm_mark)),
-            lane.name + ': muted /msg is blocked with remaining time and reason',
-            blocked_msg)
+    # 3. Configurable muted-commands list (/me, /say, /tell, /minecraft:msg, /teammsg, /msg, /reply, /mail send, /mail gift)
+    for muted_cmd in [
+        'me waves silently',
+        'say announcement attempt',
+        'tell ModObs whisper attempt',
+        'minecraft:msg ModObs vanilla msg attempt',
+        'teammsg team attempt',
+        'msg ModObs secret pm while muted',
+        'reply reply while muted',
+        'mail send ModObs mail body while muted',
+        'mail gift ModObs 1 gift while muted',
+    ]:
+        blocked = norm.command(muted_cmd, 'You are muted (')
+        require('Spamming global chat' in blocked['plain'],
+                f'{lane.name}: muted command "/{muted_cmd}" blocked with remaining time and reason')
 
-    # 5. /reply while muted is blocked with remaining time + reason
-    blocked_reply = norm.command('reply reply while muted', 'You are muted (')
-    require('Spamming global chat' in blocked_reply['plain'],
-            lane.name + ': muted /reply is blocked with remaining time and reason',
-            blocked_reply)
-
-    # 6. /mail send and /mail gift while muted are blocked with remaining time + reason
-    blocked_mail = norm.command('mail send ModObs mail body while muted', 'You are muted (')
-    blocked_gift = norm.command('mail gift ModObs 1 gift while muted', 'You are muted (')
-    require('Spamming global chat' in blocked_mail['plain'] and 'Spamming global chat' in blocked_gift['plain'],
-            lane.name + ': muted /mail send and /mail gift are blocked with remaining time and reason')
-
-    # 7. Wait for timed mute (8s) to expire automatically without a server restart
-    wait(lambda: not lane.fixture('state')['normMuted'], lane.name + ': timed mute expired automatically', 15)
+    # 4. Wait for timed mute (8s) to expire automatically without restart
+    wait(lambda: not lane.fixture('state')['normMuted'], lane.name + ': timed mute expired automatically', 25)
     staff.command('mutes', 'There are no active mutes')
 
-    # Verify ModNorm can now send public chat, /msg, /reply, and /mail send
     obs_after_mark = len(obs.lines)
     norm.say('chat after timed mute expiry')
     wait(lambda: any('chat after timed mute expiry' in s for s in lane.logs), lane.name + ': chat delivered after mute expiry')
@@ -646,7 +840,27 @@ def test_mute_chat_msg_reply_mail_and_expiry(lane):
     obs.chat(obs_after_mark, '[ModNorm \u2192 me] pm after expiry')
     norm.command('mail send ModObs mail after expiry', 'Mail sent to ModObs')
 
-    # 8. Console permanent mute and staff /unmute, plus console /vanish off ModStaff
+    # 5. Fault-injected fail-closed pre-login load and retry recovery
+    norm.disconnect()
+    lane.fixture('fault moderation.load-fail 3')
+    norm = lane.bot('ModNorm')
+    setup_bot_permissions(lane)
+    fail_state = lane.fixture('state')
+    norm_fc_chat = len(norm.lines)
+    norm.say('fail closed chat attempt')
+    fc_msg = norm.chat(norm_fc_chat, 'Your moderation status is still loading')
+    fc_cmd = norm.command('me fail closed me', 'Your moderation status is still loading')
+    require(fail_state['normMuteLoadState'] == 'FAILED',
+            lane.name + ': pre-login fault leaves ModNorm mute load state FAILED and fails closed on chat + /me',
+            dict(state=fail_state, chat=fc_msg, cmd=fc_cmd))
+    wait(lambda: lane.fixture('state')['normMuteLoadState'] == 'READY',
+         lane.name + ': background retries recover mute load state to READY', 20)
+    norm_rec_mark = len(norm.lines)
+    norm.say('recovered chat after retry')
+    wait(lambda: any('recovered chat after retry' in s for s in lane.logs[len(lane.logs) - 20:]),
+         lane.name + ': chat delivered after mute state retry recovery')
+
+    # 6. Console permanent mute and staff /unmute, plus console /vanish off ModStaff
     log_mark = len(lane.logs)
     lane.console('mute ModNorm Permanent console mute')
     wait(lambda: any('ModNorm has been muted. Reason: Permanent console mute' in re.sub('\u00a7.', '', s) for s in lane.logs[log_mark:]),
@@ -656,7 +870,6 @@ def test_mute_chat_msg_reply_mail_and_expiry(lane):
     staff.command('unmute ModNorm Appealed', 'ModNorm has been unmuted')
     require(not lane.fixture('state')['normMuted'], lane.name + ': /unmute clears active mute')
 
-    # Console unvanishes ModStaff via /vanish off ModStaff
     log_mark = len(lane.logs)
     lane.console('vanish off ModStaff')
     wait(lambda: any('Disabled vanish for ModStaff' in re.sub('\u00a7.', '', s) for s in lane.logs[log_mark:]),
@@ -665,13 +878,64 @@ def test_mute_chat_msg_reply_mail_and_expiry(lane):
     require(not st_end['staffVanished'] and st_end['normCanSeeStaff'],
             lane.name + ': /vanish off ModStaff restores ModStaff visibility to ModNorm', st_end)
 
-    # 9. Verify audit trail in SQL and server logs
     db = lane.fixture('db')
     audit_actions = {a['action'] for a in db['audits']}
     require({'VANISH_ON', 'VANISH_OFF', 'MUTE', 'MUTE_EXPIRED', 'UNMUTE'}.issubset(audit_actions)
             and any('Moderation audit action=MUTE' in s for s in lane.logs),
             lane.name + ': SQL allium_moderation_audit and server console record VANISH_ON, VANISH_OFF, MUTE, MUTE_EXPIRED, and UNMUTE',
-            db['audits'][:8])
+            db['audits'][:10])
+
+
+def run_mariadb_lane(password):
+    lane = Lane('spigot-1.20.1-mariadb', 'spigot', 25772, mariadb_password=password)
+    lane.boot()
+    for name in ('ModStaff', 'ModNorm', 'ModObs'):
+        lane.bot(name)
+
+    def mariadb_checks():
+        staff, norm, obs = lane.bots['ModStaff'], lane.bots['ModNorm'], lane.bots['ModObs']
+        setup_bot_permissions(lane)
+
+        staff.command('vanish', 'Vanish enabled')
+        rows = wait(lambda: (lambda r: r if len(r) == 1 else None)(query_mariadb(password, "SELECT player_uuid, vanished FROM allium_vanish WHERE vanished = 1")),
+                    'mariadb: allium_vanish row', 10)
+        require(len(rows) == 1, 'mariadb: allium_vanish persists vanished ModStaff row in MariaDB', rows)
+
+        staff.command('mute ModNorm 6s MariaDB timed mute', 'ModNorm muted for')
+        mute_rows = wait(lambda: (lambda r: r if len(r) == 1 else None)(query_mariadb(password, "SELECT player_name, reason FROM allium_mutes")),
+                         'mariadb: allium_mutes row', 10)
+        require(len(mute_rows) == 1 and mute_rows[0][0] == 'ModNorm' and mute_rows[0][1] == 'MariaDB timed mute',
+                'mariadb: allium_mutes persists active mute row in MariaDB', mute_rows)
+
+        blocked = norm.command('msg ModObs blocked under mariadb', 'You are muted (')
+        require('MariaDB timed mute' in blocked['plain'], 'mariadb: muted /msg blocked under MariaDB backend')
+
+        wait(lambda: not lane.fixture('state')['normMuted'], 'mariadb: timed mute expired', 15)
+        staff.command('mute ModNorm Permanent MariaDB mute', 'ModNorm has been muted')
+        staff.command('unmute ModNorm Clear before restart', 'ModNorm has been unmuted')
+
+        # Restart and confirm vanish persists in MariaDB without revealing ModStaff
+        lane.stop()
+        lane.boot()
+        norm = lane.bot('ModNorm')
+        obs = lane.bot('ModObs')
+        norm_mark = len(norm.lines)
+        staff = lane.bot('ModStaff')
+        setup_bot_permissions(lane)
+        window(.3)
+        st = lane.fixture('state')
+        require(st['staffVanished'] and not st['normCanSeeStaff'] and st['obsCanSeeStaff']
+                and not any('ModStaff joined the game' in c['plain'] for c in norm.chats(norm_mark)),
+                'mariadb: vanish persists across server restart in MariaDB 10.11 without revealing ModStaff', st)
+
+        actions = wait(lambda: (lambda a: a if {'VANISH_ON', 'MUTE', 'MUTE_EXPIRED', 'UNMUTE'}.issubset(a) else None)(
+            {row[0] for row in query_mariadb(password, "SELECT action FROM allium_moderation_audit")}),
+            'mariadb: allium_moderation_audit actions', 10)
+        require({'VANISH_ON', 'MUTE', 'MUTE_EXPIRED', 'UNMUTE'}.issubset(actions),
+                'mariadb: allium_moderation_audit records moderation actions in MariaDB 10.11', sorted(actions))
+
+    case('spigot-1.20.1-mariadb: live MariaDB persistence, expiry, audit, and restart', mariadb_checks)
+    lane.stop()
 
 
 def run_lane(lane):
@@ -679,8 +943,9 @@ def run_lane(lane):
     for name in ('ModStaff', 'ModNorm', 'ModObs'):
         lane.bot(name)
     case(lane.name + ': vanish visibility, tab completion, and looks-offline contract', lambda: test_vanish_visibility_and_discovery(lane))
+    case(lane.name + ': vanish leaks outside Allium (vanilla commands, death/advancement, XP, chat toggle, container live, reload)', lambda: test_vanish_leaks_outside_allium(lane))
     case(lane.name + ': vanish world effects, relog, and server restart persistence', lambda: test_vanish_world_effects_relog_and_restart(lane))
-    case(lane.name + ': mute chat/msg/reply/mail enforcement, timed expiry, unmute, and audit log', lambda: test_mute_chat_msg_reply_mail_and_expiry(lane))
+    case(lane.name + ': mute HIGHEST, muted-commands, duration reject, fail-closed retry, expiry, unmute, and audit', lambda: test_mute_chat_msg_reply_mail_and_expiry(lane))
     lane.stop()
 
 
@@ -688,8 +953,10 @@ try:
     build()
     if A.suite == 'spigot':
         run_lane(Lane('spigot-1.20.1', 'spigot', 25770))
-    else:
+    elif A.suite == 'paper':
         run_lane(Lane('paper-26.3', 'paper', 25771))
+    else:
+        run_mariadb_lane(prepare_mariadb_database())
 except BaseException:
     (RUN / 'exceptions.log').open('a').write(traceback.format_exc() + '\n')
     require(False, 'unhandled gate exception')
@@ -700,7 +967,7 @@ finally:
         except Exception as error:
             (RUN / 'exceptions.log').open('a').write(f'cleanup {lane.name}: {error}\n')
     manifest = dict(
-        slice='S17',
+        slice='S17-followup',
         suite=A.suite,
         run=str(RUN),
         startedAt=int(started),

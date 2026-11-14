@@ -132,6 +132,8 @@ moderation:
   mutes-header: "{prefix} &fActive mutes &7({count}):"
   mutes-entry: "&7- &f{player} &7(&e{remaining}&7, by &f{actor}&7): &f{reason}"
   storage-failed: "{prefix} &cModeration state could not be saved; the change was undone."
+  vanish-chat-blocked: "{prefix} &cYou cannot send public chat while vanished. Use &f/vanish off &cor &f/msg&c."
+  mute-unavailable: "{prefix} &cYour moderation status is still loading; chat and messaging are temporarily unavailable. Try again shortly."
 
 player:
   gamemode-self: "{prefix} &aGamemode set to &f{mode}&a."

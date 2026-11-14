@@ -56,7 +56,7 @@ public final class MessagingService implements Listener {
     }
 
     public boolean muted(UUID player) {
-        return mutes.isMuted(player);
+        return mutes.isMuted(player) || !mutes.isMuteStateReady(player);
     }
 
     public MuteSource muteSource() {
@@ -65,6 +65,10 @@ public final class MessagingService implements Listener {
 
     public void sendMutedNotice(CommandSender sender) {
         if (sender instanceof Player player) {
+            if (!mutes.isMuteStateReady(player.getUniqueId())) {
+                plugin.getMessageManager().send(sender, Messages.MUTE_UNAVAILABLE);
+                return;
+            }
             Optional<MuteRecord> active = mutes.activeMute(player.getUniqueId());
             if (active.isPresent()) {
                 MuteRecord record = active.get();
@@ -144,8 +148,9 @@ public final class MessagingService implements Listener {
      */
     public MessagePolicy.Outcome send(CommandSender sender, @Nullable CommandSender recipient, String typedName, String body) {
         typedName = safeName(typedName);
+        boolean senderBlocked = sender instanceof Player p && (mutes.isMuted(p.getUniqueId()) || !mutes.isMuteStateReady(p.getUniqueId()));
         MessagePolicy.Sender from = new MessagePolicy.Sender(sender instanceof Player p ? p.getUniqueId() : null, sender::hasPermission,
-                sender instanceof Player p && mutes.isMuted(p.getUniqueId()));
+                senderBlocked);
         MessagePolicy.Recipient to = recipientOf(sender, recipient);
         MessagePolicy.Outcome outcome = MessagePolicy.decide(from, to);
         String shownName = recipient instanceof Player target ? target.getName() : recipient instanceof ConsoleCommandSender ? consoleName() : typedName;

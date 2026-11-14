@@ -248,3 +248,32 @@ homes:
   staff-overrides: {}
 warps:
   overwrite-confirm-seconds: 30
+
+# Vanish and mute settings (S17).
+moderation:
+  # How long login waits (off the server thread) for vanish and mute state to load (0-10000 ms).
+  preload-wait-millis: 2000
+  load-retry:
+    retries: 4
+    first-delay-millis: 1000
+    max-delay-millis: 15000
+  vanish:
+    # Block public chat while vanished so staff cannot accidentally reveal themselves.
+    allow-public-chat: false
+  mute:
+    # Commands blocked while muted or while mute state is still loading / failed to load.
+    muted-commands:
+      - /me
+      - /say
+      - /tell
+      - /minecraft:msg
+      - /teammsg
+      - /msg
+      - /reply
+      - /r
+      - /w
+      - /whisper
+      - /m
+      - /t
+      - /mail send
+      - /mail gift

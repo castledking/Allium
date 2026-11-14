@@ -1,9 +1,14 @@
-// Test-only S17 moderation client for protocol 777 (Paper 26.3). Owned loopback ports 25770-25771 only.
+// Test-only S17 moderation client for protocol 777 (Paper 26.3). Owned loopback ports 25770-25772 only.
 const net = require('node:net'), z = require('node:zlib'), fs = require('node:fs'), crypto = require('node:crypto');
 const {flatten} = require('../baseline/text-components.cjs');
 const [lane, portText, username = 'BaseBot'] = process.argv.slice(2), port = Number(portText);
 if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) throw Error('bad username');
-if (!lane || !([25770, 25771].includes(port))) throw Error('TEST ONLY: owned port 25770-25771');
+if (!lane || !([25770, 25771, 25772].includes(port))) throw Error('TEST ONLY: owned port 25770-25772');
+function extractTranslate(obj) {
+  if (!obj || typeof obj !== 'object' || !obj.translate) return {};
+  const args = Array.isArray(obj.with) ? obj.with.map(w => flatten(w).plain) : [];
+  return {translate: obj.translate, withPlain: args};
+}
 const ids = JSON.parse(fs.readFileSync(lane + '/plugins/ModGate/wire-ids.json')).wirePackets;
 function vi(n) { const a = []; do { let b = n & 127; n >>>= 7; if (n) b |= 128; a.push(b); } while (n); return Buffer.from(a); }
 function read(b, o = 0) { let n = 0, s = 0; for (let i = o; i < b.length; i++) { const c = b[i]; n |= (c & 127) << s; if (!(c & 128)) return [n, i + 1]; s += 7; if (s > 35) throw Error('bad varint'); } return null; }
@@ -62,7 +67,7 @@ socket.on('data', chunk => { try {
       }
       if (id === ids.game_CLIENTBOUND['minecraft:system_chat']) {
         const [component, o] = readNbt(payload, 0);
-        console.log('BASEG-CHAT ' + JSON.stringify(Object.assign(flatten(component), {overlay: payload[o] === 1,
+        console.log('BASEG-CHAT ' + JSON.stringify(Object.assign(flatten(component), extractTranslate(component), {overlay: payload[o] === 1,
           interactive: /click_event|hover_event|clickEvent|hoverEvent|"insertion"/.test(JSON.stringify(component))})));
       }
       if (id === ids.game_CLIENTBOUND['minecraft:disguised_chat'] || id === ids.game_CLIENTBOUND['minecraft:player_chat']) {

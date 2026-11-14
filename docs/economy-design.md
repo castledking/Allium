@@ -1,6 +1,6 @@
-# S14 economy design — DESIGN ONLY
+# Economy design and S20 implementation contract
 
-**No production economy engine is implemented.** S14 supplies this design, a small JDBC/money
+**E1/E2 core foundations and the SQLite transaction engine are implemented; Bukkit commands and the replacement Vault provider remain gated by E3/E4.** S14 supplied this design and a small JDBC/money
 prototype under [tests/design/economy](../tests/design/economy/README.md), and a safety switch
 for the existing scaffold. SQL prototype measurements do not validate Allium or Vault latency.
 The replacement provider remains unreleased until the correctness and server-workload gates pass.
@@ -522,3 +522,9 @@ E1 money/settings/schema/typed results; E2 single-commit engine and SQLite concu
 ### E1 foundation status
 
 Core Money, immutable validated EconomySettings, typed Found/Missing/Unavailable and mutation outcomes, and SQLite economy migration 1 are implemented independently of Bukkit. The schema refuses incompatible existing definitions and uses integer storage-class checks, binary keys, journal uniqueness, and restricted foreign keys without a player-name dependency. E1 adds 9 tests (591 → 600); full isolated check passes, zero failures/skips. No engine/provider is registered by E1.
+
+### E2 engine status
+
+The Phase 1 engine inserts the operation as COMMITTED first under BEGIN IMMEDIATE, reads point accounts in UUID order, validates authoritative payment policy on that connection, conditionally updates balances/versions, inserts entries, freezes the receipt and commits once. Business rejection rolls back only the effect savepoint and stores a REJECTED receipt. Specific operation-key uniqueness conflicts reconcile exact payload bytes and SHA-256; other SQL errors remain unavailable. A commit exception is OUTCOME_UNKNOWN with its operation ID; reinsertion/replay recovers without compensation. OPEN is the sole initial-grant path; reads never open accounts.
+
+E2 adds 13 tests (600 → 613), including independent JDBC owners contending on finite funds, opposing transfers, cap rollback, exact replay and payload conflict, before-commit failure and lost commit acknowledgement. Full isolated check plus final core recheck pass with zero failures/skips. No MySQL economy lane, shared epoch or mutex rows are introduced.

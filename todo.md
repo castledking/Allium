@@ -99,6 +99,13 @@ defines the replacement and records measured JDBC commit costs. The Vault adapte
 remains unimplemented and release-gated; this does not make the existing scaffold
 production ready.
 
+S14 revision measures the single-commit path on SQLite WAL FULL/NORMAL and durable
+MySQL, with six connection-kill recovery cases. Vault double amounts have a narrow
+cent-boundary snap; command/core decimals remain strict. Durability remains the
+user's choice. Policy mutexes/shared settings epochs belong to the multi-server
+phase. The unsafe scaffold provider now requires explicit, off-by-default
+`economy.scaffold-vault-provider-enabled`; no replacement engine is implemented.
+
 ## Staging checklist (before deploying to SF)
 
 Run on a staging copy of SF (its world, plugins and configs), never on the live server.

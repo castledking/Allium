@@ -50,6 +50,10 @@ modules:
   moderation: true
   tools: true
 
+economy:
+  # Development-only legacy provider. Leave off until the journalled engine replaces it.
+  scaffold-vault-provider-enabled: false
+
 # Staple tools. Each works with its built-in item and with Nexo, CraftEngine or Oraxen items;
 # an item's appearance never changes the tool's behavior.
 # Tools (such as the Mob Disarmer) are defined in plugins/Allium/tools/*.yml, one file per tool.

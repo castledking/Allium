@@ -531,3 +531,8 @@ S06a depended on S04–S05; S06b depended on S06a; pack delivery depends on S06b
 ## Revised S20 economy scope
 
 SF is a single SQLite server, Phase 1 only, WAL `synchronous=FULL`. No policy mutex rows, shared settings epoch, or MySQL economy lane. E1–E4 each require a separate commit and unit delta; stop after E4 live/latency gate before E5 reservations. Paid kits remain denied until E5. The earlier sign slice moves to S21. See [economy contract](docs/economy-design.md).
+
+- [x] **S20 E1:** exact Money/settings/typed outcomes and SQLite economy component schema. 600 tests, +9 from 591; zero failures/skips.
+- [ ] **S20 E2:** single-commit engine and SQLite replay/concurrency.
+- [ ] **S20 E3:** authoritative async payment commands.
+- [ ] **S20 E4:** synchronous Vault, real-server recovery and FULL contention/latency gate. Stop here before E5.

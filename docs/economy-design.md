@@ -111,6 +111,8 @@ while unavailable must not fabricate an empty balance or a starting grant.
 
 ### Vault doubles: narrowly snap binary residue
 
+Revised S20 contract: the adapter uses approximately `1e-6` of one cent (`1e-8` major units) as its snap tolerance. The older S14 examples below describe the earlier, broader prototype tolerance and are historical fixtures; E4 must replace them with the narrower boundary tests before release.
+
 Only the double adapter allows **distance <= `0.000001` major units from the nearest cent**.
 Check finiteness and nonnegative sign first; convert with `BigDecimal.valueOf(double)`, find the
 nearest scale-2 HALF_EVEN value, compare absolute decimal distance with that inclusive epsilon,
@@ -516,3 +518,7 @@ benchmark success is claimed by S14.
 ## Implementation sequence (revised S20)
 
 E1 money/settings/schema/typed results; E2 single-commit engine and SQLite concurrency/replay; E3 commands and authoritative payment policy; E4 synchronous Vault and real-server correctness/latency gates. Stop after E4 and report before E5 reservations. Paid kits stay denied until E5. Signs move to S21; balance and trade sign integration follows the gated engine. Durability is not weakened to meet latency targets; if FULL misses them, measure a separate economy.db option.
+
+### E1 foundation status
+
+Core Money, immutable validated EconomySettings, typed Found/Missing/Unavailable and mutation outcomes, and SQLite economy migration 1 are implemented independently of Bukkit. The schema refuses incompatible existing definitions and uses integer storage-class checks, binary keys, journal uniqueness, and restricted foreign keys without a player-name dependency. E1 adds 9 tests (591 → 600); full isolated check passes, zero failures/skips. No engine/provider is registered by E1.

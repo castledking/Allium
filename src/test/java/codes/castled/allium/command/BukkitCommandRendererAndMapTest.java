@@ -34,6 +34,29 @@ class BukkitCommandRendererAndMapTest {
     }
 
     @Test
+    void startupMuteIdentityCheckWarnsForSplitNamespaceAndMissingDefaults() {
+        SimpleCommandMap map = new SimpleCommandMap(null);
+        Command bare = dummyCommand("me", List.of());
+        Command split = dummyCommand("me", List.of());
+        map.register("minecraft", bare);
+        Map<String, Command> known = CommandMapBridge.resolveKnownCommands(map);
+        known.put("minecraft:me", split);
+        List<String> warnings = new ArrayList<>();
+        CommandMapBridge.checkMutedCommandIdentities(map, List.of("/me", "/missing"), warnings::add);
+        assertTrue(warnings.stream().anyMatch(s -> s.contains("IDENTITY MISMATCH") && s.contains("minecraft:me")));
+        assertTrue(warnings.stream().anyMatch(s -> s.contains("unresolved") && s.contains("missing")));
+    }
+
+    @Test
+    void startupMuteIdentityCheckAcceptsSharedCommandFallbacks() {
+        SimpleCommandMap map = new SimpleCommandMap(null);
+        map.register("minecraft", dummyCommand("me", List.of()));
+        List<String> warnings = new ArrayList<>();
+        CommandMapBridge.checkMutedCommandIdentities(map, List.of("/me", "/minecraft:me"), warnings::add);
+        assertTrue(warnings.isEmpty(), warnings.toString());
+    }
+
+    @Test
     void yieldingDisabledFamilyRemovesAlliumLabelsAndPromotesOtherPluginCommand() {
         Plugin alliumPlugin = dummyPlugin("Allium");
         Command alliumGamemode = dummyCommand("gamemode", List.of("gm"));

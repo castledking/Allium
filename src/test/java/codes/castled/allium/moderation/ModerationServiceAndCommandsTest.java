@@ -239,6 +239,20 @@ class ModerationServiceAndCommandsTest {
     }
 
     @Test
+    void muteAndUnmuteUseTheSharedDisciplineAuthorizationPolicy() {
+        java.util.concurrent.atomic.AtomicBoolean allowed = new java.util.concurrent.atomic.AtomicBoolean(false);
+        moderation.setActionPolicy((actor, target) -> allowed.get());
+        moderation.mute(console, normalPlayer.uuid, normalPlayer.name, null, "policy test");
+        assertFalse(moderation.isMuted(normalPlayer.uuid));
+        allowed.set(true);
+        moderation.mute(console, normalPlayer.uuid, normalPlayer.name, null, "policy test");
+        assertTrue(moderation.isMuted(normalPlayer.uuid));
+        allowed.set(false);
+        moderation.unmute(console, normalPlayer.uuid, normalPlayer.name, "refused");
+        assertTrue(moderation.isMuted(normalPlayer.uuid));
+    }
+
+    @Test
     void vanishHidesPlayerFromNormalPlayersOnlyPersistsAcrossRelogAndSuppressesSideEffects() throws Exception {
         VanishCommand vanishCmd = new VanishCommand(plugin, moderation);
 

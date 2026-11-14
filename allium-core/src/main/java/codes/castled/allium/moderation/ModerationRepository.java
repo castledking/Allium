@@ -4,15 +4,18 @@ import codes.castled.allium.storage.ConnectionSource;
 import codes.castled.allium.storage.Migration;
 import codes.castled.allium.storage.SchemaMigrator;
 import codes.castled.allium.storage.SqlDialect;
+import codes.castled.allium.teleport.SavedLocation;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -20,7 +23,7 @@ import java.util.UUID;
 import java.util.function.LongSupplier;
 
 /**
- * SQL persistence for per-UUID vanish state, active mutes, and moderation audit entries.
+ * SQL persistence for moderation state and history. S19 mutations and their audit rows share a transaction.
  * Blocking JDBC; runtime callers invoke this exclusively from the bounded moderation storage pool.
  */
 public final class ModerationRepository {
@@ -29,6 +32,42 @@ public final class ModerationRepository {
     public static final String VANISH_TABLE = "allium_vanish";
     public static final String MUTES_TABLE = "allium_mutes";
     public static final String AUDIT_TABLE = "allium_moderation_audit";
+    public static final String BANS_TABLE = "allium_bans";
+    public static final String FREEZES_TABLE = "allium_freezes";
+    public static final String JAILS_TABLE = "allium_jails";
+    public static final String JAILED_TABLE = "allium_jailed";
+    public static final String WARNINGS_TABLE = "allium_warnings";
+    public static final String NOTES_TABLE = "allium_staff_notes";
+    public static final int MAX_HISTORY_LIMIT = 100;
+
+    private static final String PLAYER_COLUMNS = "player_uuid, player_name, actor_name, reason, created_at";
+    private static final String BAN_COLUMNS = PLAYER_COLUMNS + ", expires_at, ip_address";
+    private static final String LOCATION_COLUMNS = "world_id, world_name, x, y, z, yaw, pitch";
+    private static final String ASSIGNMENT_COLUMNS = PLAYER_COLUMNS + ", jail_name, " + LOCATION_COLUMNS;
+    private static final String PLAYER_DEFINITION = "player_uuid CHAR(36) NOT NULL PRIMARY KEY, "
+            + "player_name VARCHAR(36) NOT NULL, actor_name VARCHAR(64) NOT NULL, "
+            + "reason VARCHAR(256) NOT NULL, created_at BIGINT NOT NULL";
+    private static final String LOCATION_DEFINITION = "world_id CHAR(36) NOT NULL, world_name VARCHAR(255) NOT NULL, "
+            + "x DOUBLE NOT NULL, y DOUBLE NOT NULL, z DOUBLE NOT NULL, yaw FLOAT NOT NULL, pitch FLOAT NOT NULL";
+
+    private static List<String> s19Schema(SqlDialect dialect) {
+        String id = dialect == SqlDialect.MYSQL ? "BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+        String history = " (id " + id + ", player_uuid CHAR(36) NOT NULL, player_name VARCHAR(36) NOT NULL, "
+                + "actor_name VARCHAR(64) NOT NULL, reason VARCHAR(256) NOT NULL, created_at BIGINT NOT NULL)";
+        return List.of(
+                "CREATE TABLE IF NOT EXISTS " + BANS_TABLE + " (" + PLAYER_DEFINITION + ", expires_at BIGINT NULL, ip_address VARCHAR(45) NULL)",
+                "CREATE TABLE IF NOT EXISTS " + FREEZES_TABLE + " (" + PLAYER_DEFINITION + ")",
+                "CREATE TABLE IF NOT EXISTS " + JAILS_TABLE + " (name VARCHAR(32) NOT NULL PRIMARY KEY, " + LOCATION_DEFINITION + ")",
+                "CREATE TABLE IF NOT EXISTS " + JAILED_TABLE + " (" + PLAYER_DEFINITION + ", jail_name VARCHAR(32) NOT NULL, " + LOCATION_DEFINITION + ")",
+                "CREATE TABLE IF NOT EXISTS " + WARNINGS_TABLE + history,
+                "CREATE TABLE IF NOT EXISTS " + NOTES_TABLE + history,
+                "CREATE INDEX allium_bans_expiry ON " + BANS_TABLE + " (expires_at)",
+                "CREATE INDEX allium_bans_ip ON " + BANS_TABLE + " (ip_address, created_at, player_uuid)",
+                "CREATE INDEX allium_jailed_jail ON " + JAILED_TABLE + " (jail_name)",
+                "CREATE INDEX allium_warnings_player ON " + WARNINGS_TABLE + " (player_uuid, id)",
+                "CREATE INDEX allium_staff_notes_player ON " + NOTES_TABLE + " (player_uuid, id)"
+        );
+    }
 
     private static final String CREATE_VANISH = "CREATE TABLE IF NOT EXISTS " + VANISH_TABLE + " ("
             + "player_uuid CHAR(36) NOT NULL PRIMARY KEY, "
@@ -83,7 +122,9 @@ public final class ModerationRepository {
                         "vanish state, mutes, and moderation audit log",
                         List.of(CREATE_VANISH, CREATE_MUTES, CREATE_AUDIT_SQLITE),
                         List.of(CREATE_VANISH, CREATE_MUTES, CREATE_AUDIT_MYSQL)
-                )
+                ),
+                Migration.of(2, "bans, freezes, jails, warnings, and staff notes",
+                        s19Schema(SqlDialect.SQLITE), s19Schema(SqlDialect.MYSQL))
         ));
     }
 
@@ -224,6 +265,383 @@ public final class ModerationRepository {
         }
     }
 
+    /** Expiry is inclusive and checked using one captured clock value; reads never delete a newer ban. */
+    public List<BanRecord> loadActiveBans() throws SQLException {
+        long now = clock.getAsLong();
+        return query("SELECT " + BAN_COLUMNS + " FROM " + BANS_TABLE
+                        + " WHERE expires_at IS NULL OR expires_at > ? ORDER BY created_at, player_uuid",
+                ps -> ps.setLong(1, now), ModerationRepository::readBan);
+    }
+
+    public Optional<BanRecord> loadActiveBan(UUID playerUuid) throws SQLException {
+        Objects.requireNonNull(playerUuid, "playerUuid");
+        long now = clock.getAsLong();
+        return query("SELECT " + BAN_COLUMNS + " FROM " + BANS_TABLE
+                        + " WHERE player_uuid = ? AND (expires_at IS NULL OR expires_at > ?)",
+                ps -> { ps.setString(1, playerUuid.toString()); ps.setLong(2, now); },
+                ModerationRepository::readBan).stream().findFirst();
+    }
+
+    public Optional<BanRecord> loadBanByIp(String ipAddress) throws SQLException {
+        String address = ipAddress(ipAddress);
+        if (address == null) return Optional.empty();
+        long now = clock.getAsLong();
+        // Several UUID bans can share an address. Removing/expiring one must not hide the others.
+        return query("SELECT " + BAN_COLUMNS + " FROM " + BANS_TABLE
+                        + " WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > ?)"
+                        + " ORDER BY created_at DESC, player_uuid ASC LIMIT 1",
+                ps -> { ps.setString(1, address); ps.setLong(2, now); },
+                ModerationRepository::readBan).stream().findFirst();
+    }
+
+    public void saveBan(BanRecord record) throws SQLException {
+        Objects.requireNonNull(record, "record");
+        transaction(c -> {
+            try (PreparedStatement ps = c.prepareStatement(upsert(BANS_TABLE, BAN_COLUMNS, "player_uuid", true))) {
+                bindPlayer(ps, record.playerUuid(), record.playerName(), record.actorName(), record.reason(), record.createdAt());
+                if (record.expiresAt() == null) ps.setNull(6, Types.BIGINT); else ps.setLong(6, record.expiresAt());
+                ps.setString(7, record.ipAddress());
+                ps.executeUpdate();
+            }
+            writeAudit(c, "BAN", record.actorName(), record.playerUuid(), record.playerName(),
+                    "reason=" + record.reason() + " expires_at=" + record.expiresAt() + " ip_address=" + record.ipAddress());
+            return null;
+        });
+    }
+
+    public boolean removeBan(UUID playerUuid, String actorName) throws SQLException {
+        return removePlayerState(BANS_TABLE, playerUuid, actorName, "UNBAN");
+    }
+
+    public List<FreezeRecord> loadFrozenPlayers() throws SQLException {
+        return query("SELECT " + PLAYER_COLUMNS + " FROM " + FREEZES_TABLE + " ORDER BY created_at, player_uuid",
+                ps -> {}, ModerationRepository::readFreeze);
+    }
+
+    public Optional<FreezeRecord> loadFrozen(UUID playerUuid) throws SQLException {
+        Objects.requireNonNull(playerUuid, "playerUuid");
+        return query("SELECT " + PLAYER_COLUMNS + " FROM " + FREEZES_TABLE + " WHERE player_uuid = ?",
+                ps -> ps.setString(1, playerUuid.toString()), ModerationRepository::readFreeze).stream().findFirst();
+    }
+
+    public void setFrozen(FreezeRecord record) throws SQLException {
+        Objects.requireNonNull(record, "record");
+        transaction(c -> {
+            try (PreparedStatement ps = c.prepareStatement(upsert(FREEZES_TABLE, PLAYER_COLUMNS, "player_uuid", true))) {
+                bindPlayer(ps, record.playerUuid(), record.playerName(), record.actorName(), record.reason(), record.createdAt());
+                ps.executeUpdate();
+            }
+            writeAudit(c, "FREEZE", record.actorName(), record.playerUuid(), record.playerName(), record.reason());
+            return null;
+        });
+    }
+
+    public boolean removeFrozen(UUID playerUuid, String actorName) throws SQLException {
+        return removePlayerState(FREEZES_TABLE, playerUuid, actorName, "UNFREEZE");
+    }
+
+    public List<JailRecord> loadJails() throws SQLException {
+        return query("SELECT name, " + LOCATION_COLUMNS + " FROM " + JAILS_TABLE + " ORDER BY name",
+                ps -> {}, rs -> new JailRecord(rs.getString(1), readLocation(rs, 2)));
+    }
+
+    public Optional<JailRecord> loadJail(String name) throws SQLException {
+        String key = jailName(name);
+        return query("SELECT name, " + LOCATION_COLUMNS + " FROM " + JAILS_TABLE + " WHERE name = ?",
+                ps -> ps.setString(1, key), rs -> new JailRecord(rs.getString(1), readLocation(rs, 2)))
+                .stream().findFirst();
+    }
+
+    public void saveJail(JailRecord record, String actorName) throws SQLException {
+        Objects.requireNonNull(record, "record");
+        String actor = actorName(actorName);
+        transaction(c -> {
+            try (PreparedStatement ps = c.prepareStatement(upsert(JAILS_TABLE, "name, " + LOCATION_COLUMNS, "name", true))) {
+                ps.setString(1, record.name());
+                bindLocation(ps, 2, record.location());
+                ps.executeUpdate();
+            }
+            writeAudit(c, "SETJAIL", actor, null, null, "jail=" + record.name());
+            return null;
+        });
+    }
+
+    /** Returns false when absent or in use. Assignment and deletion serialize on the jail row. */
+    public boolean deleteJail(String name, String actorName) throws SQLException {
+        String key = jailName(name);
+        String actor = actorName(actorName);
+        return transaction(c -> {
+            if (!lockJail(c, key)) return false;
+            try (PreparedStatement ps = c.prepareStatement("SELECT player_uuid FROM " + JAILED_TABLE + " WHERE jail_name = ? LIMIT 1")) {
+                ps.setString(1, key);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) return false;
+                }
+            }
+            try (PreparedStatement ps = c.prepareStatement("DELETE FROM " + JAILS_TABLE + " WHERE name = ?")) {
+                ps.setString(1, key);
+                ps.executeUpdate();
+            }
+            writeAudit(c, "DELJAIL", actor, null, null, "jail=" + key);
+            return true;
+        });
+    }
+
+    public List<JailAssignment> loadJailedPlayers() throws SQLException {
+        return query("SELECT " + ASSIGNMENT_COLUMNS + " FROM " + JAILED_TABLE + " ORDER BY created_at, player_uuid",
+                ps -> {}, ModerationRepository::readAssignment);
+    }
+
+    public Optional<JailAssignment> loadJailed(UUID playerUuid) throws SQLException {
+        Objects.requireNonNull(playerUuid, "playerUuid");
+        return query("SELECT " + ASSIGNMENT_COLUMNS + " FROM " + JAILED_TABLE + " WHERE player_uuid = ?",
+                ps -> ps.setString(1, playerUuid.toString()), ModerationRepository::readAssignment).stream().findFirst();
+    }
+
+    /** Returns false when the named jail is absent; a re-jail retains the original return location. */
+    public boolean setJailed(JailAssignment record) throws SQLException {
+        Objects.requireNonNull(record, "record");
+        return transaction(c -> {
+            if (!lockJail(c, record.jailName())) return false;
+            // Only identity/reason/jail change on conflict. The seven origin columns are insert-only.
+            try (PreparedStatement ps = c.prepareStatement(upsert(JAILED_TABLE, ASSIGNMENT_COLUMNS, "player_uuid", false))) {
+                bindPlayer(ps, record.playerUuid(), record.playerName(), record.actorName(), record.reason(), record.createdAt());
+                ps.setString(6, record.jailName());
+                bindLocation(ps, 7, record.returnLocation());
+                ps.executeUpdate();
+            }
+            writeAudit(c, "JAIL", record.actorName(), record.playerUuid(), record.playerName(),
+                    "jail=" + record.jailName() + " reason=" + record.reason());
+            return true;
+        });
+    }
+
+    public boolean removeJailed(UUID playerUuid, String actorName) throws SQLException {
+        return removePlayerState(JAILED_TABLE, playerUuid, actorName, "UNJAIL");
+    }
+
+    public HistoryEntry addWarning(UUID playerUuid, String targetName, String actorName, String reason) throws SQLException {
+        return addHistory(WARNINGS_TABLE, "WARN", playerUuid, targetName, actorName, reason);
+    }
+
+    public List<HistoryEntry> listWarnings(UUID playerUuid, int limit) throws SQLException {
+        return listHistory(WARNINGS_TABLE, playerUuid, limit);
+    }
+
+    public HistoryEntry addNote(UUID playerUuid, String targetName, String actorName, String reason) throws SQLException {
+        return addHistory(NOTES_TABLE, "STAFF_NOTE", playerUuid, targetName, actorName, reason);
+    }
+
+    public List<HistoryEntry> listNotes(UUID playerUuid, int limit) throws SQLException {
+        return listHistory(NOTES_TABLE, playerUuid, limit);
+    }
+
+    private HistoryEntry addHistory(String table, String action, UUID uuid, String name, String actor, String reason) throws SQLException {
+        HistoryEntry entry = new HistoryEntry(0, uuid, name, actor, reason, clock.getAsLong());
+        return transaction(c -> {
+            long id;
+            try (PreparedStatement ps = c.prepareStatement("INSERT INTO " + table + " (" + PLAYER_COLUMNS + ") VALUES (?, ?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS)) {
+                bindPlayer(ps, uuid, entry.targetName(), entry.actorName(), entry.reason(), entry.createdAt());
+                ps.executeUpdate();
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    if (!keys.next()) throw new SQLException("no generated moderation history ID");
+                    id = keys.getLong(1);
+                }
+            }
+            writeAudit(c, action, entry.actorName(), uuid, entry.targetName(), entry.reason());
+            return new HistoryEntry(id, uuid, entry.targetName(), entry.actorName(), entry.reason(), entry.createdAt());
+        });
+    }
+
+    private List<HistoryEntry> listHistory(String table, UUID uuid, int limit) throws SQLException {
+        Objects.requireNonNull(uuid, "playerUuid");
+        return query("SELECT id, " + PLAYER_COLUMNS + " FROM " + table + " WHERE player_uuid = ? ORDER BY id DESC LIMIT ?",
+                ps -> { ps.setString(1, uuid.toString()); ps.setInt(2, boundedLimit(limit)); },
+                rs -> new HistoryEntry(rs.getLong(1), UUID.fromString(rs.getString(2)), rs.getString(3),
+                        rs.getString(4), rs.getString(5), rs.getLong(6)));
+    }
+
+    private boolean removePlayerState(String table, UUID uuid, String actorName, String action) throws SQLException {
+        Objects.requireNonNull(uuid, "playerUuid");
+        String actor = actorName(actorName);
+        return transaction(c -> {
+            // Acquire a write lock before reading the audit name; also avoids SQLite deferred upgrade races.
+            try (PreparedStatement ps = c.prepareStatement("UPDATE " + table + " SET player_uuid = player_uuid WHERE player_uuid = ?")) {
+                ps.setString(1, uuid.toString());
+                ps.executeUpdate();
+            }
+            String name;
+            try (PreparedStatement ps = c.prepareStatement("SELECT player_name FROM " + table + " WHERE player_uuid = ?")) {
+                ps.setString(1, uuid.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) return false;
+                    name = rs.getString(1);
+                }
+            }
+            try (PreparedStatement ps = c.prepareStatement("DELETE FROM " + table + " WHERE player_uuid = ?")) {
+                ps.setString(1, uuid.toString());
+                ps.executeUpdate();
+            }
+            writeAudit(c, action, actor, uuid, name, "");
+            return true;
+        });
+    }
+
+    private boolean lockJail(Connection c, String key) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("UPDATE " + JAILS_TABLE + " SET name = name WHERE name = ?")) {
+            ps.setString(1, key);
+            ps.executeUpdate();
+        }
+        // MySQL can report changed rows rather than matched rows for the no-op UPDATE.
+        try (PreparedStatement ps = c.prepareStatement("SELECT name FROM " + JAILS_TABLE + " WHERE name = ?")) {
+            ps.setString(1, key);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+        }
+    }
+
+    private String upsert(String table, String columns, String key, boolean updateLocation) {
+        String[] names = columns.split(", ");
+        List<String> updates = new ArrayList<>();
+        for (String name : names) {
+            if (name.equals(key) || (!updateLocation && List.of(LOCATION_COLUMNS.split(", ")).contains(name))) continue;
+            updates.add(name + (dialect == SqlDialect.MYSQL ? " = VALUES(" + name + ")" : " = excluded." + name));
+        }
+        return "INSERT INTO " + table + " (" + columns + ") VALUES (" + String.join(", ", java.util.Collections.nCopies(names.length, "?"))
+                + ") " + (dialect == SqlDialect.MYSQL ? "ON DUPLICATE KEY UPDATE " : "ON CONFLICT(" + key + ") DO UPDATE SET ")
+                + String.join(", ", updates);
+    }
+
+    private static void bindPlayer(PreparedStatement ps, UUID uuid, String name, String actor, String reason, long createdAt) throws SQLException {
+        ps.setString(1, uuid.toString());
+        ps.setString(2, name);
+        ps.setString(3, actor);
+        ps.setString(4, reason);
+        ps.setLong(5, createdAt);
+    }
+
+    private static void bindLocation(PreparedStatement ps, int index, SavedLocation location) throws SQLException {
+        ps.setString(index++, location.worldId().toString());
+        ps.setString(index++, location.worldName());
+        ps.setDouble(index++, location.x());
+        ps.setDouble(index++, location.y());
+        ps.setDouble(index++, location.z());
+        ps.setFloat(index++, location.yaw());
+        ps.setFloat(index, location.pitch());
+    }
+
+    private static SavedLocation readLocation(ResultSet rs, int index) throws SQLException {
+        return new SavedLocation(UUID.fromString(rs.getString(index++)), rs.getString(index++),
+                rs.getDouble(index++), rs.getDouble(index++), rs.getDouble(index++), rs.getFloat(index++), rs.getFloat(index));
+    }
+
+    private static BanRecord readBan(ResultSet rs) throws SQLException {
+        long expiry = rs.getLong(6);
+        Long nullableExpiry = rs.wasNull() ? null : expiry;
+        return new BanRecord(UUID.fromString(rs.getString(1)), rs.getString(2), rs.getString(3), rs.getString(4),
+                rs.getLong(5), nullableExpiry, rs.getString(7));
+    }
+
+    private static FreezeRecord readFreeze(ResultSet rs) throws SQLException {
+        return new FreezeRecord(UUID.fromString(rs.getString(1)), rs.getString(2), rs.getString(3), rs.getString(4), rs.getLong(5));
+    }
+
+    private static JailAssignment readAssignment(ResultSet rs) throws SQLException {
+        return new JailAssignment(UUID.fromString(rs.getString(1)), rs.getString(2), rs.getString(3), rs.getString(4),
+                rs.getLong(5), rs.getString(6), readLocation(rs, 7));
+    }
+
+    static String playerName(UUID uuid, String name) {
+        Objects.requireNonNull(uuid, "playerUuid");
+        return boundedText(name == null || name.isBlank() ? uuid.toString() : name.trim(), 36);
+    }
+
+    static String actorName(String actor) {
+        return boundedText(actor == null || actor.isBlank() ? "Console" : actor.trim(), 64);
+    }
+
+    static String ipAddress(String address) {
+        if (address == null || address.isBlank()) return null;
+        String trimmed = address.trim();
+        if (trimmed.length() > 45) throw new IllegalArgumentException("IP address exceeds 45 characters");
+        return trimmed;
+    }
+
+    static String jailName(String name) {
+        if (name == null || !name.matches("[A-Za-z0-9_-]{1,32}")) {
+            throw new IllegalArgumentException("jail name must contain 1..32 ASCII letters, digits, underscores or hyphens");
+        }
+        return name.toLowerCase(Locale.ROOT);
+    }
+
+    static void validateLocation(SavedLocation location) {
+        Objects.requireNonNull(location, "location");
+        if (location.worldName().isBlank() || location.worldName().length() > 255) {
+            throw new IllegalArgumentException("location world name must contain 1..255 characters");
+        }
+        // SavedLocation's constructor rejects non-finite coordinates and angles.
+    }
+
+    private static String boundedText(String text, int max) { return text.length() <= max ? text : text.substring(0, max); }
+    private static int boundedLimit(int limit) { return Math.max(1, Math.min(MAX_HISTORY_LIMIT, limit)); }
+
+    @FunctionalInterface
+    private interface Binder { void bind(PreparedStatement ps) throws SQLException; }
+    @FunctionalInterface
+    private interface Reader<T> { T read(ResultSet rs) throws SQLException; }
+    @FunctionalInterface
+    private interface Work<T> { T run(Connection c) throws SQLException; }
+
+    private <T> List<T> query(String sql, Binder binder, Reader<T> reader) throws SQLException {
+        try (Connection c = source.connection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            binder.bind(ps);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<T> out = new ArrayList<>();
+                while (rs.next()) out.add(reader.read(rs));
+                return List.copyOf(out);
+            }
+        }
+    }
+
+    private <T> T transaction(Work<T> work) throws SQLException {
+        try (Connection c = source.connection()) {
+            boolean autoCommit = c.getAutoCommit();
+            c.setAutoCommit(false);
+            boolean ended = false;
+            try {
+                T result = work.run(c);
+                c.commit();
+                ended = true;
+                return result;
+            } catch (SQLException | RuntimeException | Error failure) {
+                try {
+                    c.rollback();
+                    ended = true;
+                } catch (SQLException | RuntimeException | Error rollback) {
+                    failure.addSuppressed(rollback);
+                }
+                throw failure;
+            } finally {
+                // Enabling auto-commit after a failed rollback could commit the partial mutation.
+                // Close/discard that connection instead; never retry an uncertain transaction.
+                if (ended) c.setAutoCommit(autoCommit);
+            }
+        }
+    }
+
+    private void writeAudit(Connection c, String action, String actor, UUID uuid, String name, String detail) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("INSERT INTO " + AUDIT_TABLE
+                + " (created_at, action, actor_name, target_uuid, target_name, detail) VALUES (?, ?, ?, ?, ?, ?)")) {
+            ps.setLong(1, clock.getAsLong());
+            ps.setString(2, action);
+            ps.setString(3, actor);
+            ps.setString(4, uuid == null ? null : uuid.toString());
+            ps.setString(5, name);
+            ps.setString(6, boundedText(detail, 512));
+            ps.executeUpdate();
+        }
+    }
+
     public void recordAudit(
             String action,
             String actorName,
@@ -262,7 +680,7 @@ public final class ModerationRepository {
              PreparedStatement ps = c.prepareStatement(
                      "SELECT id, created_at, action, actor_name, target_uuid, target_name, detail FROM "
                              + AUDIT_TABLE + " ORDER BY id DESC LIMIT ?")) {
-            ps.setInt(1, Math.max(1, limit));
+            ps.setInt(1, boundedLimit(limit));
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     String rawUuid = rs.getString(5);

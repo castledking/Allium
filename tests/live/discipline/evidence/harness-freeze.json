@@ -1,0 +1,13 @@
+{
+  "slice": "S19",
+  "frozenAt": "2026-11-14T15:16:42.586449+00:00",
+  "sourceHashes": {
+    "tests/live/discipline/run.py": "dfa183ea1ef1c1507bcc94121600df06fe97abd2b39513d0482d5f20f89a10b0",
+    "tests/live/discipline/plugin/gate/DisciplineGate.java": "e1b320cf408425582f3feb8f818d543fa462e9017c32d314a17b2e6dcaa351a4",
+    "tests/live/discipline/plugin/plugin.yml": "6be780947b12ea406590fd95e9effc550b19f32c0c5c635bb6f41771f17a8769",
+    "tests/live/discipline/client-mcp.cjs": "08f817f08e2a14f0b055142accfda29fb79353ee89c885a6f359b9b6d5f507f6",
+    "tests/live/discipline/client-raw26.cjs": "1c698ef686bc66d63d53b956ae26f2ea9b6523bd20800b711834f679e101af37",
+    "tests/live/discipline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+    "tests/live/discipline/process_cleanup.py": "ff8f8a5fe69dd7a2c0c23ebfe84f46ceac5ea921d7321a5ba1ab023bcce3e32e"
+  }
+}

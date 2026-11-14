@@ -8,6 +8,9 @@ import codes.castled.allium.command.moderation.VanishCommand;
 import codes.castled.allium.core.AbstractModule;
 import codes.castled.allium.moderation.ModerationRepository;
 import codes.castled.allium.moderation.ModerationService;
+import codes.castled.allium.moderation.DisciplineService;
+import codes.castled.allium.command.moderation.DisciplineCommand;
+import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.storage.SqlDialect;
 
 import java.sql.SQLException;
@@ -22,6 +25,7 @@ public final class ModerationModule extends AbstractModule {
 
     private ModerationRepository repository;
     private ModerationService moderation;
+    private DisciplineService discipline;
 
     public ModerationModule(PluginStart plugin) {
         super(plugin);
@@ -61,6 +65,19 @@ public final class ModerationModule extends AbstractModule {
             messagingModule.messaging().setMuteSource(moderation);
         }
 
+        Executor disciplinePool = plugin.getScheduler().boundedPool("Allium-Discipline", 1, 512);
+        discipline = new DisciplineService(plugin, repository, disciplinePool, System::currentTimeMillis);
+        try {
+            discipline.enable();
+        } catch (Exception failure) {
+            discipline.disable();
+            throw new IllegalStateException("discipline enforcement could not initialize", failure);
+        }
+        moderation.setActionPolicy(discipline::authorizeAction);
+        for (var spec : CoreCommandSpecs.DISCIPLINE_SPECS) {
+            plugin.getCommandManager().register(new DisciplineCommand(plugin, discipline, spec));
+        }
+
         plugin.getCommandManager().register(new VanishCommand(plugin, moderation));
         plugin.getCommandManager().register(new MuteCommand(plugin, moderation));
         plugin.getCommandManager().register(new UnmuteCommand(plugin, moderation));
@@ -75,6 +92,9 @@ public final class ModerationModule extends AbstractModule {
             messagingModule.messaging().setVanishSource(null);
             messagingModule.messaging().setMuteSource(null);
         }
+        if (discipline != null) {
+            discipline.disable();
+        }
         if (moderation != null) {
             moderation.disable();
         }
@@ -82,6 +102,10 @@ public final class ModerationModule extends AbstractModule {
 
     public ModerationService moderation() {
         return moderation;
+    }
+
+    public DisciplineService discipline() {
+        return discipline;
     }
 
     public ModerationRepository repository() {

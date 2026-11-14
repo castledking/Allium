@@ -109,6 +109,14 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             }
 
             @Override
+            public List<String> jailNames(String prefix) {
+                if (plugin.getModuleManager() == null
+                        || !(plugin.getModuleManager().getModule("moderation") instanceof codes.castled.allium.module.ModerationModule module)
+                        || !module.isEnabled() || module.discipline() == null) return List.of();
+                return module.discipline().completeJails(prefix);
+            }
+
+            @Override
             public boolean hasPermission(String permissionNode) {
                 return permissionNode == null || permissionNode.isEmpty() || sender.hasPermission(permissionNode);
             }

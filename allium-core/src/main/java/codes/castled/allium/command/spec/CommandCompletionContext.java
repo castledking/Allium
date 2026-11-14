@@ -37,4 +37,6 @@ public interface CommandCompletionContext {
 
     /** Previously loaded kit names (filtered by access unless {@code allAdminKits} is true). */
     default List<String> kitNames(boolean allAdminKits, String prefix) { return List.of(); }
+
+    default List<String> jailNames(String prefix) { return List.of(); }
 }

@@ -55,63 +55,65 @@ class ModerationRepositoryAndDurationTest {
 
     @Test
     void repositoryPersistsVanishMutesExpiryAndAuditRecords(@TempDir Path tempDir) throws Exception {
-        for (ModerationDatabases.Db db : ModerationDatabases.all(tempDir)) {
-            AtomicLong clock = new AtomicLong(1_000_000L);
-            ModerationRepository repo = new ModerationRepository(db.source(), db.dialect(), clock::get);
+        for (ModerationDatabases.Db database : ModerationDatabases.all(tempDir)) {
+            try (var db = database) {
+                AtomicLong clock = new AtomicLong(1_000_000L);
+                ModerationRepository repo = new ModerationRepository(db.source(), db.dialect(), clock::get);
 
-            assertEquals(1, repo.migrate(), db.name());
-            assertEquals(1, repo.migrate(), db.name());
+                assertEquals(2, repo.migrate(), db.name());
+                assertEquals(2, repo.migrate(), db.name());
 
-            UUID staffA = UUID.randomUUID();
-            UUID staffB = UUID.randomUUID();
-            assertFalse(repo.loadVanished(staffA), db.name());
+                UUID staffA = UUID.randomUUID();
+                UUID staffB = UUID.randomUUID();
+                assertFalse(repo.loadVanished(staffA), db.name());
 
-            repo.setVanished(staffA, true, "Console");
-            repo.setVanished(staffB, true, "StaffA");
-            assertTrue(repo.loadVanished(staffA), db.name());
-            assertEquals(Set.of(staffA, staffB), repo.loadVanishedPlayers(), db.name());
+                repo.setVanished(staffA, true, "Console");
+                repo.setVanished(staffB, true, "StaffA");
+                assertTrue(repo.loadVanished(staffA), db.name());
+                assertEquals(Set.of(staffA, staffB), repo.loadVanishedPlayers(), db.name());
 
-            // Verify UPSERT on vanished player works cleanly on both SQLite and MariaDB/MySQL
-            repo.setVanished(staffB, true, "Console");
-            assertTrue(repo.loadVanished(staffB), db.name());
+                // Verify UPSERT on vanished player works cleanly on both SQLite and MariaDB/MySQL
+                repo.setVanished(staffB, true, "Console");
+                assertTrue(repo.loadVanished(staffB), db.name());
 
-            repo.setVanished(staffA, false, "Console");
-            assertFalse(repo.loadVanished(staffA), db.name());
-            assertEquals(Set.of(staffB), repo.loadVanishedPlayers(), db.name());
+                repo.setVanished(staffA, false, "Console");
+                assertFalse(repo.loadVanished(staffA), db.name());
+                assertEquals(Set.of(staffB), repo.loadVanishedPlayers(), db.name());
 
-            UUID mutedPerm = UUID.randomUUID();
-            UUID mutedTemp = UUID.randomUUID();
-            MuteRecord permRecord = new MuteRecord(mutedPerm, "PermBob", "Admin", "Spamming chat", clock.get(), null);
-            MuteRecord tempRecord = new MuteRecord(mutedTemp, "TempAlice", "Admin", "Cooldown", clock.get(), clock.get() + 5_000L);
+                UUID mutedPerm = UUID.randomUUID();
+                UUID mutedTemp = UUID.randomUUID();
+                MuteRecord permRecord = new MuteRecord(mutedPerm, "PermBob", "Admin", "Spamming chat", clock.get(), null);
+                MuteRecord tempRecord = new MuteRecord(mutedTemp, "TempAlice", "Admin", "Cooldown", clock.get(), clock.get() + 5_000L);
 
-            repo.saveMute(permRecord);
-            repo.saveMute(tempRecord);
+                repo.saveMute(permRecord);
+                repo.saveMute(tempRecord);
 
-            // Verify UPSERT on existing mute works cleanly on both SQLite and MariaDB/MySQL
-            MuteRecord updatedPerm = new MuteRecord(mutedPerm, "PermBob", "Console", "Repeated spam", clock.get() + 100L, null);
-            repo.saveMute(updatedPerm);
+                // Verify UPSERT on existing mute works cleanly on both SQLite and MariaDB/MySQL
+                MuteRecord updatedPerm = new MuteRecord(mutedPerm, "PermBob", "Console", "Repeated spam", clock.get() + 100L, null);
+                repo.saveMute(updatedPerm);
 
-            assertEquals(2, repo.loadActiveMutes().size(), db.name());
-            assertEquals(Optional.of(updatedPerm), repo.loadActiveMute(mutedPerm), db.name());
-            assertEquals(Optional.of(tempRecord), repo.loadActiveMute(mutedTemp), db.name());
+                assertEquals(2, repo.loadActiveMutes().size(), db.name());
+                assertEquals(Optional.of(updatedPerm), repo.loadActiveMute(mutedPerm), db.name());
+                assertEquals(Optional.of(tempRecord), repo.loadActiveMute(mutedTemp), db.name());
 
-            // Advance clock past tempRecord expiration
-            clock.addAndGet(6_000L);
-            assertTrue(repo.loadActiveMute(mutedTemp).isEmpty(), db.name());
-            List<MuteRecord> remaining = repo.loadActiveMutes();
-            assertEquals(1, remaining.size(), db.name());
-            assertEquals(mutedPerm, remaining.get(0).playerUuid(), db.name());
+                // Advance clock past tempRecord expiration
+                clock.addAndGet(6_000L);
+                assertTrue(repo.loadActiveMute(mutedTemp).isEmpty(), db.name());
+                List<MuteRecord> remaining = repo.loadActiveMutes();
+                assertEquals(1, remaining.size(), db.name());
+                assertEquals(mutedPerm, remaining.get(0).playerUuid(), db.name());
 
-            assertTrue(repo.removeMute(mutedPerm), db.name());
-            assertFalse(repo.removeMute(mutedPerm), db.name());
-            assertTrue(repo.loadActiveMutes().isEmpty(), db.name());
+                assertTrue(repo.removeMute(mutedPerm), db.name());
+                assertFalse(repo.removeMute(mutedPerm), db.name());
+                assertTrue(repo.loadActiveMutes().isEmpty(), db.name());
 
-            repo.recordAudit("VANISH_ON", "StaffA", staffA, "StaffA", "vanished=true");
-            repo.recordAudit("MUTE", "Admin", mutedTemp, "TempAlice", "duration=5s reason=Cooldown");
-            List<ModerationAuditRecord> audits = repo.loadRecentAudit(10);
-            assertEquals(2, audits.size(), db.name());
-            assertEquals("MUTE", audits.get(0).action(), db.name());
-            assertEquals("VANISH_ON", audits.get(1).action(), db.name());
+                repo.recordAudit("VANISH_ON", "StaffA", staffA, "StaffA", "vanished=true");
+                repo.recordAudit("MUTE", "Admin", mutedTemp, "TempAlice", "duration=5s reason=Cooldown");
+                List<ModerationAuditRecord> audits = repo.loadRecentAudit(10);
+                assertEquals(2, audits.size(), db.name());
+                assertEquals("MUTE", audits.get(0).action(), db.name());
+                assertEquals("VANISH_ON", audits.get(1).action(), db.name());
+            }
         }
     }
 

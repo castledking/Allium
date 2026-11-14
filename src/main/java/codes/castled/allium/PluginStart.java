@@ -263,6 +263,7 @@ public final class PluginStart extends JavaPlugin {
             if (moduleManager.getModule("moderation") instanceof codes.castled.allium.module.ModerationModule mod && mod.isEnabled()
                     && mod.moderation() != null) {
                 mod.moderation().reloadSettings();
+                if (mod.discipline() != null) mod.discipline().reloadSettings();
             }
             if (moduleManager.getModule("info") instanceof codes.castled.allium.module.PlayerInfoModule info && info.isEnabled()
                     && info.info() != null) {

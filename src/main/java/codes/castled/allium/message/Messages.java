@@ -137,6 +137,24 @@ public enum Messages {
     VANISH_CHAT_BLOCKED("moderation.vanish-chat-blocked", "{prefix} &cYou cannot send public chat while vanished. Use &f/vanish off &cor &f/msg&c."),
     MUTE_UNAVAILABLE("moderation.mute-unavailable", "{prefix} &cYour moderation status is still loading; chat and messaging are temporarily unavailable. Try again shortly."),
 
+    // -- Persistent discipline (S19) --
+    DISCIPLINE_USAGE("moderation.discipline.usage", "{prefix} &cUsage: {usage}"),
+    DISCIPLINE_UNAVAILABLE("moderation.discipline.unavailable", "{prefix} &cModeration data is unavailable. Try again shortly."),
+    DISCIPLINE_BUSY("moderation.discipline.busy", "{prefix} &cA moderation action is already pending or rate limited. Try again shortly."),
+    DISCIPLINE_EXEMPT("moderation.discipline.exempt", "{prefix} &cYou cannot act on this player under the moderation hierarchy."),
+    DISCIPLINE_SUCCESS("moderation.discipline.success", "{prefix} &a{action}: {player}."),
+    DISCIPLINE_NOT_ACTIVE("moderation.discipline.not-active", "{prefix} &cNo matching active record for {player}."),
+    DISCIPLINE_IP_DISABLED("moderation.discipline.ip-disabled", "{prefix} &cIP bans are disabled in configuration."),
+    DISCIPLINE_JAIL_NOT_FOUND("moderation.discipline.jail-not-found", "{prefix} &cJail {jail} was not found."),
+    DISCIPLINE_UNSAFE_LOCATION("moderation.discipline.unsafe-location", "{prefix} &cThe jail or return location is unavailable or unsafe."),
+    DISCIPLINE_BAN_DENIED("moderation.discipline.ban-denied", "You are banned: {message}"),
+    DISCIPLINE_LOGIN_UNAVAILABLE("moderation.discipline.login-unavailable", "Moderation data is unavailable. Please try again shortly."),
+    DISCIPLINE_KICK_NOTICE("moderation.discipline.kick-notice", "You were kicked: {message}"),
+    DISCIPLINE_WARNING_NOTICE("moderation.discipline.warning-notice", "{prefix} &eWarning: {message}"),
+    DISCIPLINE_LIST_HEADER("moderation.discipline.list-header", "{prefix} &fModeration records ({count}):"),
+    DISCIPLINE_LIST_ENTRY("moderation.discipline.list-entry", "&7- {player} by {actor}: {message}"),
+    DISCIPLINE_LIST_EMPTY("moderation.discipline.list-empty", "{prefix} &7No moderation records found."),
+
     // -- Player info utilities (S18) --
     INFO_LIST_EMPTY("info.list.empty", "{prefix} &7There are &f0&7/&f{max} &7players online."),
     INFO_LIST_HEADER("info.list.header", "{prefix} &fOnline players &7({online}/{max}):"),

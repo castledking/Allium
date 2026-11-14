@@ -252,6 +252,22 @@ warps:
 
 # Vanish and mute settings (S17).
 moderation:
+  discipline:
+    # DENY keeps known bans effective and refuses new logins when authoritative data is unavailable.
+    # ALLOW trades that protection for availability; already-loaded active bans still refuse login.
+    ban-load-failure-policy: DENY
+    # IP bans can affect other people sharing an address; never enabled implicitly.
+    ip-ban-enabled: false
+    exempt-permission: allium.moderation.exempt
+    # Console and an explicitly granted allium.moderation.bypass may override the hierarchy.
+    # Ordinary staff cannot act on a target with equal or higher action privileges.
+    rate-limit-millis: 1000
+    # Ascending ranks; holding any permission in a row grants that rank. Bypass stays explicit.
+    staff-rank-permissions:
+      - allium.mute,allium.unmute,allium.warn,allium.notes
+      - allium.freeze,allium.kick
+      - allium.jail,allium.tempban
+      - allium.ban,allium.ipban
   # How long login waits (off the server thread) for vanish and mute state to load (0-10000 ms).
   preload-wait-millis: 2000
   load-retry:

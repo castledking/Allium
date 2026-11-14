@@ -26,5 +26,7 @@ public enum SuggestionSource {
     /** Loaded kits accessible to the sender (or all loaded kits for admin delete). */
     KIT_NAMES,
     /** All loaded kit names for administrative commands such as {@code /delkit}. */
-    ALL_KIT_NAMES
+    ALL_KIT_NAMES,
+    /** Loaded jail names for staff commands; never performs storage I/O. */
+    JAIL_NAMES
 }

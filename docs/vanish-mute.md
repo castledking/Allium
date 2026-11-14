@@ -4,6 +4,12 @@ S17 replaces the stub `VanishSource` and `MuteSource` hooks across messaging, so
 teleport requests, warps, and player-targeting commands with persistent, bounded-storage
 implementations in `ModerationService` and `ModerationRepository`.
 
+> **Platform recommendation:** **Paper (26.3 / modern Paper) is recommended for full vanish.**
+> Spigot lacks APIs to suppress vanilla `minecraft:*` Brigadier tab suggestions, advancement
+> announcements (`PlayerAdvancementDoneEvent#message`), and direct physical XP orb pickup on
+> collision (`PlayerPickupExperienceEvent`). When vanish is enabled on a non-Paper server,
+> Allium logs a startup warning listing those three known leaks.
+
 ## Commands and permissions
 
 ### Vanish
@@ -49,7 +55,7 @@ When a player is vanished (`ModerationService#isVanished`):
      recomputed at:
      1. plugin enable / `/vanish` state changes,
      2. any player join (`PlayerJoinEvent` at `LOWEST`), and
-     3. `/allium reload` (`ModerationService#reload`, calling `recomputeVisibility()`).
+     3. `/allium reload` (`ModerationService#reloadSettings`, calling `syncAllOnlineVisibility()`).
    - **Mid-session permission-change limitation:** if a permission plugin grants or revokes
      `allium.vanish.see` for an already-connected viewer without triggering reconnect, Allium-owned
      command/tab checks (`PlayerNameVisibility#canSeeTarget`) update immediately on the new
@@ -94,11 +100,9 @@ When a player is vanished (`ModerationService#isVanished`):
      `chat.type.advancement.task` broadcast still fires unless `gamerule announceAdvancements false`
      is configured.
    - **Vanished player's public chat (`moderation.vanish.allow-public-chat`):** configurable boolean,
-     default `false`. When `false`, public chat sent by a vanished player is cancelled (unless they
-     also hold `allium.vanish.see`? Wait — no, ALL vanished players are blocked from accidentally
-     chatting while vanished unless `moderation.vanish.allow-public-chat: true`, with a reminder
-     notice `moderation.vanish-chat-blocked`). Setting `moderation.vanish.allow-public-chat: true`
-     allows public chat while vanished.
+     default `false`. When `false`, public chat sent by a vanished player is blocked with
+     `moderation.vanish-chat-blocked`. Setting `moderation.vanish.allow-public-chat: true` allows
+     public chat while vanished.
    - **XP orb attraction & pickup:** `EntityTargetEvent` targeting a vanished player (such as
      `ExperienceOrb` `CLOSEST_PLAYER` homing) is cancelled on both Spigot 1.20.1 and Paper 26.3. On
      Paper 26.3+, `PlayerPickupExperienceEvent` is additionally cancelled reflectively so incidental
@@ -141,34 +145,51 @@ When a player is vanished (`ModerationService#isVanished`):
    - `ModerationService` listens to `AsyncPlayerChatEvent` at **both** `EventPriority.LOWEST`
      (cancel immediately and notify the player) and `EventPriority.HIGHEST` (re-cancel silently if
      another plugin's chat listener un-cancelled the event).
-2. **Unified `MuteSource` hook & configurable `muted-commands`:**
-   - `ModerationService` implements `MuteSource` (`MessagingService` and `MailService` enforce the
-     same mute state across `/msg`, `/reply`, `/mail send`, and `/mail gift`).
-   - `moderation.mute.muted-commands` (configurable list, default: `/me`, `/say`, `/tell`,
-     `/minecraft:msg`, `/teammsg`, `/msg`, `/reply`, `/r`, `/w`, `/whisper`, `/m`, `/t`,
-     `/mail send`, `/mail gift`) blocks command-based speech via `PlayerCommandPreprocessEvent` at
-     `LOWEST` when muted or fail-closed.
-3. **Fail-closed mute contract while loading or failed (`LOADING` / `FAILED`):**
-   - On join, if a player's moderation preload has not finished (`LOADING`) or failed (`FAILED`),
-     **mute checks fail closed** across public chat (`LOWEST` & `HIGHEST`), `muted-commands`,
-     `/msg`, `/reply`, `/mail send`, and `/mail gift`, returning `moderation.mute-unavailable`
-     (default: `Your moderation state is still loading or unavailable; chat and private messages are temporarily blocked.`).
+2. **Canonical `CommandMap` muted-command resolution:**
+   - `moderation.mute.muted-commands` defaults to canonical commands only:
+     `/me`, `/say`, `/tell`, `/minecraft:msg`, `/teammsg`, `/msg`, `/reply`, `/mail send`, and
+     `/mail gift`.
+   - At runtime (`PlayerCommandPreprocessEvent` at `LOWEST`), `ModerationService` resolves both
+     the typed command label and each configured rule's root label through Bukkit's `CommandMap`
+     and compares **canonical command identity** via `CommandMapBridge#canonicalCommandIdentity`
+     (comparing `Command` instances directly for plugin commands, and unwrapping
+     `VanillaCommandWrapper#vanillaCommand` + `CommandNode#getRedirect()` for Brigadier aliases).
+   - This intercepts aliases and namespaced forms automatically — including `/w`, `/whisper`, `/m`,
+     `/t`, `/r`, `/allium:msg`, `/tm`, `/minecraft:tm`, `/minecraft:tell`, `/minecraft:w`,
+     `/minecraft:me`, `/minecraft:say`, `/minecraft:teammsg`, and `/allium:mail send` — without
+     enumerating aliases in `config.yml`.
+3. **Configurable fail-closed mute contract (`moderation.mute.fail-closed`):**
+   - Controlled by `moderation.mute.fail-closed` (default `true`, live-reloadable via
+     `/allium reload`).
+   - When `true` (default): if a joining player's moderation preload has not finished (`LOADING`) or
+     failed (`FAILED`), mute checks fail closed across public chat (`LOWEST` & `HIGHEST`),
+     `muted-commands`, `/msg`, `/reply`, `/mail send`, and `/mail gift`, returning
+     `moderation.mute-unavailable`.
    - Background retries (`moderation.load-retry`: `retries: 4`, `first-delay-millis: 1000`,
      `max-delay-millis: 15000`) automatically re-query the repository with capped exponential
      backoff so transient database interruptions recover without relog.
-   - **Trade-off / cost:** this matches the S03 preferences fail-closed contract — a muted player can
-     never slip through during a slow or errored database load, at the cost that unmuted players
-     joining during a DB outage/stall are temporarily unable to chat or send mail until a background
-     retry reaches `READY`.
+   - **Outage cost (`fail-closed: true` vs `false`):** with `fail-closed: true` (matching S03's
+     preferences contract), a muted player can never slip through during a slow or errored database
+     load, at the **outage cost that unmuted players who join during a database outage or stall
+     cannot chat, `/msg`, `/mail`, or run `muted-commands` until a background retry reaches `READY`**.
+     Setting `moderation.mute.fail-closed: false` and running `/allium reload` lifts that outage
+     block for unmuted players, at the trade-off that a muted player joining during a DB outage
+     can speak until a background retry loads their mute record.
 4. **Automatic timed mute expiration without restart:**
    - Every timed mute stores `expires_at` (epoch ms). `ModerationService#activeMute` checks
      `record.isExpired(now)` lazily, and `tickExpiredMutes` (500 ms) clears expired mutes, deletes
      the SQL row, and records `MUTE_EXPIRED`.
+5. **Known mute limits:**
+   - **Sign, book, and anvil-rename text:** mute enforcement covers chat, private messages, mail,
+     and `CommandMap`-resolved `muted-commands`. Player-written text on signs (`SignChangeEvent`),
+     in writable/written books (`PlayerEditBookEvent`), and on item renames in anvils
+     (`PrepareAnvilEvent`) is not intercepted by mute enforcement.
 
 ## Storage and audit trail
 
-All SQL operations run on a dedicated bounded executor (`allium-moderation`, 1 thread, queue capacity
-256) with schema migrations verified on both **SQLite** and **MariaDB 10.11 / MySQL**:
+All SQL operations run on a dedicated bounded executor (`Allium-Moderation`, 2 workers on MySQL /
+1 worker on SQLite, queue capacity 512) with schema migrations verified on both **SQLite** and
+**MariaDB 10.11 / MySQL**:
 - `allium_vanish`: `(player_uuid PRIMARY KEY, vanished, updated_at, actor_name)`
 - `allium_mutes`: `(player_uuid PRIMARY KEY, player_name, actor_name, reason, created_at, expires_at)`
 - `allium_moderation_audit`: `(id PRIMARY KEY AUTO_INCREMENT, created_at, action, actor_name, target_uuid, target_name, detail)`

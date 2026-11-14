@@ -473,8 +473,8 @@ permissions:
     description: Allows /seen
     default: true
   allium.whois:
-    description: Allows /whois
-    default: true
+    description: Allows /whois (UUID, name history, staff-only location)
+    default: op
   allium.whois.location:
     description: Shows online player coordinates in /whois (staff only)
     default: op

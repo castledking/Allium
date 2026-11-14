@@ -444,6 +444,14 @@ max-tick-time=120000
                 and any('Moderation enabled' in s for s in self.logs[start:])
                 and any('S17G-GATE READY' in s for s in self.logs[start:]),
                 self.name + ': ' + expected_db + ', moderation module, and helper enabled')
+        has_spigot_warn = any('Vanish is enabled on' in s and 'vanilla tab completion' in s
+                              and 'advancement announcements' in s and 'XP orb pickup' in s
+                              for s in self.logs[start:])
+        if self.kind == 'spigot':
+            require(has_spigot_warn, self.name + ': Spigot startup logs vanish leak warning (vanilla tab completion, advancement announcements, XP orb pickup)')
+        else:
+            require(not any('Vanish is enabled on' in s for s in self.logs[start:]),
+                    self.name + ': Paper startup does not emit Spigot vanish leak warning')
 
     def console(self, s):
         self.proc.stdin.write(s + '\n')
@@ -791,9 +799,9 @@ def test_mute_chat_msg_reply_mail_and_expiry(lane):
     require(not lane.fixture('state')['normMuted'],
             lane.name + ': invalid digit-leading duration token "10x" is rejected with usage without muting ModNorm')
 
-    # 1. Staff mutes ModNorm for 8s with a reason
+    # 1. Staff mutes ModNorm for 25s with a reason
     norm_mute_mark = len(norm.lines)
-    staff.command('mute ModNorm 15s Spamming global chat', 'ModNorm muted for')
+    staff.command('mute ModNorm 25s Spamming global chat', 'ModNorm muted for')
     norm.chat(norm_mute_mark, 'You have been muted')
 
     staff.command('mutes', 'Active mutes (1)')
@@ -813,13 +821,19 @@ def test_mute_chat_msg_reply_mail_and_expiry(lane):
             lane.name + ': HIGHEST chat listener re-cancels muted chat even after NORMAL un-cancel sabotage',
             dict(blocked=blocked_chat, sabotage=sab))
 
-    # 3. Configurable muted-commands list (/me, /say, /tell, /minecraft:msg, /teammsg, /msg, /reply, /mail send, /mail gift)
+    # 3. Configurable muted-commands list resolved via CommandMap identity (including aliases and namespaced forms)
     for muted_cmd in [
         'me waves silently',
+        'minecraft:me namespaced me attempt',
         'say announcement attempt',
+        'minecraft:say namespaced say attempt',
         'tell ModObs whisper attempt',
+        'w ModObs alias w attempt',
+        'minecraft:tell ModObs namespaced tell attempt',
         'minecraft:msg ModObs vanilla msg attempt',
         'teammsg team attempt',
+        'tm alias tm attempt',
+        'minecraft:teammsg namespaced teammsg attempt',
         'msg ModObs secret pm while muted',
         'reply reply while muted',
         'mail send ModObs mail body while muted',
@@ -829,8 +843,8 @@ def test_mute_chat_msg_reply_mail_and_expiry(lane):
         require('Spamming global chat' in blocked['plain'],
                 f'{lane.name}: muted command "/{muted_cmd}" blocked with remaining time and reason')
 
-    # 4. Wait for timed mute (8s) to expire automatically without restart
-    wait(lambda: not lane.fixture('state')['normMuted'], lane.name + ': timed mute expired automatically', 25)
+    # 4. Wait for timed mute (25s) to expire automatically without restart
+    wait(lambda: not lane.fixture('state')['normMuted'], lane.name + ': timed mute expired automatically', 35)
     staff.command('mutes', 'There are no active mutes')
 
     obs_after_mark = len(obs.lines)

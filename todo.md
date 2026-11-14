@@ -87,49 +87,16 @@ manual visual checklist remain outside the S12 live claims. S13 begins M3 after 
 
 ## M3 status — in progress
 
-**S13 complete:** the local safe teleport/request/back/spawn slice passes its
-Spigot 1.20.1 and Paper 26.3 real-client gate; see [the contract](docs/teleport.md)
-and [results](tests/live/teleport/RESULTS.md). The report preserves Paper's original
-failures and their explicit closures: exact retained permission-response evidence
-and a focused live death-back rerun after natural respawn protection expired.
-All 488 S13 unit tests passed. **S15 complete:** homes and warps now use the same
-teleport pipeline, with highest-grant/staff home limits, revision-bound overwrite
-confirmation, private warp permissions and filtered cache-only completion.
-[S15 results](tests/live/travel/RESULTS.md): 12 cases / 406 checks on each of
-Spigot 1.20.1 and Paper 26.3, including restart. **S16 complete:** free kits (`/kit`,
-`/kits`, `/kit <name> [player]`, `/createkit`, `/delkit`) built on `ItemSpecParser`,
-`ItemLibrary` and `ItemDeliveryService`, with false-default per-kit permissions,
-persisted cooldowns and one-time status, paid-kit denial until M3 reservations exist,
-and durable delivery records + saved `player.dat` receipt verification.
-[S16 results](tests/live/kits/RESULTS.md): 7 cases / 57 checks on each of
-Spigot 1.20.1 and Paper 26.3 (114 live checks total). Full build: 531 tests pass. **S17 complete (+ follow-ups):**
-persistent `/vanish` (`/v`) and `/mute`, `/unmute`, `/mutes` (`/mutelist`, `/mute list`)
-replacing the stub `VanishSource` and `MuteSource` hooks across messaging, social spy, mail,
-teleport, and player-targeting commands, hardened with vanilla leak controls, `HIGHEST` chat
-re-cancellation, configurable `muted-commands`, digit-leading duration rejection, fail-closed
-preload checks, opt-in live containers, and real MariaDB testing; see
-[docs/vanish-mute.md](docs/vanish-mute.md) and
-[S17 results](tests/live/moderation/RESULTS.md) (176/176 checks on Spigot 1.20.1 SQLite,
-176/176 on Paper 26.3 SQLite, and 71/71 on Spigot 1.20.1 MariaDB 10.11; 537 JUnit tests across
-all modules pass against SQLite and MariaDB). **S18 complete:** vanish-aware `/list`,
-`/seen`, `/whois`, `/near`, `/afk` (auto-AFK, optional kick-on-afk, vanish-coordinated sleep ignore),
-and `/i`/`/item` self-use aliases over `/give` built on bounded SQLite/MySQL storage (`allium_player_info`,
-`allium_player_name_history` v2); see [docs/player-info.md](docs/player-info.md) and
-[S18 results](tests/live/playerinfo/RESULTS.md) (33/33 checks on Spigot 1.20.1 and 33/33 on Paper 26.3;
-545 JUnit tests across all modules pass against SQLite and MariaDB 10.11).
-The economy implementation remains later work. **S14 design complete:** [economy-design.md](docs/economy-design.md)
-defines the replacement and records measured JDBC commit costs. The Vault adapter
-remains unimplemented and release-gated; this does not make the existing scaffold
-production ready.
+| Slice | Commit | Live lanes | Storage backends | Test count | Limits |
+| --- | --- | --- | --- | --- | --- |
+| **S13** Teleports, requests, `/back`, `/spawn` | `bcff02a` | Spigot 1.20.1 (`15/15` cases, `117/117` checks); Paper 26.3 (`13/15` original + `22/22` death supplement + `84` retained audit checks); [results](tests/live/teleport/RESULTS.md) | SQLite WAL live; no MySQL live | `488` (`+47`) | No MySQL/MariaDB live, Folia, selectors, economy, or cross-server teleport; raw Paper client moved-too-quickly warnings |
+| **S14** Economy design only | `4104707`, `a8330a2`, `799db88` | Not run (`unit-only` + standalone JDBC probe on SQLite WAL FULL/NORMAL & durable MySQL, 6 kill cases) | Probe benchmarked SQLite WAL & MySQL; engine unimplemented | Probe + scaffold tests (`EconomyModuleRegistrationTest`) | Replacement economy & gated Vault adapter remain unimplemented; `economy.scaffold-vault-provider-enabled: false` temporary safety gate |
+| **S15** Homes & private warps | `ce6350d` | Spigot 1.20.1 (`12/12` cases, `406/406` checks); Paper 26.3 (`12/12` cases, `406/406` checks); [results](tests/live/travel/RESULTS.md) | SQLite WAL live; no MySQL live | `518` (`+30`) | SQLite live only; no MySQL, Folia, provider plugins, pet teleport, offline restore, or cross-server sync |
+| **S16** Free kits & durable receipt recovery | `1404bc5`, `c295bb6` | Spigot 1.20.1 (`7/7` cases, `65/65` checks); Paper 26.3 (`7/7` cases, `65/65` checks); `shared-mysql` two-server Spigot 1.20.1 (`1/1` case, `11/11` checks) = `15` cases / `141` checks; [results](tests/live/kits/RESULTS.md) | SQLite WAL live (`spigot`, `paper`); MariaDB 11.4 live (`shared-mysql`) & JUnit | `531` (`1404bc5`); `528` after S16 follow-up/S17 merge (see `019fb55`) | Single-server lanes used `KitGate` test `nexo` stub (Paper 1.21.8 covers real providers); paid kits denied (`cost > '0.00'`) & `[Kit]` signs deferred |
+| **S17** Persistent `/vanish`, `/mute`, `/unmute`, `/mutes` | `44ed23b`, `019fb55` | Spigot 1.20.1 (`4/4` scopes, `176/176` checks); Paper 26.3 (`4/4` scopes, `176/176` checks); Spigot 1.20.1 MariaDB 10.11 (`1/1` scope, `71/71` checks) = `423` checks; [results](tests/live/moderation/RESULTS.md) | SQLite WAL & MariaDB 10.11 (both live + JUnit) | `528` (`44ed23b`) -> `537` (`019fb55`) | Spigot 1.20.1 lacks Paper APIs for vanilla tab filtering, advancement broadcasts, and collision XP orb pickup (startup warning emitted); sign/book/anvil text outside chat/commands |
+| **S18** Player info utilities & `/i`, `/item` | `a81cf3b` | Spigot 1.20.1 (`33/33` checks); Paper 26.3 (`33/33` checks); [results](tests/live/playerinfo/RESULTS.md) | SQLite WAL live; MariaDB 10.11 & SQLite via JUnit | `545` (`+8`: `349` root + `192` core + `4` api) | Live lanes on SQLite only (`PlayerInfoRepositoryTest` & `PlayerNameRepositoryTest` cover MariaDB 10.11); Vault primary-group fallback unit-only |
 
-S14 revision measures the single-commit path on SQLite WAL FULL/NORMAL and durable
-MySQL, with six connection-kill recovery cases. Vault double amounts have a narrow
-cent-boundary snap; command/core decimals remain strict. Durability remains the
-user's choice. Policy mutexes/shared settings epochs belong to the multi-server
-phase. The unsafe scaffold provider now requires explicit, off-by-default
-`economy.scaffold-vault-provider-enabled` as a temporary safety state (release condition:
-the replacement economy engine and gated Vault adapter replace the scaffold entirely); no
-replacement engine is implemented yet.
+Economy implementation remains later work ([economy-design.md](docs/economy-design.md)): Vault double amounts use a narrow cent-boundary snap while core decimals stay strict, and `economy.scaffold-vault-provider-enabled` remains off by default until the replacement economy engine ships.
 
 ## Staging checklist (before deploying to SF)
 

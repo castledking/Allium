@@ -19,12 +19,13 @@ migration in `PlayerNameRepository`), plus `/i` and `/item` self-use aliases for
 - `/seen <player>`:
   - Shows online duration + `First joined` for visible online players, or offline `last_seen`
     (relative duration + UTC timestamp) + `First joined` for offline or hidden vanished players.
-  - Permission: `allium.seen` (default `true`).
+  - Permission: `allium.seen` (default `true` — public by default).
 - `/whois <player>`:
   - Shows header (`online`/`offline`), UUID, `First joined` + `Online for` / `Last seen`,
     staff-only `Location: <world> (<x>, <y>, <z>)` (only when visible-online AND viewer holds
     `allium.whois.location`), and `Known names` history from `allium_player_name_history`.
-  - Permissions: `allium.whois` (default `op`), `allium.whois.location` (default `op`).
+  - Permissions: `allium.whois` (default `op` — staff only, protecting UUID, name history, and
+    location), `allium.whois.location` (default `op`).
 - `/near [radius]`:
   - Lists visible online players in the same world within `radius` blocks (default
     `info.near.default-radius` = `200`, max `info.near.max-radius` = `500`), sorted ascending by
@@ -38,7 +39,8 @@ migration in `PlayerNameRepository`), plus `/i` and `/item` self-use aliases for
     clicks clear AFK.
   - **Optional kick on AFK:** `info.afk.kick-on-afk` is **false by default**. When enabled,
     non-exempt players remaining AFK for `info.afk.kick-after-seconds` (default `600`) are kicked.
-  - Permissions: `allium.afk` (default `true`), `allium.afk.kick.exempt` (default `op`).
+  - Permissions: `allium.afk` (default `true`), `allium.afk.kick.exempt` (default `false`, explicit
+    only — not included in `allium.*`).
 
 ### Self-use give aliases (`/i`, `/item`)
 - `/i <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]` (alias `/item`):

@@ -262,7 +262,13 @@ moderation:
     # Block public chat while vanished so staff cannot accidentally reveal themselves.
     allow-public-chat: false
   mute:
-    # Commands blocked while muted or while mute state is still loading / failed to load.
+    # When true (default), speech is blocked while a joining player's mute state is still loading
+    # or failed to load. Outage cost: during a DB outage, unmuted joining players cannot chat or
+    # use muted-commands until background retries succeed (or this switch is disabled and reloaded).
+    fail-closed: true
+    # Canonical commands blocked while muted (resolved through Bukkit's CommandMap by identity,
+    # automatically covering aliases and namespaced forms such as /w, /tm, /minecraft:tell,
+    # /minecraft:me, /minecraft:say, and /minecraft:teammsg).
     muted-commands:
       - /me
       - /say
@@ -270,14 +276,13 @@ moderation:
       - /minecraft:msg
       - /teammsg
       - /msg
+      - /allium:msg
       - /reply
-      - /r
-      - /w
-      - /whisper
-      - /m
-      - /t
+      - /allium:reply
       - /mail send
+      - /allium:mail send
       - /mail gift
+      - /allium:mail gift
 
 # Player info utilities (S18): /list, /seen, /whois, /near, /afk.
 info:

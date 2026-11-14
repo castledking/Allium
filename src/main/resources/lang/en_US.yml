@@ -274,3 +274,13 @@ messaging:
     fallback-silent: "{prefix} &cThe server default volume is 0, so message sounds stay muted. &7Use &f/mfx volume <0-1>&7."
     reset: "{prefix} &aYou now follow the server's message sound volume, &f{volume}&a."
     disabled: "{prefix} &cMessage sound preferences are disabled on this server."
+
+travel:
+  loading: "{prefix} &cTravel data is loading. Try again shortly."
+  busy: "{prefix} &cTravel storage is busy. Try again shortly."
+  storage-failed: "{prefix} &cTravel data could not be saved. Try again shortly."
+  name-invalid: "{prefix} &cUse 1-32 letters, digits, underscores or hyphens for the name."
+  confirm: "{prefix} &eThis name already exists. Run &f{command} &eto confirm the captured location."
+  confirm-expired: "{prefix} &cNo current overwrite confirmation. Run the set command again."
+  changed: "{prefix} &cThis destination changed. Run the command again."
+  limit: "{prefix} &cYou have reached your home limit ({limit})."

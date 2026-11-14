@@ -32,4 +32,6 @@ public interface CommandCompletionContext {
     default List<String> mailIds(boolean claimableOnly) {
         return List.of();
     }
+    /** Previously loaded home/accessible warp names; prefix filtering precedes the result cap. */
+    default List<String> travelNames(boolean warps, String prefix) { return List.of(); }
 }

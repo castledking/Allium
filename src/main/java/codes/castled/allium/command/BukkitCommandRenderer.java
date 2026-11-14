@@ -90,6 +90,13 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
 
         CommandCompletionContext completionContext = new CommandCompletionContext() {
             @Override
+            public List<String> travelNames(boolean warps, String prefix) {
+                if (!(sender instanceof Player player) || plugin.getModuleManager()==null
+                        || !(plugin.getModuleManager().getModule("travel") instanceof codes.castled.allium.module.TravelModule module)
+                        || !module.isEnabled())return List.of();
+                return warps?module.travel().completeWarps(player,prefix):module.travel().completeHomes(player,prefix);
+            }
+            @Override
             public boolean hasPermission(String permissionNode) {
                 return permissionNode == null || permissionNode.isEmpty() || sender.hasPermission(permissionNode);
             }

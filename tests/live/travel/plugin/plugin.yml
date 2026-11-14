@@ -1,0 +1,9 @@
+name: TravelGate
+version: 1.0.0
+main: gate.TravelGate
+api-version: '1.20'
+depend: [Allium]
+description: S15 console-only disposable loopback fixtures and observations.
+commands:
+  s15g:
+    description: Console-only travel fixture controls

@@ -297,6 +297,19 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> MAIL_SPECS = List.of(MAIL);
 
+    public static final List<CommandSpec> TRAVEL_SPECS = java.util.stream.Stream.of("sethome","home","delhome","homes","setwarp","warp","delwarp","warps")
+            .map(CoreCommandSpecs::travelSpec).toList();
+    private static CommandSpec travelSpec(String command) {
+        boolean warp=command.contains("warp"),list=command.equals("homes")||command.equals("warps"),set=command.startsWith("set");
+        String usage="/"+command+(list?"":warp?" <name>":" [name]")+(set?" [confirm]":"");
+        java.util.ArrayList<CommandArgSpec> args=new java.util.ArrayList<>();
+        if(!list){var suggestion=new SuggestionSpec(warp?SuggestionSource.WARP_NAMES:SuggestionSource.HOME_NAMES,List.of(),null);
+            args.add(warp?CommandArgSpec.required("name",null,suggestion):CommandArgSpec.optional("name",null,suggestion));
+            if(set)args.add(CommandArgSpec.optional("confirm",null,SuggestionSpec.literals(List.of("confirm"),null)));}
+        return new CommandSpec(command,CommandSpec.DEFAULT_NAMESPACE,"travel",List.of(),"Allium homes and warps: "+command,
+                usage,usage,"allium."+command,null,args,List.of(),CommandMessageKeys.ofOutcomes(Map.of()));
+    }
+
     public static final List<CommandSpec> TELEPORT_SPECS = List.of(
             teleportSpec("tpa", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))),
             teleportSpec("tpahere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))),

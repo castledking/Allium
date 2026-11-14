@@ -959,6 +959,11 @@ def test_paired_mute_controls(lane):
     staff, norm, obs = lane.bots['ModStaff'], lane.bots['ModNorm'], lane.bots['ModObs']
     setup_bot_permissions(lane)
     observations['commandInfo'] = lane.fixture('commandinfo')
+    owners = observations['commandInfo']
+    for label in ['ban', 'kick', 'pardon']:
+        require('allium' in owners[label].lower(), lane.name + ': bare /' + label + ' owned by Allium', owners[label])
+        require(owners['minecraft:' + label] != 'MISSING' and 'allium' not in owners['minecraft:' + label].lower(),
+                lane.name + ': /minecraft:' + label + ' retains native ownership', owners['minecraft:' + label])
     if lane.kind == 'spigot':
         for node in ['minecraft.command.minecraft:say', 'minecraft.command.minecraft:me',
                      'minecraft.command.minecraft:tell', 'minecraft.command.minecraft:teammsg']:

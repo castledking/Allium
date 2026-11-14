@@ -98,9 +98,9 @@ public final class ModGate extends JavaPlugin implements Listener {
                 case "online" -> out.put("players", getServer().getOnlinePlayers().stream().map(Player::getName).toList());
                 case "commandinfo" -> {
                     var map = codes.castled.allium.command.CommandMapBridge.resolveCommandMapDirect(getServer());
-                    for (String key : List.of("say", "minecraft:say", "bukkit:say", "tm", "minecraft:tm")) {
+                    for (String key : List.of("say", "minecraft:say", "bukkit:say", "tm", "minecraft:tm", "ban", "kick", "pardon", "minecraft:ban", "minecraft:kick", "minecraft:pardon")) {
                         var c = map.getCommand(key);
-                        out.put(key, c == null ? "MISSING" : c.getClass().getName() + " permission=" + c.getPermission());
+                        out.put(key, c == null ? "MISSING" : (c instanceof org.bukkit.command.PluginIdentifiableCommand owned ? owned.getPlugin().getName() : c.getClass().getName()) + " permission=" + c.getPermission());
                     }
                 }
                 case "counts" -> {

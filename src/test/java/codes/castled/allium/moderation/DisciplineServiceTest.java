@@ -184,6 +184,25 @@ class DisciplineServiceTest {
         verify(messages).send(console, Messages.DISCIPLINE_SUCCESS, "{action}", "ban", "{player}", "Target");
     }
 
+    @Test void preloginRefreshesExternallyAddedAndRemovedBans() throws Exception {
+        service = new DisciplineService(plugin, repository, Runnable::run, clock::get);
+        service.enable();
+        UUID id = UUID.randomUUID();
+        bans.put(id, ban(id, null)); // A second storage writer; startup snapshot is already loaded.
+        AsyncPlayerPreLoginEvent denied = login(id); service.onAsyncPreLogin(denied);
+        assertEquals(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, denied.getLoginResult());
+        bans.remove(id);
+        AsyncPlayerPreLoginEvent allowed = login(id); service.onAsyncPreLogin(allowed);
+        assertEquals(AsyncPlayerPreLoginEvent.Result.ALLOWED, allowed.getLoginResult());
+        verify(repository, times(2)).loadActiveBan(id);
+    }
+
+    @Test void nativeBanAuditCountsOnlyUnknownEntriesWithoutImporting() {
+        UUID known = UUID.randomUUID(), unknown = UUID.randomUUID();
+        assertEquals(1, NativeBanAudit.unknownCount("[{\"uuid\":\"" + known + "\"},{\"uuid\":\"" + unknown + "\"}]", Set.of(known)));
+        assertEquals(0, NativeBanAudit.unknownCount("[]", Set.of()));
+    }
+
     @Test void failedBanDoesNotPublishKickOrSuccess() throws Exception {
         enable(); Player p = player("Target", Set.of()); joined(p);
         doThrow(new SQLException("disk full")).when(repository).saveBan(any());

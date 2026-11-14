@@ -432,6 +432,9 @@ class Lane:
         self.path = RUN / name
         self.proc, self.logs, self.bots = None, [], {}
         self.path.mkdir()
+        (self.path / 'banned-players.json').write_text(json.dumps([dict(
+            uuid='f0000000-0000-4000-8000-000000000001', name='ForeignNative',
+            created='2026-11-14 00:00:00 +0000', source='NativeFixture', expires='forever', reason='native-only')]))
         (self.path / 'plugins/Allium').mkdir(parents=True)
         (self.path / 'tmp').mkdir()
         shutil.copy2(JAR, self.path / 'plugins/Allium.jar')
@@ -666,6 +669,9 @@ def setup(lane):
         lane.bot(name)
         ready(lane,name)
     grants(lane)
+    require(any('NATIVE BAN DIVERGENCE: 1 ' in line for line in lane.logs), lane.name + ': startup warns with unknown native ban count')
+    require(sql(lane,"SELECT COUNT(*) FROM allium_bans WHERE player_uuid='f0000000-0000-4000-8000-000000000001'")==[['0']],
+            lane.name + ': native ban audit never imports entries')
     owners=lane.fixture('owners')
     observations[lane.name+'CommandOwners']=owners
     for name in ACTIONS+['pardon']:
@@ -777,6 +783,24 @@ def history(lane):
     require(sql(lane,"SELECT reason FROM allium_warnings WHERE player_name='DiscNorm' ORDER BY id")==[[reason],['console-warning']],lane.name+': warning history committed in SQL')
     require(sql(lane,"SELECT reason FROM allium_staff_notes WHERE player_name='DiscNorm' ORDER BY id")==[[reason],['console-note']],lane.name+': staff-note history committed in SQL')
     observations[lane.name+'HistoryReason']=reason
+
+
+def authoritative_external_ban(lane):
+    if lane.mariadb_password:
+        return  # This follow-up targets the single-server SQLite deployment.
+    norm = lane.bots['DiscNorm']
+    player_id = state(lane, norm.name)['uuid']
+    norm.disconnect()
+    db_path = lane.path / 'plugins/Allium/allium.db'
+    with sqlite3.connect(db_path) as external:
+        external.execute("INSERT INTO allium_bans (player_uuid,player_name,actor_name,reason,created_at,expires_at,ip_address) VALUES (?,?,?,?,?,NULL,NULL)",
+                         (player_id, norm.name, 'ExternalConnection', 'external-connection', int(time.time()*1000)))
+    norm.connect(deny='You are banned: external-connection')
+    require(True, lane.name + ': authoritative pre-login rejects ban written by second SQLite connection')
+    with sqlite3.connect(db_path) as external:
+        external.execute('DELETE FROM allium_bans WHERE player_uuid=?', (player_id,))
+    norm.connect(); ready(lane, norm.name)
+    require(not state(lane,norm.name)['banned'], lane.name + ': authoritative pre-login accepts external unban despite cached ban')
 
 
 def kicks_and_bans(lane):
@@ -907,6 +931,7 @@ try:
     case(lane.name+': startup and ownership',lambda:setup(lane))
     case(lane.name+': authorization and safe defaults',lambda:authorization(lane))
     case(lane.name+': warning and notes history',lambda:history(lane))
+    case(lane.name+': authoritative external SQLite ban',lambda:authoritative_external_ban(lane))
     case(lane.name+': kick, ban, offline login, timed expiry',lambda:kicks_and_bans(lane))
     case(lane.name+': freeze, jail, escape prevention, restart durability',lambda:restraints_and_restart(lane))
 except BaseException:

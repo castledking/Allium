@@ -1,7 +1,5 @@
 package codes.castled.allium.kit;
 
-import codes.castled.allium.travel.TravelNames;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -29,7 +27,7 @@ public final class KitReceipts {
         public Claimed {
             Objects.requireNonNull(deliveryId, "deliveryId");
             Objects.requireNonNull(token, "token");
-            kitName = TravelNames.normalize(kitName);
+            kitName = KitNames.validate(kitName);
         }
 
         @Override
@@ -72,7 +70,7 @@ public final class KitReceipts {
                 return new Claimed(
                         UUID.fromString(fields[1]),
                         UUID.fromString(fields[2]),
-                        TravelNames.normalize(fields[3])
+                        KitNames.validate(fields[3])
                 );
             }
         } catch (IllegalArgumentException ignored) {

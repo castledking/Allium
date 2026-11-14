@@ -4,7 +4,6 @@ import codes.castled.allium.storage.ConnectionSource;
 import codes.castled.allium.storage.Migration;
 import codes.castled.allium.storage.SchemaMigrator;
 import codes.castled.allium.storage.SqlDialect;
-import codes.castled.allium.travel.TravelNames;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -39,6 +38,9 @@ import java.util.function.LongSupplier;
  *       inventory, event cancellation, or crash before {@code player.dat} save) without touching
  *       {@code allium_kit_usages}, so a failed or interrupted delivery never burns the player's
  *       cooldown or one-time kit status.</li>
+ *   <li>Recovery ownership: both {@link #finishClaim} and {@link #releaseClaim} require
+ *       {@code claim_owner = serverId}, so a {@code CLAIMING} row owned by another server ID is
+ *       never released or finalized by this server.</li>
  * </ul>
  */
 public final class KitRepository {
@@ -226,28 +228,31 @@ public final class KitRepository {
     }
 
     /**
-     * Atomically finalizes a verified kit delivery: records the immutable receipt, updates
-     * {@code allium_kit_usages} (starting cooldown and marking one-time claimed), and deletes
-     * the in-flight row in {@code allium_kit_deliveries}. Idempotent on replay of the same
-     * {@code (deliveryId, token)}.
+     * Atomically finalizes a verified kit delivery owned by {@code ownerServer}: records the
+     * immutable receipt, updates {@code allium_kit_usages} (starting cooldown and marking one-time
+     * claimed), and deletes the in-flight row in {@code allium_kit_deliveries}.
+     *
+     * <p>A {@code CLAIMING} row owned by another server ID is never finalized by this server.
+     * Idempotent on replay of the same {@code (deliveryId, token)}.
      */
-    public boolean finishClaim(UUID deliveryId, UUID token, long deliveredAt) throws SQLException {
+    public boolean finishClaim(UUID deliveryId, UUID token, String ownerServer, long deliveredAt) throws SQLException {
         Objects.requireNonNull(deliveryId, "deliveryId");
         Objects.requireNonNull(token, "token");
+        Objects.requireNonNull(ownerServer, "ownerServer");
         return transaction(c -> {
             if (count(c, "SELECT COUNT(*) FROM allium_kit_claim_receipts WHERE token = ? AND delivery_id = ?",
                     token.toString(), deliveryId.toString()) > 0) {
                 return true;
             }
             Optional<KitDeliveryRecord> row = findDelivery(c, deliveryId);
-            if (row.isEmpty() || !row.get().claimToken().equals(token)) {
+            if (row.isEmpty() || !row.get().claimToken().equals(token) || !row.get().claimOwner().equals(ownerServer)) {
                 return false;
             }
             KitDeliveryRecord d = row.get();
             lockPlayer(c, d.playerUuid());
 
-            int deleted = update(c, "DELETE FROM allium_kit_deliveries WHERE id = ? AND claim_token = ?",
-                    deliveryId.toString(), token.toString());
+            int deleted = update(c, "DELETE FROM allium_kit_deliveries WHERE id = ? AND claim_token = ? AND claim_owner = ?",
+                    deliveryId.toString(), token.toString(), ownerServer);
             if (deleted != 1) {
                 return false;
             }
@@ -275,19 +280,22 @@ public final class KitRepository {
     }
 
     /**
-     * Releases an undelivered kit claim without modifying {@code allium_kit_usages}.
+     * Releases an undelivered kit claim owned by {@code ownerServer} without modifying
+     * {@code allium_kit_usages}. A {@code CLAIMING} row owned by another server ID is never
+     * released by this server.
      */
-    public boolean releaseClaim(UUID deliveryId, UUID token) throws SQLException {
+    public boolean releaseClaim(UUID deliveryId, UUID token, String ownerServer) throws SQLException {
         Objects.requireNonNull(deliveryId, "deliveryId");
         Objects.requireNonNull(token, "token");
+        Objects.requireNonNull(ownerServer, "ownerServer");
         return transaction(c -> {
             Optional<KitDeliveryRecord> row = findDelivery(c, deliveryId);
-            if (row.isEmpty() || !row.get().claimToken().equals(token)) {
+            if (row.isEmpty() || !row.get().claimToken().equals(token) || !row.get().claimOwner().equals(ownerServer)) {
                 return false;
             }
             lockPlayer(c, row.get().playerUuid());
-            return update(c, "DELETE FROM allium_kit_deliveries WHERE id = ? AND claim_token = ?",
-                    deliveryId.toString(), token.toString()) == 1;
+            return update(c, "DELETE FROM allium_kit_deliveries WHERE id = ? AND claim_token = ? AND claim_owner = ?",
+                    deliveryId.toString(), token.toString(), ownerServer) == 1;
         });
     }
 
@@ -307,8 +315,8 @@ public final class KitRepository {
     }
 
     public Optional<KitUsageRecord> usage(UUID playerUuid, String kitName) throws SQLException {
-        String normalized = TravelNames.normalize(kitName);
-        return plain(c -> findUsage(c, playerUuid, normalized));
+        String valid = KitNames.validate(kitName);
+        return plain(c -> findUsage(c, playerUuid, valid));
     }
 
     public Map<String, KitUsageRecord> usages(UUID playerUuid) throws SQLException {

@@ -377,6 +377,9 @@ permissions:
   allium.kits:
     description: Allows /kits
     default: true
+  allium.kits.*:
+    description: Parent wildcard permission granting access to all kits
+    default: false
   allium.kit.others:
     description: Allows /kit <name> <player>
     default: op

@@ -3,7 +3,6 @@ package codes.castled.allium.kit;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.core.FaultInjection;
 import codes.castled.allium.item.delivery.ItemDeliveryService;
-import codes.castled.allium.item.delivery.SkullFallback;
 import codes.castled.allium.item.library.ItemBuildException;
 import codes.castled.allium.item.library.ItemLibrary;
 import codes.castled.allium.item.library.SkullProfiles;
@@ -17,9 +16,9 @@ import codes.castled.allium.mail.PlayerDataReceiptProof;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.module.MailModule;
 import codes.castled.allium.scheduler.TaskHandle;
-import codes.castled.allium.travel.TravelNames;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -60,32 +59,17 @@ import java.util.function.Supplier;
  * Kits (S16): free kit claiming, cooldowns, one-time kits, {@code /createkit} and {@code /delkit},
  * with durable exactly-once delivery on SQLite and MySQL.
  *
- * <h2>Claiming a kit</h2>
- * <ol>
- *   <li>The kit definition is validated on the server thread: paid kits ({@code cost > 0}) are
- *       denied until M3 economy reservations exist; per-kit permission ({@code allium.kits.<name>})
- *       and inventory readiness are checked; and every item entry is built through
- *       {@link ItemSpecParser} and {@link ItemLibrary} (so provider items and signed/privileged
- *       Allium items mint fresh instances).</li>
- *   <li>On the storage pool, {@link KitRepository#beginClaim} locks the player row, verifies that
- *       no kit delivery is already in flight, checks one-time and cooldown eligibility, and inserts
- *       a {@code CLAIMING} row in {@code allium_kit_deliveries} with a fresh token.</li>
- *   <li>Back on the server thread, {@link ItemDeliveryService#planMail} computes an all-or-nothing
- *       fit plan ({@code REFUSE} overflow policy). If any item does not fit or an event cancels the
- *       delivery, {@link KitRepository#releaseClaim} drops the {@code CLAIMING} row without
- *       starting the cooldown or consuming a one-time kit.</li>
- *   <li>When all items fit, {@link ItemDeliveryService#applyMail} places them into the inventory,
- *       a {@code K/<deliveryId>/<token>/<kitName>} receipt is written to {@code allium:kit_receipts}
- *       in the player's persistent data, and {@code player.saveData()} flushes both the inventory
- *       and the receipt to {@code playerdata/<uuid>.dat}.</li>
- *   <li>On the storage pool, {@link PlayerDataReceiptProof#verify} confirms the receipt in the
- *       saved {@code .dat} file on disk before {@link KitRepository#finishClaim} records the
- *       cooldown/one-time usage in {@code allium_kit_usages} and deletes the {@code CLAIMING} row.</li>
- * </ol>
- * After a crash or disconnect, join recovery inspects {@code playerdata/<uuid>.dat} and
- * {@code allium_kit_deliveries}: with a verified {@code K/...} receipt on disk, the claim is
- * finalized in SQL without delivering the items a second time; without the receipt, the
- * {@code CLAIMING} row is released and the cooldown/one-time status stays untouched.
+ * <h2>Giving a kit to another player ({@code /kit <name> <player>})</h2>
+ * <ul>
+ *   <li><b>Permissions:</b> A player sender must hold {@code allium.kit}, {@code allium.kit.others},
+ *       <b>and</b> access to the kit ({@code allium.kits.<name>} or {@code allium.kits.*}). The
+ *       console requires no per-kit permission unless the kit's permission node is blocked. The
+ *       target player does not need {@code allium.kits.<name>}.</li>
+ *   <li><b>Cooldown and usage:</b> Giving a kit to another player is a staff/console grant that
+ *       bypasses cooldowns ({@code bypassCooldown = true}). Usage ({@code claim_count},
+ *       {@code last_claimed_at}) and {@code one-time} eligibility/consumption apply to the
+ *       <b>target</b> player ({@code target.getUniqueId()}), never the sender.</li>
+ * </ul>
  */
 public final class KitService implements Listener {
 
@@ -100,8 +84,10 @@ public final class KitService implements Listener {
     public static final String PERMISSION_KIT_OTHERS = "allium.kit.others";
     public static final String PERMISSION_CREATEKIT = "allium.createkit";
     public static final String PERMISSION_DELKIT = "allium.delkit";
+    public static final String PERMISSION_GIVE_PRIVILEGED = "allium.give.privileged";
     public static final String PERMISSION_BYPASS_COOLDOWN = "allium.kit.bypass.cooldown";
     public static final String PERMISSION_PREFIX = "allium.kits.";
+    public static final String PERMISSION_WILDCARD = "allium.kits.*";
 
     private final PluginStart plugin;
     private final KitRepository repository;
@@ -151,6 +137,10 @@ public final class KitService implements Listener {
         this.receiptKey = new NamespacedKey(plugin, "kit_receipts");
     }
 
+    public String serverId() {
+        return serverId;
+    }
+
     public void enable() {
         try {
             loader.installDefaults();
@@ -183,6 +173,7 @@ public final class KitService implements Listener {
     }
 
     public boolean reloadDefinitions() {
+        ensureWildcardPermission();
         KitDefinitionLoader.Loaded loaded = loader.load(parser.get());
         for (KitDefinitionLoader.Rejected rejected : loaded.rejected()) {
             for (String diag : rejected.diagnostics()) {
@@ -213,11 +204,15 @@ public final class KitService implements Listener {
 
     public List<String> completeKits(CommandSender sender, boolean allAdminKits, String prefix) {
         String lower = prefix == null ? "" : prefix.toLowerCase(Locale.ROOT);
+        if (!lower.isEmpty() && !KitNames.isValid(lower)) {
+            return List.of();
+        }
         if (allAdminKits) {
             if (!sender.hasPermission(PERMISSION_DELKIT) && !sender.hasPermission(PERMISSION_CREATEKIT)) {
                 return List.of();
             }
             return definitions.keySet().stream()
+                    .filter(KitNames::isValid)
                     .filter(name -> name.startsWith(lower))
                     .sorted()
                     .limit(50)
@@ -227,7 +222,7 @@ public final class KitService implements Listener {
             return List.of();
         }
         return definitions.values().stream()
-                .filter(def -> !def.paid() && hasKitAccess(sender, def.name()))
+                .filter(def -> KitNames.isValid(def.name()) && !def.paid() && hasKitAccess(sender, def.name()))
                 .map(KitDefinition::name)
                 .filter(name -> name.startsWith(lower))
                 .sorted()
@@ -237,7 +232,7 @@ public final class KitService implements Listener {
 
     public void listKits(CommandSender sender) {
         List<String> available = definitions.values().stream()
-                .filter(def -> !def.paid() && hasKitAccess(sender, def.name()))
+                .filter(def -> KitNames.isValid(def.name()) && !def.paid() && hasKitAccess(sender, def.name()))
                 .map(KitDefinition::name)
                 .sorted()
                 .toList();
@@ -252,7 +247,7 @@ public final class KitService implements Listener {
         if (!same(creator)) return;
         String name;
         try {
-            name = TravelNames.normalize(rawName);
+            name = KitNames.validate(rawName);
         } catch (IllegalArgumentException e) {
             send(creator, Messages.KIT_NAME_INVALID);
             return;
@@ -261,11 +256,31 @@ public final class KitService implements Listener {
             send(creator, Messages.NUMBER_INVALID, "{input}", Long.toString(cooldownSeconds));
             return;
         }
-        if (definitions.containsKey(name) || new java.io.File(loader.directory(), name + ".yml").exists()) {
+        if (definitions.containsKey(name) || loader.exists(name)) {
             send(creator, Messages.KIT_ALREADY_EXISTS, "{name}", name);
             return;
         }
-        List<String> specs = KitItemCapture.captureInventory(plugin.getItemService(), creator.getInventory().getStorageContents());
+        boolean canCapturePrivileged = creator.hasPermission(PERMISSION_GIVE_PRIVILEGED);
+        KitItemCapture.CaptureOutcome captured = KitItemCapture.captureInventory(
+                plugin.getItemService(),
+                creator.getInventory().getStorageContents(),
+                canCapturePrivileged
+        );
+        if (captured instanceof KitItemCapture.CaptureOutcome.PrivilegedDenied denied) {
+            send(creator, Messages.KIT_CAPTURE_PRIVILEGED,
+                    "{slot}", Integer.toString(denied.slot()),
+                    "{item}", denied.item(),
+                    "{behavior}", denied.behavior(),
+                    "{permission}", PERMISSION_GIVE_PRIVILEGED);
+            return;
+        }
+        if (captured instanceof KitItemCapture.CaptureOutcome.Unsupported unsupported) {
+            send(creator, Messages.KIT_CAPTURE_UNSUPPORTED,
+                    "{slot}", Integer.toString(unsupported.slot()),
+                    "{reason}", unsupported.reason());
+            return;
+        }
+        List<String> specs = ((KitItemCapture.CaptureOutcome.Captured) captured).specs();
         if (specs.isEmpty()) {
             send(creator, Messages.KIT_CREATE_EMPTY);
             return;
@@ -281,7 +296,8 @@ public final class KitService implements Listener {
             }
         }
         KitDefinition definition = new KitDefinition(
-                name, true, cooldownSeconds, oneTime, 0.0D, specs, KitDefinitionLoader.DIRECTORY + "/" + name + ".yml");
+                name, true, cooldownSeconds, oneTime, KitDefinition.ZERO_COST, specs,
+                KitDefinitionLoader.DIRECTORY + "/" + name + ".yml");
         try {
             loader.save(definition);
         } catch (IOException e) {
@@ -299,7 +315,7 @@ public final class KitService implements Listener {
     public void deleteKit(CommandSender actor, String rawName) {
         String name;
         try {
-            name = TravelNames.normalize(rawName);
+            name = KitNames.validate(rawName);
         } catch (IllegalArgumentException e) {
             send(actor, Messages.KIT_NAME_INVALID);
             return;
@@ -334,7 +350,7 @@ public final class KitService implements Listener {
         }
         String name;
         try {
-            name = TravelNames.normalize(rawName);
+            name = KitNames.validate(rawName);
         } catch (IllegalArgumentException e) {
             send(actor, Messages.KIT_NOT_FOUND, "{name}", rawName);
             return;
@@ -344,11 +360,11 @@ public final class KitService implements Listener {
             send(actor, Messages.KIT_NOT_FOUND, "{name}", name);
             return;
         }
-        if (!other && !hasKitAccess(actor, name)) {
+        if (blockedPermissions.contains(name)) {
             send(actor, Messages.KIT_NO_PERMISSION, "{name}", name);
             return;
         }
-        if (other && blockedPermissions.contains(name)) {
+        if (!(actor instanceof ConsoleCommandSender) && !hasKitAccess(actor, name)) {
             send(actor, Messages.KIT_NO_PERMISSION, "{name}", name);
             return;
         }
@@ -530,7 +546,8 @@ public final class KitService implements Listener {
             try {
                 PlayerDataReceiptProof.verify(playerFile, PlayerDataReceiptProof.KIT_RECEIPTS, expectedReceipt);
                 failIfArmed();
-                boolean finished = repository.finishClaim(record.id(), record.claimToken(), System.currentTimeMillis());
+                boolean finished = repository.finishClaim(
+                        record.id(), record.claimToken(), serverId, System.currentTimeMillis());
                 onServer(() -> {
                     finishInFlight(target, record.id());
                     if (!same(target) || generation(target.getUniqueId()) != generation) return;
@@ -562,7 +579,7 @@ public final class KitService implements Listener {
     private void release(Player target, UUID deliveryId, UUID token) {
         submitCritical(target, deliveryId, () -> {
             try {
-                repository.releaseClaim(deliveryId, token);
+                repository.releaseClaim(deliveryId, token, serverId);
                 onServer(() -> finishInFlight(target, deliveryId));
             } catch (SQLException e) {
                 onServer(() -> {
@@ -662,7 +679,7 @@ public final class KitService implements Listener {
                     });
                 } else {
                     steps.add(() -> {
-                        if (!repository.finishClaim(receipt.deliveryId(), receipt.token(), System.currentTimeMillis())) {
+                        if (!repository.finishClaim(receipt.deliveryId(), receipt.token(), serverId, System.currentTimeMillis())) {
                             throw new SQLException("kit claim ownership changed " + receipt.token());
                         }
                     });
@@ -673,7 +690,7 @@ public final class KitService implements Listener {
             boolean hasReceipt = receipts.stream().anyMatch(r -> r instanceof KitReceipts.Claimed c
                     && c.deliveryId().equals(row.id()) && c.token().equals(row.claimToken()));
             if (!hasReceipt) {
-                steps.add(() -> repository.releaseClaim(row.id(), row.claimToken()));
+                steps.add(() -> repository.releaseClaim(row.id(), row.claimToken(), serverId));
             }
         }
         submitRecovery(player, generation, () -> {
@@ -736,13 +753,26 @@ public final class KitService implements Listener {
     // -- Permissions & Helpers -------------------------------------------------------------------
 
     private boolean hasKitAccess(CommandSender sender, String kitName) {
-        return definitions.containsKey(kitName)
+        return KitNames.isValid(kitName)
+                && definitions.containsKey(kitName)
                 && !blockedPermissions.contains(kitName)
-                && sender.hasPermission(PERMISSION_PREFIX + kitName);
+                && (sender.hasPermission(PERMISSION_PREFIX + kitName) || sender.hasPermission(PERMISSION_WILDCARD));
     }
 
-    private void ensurePermission(String name) {
+    private Permission ensureWildcardPermission() {
         var manager = plugin.getServer().getPluginManager();
+        Permission wildcard = manager.getPermission(PERMISSION_WILDCARD);
+        if (wildcard == null) {
+            wildcard = new Permission(PERMISSION_WILDCARD, PermissionDefault.FALSE);
+            manager.addPermission(wildcard);
+        }
+        return wildcard;
+    }
+
+    private void ensurePermission(String rawName) {
+        String name = KitNames.validate(rawName);
+        var manager = plugin.getServer().getPluginManager();
+        Permission wildcard = ensureWildcardPermission();
         String node = PERMISSION_PREFIX + name;
         Permission permission = manager.getPermission(node);
         if (permission == null) {
@@ -755,6 +785,12 @@ public final class KitService implements Listener {
             }
         } else {
             blockedPermissions.remove(name);
+        }
+        if (wildcard != null && !blockedPermissions.contains(name)) {
+            if (!Boolean.TRUE.equals(wildcard.getChildren().get(node))) {
+                wildcard.getChildren().put(node, Boolean.TRUE);
+                wildcard.recalculatePermissibles();
+            }
         }
     }
 

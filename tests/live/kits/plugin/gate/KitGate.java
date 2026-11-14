@@ -9,6 +9,7 @@ import codes.castled.allium.item.ProviderStatus;
 import codes.castled.allium.item.ResolutionResult;
 import codes.castled.allium.item.delivery.ItemGiveEvent;
 import codes.castled.allium.kit.KitDefinition;
+import codes.castled.allium.kit.KitRepository;
 import codes.castled.allium.kit.KitService;
 import codes.castled.allium.mail.PlayerDataFiles;
 import codes.castled.allium.module.KitsModule;
@@ -23,6 +24,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.persistence.PersistentDataType;
@@ -56,8 +58,8 @@ public final class KitGate extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        if (!getServer().getIp().equals("127.0.0.1") || (getServer().getPort() != 25760 && getServer().getPort() != 25761)) {
-            throw new IllegalStateException("TEST ONLY: 127.0.0.1:25760-25761 required");
+        if (!getServer().getIp().equals("127.0.0.1") || (getServer().getPort() < 25760 || getServer().getPort() > 25762)) {
+            throw new IllegalStateException("TEST ONLY: 127.0.0.1:25760-25762 required");
         }
         allium = (PluginStart) getServer().getPluginManager().getPlugin("Allium");
         try {
@@ -163,6 +165,19 @@ public final class KitGate extends JavaPlugin implements Listener {
                     }
                     out.put("definitions", defs);
                     out.put("sameService", initialKits == kits());
+                    out.put("serverId", kits().serverId());
+                }
+                case "foreigncheck" -> {
+                    UUID deliveryId = UUID.fromString(args[1]);
+                    UUID token = UUID.fromString(args[2]);
+                    KitRepository repo = new KitRepository(
+                            allium.getDatabaseManager().connectionSource(),
+                            allium.getDatabaseManager().dialect(),
+                            System::currentTimeMillis);
+                    String myServerId = kits().serverId();
+                    out.put("serverId", myServerId);
+                    out.put("releaseAllowed", repo.releaseClaim(deliveryId, token, myServerId));
+                    out.put("finishAllowed", repo.finishClaim(deliveryId, token, myServerId, System.currentTimeMillis()));
                 }
                 case "db" -> {
                     UUID id = UUID.nameUUIDFromBytes(("OfflinePlayer:" + args[1]).getBytes(StandardCharsets.UTF_8));
@@ -254,13 +269,27 @@ public final class KitGate extends JavaPlugin implements Listener {
                             target.getInventory().clear();
                             var nexoRes = allium.getItemService().create(ItemRef.parse("nexo:ruby_sword"));
                             if (!nexoRes.isResolved()) throw new IllegalStateException(nexoRes.diagnosticMessage());
-                            var signedRes = allium.getItemService().createForBehavior("allium:mob_disarmer", 1);
+                            var signedRes = allium.getItemService().createForBehavior("allium:phantom_obliterator", 1);
                             if (!signedRes.isResolved()) throw new IllegalStateException(signedRes.diagnosticMessage());
                             target.getInventory().setItem(0, nexoRes.itemStack().orElseThrow());
                             target.getInventory().setItem(1, signedRes.itemStack().orElseThrow());
                             target.getInventory().setItem(2, new ItemStack(Material.GOLDEN_APPLE, 3));
                             target.saveData();
                             out.put("prepared", 3);
+                        }
+                        case "givelossy" -> {
+                            target.getInventory().clear();
+                            ItemStack book = new ItemStack(Material.WRITTEN_BOOK, 1);
+                            BookMeta bm = (BookMeta) book.getItemMeta();
+                            if (bm != null) {
+                                bm.setTitle("Secret Tome");
+                                bm.setAuthor("Admin");
+                                bm.addPage("Page 1");
+                                book.setItemMeta(bm);
+                            }
+                            target.getInventory().setItem(3, book);
+                            target.saveData();
+                            out.put("prepared", 1);
                         }
                         case "state" -> {
                             out.put("kitReady", kits().ready(target) && !kits().busy(target));

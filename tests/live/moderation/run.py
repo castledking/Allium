@@ -48,6 +48,7 @@ P.add_argument('--allium-jar', type=Path, required=True)
 P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash')
 P.add_argument('--run-name', required=True)
 P.add_argument('--check', action='store_true')
+P.add_argument('--paired-controls-only', action='store_true', help='run only named muted/unmuted command controls')
 P.add_argument('--run-root', type=Path, default=Path('/mnt/storage/.allium-validation/20261114/s17-moderation/runs'))
 P.add_argument('--paper-template', type=Path, default=Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3'))
 A = P.parse_args()
@@ -600,9 +601,11 @@ def test_vanish_visibility_and_discovery(lane):
 def test_vanish_leaks_outside_allium(lane):
     staff, norm, obs = lane.bots['ModStaff'], lane.bots['ModNorm'], lane.bots['ModObs']
 
-    # 1. Vanilla /minecraft:list & /list + raw plugin getOnlinePlayers().size() observation
+    # 1. Vanilla /minecraft:list & Allium /list (added in S18) + raw plugin getOnlinePlayers().size() observation
     norm_list = norm.command('minecraft:list', 'of a max of')
-    norm_plain_list = norm.command('list', 'of a max of')
+    norm_plain_start = norm.cmd('list')
+    norm_plain_header = norm.chat(norm_plain_start, 'Online players (2/')
+    norm_plain_group = norm.chat(norm_plain_start, 'Players (2):')
     obs_list_start = obs.cmd('minecraft:list')
     obs_list = wait(lambda: next((c for c in obs.chats(obs_list_start)
                                   if c.get('translate') == 'commands.list.players' or 'of a max of' in c['plain']), None),
@@ -613,11 +616,11 @@ def test_vanish_leaks_outside_allium(lane):
     counts = lane.fixture('counts')
     observations.setdefault('counts', {})[lane.name] = counts
     require('ModStaff' not in norm_list['plain'] and 'There are 2 ' in norm_list['plain']
-            and 'ModStaff' not in norm_plain_list['plain'] and 'There are 2 ' in norm_plain_list['plain']
+            and 'ModStaff' not in norm_plain_group['plain'] and 'ModNorm' in norm_plain_group['plain'] and 'ModObs' in norm_plain_group['plain']
             and obs_has_staff and obs_has_3
             and counts['rawOnlineCount'] == 3 and counts['visibleToNorm'] == 2 and counts['visibleToObs'] == 3,
-            lane.name + ': vanilla /minecraft:list and /list hide ModStaff from ModNorm (2) and show to ModObs (3); raw getOnlinePlayers().size() documented as 3',
-            dict(norm=norm_list, obs=obs_list, counts=counts))
+            lane.name + ': /minecraft:list and Allium /list hide ModStaff from ModNorm (2) and show to ModObs (3); raw getOnlinePlayers().size() documented as 3',
+            dict(norm=norm_list, normPlainHeader=norm_plain_header, normPlainGroup=norm_plain_group, obs=obs_list, counts=counts))
 
     # 2. /minecraft:msg, /minecraft:tp, @a/@p selectors, and tab suggestions
     lane.fixture('tppos ModNorm 100.5 100.5')
@@ -952,10 +955,52 @@ def run_mariadb_lane(password):
     lane.stop()
 
 
+def test_paired_mute_controls(lane):
+    staff, norm, obs = lane.bots['ModStaff'], lane.bots['ModNorm'], lane.bots['ModObs']
+    setup_bot_permissions(lane)
+    observations['commandInfo'] = lane.fixture('commandinfo')
+    if lane.kind == 'spigot':
+        for node in ['minecraft.command.minecraft:say', 'minecraft.command.minecraft:me',
+                     'minecraft.command.minecraft:tell', 'minecraft.command.minecraft:teammsg']:
+            lane.perm('ModNorm', node, True)
+    staff.command('mute ModNorm Alias controls', 'ModNorm has been muted')
+    for root in ['me', 'minecraft:me', 'say', 'minecraft:say', 'tell',
+                 'minecraft:tell', 'w', 'tm', 'teammsg', 'minecraft:teammsg']:
+        token = 'S17_BLOCKED_' + root.replace(':', '_')
+        command = root + (' ModObs ' if root in ['tell', 'minecraft:tell', 'w'] else ' ') + token
+        recipient_mark = len(obs.lines)
+        response = norm.command(command, 'You are muted (')
+        require('Alias controls' in response['plain'] and not any(token in line for line in obs.lines[recipient_mark:]),
+                lane.name + ': named muted control /' + root + ' blocked without recipient delivery', dict(command=command, response=response))
+    staff.command('unmute ModNorm Controls', 'ModNorm has been unmuted')
+    lane.console('team add s17controls')
+    for player in ['ModNorm', 'ModObs']:
+        logmark = len(lane.logs)
+        lane.console('team join s17controls ' + player)
+        wait(lambda: any('Added ' + player + ' to team' in line for line in lane.logs[logmark:]), 'team membership ' + player)
+    window(.3)
+    for root in ['me', 'minecraft:me', 'say', 'minecraft:say', 'tell',
+                 'minecraft:tell', 'w', 'tm', 'teammsg', 'minecraft:teammsg']:
+        token = 'S17_CONTROL_' + root.replace(':', '_')
+        command = root + (' ModObs ' if root in ['tell', 'minecraft:tell', 'w'] else ' ') + token
+        recipient_mark = len(obs.lines)
+        sender_mark = norm.cmd(command)
+        delivered = wait(lambda: next((line.strip() for line in obs.lines[recipient_mark:] if token in line), None),
+                         lane.name + ': unmuted control /' + root + ' reaches real recipient')
+        require(not any('You are muted (' in c['plain'] for c in norm.chats(sender_mark)),
+                lane.name + ': unmuted control /' + root + ' delivers to ModObs without mute refusal',
+                dict(command=command, recipientEvidence=delivered))
+
+
+
 def run_lane(lane):
     lane.boot()
     for name in ('ModStaff', 'ModNorm', 'ModObs'):
         lane.bot(name)
+    case(lane.name + ': paired muted and unmuted command controls', lambda: test_paired_mute_controls(lane))
+    if A.paired_controls_only:
+        lane.stop()
+        return
     case(lane.name + ': vanish visibility, tab completion, and looks-offline contract', lambda: test_vanish_visibility_and_discovery(lane))
     case(lane.name + ': vanish leaks outside Allium (vanilla commands, death/advancement, XP, chat toggle, container live, reload)', lambda: test_vanish_leaks_outside_allium(lane))
     case(lane.name + ': vanish world effects, relog, and server restart persistence', lambda: test_vanish_world_effects_relog_and_restart(lane))

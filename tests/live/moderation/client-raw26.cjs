@@ -32,9 +32,9 @@ function nbtPayload(b, o, type) {
   }
 }
 function readNbt(b, o) { return nbtPayload(b, o + 1, b[o]); }
-let state = 'login', compressed = false, buffer = Buffer.alloc(0), ready = false;
+let state = 'login', compressed = false, buffer = Buffer.alloc(0), ready = false, stopping = false;
 const socket = net.connect({host: '127.0.0.1', port});
-function send(id, data = Buffer.alloc(0)) { let body = Buffer.concat([vi(id), data]); if (compressed) body = Buffer.concat([vi(0), body]); socket.write(Buffer.concat([vi(body.length), body])); }
+function send(id, data = Buffer.alloc(0)) { if (stopping || socket.writableEnded || socket.destroyed) return; let body = Buffer.concat([vi(id), data]); if (compressed) body = Buffer.concat([vi(0), body]); socket.write(Buffer.concat([vi(body.length), body])); }
 function named(flow, name, data) { const id = ids[flow]['minecraft:' + name]; if (id === undefined) throw Error('Unknown packet ' + flow + '/' + name); send(id, data); }
 function game(name, data) { named('game_SERVERBOUND', name, data); }
 socket.on('connect', () => {
@@ -89,7 +89,7 @@ socket.on('close', () => { console.log('BASEG-WIRE END'); process.exit(process.e
 let tabId = 0;
 require('node:readline').createInterface({input: process.stdin}).on('line', line => {
   const text = line.replace(/\r?\n$/, '');
-  if (text.trim() === 'stop') { socket.end(); return; }
+  if (text.trim() === 'stop') { stopping = true; socket.end(); return; }
   if (!ready) return;
   if (text.startsWith('cmd ')) { game('chat_command', str(text.slice(4))); game('client_tick_end'); console.log('BASEG-WIRE SENT /' + text.slice(4)); }
   if (text.startsWith('say ')) {

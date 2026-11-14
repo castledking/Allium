@@ -70,7 +70,10 @@ public final class KitGate extends JavaPlugin implements Listener {
             } catch (ReflectiveOperationException e) {
                 getLogger().info("S16G legacy protocol client required");
             }
-            registerTestNexoAdapter();
+            if (Boolean.getBoolean("allium.kit-gate.real-nexo")) {
+                if (!getServer().getPluginManager().isPluginEnabled("Nexo")) throw new IllegalStateException("real Nexo required");
+                getLogger().info("S16G REAL NEXO enabled; fixture adapter registration disabled");
+            } else registerTestNexoAdapter();
             initialKits = kits();
         } catch (Exception e) {
             throw new IllegalStateException(e);
@@ -328,6 +331,13 @@ public final class KitGate extends JavaPlugin implements Listener {
         ItemRef ref = allium.getItemService().identify(s).orElse(null);
         out.put("provider", ref == null ? null : ref.appearance().provider());
         out.put("itemId", ref == null ? null : ref.appearance().id());
+        if (Boolean.getBoolean("allium.kit-gate.real-nexo")) {
+            try {
+                var plugin = getServer().getPluginManager().getPlugin("Nexo");
+                var api = plugin.getClass().getClassLoader().loadClass("com.nexomc.nexo.api.NexoItems");
+                out.put("nativeNexoId", api.getMethod("idFromItem", ItemStack.class).invoke(null, s));
+            } catch (ReflectiveOperationException e) { throw new IllegalStateException(e); }
+        }
         out.put("behavior", ref == null ? null : ref.behaviorId().orElse(null));
         out.put("state", ref == null ? null : ref.stateData());
         var p = s.getItemMeta().getPersistentDataContainer();

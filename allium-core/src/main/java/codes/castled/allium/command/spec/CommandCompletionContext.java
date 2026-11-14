@@ -34,4 +34,7 @@ public interface CommandCompletionContext {
     }
     /** Previously loaded home/accessible warp names; prefix filtering precedes the result cap. */
     default List<String> travelNames(boolean warps, String prefix) { return List.of(); }
+
+    /** Previously loaded kit names (filtered by access unless {@code allAdminKits} is true). */
+    default List<String> kitNames(boolean allAdminKits, String prefix) { return List.of(); }
 }

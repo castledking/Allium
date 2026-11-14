@@ -1,0 +1,12 @@
+# Default starter kit (plugins/Allium/kits/starter.yml).
+# Access requires the false-default permission node allium.kits.starter.
+# Paid kits (cost > 0) are denied until M3 economy reservations exist.
+name: starter
+enabled: true
+cooldown-seconds: 300
+one-time: false
+cost: 0
+items:
+  - "minecraft:stone_sword 1 unbreaking:1"
+  - "minecraft:stone_pickaxe 1 efficiency:1"
+  - "minecraft:cooked_beef 16"

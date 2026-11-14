@@ -22,5 +22,9 @@ public enum SuggestionSource {
     /** Deletable text-mail IDs in the sender's memory-only mailbox snapshot. */
     MAIL_DELETE_IDS,
     HOME_NAMES,
-    WARP_NAMES
+    WARP_NAMES,
+    /** Loaded kits accessible to the sender (or all loaded kits for admin delete). */
+    KIT_NAMES,
+    /** All loaded kit names for administrative commands such as {@code /delkit}. */
+    ALL_KIT_NAMES
 }

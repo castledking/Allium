@@ -158,6 +158,8 @@ public record CommandSpec(
                 case MAIL_DELETE_IDS -> context.mailIds(false);
                 case HOME_NAMES -> context.travelNames(false, prefix);
                 case WARP_NAMES -> context.travelNames(true, prefix);
+                case KIT_NAMES -> context.kitNames(false, prefix);
+                case ALL_KIT_NAMES -> context.kitNames(true, prefix);
                 case MAIL_CLAIM_IDS -> {
                     List<String> ids = context.mailIds(true);
                     if (ids.isEmpty()) {

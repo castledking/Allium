@@ -39,6 +39,11 @@ public record SuggestionSpec(
                 List.of(), "allium.mail");
     }
 
+    public static SuggestionSpec kitNames(boolean allAdminKits) {
+        return new SuggestionSpec(allAdminKits ? SuggestionSource.ALL_KIT_NAMES : SuggestionSource.KIT_NAMES,
+                List.of(), null);
+    }
+
     public static SuggestionSpec gamemodes() {
         return new SuggestionSpec(SuggestionSource.GAMEMODES, DEFAULT_GAMEMODES, null);
     }

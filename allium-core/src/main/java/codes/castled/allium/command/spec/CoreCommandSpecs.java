@@ -297,6 +297,61 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> MAIL_SPECS = List.of(MAIL);
 
+    public static final CommandSpec KIT = new CommandSpec(
+            "kit", CommandSpec.DEFAULT_NAMESPACE, "kits", List.of(),
+            "Claim a kit or list available kits",
+            "/kit [name] [player]",
+            "/kit <name> <player>",
+            "allium.kit", "allium.kit.others",
+            List.of(
+                    CommandArgSpec.optional("name", null, SuggestionSpec.kitNames(false)),
+                    CommandArgSpec.optional("player", "allium.kit.others", SuggestionSpec.onlinePlayers("allium.kit.others"))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec KITS = new CommandSpec(
+            "kits", CommandSpec.DEFAULT_NAMESPACE, "kits", List.of(),
+            "List available kits",
+            "/kits",
+            "/kits",
+            "allium.kits", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec CREATEKIT = new CommandSpec(
+            "createkit", CommandSpec.DEFAULT_NAMESPACE, "kits", List.of(),
+            "Create a kit from your inventory",
+            "/createkit <name> [cooldown] [once]",
+            "/createkit <name> [cooldown] [once]",
+            "allium.createkit", null,
+            List.of(
+                    CommandArgSpec.required("name", null, SuggestionSpec.none()),
+                    CommandArgSpec.optional("cooldown", null, SuggestionSpec.literals(List.of("0", "60", "300", "3600", "86400"), null)),
+                    CommandArgSpec.optional("once", null, SuggestionSpec.literals(List.of("once"), null))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec DELKIT = new CommandSpec(
+            "delkit", CommandSpec.DEFAULT_NAMESPACE, "kits", List.of(),
+            "Delete a kit definition",
+            "/delkit <name>",
+            "/delkit <name>",
+            "allium.delkit", null,
+            List.of(
+                    CommandArgSpec.required("name", null, SuggestionSpec.kitNames(true))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final List<CommandSpec> KIT_SPECS = List.of(KIT, KITS, CREATEKIT, DELKIT);
+
     public static final List<CommandSpec> TRAVEL_SPECS = java.util.stream.Stream.of("sethome","home","delhome","homes","setwarp","warp","delwarp","warps")
             .map(CoreCommandSpecs::travelSpec).toList();
     private static CommandSpec travelSpec(String command) {

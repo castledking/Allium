@@ -256,6 +256,10 @@ public final class PluginStart extends JavaPlugin {
                     && !tp.teleports().reloadSettings()) throw new IllegalArgumentException("invalid teleport configuration; previous teleport settings retained");
             if (moduleManager.getModule("travel") instanceof codes.castled.allium.module.TravelModule travel && travel.isEnabled()
                     && !travel.travel().reloadSettings()) throw new IllegalArgumentException("invalid homes/warps configuration; previous settings retained");
+            if (moduleManager.getModule("kits") instanceof codes.castled.allium.module.KitsModule kits && kits.isEnabled()
+                    && kits.kits() != null) {
+                kits.kits().reloadDefinitions();
+            }
             ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
             settings.warnings().forEach(logger::warning);
             if (settings.owner() != startupPackOwner) {

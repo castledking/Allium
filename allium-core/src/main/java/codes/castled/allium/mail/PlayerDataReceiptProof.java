@@ -14,19 +14,32 @@ public final class PlayerDataReceiptProof {
     private static final long MAX_EXPANDED_BYTES = 8L * 1024 * 1024;
     private static final int MAX_DEPTH = 64;
     private static final String BUKKIT_VALUES = "BukkitValues";
-    private static final String RECEIPTS = "allium:mail_receipts";
+    public static final String MAIL_RECEIPTS = "allium:mail_receipts";
+    public static final String KIT_RECEIPTS = "allium:kit_receipts";
 
     private PlayerDataReceiptProof() {
     }
 
     /**
-     * Verifies the entire freshly written receipt string in root {@code BukkitValues}.
+     * Verifies the entire freshly written mail receipt string in root {@code BukkitValues}.
      * Call off the server thread, holding the player's mail lock until verification completes.
      * This proves that the file can be read back, not that a power loss cannot lose the write.
      *
      * @throws IOException if the file is invalid, exceeds the limits, or lacks the exact receipt
      */
     public static void verify(Path playerDat, String expected) throws IOException {
+        verify(playerDat, MAIL_RECEIPTS, expected);
+    }
+
+    /**
+     * Verifies the entire freshly written receipt string under {@code receiptKey} in root {@code BukkitValues}.
+     *
+     * @throws IOException if the file is invalid, exceeds the limits, or lacks the exact receipt
+     */
+    public static void verify(Path playerDat, String receiptKey, String expected) throws IOException {
+        if (receiptKey == null || receiptKey.isEmpty()) {
+            throw new IOException("Player data receipt key must not be empty");
+        }
         if (expected == null || expected.isEmpty()) {
             throw new IOException("Expected player data receipt must not be empty");
         }
@@ -34,7 +47,7 @@ public final class PlayerDataReceiptProof {
              InputStream gzip = new GZIPInputStream(new BufferedInputStream(file));
              LimitedInputStream limited = new LimitedInputStream(gzip);
              DataInputStream input = new DataInputStream(limited)) {
-            new Reader(input, limited, expected).verify();
+            new Reader(input, limited, receiptKey, expected).verify();
         }
     }
 
@@ -43,14 +56,16 @@ public final class PlayerDataReceiptProof {
     private static final class Reader {
         private final DataInputStream input;
         private final LimitedInputStream limited;
+        private final String receiptKey;
         private final String expected;
         private final byte[] scratch = new byte[8192];
         private boolean foundBukkitValues;
         private boolean foundReceipt;
 
-        private Reader(DataInputStream input, LimitedInputStream limited, String expected) {
+        private Reader(DataInputStream input, LimitedInputStream limited, String receiptKey, String expected) {
             this.input = input;
             this.limited = limited;
+            this.receiptKey = receiptKey;
             this.expected = expected;
         }
 
@@ -84,7 +99,7 @@ public final class PlayerDataReceiptProof {
                     }
                     foundBukkitValues = true;
                     compound(depth + 1, Location.BUKKIT_VALUES);
-                } else if (location == Location.BUKKIT_VALUES && RECEIPTS.equals(name)) {
+                } else if (location == Location.BUKKIT_VALUES && receiptKey.equals(name)) {
                     if (foundReceipt || type != 8) {
                         throw new IOException("Invalid or duplicate player data receipt");
                     }
@@ -201,17 +216,13 @@ public final class PlayerDataReceiptProof {
         }
 
         @Override
-        public int read(byte[] bytes, int offset, int length) throws IOException {
-            if (length == 0) {
-                return 0;
+        public int read(byte[] b, int off, int len) throws IOException {
+            int count = source.read(b, off, len);
+            if (count > 0) {
+                requireAvailable(count);
+                remaining -= count;
             }
-            // One extra byte lets a final EOF check succeed at exactly the size limit.
-            int read = source.read(bytes, offset, (int) Math.min(length, remaining + 1));
-            if (read > 0) {
-                requireAvailable(read);
-                remaining -= read;
-            }
-            return read;
+            return count;
         }
     }
 }

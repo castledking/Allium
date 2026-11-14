@@ -77,10 +77,23 @@ public enum Messages {
 
     // -- Kits --
     KIT_RECEIVED("kit.received", "{prefix} &aReceived kit &f{name}&a."),
+    KIT_GIVEN("kit.given", "{prefix} &aGave kit &f{name} &ato &f{player}&a."),
     KIT_NOT_FOUND("kit.not-found", "{prefix} &cKit &f{name} &cnot found."),
+    KIT_NO_PERMISSION("kit.no-permission", "{prefix} &cYou don't have permission to claim kit &f{name}&c."),
     KIT_LIST("kit.list", "{prefix} &fKits: &d{kits}"),
     KIT_NONE("kit.none", "{prefix} &cNo kits available."),
     KIT_COOLDOWN("kit.cooldown", "{prefix} &cKit &f{name} &con cooldown. Wait &f{time}&c."),
+    KIT_ONE_TIME_CLAIMED("kit.one-time-claimed", "{prefix} &cYou have already claimed one-time kit &f{name}&c."),
+    KIT_PAID_DENIED("kit.paid-denied", "{prefix} &cKit &f{name} &chas a cost and paid kits are disabled until economy reservations exist."),
+    KIT_FULL("kit.full", "{prefix} &cYour inventory cannot hold all items from kit &f{name}&c; nothing was given."),
+    KIT_BUSY("kit.busy", "{prefix} &cA kit or inventory operation is already in progress. Try again shortly."),
+    KIT_FAILED("kit.failed", "{prefix} &cKit delivery is unavailable right now; nothing was given or consumed."),
+    KIT_INVALID("kit.invalid", "{prefix} &cKit &f{name} &chas an invalid item definition: &f{reason}"),
+    KIT_CREATED("kit.created", "{prefix} &aCreated kit &f{name} &awith &f{items} &aitem stack(s)."),
+    KIT_DELETED("kit.deleted", "{prefix} &aDeleted kit &f{name}&a."),
+    KIT_ALREADY_EXISTS("kit.already-exists", "{prefix} &cKit &f{name} &calready exists. Delete it first with &f/delkit {name}&c."),
+    KIT_CREATE_EMPTY("kit.create-empty", "{prefix} &cPut at least one item in your storage inventory before running &f/createkit&c."),
+    KIT_NAME_INVALID("kit.name-invalid", "{prefix} &cUse 1-32 letters, digits, underscores or hyphens for the kit name."),
 
     // -- Economy --
     BALANCE("economy.balance", "{prefix} &fBalance: &a{amount}"),
@@ -176,13 +189,13 @@ public enum Messages {
     ITEM_GIVE_RECEIVED("item.give.received", "{prefix} &aYou received &f{amount}x {item}&a."),
 
     // Private messages (S07)
-    SOCIALSPY_MESSAGE("messaging.socialspy.message", "&8[Spy] &7[&f{sender} &7→ &f{recipient}&7] &f{message}"),
+    SOCIALSPY_MESSAGE("messaging.socialspy.message", "&8[Spy] &7[&f{sender} &7\u2192 &f{recipient}&7] &f{message}"),
     SOCIALSPY_ON("messaging.socialspy.on", "{prefix} &aSocial spy enabled."),
     SOCIALSPY_OFF("messaging.socialspy.off", "{prefix} &7Social spy disabled."),
     SOCIALSPY_DISABLED("messaging.socialspy.disabled", "{prefix} &cSocial spy preferences are disabled on this server."),
     SOCIALSPY_SAVE_FAILED("messaging.socialspy.save-failed", "{prefix} &cYour social spy setting could not be saved; the change was undone."),
-    MSG_SENT("messaging.sent", "&7[&fme &7→ &f{recipient}&7] &f{message}"),
-    MSG_RECEIVED("messaging.received", "&7[&f{sender} &7→ &fme&7] &f{message}"),
+    MSG_SENT("messaging.sent", "&7[&fme &7\u2192 &f{recipient}&7] &f{message}"),
+    MSG_RECEIVED("messaging.received", "&7[&f{sender} &7\u2192 &fme&7] &f{message}"),
     MSG_CANNOT_RECEIVE("messaging.cannot-receive", "{prefix} &c{player} can't receive messages right now."),
     MSG_NO_REPLY_TARGET("messaging.no-reply-target", "{prefix} &cYou have nobody to reply to."),
     MSG_MUTED("messaging.muted", "{prefix} &cYou are muted."),

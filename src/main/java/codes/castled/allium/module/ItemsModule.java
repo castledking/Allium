@@ -21,6 +21,8 @@ import org.bukkit.configuration.ConfigurationSection;
 public final class ItemsModule extends AbstractModule {
 
     private SkullProfiles skulls;
+    private ItemLibrary library;
+    private ItemDeliveryService delivery;
     private volatile OverflowPolicy overflow = OverflowPolicy.DROP;
     private volatile SkullFallback skullFallback = SkullFallback.UNTEXTURED;
     private volatile ItemSpecParser parser = new ItemSpecParser(false);
@@ -58,14 +60,26 @@ public final class ItemsModule extends AbstractModule {
                 profile -> profile.getTextures() != null && profile.getTextures().getSkin() != null,
                 plugin.getScheduler().boundedPool(SkullProfiles.POOL_NAME, SkullProfiles.POOL_THREADS, SkullProfiles.POOL_QUEUE));
         ServerVersion version = ServerVersion.parse(Bukkit.getBukkitVersion());
-        ItemLibrary library = new ItemLibrary(plugin.getItemService(), new ComponentAdapter(version, Bukkit.getItemFactory()), skulls);
-        ItemDeliveryService delivery = new ItemDeliveryService(
+        library = new ItemLibrary(plugin.getItemService(), new ComponentAdapter(version, Bukkit.getItemFactory()), skulls);
+        delivery = new ItemDeliveryService(
                 plugin.getScheduler().serverExecutor(), plugin.getScheduler()::isServerThread, Bukkit::getPlayer,
                 Bukkit.getPluginManager(), () -> skullFallback);
         String route = registerGive(new GiveCommand(plugin, () -> parser, library, delivery, () -> overflow));
         plugin.logger().info("Item library enabled: /give harness (" + route + "), overflow " + overflow.configName() + ", skull fallback "
                 + skullFallback.configName() + ", raw item data as "
                 + (version.hasDataComponents() ? "[...] components" : "{...} NBT") + " (server " + version + ").");
+    }
+
+    public ItemSpecParser parser() {
+        return parser;
+    }
+
+    public ItemLibrary library() {
+        return library;
+    }
+
+    public ItemDeliveryService delivery() {
+        return delivery;
     }
 
     private static final String PAPER_GIVE = "codes.castled.allium.command.paper.PaperBrigadierGive";
@@ -133,5 +147,7 @@ public final class ItemsModule extends AbstractModule {
             skulls.close();
             skulls = null;
         }
+        library = null;
+        delivery = null;
     }
 }

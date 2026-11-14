@@ -1,0 +1,187 @@
+{
+  "slice": "S16",
+  "title": "Free kits with durable delivery and saved-receipt recovery",
+  "jarSha256": "c400c60e32c1fc740ce7715f90115d62261e0d6cf5d2a16877d6ac0d6a305f62",
+  "lanes": {
+    "spigot": {
+      "runName": "spigot-1.20.1-s16",
+      "summaryPath": "/mnt/storage/.allium-validation/20261114/s16-kits/runs/spigot-1.20.1-s16/summary.json",
+      "summarySha256": "1b4f66bf007048d1610c5e895de27b5e82e46e51a27f0b19716c7b027d7f47ba",
+      "passed": true,
+      "totalChecks": 57,
+      "failedChecks": 0,
+      "durationSeconds": 55.367,
+      "scopes": [
+        {
+          "label": "spigot:claim-cooldown-and-others",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot:one-time-and-paid-denial",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot:full-inventory-and-cancelled-event",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot:provider-and-signed-items-createkit-delkit",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot:permissions-and-tab-completion",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot:disconnect-mid-delivery",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot:crash-mid-delivery-recovery",
+          "status": "PASS"
+        }
+      ],
+      "crashSnapshots": [
+        {
+          "lane": "spigot",
+          "point": "kit.claim.halt-before-deliver",
+          "kitName": "haltbefore",
+          "deliveries": [
+            {
+              "id": "00b0f6d5-cc02-463c-8d9e-b7b6bc443c42",
+              "kit_name": "haltbefore",
+              "claim_token": "0ad9da69-1e92-4233-b29e-336aa6add17e",
+              "claim_owner": "server-b026d0db-9461-4ba2-88d0-88b69089dce7",
+              "item_count": 6
+            }
+          ],
+          "usages": [],
+          "savedPlayer": {
+            "dataVersion": 3465,
+            "receipts": null,
+            "inventory": [],
+            "fileSha256": "a791fc1f2868a4340f64854862b398ae8ab5337692151670af1bf753129c0159"
+          }
+        },
+        {
+          "lane": "spigot",
+          "point": "kit.claim.halt-after-deliver",
+          "kitName": "haltafter",
+          "deliveries": [
+            {
+              "id": "e3cb3ecc-d406-428a-bf22-197df0d61e55",
+              "kit_name": "haltafter",
+              "claim_token": "688f17d2-1e0e-412d-8a84-728c2138c4ef",
+              "claim_owner": "server-b026d0db-9461-4ba2-88d0-88b69089dce7",
+              "item_count": 7
+            }
+          ],
+          "usages": [],
+          "savedPlayer": {
+            "dataVersion": 3465,
+            "receipts": "K/e3cb3ecc-d406-428a-bf22-197df0d61e55/688f17d2-1e0e-412d-8a84-728c2138c4ef/haltafter",
+            "inventory": [
+              {
+                "slot": 0,
+                "id": "minecraft:emerald",
+                "count": 7,
+                "data": null
+              }
+            ],
+            "fileSha256": "efbe54ba64234affdca72e4fd6bb69d088f893ca12a7d5bf7e17c4ba87f30101"
+          }
+        }
+      ]
+    },
+    "paper": {
+      "runName": "paper-26.3-s16",
+      "summaryPath": "/mnt/storage/.allium-validation/20261114/s16-kits/runs/paper-26.3-s16/summary.json",
+      "summarySha256": "a713a15735ee84c7253ff817d78d86617b3ebc0a9aec9b969cbf423319eee6fe",
+      "passed": true,
+      "totalChecks": 57,
+      "failedChecks": 0,
+      "durationSeconds": 51.58,
+      "scopes": [
+        {
+          "label": "paper:claim-cooldown-and-others",
+          "status": "PASS"
+        },
+        {
+          "label": "paper:one-time-and-paid-denial",
+          "status": "PASS"
+        },
+        {
+          "label": "paper:full-inventory-and-cancelled-event",
+          "status": "PASS"
+        },
+        {
+          "label": "paper:provider-and-signed-items-createkit-delkit",
+          "status": "PASS"
+        },
+        {
+          "label": "paper:permissions-and-tab-completion",
+          "status": "PASS"
+        },
+        {
+          "label": "paper:disconnect-mid-delivery",
+          "status": "PASS"
+        },
+        {
+          "label": "paper:crash-mid-delivery-recovery",
+          "status": "PASS"
+        }
+      ],
+      "crashSnapshots": [
+        {
+          "lane": "paper",
+          "point": "kit.claim.halt-before-deliver",
+          "kitName": "haltbefore",
+          "deliveries": [
+            {
+              "id": "83a752d0-084d-4cd5-ab10-fd4c394136c9",
+              "kit_name": "haltbefore",
+              "claim_token": "d5320e1a-f5e0-43b8-9498-e4d518677f0c",
+              "claim_owner": "server-bd1e3fbf-c5bc-41cc-ad36-f4e5c2fe0703",
+              "item_count": 6
+            }
+          ],
+          "usages": [],
+          "savedPlayer": {
+            "dataVersion": 5023,
+            "receipts": null,
+            "inventory": [],
+            "fileSha256": "081b953c9db2ac6f7585682077e6cbb6035f3b21881706b20a0a1c045c16e943"
+          }
+        },
+        {
+          "lane": "paper",
+          "point": "kit.claim.halt-after-deliver",
+          "kitName": "haltafter",
+          "deliveries": [
+            {
+              "id": "5b46eba8-ac8b-41c9-abcb-e14947b5f99a",
+              "kit_name": "haltafter",
+              "claim_token": "4295bb67-e1a1-4eb6-a5d9-d5a62b1319e3",
+              "claim_owner": "server-bd1e3fbf-c5bc-41cc-ad36-f4e5c2fe0703",
+              "item_count": 7
+            }
+          ],
+          "usages": [],
+          "savedPlayer": {
+            "dataVersion": 5023,
+            "receipts": "K/5b46eba8-ac8b-41c9-abcb-e14947b5f99a/4295bb67-e1a1-4eb6-a5d9-d5a62b1319e3/haltafter",
+            "inventory": [
+              {
+                "slot": 0,
+                "id": "minecraft:emerald",
+                "count": 7,
+                "data": null
+              }
+            ],
+            "fileSha256": "014b5eaeb24a7d1b056295f39566bafb7d17877629f7eec0d64817538ba19985"
+          }
+        }
+      ]
+    }
+  }
+}

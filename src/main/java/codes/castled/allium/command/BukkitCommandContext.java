@@ -2,6 +2,7 @@ package codes.castled.allium.command;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.spec.CommandSpec;
+import codes.castled.allium.naming.PlayerNameVisibility;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
@@ -74,7 +75,7 @@ public final class BukkitCommandContext {
             }
             String targetName = args[targetArgIndex];
             Player target = plugin.getServer().getPlayer(targetName);
-            if (target == null) {
+            if (target == null || !PlayerNameVisibility.canSeeTarget(sender, target)) {
                 plugin.getMessageManager().sendByKey(
                         sender,
                         spec.messageKeys().playerNotFoundKey(),

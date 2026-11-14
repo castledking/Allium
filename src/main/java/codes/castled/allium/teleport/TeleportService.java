@@ -125,7 +125,8 @@ public final class TeleportService implements Listener {
         if(found.isEmpty()){send(recipient,Messages.TELEPORT_NO_PENDING);return;}
         var request=found.get();
         Player sender=plugin.getServer().getPlayer(request.requester());
-        if(sender==null||!allowed(sender,recipient,sender,false,true)){requests.remove(request.requester());return;}
+        if(sender==null||!visible(recipient,sender)){requests.remove(request.requester());send(recipient,Messages.TELEPORT_NO_PENDING);return;}
+        if(!allowed(sender,recipient,sender,false,true)){requests.remove(request.requester());return;}
         Player mover=request.kind()==RequestTracker.Kind.TO_TARGET?sender:recipient;
         Player anchor=request.kind()==RequestTracker.Kind.TO_TARGET?recipient:sender;
         if(begin(mover,sender,request.kind()==RequestTracker.Kind.TO_TARGET?"tpa":"tpahere",anchor::getLocation,anchor,request,false)) {
@@ -136,8 +137,11 @@ public final class TeleportService implements Listener {
         if(!recipient.hasPermission("allium.tpdeny")){send(recipient,Messages.NO_PERMISSION);return;}
         var found=requests.incoming(recipient.getUniqueId(),requester==null?null:requester.getUniqueId(),System.currentTimeMillis());
         if(found.isEmpty()){send(recipient,Messages.TELEPORT_NO_PENDING);return;}
-        requests.remove(found.get().requester());send(recipient,Messages.TELEPORT_DENIED);
-        tell(found.get().requester(),Messages.TELEPORT_DENIED);
+        var request=found.get();
+        Player sender=plugin.getServer().getPlayer(request.requester());
+        if(sender==null||!visible(recipient,sender)){requests.remove(request.requester());send(recipient,Messages.TELEPORT_NO_PENDING);return;}
+        requests.remove(request.requester());send(recipient,Messages.TELEPORT_DENIED);
+        tell(request.requester(),Messages.TELEPORT_DENIED);
     }
     public void cancel(Player sender) {
         if(!sender.hasPermission("allium.tpacancel")){send(sender,Messages.NO_PERMISSION);return;}
@@ -147,6 +151,25 @@ public final class TeleportService implements Listener {
             interrupt(operation,"cancelled");any=true;
         }
         send(sender,any?Messages.TELEPORT_REQUEST_CANCELLED:Messages.TELEPORT_NO_PENDING);
+    }
+    /**
+     * Silently drops pending requests involving {@code player} when the other participant cannot see
+     * them, matching offline behavior without broadcasting a vanish leak.
+     */
+    public void cancelInvisibleRequests(Player player) {
+        if(player==null)return;
+        UUID id=player.getUniqueId();
+        requests.removeIf(request->{
+            if(request.requester().equals(id)){
+                Player recipient=plugin.getServer().getPlayer(request.recipient());
+                return recipient==null||!visible(recipient,player);
+            }
+            if(request.recipient().equals(id)){
+                Player requester=plugin.getServer().getPlayer(request.requester());
+                return requester==null||!visible(requester,player);
+            }
+            return false;
+        });
     }
     public void toggle(CommandSender actor,Player target,@Nullable Boolean on) {
         if(!actor.hasPermission("allium.tptoggle") || actor!=target&&!actor.hasPermission("allium.tptoggle.others")){send(actor,Messages.NO_PERMISSION);return;}

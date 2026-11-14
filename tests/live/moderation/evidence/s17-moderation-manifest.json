@@ -1,0 +1,71 @@
+{
+  "slice": "S17",
+  "title": "Persistent vanish and mute replacing stub VanishSource and MuteSource hooks",
+  "jarSha256": "e69179243f7eb56780f8972382ff031135f6eba612e4a08681d6dfe60d23ecc6",
+  "lanes": {
+    "spigot": {
+      "runName": "spigot-r5",
+      "manifestPath": "/mnt/storage/.allium-validation/20261114/s17-moderation/runs/spigot-r5/manifest.json",
+      "manifestSha256": "a27a10a5d2b58de3b12cd5b085ba84746e2e2cabc2c7698a0d88650c4f48ad99",
+      "passed": true,
+      "passedCount": 75,
+      "failedCount": 0,
+      "durationSeconds": 49,
+      "scopes": [
+        {
+          "label": "spigot-1.20.1: vanish visibility, tab completion, and looks-offline contract",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot-1.20.1: vanish world effects, relog, and server restart persistence",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot-1.20.1: mute chat/msg/reply/mail enforcement, timed expiry, unmute, and audit log",
+          "status": "PASS"
+        }
+      ],
+      "sourceHashes": {
+        "/mnt/storage/repos/Allium-recode/tests/live/moderation/run.py": "cd9b698bd6624613f9a29e844cdbcaaa608596fd084a76d4147000156e137e8b",
+        "/mnt/storage/repos/Allium-recode/tests/live/moderation/plugin/gate/ModGate.java": "2fe5bc7c366fb2fded078fb9f4745e7f81898c29ebfc26049017a1620a208fc7",
+        "/mnt/storage/repos/Allium-recode/tests/live/moderation/plugin/plugin.yml": "516a75596da9d537bc28ce009d7b9d30f33b38396487f01e511e53efbe3042dd",
+        "/mnt/storage/repos/Allium-recode/tests/live/moderation/client-mcp.cjs": "c0a6b78a5decfd969827118fa06d6c41f2a72954778df2cf4923a0b45688ade8",
+        "/mnt/storage/repos/Allium-recode/tests/live/moderation/client-raw26.cjs": "22ca1837290985fbfafe574313cbd11ac7796d3ae3161a976cc93dac74e4c228",
+        "/mnt/storage/repos/Allium-recode/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/repos/Allium-recode/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72"
+      }
+    },
+    "paper": {
+      "runName": "paper-r2",
+      "manifestPath": "/mnt/storage/.allium-validation/20261114/s17-moderation/runs/paper-r2/manifest.json",
+      "manifestSha256": "9dc4c59c92adafaa2bce60f5556362d207b60998c6891e2c9c73f3b7081dcdfb",
+      "passed": true,
+      "passedCount": 75,
+      "failedCount": 0,
+      "durationSeconds": 42,
+      "scopes": [
+        {
+          "label": "paper-26.3: vanish visibility, tab completion, and looks-offline contract",
+          "status": "PASS"
+        },
+        {
+          "label": "paper-26.3: vanish world effects, relog, and server restart persistence",
+          "status": "PASS"
+        },
+        {
+          "label": "paper-26.3: mute chat/msg/reply/mail enforcement, timed expiry, unmute, and audit log",
+          "status": "PASS"
+        }
+      ],
+      "sourceHashes": {
+        "/mnt/storage/repos/Allium-recode/tests/live/moderation/run.py": "cd9b698bd6624613f9a29e844cdbcaaa608596fd084a76d4147000156e137e8b",
+        "/mnt/storage/repos/Allium-recode/tests/live/moderation/plugin/gate/ModGate.java": "2fe5bc7c366fb2fded078fb9f4745e7f81898c29ebfc26049017a1620a208fc7",
+        "/mnt/storage/repos/Allium-recode/tests/live/moderation/plugin/plugin.yml": "516a75596da9d537bc28ce009d7b9d30f33b38396487f01e511e53efbe3042dd",
+        "/mnt/storage/repos/Allium-recode/tests/live/moderation/client-mcp.cjs": "c0a6b78a5decfd969827118fa06d6c41f2a72954778df2cf4923a0b45688ade8",
+        "/mnt/storage/repos/Allium-recode/tests/live/moderation/client-raw26.cjs": "22ca1837290985fbfafe574313cbd11ac7796d3ae3161a976cc93dac74e4c228",
+        "/mnt/storage/repos/Allium-recode/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/repos/Allium-recode/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72"
+      }
+    }
+  }
+}

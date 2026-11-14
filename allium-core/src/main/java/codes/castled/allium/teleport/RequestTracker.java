@@ -81,6 +81,11 @@ public final class RequestTracker {
         return Optional.ofNullable(requests.remove(Objects.requireNonNull(requester, "requester")));
     }
 
+    /** Removes matching pending requests without notification and returns the removed entries. */
+    public List<Request> removeIf(Predicate<Request> predicate) {
+        return removeMatching(Objects.requireNonNull(predicate, "predicate"));
+    }
+
     /** Cancels all requests addressed to this recipient, oldest first. */
     public List<Request> cancelIncoming(UUID recipient) {
         Objects.requireNonNull(recipient, "recipient");

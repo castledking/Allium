@@ -103,7 +103,12 @@ Spigot 1.20.1 and Paper 26.3, including restart. **S16 complete:** free kits (`/
 persisted cooldowns and one-time status, paid-kit denial until M3 reservations exist,
 and durable delivery records + saved `player.dat` receipt verification.
 [S16 results](tests/live/kits/RESULTS.md): 7 cases / 57 checks on each of
-Spigot 1.20.1 and Paper 26.3 (114 live checks total). Full build: 531 tests pass.
+Spigot 1.20.1 and Paper 26.3 (114 live checks total). Full build: 531 tests pass. **S17 complete:**
+persistent `/vanish` (`/v`) and `/mute`, `/unmute`, `/mutes` (`/mutelist`, `/mute list`)
+replacing the stub `VanishSource` and `MuteSource` hooks across messaging, social spy, mail,
+teleport, and player-targeting commands; see [docs/vanish-mute.md](docs/vanish-mute.md) and
+[S17 results](tests/live/moderation/RESULTS.md) (75/75 live checks on each of Spigot 1.20.1
+and Paper 26.3, 150 total; 528 unit/integration tests pass).
 The economy implementation remains later work. **S14 design complete:** [economy-design.md](docs/economy-design.md)
 defines the replacement and records measured JDBC commit costs. The Vault adapter
 remains unimplemented and release-gated; this does not make the existing scaffold
@@ -363,6 +368,22 @@ result and must preserve the existing uncommitted work.
         so disconnect or crash mid-delivery never double-delivers or burns cooldown without items.
       - Paid kits (`cost > 0`) are explicitly denied until M3 economy reservations exist; sign
         hooks remain for the signs slice; no console command execution.
+- [x] **S17 / M3 — Vanish and mute:** real persistent `VanishSource` and `MuteSource`
+      implementations (`ModerationService`, `ModerationRepository`, bounded `Allium-Moderation`
+      SQL executor); see [docs/vanish-mute.md](docs/vanish-mute.md) and
+      [S17 results](tests/live/moderation/RESULTS.md).
+      - **Vanish:** `/vanish [on|off] [player]` (`/v`), persisted in `allium_vanish`, hiding
+        from non-`allium.vanish.see` players (`hidePlayer`), tab list, `ServerListPingEvent`,
+        join/quit broadcasts, mob targeting, item/arrow pickup, physical interactions, sculk
+        vibrations, sleep checks, silent `ENDER_CHEST`/lidded container mirror, tab completion,
+        `/msg`/`/reply`/`/ignore`/`/msgtoggle`/`SocialSpy`/`/tpa`/`/tpahere`/`/tpaccept`/`/tpdeny`/
+        `/heal`/`/kit`, and relog/restart persistence without revealing the player.
+      - **Mute:** `/mute <player> [duration] [reason]`, `/unmute <player> [reason]`, `/mutes`
+        (`/mutelist`, `/mute list`), applied across public chat, `/msg`, `/reply`, `/mail send`,
+        and `/mail gift`, with remaining-time notices, automatic non-restart timed expiry, and
+        SQL (`allium_moderation_audit`) + console audit logs.
+      - Gate passed: 3 cases / 75 checks on each of Spigot 1.20.1 and Paper 26.3 (150 live
+        checks total); SQLite live only (MySQL query syntax unit-tested).
 - [ ] **Travel follow-up — Pet teleport.** Explicit future slice, not provided by S15.
 - [ ] **Travel follow-up — Offline home/restore administration and legacy import.**
       Explicit future slice, not provided by S15.

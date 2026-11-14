@@ -1,0 +1,8 @@
+name: ModGate
+version: "1.0"
+main: gate.ModGate
+api-version: "1.20"
+depend: [Allium]
+commands:
+  s17g:
+    description: S17 moderation gate console fixture

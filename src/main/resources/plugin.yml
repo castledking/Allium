@@ -154,6 +154,25 @@ commands:
     usage: /<command> <name>
     permission: allium.delkit
 
+  vanish:
+    description: Toggle vanish mode for yourself or another player
+    usage: /<command> [on|off] [player]
+    aliases: [v]
+    permission: allium.vanish
+  mute:
+    description: Mute a player with an optional duration and reason
+    usage: /<command> <player> [duration] [reason]
+    permission: allium.mute
+  unmute:
+    description: Unmute a muted player
+    usage: /<command> <player> [reason]
+    permission: allium.unmute
+  mutes:
+    description: List currently active mutes
+    usage: /<command>
+    aliases: [mutelist]
+    permission: allium.mute
+
 permissions:
   allium.*:
     description: All Allium permissions
@@ -187,6 +206,11 @@ permissions:
       allium.kit.others: true
       allium.createkit: true
       allium.delkit: true
+      allium.vanish: true
+      allium.vanish.others: true
+      allium.vanish.see: true
+      allium.mute: true
+      allium.unmute: true
       allium.reload: true
       allium.import: true
   allium.reload:
@@ -246,8 +270,20 @@ permissions:
   allium.msg.gradient:
     description: Lets gradient and rainbow tags in private messages take effect
     default: op
+  allium.vanish:
+    description: Allows /vanish for yourself
+    default: op
+  allium.vanish.others:
+    description: Allows /vanish for other players
+    default: op
   allium.vanish.see:
-    description: See vanished players (messages, tab completion)
+    description: See vanished players (world, tab list, messages, tab completion)
+    default: op
+  allium.mute:
+    description: Allows /mute and /mutes
+    default: op
+  allium.unmute:
+    description: Allows /unmute
     default: op
   allium.msg.bypass.toggle:
     description: Message players who turned messages off. Explicit only; not given to ops or allium.*

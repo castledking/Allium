@@ -948,7 +948,15 @@ public final class MailService implements Listener {
 
     private void refuse(CommandSender sender, MailPolicy.Outcome outcome, String target) {
         switch (outcome) {
-            case SENDER_MUTED -> send(sender, Messages.MSG_MUTED);
+            case SENDER_MUTED -> {
+                if ((!(sender instanceof Player p) || same(p))
+                        && plugin.getModuleManager().getModule("messaging") instanceof MessagingModule m
+                        && m.isEnabled() && m.messaging() != null) {
+                    m.messaging().sendMutedNotice(sender);
+                } else {
+                    send(sender, Messages.MSG_MUTED);
+                }
+            }
             case NOT_FOUND -> send(sender, Messages.MAIL_UNKNOWN_PLAYER, "{player}", target);
             case SELF -> send(sender, Messages.MAIL_SELF);
             case CANNOT_RECEIVE -> send(sender, Messages.MAIL_CANNOT_RECEIVE, "{player}", target);

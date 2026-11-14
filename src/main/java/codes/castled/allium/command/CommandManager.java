@@ -25,6 +25,7 @@ public final class CommandManager {
         this.familyPolicy.registerSpecs(CoreCommandSpecs.ESSENTIALS_PROOF_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.ITEM_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.MESSAGING_SPECS);
+        this.familyPolicy.registerSpecs(CoreCommandSpecs.MODERATION_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.MAIL_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.TELEPORT_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.TRAVEL_SPECS);

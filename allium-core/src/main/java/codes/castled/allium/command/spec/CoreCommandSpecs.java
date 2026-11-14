@@ -352,6 +352,62 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> KIT_SPECS = List.of(KIT, KITS, CREATEKIT, DELKIT);
 
+    public static final CommandSpec VANISH = new CommandSpec(
+            "vanish", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of("v"),
+            "Toggle vanish mode for yourself or another player",
+            "/vanish [on|off] [player]",
+            "/vanish [on|off] <player>",
+            "allium.vanish", "allium.vanish.others",
+            List.of(
+                    CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
+                    CommandArgSpec.optional("player", "allium.vanish.others", SuggestionSpec.onlinePlayers("allium.vanish.others"))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec MUTE = new CommandSpec(
+            "mute", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of(),
+            "Mute a player with an optional duration and reason",
+            "/mute <player> [duration] [reason]",
+            "/mute <player> [duration] [reason]",
+            "allium.mute", null,
+            List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
+                    CommandArgSpec.optional("duration", null, SuggestionSpec.literals(List.of("5m", "15m", "1h", "1d", "7d"), null)),
+                    CommandArgSpec.optional("reason", null, SuggestionSpec.none())
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec UNMUTE = new CommandSpec(
+            "unmute", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of(),
+            "Unmute a muted player",
+            "/unmute <player> [reason]",
+            "/unmute <player> [reason]",
+            "allium.unmute", null,
+            List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
+                    CommandArgSpec.optional("reason", null, SuggestionSpec.none())
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec MUTES = new CommandSpec(
+            "mutes", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of("mutelist"),
+            "List currently active mutes",
+            "/mutes",
+            "/mutes",
+            "allium.mute", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final List<CommandSpec> MODERATION_SPECS = List.of(VANISH, MUTE, UNMUTE, MUTES);
+
     public static final List<CommandSpec> TRAVEL_SPECS = java.util.stream.Stream.of("sethome","home","delhome","homes","setwarp","warp","delwarp","warps")
             .map(CoreCommandSpecs::travelSpec).toList();
     private static CommandSpec travelSpec(String command) {

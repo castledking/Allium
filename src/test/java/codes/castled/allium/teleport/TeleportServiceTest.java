@@ -139,6 +139,44 @@ class TeleportServiceTest {
         staff = player("Staff", UUID.randomUUID());
     }
 
+    @Test
+    void vanishedRequesterLooksOfflineOnAcceptDenyAndCancelInvisibleRequests() throws Exception {
+        enable();
+        when(target.hasPermission("allium.tpaccept")).thenReturn(true);
+        when(target.hasPermission("allium.tpdeny")).thenReturn(true);
+        when(mover.hasPermission("allium.tpa")).thenReturn(true);
+
+        // 1. Mover requests TP to target while visible
+        service.request(mover, target, RequestTracker.Kind.TO_TARGET);
+        assertEquals(1, service.pendingRequests());
+
+        // Mover vanishes from target -> accept reports TELEPORT_NO_PENDING (not PLAYER_NOT_FOUND to mover)
+        MessagingService messaging = messagingModule.messaging();
+        when(messaging.visibleTo(target, mover)).thenReturn(false);
+        service.accept(target, null);
+        verify(plugin.getMessageManager()).send(target, codes.castled.allium.message.Messages.TELEPORT_NO_PENDING);
+        assertEquals(0, service.pendingRequests());
+
+        // 2. Same for deny when requester becomes invisible
+        when(messaging.visibleTo(target, mover)).thenReturn(true);
+        service.request(mover, target, RequestTracker.Kind.TO_TARGET);
+        when(messaging.visibleTo(target, mover)).thenReturn(false);
+        service.deny(target, null);
+        verify(plugin.getMessageManager(), times(2)).send(target, codes.castled.allium.message.Messages.TELEPORT_NO_PENDING);
+        assertEquals(0, service.pendingRequests());
+
+        // 3. cancelInvisibleRequests clears normal-player pending requests without messaging, keeping staff observer request
+        when(messaging.visibleTo(target, mover)).thenReturn(true);
+        service.request(mover, target, RequestTracker.Kind.TO_TARGET);
+        when(staff.hasPermission("allium.tpa")).thenReturn(true);
+        service.request(staff, target, RequestTracker.Kind.TO_TARGET);
+        assertEquals(2, service.pendingRequests());
+        when(messaging.visibleTo(mover, target)).thenReturn(false);
+        when(messaging.visibleTo(staff, target)).thenReturn(true);
+        service.cancelInvisibleRequests(target);
+        assertEquals(1, service.pendingRequests());
+    }
+
     @AfterEach
     void close() throws Exception {
         if (service != null && !disabled) {

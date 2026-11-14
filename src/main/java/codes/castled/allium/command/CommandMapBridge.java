@@ -129,12 +129,53 @@ public final class CommandMapBridge {
                     }
                     node = redirect;
                 }
-                return node;
+                // Paper copyLiteral creates a distinct namespaced root, keeping its command
+                // executor and argument children by reference. Root identity alone misses those
+                // copies even though both labels execute the same command.
+                return executableNodeIdentity(node);
             }
         } catch (ReflectiveOperationException ignored) {
             // Not a VanillaCommandWrapper; compare by Command instance identity below.
         }
         return command;
+    }
+
+    private static Object executableNodeIdentity(Object root) throws ReflectiveOperationException {
+        Object node = root;
+        for (int depth = 0; depth < 32; depth++) {
+            Method getCommand;
+            Method getChildren;
+            try {
+                getCommand = node.getClass().getMethod("getCommand");
+                getChildren = node.getClass().getMethod("getChildren");
+            } catch (NoSuchMethodException unavailable) {
+                return node;
+            }
+            Object executable = getCommand.invoke(node);
+            if (executable != null) {
+                return executable;
+            }
+            Object childrenValue = getChildren.invoke(node);
+            if (!(childrenValue instanceof Collection<?> children) || children.isEmpty()) {
+                return node;
+            }
+            // Child labels choose a deterministic branch only; equivalence still compares the
+            // resulting native executor/node by reference, never by its name.
+            Object selected = null;
+            String selectedName = null;
+            for (Object child : children) {
+                String name = String.valueOf(child.getClass().getMethod("getName").invoke(child));
+                if (selected == null || name.compareTo(selectedName) < 0) {
+                    selected = child;
+                    selectedName = name;
+                }
+            }
+            if (selected == node) {
+                return root;
+            }
+            node = selected;
+        }
+        return root;
     }
 
     @Nullable

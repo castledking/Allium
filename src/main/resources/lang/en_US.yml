@@ -110,6 +110,23 @@ chat:
   broadcast: "&4[Broadcast] &c{message}"
 
 moderation:
+  discipline:
+    usage: "{prefix} &cUsage: {usage}"
+    unavailable: "{prefix} &cModeration data is unavailable. Try again shortly."
+    busy: "{prefix} &cA moderation action is already pending or rate limited. Try again shortly."
+    exempt: "{prefix} &cYou cannot act on this player under the moderation hierarchy."
+    success: "{prefix} &a{action}: {player}."
+    not-active: "{prefix} &cNo matching active record for {player}."
+    ip-disabled: "{prefix} &cIP bans are disabled in configuration."
+    jail-not-found: "{prefix} &cJail {jail} was not found."
+    unsafe-location: "{prefix} &cThe jail or return location is unavailable or unsafe."
+    ban-denied: "You are banned: {message}"
+    login-unavailable: "Moderation data is unavailable. Please try again shortly."
+    kick-notice: "You were kicked: {message}"
+    warning-notice: "{prefix} &eWarning: {message}"
+    list-header: "{prefix} &fModeration records ({count}):"
+    list-entry: "&7- {player} by {actor}: {message}"
+    list-empty: "{prefix} &7No moderation records found."
   ban: "{prefix} &f{player} &chas been banned. Reason: &f{reason}"
   tempban: "{prefix} &f{player} &cbanned for &f{duration}&c. Reason: &f{reason}"
   kick: "{prefix} &f{player} &chas been kicked. Reason: &f{reason}"

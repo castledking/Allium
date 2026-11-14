@@ -201,6 +201,67 @@ commands:
     aliases: [away]
     permission: allium.afk
 
+  kick:
+    description: Allium audited kick
+    usage: /<command> <player> [reason]
+    permission: allium.kick
+
+  ban:
+    description: Allium audited ban
+    usage: /<command> <player> [reason]
+    permission: allium.ban
+
+  tempban:
+    description: Allium audited tempban
+    usage: /<command> <player> <duration> [reason]
+    permission: allium.tempban
+
+  unban:
+    description: Allium audited unban
+    usage: /<command> <player>
+    permission: allium.unban
+    aliases: [pardon]
+
+  banlist:
+    description: Allium audited banlist
+    usage: /<command>
+    permission: allium.banlist
+
+  ipban:
+    description: Allium audited ipban
+    usage: /<command> <player> [reason]
+    permission: allium.ipban
+
+  freeze:
+    description: Allium audited freeze
+    usage: /<command> <player> [on|off] [reason]
+    permission: allium.freeze
+
+  setjail:
+    description: Allium audited setjail
+    usage: /<command> <name>
+    permission: allium.setjail
+
+  jail:
+    description: Allium audited jail
+    usage: /<command> <player> <jail> [reason]
+    permission: allium.jail
+
+  unjail:
+    description: Allium audited unjail
+    usage: /<command> <player>
+    permission: allium.unjail
+
+  warn:
+    description: Allium audited warn
+    usage: /<command> <player> [reason]
+    permission: allium.warn
+
+  notes:
+    description: Allium audited notes
+    usage: /<command> <player> [add <note>]
+    permission: allium.notes
+
 permissions:
   allium.*:
     description: All Allium permissions
@@ -238,6 +299,18 @@ permissions:
       allium.vanish.others: true
       allium.vanish.see: true
       allium.mute: true
+      allium.kick: true
+      allium.ban: true
+      allium.tempban: true
+      allium.unban: true
+      allium.banlist: true
+      allium.ipban: true
+      allium.freeze: true
+      allium.setjail: true
+      allium.jail: true
+      allium.unjail: true
+      allium.warn: true
+      allium.notes: true
       allium.unmute: true
       allium.list: true
       allium.seen: true
@@ -489,4 +562,47 @@ permissions:
     default: true
   allium.afk.kick.exempt:
     description: Exempts player from AFK kick when kick-on-afk is enabled. Explicit only; not in allium.*.
+    default: false
+
+  allium.kick:
+    description: Allows /kick
+    default: op
+  allium.ban:
+    description: Allows /ban
+    default: op
+  allium.tempban:
+    description: Allows /tempban
+    default: op
+  allium.unban:
+    description: Allows /unban
+    default: op
+  allium.banlist:
+    description: Allows /banlist
+    default: op
+  allium.ipban:
+    description: Allows /ipban
+    default: op
+  allium.freeze:
+    description: Allows /freeze
+    default: op
+  allium.setjail:
+    description: Allows /setjail
+    default: op
+  allium.jail:
+    description: Allows /jail
+    default: op
+  allium.unjail:
+    description: Allows /unjail
+    default: op
+  allium.warn:
+    description: Allows /warn
+    default: op
+  allium.notes:
+    description: Allows /notes
+    default: op
+  allium.moderation.exempt:
+    description: Protects a player from discipline actions without an explicit bypass
+    default: false
+  allium.moderation.bypass:
+    description: Explicitly bypass moderation hierarchy and exempt policy; also authorizes offline actions
     default: false

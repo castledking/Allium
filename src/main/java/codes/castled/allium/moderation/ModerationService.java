@@ -213,6 +213,13 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         }
     }
 
+    private java.util.function.BiPredicate<CommandSender, UUID> actionPolicy = (actor, target) -> true;
+
+    /** The discipline module installs the shared staff hierarchy and action-rate policy. */
+    public void setActionPolicy(java.util.function.BiPredicate<CommandSender, UUID> policy) {
+        actionPolicy = Objects.requireNonNull(policy, "policy");
+    }
+
     private final PluginStart plugin;
     private final ModerationRepository repository;
     private final Executor storageExecutor;
@@ -758,6 +765,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
     ) {
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(targetUuid, "targetUuid");
+        if (!actionPolicy.test(actor, targetUuid)) return;
         if (actor instanceof Player actorPlayer && actorPlayer.getUniqueId().equals(targetUuid)) {
             plugin.getMessageManager().send(actor, Messages.MUTE_SELF);
             return;
@@ -832,6 +840,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
     ) {
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(targetUuid, "targetUuid");
+        if (!actionPolicy.test(actor, targetUuid)) return;
 
         Optional<MuteRecord> currentOpt = activeMute(targetUuid);
         if (currentOpt.isEmpty()) {

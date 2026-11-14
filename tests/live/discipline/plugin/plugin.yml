@@ -1,0 +1,8 @@
+name: DisciplineGate
+version: "1.0"
+main: gate.DisciplineGate
+api-version: "1.20"
+depend: [Allium]
+commands:
+  s19g:
+    description: S19 discipline console-only fixture

@@ -427,7 +427,49 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of())
     );
 
-    public static final List<CommandSpec> MODERATION_SPECS = List.of(VANISH, MUTE, UNMUTE, MUTES);
+    public static final List<CommandSpec> DISCIPLINE_SPECS = java.util.stream.Stream.of(
+            "kick", "ban", "tempban", "unban", "banlist", "ipban", "freeze", "setjail", "jail", "unjail", "warn", "notes")
+            .map(CoreCommandSpecs::disciplineSpec).toList();
+
+    private static CommandSpec disciplineSpec(String name) {
+        String usage = switch (name) {
+            case "kick", "ban", "ipban", "warn" -> "/" + name + " <player> [reason]";
+            case "tempban" -> "/tempban <player> <duration> [reason]";
+            case "unban", "unjail" -> "/" + name + " <player>";
+            case "banlist" -> "/banlist";
+            case "freeze" -> "/freeze <player> [on|off] [reason]";
+            case "setjail" -> "/setjail <name>";
+            case "jail" -> "/jail <player> <jail> [reason]";
+            case "notes" -> "/notes <player> [add <note>]";
+            default -> throw new IllegalArgumentException(name);
+        };
+        List<CommandArgSpec> arguments = name.equals("banlist") ? List.of()
+                : List.of(CommandArgSpec.required(name.equals("setjail") ? "name" : "player", null,
+                    name.equals("setjail") ? SuggestionSpec.none() : SuggestionSpec.knownPlayers(null)));
+        if (name.equals("jail")) {
+            arguments = List.of(arguments.get(0), CommandArgSpec.required("jail", null,
+                    new SuggestionSpec(SuggestionSource.JAIL_NAMES, List.of(), null)));
+        } else if (name.equals("freeze")) {
+            arguments = List.of(arguments.get(0), CommandArgSpec.optional("state", null,
+                    SuggestionSpec.literals(List.of("on", "off"), null)));
+        } else if (name.equals("tempban")) {
+            arguments = List.of(arguments.get(0), CommandArgSpec.required("duration", null,
+                    SuggestionSpec.literals(List.of("5m", "15m", "1h", "1d", "7d"), null)));
+        } else if (name.equals("warn")) {
+            arguments = List.of(arguments.get(0), CommandArgSpec.optional("history", null,
+                    SuggestionSpec.literals(List.of("history", "list"), null)));
+        } else if (name.equals("notes")) {
+            arguments = List.of(arguments.get(0), CommandArgSpec.optional("action", null,
+                    SuggestionSpec.literals(List.of("list", "add"), null)));
+        }
+        return new CommandSpec(name, CommandSpec.DEFAULT_NAMESPACE, "moderation",
+                name.equals("unban") ? List.of("pardon") : List.of(),
+                "Persisted, audited moderation: " + name, usage, usage, "allium." + name,
+                null, arguments, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+    }
+
+    public static final List<CommandSpec> MODERATION_SPECS = java.util.stream.Stream.concat(
+            java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES), DISCIPLINE_SPECS.stream()).toList();
 
     public static final List<CommandSpec> TRAVEL_SPECS = java.util.stream.Stream.of("sethome","home","delhome","homes","setwarp","warp","delwarp","warps")
             .map(CoreCommandSpecs::travelSpec).toList();

@@ -153,7 +153,8 @@ When a player is vanished (`ModerationService#isVanished`):
      the typed command label and each configured rule's root label through Bukkit's `CommandMap`
      and compares **canonical command identity** via `CommandMapBridge#canonicalCommandIdentity`
      (comparing `Command` instances directly for plugin commands, and unwrapping
-     `VanillaCommandWrapper#vanillaCommand` + `CommandNode#getRedirect()` for Brigadier aliases).
+     `VanillaCommandWrapper#vanillaCommand`, following `CommandNode#getRedirect()`, then using the
+     shared native executor/argument identity for Paper namespaced root copies).
    - This intercepts aliases and namespaced forms automatically — including `/w`, `/whisper`, `/m`,
      `/t`, `/r`, `/allium:msg`, `/tm`, `/minecraft:tm`, `/minecraft:tell`, `/minecraft:w`,
      `/minecraft:me`, `/minecraft:say`, `/minecraft:teammsg`, and `/allium:mail send` — without
@@ -195,3 +196,13 @@ All SQL operations run on a dedicated bounded executor (`Allium-Moderation`, 2 w
 - `allium_moderation_audit`: `(id PRIMARY KEY AUTO_INCREMENT, created_at, action, actor_name, target_uuid, target_name, detail)`
   recording `VANISH_ON`, `VANISH_OFF`, `MUTE`, `UNMUTE`, and `MUTE_EXPIRED`, alongside structured
   server log lines (`Moderation audit action=...`).
+
+
+S19 installs the same staff hierarchy and per-actor action rate check on `/mute` and
+`/unmute` as the new discipline commands. See [the discipline guide](moderation.md).
+
+## Startup mute identity diagnostic
+
+After vanilla fallback commands have registered, startup resolves every default muted command through CommandMap and checks same-owner namespaced forms against its canonical native identity. Missing labels, inaccessible fallback metadata, and split identities emit `MUTED-COMMAND SELF-TEST` warnings; an identity mismatch warns that mute coverage may be incomplete. Legitimate plugin shadowing of a vanilla label is checked within each owner rather than treating independent plugin commands as aliases. Two unit tests cover mismatched/missing identities and shared fallback identity.
+
+The permanent moderation gate contains ten individually named muted refusals and matching unmuted actual-recipient controls on both Spigot 1.20.1 and Paper 26.3. See [follow-up results](../tests/live/regression/FOLLOWUP.md).

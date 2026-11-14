@@ -191,6 +191,16 @@ public final class MailService implements Listener {
         return serverId;
     }
 
+    public boolean busy(Player player) {
+        return locks.locked(player) || recovering.contains(player) || recoveryBusy.contains(player) || quarantined.contains(player);
+    }
+
+    private boolean kitBusy(Player player) {
+        return plugin.getModuleManager() != null
+                && plugin.getModuleManager().getModule("kits") instanceof codes.castled.allium.module.KitsModule kits
+                && kits.isEnabled() && kits.kits() != null && kits.kits().busy(player);
+    }
+
     // -- Text mail -------------------------------------------------------------------------------
 
     public void sendText(CommandSender sender, String typedName, String body) {
@@ -256,7 +266,7 @@ public final class MailService implements Listener {
             send(sender, Messages.MAIL_TOO_LONG, "{max}", Integer.toString(rules.bodyMaxLength()));
             return;
         }
-        if (locks.locked(sender) || recovering.contains(sender) || !emptyCursor(sender)) {
+        if (locks.locked(sender) || recovering.contains(sender) || kitBusy(sender) || !emptyCursor(sender)) {
             send(sender, Messages.MAIL_BUSY);
             return;
         }
@@ -525,7 +535,7 @@ public final class MailService implements Listener {
 
     public void claim(Player player, String idPrefix) {
         if (!senderReady(player)) return;
-        if (locks.locked(player) || recovering.contains(player) || !emptyCursor(player)) {
+        if (locks.locked(player) || recovering.contains(player) || kitBusy(player) || !emptyCursor(player)) {
             send(player, Messages.MAIL_BUSY);
             return;
         }
@@ -557,7 +567,7 @@ public final class MailService implements Listener {
 
     private void claim(Player player, MailRecord mail, Runnable after) {
         if (!same(player)) return;
-        if (locks.locked(player) || recovering.contains(player) || !emptyCursor(player)) {
+        if (locks.locked(player) || recovering.contains(player) || kitBusy(player) || !emptyCursor(player)) {
             send(player, Messages.MAIL_BUSY);
             return;
         }
@@ -691,7 +701,7 @@ public final class MailService implements Listener {
         Player player = event.getPlayer();
         Long connection = connections.remove(player);
         if (connection != null) generations.remove(player.getUniqueId(), connection);
-        locks.unlock(player);
+        locks.clear(player);
         mailboxCache.remove(player);
         recovering.remove(player);
         recoveryBusy.remove(player);

@@ -4,6 +4,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.spec.CommandCompletionContext;
 import codes.castled.allium.command.spec.CommandFamilyPolicy;
 import codes.castled.allium.command.spec.CommandSpec;
+import codes.castled.allium.module.KitsModule;
 import codes.castled.allium.module.MailModule;
 import codes.castled.allium.naming.PlayerNameService;
 import codes.castled.allium.naming.PlayerNameVisibility;
@@ -96,6 +97,17 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
                         || !module.isEnabled())return List.of();
                 return warps?module.travel().completeWarps(player,prefix):module.travel().completeHomes(player,prefix);
             }
+
+            @Override
+            public List<String> kitNames(boolean allAdminKits, String prefix) {
+                if (plugin.getModuleManager() == null
+                        || !(plugin.getModuleManager().getModule("kits") instanceof KitsModule module)
+                        || !module.isEnabled() || module.kits() == null) {
+                    return List.of();
+                }
+                return module.kits().completeKits(sender, allAdminKits, prefix);
+            }
+
             @Override
             public boolean hasPermission(String permissionNode) {
                 return permissionNode == null || permissionNode.isEmpty() || sender.hasPermission(permissionNode);

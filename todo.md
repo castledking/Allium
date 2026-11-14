@@ -36,7 +36,7 @@ Two items wait on others:
 | Command-family policy | Done (S02) | [command-client gate](tests/live/command-client/README.md) and its `evidence/*.json` (Spigot 1.20.1, Paper 1.20.6, Paper 26.3); `de46a45`, `3be33f9` |
 | Scheduler boundary | Done (this close-out): `TaskScheduler`/`AlliumScheduler` in `allium-core`, `BukkitServerThread`, all call sites migrated, `SchedulerBoundaryTest` forbids bypasses | `AlliumSchedulerTest` (6), `SchedulerBoundaryTest`; on jar `57ff304f`, the preference gate (224 checks, four lanes) and the item gate (105 checks, three lanes) passed again |
 | Static text formatting, Takion retired | Done (S01.5a) | `TextFormatterTest`; [baseline gate](tests/live/baseline/RESULTS.md): 55 live checks on all five lanes. Spanish lang entries, a gradient, a hex colour and a message sound arrive identically on the Adventure and legacy paths, and the jar has no Takion or Adventure classes |
-| Give/Enchant/Skull/Potion library | Done (S04 follow-up) | [items results](tests/live/items/RESULTS.md): 93 + 36 live checks. Not yet: `/i`, aliases, kits, `queue` overflow |
+| Give/Enchant/Skull/Potion library | Done (S04 follow-up) | [items results](tests/live/items/RESULTS.md): 93 + 36 live checks. Not yet: `/i`, aliases, `queue` overflow |
 | Built-in/vanilla and three provider adapters | Done, conditionally (S05) | [provider matrix](docs/s05-provider-matrix.md), `tests/live/providers/evidence/`. Stock CE reset updaters lose stack counts; deploying requires the verified CE fix |
 | Mob Disarmer across providers | Done (S06a) | [disarmer results](tests/live/tools/disarmer/RESULTS.md): 58 cases, 862 checks |
 | Pack delivery (this queue's M1 item) | Done (S06c): `none`, `standalone` (export, operator-hosted URL with a startup SHA-1 check, required or optional) and `rpm-export` (mixer export with a carrier-collision report); added by UUID beside other packs on 1.20.3+ | [delivery results](tests/live/delivery/RESULTS.md): 52 live checks on Spigot 1.20.1, Paper 1.21.8 and Paper 26.3, and against a copy of SF's mixer |
@@ -97,8 +97,14 @@ All 488 S13 unit tests passed. **S15 complete:** homes and warps now use the sam
 teleport pipeline, with highest-grant/staff home limits, revision-bound overwrite
 confirmation, private warp permissions and filtered cache-only completion.
 [S15 results](tests/live/travel/RESULTS.md): 12 cases / 406 checks on each of
-Spigot 1.20.1 and Paper 26.3, including restart. Full build: 518 tests pass.
-Kits and the economy implementation remain later work. **S14 design complete:** [economy-design.md](docs/economy-design.md)
+Spigot 1.20.1 and Paper 26.3, including restart. **S16 complete:** free kits (`/kit`,
+`/kits`, `/kit <name> [player]`, `/createkit`, `/delkit`) built on `ItemSpecParser`,
+`ItemLibrary` and `ItemDeliveryService`, with false-default per-kit permissions,
+persisted cooldowns and one-time status, paid-kit denial until M3 reservations exist,
+and durable delivery records + saved `player.dat` receipt verification.
+[S16 results](tests/live/kits/RESULTS.md): 7 cases / 57 checks on each of
+Spigot 1.20.1 and Paper 26.3 (114 live checks total). Full build: 531 tests pass.
+The economy implementation remains later work. **S14 design complete:** [economy-design.md](docs/economy-design.md)
 defines the replacement and records measured JDBC commit costs. The Vault adapter
 remains unimplemented and release-gated; this does not make the existing scaffold
 production ready.
@@ -227,7 +233,7 @@ result and must preserve the existing uncommitted work.
       93 live checks on Spigot 1.20.1, Paper 1.21.8 (all providers) and Paper 26.3, plus 36
       compatibility checks (command blocks, `/execute`, `minecraft:give`, functions, non-op
       senders, skull fallbacks and one real Mojang lookup); see
-      [results](tests/live/items/RESULTS.md). Not yet: `/i`, command item aliases, kits,
+      [results](tests/live/items/RESULTS.md). Not yet: `/i`, command item aliases,
       addon API surface, claim-storage `queue` overflow.
       No extra required plugin, duplicate shaded API, internal command dispatch or
       duplicated item parsers.
@@ -342,6 +348,21 @@ result and must preserve the existing uncommitted work.
       home limits; snapshot/revision/connection-bound overwrite confirmation;
       false-default per-warp access and completion; warmup-time access/revision
       rechecks. See [contract](docs/homes-warps.md) and [live results](tests/live/travel/RESULTS.md).
+- [x] **S16 / M3 — Kits (free kits only; paid kits stay denied until reservations exist):**
+      `/kit`, `/kits`, `/kit <name> [player]`, `/createkit <name> [cooldown] [once]` and
+      `/delkit <name>`; see [docs/kits.md](docs/kits.md) and [live results](tests/live/kits/RESULTS.md).
+      - Kits stored under `plugins/Allium/kits/*.yml` and built through `ItemSpecParser`,
+        `ItemLibrary` and `ItemService` so provider items (`nexo:`, `craftengine:`, `oraxen:`)
+        and signed/privileged Allium items mint fresh instances.
+      - False-default per-kit permission (`allium.kits.<name>`), persisted per-player cooldowns
+        and one-time status (`allium_kit_usages`), and all-or-nothing `REFUSE` overflow policy
+        via `ItemDeliveryService` so full/partial inventory or cancelled `ItemGiveEvent` never
+        burns cooldown or one-time status.
+      - Durable delivery records (`allium_kit_deliveries`, `allium_kit_claim_receipts`) and
+        saved `player.dat` receipt verification (`allium:kit_receipts` + `PlayerDataReceiptProof`)
+        so disconnect or crash mid-delivery never double-delivers or burns cooldown without items.
+      - Paid kits (`cost > 0`) are explicitly denied until M3 economy reservations exist; sign
+        hooks remain for the signs slice; no console command execution.
 - [ ] **Travel follow-up — Pet teleport.** Explicit future slice, not provided by S15.
 - [ ] **Travel follow-up — Offline home/restore administration and legacy import.**
       Explicit future slice, not provided by S15.

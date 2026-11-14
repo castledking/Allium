@@ -137,6 +137,23 @@ commands:
     description: Allium warps
     usage: /warps
 
+  kit:
+    description: Claim a kit or list available kits
+    usage: /<command> [name] [player]
+    permission: allium.kit
+  kits:
+    description: List available kits
+    usage: /<command>
+    permission: allium.kits
+  createkit:
+    description: Create a kit from your inventory
+    usage: /<command> <name> [cooldown] [once]
+    permission: allium.createkit
+  delkit:
+    description: Delete a kit definition
+    usage: /<command> <name>
+    permission: allium.delkit
+
 permissions:
   allium.*:
     description: All Allium permissions
@@ -165,6 +182,11 @@ permissions:
       allium.mail.send: true
       allium.mail.gift: true
       allium.mail.bypass.limits: true
+      allium.kit: true
+      allium.kits: true
+      allium.kit.others: true
+      allium.createkit: true
+      allium.delkit: true
       allium.reload: true
       allium.import: true
   allium.reload:
@@ -347,4 +369,23 @@ permissions:
 
   allium.sethome.unlimited:
     description: Permit up to the hard cap of 1000 homes
+    default: false
+
+  allium.kit:
+    description: Allows /kit
+    default: true
+  allium.kits:
+    description: Allows /kits
+    default: true
+  allium.kit.others:
+    description: Allows /kit <name> <player>
+    default: op
+  allium.createkit:
+    description: Allows /createkit
+    default: op
+  allium.delkit:
+    description: Allows /delkit
+    default: op
+  allium.kit.bypass.cooldown:
+    description: Explicit kit cooldown bypass (never granted implicitly to operators)
     default: false

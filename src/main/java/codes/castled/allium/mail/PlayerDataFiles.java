@@ -9,10 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** One guarded native accessor: Bukkit's dimension folder is not the player-data directory. */
-final class PlayerDataFiles {
+public final class PlayerDataFiles {
     private PlayerDataFiles() {}
 
-    static Path directory(Server server) {
+    public static Path directory(Server server) {
         return guardedDirectory(server);
     }
 

@@ -12,8 +12,7 @@ import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
-import java.util.Set;
-import java.util.Collections;
+import java.util.Map;
 import java.util.IdentityHashMap;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -23,23 +22,36 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 
 /**
- * While a gift is being stored, the sender's inventory must keep the stack being sent: this
- * cancels anything that could move, drop, swap or use it. The lock lasts one storage round trip.
+ * While a gift or kit delivery is being stored, the player's inventory is locked: this
+ * cancels anything that could move, drop, swap or use items. Reference-counted so mail and kit
+ * recovery on join can each acquire and release without prematurely unlocking the other.
  */
 public final class MailInventoryLock implements Listener {
 
-    private final Set<Player> locked = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Map<Player, Integer> locked = new IdentityHashMap<>();
 
     public void lock(Player player) {
-        locked.add(player);
+        locked.merge(player, 1, Integer::sum);
     }
 
     public void unlock(Player player) {
+        Integer current = locked.get(player);
+        if (current == null) {
+            return;
+        }
+        if (current <= 1) {
+            locked.remove(player);
+        } else {
+            locked.put(player, current - 1);
+        }
+    }
+
+    public void clear(Player player) {
         locked.remove(player);
     }
 
     public boolean locked(Player player) {
-        return locked.contains(player);
+        return locked.getOrDefault(player, 0) > 0;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

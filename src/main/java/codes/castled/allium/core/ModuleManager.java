@@ -4,6 +4,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.module.EconomyModule;
 import codes.castled.allium.module.EssentialsModule;
 import codes.castled.allium.module.ItemsModule;
+import codes.castled.allium.module.KitsModule;
 import codes.castled.allium.module.MessagingModule;
 import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.module.ToolsModule;
@@ -36,6 +37,7 @@ public final class ModuleManager {
         registerModule(new EssentialsModule(plugin));
         registerModule(new ToolsModule(plugin));
         registerModule(new ItemsModule(plugin));
+        registerModule(new KitsModule(plugin));
         for (AbstractModule module : modules.values()) {
             String key = module.getName().toLowerCase();
             boolean enabled = plugin.getConfig().getBoolean("modules." + key, true);

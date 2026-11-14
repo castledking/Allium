@@ -1,0 +1,8 @@
+name: KitGate
+version: "1.0"
+main: gate.KitGate
+api-version: "1.20"
+depend: [Allium]
+commands:
+  s16g:
+    description: S16 kit gate console fixture

@@ -48,6 +48,14 @@ public enum Messages {
     TELEPORT_TOGGLE_OFF("teleport.toggle-off", "{prefix} &c{player} no longer accepts teleport requests. Incoming requests cancelled."),
 
     // -- Homes --
+    TRAVEL_LOADING("travel.loading", "{prefix} &cTravel data is loading. Try again shortly."),
+    TRAVEL_BUSY("travel.busy", "{prefix} &cTravel storage is busy. Try again shortly."),
+    TRAVEL_STORAGE_FAILED("travel.storage-failed", "{prefix} &cTravel data could not be saved. Try again shortly."),
+    TRAVEL_NAME_INVALID("travel.name-invalid", "{prefix} &cUse 1-32 letters, digits, underscores or hyphens for the name."),
+    TRAVEL_CONFIRM("travel.confirm", "{prefix} &eThis name already exists. Run &f{command} &eto confirm the captured location."),
+    TRAVEL_CONFIRM_EXPIRED("travel.confirm-expired", "{prefix} &cNo current overwrite confirmation. Run the set command again."),
+    TRAVEL_CHANGED("travel.changed", "{prefix} &cThis destination changed. Run the command again."),
+    TRAVEL_LIMIT("travel.limit", "{prefix} &cYou have reached your home limit ({limit})."),
     HOME_SET("home.set", "{prefix} &aHome &f{name} &aset."),
     HOME_DELETED("home.deleted", "{prefix} &aHome &f{name} &adeleted."),
     HOME_NOT_FOUND("home.not-found", "{prefix} &cHome &f{name} &cnot found."),

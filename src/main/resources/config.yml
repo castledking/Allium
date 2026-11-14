@@ -38,6 +38,7 @@ modules:
   # Mail: /mail text mail and gifts, to online and offline players.
   mail: true
   teleport: true
+  travel: true
   # Item library and the M1 /give harness.
   items: true
   teleportation: true
@@ -219,6 +220,8 @@ teleport:
   back:
     include-death: false
   cooldowns:
+    home: 0
+    warp: 0
     tpa: 0
     tpahere: 0
     back: 0
@@ -236,3 +239,12 @@ teleport:
     avoid-falls: true
     # False avoids blocking chunk generation; only loaded neighboring chunks are searched.
     load-destination-chunk: false
+
+# Homes use the highest permission grant or staff-assigned minimum, never the sum.
+homes:
+  default-limit: 1
+  overwrite-confirm-seconds: 30
+  # UUID: absolute minimum limit; does not downgrade a higher rank. Hard cap: 1000.
+  staff-overrides: {}
+warps:
+  overwrite-confirm-seconds: 30

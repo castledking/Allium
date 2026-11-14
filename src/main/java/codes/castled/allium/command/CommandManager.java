@@ -27,6 +27,7 @@ public final class CommandManager {
         this.familyPolicy.registerSpecs(CoreCommandSpecs.MESSAGING_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.MAIL_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.TELEPORT_SPECS);
+        this.familyPolicy.registerSpecs(CoreCommandSpecs.TRAVEL_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.CORE_SPECS);
         initializePolicyFromConfig();
     }

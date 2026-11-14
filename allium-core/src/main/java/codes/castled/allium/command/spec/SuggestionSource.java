@@ -20,5 +20,7 @@ public enum SuggestionSource {
     /** Claimable gift IDs in the sender's memory-only mailbox snapshot, plus all when nonempty. */
     MAIL_CLAIM_IDS,
     /** Deletable text-mail IDs in the sender's memory-only mailbox snapshot. */
-    MAIL_DELETE_IDS
+    MAIL_DELETE_IDS,
+    HOME_NAMES,
+    WARP_NAMES
 }

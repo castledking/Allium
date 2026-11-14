@@ -25,6 +25,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.util.function.BooleanSupplier;
 
 /** Server-thread-owned teleport pipeline. Only this class commits an Allium teleport. */
 public final class TeleportService implements Listener {
@@ -57,7 +58,7 @@ public final class TeleportService implements Listener {
     }
     private record Operation(Session session,CommandSender actor,String command,Supplier<Location> destination,
                              @Nullable Player anchor,@Nullable RequestTracker.Request request,boolean force,
-                             Location origin,long due,TeleportSettings rules) {}
+                             Location origin,long due,TeleportSettings rules,BooleanSupplier policy) {}
     private record HistoryWrite(UUID owner,Session session,SavedLocation origin,String command,long until,
                                 Map<String,Long> cooldowns,Runnable success) {}
 
@@ -200,10 +201,20 @@ public final class TeleportService implements Listener {
         Location snapshot=destination.clone();
         return begin(mover,mover,command,()->snapshot.clone(),null,null,false);
     }
+    /** Homes/warps supply a server-thread policy and destination rechecked at physical commit. */
+    public boolean teleport(Player mover,Supplier<Location> destination,String command,BooleanSupplier policy) {
+        if(!command.matches("[a-z]+"))throw new IllegalArgumentException("canonical teleport command required");
+        return begin(mover,mover,command,destination,null,null,false,Objects.requireNonNull(policy));
+    }
     private boolean begin(Player mover,CommandSender actor,String command,Supplier<Location> destination,@Nullable Player anchor,
                           @Nullable RequestTracker.Request request,boolean force) {
+        return begin(mover,actor,command,destination,anchor,request,force,()->true);
+    }
+    private boolean begin(Player mover,CommandSender actor,String command,Supplier<Location> destination,@Nullable Player anchor,
+                          @Nullable RequestTracker.Request request,boolean force,BooleanSupplier policy) {
         if(!actor.hasPermission("allium."+command)){send(actor,Messages.NO_PERMISSION);return false;}
         if(!available(mover))return false;
+        if(!policy.getAsBoolean()){send(actor,Messages.TELEPORT_INTERRUPTED,"{reason}","destination is no longer available");return false;}
         if(operations.containsKey(mover.getUniqueId())){send(actor,Messages.TELEPORT_BUSY);return false;}
         Session session=sessions.get(mover.getUniqueId());
         long now=System.currentTimeMillis();
@@ -214,7 +225,7 @@ public final class TeleportService implements Listener {
         var checked=safety.resolve(destination.get(),rules);
         if(checked.isEmpty()){send(actor,Messages.TELEPORT_UNSAFE);return false;}
         long warmup=actor.hasPermission("allium.teleport.bypass.warmup")?0:rules.warmupMillis();
-        var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),now+warmup,rules);
+        var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),now+warmup,rules,policy);
         operations.put(mover.getUniqueId(),operation);
         if(warmup==0)complete(operation);
         else send(mover,Messages.TELEPORT_WARMUP,"{time}",Double.toString(warmup/1000.0));
@@ -224,6 +235,7 @@ public final class TeleportService implements Listener {
         UUID id=operation.session().player.getUniqueId();
         if(operations.get(id)!=operation)return;
         Player mover=operation.session().player;
+        if(!operation.policy().getAsBoolean()){interrupt(operation,"destination is no longer available");return;}
         if(operation.actor() instanceof Player actor&&!samePlayer(actor)){interrupt(operation,"issuing player went offline");return;}
         if(!operation.actor().hasPermission("allium."+operation.command())) { interrupt(operation,"permission changed");return; }
         if(!operation.actor().hasPermission("allium.teleport.bypass.cooldown")

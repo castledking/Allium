@@ -105,6 +105,38 @@ commands:
     description: Allium safe teleport command
     permission: allium.tphere
 
+  sethome:
+    description: Allium sethome
+    usage: /sethome
+
+  home:
+    description: Allium home
+    usage: /home
+
+  delhome:
+    description: Allium delhome
+    usage: /delhome
+
+  homes:
+    description: Allium homes
+    usage: /homes
+
+  setwarp:
+    description: Allium setwarp
+    usage: /setwarp
+
+  warp:
+    description: Allium warp
+    usage: /warp
+
+  delwarp:
+    description: Allium delwarp
+    usage: /delwarp
+
+  warps:
+    description: Allium warps
+    usage: /warps
+
 permissions:
   allium.*:
     description: All Allium permissions
@@ -287,4 +319,32 @@ permissions:
     default: false
   allium.teleport.bypass.cooldown:
     description: Explicit teleport cooldown bypass (never granted implicitly to operators)
+    default: false
+
+  allium.sethome:
+    default: true
+
+  allium.home:
+    default: true
+
+  allium.delhome:
+    default: true
+
+  allium.homes:
+    default: true
+
+  allium.setwarp:
+    default: op
+
+  allium.warp:
+    default: true
+
+  allium.delwarp:
+    default: op
+
+  allium.warps:
+    default: true
+
+  allium.sethome.unlimited:
+    description: Permit up to the hard cap of 1000 homes
     default: false

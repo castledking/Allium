@@ -1,0 +1,36 @@
+{
+  "pinned": true,
+  "status": "Parent confirmed public API; message mapping checked against current TravelService/Messages. Live execution still requires parent frozen jar path and SHA-256.",
+  "module": "travel",
+  "messages": {
+    "homeSet": "HOME_SET",
+    "homeDeleted": "HOME_DELETED",
+    "homeNotFound": "HOME_NOT_FOUND",
+    "homeLimit": "TRAVEL_LIMIT",
+    "homeConfirm": "TRAVEL_CONFIRM",
+    "homeConfirmInvalid": "TRAVEL_CONFIRM_EXPIRED",
+    "warpSet": "WARP_SET",
+    "warpDeleted": "WARP_DELETED",
+    "warpNotFound": "WARP_NOT_FOUND",
+    "warpConfirm": "TRAVEL_CONFIRM",
+    "warpConfirmInvalid": "TRAVEL_CONFIRM_EXPIRED",
+    "permission": "NO_PERMISSION",
+    "unsafe": "TELEPORT_UNSAFE",
+    "cooldown": "COOLDOWN_ACTIVE",
+    "warmup": "TELEPORT_WARMUP",
+    "success": "TELEPORT_SUCCESS",
+    "interrupted": "TELEPORT_INTERRUPTED",
+    "warpChanged": "TRAVEL_CHANGED"
+  },
+  "config": {
+    "homes.default-limit": 1,
+    "homes.overwrite-confirm-seconds": 30,
+    "warps.overwrite-confirm-seconds": 30,
+    "modules.travel": true
+  },
+  "limits": "MAX(default, highest allium.sethome.<n> / allium.sethome.multiple.<n>, UUID staff grant); n=1..1000; explicit unlimited capped at 1000",
+  "confirmation": "first location + expected row revision + same connection + expiry; a second unconfirmed request replaces the token",
+  "warpAccess": "base allium.warp/allium.warps and explicit allium.warps.<name>; dynamic nodes default false including operators",
+  "completion": "memory only; maximum 50; permission filtered",
+  "teleport": "shared teleport.* pipeline; warp revision and effective permission rechecked at completion"
+}

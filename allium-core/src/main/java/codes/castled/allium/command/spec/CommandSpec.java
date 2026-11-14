@@ -156,6 +156,8 @@ public record CommandSpec(
                 case ONLINE_PLAYERS -> context.visibleOnlinePlayers();
                 case KNOWN_PLAYERS -> context.knownPlayers(prefix);
                 case MAIL_DELETE_IDS -> context.mailIds(false);
+                case HOME_NAMES -> context.travelNames(false, prefix);
+                case WARP_NAMES -> context.travelNames(true, prefix);
                 case MAIL_CLAIM_IDS -> {
                     List<String> ids = context.mailIds(true);
                     if (ids.isEmpty()) {

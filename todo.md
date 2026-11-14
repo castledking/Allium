@@ -93,8 +93,12 @@ Spigot 1.20.1 and Paper 26.3 real-client gate; see [the contract](docs/teleport.
 and [results](tests/live/teleport/RESULTS.md). The report preserves Paper's original
 failures and their explicit closures: exact retained permission-response evidence
 and a focused live death-back rerun after natural respawn protection expired.
-All 488 unit tests pass. Homes, warps, kits and the economy implementation remain
-later work. **S14 design complete:** [economy-design.md](docs/economy-design.md)
+All 488 S13 unit tests passed. **S15 complete:** homes and warps now use the same
+teleport pipeline, with highest-grant/staff home limits, revision-bound overwrite
+confirmation, private warp permissions and filtered cache-only completion.
+[S15 results](tests/live/travel/RESULTS.md): 12 cases / 406 checks on each of
+Spigot 1.20.1 and Paper 26.3, including restart. Full build: 518 tests pass.
+Kits and the economy implementation remain later work. **S14 design complete:** [economy-design.md](docs/economy-design.md)
 defines the replacement and records measured JDBC commit costs. The Vault adapter
 remains unimplemented and release-gated; this does not make the existing scaffold
 production ready.
@@ -327,6 +331,14 @@ result and must preserve the existing uncommitted work.
       mail/kit costs and legacy import mapping. The disposable JDBC probe measured
       both backends; the actual synchronous Vault adapter still requires its own
       performance and failure gate. No economy implementation was added.
+- [x] **S15 / M3 — Homes and warps:** `/sethome`, `/home`, `/delhome`, `/homes`,
+      `/setwarp`, `/warp`, `/delwarp`, `/warps` on TeleportService. Atomic persisted
+      home limits; snapshot/revision/connection-bound overwrite confirmation;
+      false-default per-warp access and completion; warmup-time access/revision
+      rechecks. See [contract](docs/homes-warps.md) and [live results](tests/live/travel/RESULTS.md).
+- [ ] **Travel follow-up — Pet teleport.** Explicit future slice, not provided by S15.
+- [ ] **Travel follow-up — Offline home/restore administration and legacy import.**
+      Explicit future slice, not provided by S15.
 - [x] **Data-driven core tools (before S08):** the Mob Disarmer is `tools/mob_disarmer.yml`,
       bound to the one Java behavior `allium:disarm`, which owns the transaction.
       - **Validation:** definitions are validated at load time with path-specific diagnostics,

@@ -262,6 +262,23 @@ commands:
     usage: /<command> <player> [add <note>]
     permission: allium.notes
 
+  balance:
+    description: Read an economy balance
+    aliases: [bal]
+    permission: allium.balance
+  pay:
+    description: Transfer exact money
+    permission: allium.pay
+  paytoggle:
+    description: Toggle accepting payments
+    permission: allium.paytoggle
+  eco:
+    description: Administer economy accounts
+    permission: allium.eco
+  baltop:
+    description: Show ten largest account balances
+    permission: allium.baltop
+
 permissions:
   allium.*:
     description: All Allium permissions
@@ -606,3 +623,20 @@ permissions:
   allium.moderation.bypass:
     description: Explicitly bypass moderation hierarchy and exempt policy; also authorizes offline actions
     default: false
+
+  allium.balance:
+    default: true
+  allium.balance.others:
+    default: op
+  allium.pay:
+    default: true
+  allium.pay.offline:
+    default: false
+  allium.paytoggle:
+    default: true
+  allium.paytoggle.others:
+    default: op
+  allium.eco:
+    default: op
+  allium.baltop:
+    default: op

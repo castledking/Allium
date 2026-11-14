@@ -16,6 +16,8 @@ public final class EconomyModule extends AbstractModule {
 
     private final EconomyTable table;
     private VaultRegistration vaultRegistration;
+    private codes.castled.allium.economy.EconomyRuntime runtime;
+    public codes.castled.allium.economy.EconomyRuntime runtime(){return runtime;}
 
     public EconomyModule(PluginStart plugin) {
         super(plugin);
@@ -31,6 +33,15 @@ public final class EconomyModule extends AbstractModule {
     public void onEnable() {
         table.init();
         plugin.getDatabaseManager().setEconomyTable(table);
+        if(plugin.getDatabaseManager().getType()==codes.castled.allium.database.DatabaseType.SQLITE){
+            try {
+                runtime=new codes.castled.allium.economy.EconomyRuntime(plugin);runtime.enable();
+                for(var spec:codes.castled.allium.command.spec.CoreCommandSpecs.ECONOMY_SPECS)
+                    plugin.getCommandManager().register(new codes.castled.allium.economy.EconomyCommands(spec,runtime));
+                plugin.logger().info("Journalled SQLite economy commands enabled; WAL synchronous=FULL.");
+            } catch(java.sql.SQLException error){throw new IllegalStateException("economy unavailable",error);}
+        }
+
 
         // This is the legacy, unsafe scaffold, not the S14 transaction engine. Check the
         // explicit opt-in before loading any class that links against the optional Vault API.
@@ -41,6 +52,7 @@ public final class EconomyModule extends AbstractModule {
 
     @Override
     public void onDisable() {
+        if(runtime!=null){runtime.close();runtime=null;}
         if (vaultRegistration != null) {
             vaultRegistration.close();
             vaultRegistration = null;

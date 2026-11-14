@@ -471,6 +471,13 @@ public final class CoreCommandSpecs {
     public static final List<CommandSpec> MODERATION_SPECS = java.util.stream.Stream.concat(
             java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES), DISCIPLINE_SPECS.stream()).toList();
 
+    public static final List<CommandSpec> ECONOMY_SPECS = java.util.stream.Stream.of("balance","pay","paytoggle","eco","baltop")
+            .map(name -> new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"economy",
+                    name.equals("balance")?List.of("bal"):List.of(),"Allium economy: "+name,
+                    "/"+name,"/"+name,"allium."+name,name.equals("paytoggle")?"allium.paytoggle.others":null,
+                    List.of(CommandArgSpec.optional("arguments",null,null)),List.of(),CommandMessageKeys.ofOutcomes(Map.of())))
+            .toList();
+
     public static final List<CommandSpec> TRAVEL_SPECS = java.util.stream.Stream.of("sethome","home","delhome","homes","setwarp","warp","delwarp","warps")
             .map(CoreCommandSpecs::travelSpec).toList();
     private static CommandSpec travelSpec(String command) {

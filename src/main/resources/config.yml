@@ -53,6 +53,13 @@ modules:
   tools: true
 
 economy:
+  # Phase 1 single-server SQLite money. Amounts must remain quoted decimal text.
+  starting-balance: '100.00'
+  min-money: '0.00'
+  max-money: '10000000000000.00'
+  minimum-pay-amount: '0.01'
+  offline-pay-enabled: true
+  pay-excludes-ignore-list: true
   # Development-only legacy provider. Leave off until the journalled engine replaces it.
   scaffold-vault-provider-enabled: false
 

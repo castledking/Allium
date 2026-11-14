@@ -62,8 +62,8 @@ class KitRepositoryTest {
         assertInstanceOf(KitRepository.BeginOutcome.AlreadyClaiming.class, repo.beginClaim(concurrent, now + 10));
 
         // 3. Releasing an undelivered claim does NOT record usage or burn cooldown
-        assertFalse(repo.releaseClaim(id1, UUID.randomUUID()), "wrong token cannot release");
-        assertTrue(repo.releaseClaim(id1, token1));
+        assertFalse(repo.releaseClaim(id1, UUID.randomUUID(), "server-a"), "wrong token cannot release");
+        assertTrue(repo.releaseClaim(id1, token1, "server-a"));
         assertTrue(repo.usage(ALICE, "starter").isEmpty(), "released claim never starts cooldown");
 
         // 4. Begin and finish a claim starts cooldown
@@ -73,9 +73,9 @@ class KitRepositoryTest {
                 id2, ALICE, "starter", token2, "server-a", "minecraft:stone_sword 1", 1,
                 300_000L, false, false, now + 100);
         assertInstanceOf(KitRepository.BeginOutcome.Claiming.class, repo.beginClaim(second, now + 100));
-        assertFalse(repo.finishClaim(id2, UUID.randomUUID(), now + 200), "wrong token cannot finish");
-        assertTrue(repo.finishClaim(id2, token2, now + 200));
-        assertTrue(repo.finishClaim(id2, token2, now + 500), "idempotent replay succeeds without double-counting");
+        assertFalse(repo.finishClaim(id2, UUID.randomUUID(), "server-a", now + 200), "wrong token cannot finish");
+        assertTrue(repo.finishClaim(id2, token2, "server-a", now + 200));
+        assertTrue(repo.finishClaim(id2, token2, "server-a", now + 500), "idempotent replay succeeds without double-counting");
         assertTrue(repo.claimAcknowledged(id2, token2));
 
         KitUsageRecord usage = repo.usage(ALICE, "starter").orElseThrow();
@@ -98,7 +98,7 @@ class KitRepositoryTest {
                 idBypass, ALICE, "starter", tokenBypass, "server-a", "minecraft:stone_sword 1", 1,
                 300_000L, false, true, now + 100_500);
         assertInstanceOf(KitRepository.BeginOutcome.Claiming.class, repo.beginClaim(bypass, now + 100_500));
-        assertTrue(repo.finishClaim(idBypass, tokenBypass, now + 100_600));
+        assertTrue(repo.finishClaim(idBypass, tokenBypass, "server-a", now + 100_600));
         assertEquals(2L, repo.usage(ALICE, "starter").orElseThrow().claimCount());
 
         // 7. One-time kit can only be claimed once (even with bypassCooldown = true)
@@ -108,7 +108,7 @@ class KitRepositoryTest {
                 idOnce, BOB, "founder", tokenOnce, "server-a", "minecraft:diamond 1", 1,
                 0L, true, false, now);
         assertInstanceOf(KitRepository.BeginOutcome.Claiming.class, repo.beginClaim(once, now));
-        assertTrue(repo.finishClaim(idOnce, tokenOnce, now + 50));
+        assertTrue(repo.finishClaim(idOnce, tokenOnce, "server-a", now + 50));
         assertTrue(repo.usage(BOB, "founder").orElseThrow().oneTimeClaimed());
 
         KitDeliveryRecord onceAgain = new KitDeliveryRecord(
@@ -118,10 +118,40 @@ class KitRepositoryTest {
     }
 
     @Test
+    void foreignServerIdCanNeverReleaseOrFinalizeClaimOwnedByAnotherServer() throws Exception {
+        KitRepository repo = sqliteRepository();
+        long now = 2_000_000L;
+
+        UUID deliveryId = UUID.randomUUID();
+        UUID token = UUID.randomUUID();
+        KitDeliveryRecord ownedByB = new KitDeliveryRecord(
+                deliveryId, ALICE, "starter", token, "server-b", "minecraft:stone_sword 1", 1,
+                300_000L, true, false, now);
+
+        assertInstanceOf(KitRepository.BeginOutcome.Claiming.class, repo.beginClaim(ownedByB, now));
+
+        // server-a does not see server-b's row in claimingFor, and cannot release or finalize it
+        assertTrue(repo.claimingFor(ALICE, "server-a").isEmpty());
+        assertFalse(repo.releaseClaim(deliveryId, token, "server-a"),
+                "server-a must never release a CLAIMING row owned by server-b");
+        assertFalse(repo.finishClaim(deliveryId, token, "server-a", now + 100),
+                "server-a must never finalize a CLAIMING row owned by server-b");
+
+        // The row remains owned by server-b and untouched
+        assertEquals(List.of(deliveryId), repo.claimingFor(ALICE, "server-b").stream().map(KitDeliveryRecord::id).toList());
+        assertTrue(repo.usage(ALICE, "starter").isEmpty());
+
+        // Only server-b can finalize or release its own row
+        assertTrue(repo.finishClaim(deliveryId, token, "server-b", now + 200));
+        assertTrue(repo.claimingFor(ALICE, "server-b").isEmpty());
+        assertTrue(repo.usage(ALICE, "starter").orElseThrow().oneTimeClaimed());
+    }
+
+    @Test
     void kitReceiptsRoundTripAndPreserveUnknownEntries() {
         UUID deliveryId = UUID.fromString("11111111-2222-3333-4444-555555555555");
         UUID token = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
-        KitReceipts.Claimed claimed = new KitReceipts.Claimed(deliveryId, token, "Starter");
+        KitReceipts.Claimed claimed = new KitReceipts.Claimed(deliveryId, token, "starter");
         String encoded = KitReceipts.format(List.of(claimed, new KitReceipts.Unknown("FUTURE/1")));
         assertEquals("K/11111111-2222-3333-4444-555555555555/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/starter;FUTURE/1", encoded);
         List<KitReceipts.Entry> parsed = KitReceipts.parse(encoded);
@@ -130,21 +160,47 @@ class KitRepositoryTest {
     }
 
     @Test
-    void kitDefinitionValidationRejectsInvalidBoundsAndFlagsPaidKits() {
-        KitDefinition free = new KitDefinition("Starter", true, 300L, false, 0.0D, List.of("minecraft:stone_sword 1"), "kits/starter.yml");
+    void kitNamesAndDefinitionValidationRejectTraversalDotsUppercaseAndInvalidDecimalCosts() {
+        KitDefinition free = new KitDefinition("starter", true, 300L, false, "0.00", List.of("minecraft:stone_sword 1"), "kits/starter.yml");
         assertEquals("starter", free.name());
+        assertEquals("0.00", free.cost());
         assertFalse(free.paid());
-        assertEquals("allium.kits.starter", free.permissionNode());
 
-        KitDefinition paid = new KitDefinition("vip", true, 3600L, true, 50.0D, List.of("minecraft:diamond 4"), "kits/vip.yml");
+        KitDefinition paid = new KitDefinition("vip_tier-1", true, 3600L, true, "50.00", List.of("minecraft:diamond 4"), "kits/vip_tier-1.yml");
+        assertEquals("50.00", paid.cost());
         assertTrue(paid.paid());
         assertTrue(paid.oneTime());
 
+        assertEquals("25.50", KitDefinition.normalizeCost("25.5"));
+        assertEquals("0.00", KitDefinition.normalizeCost("0"));
+
+        List<String> invalidNames = List.of(
+                "",
+                "../x",
+                "a/b",
+                "a\\b",
+                "/etc/passwd",
+                ".",
+                "..",
+                "a.b",
+                "Starter",
+                "bad name!",
+                "a".repeat(33)
+        );
+        for (String bad : invalidNames) {
+            assertFalse(KitNames.isValid(bad), "Expected invalid kit name: " + bad);
+            assertThrows(IllegalArgumentException.class, () -> KitNames.validate(bad));
+            assertThrows(IllegalArgumentException.class, () ->
+                    new KitDefinition(bad, true, 0L, false, "0.00", List.of("minecraft:stone 1"), "kits/bad.yml"));
+        }
+
         assertThrows(IllegalArgumentException.class, () ->
-                new KitDefinition("bad name!", true, 0L, false, 0.0D, List.of("minecraft:stone 1"), "kits/bad.yml"));
+                new KitDefinition("empty", true, 0L, false, "0.00", List.of(), "kits/empty.yml"));
         assertThrows(IllegalArgumentException.class, () ->
-                new KitDefinition("empty", true, 0L, false, 0.0D, List.of(), "kits/empty.yml"));
+                new KitDefinition("negcost", true, 0L, false, "-1.00", List.of("minecraft:stone 1"), "kits/neg.yml"));
         assertThrows(IllegalArgumentException.class, () ->
-                new KitDefinition("negcost", true, 0L, false, -1.0D, List.of("minecraft:stone 1"), "kits/neg.yml"));
+                new KitDefinition("subcent", true, 0L, false, "1.234", List.of("minecraft:stone 1"), "kits/subcent.yml"));
+        assertThrows(IllegalArgumentException.class, () ->
+                new KitDefinition("nan", true, 0L, false, "abc", List.of("minecraft:stone 1"), "kits/nan.yml"));
     }
 }

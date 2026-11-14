@@ -93,7 +93,9 @@ public enum Messages {
     KIT_DELETED("kit.deleted", "{prefix} &aDeleted kit &f{name}&a."),
     KIT_ALREADY_EXISTS("kit.already-exists", "{prefix} &cKit &f{name} &calready exists. Delete it first with &f/delkit {name}&c."),
     KIT_CREATE_EMPTY("kit.create-empty", "{prefix} &cPut at least one item in your storage inventory before running &f/createkit&c."),
-    KIT_NAME_INVALID("kit.name-invalid", "{prefix} &cUse 1-32 letters, digits, underscores or hyphens for the kit name."),
+    KIT_NAME_INVALID("kit.name-invalid", "{prefix} &cUse 1-32 lowercase letters, digits, underscores or hyphens for the kit name."),
+    KIT_CAPTURE_PRIVILEGED("kit.capture-privileged", "{prefix} &cCannot capture slot &f{slot} &c(&f{item}&c / &f{behavior}&c): capturing privileged items requires &f{permission}&c."),
+    KIT_CAPTURE_UNSUPPORTED("kit.capture-unsupported", "{prefix} &cCannot create kit: slot &f{slot} &ccontains unsupported item data (&f{reason}&c). Remove or replace the item so the kit is not degraded."),
 
     // -- Economy --
     BALANCE("economy.balance", "{prefix} &fBalance: &a{amount}"),

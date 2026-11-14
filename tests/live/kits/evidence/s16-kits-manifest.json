@@ -1,16 +1,16 @@
 {
   "slice": "S16",
-  "title": "Free kits with durable delivery and saved-receipt recovery",
-  "jarSha256": "c400c60e32c1fc740ce7715f90115d62261e0d6cf5d2a16877d6ac0d6a305f62",
+  "title": "Free kits with durable delivery, saved-receipt recovery, strict /createkit validation, and cross-server ownership isolation",
+  "jarSha256": "6fef182ce7495598c8858dc717e36c668c7ca50852c5e99aff634c55b5d89166",
   "lanes": {
     "spigot": {
-      "runName": "spigot-1.20.1-s16",
-      "summaryPath": "/mnt/storage/.allium-validation/20261114/s16-kits/runs/spigot-1.20.1-s16/summary.json",
-      "summarySha256": "1b4f66bf007048d1610c5e895de27b5e82e46e51a27f0b19716c7b027d7f47ba",
+      "runName": "spigot-1.20.1-s16-f3",
+      "summaryPath": "/mnt/storage/.allium-validation/20261114/s16-kits/runs/spigot-1.20.1-s16-f3/summary.json",
+      "summarySha256": "02c72cc965bae603968c2256570332ee4f0049aa298e3e9ecd728754b5d71ac9",
       "passed": true,
-      "totalChecks": 57,
+      "totalChecks": 65,
       "failedChecks": 0,
-      "durationSeconds": 55.367,
+      "durationSeconds": 59.691,
       "scopes": [
         {
           "label": "spigot:claim-cooldown-and-others",
@@ -48,10 +48,10 @@
           "kitName": "haltbefore",
           "deliveries": [
             {
-              "id": "00b0f6d5-cc02-463c-8d9e-b7b6bc443c42",
+              "id": "3cb45813-cd31-4d85-84b2-127bd2b6eba2",
               "kit_name": "haltbefore",
-              "claim_token": "0ad9da69-1e92-4233-b29e-336aa6add17e",
-              "claim_owner": "server-b026d0db-9461-4ba2-88d0-88b69089dce7",
+              "claim_token": "7f8e39dc-d9e2-4c9c-8cab-86475118c4b2",
+              "claim_owner": "server-77f1d1f5-ee33-4811-8fb5-d8d085f9f6bd",
               "item_count": 6
             }
           ],
@@ -60,7 +60,7 @@
             "dataVersion": 3465,
             "receipts": null,
             "inventory": [],
-            "fileSha256": "a791fc1f2868a4340f64854862b398ae8ab5337692151670af1bf753129c0159"
+            "fileSha256": "36bdc2d080c1eeac9a56f1a88aba4c0f0fad382edcd2a91de54c5035c6633d29"
           }
         },
         {
@@ -69,17 +69,17 @@
           "kitName": "haltafter",
           "deliveries": [
             {
-              "id": "e3cb3ecc-d406-428a-bf22-197df0d61e55",
+              "id": "03f75876-696c-487e-ae10-67d1a736cadc",
               "kit_name": "haltafter",
-              "claim_token": "688f17d2-1e0e-412d-8a84-728c2138c4ef",
-              "claim_owner": "server-b026d0db-9461-4ba2-88d0-88b69089dce7",
+              "claim_token": "84097057-5eff-440b-b226-92b372bfa56f",
+              "claim_owner": "server-77f1d1f5-ee33-4811-8fb5-d8d085f9f6bd",
               "item_count": 7
             }
           ],
           "usages": [],
           "savedPlayer": {
             "dataVersion": 3465,
-            "receipts": "K/e3cb3ecc-d406-428a-bf22-197df0d61e55/688f17d2-1e0e-412d-8a84-728c2138c4ef/haltafter",
+            "receipts": "K/03f75876-696c-487e-ae10-67d1a736cadc/84097057-5eff-440b-b226-92b372bfa56f/haltafter",
             "inventory": [
               {
                 "slot": 0,
@@ -88,19 +88,19 @@
                 "data": null
               }
             ],
-            "fileSha256": "efbe54ba64234affdca72e4fd6bb69d088f893ca12a7d5bf7e17c4ba87f30101"
+            "fileSha256": "621afff66c921c87c4baa0974ab8839d0790e04f3ed8b1421cccb3ec277288b3"
           }
         }
       ]
     },
     "paper": {
-      "runName": "paper-26.3-s16",
-      "summaryPath": "/mnt/storage/.allium-validation/20261114/s16-kits/runs/paper-26.3-s16/summary.json",
-      "summarySha256": "a713a15735ee84c7253ff817d78d86617b3ebc0a9aec9b969cbf423319eee6fe",
+      "runName": "paper-26.3-s16-f3",
+      "summaryPath": "/mnt/storage/.allium-validation/20261114/s16-kits/runs/paper-26.3-s16-f3/summary.json",
+      "summarySha256": "b838844e0189c7afa8508dec2b529a4b6550489fdc604d46a12fe38fe786eafe",
       "passed": true,
-      "totalChecks": 57,
+      "totalChecks": 65,
       "failedChecks": 0,
-      "durationSeconds": 51.58,
+      "durationSeconds": 55.98,
       "scopes": [
         {
           "label": "paper:claim-cooldown-and-others",
@@ -138,10 +138,10 @@
           "kitName": "haltbefore",
           "deliveries": [
             {
-              "id": "83a752d0-084d-4cd5-ab10-fd4c394136c9",
+              "id": "d3374ae6-1152-4bfe-81ad-4c368e6727b4",
               "kit_name": "haltbefore",
-              "claim_token": "d5320e1a-f5e0-43b8-9498-e4d518677f0c",
-              "claim_owner": "server-bd1e3fbf-c5bc-41cc-ad36-f4e5c2fe0703",
+              "claim_token": "c107215a-30ae-48bf-869c-e25eb6e71a82",
+              "claim_owner": "server-42a8d6dc-ce50-4d01-840d-9e6b7360db83",
               "item_count": 6
             }
           ],
@@ -150,7 +150,7 @@
             "dataVersion": 5023,
             "receipts": null,
             "inventory": [],
-            "fileSha256": "081b953c9db2ac6f7585682077e6cbb6035f3b21881706b20a0a1c045c16e943"
+            "fileSha256": "c526c07baae68b7cd23462cbdb62d53b752498b2f02abf5a9e5d101712805528"
           }
         },
         {
@@ -159,17 +159,17 @@
           "kitName": "haltafter",
           "deliveries": [
             {
-              "id": "5b46eba8-ac8b-41c9-abcb-e14947b5f99a",
+              "id": "add00c86-02dc-4435-a8a6-4df6dcde6f2f",
               "kit_name": "haltafter",
-              "claim_token": "4295bb67-e1a1-4eb6-a5d9-d5a62b1319e3",
-              "claim_owner": "server-bd1e3fbf-c5bc-41cc-ad36-f4e5c2fe0703",
+              "claim_token": "aec66206-08ca-41b2-a709-4b04ce8a64f2",
+              "claim_owner": "server-42a8d6dc-ce50-4d01-840d-9e6b7360db83",
               "item_count": 7
             }
           ],
           "usages": [],
           "savedPlayer": {
             "dataVersion": 5023,
-            "receipts": "K/5b46eba8-ac8b-41c9-abcb-e14947b5f99a/4295bb67-e1a1-4eb6-a5d9-d5a62b1319e3/haltafter",
+            "receipts": "K/add00c86-02dc-4435-a8a6-4df6dcde6f2f/aec66206-08ca-41b2-a709-4b04ce8a64f2/haltafter",
             "inventory": [
               {
                 "slot": 0,
@@ -178,10 +178,26 @@
                 "data": null
               }
             ],
-            "fileSha256": "014b5eaeb24a7d1b056295f39566bafb7d17877629f7eec0d64817538ba19985"
+            "fileSha256": "73c452f3658e161aa19dac70d266a2996fb389964c84bebe0f5d0df8de7886ed"
           }
         }
       ]
+    },
+    "shared-mysql": {
+      "runName": "shared-mysql-s16-f3",
+      "summaryPath": "/mnt/storage/.allium-validation/20261114/s16-kits/runs/shared-mysql-s16-f3/summary.json",
+      "summarySha256": "8b583f30f2917c250354424e1055e371878d9aac084eff1a119c7689a6f95b15",
+      "passed": true,
+      "totalChecks": 11,
+      "failedChecks": 0,
+      "durationSeconds": 30.094,
+      "scopes": [
+        {
+          "label": "shared-mysql:cross-server-ownership-isolation",
+          "status": "PASS"
+        }
+      ],
+      "crashSnapshots": []
     }
   }
 }

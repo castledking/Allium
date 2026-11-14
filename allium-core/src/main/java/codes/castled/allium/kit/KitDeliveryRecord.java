@@ -1,7 +1,5 @@
 package codes.castled.allium.kit;
 
-import codes.castled.allium.travel.TravelNames;
-
 import java.util.Objects;
 import java.util.UUID;
 
@@ -24,7 +22,7 @@ public record KitDeliveryRecord(
     public KitDeliveryRecord {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(playerUuid, "playerUuid");
-        kitName = TravelNames.normalize(kitName);
+        kitName = KitNames.validate(kitName);
         Objects.requireNonNull(claimToken, "claimToken");
         Objects.requireNonNull(claimOwner, "claimOwner");
         Objects.requireNonNull(itemsPayload, "itemsPayload");

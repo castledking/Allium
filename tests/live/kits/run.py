@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """S16 kits real-protocol gate: free kit claiming, cooldowns, one-time kits, full-inventory refusal,
-provider and signed items, /createkit, /delkit, permissions, tab completion, disconnect mid-delivery,
-and crash mid-delivery with restart recovery on Spigot 1.20.1 and Paper 26.3.
+provider test adapter and signed privileged items, /createkit (name validation, privileged gating,
+lossless grammar check), /delkit, allium.kits.* wildcard permission, tab completion, disconnect
+mid-delivery, crash mid-delivery with restart recovery on Spigot 1.20.1 and Paper 26.3, and
+two-server MySQL recovery ownership isolation.
 """
 import argparse
 import fcntl
@@ -10,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import signal
 import shutil
 import socket
@@ -31,7 +34,7 @@ sys.path.insert(0, str(REPO / 'tests/live/providers/trigger'))
 from process_cleanup import stop_process
 
 P = argparse.ArgumentParser(description=__doc__)
-P.add_argument('--suite', choices=['spigot', 'paper'], required=True)
+P.add_argument('--suite', choices=['spigot', 'paper', 'shared-mysql'], required=True)
 P.add_argument('--allium-jar', type=Path, required=True)
 P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash')
 P.add_argument('--run-name', required=True)
@@ -55,11 +58,11 @@ for p in [API, MCP / 'package.json', INFRA / 'servers/spigot-1.20.1.jar', A.pape
 A.run_root.parent.mkdir(parents=True, exist_ok=True)
 lock = open(str(A.run_root.parent / 'ports.lock'), 'a')
 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-for port in (25760, 25761):
+for port in (25760, 25761, 25762):
     with socket.socket() as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(('127.0.0.1', port))
-print('PREFLIGHT: SHA256 matched; 127.0.0.1:25760-25761 free and gate lock held', flush=True)
+print('PREFLIGHT: SHA256 matched; 127.0.0.1:25760-25762 free and gate lock held', flush=True)
 if A.check:
     sys.exit(0)
 
@@ -159,6 +162,22 @@ def build():
     subprocess.run(['/usr/lib/jvm/java-17-openjdk/bin/jar', 'cf', str(RUN / 'helper/KitGate.jar'), '-C', str(classes), '.'], check=True)
 
 
+def prepare_mysql_database(db_name):
+    subprocess.run(['docker', 'start', 'allium-gate-mysql'], check=True, stdout=subprocess.DEVNULL)
+    env = dict(line.split('=', 1) for line in (INFRA / 'mysql.env').read_text().splitlines() if '=' in line and not line.startswith('#'))
+    password = shlex.split(env['MYSQL_ROOT_PASSWORD'])[0]
+    for _ in range(30):
+        r = subprocess.run(
+            ['docker', 'exec', '-e', f'MYSQL_PWD={password}', 'allium-gate-mysql',
+             'mysql', '-uroot', '-e', f'DROP DATABASE IF EXISTS {db_name}; CREATE DATABASE {db_name};'],
+            capture_output=True, text=True
+        )
+        if r.returncode == 0:
+            return password
+        time.sleep(1)
+    raise RuntimeError('MySQL container did not become ready')
+
+
 class Bot:
     def __init__(self, lane, name):
         self.lane, self.name, self.proc, self.lines = lane, name, None, []
@@ -253,43 +272,58 @@ class Bot:
 
 
 class Lane:
-    def __init__(self, name, kind, port):
+    def __init__(self, name, kind, port, database=None, server_id=None):
         self.name, self.kind, self.port = name, kind, port
+        self.database = database
         self.path = RUN / name
         self.proc, self.logs, self.bots = None, [], {}
         self.path.mkdir()
         (self.path / 'plugins/Allium/kits').mkdir(parents=True)
         (self.path / 'tmp').mkdir()
+        if server_id:
+            (self.path / 'plugins/Allium/.server-id').write_text(server_id + '\n')
         shutil.copy2(JAR, self.path / 'plugins/Allium.jar')
         shutil.copy2(RUN / 'helper/KitGate.jar', self.path / 'plugins/KitGate.jar')
         with zipfile.ZipFile(JAR) as z:
             config = yaml.safe_load(z.read('config.yml'))
         config.setdefault('modules', {})['kits'] = True
+        if database:
+            env = dict(line.split('=', 1) for line in (INFRA / 'mysql.env').read_text().splitlines() if '=' in line and not line.startswith('#'))
+            password = shlex.split(env['MYSQL_ROOT_PASSWORD'])[0]
+            db_cfg = config.setdefault('database', {})
+            db_cfg['type'] = 'MYSQL'
+            mysql_cfg = db_cfg.setdefault('mysql', {})
+            mysql_cfg['host'] = '127.0.0.1'
+            mysql_cfg['port'] = 25733
+            mysql_cfg['database'] = database
+            mysql_cfg['username'] = 'root'
+            mysql_cfg['password'] = password
         (self.path / 'plugins/Allium/config.yml').write_text(yaml.safe_dump(config, sort_keys=False))
+        os.chmod(self.path / 'plugins/Allium/config.yml', 0o600)
         # Write extra fixture kit files before first boot:
-        # 1. oncekit.yml (one-time kit)
+        # 1. oncekit.yml (one-time kit, decimal text cost)
         (self.path / 'plugins/Allium/kits/oncekit.yml').write_text(yaml.safe_dump({
-            'enabled': True, 'cooldown-seconds': 0, 'one-time': True, 'cost': 0.0,
+            'enabled': True, 'cooldown-seconds': 0, 'one-time': True, 'cost': '0.00',
             'items': ['DIAMOND 4', 'EMERALD 2']
         }, sort_keys=False))
-        # 2. vipkit.yml (paid kit with cost > 0, must be denied)
+        # 2. vipkit.yml (paid kit with decimal text cost '50.00', must be denied)
         (self.path / 'plugins/Allium/kits/vipkit.yml').write_text(yaml.safe_dump({
-            'enabled': True, 'cooldown-seconds': 60, 'one-time': False, 'cost': 50.0,
+            'enabled': True, 'cooldown-seconds': 60, 'one-time': False, 'cost': '50.00',
             'items': ['NETHERITE_INGOT 1']
         }, sort_keys=False))
         # 3. slowkit.yml (for disconnect mid-delivery and full inventory tests)
         (self.path / 'plugins/Allium/kits/slowkit.yml').write_text(yaml.safe_dump({
-            'enabled': True, 'cooldown-seconds': 3600, 'one-time': True, 'cost': 0.0,
+            'enabled': True, 'cooldown-seconds': 3600, 'one-time': True, 'cost': '0.00',
             'items': ['IRON_INGOT 5', 'GOLD_INGOT 3']
         }, sort_keys=False))
         # 4. haltbefore.yml (for crash before inventory delivery)
         (self.path / 'plugins/Allium/kits/haltbefore.yml').write_text(yaml.safe_dump({
-            'enabled': True, 'cooldown-seconds': 3600, 'one-time': True, 'cost': 0.0,
+            'enabled': True, 'cooldown-seconds': 3600, 'one-time': True, 'cost': '0.00',
             'items': ['DIAMOND 6']
         }, sort_keys=False))
         # 5. haltafter.yml (for crash after inventory delivery + player.saveData)
         (self.path / 'plugins/Allium/kits/haltafter.yml').write_text(yaml.safe_dump({
-            'enabled': True, 'cooldown-seconds': 3600, 'one-time': True, 'cost': 0.0,
+            'enabled': True, 'cooldown-seconds': 3600, 'one-time': True, 'cost': '0.00',
             'items': ['EMERALD 7']
         }, sort_keys=False))
 
@@ -412,32 +446,33 @@ max-tick-time=120000
                 self.name + ': deliberate ' + point + ' crash exit=77')
         self.proc = None
         ident = uuid.UUID(bytes=hashlib.md5(('OfflinePlayer:' + player).encode()).digest(), version=3)
-        with sqlite3.connect('file:' + str(self.path / 'plugins/Allium/allium.db') + '?mode=ro', uri=True) as db:
-            db.row_factory = sqlite3.Row
-            deliveries = [dict(r) for r in db.execute(
-                'SELECT id, kit_name, claim_token, claim_owner, item_count FROM allium_kit_deliveries WHERE player_uuid=? AND kit_name=?',
-                (str(ident), kit_name))]
-            usages = [dict(r) for r in db.execute(
-                'SELECT kit_name, last_claimed_at, one_time_claimed, claim_count FROM allium_kit_usages WHERE player_uuid=? AND kit_name=?',
-                (str(ident), kit_name))]
-        file = playerDataDirectory / (str(ident) + '.dat')
-        env = dict(os.environ, MC_PROTOCOL_MODULE=str(MCP))
-        result = subprocess.run(['node', str(HERE / 'playerdata.cjs'), str(file)], env=env, capture_output=True, text=True, check=True)
-        saved = json.loads(result.stdout)
-        saved['fileSha256'] = hashlib.sha256(file.read_bytes()).hexdigest()
-        snap = dict(lane=self.name, point=point, kitName=kit_name, deliveries=deliveries, usages=usages, savedPlayer=saved)
-        observations.setdefault('crashSnapshots', []).append(snap)
-        item_count = sum(int(i['count']) for i in saved['inventory'] if i['id'] == expected_material) if expected_material else 0
-        receipt = saved['receipts'] or ''
-        valid = len(deliveries) == 1 and not usages
-        if valid:
-            d = deliveries[0]
-            expected_receipt = f"K/{d['id']}/{d['claim_token']}/{kit_name}"
-            if point == 'kit.claim.halt-before-deliver':
-                valid = valid and expected_receipt not in receipt and item_count == 0
-            else:
-                valid = valid and expected_receipt in receipt.split(';') and item_count == expected_count
-        require(valid, self.name + ': exact target DB row/token and stopped native playerdata receipt/inventory match ' + point, snap)
+        if not self.database:
+            with sqlite3.connect('file:' + str(self.path / 'plugins/Allium/allium.db') + '?mode=ro', uri=True) as db:
+                db.row_factory = sqlite3.Row
+                deliveries = [dict(r) for r in db.execute(
+                    'SELECT id, kit_name, claim_token, claim_owner, item_count FROM allium_kit_deliveries WHERE player_uuid=? AND kit_name=?',
+                    (str(ident), kit_name))]
+                usages = [dict(r) for r in db.execute(
+                    'SELECT kit_name, last_claimed_at, one_time_claimed, claim_count FROM allium_kit_usages WHERE player_uuid=? AND kit_name=?',
+                    (str(ident), kit_name))]
+            file = playerDataDirectory / (str(ident) + '.dat')
+            env = dict(os.environ, MC_PROTOCOL_MODULE=str(MCP))
+            result = subprocess.run(['node', str(HERE / 'playerdata.cjs'), str(file)], env=env, capture_output=True, text=True, check=True)
+            saved = json.loads(result.stdout)
+            saved['fileSha256'] = hashlib.sha256(file.read_bytes()).hexdigest()
+            snap = dict(lane=self.name, point=point, kitName=kit_name, deliveries=deliveries, usages=usages, savedPlayer=saved)
+            observations.setdefault('crashSnapshots', []).append(snap)
+            item_count = sum(int(i['count']) for i in saved['inventory'] if i['id'] == expected_material) if expected_material else 0
+            receipt = saved['receipts'] or ''
+            valid = len(deliveries) == 1 and not usages
+            if valid:
+                d = deliveries[0]
+                expected_receipt = f"K/{d['id']}/{d['claim_token']}/{kit_name}"
+                if point == 'kit.claim.halt-before-deliver':
+                    valid = valid and expected_receipt not in receipt and item_count == 0
+                else:
+                    valid = valid and expected_receipt in receipt.split(';') and item_count == expected_count
+            require(valid, self.name + ': exact target DB row/token and stopped native playerdata receipt/inventory match ' + point, snap)
         for b in self.bots.values():
             if b.proc is not None:
                 bp, b.proc = b.proc, None
@@ -480,7 +515,11 @@ def test_claim_and_cooldown(lane):
     a.command('kit starter', "don't have permission to claim kit starter")
     require(not lane.db('KitA')['usages'] and not lane.state('KitA')['stacks'],
             lane.name + ': unpermitted kit claim denied with zero items and zero DB usage')
-    # Grant allium.kits.starter
+    # Grant parent wildcard allium.kits.* and verify it covers all free kits, then revoke it
+    lane.perm('KitA', 'allium.kits.*', True)
+    a.command('kits', 'oncekit')
+    lane.perm('KitA', 'allium.kits.*', False)
+    # Grant explicit allium.kits.starter
     lane.perm('KitA', 'allium.kits.starter', True)
     a.command('kits', 'starter')
     a.command('kit', 'starter')
@@ -502,14 +541,18 @@ def test_claim_and_cooldown(lane):
          'starter bypass usage persisted')
     require(lane.amount('KitA', 'COOKED_BEEF') == 32, lane.name + ': cooldown bypass delivers second starter kit')
     lane.perm('KitA', 'allium.kit.bypass.cooldown', False)
-    # /kit <name> <player> requires allium.kit.others
+    # /kit <name> <player> requires allium.kit.others AND kit access on the sender
     a.command('kit starter KitB', "don't have permission")
     lane.perm('KitA', 'allium.kit.others', True)
+    lane.perm('KitA', 'allium.kits.starter', False)
+    a.command('kit starter KitB', "don't have permission to claim kit starter")
+    lane.perm('KitA', 'allium.kits.starter', True)
     mark_b = len(b.lines)
     a.command('kit starter KitB', 'Gave kit starter to KitB')
     b.chat(mark_b, 'Received kit starter')
-    require(lane.amount('KitB', 'COOKED_BEEF') == 16 and any(u['kit_name'] == 'starter' for u in lane.db('KitB')['usages']),
-            lane.name + ': /kit starter KitB delivers to target and records target usage')
+    require(lane.amount('KitB', 'COOKED_BEEF') == 16 and any(u['kit_name'] == 'starter' and u['claim_count'] == 1 for u in lane.db('KitB')['usages'])
+            and lane.db('KitA')['usages'][0]['claim_count'] == 2,
+            lane.name + ': /kit starter KitB delivers to target and records usage on target (not sender)')
 
 
 def test_one_time_and_paid_denial(lane):
@@ -559,16 +602,32 @@ def test_provider_and_signed_items_createkit_delkit(lane):
     a, b = lane.bots['KitA'], lane.bots['KitB']
     lane.perm('KitA', 'allium.createkit', True)
     lane.perm('KitA', 'allium.delkit', True)
-    # Put nexo:ruby_sword, signed allium:mob_disarmer, and GOLDEN_APPLE x3 into KitA's inventory
+    # 1. Path traversal / invalid name rejected by /createkit
+    a.command('createkit ../x', 'Use 1-32 lowercase letters, digits, underscores or hyphens')
+    # 2. Lossy item (written book in slot 3) refused naming slot and unsupported data
+    lane.fixture('givelossy KitA')
+    a.command('createkit lossykit', 'slot 3 contains unsupported item data (written book data')
+    require('lossykit' not in lane.fixture('defs')['definitions']
+            and not (lane.path / 'plugins/Allium/kits/lossykit.yml').exists(),
+            lane.name + ': /createkit refuses lossy written book without saving degraded kit')
+    # 3. Put test-adapter nexo:ruby_sword, signed privileged allium:phantom_obliterator, and GOLDEN_APPLE x3 into KitA's inventory
     lane.fixture('givecustom KitA')
     source_stacks = lane.state('KitA')['stacks']
-    source_disarmer = next(s for s in source_stacks if s['behavior'] == 'allium:mob_disarmer')
+    source_obliterator = next(s for s in source_stacks if s['behavior'] == 'allium:phantom_obliterator')
+    # Without allium.give.privileged, capturing privileged allium:phantom_obliterator is refused
+    lane.perm('KitA', 'allium.give.privileged', False)
+    a.command('createkit customgear 120', 'capturing privileged items requires allium.give.privileged')
+    require('customgear' not in lane.fixture('defs')['definitions'],
+            lane.name + ': /createkit refuses privileged behavior without allium.give.privileged')
+    # Grant allium.give.privileged and capture customgear
+    lane.perm('KitA', 'allium.give.privileged', True)
     a.command('createkit customgear 120', 'Created kit customgear with 3 item stack(s)')
     defs = lane.fixture('defs')['definitions']
     require('customgear' in defs and defs['customgear']['cooldownSeconds'] == 120
+            and defs['customgear']['cost'] == '0.00'
             and any('nexo:ruby_sword' in item for item in defs['customgear']['items'])
-            and any('allium:mob_disarmer' in item for item in defs['customgear']['items']),
-            lane.name + ': /createkit captures provider and signed Allium item specs into kits/customgear.yml',
+            and any('allium:phantom_obliterator' in item for item in defs['customgear']['items']),
+            lane.name + ': /createkit captures provider test-adapter and signed privileged Allium item specs with decimal cost 0.00',
             defs.get('customgear'))
     # Claim customgear as KitB
     lane.fixture('empty KitB')
@@ -576,12 +635,12 @@ def test_provider_and_signed_items_createkit_delkit(lane):
     b.command('kit customgear', 'Received kit customgear')
     received = lane.state('KitB')['stacks']
     nexo_item = next((s for s in received if s['provider'] == 'nexo' and s['itemId'] == 'ruby_sword'), None)
-    signed_item = next((s for s in received if s['behavior'] == 'allium:mob_disarmer'), None)
+    signed_item = next((s for s in received if s['behavior'] == 'allium:phantom_obliterator'), None)
     gapple = next((s for s in received if s['material'] == 'GOLDEN_APPLE' and s['amount'] == 3), None)
     require(nexo_item is not None and signed_item is not None and gapple is not None
             and bool(signed_item['signature']) and bool(signed_item['instance_uuid'])
-            and signed_item['instance_uuid'] != source_disarmer['instance_uuid'],
-            lane.name + ': claiming kit mints provider item and fresh signed privileged Allium item instance',
+            and signed_item['instance_uuid'] != source_obliterator['instance_uuid'],
+            lane.name + ': claiming kit mints provider test-adapter item and fresh signed privileged Allium item instance',
             received)
     # Verify /allium reload preserves definitions and service instance
     logmark = len(lane.logs)
@@ -681,20 +740,63 @@ def test_crash_recovery(lane):
     require(lane.amount('KitA', 'EMERALD') == 7, lane.name + ': post-crash repeated claim cannot duplicate items')
 
 
+def test_shared_mysql_ownership(lane_a, lane_b):
+    a_on_1 = lane_a.bot('KitA')
+    lane_a.fixture('empty KitA')
+    lane_a.perm('KitA', 'allium.kits.haltbefore', True)
+    lane_a.fixture('arm kit.claim.halt-before-deliver 1')
+    a_on_1.cmd('kit haltbefore')
+    lane_a.crash('kit.claim.halt-before-deliver', 'haltbefore', player='KitA', expected_material='minecraft:diamond', expected_count=0)
+
+    # Now KitA connects to Server B (server-b), which shares the same MySQL database
+    a_on_2 = lane_b.bot('KitA')
+    db_on_b = lane_b.db('KitA')
+    require(len(db_on_b['deliveries']) == 1 and db_on_b['deliveries'][0]['claim_owner'] == 'server-a'
+            and not db_on_b['usages'],
+            'shared-mysql: server-b join recovery leaves server-a CLAIMING row untouched',
+            db_on_b)
+    row = db_on_b['deliveries'][0]
+    foreign = lane_b.fixture(f"foreigncheck {row['id']} {row['claim_token']}")
+    require(foreign['serverId'] == 'server-b' and not foreign['releaseAllowed'] and not foreign['finishAllowed']
+            and len(lane_b.db('KitA')['deliveries']) == 1,
+            'shared-mysql: server-b repository releaseClaim/finishClaim refuses server-a CLAIMING row',
+            foreign)
+    a_on_2.disconnect()
+
+    # Reboot Server A (server-a) and reconnect KitA: server-a releases its own CLAIMING row and claims cleanly
+    lane_a.boot()
+    a_on_1 = lane_a.bot('KitA')
+    wait(lambda: not lane_a.db('KitA')['deliveries'], 'server-a released its own CLAIMING row on rejoin')
+    lane_a.perm('KitA', 'allium.kits.haltbefore', True)
+    a_on_1.command('kit haltbefore', 'Received kit haltbefore')
+    wait(lambda: any(u['kit_name'] == 'haltbefore' and u['one_time_claimed'] for u in lane_a.db('KitA')['usages']),
+         'haltbefore claimed on server-a after recovery')
+    require(lane_a.amount('KitA', 'DIAMOND') == 6, 'shared-mysql: owning server-a recovers and delivers kit once')
+
+
 try:
     build()
-    port = 25760 if A.suite == 'spigot' else 25761
-    lane = Lane(A.suite, A.suite, port)
-    lane.boot()
-    lane.bot('KitA')
-    lane.bot('KitB')
-    case(A.suite + ':claim-cooldown-and-others', lambda: test_claim_and_cooldown(lane))
-    case(A.suite + ':one-time-and-paid-denial', lambda: test_one_time_and_paid_denial(lane))
-    case(A.suite + ':full-inventory-and-cancelled-event', lambda: test_full_inventory_and_cancelled_event(lane))
-    case(A.suite + ':provider-and-signed-items-createkit-delkit', lambda: test_provider_and_signed_items_createkit_delkit(lane))
-    case(A.suite + ':permissions-and-tab-completion', lambda: test_permissions_and_tab_completion(lane))
-    case(A.suite + ':disconnect-mid-delivery', lambda: test_disconnect_mid_delivery(lane))
-    case(A.suite + ':crash-mid-delivery-recovery', lambda: test_crash_recovery(lane))
+    if A.suite == 'shared-mysql':
+        db_name = 'allium_s16_shared_' + str(int(time.time()))
+        prepare_mysql_database(db_name)
+        lane_a = Lane('shared-a', 'spigot', 25760, database=db_name, server_id='server-a')
+        lane_b = Lane('shared-b', 'spigot', 25762, database=db_name, server_id='server-b')
+        lane_a.boot()
+        lane_b.boot()
+        case('shared-mysql:cross-server-ownership-isolation', lambda: test_shared_mysql_ownership(lane_a, lane_b))
+    else:
+        port = 25760 if A.suite == 'spigot' else 25761
+        lane = Lane(A.suite, A.suite, port)
+        lane.boot()
+        lane.bot('KitA')
+        lane.bot('KitB')
+        case(A.suite + ':claim-cooldown-and-others', lambda: test_claim_and_cooldown(lane))
+        case(A.suite + ':one-time-and-paid-denial', lambda: test_one_time_and_paid_denial(lane))
+        case(A.suite + ':full-inventory-and-cancelled-event', lambda: test_full_inventory_and_cancelled_event(lane))
+        case(A.suite + ':provider-and-signed-items-createkit-delkit', lambda: test_provider_and_signed_items_createkit_delkit(lane))
+        case(A.suite + ':permissions-and-tab-completion', lambda: test_permissions_and_tab_completion(lane))
+        case(A.suite + ':disconnect-mid-delivery', lambda: test_disconnect_mid_delivery(lane))
+        case(A.suite + ':crash-mid-delivery-recovery', lambda: test_crash_recovery(lane))
 finally:
     cleanup_errors = []
     for l in lanes:

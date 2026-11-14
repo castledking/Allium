@@ -1,8 +1,8 @@
 // Test-only S16 kits client for 1.20.1 (763). Requires external minecraft-protocol 1.68.0. Owned loopback
-// ports 25760-25761 only. Logs every system chat and sound packet, sends "cmd <command>" lines as typed
+// ports 25760-25762 only. Logs every system chat and sound packet, sends "cmd <command>" lines as typed
 // chat commands, "tab <text>" as a tab completion request, and leaves on "stop".
 const [lane, portText, version, username = 'BaseBot'] = process.argv.slice(2), port = Number(portText);
-if (!lane || !([25760, 25761].includes(port)) || !['1.20.1'].includes(version)) throw Error('TEST ONLY: owned port 25760-25761 and version 1.20.1');
+if (!lane || !([25760, 25761, 25762].includes(port)) || !['1.20.1'].includes(version)) throw Error('TEST ONLY: owned port 25760-25762 and version 1.20.1');
 const mc = require(process.env.MC_PROTOCOL_MODULE || '/mnt/storage/.allium-validation/infra/client/node_modules/minecraft-protocol');
 const nbt = require(require.resolve('prismarine-nbt', {paths: [require.resolve(process.env.MC_PROTOCOL_MODULE || '/mnt/storage/.allium-validation/infra/client/node_modules/minecraft-protocol')]}));
 const {flatten} = require('../baseline/text-components.cjs');

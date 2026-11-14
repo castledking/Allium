@@ -3,16 +3,16 @@ package codes.castled.allium.kit;
 import codes.castled.allium.item.spec.GiveSpec;
 import codes.castled.allium.item.spec.ItemSpecException;
 import codes.castled.allium.item.spec.ItemSpecParser;
-import codes.castled.allium.travel.TravelNames;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -30,13 +30,18 @@ import java.util.function.Function;
  *
  * <p>Validation rules:
  * <ul>
+ *   <li>Every kit filename stem and {@code name} field is validated against
+ *       {@link KitNames#VALID_NAME} ({@code ^[a-z0-9_-]{1,32}$}), and resolved paths must stay
+ *       directly inside {@code plugins/Allium/kits/}.</li>
  *   <li>Only known keys ({@code name}, {@code enabled}, {@code cooldown-seconds}, {@code one-time},
  *       {@code cost}, {@code items}) are accepted. Unknown keys or invalid values reject the whole
  *       file with path-specific diagnostics.</li>
+ *   <li>Per the S14 economy rule, {@code cost} is canonical decimal text ({@code '0.00'}). Legacy
+ *       numeric values in YAML (e.g. {@code cost: 0} or {@code cost: 50.0}) are accepted on load
+ *       with a warning and converted to canonical decimal text; paid kits ({@code cost > 0.00})
+ *       remain denied at claim time until M3 economy reservations exist.</li>
  *   <li>Every entry in {@code items} is parsed through {@link ItemSpecParser} at load time so
  *       syntax errors are reported with their exact item index.</li>
- *   <li>Paid kits ({@code cost > 0}) are parsed and flagged as {@link KitDefinition#paid()} so
- *       they are explicitly denied until M3 economy reservations exist.</li>
  * </ul>
  */
 public final class KitDefinitionLoader {
@@ -78,6 +83,20 @@ public final class KitDefinitionLoader {
 
     public File directory() {
         return new File(dataFolder, DIRECTORY);
+    }
+
+    public File safeKitFile(String rawName) {
+        String valid = KitNames.validate(rawName);
+        Path dirPath = directory().toPath().toAbsolutePath().normalize();
+        Path resolved = dirPath.resolve(valid + ".yml").normalize();
+        if (!dirPath.equals(resolved.getParent())) {
+            throw new IllegalArgumentException("Kit path escapes kits directory: " + rawName);
+        }
+        return resolved.toFile();
+    }
+
+    public boolean exists(String rawName) {
+        return safeKitFile(rawName).exists();
     }
 
     public void installDefaults() throws IOException {
@@ -127,12 +146,18 @@ public final class KitDefinitionLoader {
         if (files == null || files.length == 0) {
             return new Loaded(Map.of(), List.of());
         }
+        Path dirPath = dir.toPath().toAbsolutePath().normalize();
         Arrays.sort(files, Comparator.comparing(File::getName));
         Map<String, KitDefinition> valid = new LinkedHashMap<>();
         List<Rejected> rejected = new ArrayList<>();
         for (File file : files) {
             String fileName = DIRECTORY + "/" + file.getName();
             List<String> diagnostics = new ArrayList<>();
+            Path normalizedFile = file.toPath().toAbsolutePath().normalize();
+            if (!dirPath.equals(normalizedFile.getParent())) {
+                rejected.add(new Rejected(fileName, List.of("path: kit file must reside directly inside " + DIRECTORY + "/")));
+                continue;
+            }
             KitDefinition def = parseFile(file, fileName, parser, diagnostics);
             if (def == null || !diagnostics.isEmpty()) {
                 rejected.add(new Rejected(fileName, diagnostics));
@@ -141,7 +166,7 @@ public final class KitDefinitionLoader {
             KitDefinition existing = valid.get(def.name());
             if (existing != null) {
                 rejected.add(new Rejected(fileName, List.of(
-                        "name: kit '" + def.name() + "' is already defined in " + existing.file())));
+                        "name: kit '" + def.name() + "' is already defined in " + existing.sourceFile())));
                 continue;
             }
             valid.put(def.name(), def);
@@ -154,6 +179,7 @@ public final class KitDefinitionLoader {
         if (!dir.isDirectory() && !dir.mkdirs() && !dir.isDirectory()) {
             throw new IOException("could not create " + dir);
         }
+        File file = safeKitFile(definition.name());
         YamlConfiguration yaml = new YamlConfiguration();
         yaml.set("name", definition.name());
         yaml.set("enabled", definition.enabled());
@@ -161,13 +187,11 @@ public final class KitDefinitionLoader {
         yaml.set("one-time", definition.oneTime());
         yaml.set("cost", definition.cost());
         yaml.set("items", definition.items());
-        File file = new File(dir, definition.name() + ".yml");
         yaml.save(file);
     }
 
     public boolean delete(String kitName) throws IOException {
-        String normalized = TravelNames.normalize(kitName);
-        File file = new File(directory(), normalized + ".yml");
+        File file = safeKitFile(kitName);
         if (!file.isFile()) {
             return false;
         }
@@ -175,7 +199,11 @@ public final class KitDefinitionLoader {
         return true;
     }
 
-    private static KitDefinition parseFile(File file, String fileName, ItemSpecParser parser, List<String> diagnostics) {
+    private KitDefinition parseFile(File file, String fileName, ItemSpecParser parser, List<String> diagnostics) {
+        String fallbackStem = file.getName().substring(0, file.getName().length() - ".yml".length());
+        if (!KitNames.isValid(fallbackStem)) {
+            diagnostics.add("file: kit filename stem '" + fallbackStem + "' must match ^[a-z0-9_-]{1,32}$");
+        }
         YamlConfiguration yaml = new YamlConfiguration();
         try {
             yaml.loadFromString(Files.readString(file.toPath(), StandardCharsets.UTF_8));
@@ -188,14 +216,13 @@ public final class KitDefinitionLoader {
                 diagnostics.add(key + ": unknown kit setting");
             }
         }
-        String fallbackStem = file.getName().substring(0, file.getName().length() - ".yml".length());
         Object rawName = yaml.contains("name") ? yaml.get("name") : fallbackStem;
         String name = null;
         if (!(rawName instanceof String nameStr)) {
-            diagnostics.add("name: must be a string");
+            diagnostics.add("name: must be a string matching ^[a-z0-9_-]{1,32}$");
         } else {
             try {
-                name = TravelNames.normalize(nameStr);
+                name = KitNames.validate(nameStr);
             } catch (IllegalArgumentException e) {
                 diagnostics.add("name: " + e.getMessage());
             }
@@ -233,13 +260,32 @@ public final class KitDefinitionLoader {
             }
         }
 
-        double cost = 0.0D;
+        String cost = KitDefinition.ZERO_COST;
         if (yaml.contains("cost")) {
             Object rawCost = yaml.get("cost");
-            if (!(rawCost instanceof Number n) || !Double.isFinite(n.doubleValue()) || n.doubleValue() < 0.0D) {
-                diagnostics.add("cost: must be a non-negative number");
+            if (rawCost instanceof String costStr) {
+                try {
+                    cost = KitDefinition.normalizeCost(costStr);
+                } catch (IllegalArgumentException e) {
+                    diagnostics.add("cost: " + e.getMessage());
+                }
+            } else if (rawCost instanceof Number n) {
+                if (!Double.isFinite(n.doubleValue()) || n.doubleValue() < 0.0D) {
+                    diagnostics.add("cost: must be non-negative decimal text (e.g. '0.00')");
+                } else {
+                    String numericText = (rawCost instanceof Integer || rawCost instanceof Long)
+                            ? n.toString()
+                            : BigDecimal.valueOf(n.doubleValue()).stripTrailingZeros().toPlainString();
+                    try {
+                        cost = KitDefinition.normalizeCost(numericText);
+                        warning.accept(fileName + ": numeric cost (" + rawCost
+                                + ") is deprecated; quote cost as decimal text '" + cost + "' per the S14 economy rule.");
+                    } catch (IllegalArgumentException e) {
+                        diagnostics.add("cost: " + e.getMessage());
+                    }
+                }
             } else {
-                cost = n.doubleValue();
+                diagnostics.add("cost: must be decimal text (e.g. '0.00')");
             }
         }
 

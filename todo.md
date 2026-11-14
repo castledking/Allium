@@ -108,7 +108,9 @@ MySQL, with six connection-kill recovery cases. Vault double amounts have a narr
 cent-boundary snap; command/core decimals remain strict. Durability remains the
 user's choice. Policy mutexes/shared settings epochs belong to the multi-server
 phase. The unsafe scaffold provider now requires explicit, off-by-default
-`economy.scaffold-vault-provider-enabled`; no replacement engine is implemented.
+`economy.scaffold-vault-provider-enabled` as a temporary safety state (release condition:
+the replacement economy engine and gated Vault adapter replace the scaffold entirely); no
+replacement engine is implemented yet.
 
 ## Staging checklist (before deploying to SF)
 
@@ -329,8 +331,12 @@ result and must preserve the existing uncommitted work.
 - [x] **S14 / M3 — Economy design only:** exact minor units, atomic SQLite/MySQL
       transfers, journal/recovery, authoritative offline payment policy, reserved
       mail/kit costs and legacy import mapping. The disposable JDBC probe measured
-      both backends; the actual synchronous Vault adapter still requires its own
-      performance and failure gate. No economy implementation was added.
+      both backends (including 3-operation burst totals; MySQL misses `p99 <= 2 ms`
+      by an order of magnitude, so synchronous Vault is SQLite-only); the actual
+      synchronous Vault adapter still requires its own performance and failure gate.
+      The scaffold Vault provider is off by default (`economy.scaffold-vault-provider-enabled: false`)
+      as a **temporary state** (release condition: the replacement economy engine replaces it).
+      No economy implementation was added.
 - [x] **S15 / M3 — Homes and warps:** `/sethome`, `/home`, `/delhome`, `/homes`,
       `/setwarp`, `/warp`, `/delwarp`, `/warps` on TeleportService. Atomic persisted
       home limits; snapshot/revision/connection-bound overwrite confirmation;

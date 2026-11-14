@@ -35,7 +35,7 @@ Legacy Allium references are `/mnt/storage/repos/Allium/src/main/java/codes/cast
 sequential transfer/refund; import must read source records directly. Serialization/schema
 fixtures against the supported source versions are still required before import implementation.
 
-The only runtime change in this revision is the scaffold registration guard:
+The only runtime change in this revision is the temporary scaffold registration guard:
 
 ```yaml
 economy:
@@ -47,7 +47,8 @@ plugin are required, with the flag checked before any Vault API linkage/static a
 existing optional soft dependency remains. Opt-in emits an unsafe-scaffold warning and warns
 when an economy provider is already registered; it does not repair money semantics. Registration
 tests cover default/false, missing Vault, explicit opt-in and existing-provider diagnostics.
-The scaffold table still exists; this flag is not a migration or authorization to release it.
+The scaffold table still exists; this flag is a temporary safety state whose release condition is
+that the replacement economy engine and gated Vault adapter replace the scaffold entirely.
 
 ## Phase 1: one process owns the economy
 
@@ -237,6 +238,27 @@ the same amount is a **new request**. Unknown Vault mutations return FAILURE wit
 `OUTCOME_UNKNOWN:<id>; do not retry automatically` and hold the adapter unavailable until
 reconciled. Integrations needing safe retries must use the keyed API.
 
+**Operator lookup for `OUTCOME_UNKNOWN:<id>`:** When an unkeyed Vault call returns
+`OUTCOME_UNKNOWN:<id>`, that operation ID (`<id>`) is the **only** way to verify afterwards
+whether the money actually moved. An administrator inspects the operation via
+`/allium economy op <id>` (console or `allium.economy.admin`), or queries the database directly
+after reconciliation:
+
+```sql
+SELECT id, kind, state, reason, amount_minor, created_at, updated_at
+FROM allium_economy_operations
+WHERE id = '<id>';
+
+SELECT account_uuid, delta_minor, held_delta_minor, balance_before_minor, balance_after_minor, account_version_after
+FROM allium_economy_entries
+WHERE operation_id = '<id>';
+```
+
+- If `state = 'COMMITTED'` (with matching `allium_economy_entries` rows), the money moved once and
+  must not be manually re-applied.
+- If no row exists (or `state = 'REJECTED'`) after startup/coordinator reconciliation has finished,
+  the transaction rolled back and no money moved.
+
 ## PAY and policy behavior
 
 PAY is player-to-player, no wildcard/self/console-source balance; admin grants are separate.
@@ -306,18 +328,25 @@ Each lane uses two existing hot accounts, a preopened transaction connection plu
 20 warmup transfers, 100 single transfers and 60 transfers in 20 bursts of three sequential
 operations. Each transfer inserts one COMMITTED row, updates both balances and entries, commits
 once and restores auto-commit. The timer includes transaction work/commit, excludes connection
-creation and observer verification. Percentiles are nearest rank in **milliseconds**:
+creation and observer verification. Percentiles are nearest rank in **milliseconds** (including
+both per-operation figures and the 3-operation burst totals across the 20 bursts):
 
 | Lane | Phase | n | p50 | p95 | p99 | max |
 | --- | --- | --- | --- | --- | --- | --- |
 | SQLite FULL | Single | 100 | 0.9735 | 1.0713 | 1.4448 | 1.5177 |
 | SQLite FULL | Burst, per operation | 60 | 0.9731 | 1.2669 | 2.1977 | 2.1977 |
+| SQLite FULL | Burst total (3 operations) | 20 | 2.9009 | 3.3561 | 4.4053 | 4.4053 |
 | SQLite NORMAL | Single | 100 | 0.0363 | 0.0541 | 0.0672 | 0.0809 |
 | SQLite NORMAL | Burst, per operation | 60 | 0.0498 | 0.1694 | 0.2410 | 0.2410 |
+| SQLite NORMAL | Burst total (3 operations) | 20 | 0.2467 | 0.2962 | 0.3682 | 0.3682 |
 | MySQL durable | Single | 100 | 13.4628 | 24.1892 | 26.5557 | 36.0993 |
 | MySQL durable | Burst, per operation | 60 | 13.3692 | 30.1548 | 44.0402 | 44.0402 |
+| MySQL durable | Burst total (3 operations) | 20 | 44.6298 | 60.2650 | 125.2765 | 125.2765 |
 
-**Burst sums were not recorded; these per-operation values do not establish a tick budget.**
+MySQL misses the `p99 <= 2 ms` synchronous-Vault target by an order of magnitude (`26.5557 ms`
+single, `44.0402 ms` per burst operation, and `125.2765 ms` for a 3-operation burst total), so
+synchronous Vault is supported on SQLite only, and on MySQL economy is commands-only or limited.
+
 Small samples do not estimate p99.9 or sustained server load. These are hot-account SQL timings,
 not UUID/String Vault calls, pool starvation, mixed policy/mail traffic or server-thread latency.
 The old outside `/mnt/storage/.allium-validation/20261113/s14-economy/` two-commit probe is
@@ -363,7 +392,8 @@ counts, pool/queue/lock waits and **actual aggregate economy server-thread time 
 Proposed healthy budgets: synchronous UUID reads and single-account writes p99 <= 2 ms,
 p99.9 <= 5 ms; no healthy call > 25 ms; aggregate economy main-thread work p99 <= 5 ms/tick for
 that supported workload. These are future acceptance targets, not results. The MySQL SQL lane
-already warns against assuming this budget fits; neither SQLite lane clears the adapter gate.
+misses the `p99 <= 2 ms` synchronous-Vault target by an order of magnitude, so synchronous Vault is
+supported on SQLite only; neither SQLite lane clears the full server-workload adapter gate yet.
 Separately exercise pool starvation, held locks, deadlocks, slow storage/network and connection/
 commit faults. Publish tested deadlines/admission/circuit behavior; faulted synchronous calls
 must finish within <= 50 ms or declare that deployment unsupported for synchronous availability.

@@ -96,6 +96,13 @@ public final class ModGate extends JavaPlugin implements Listener {
             Map<String, Object> out = new LinkedHashMap<>();
             switch (args[0]) {
                 case "online" -> out.put("players", getServer().getOnlinePlayers().stream().map(Player::getName).toList());
+                case "commandinfo" -> {
+                    var map = codes.castled.allium.command.CommandMapBridge.resolveCommandMapDirect(getServer());
+                    for (String key : List.of("say", "minecraft:say", "bukkit:say", "tm", "minecraft:tm")) {
+                        var c = map.getCommand(key);
+                        out.put(key, c == null ? "MISSING" : c.getClass().getName() + " permission=" + c.getPermission());
+                    }
+                }
                 case "counts" -> {
                     Player norm = getServer().getPlayerExact("ModNorm");
                     Player obs = getServer().getPlayerExact("ModObs");

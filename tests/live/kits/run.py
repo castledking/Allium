@@ -34,13 +34,14 @@ sys.path.insert(0, str(REPO / 'tests/live/providers/trigger'))
 from process_cleanup import stop_process
 
 P = argparse.ArgumentParser(description=__doc__)
-P.add_argument('--suite', choices=['spigot', 'paper', 'shared-mysql'], required=True)
+P.add_argument('--suite', choices=['spigot', 'paper', 'paper-nexo', 'shared-mysql'], required=True)
 P.add_argument('--allium-jar', type=Path, required=True)
 P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash')
 P.add_argument('--run-name', required=True)
 P.add_argument('--check', action='store_true')
 P.add_argument('--run-root', type=Path, default=Path('/mnt/storage/.allium-validation/20261114/s16-kits/runs'))
 P.add_argument('--paper-template', type=Path, default=Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3'))
+P.add_argument('--nexo-template', type=Path, default=Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-1.21.8'))
 A = P.parse_args()
 if not re.fullmatch(r'[a-zA-Z0-9_][a-zA-Z0-9_.-]*', A.run_name):
     P.error('invalid run-name')
@@ -191,7 +192,7 @@ class Bot:
             str(self.lane.path), str(self.lane.port)
         ]
         if self.lane.kind == 'spigot':
-            cmd.append('1.20.1')
+            cmd.append('1.21.8' if A.suite == 'paper-nexo' else '1.20.1')
         env = dict(os.environ, MC_PROTOCOL_MODULE=str(MCP), NODE_COMPILE_CACHE=str(RUN / '.node-cache'))
         self.proc = subprocess.Popen(cmd + [self.name], env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT, text=True, bufsize=1)
@@ -327,7 +328,25 @@ class Lane:
             'items': ['EMERALD 7']
         }, sort_keys=False))
 
-        if kind == 'paper':
+        if A.suite == 'paper-nexo':
+            template = A.nexo_template
+            nexo = template / 'plugins/nexo.jar'
+            expected_nexo = '5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b'
+            if hashlib.sha256(nexo.read_bytes()).hexdigest() != expected_nexo:
+                raise RuntimeError('supplied Nexo SHA256 mismatch')
+            shutil.copy2(nexo, self.path / 'plugins/Nexo.jar')
+            shutil.copy2(INFRA / 'servers/paper-1.21.8-60.jar', self.path / 'server.jar')
+            for d in ['libraries', 'versions']:
+                shutil.copytree(template / d, self.path / d)
+            native = self.path / 'plugins/Nexo'
+            native.mkdir()
+            for name in ['settings.yml', 'converter.yml']:
+                shutil.copy2(template / 'plugins/Nexo' / name, native / name)
+            (native / 'items').mkdir()
+            (native / 'items/gate.yml').write_text('ruby_sword:\n  material: DIAMOND_SWORD\n  itemname: Native Kit Gate Sword\n')
+            observations['realNexo'] = dict(version='1.30-dev-36f4ce686', sha256=expected_nexo,
+                                           server='Paper 1.21.8-60', adapterStub=False)
+        elif kind == 'paper':
             for d in ['libraries', 'versions']:
                 shutil.copytree(A.paper_template / d, self.path / d)
         else:
@@ -358,11 +377,13 @@ max-tick-time=120000
         lanes.append(self)
 
     def argv(self):
-        java = '/usr/lib/jvm/java-' + ('17' if self.kind == 'spigot' else '25') + '-openjdk/bin/java'
+        java = '/usr/lib/jvm/java-' + ('21' if A.suite == 'paper-nexo' else ('17' if self.kind == 'spigot' else '25')) + '-openjdk/bin/java'
         cmd = [
             java, '-Xms256M', '-Xmx1200M', '-Dterminal.jline=false', '-Dterminal.ansi=false',
             '-Dallium.fault-injection=true', '-Djava.io.tmpdir=' + str(self.path / 'tmp')
         ]
+        if A.suite == 'paper-nexo':
+            cmd.append('-Dallium.kit-gate.real-nexo=true')
         if self.kind == 'spigot':
             return cmd + ['-jar', 'server.jar', '--nogui']
         with zipfile.ZipFile(INFRA / 'servers/paper-26.3-141.jar') as z:
@@ -627,7 +648,7 @@ def test_provider_and_signed_items_createkit_delkit(lane):
             and defs['customgear']['cost'] == '0.00'
             and any('nexo:ruby_sword' in item for item in defs['customgear']['items'])
             and any('allium:phantom_obliterator' in item for item in defs['customgear']['items']),
-            lane.name + ': /createkit captures provider test-adapter and signed privileged Allium item specs with decimal cost 0.00',
+            lane.name + ': /createkit captures provider and signed privileged Allium item specs with decimal cost 0.00',
             defs.get('customgear'))
     # Claim customgear as KitB
     lane.fixture('empty KitB')
@@ -636,11 +657,14 @@ def test_provider_and_signed_items_createkit_delkit(lane):
     received = lane.state('KitB')['stacks']
     nexo_item = next((s for s in received if s['provider'] == 'nexo' and s['itemId'] == 'ruby_sword'), None)
     signed_item = next((s for s in received if s['behavior'] == 'allium:phantom_obliterator'), None)
+    if A.suite == 'paper-nexo':
+        require(nexo_item is not None and nexo_item.get('nativeNexoId') == 'ruby_sword',
+                lane.name + ': kit-delivered provider item identified by real NexoItems.idFromItem API', nexo_item)
     gapple = next((s for s in received if s['material'] == 'GOLDEN_APPLE' and s['amount'] == 3), None)
     require(nexo_item is not None and signed_item is not None and gapple is not None
             and bool(signed_item['signature']) and bool(signed_item['instance_uuid'])
             and signed_item['instance_uuid'] != source_obliterator['instance_uuid'],
-            lane.name + ': claiming kit mints provider test-adapter item and fresh signed privileged Allium item instance',
+            lane.name + ': claiming kit mints provider item and fresh signed privileged Allium item instance',
             received)
     # Verify /allium reload preserves definitions and service instance
     logmark = len(lane.logs)
@@ -786,7 +810,7 @@ try:
         case('shared-mysql:cross-server-ownership-isolation', lambda: test_shared_mysql_ownership(lane_a, lane_b))
     else:
         port = 25760 if A.suite == 'spigot' else 25761
-        lane = Lane(A.suite, A.suite, port)
+        lane = Lane('paper-1.21.8-real-nexo' if A.suite == 'paper-nexo' else A.suite, 'spigot' if A.suite == 'paper-nexo' else A.suite, port)
         lane.boot()
         lane.bot('KitA')
         lane.bot('KitB')
@@ -797,6 +821,9 @@ try:
         case(A.suite + ':permissions-and-tab-completion', lambda: test_permissions_and_tab_completion(lane))
         case(A.suite + ':disconnect-mid-delivery', lambda: test_disconnect_mid_delivery(lane))
         case(A.suite + ':crash-mid-delivery-recovery', lambda: test_crash_recovery(lane))
+except BaseException as error:
+    require(False, 'unhandled gate exception: ' + repr(error))
+    (RUN / 'exceptions.log').write_text(traceback.format_exc())
 finally:
     cleanup_errors = []
     for l in lanes:

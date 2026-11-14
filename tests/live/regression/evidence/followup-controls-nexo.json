@@ -1,0 +1,3514 @@
+{
+  "frozenAlliumSha256": "ea3ea166d87acd19afb50a742bbdfa52f2add115be2f8b319d8d1364ad4631e2",
+  "unitDelta": 0,
+  "accepted": [
+    {
+      "suite": "paper26.3-paired-controls",
+      "manifest": "/mnt/storage/.allium-validation/20261114/s17-moderation/runs/paired-controls-paper-r3/manifest.json",
+      "manifestSha256": "d85fd923d31246f5be7ef6e4965d0fd2443e622137e7b1fb090ef3f632b111b2",
+      "jarSha256": "ea3ea166d87acd19afb50a742bbdfa52f2add115be2f8b319d8d1364ad4631e2",
+      "passed": true,
+      "checks": [
+        {
+          "label": "paper-26.3: Database connected (SQLITE), moderation module, and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: Paper startup does not emit Spigot vanish leak warning",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModStaff allium.vanish=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModStaff allium.vanish.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModStaff allium.vanish.see=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModStaff allium.mute=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModStaff allium.unmute=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs allium.vanish.see=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs allium.socialspy=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs allium.heal=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs allium.heal.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs allium.kit.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs allium.kits.starter=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs minecraft.command.list=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs bukkit.command.list=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs minecraft.command.msg=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs minecraft.command.teleport=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs minecraft.command.selector=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModObs allium.tp=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm allium.heal=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm allium.heal.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm allium.kit.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm allium.kits.starter=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm allium.socialspy=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm allium.tp=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm minecraft.command.list=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm bukkit.command.list=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm minecraft.command.msg=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm minecraft.command.teleport=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm minecraft.command.selector=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm minecraft.command.me=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm minecraft.command.say=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm minecraft.command.teammsg=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: effective ModNorm allium.vanish.see=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: named muted control /me blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "me S17_BLOCKED_me",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "paper-26.3: named muted control /minecraft:me blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:me S17_BLOCKED_minecraft_me",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "paper-26.3: named muted control /say blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "say S17_BLOCKED_say",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "paper-26.3: named muted control /minecraft:say blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:say S17_BLOCKED_minecraft_say",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "paper-26.3: named muted control /tell blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "tell ModObs S17_BLOCKED_tell",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "paper-26.3: named muted control /minecraft:tell blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:tell ModObs S17_BLOCKED_minecraft_tell",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "paper-26.3: named muted control /w blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "w ModObs S17_BLOCKED_w",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "paper-26.3: named muted control /tm blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "tm S17_BLOCKED_tm",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "paper-26.3: named muted control /teammsg blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "teammsg S17_BLOCKED_teammsg",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "paper-26.3: named muted control /minecraft:teammsg blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:teammsg S17_BLOCKED_minecraft_teammsg",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "paper-26.3: unmuted control /me delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "me S17_CONTROL_me",
+            "recipientEvidence": "BASEG-RAWCHAT \b\u0000\u000eS17_CONTROL_me\u0002"
+          }
+        },
+        {
+          "label": "paper-26.3: unmuted control /minecraft:me delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:me S17_CONTROL_minecraft_me",
+            "recipientEvidence": "BASEG-RAWCHAT \b\u0000\u0018S17_CONTROL_minecraft_me\u0002"
+          }
+        },
+        {
+          "label": "paper-26.3: unmuted control /say delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "say S17_CONTROL_say",
+            "recipientEvidence": "BASEG-RAWCHAT \b\u0000\u000fS17_CONTROL_say\u0006"
+          }
+        },
+        {
+          "label": "paper-26.3: unmuted control /minecraft:say delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:say S17_CONTROL_minecraft_say",
+            "recipientEvidence": "BASEG-RAWCHAT \b\u0000\u0019S17_CONTROL_minecraft_say\u0006"
+          }
+        },
+        {
+          "label": "paper-26.3: unmuted control /tell delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "tell ModObs S17_CONTROL_tell",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"[ModNorm \u2192 me] S17_CONTROL_tell\",\"colors\":[\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#aaaaaa\",\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#aaaaaa\",\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\"],\"runs\":[{\"text\":\"[\",\"color\":\"#aaaaaa\"},{\"text\":\"ModNorm \",\"color\":\"#ffffff\"},{\"text\":\"\u2192 \",\"color\":\"#aaaaaa\"},{\"text\":\"me\",\"color\":\"#ffffff\"},{\"text\":\"] \",\"color\":\"#aaaaaa\"},{\"text\":\"S17_CONTROL_tell\",\"color\":\"#ffffff\"}],\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "paper-26.3: unmuted control /minecraft:tell delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:tell ModObs S17_CONTROL_minecraft_tell",
+            "recipientEvidence": "BASEG-RAWCHAT \b\u0000\u001aS17_CONTROL_minecraft_tell\u0003"
+          }
+        },
+        {
+          "label": "paper-26.3: unmuted control /w delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "w ModObs S17_CONTROL_w",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"[ModNorm \u2192 me] S17_CONTROL_w\",\"colors\":[\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#aaaaaa\",\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#aaaaaa\",\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\"],\"runs\":[{\"text\":\"[\",\"color\":\"#aaaaaa\"},{\"text\":\"ModNorm \",\"color\":\"#ffffff\"},{\"text\":\"\u2192 \",\"color\":\"#aaaaaa\"},{\"text\":\"me\",\"color\":\"#ffffff\"},{\"text\":\"] \",\"color\":\"#aaaaaa\"},{\"text\":\"S17_CONTROL_w\",\"color\":\"#ffffff\"}],\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "paper-26.3: unmuted control /tm delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "tm S17_CONTROL_tm",
+            "recipientEvidence": "BASEG-RAWCHAT \b\u0000\u000eS17_CONTROL_tm\u0007"
+          }
+        },
+        {
+          "label": "paper-26.3: unmuted control /teammsg delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "teammsg S17_CONTROL_teammsg",
+            "recipientEvidence": "BASEG-RAWCHAT \b\u0000\u0013S17_CONTROL_teammsg\u0007"
+          }
+        },
+        {
+          "label": "paper-26.3: unmuted control /minecraft:teammsg delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:teammsg S17_CONTROL_minecraft_teammsg",
+            "recipientEvidence": "BASEG-RAWCHAT \b\u0000\u001dS17_CONTROL_minecraft_teammsg\u0007"
+          }
+        }
+      ],
+      "observations": {},
+      "sourceHashes": {
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/moderation/run.py": "ca558fb500f08750a2a74206edf3f0f83904ab2418c2de3df47343ae0c50a12b",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/moderation/plugin/gate/ModGate.java": "ca26505628d82ff7ddb891c7808b800f76021ec1c29ad724a60b17db9a851c88",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/moderation/plugin/plugin.yml": "516a75596da9d537bc28ce009d7b9d30f33b38396487f01e511e53efbe3042dd",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/moderation/client-mcp.cjs": "241a8eff673af6e0afa1e73b5dcea0bd906d9b97da3f3fa7cb30f6eb7e211b50",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/moderation/client-raw26.cjs": "c916e65707e25aafa57704a084631ad2614054c92f0a79acd275fa8ce39b8681",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72"
+      }
+    },
+    {
+      "suite": "paper1.21.8-real-nexo-kits",
+      "manifest": "/mnt/storage/.allium-validation/20261114/s16-kits/runs/real-nexo-paper1218-r2/summary.json",
+      "manifestSha256": "3b4049cd6e61bfb666337e25f442cb0801fe9845c34f7b7b753f7d49d89048d7",
+      "jarSha256": "ea3ea166d87acd19afb50a742bbdfa52f2add115be2f8b319d8d1364ad4631e2",
+      "passed": true,
+      "checks": [
+        {
+          "label": "paper-1.21.8-real-nexo: kits module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: unpermitted kit claim denied with zero items and zero DB usage",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.*=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.*=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.starter=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: starter kit delivered exact items",
+          "passed": true,
+          "detail": [
+            {
+              "material": "STONE_SWORD",
+              "amount": 1,
+              "provider": "minecraft",
+              "itemId": "stone_sword",
+              "nativeNexoId": null,
+              "behavior": null,
+              "state": {},
+              "signature": null,
+              "instance_uuid": null,
+              "slot": 0
+            },
+            {
+              "material": "STONE_PICKAXE",
+              "amount": 1,
+              "provider": "minecraft",
+              "itemId": "stone_pickaxe",
+              "nativeNexoId": null,
+              "behavior": null,
+              "state": {},
+              "signature": null,
+              "instance_uuid": null,
+              "slot": 1
+            },
+            {
+              "material": "COOKED_BEEF",
+              "amount": 16,
+              "provider": "minecraft",
+              "itemId": "cooked_beef",
+              "nativeNexoId": null,
+              "behavior": null,
+              "state": {},
+              "signature": null,
+              "instance_uuid": null,
+              "slot": 2
+            }
+          ]
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: completed claim clears delivery row and player receipt",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: cooldown refusal delivers nothing and does not increment claim_count",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kit.bypass.cooldown=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: cooldown bypass delivers second starter kit",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kit.bypass.cooldown=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kit.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.starter=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.starter=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: /kit starter KitB delivers to target and records usage on target (not sender)",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.oncekit=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.vipkit=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: one-time kit delivered exact items",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kit.bypass.cooldown=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: one-time kit cannot be claimed a second time even with cooldown bypass",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kit.bypass.cooldown=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: paid kit denied without delivering items or recording usage",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.slowkit=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: partial-room inventory refuses entire kit without burning cooldown or one-time status",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: cancelled ItemGiveEvent releases claim without burning cooldown or one-time status",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.createkit=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.delkit=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: /createkit refuses lossy written book without saving degraded kit",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.give.privileged=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: /createkit refuses privileged behavior without allium.give.privileged",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.give.privileged=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: /createkit captures provider and signed privileged Allium item specs with decimal cost 0.00",
+          "passed": true,
+          "detail": {
+            "enabled": true,
+            "cooldownSeconds": 120,
+            "oneTime": false,
+            "cost": "0.00",
+            "paid": false,
+            "items": [
+              "nexo:ruby_sword 1",
+              "allium:phantom_obliterator 1",
+              "minecraft:golden_apple 3"
+            ]
+          }
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitB allium.kits.customgear=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: kit-delivered provider item identified by real NexoItems.idFromItem API",
+          "passed": true,
+          "detail": {
+            "material": "DIAMOND_SWORD",
+            "amount": 1,
+            "provider": "nexo",
+            "itemId": "ruby_sword",
+            "nativeNexoId": "ruby_sword",
+            "behavior": null,
+            "state": {},
+            "signature": null,
+            "instance_uuid": null,
+            "slot": 0
+          }
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: claiming kit mints provider item and fresh signed privileged Allium item instance",
+          "passed": true,
+          "detail": [
+            {
+              "material": "DIAMOND_SWORD",
+              "amount": 1,
+              "provider": "nexo",
+              "itemId": "ruby_sword",
+              "nativeNexoId": "ruby_sword",
+              "behavior": null,
+              "state": {},
+              "signature": null,
+              "instance_uuid": null,
+              "slot": 0
+            },
+            {
+              "material": "PHANTOM_MEMBRANE",
+              "amount": 1,
+              "provider": "allium",
+              "itemId": "phantom_obliterator",
+              "nativeNexoId": null,
+              "behavior": "allium:phantom_obliterator",
+              "state": {
+                "charges": "3"
+              },
+              "signature": "v2:k1:e5a162358cb4f341afd25f4fe640d98c5cf36ba315faa76b170a7905ae615290",
+              "instance_uuid": "03236ba1-fb3d-46fb-a51a-5e12e086d4b6",
+              "slot": 1
+            },
+            {
+              "material": "GOLDEN_APPLE",
+              "amount": 3,
+              "provider": "minecraft",
+              "itemId": "golden_apple",
+              "nativeNexoId": null,
+              "behavior": null,
+              "state": {},
+              "signature": null,
+              "instance_uuid": null,
+              "slot": 2
+            }
+          ]
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: /allium reload keeps KitService and reloads customgear.yml",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: /delkit removes kit definition from memory and disk",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitB allium.kits.starter=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitB allium.kits.vipkit=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitB allium.kits.haltbefore=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: /kit tab completion offers permitted free kits and hides unpermitted or paid kits",
+          "passed": true,
+          "detail": [
+            "starter"
+          ]
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: /delkit tab completion offers all admin kit names",
+          "passed": true,
+          "detail": [
+            "haltafter",
+            "haltbefore",
+            "oncekit",
+            "slowkit",
+            "starter",
+            "vipkit"
+          ]
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: unpermitted player receives no /delkit tab suggestions",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.slowkit=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: disconnect mid-delivery releases CLAIMING row without delivering items or burning cooldown/one-time",
+          "passed": true,
+          "detail": {
+            "usages": [
+              {
+                "kit_name": "oncekit",
+                "last_claimed_at": 1794685901309,
+                "one_time_claimed": true,
+                "claim_count": 1
+              },
+              {
+                "kit_name": "starter",
+                "last_claimed_at": 1794685897114,
+                "one_time_claimed": false,
+                "claim_count": 2
+              }
+            ],
+            "deliveries": [],
+            "receipts": [
+              {
+                "delivery_id": "a5c6ca81-1887-48f1-80d1-ae043bab1961",
+                "claim_token": "87e4854e-8e9f-4e8e-8bcc-e2e25e79e06c",
+                "kit_name": "starter"
+              },
+              {
+                "delivery_id": "939d9106-2642-4300-9863-da8dcf3cb5b6",
+                "claim_token": "8b7dcea1-ddc1-49a8-b3d8-e870d1571c5f",
+                "kit_name": "starter"
+              },
+              {
+                "delivery_id": "97e37285-e38c-40d2-954f-f8684689521e",
+                "claim_token": "00867e02-134b-4d17-8bae-287252b41634",
+                "kit_name": "oncekit"
+              }
+            ]
+          }
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.slowkit=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: new session claims released kit exactly once",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.haltbefore=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: deliberate kit.claim.halt-before-deliver crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: exact target DB row/token and stopped native playerdata receipt/inventory match kit.claim.halt-before-deliver",
+          "passed": true,
+          "detail": {
+            "lane": "paper-1.21.8-real-nexo",
+            "point": "kit.claim.halt-before-deliver",
+            "kitName": "haltbefore",
+            "deliveries": [
+              {
+                "id": "b93e78bf-2198-467f-839c-47df1c8a13e0",
+                "kit_name": "haltbefore",
+                "claim_token": "884209ef-f84e-4646-9e06-24c96a20acbd",
+                "claim_owner": "server-02f68637-d88b-4fbe-ae64-6456d46ab6a6",
+                "item_count": 6
+              }
+            ],
+            "usages": [],
+            "savedPlayer": {
+              "dataVersion": 4440,
+              "receipts": null,
+              "inventory": [],
+              "fileSha256": "bd120b370683c1e92ca3aa03f017c8e9ea61aea2a0dff23d4b2603b2f8ef9103"
+            }
+          }
+        },
+        {
+          "label": "paper-1.21.8-real-nexo/KitA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "paper-1.21.8-real-nexo/KitB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: kits module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.haltbefore=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: crash before delivery releases claim and preserves cooldown/one-time status",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: pre-delivery crash kit claimed cleanly after restart",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.haltafter=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: deliberate kit.claim.halt-after-deliver crash exit=77",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: exact target DB row/token and stopped native playerdata receipt/inventory match kit.claim.halt-after-deliver",
+          "passed": true,
+          "detail": {
+            "lane": "paper-1.21.8-real-nexo",
+            "point": "kit.claim.halt-after-deliver",
+            "kitName": "haltafter",
+            "deliveries": [
+              {
+                "id": "ad8912ac-df5c-4394-830d-8cb94f8eda0e",
+                "kit_name": "haltafter",
+                "claim_token": "a5e1ff36-aab1-4d5e-a132-14f9de83ea7a",
+                "claim_owner": "server-02f68637-d88b-4fbe-ae64-6456d46ab6a6",
+                "item_count": 7
+              }
+            ],
+            "usages": [],
+            "savedPlayer": {
+              "dataVersion": 4440,
+              "receipts": "K/ad8912ac-df5c-4394-830d-8cb94f8eda0e/a5e1ff36-aab1-4d5e-a132-14f9de83ea7a/haltafter",
+              "inventory": [
+                {
+                  "slot": 0,
+                  "id": "minecraft:emerald",
+                  "count": 7,
+                  "data": null
+                }
+              ],
+              "fileSha256": "b2f9fb55722c63be9adeefc57cfc210eb674e46e93ea1d1db238ec3d472c715e"
+            }
+          }
+        },
+        {
+          "label": "paper-1.21.8-real-nexo/KitA: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "paper-1.21.8-real-nexo/KitB: deliberate crash client exit is clean or identified transport failure, no decoder error",
+          "passed": true,
+          "detail": {
+            "exit": 0,
+            "transport": false,
+            "decoder": false
+          }
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: kits module and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: effective KitA allium.kits.haltafter=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: crash after delivery finalizes DB usage from player.dat receipt without redelivering items",
+          "passed": true,
+          "detail": {
+            "usages": [
+              {
+                "kit_name": "haltafter",
+                "last_claimed_at": 1794685945024,
+                "one_time_claimed": true,
+                "claim_count": 1
+              },
+              {
+                "kit_name": "haltbefore",
+                "last_claimed_at": 1794685934994,
+                "one_time_claimed": true,
+                "claim_count": 1
+              },
+              {
+                "kit_name": "oncekit",
+                "last_claimed_at": 1794685901309,
+                "one_time_claimed": true,
+                "claim_count": 1
+              },
+              {
+                "kit_name": "slowkit",
+                "last_claimed_at": 1794685922862,
+                "one_time_claimed": true,
+                "claim_count": 1
+              },
+              {
+                "kit_name": "starter",
+                "last_claimed_at": 1794685897114,
+                "one_time_claimed": false,
+                "claim_count": 2
+              }
+            ],
+            "deliveries": [],
+            "receipts": [
+              {
+                "delivery_id": "a5c6ca81-1887-48f1-80d1-ae043bab1961",
+                "claim_token": "87e4854e-8e9f-4e8e-8bcc-e2e25e79e06c",
+                "kit_name": "starter"
+              },
+              {
+                "delivery_id": "939d9106-2642-4300-9863-da8dcf3cb5b6",
+                "claim_token": "8b7dcea1-ddc1-49a8-b3d8-e870d1571c5f",
+                "kit_name": "starter"
+              },
+              {
+                "delivery_id": "97e37285-e38c-40d2-954f-f8684689521e",
+                "claim_token": "00867e02-134b-4d17-8bae-287252b41634",
+                "kit_name": "oncekit"
+              },
+              {
+                "delivery_id": "8e56cc28-052d-461b-87a8-591733cc368c",
+                "claim_token": "a78a0115-2681-44c9-9cdb-05b05de73e96",
+                "kit_name": "slowkit"
+              },
+              {
+                "delivery_id": "cdcbaf7d-a72e-46d6-92c4-432fd4eaeeb9",
+                "claim_token": "80baa19a-c14e-47bb-a5a6-97f420fbf5eb",
+                "kit_name": "haltbefore"
+              },
+              {
+                "delivery_id": "ad8912ac-df5c-4394-830d-8cb94f8eda0e",
+                "claim_token": "a5e1ff36-aab1-4d5e-a132-14f9de83ea7a",
+                "kit_name": "haltafter"
+              }
+            ]
+          }
+        },
+        {
+          "label": "paper-1.21.8-real-nexo: post-crash repeated claim cannot duplicate items",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "clean shutdown and immutable harness verification",
+          "passed": true,
+          "detail": null
+        }
+      ],
+      "observations": {
+        "realNexo": {
+          "version": "1.30-dev-36f4ce686",
+          "sha256": "5f180b43dd464eea7d5f2a41833c194a5e4da6fe00bb09084bf32e059fb71f6b",
+          "server": "Paper 1.21.8-60",
+          "adapterStub": false
+        },
+        "emptyCompletionFences": [
+          {
+            "lane": "paper-1.21.8-real-nexo",
+            "player": "KitB",
+            "text": "delkit ",
+            "requestId": 2,
+            "fenceId": 3
+          }
+        ],
+        "crashSnapshots": [
+          {
+            "lane": "paper-1.21.8-real-nexo",
+            "point": "kit.claim.halt-before-deliver",
+            "kitName": "haltbefore",
+            "deliveries": [
+              {
+                "id": "b93e78bf-2198-467f-839c-47df1c8a13e0",
+                "kit_name": "haltbefore",
+                "claim_token": "884209ef-f84e-4646-9e06-24c96a20acbd",
+                "claim_owner": "server-02f68637-d88b-4fbe-ae64-6456d46ab6a6",
+                "item_count": 6
+              }
+            ],
+            "usages": [],
+            "savedPlayer": {
+              "dataVersion": 4440,
+              "receipts": null,
+              "inventory": [],
+              "fileSha256": "bd120b370683c1e92ca3aa03f017c8e9ea61aea2a0dff23d4b2603b2f8ef9103"
+            }
+          },
+          {
+            "lane": "paper-1.21.8-real-nexo",
+            "point": "kit.claim.halt-after-deliver",
+            "kitName": "haltafter",
+            "deliveries": [
+              {
+                "id": "ad8912ac-df5c-4394-830d-8cb94f8eda0e",
+                "kit_name": "haltafter",
+                "claim_token": "a5e1ff36-aab1-4d5e-a132-14f9de83ea7a",
+                "claim_owner": "server-02f68637-d88b-4fbe-ae64-6456d46ab6a6",
+                "item_count": 7
+              }
+            ],
+            "usages": [],
+            "savedPlayer": {
+              "dataVersion": 4440,
+              "receipts": "K/ad8912ac-df5c-4394-830d-8cb94f8eda0e/a5e1ff36-aab1-4d5e-a132-14f9de83ea7a/haltafter",
+              "inventory": [
+                {
+                  "slot": 0,
+                  "id": "minecraft:emerald",
+                  "count": 7,
+                  "data": null
+                }
+              ],
+              "fileSha256": "b2f9fb55722c63be9adeefc57cfc210eb674e46e93ea1d1db238ec3d472c715e"
+            }
+          }
+        ]
+      },
+      "sourceHashes": {
+        "tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "tests/live/kits/client-raw26.cjs": "2506ef47bba9723238a2123ba70f1ff6846a20e196f49ff7bc81ea004a604862",
+        "tests/live/kits/run.py": "37c00caadb57579d06f176a9d4bd092451f2205549cac58b9e71180336aee6d7",
+        "tests/live/kits/playerdata.cjs": "f05d433f79bd7d81baf367d110fef1bb9ea743d50be3bba338d946da006ee00f",
+        "tests/live/kits/client-mcp.cjs": "3c348af95772c8d0274b9c8f84eee08414cff8473788ae654f41fb0356dcd190",
+        "tests/live/kits/plugin/plugin.yml": "1cbbad5c66eec6916b94b064addb58a8f907445a65559eb7cfc8588ff22737f3",
+        "tests/live/kits/plugin/gate/KitGate.java": "ae2c402263dcc41cbd593aacec46fe6fd073cfd589ea51bfebb6c4c2f7177798",
+        "tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72"
+      }
+    },
+    {
+      "suite": "spigot1.20.1-paired-controls",
+      "manifest": "/mnt/storage/.allium-validation/20261114/s17-moderation/runs/paired-controls-spigot-r3/manifest.json",
+      "manifestSha256": "33994f0457d68ff2dab7daeecf52e0ca0867ae4f5022015fedbb6cb8ea9fab77",
+      "passed": true,
+      "checks": [
+        {
+          "label": "spigot-1.20.1: Database connected (SQLITE), moderation module, and helper enabled",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: Spigot startup logs vanish leak warning (vanilla tab completion, advancement announcements, XP orb pickup)",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModStaff allium.vanish=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModStaff allium.vanish.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModStaff allium.vanish.see=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModStaff allium.mute=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModStaff allium.unmute=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs allium.vanish.see=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs allium.socialspy=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs allium.heal=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs allium.heal.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs allium.kit.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs allium.kits.starter=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs minecraft.command.list=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs bukkit.command.list=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs minecraft.command.msg=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs minecraft.command.teleport=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs minecraft.command.selector=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModObs allium.tp=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm allium.heal=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm allium.heal.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm allium.kit.others=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm allium.kits.starter=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm allium.socialspy=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm allium.tp=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.list=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm bukkit.command.list=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.msg=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.teleport=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.selector=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.me=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.say=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.teammsg=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm allium.vanish.see=False",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.minecraft:say=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.minecraft:me=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.minecraft:tell=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: effective ModNorm minecraft.command.minecraft:teammsg=True",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "spigot-1.20.1: named muted control /me blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "me S17_BLOCKED_me",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "spigot-1.20.1: named muted control /minecraft:me blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:me S17_BLOCKED_minecraft_me",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "spigot-1.20.1: named muted control /say blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "say S17_BLOCKED_say",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "spigot-1.20.1: named muted control /minecraft:say blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:say S17_BLOCKED_minecraft_say",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "spigot-1.20.1: named muted control /tell blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "tell ModObs S17_BLOCKED_tell",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "spigot-1.20.1: named muted control /minecraft:tell blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:tell ModObs S17_BLOCKED_minecraft_tell",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "spigot-1.20.1: named muted control /w blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "w ModObs S17_BLOCKED_w",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "spigot-1.20.1: named muted control /tm blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "tm S17_BLOCKED_tm",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "spigot-1.20.1: named muted control /teammsg blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "teammsg S17_BLOCKED_teammsg",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "spigot-1.20.1: named muted control /minecraft:teammsg blocked without recipient delivery",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:teammsg S17_BLOCKED_minecraft_teammsg",
+            "response": {
+              "plain": "[Allium] You are muted (permanent remaining). Reason: Alias controls",
+              "colors": [
+                "#aaaaaa",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#ff55ff",
+                "#aaaaaa",
+                "#aaaaaa",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ff5555",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff",
+                "#ffffff"
+              ],
+              "runs": [
+                {
+                  "text": "[",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "Allium",
+                  "color": "#ff55ff"
+                },
+                {
+                  "text": "] ",
+                  "color": "#aaaaaa"
+                },
+                {
+                  "text": "You are muted (",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "permanent",
+                  "color": "#ffffff"
+                },
+                {
+                  "text": " remaining). Reason: ",
+                  "color": "#ff5555"
+                },
+                {
+                  "text": "Alias controls",
+                  "color": "#ffffff"
+                }
+              ],
+              "overlay": false,
+              "interactive": false
+            }
+          }
+        },
+        {
+          "label": "spigot-1.20.1: unmuted control /me delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "me S17_CONTROL_me",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"S17_CONTROL_me\",\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "spigot-1.20.1: unmuted control /minecraft:me delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:me S17_CONTROL_minecraft_me",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"S17_CONTROL_minecraft_me\",\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "spigot-1.20.1: unmuted control /say delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "say S17_CONTROL_say",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"S17_CONTROL_say\",\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "spigot-1.20.1: unmuted control /minecraft:say delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:say S17_CONTROL_minecraft_say",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"S17_CONTROL_minecraft_say\",\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "spigot-1.20.1: unmuted control /tell delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "tell ModObs S17_CONTROL_tell",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"[ModNorm \u2192 me] S17_CONTROL_tell\",\"colors\":[\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#aaaaaa\",\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#aaaaaa\",\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\"],\"runs\":[{\"text\":\"[\",\"color\":\"#aaaaaa\"},{\"text\":\"ModNorm \",\"color\":\"#ffffff\"},{\"text\":\"\u2192 \",\"color\":\"#aaaaaa\"},{\"text\":\"me\",\"color\":\"#ffffff\"},{\"text\":\"] \",\"color\":\"#aaaaaa\"},{\"text\":\"S17_CONTROL_tell\",\"color\":\"#ffffff\"}],\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "spigot-1.20.1: unmuted control /minecraft:tell delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:tell ModObs S17_CONTROL_minecraft_tell",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"S17_CONTROL_minecraft_tell\",\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "spigot-1.20.1: unmuted control /w delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "w ModObs S17_CONTROL_w",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"[ModNorm \u2192 me] S17_CONTROL_w\",\"colors\":[\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#aaaaaa\",\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#aaaaaa\",\"#aaaaaa\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\",\"#ffffff\"],\"runs\":[{\"text\":\"[\",\"color\":\"#aaaaaa\"},{\"text\":\"ModNorm \",\"color\":\"#ffffff\"},{\"text\":\"\u2192 \",\"color\":\"#aaaaaa\"},{\"text\":\"me\",\"color\":\"#ffffff\"},{\"text\":\"] \",\"color\":\"#aaaaaa\"},{\"text\":\"S17_CONTROL_w\",\"color\":\"#ffffff\"}],\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "spigot-1.20.1: unmuted control /tm delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "tm S17_CONTROL_tm",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"S17_CONTROL_tm\",\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "spigot-1.20.1: unmuted control /teammsg delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "teammsg S17_CONTROL_teammsg",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"S17_CONTROL_teammsg\",\"overlay\":false,\"interactive\":false}"
+          }
+        },
+        {
+          "label": "spigot-1.20.1: unmuted control /minecraft:teammsg delivers to ModObs without mute refusal",
+          "passed": true,
+          "detail": {
+            "command": "minecraft:teammsg S17_CONTROL_minecraft_teammsg",
+            "recipientEvidence": "BASEG-CHAT {\"plain\":\"S17_CONTROL_minecraft_teammsg\",\"overlay\":false,\"interactive\":false}"
+          }
+        }
+      ],
+      "observations": {
+        "commandInfo": {
+          "say": "org.bukkit.craftbukkit.v1_20_R1.command.VanillaCommandWrapper permission=minecraft.command.say",
+          "minecraft:say": "org.bukkit.craftbukkit.v1_20_R1.command.VanillaCommandWrapper permission=minecraft.command.say",
+          "bukkit:say": "MISSING",
+          "tm": "org.bukkit.craftbukkit.v1_20_R1.command.VanillaCommandWrapper permission=minecraft.command.teammsg",
+          "minecraft:tm": "org.bukkit.craftbukkit.v1_20_R1.command.VanillaCommandWrapper permission=minecraft.command.teammsg"
+        }
+      },
+      "sourceHashes": {
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/moderation/run.py": "db718536a464c4824975d312131cbdea0e82ccea1f9a43c1fc5034a7bccb7f3d",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/moderation/plugin/gate/ModGate.java": "648ffffeeb2e8ad9fac06e4c1c878a9d08778eb68de283ac9d5a7fd1c82339cd",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/moderation/plugin/plugin.yml": "516a75596da9d537bc28ce009d7b9d30f33b38396487f01e511e53efbe3042dd",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/moderation/client-mcp.cjs": "241a8eff673af6e0afa1e73b5dcea0bd906d9b97da3f3fa7cb30f6eb7e211b50",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/moderation/client-raw26.cjs": "c916e65707e25aafa57704a084631ad2614054c92f0a79acd275fa8ce39b8681",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/baseline/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "/mnt/storage/.allium-validation/20261114/regression-fix/source/tests/live/providers/trigger/process_cleanup.py": "dfb10a8f9f6e7a4a71b0cda716cb063f05fada2737806b3766d38d1515770c72"
+      }
+    }
+  ],
+  "preservedFailedAttempts": [
+    {
+      "manifest": "/mnt/storage/.allium-validation/20261114/s17-moderation/runs/paired-controls-paper-1114/manifest.json",
+      "manifestSha256": "f8ce593da4a990380add63c005f5fbf6fc807eeec695cd450796fbf58eab892a",
+      "reason": "After world-hazard case test player died; vanilla chat.disabled.options prevented positive control."
+    },
+    {
+      "manifest": "/mnt/storage/.allium-validation/20261114/s17-moderation/runs/paired-controls-paper-r2/manifest.json",
+      "manifestSha256": "60adeb5dc8077db20323760fab87c1c68996ac0fee727f4a51978f452980bf80",
+      "reason": "Two-target team join was invalid, correctly failing noteam."
+    },
+    {
+      "manifest": "/mnt/storage/.allium-validation/20261114/s16-kits/runs/real-nexo-paper1218-1114/summary.json",
+      "manifestSha256": "84a089bcbb5c9109e61e21e3a9cad0b0d1fc3367c3506935b2c71104e5cc1ae8",
+      "reason": "Old protocol fixture allowlist rejected 1.21.8 before client joined."
+    }
+  ]
+}

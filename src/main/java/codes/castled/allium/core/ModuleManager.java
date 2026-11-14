@@ -6,6 +6,7 @@ import codes.castled.allium.module.EssentialsModule;
 import codes.castled.allium.module.ItemsModule;
 import codes.castled.allium.module.KitsModule;
 import codes.castled.allium.module.MessagingModule;
+import codes.castled.allium.module.ModerationModule;
 import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.module.ToolsModule;
 import org.jetbrains.annotations.Nullable;
@@ -30,6 +31,7 @@ public final class ModuleManager {
     public void loadModules() {
         registerModule(new PreferencesModule(plugin));
         registerModule(new MessagingModule(plugin));
+        registerModule(new ModerationModule(plugin));
         registerModule(new codes.castled.allium.module.MailModule(plugin));
         registerModule(new codes.castled.allium.module.TeleportModule(plugin));
         registerModule(new codes.castled.allium.module.TravelModule(plugin));

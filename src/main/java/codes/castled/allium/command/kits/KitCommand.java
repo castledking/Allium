@@ -5,6 +5,7 @@ import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.kit.KitService;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.naming.PlayerNameVisibility;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -62,7 +63,7 @@ public final class KitCommand implements SpecCommandHandler {
                     return;
                 }
                 Player target = context.plugin().getServer().getPlayerExact(args[1]);
-                if (target == null) {
+                if (target == null || !PlayerNameVisibility.canSeeTarget(sender, target)) {
                     context.plugin().getMessageManager().send(sender, Messages.PLAYER_NOT_FOUND, "{player}", args[1]);
                     return;
                 }

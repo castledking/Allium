@@ -27,6 +27,11 @@ public final class ReplyTargets {
         return Optional.ofNullable(targets.get(participant));
     }
 
+    /** Clears only {@code participant}'s own saved reply target. */
+    public void clear(UUID participant) {
+        targets.remove(participant);
+    }
+
     /** {@code participant} went offline. */
     public void forget(UUID participant) {
         targets.remove(participant);

@@ -2,6 +2,7 @@ package codes.castled.allium.messaging;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.moderation.MuteRecord;
 import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.preference.EffectivePreferences;
 import codes.castled.allium.preference.PreferenceKey;
@@ -56,6 +57,27 @@ public final class MessagingService implements Listener {
 
     public boolean muted(UUID player) {
         return mutes.isMuted(player);
+    }
+
+    public MuteSource muteSource() {
+        return mutes;
+    }
+
+    public void sendMutedNotice(CommandSender sender) {
+        if (sender instanceof Player player) {
+            Optional<MuteRecord> active = mutes.activeMute(player.getUniqueId());
+            if (active.isPresent()) {
+                MuteRecord record = active.get();
+                plugin.getMessageManager().send(
+                        sender,
+                        Messages.MUTE_BLOCKED,
+                        "{remaining}", record.formattedRemaining(mutes.nowMillis()),
+                        "{reason}", record.reason()
+                );
+                return;
+            }
+        }
+        plugin.getMessageManager().send(sender, Messages.MSG_MUTED);
     }
 
     public void enable() {
@@ -129,7 +151,7 @@ public final class MessagingService implements Listener {
         String shownName = recipient instanceof Player target ? target.getName() : recipient instanceof ConsoleCommandSender ? consoleName() : typedName;
         switch (outcome) {
             case DELIVER -> deliver(sender, recipient, body);
-            case SENDER_MUTED -> plugin.getMessageManager().send(sender, Messages.MSG_MUTED);
+            case SENDER_MUTED -> sendMutedNotice(sender);
             case NOT_FOUND -> plugin.getMessageManager().send(sender, Messages.PLAYER_NOT_FOUND, "{player}", typedName);
             case SELF -> plugin.getMessageManager().send(sender, Messages.MSG_SELF);
             case CANNOT_RECEIVE -> plugin.getMessageManager().send(sender, Messages.MSG_CANNOT_RECEIVE, "{player}", shownName);
@@ -148,6 +170,11 @@ public final class MessagingService implements Listener {
         CommandSender recipient = target.get().equals(ReplyTargets.CONSOLE) ? Bukkit.getConsoleSender() : Bukkit.getPlayer(target.get());
         if (recipient == null) {
             replies.forget(target.get());
+            plugin.getMessageManager().send(sender, Messages.MSG_NO_REPLY_TARGET);
+            return;
+        }
+        if (recipient instanceof Player p && !visibleTo(sender, p)) {
+            replies.clear(idOf(sender));
             plugin.getMessageManager().send(sender, Messages.MSG_NO_REPLY_TARGET);
             return;
         }

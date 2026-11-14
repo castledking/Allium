@@ -101,4 +101,29 @@ class MailRecoveryTest {
         assertTrue(locks.locked(next));
         assertFalse(locks.locked(old));
     }
+    @Test @SuppressWarnings("unchecked") void deferredInFlightRecoveryDoesNotLeakInventoryLockAcrossRetries() throws Exception {
+        MailService mailService = service(Runnable::run);
+        UUID pendingId = UUID.randomUUID();
+        var inFlightField = MailService.class.getDeclaredField("inFlight");
+        inFlightField.setAccessible(true);
+        Set<UUID> inFlight = (Set<UUID>) inFlightField.get(mailService);
+        inFlight.add(pendingId);
+
+        MailRecord pending = MailRecord.pendingGift(pendingId, UUID.randomUUID(), id, "Recipient", null, "encoded", 1, "server-a", 1000L);
+        when(repository.pendingFrom(id, "server-a")).thenReturn(List.of(pending), List.of());
+        when(repository.claimingFor(id, "server-a")).thenReturn(List.of());
+
+        var joined = MailService.class.getDeclaredMethod("joined", Player.class);
+        joined.setAccessible(true);
+        joined.invoke(mailService, current);
+        assertTrue(mailService.busy(current), "player stays busy/recovering while in-flight gift settles");
+
+        inFlight.clear();
+        joined.invoke(mailService, current);
+        var lockField = MailService.class.getDeclaredField("locks");
+        lockField.setAccessible(true);
+        MailInventoryLock locks = (MailInventoryLock) lockField.get(mailService);
+        assertFalse(locks.locked(current), "inventory lock refcount must not leak after deferred recovery completes");
+        assertFalse(mailService.busy(current), "player must no longer be busy once recovery finishes");
+    }
 }

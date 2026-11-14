@@ -202,9 +202,9 @@ max-tick-time=120000
         require(any('S03G-GATE READY' in x and 'module=true' in x for x in self.logs[start:]), f'{self.name} {label}: fixture and preferences module enabled')
         line = next((x for x in self.logs[start:] if 'Preferences enabled:' in x), '')
         m = re.search(r'Preferences enabled: (\w+) schema v(\d+), (\d+) storage lane', line)
-        expect = ('MYSQL', '1', '4') if mysql else ('SQLITE', '1', '1')
+        expect = ('MYSQL', '2', '4') if mysql else ('SQLITE', '2', '1')
         require(m is not None and m.groups() == expect,
-                f'{self.name} {label}: {expect[0]} storage at schema v1 with {expect[2]} lane(s): {line.strip()[-120:]}')
+                f'{self.name} {label}: {expect[0]} storage at schema v2 with {expect[2]} lane(s): {line.strip()[-120:]}')
         return start
 
     def console(self, text):
@@ -343,7 +343,7 @@ def build_fixture():
 
 
 DEFAULT_EFFECTIVE = {'acceptMessages': True, 'acceptPayments': True, 'acceptTeleportRequests': True,
-                     'messageSoundVolume': 1.0, 'volumeOverridden': False}
+                     'messageSoundVolume': 1.0, 'volumeOverridden': False, 'socialSpy': False}
 
 
 def round_trip(A, bot):

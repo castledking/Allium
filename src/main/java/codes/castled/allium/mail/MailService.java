@@ -746,6 +746,7 @@ public final class MailService implements Listener {
                 || receipts.stream().anyMatch(r -> inFlight.contains(r instanceof MailReceipts.Sent sent ? sent.mail()
                 : ((MailReceipts.Claimed) r).mail()))) {
             recoveryBusy.remove(player);
+            locks.unlock(player);
             return; // A previous connection's callback must settle before we interpret an absent receipt.
         }
         List<RecoveryStep> steps = new ArrayList<>();

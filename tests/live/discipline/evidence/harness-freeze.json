@@ -2,7 +2,7 @@
   "slice": "S19",
   "frozenAt": "2026-11-14T15:16:42.586449+00:00",
   "sourceHashes": {
-    "tests/live/discipline/run.py": "dfa183ea1ef1c1507bcc94121600df06fe97abd2b39513d0482d5f20f89a10b0",
+    "tests/live/discipline/run.py": "4fb90eb299e02bebd5e44e7ad6aee7fe22080cc115610d23e67d79a65509fe97",
     "tests/live/discipline/plugin/gate/DisciplineGate.java": "e1b320cf408425582f3feb8f818d543fa462e9017c32d314a17b2e6dcaa351a4",
     "tests/live/discipline/plugin/plugin.yml": "6be780947b12ea406590fd95e9effc550b19f32c0c5c635bb6f41771f17a8769",
     "tests/live/discipline/client-mcp.cjs": "08f817f08e2a14f0b055142accfda29fb79353ee89c885a6f359b9b6d5f507f6",

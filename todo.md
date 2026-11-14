@@ -527,3 +527,7 @@ S06a depended on S04–S05; S06b depended on S06a; pack delivery depends on S06b
 ### Takion (`me.croabeast.takion:shaded:1.4`) Inventory & Retirement (Completed in S01.5a)
 - `TakionLib` initialization (`LibInit.java`), `MessageManager`, `AlliumLogger`, and `StringUtils` were replaced with Allium's native `codes.castled.allium.text.*` (`LegacyAndTagParser`, `FormattedText`, `TextSender`, `AdventureTextBridge`, `SoundPlayer`).
 - `me.croabeast.takion:shaded:1.4` and its repository were removed from `build.gradle.kts`.
+
+## Revised S20 economy scope
+
+SF is a single SQLite server, Phase 1 only, WAL `synchronous=FULL`. No policy mutex rows, shared settings epoch, or MySQL economy lane. E1–E4 each require a separate commit and unit delta; stop after E4 live/latency gate before E5 reservations. Paid kits remain denied until E5. The earlier sign slice moves to S21. See [economy contract](docs/economy-design.md).

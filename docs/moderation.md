@@ -61,7 +61,7 @@ Vanished targets use the offline policy and do not disclose their online state.
 
 `moderation.discipline.ban-load-failure-policy: DENY` is the default. Login loading
 runs off the server thread at pre-login MONITOR, only while login is still allowed.
-Known active bans are checked from loaded state; new authoritative lookups must
+Every allowed pre-login reads the authoritative UUID/IP ban state from storage; cached bans never short-circuit a healthy read. Authoritative lookups must
 finish within `moderation.preload-wait-millis`. If they fail or time out under DENY,
 the login is refused with a retry message. The outage cost is that an unbanned
 player can also be unable to join during a database failure.
@@ -103,3 +103,7 @@ Runtime and live claims remain limited to that evidence. Cross-server invalidati
 of already-loaded discipline state, Folia, and an offline permission resolver are
 not provided by this slice. Sign, book and anvil-rename text remain outside mute's
 chat/command enforcement.
+
+At startup Allium reads native `banned-players.json` and warns with the count of UUIDs absent from its active ban snapshot. This is a divergence warning only: it never imports, deletes, or synchronizes native entries. The native server can therefore reject a player independently of Allium, and Allium `/pardon` does not clear a native ban. On a failed or timed-out authoritative read, the configured DENY/ALLOW policy applies; already-known active bans remain enforced during an outage.
+
+Follow-up verification: 591 unit tests (+2); SQLite Paper live 293/293 including a ban and unban written through a second connection, native-file divergence count and zero imports. Permanent moderation controls include bare/native ban, kick and pardon ownership on Spigot and Paper. [Evidence](../tests/live/discipline/evidence/followup-authoritative.json).

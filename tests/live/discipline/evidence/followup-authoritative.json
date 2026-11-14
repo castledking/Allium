@@ -1,0 +1,181 @@
+{
+  "unitTotal": 591,
+  "unitDelta": 2,
+  "lanes": [
+    {
+      "path": "/mnt/storage/.allium-validation/20261114/s19-discipline/runs/followup-paper-1114/manifest.json",
+      "manifestSha256": "6a0c1ad7347605ee1cf5dd0d3a8d54c69a39518e1148e9dfd1223a4a9094dfe2",
+      "jarSha256": "0f51b16214b1d3fbe4054149adb287804cc754a616c8341bb31a9292f4bd513b",
+      "passed": true,
+      "checks": 293,
+      "failures": [],
+      "selectedChecks": [
+        {
+          "label": "paper-26.3: startup warns with unknown native ban count",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: native ban audit never imports entries",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: bare /kick owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:kick"
+        },
+        {
+          "label": "paper-26.3: bare /ban owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:ban"
+        },
+        {
+          "label": "paper-26.3: bare /tempban owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:tempban"
+        },
+        {
+          "label": "paper-26.3: bare /unban owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:unban"
+        },
+        {
+          "label": "paper-26.3: bare /banlist owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:banlist"
+        },
+        {
+          "label": "paper-26.3: bare /ipban owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:ipban"
+        },
+        {
+          "label": "paper-26.3: bare /freeze owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:freeze"
+        },
+        {
+          "label": "paper-26.3: bare /setjail owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:setjail"
+        },
+        {
+          "label": "paper-26.3: bare /jail owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:jail"
+        },
+        {
+          "label": "paper-26.3: bare /unjail owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:unjail"
+        },
+        {
+          "label": "paper-26.3: bare /warn owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:warn"
+        },
+        {
+          "label": "paper-26.3: bare /notes owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:notes"
+        },
+        {
+          "label": "paper-26.3: bare /pardon owned by Allium",
+          "passed": true,
+          "detail": "Allium:org.bukkit.command.PluginCommand:unban"
+        },
+        {
+          "label": "paper-26.3: authoritative pre-login rejects ban written by second SQLite connection",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "label": "paper-26.3: authoritative pre-login accepts external unban despite cached ban",
+          "passed": true,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "path": "/mnt/storage/.allium-validation/20261114/s17-moderation/runs/followup-spigot-1114/manifest.json",
+      "manifestSha256": "b0b2f1c17b3540d0a2d2a6802d30b2ce5a1fe783a7c69f81568f3c7725227e9b",
+      "jarSha256": "0f51b16214b1d3fbe4054149adb287804cc754a616c8341bb31a9292f4bd513b",
+      "passed": true,
+      "checks": 64,
+      "failures": [],
+      "selectedChecks": [
+        {
+          "label": "spigot-1.20.1: bare /ban owned by Allium",
+          "passed": true,
+          "detail": "Allium permission=allium.ban"
+        },
+        {
+          "label": "spigot-1.20.1: /minecraft:ban retains native ownership",
+          "passed": true,
+          "detail": "org.bukkit.craftbukkit.v1_20_R1.command.VanillaCommandWrapper permission=minecraft.command.ban"
+        },
+        {
+          "label": "spigot-1.20.1: bare /kick owned by Allium",
+          "passed": true,
+          "detail": "Allium permission=allium.kick"
+        },
+        {
+          "label": "spigot-1.20.1: /minecraft:kick retains native ownership",
+          "passed": true,
+          "detail": "org.bukkit.craftbukkit.v1_20_R1.command.VanillaCommandWrapper permission=minecraft.command.kick"
+        },
+        {
+          "label": "spigot-1.20.1: bare /pardon owned by Allium",
+          "passed": true,
+          "detail": "Allium permission=allium.unban"
+        },
+        {
+          "label": "spigot-1.20.1: /minecraft:pardon retains native ownership",
+          "passed": true,
+          "detail": "org.bukkit.craftbukkit.v1_20_R1.command.VanillaCommandWrapper permission=minecraft.command.pardon"
+        }
+      ]
+    },
+    {
+      "path": "/mnt/storage/.allium-validation/20261114/s17-moderation/runs/followup-paper-1114/manifest.json",
+      "manifestSha256": "78605a2e6f0781789644723971ccef35b786089b4ea02b908e2d153512ddd858",
+      "jarSha256": "0f51b16214b1d3fbe4054149adb287804cc754a616c8341bb31a9292f4bd513b",
+      "passed": true,
+      "checks": 60,
+      "failures": [],
+      "selectedChecks": [
+        {
+          "label": "paper-26.3: bare /ban owned by Allium",
+          "passed": true,
+          "detail": "Allium permission=allium.ban"
+        },
+        {
+          "label": "paper-26.3: /minecraft:ban retains native ownership",
+          "passed": true,
+          "detail": "org.bukkit.craftbukkit.command.VanillaCommandWrapper permission=minecraft.command.ban"
+        },
+        {
+          "label": "paper-26.3: bare /kick owned by Allium",
+          "passed": true,
+          "detail": "Allium permission=allium.kick"
+        },
+        {
+          "label": "paper-26.3: /minecraft:kick retains native ownership",
+          "passed": true,
+          "detail": "org.bukkit.craftbukkit.command.VanillaCommandWrapper permission=minecraft.command.kick"
+        },
+        {
+          "label": "paper-26.3: bare /pardon owned by Allium",
+          "passed": true,
+          "detail": "Allium permission=allium.unban"
+        },
+        {
+          "label": "paper-26.3: /minecraft:pardon retains native ownership",
+          "passed": true,
+          "detail": "org.bukkit.craftbukkit.command.VanillaCommandWrapper permission=minecraft.command.pardon"
+        }
+      ]
+    }
+  ]
+}

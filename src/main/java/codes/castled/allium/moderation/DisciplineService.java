@@ -110,6 +110,7 @@ public final class DisciplineService implements Listener {
         final String address;
         volatile Player player;
         volatile boolean loaded;
+        volatile BanRecord authoritativeLoginBan;
         volatile boolean failed;
         Connection(String address) { this.address = address; }
     }
@@ -272,6 +273,16 @@ public final class DisciplineService implements Listener {
             try {
                 Map<UUID, BanRecord> loadedBans = new HashMap<>();
                 for (BanRecord b : repository.loadActiveBans()) loadedBans.put(b.playerUuid(), b);
+                try {
+                    java.nio.file.Path nativeFile = java.nio.file.Path.of("banned-players.json");
+                    if (java.nio.file.Files.isRegularFile(nativeFile)) {
+                        int count = NativeBanAudit.unknownCount(java.nio.file.Files.readString(nativeFile), loadedBans.keySet());
+                        if (count > 0) plugin.logger().warning("NATIVE BAN DIVERGENCE: " + count
+                                + " banned-players.json entries are unknown to Allium; native and Allium bans use independent storage. No entries imported.");
+                    }
+                } catch (java.io.IOException | RuntimeException error) {
+                    plugin.logger().warning("Native ban divergence audit unavailable: " + error.getMessage());
+                }
                 List<FreezeRecord> loadedFrozen = repository.loadFrozenPlayers();
                 List<JailAssignment> loadedPrisoners = repository.loadJailedPlayers();
                 Map<String, JailRecord> loadedJails = jailMap(repository.loadJails());
@@ -300,8 +311,7 @@ public final class DisciplineService implements Listener {
     public void onAsyncPreLogin(AsyncPlayerPreLoginEvent event) {
         if (closed || event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED) return;
         String ip = event.getAddress().getHostAddress();
-        BanRecord known = activeBan(event.getUniqueId(), ip);
-        if (known != null) { deny(event, known); return; }
+        BanRecord known;
         Connection c = new Connection(ip);
         connections.put(event.getUniqueId(), c);
         CompletableFuture<Void> first = new CompletableFuture<>();
@@ -313,7 +323,7 @@ public final class DisciplineService implements Listener {
         } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException ignored) {
             // A timeout is unresolved state, evaluated below using the configured failure policy.
         }
-        known = activeBan(event.getUniqueId(), ip);
+        known = c.loaded ? c.authoritativeLoginBan : activeBan(event.getUniqueId(), ip);
         if (known != null) deny(event, known);
         else if (!c.loaded && !settings.allowLoginFailure()) event.disallow(
                 AsyncPlayerPreLoginEvent.Result.KICK_OTHER, text(Messages.DISCIPLINE_LOGIN_UNAVAILABLE, ""));
@@ -355,6 +365,7 @@ public final class DisciplineService implements Listener {
                         return;
                     }
                     Map<UUID, BanRecord> next = new HashMap<>(bans);
+                    c.authoritativeLoginBan = ban != null ? ban : ipBan;
                     next.remove(id);
                     if (ban != null) next.put(id, ban);
                     if (ipBan != null) next.put(ipBan.playerUuid(), ipBan);

@@ -4,7 +4,7 @@
 prototype under [tests/design/economy](../tests/design/economy/README.md), and a safety switch
 for the existing scaffold. SQL prototype measurements do not validate Allium or Vault latency.
 The replacement provider remains unreleased until the correctness and server-workload gates pass.
-**The user must choose the durability option; S14 selects no replacement engine or new default.**
+**Decision: SF is one server on SQLite. Phase 1 uses WAL with `synchronous=FULL`. No policy mutex rows, shared settings epoch, or MySQL economy lane.**
 
 ## Scope and source evidence
 
@@ -512,3 +512,7 @@ capture/release competition; mail/kit receipts; import schema fixtures, missing 
 changed source and partial/rerun audit; coordinated restore and real server-workload latency.
 Run both actual dialects, not H2 emulation. No full engine, Vault, network/power-fault or release
 benchmark success is claimed by S14.
+
+## Implementation sequence (revised S20)
+
+E1 money/settings/schema/typed results; E2 single-commit engine and SQLite concurrency/replay; E3 commands and authoritative payment policy; E4 synchronous Vault and real-server correctness/latency gates. Stop after E4 and report before E5 reservations. Paid kits stay denied until E5. Signs move to S21; balance and trade sign integration follows the gated engine. Durability is not weakened to meet latency targets; if FULL misses them, measure a separate economy.db option.

@@ -94,6 +94,49 @@ public final class CommandMapBridge {
         return report != null ? report.commandMap() : null;
     }
 
+    /**
+     * Resolves the server's {@link CommandMap} without requiring access to {@code knownCommands}.
+     * Used by runtime lookups such as canonical muted-command identity resolution.
+     */
+    @Nullable
+    public static CommandMap resolveCommandMapDirect(@Nullable Server server) {
+        return GuardedAccessor.resolveCommandMapOnly(server);
+    }
+
+    /**
+     * Returns the canonical identity object for a Bukkit {@link Command}:
+     * for {@code VanillaCommandWrapper} instances (which wrap Mojang Brigadier root nodes),
+     * unwraps {@code vanillaCommand} and follows {@code CommandNode#getRedirect()} so aliases
+     * such as {@code /minecraft:tell -> /minecraft:msg} and {@code /tm -> /teammsg} resolve
+     * to the same canonical command identity. For all other {@link Command}s (including
+     * {@link PluginCommand} and custom commands), returns {@code command} itself.
+     */
+    @Nullable
+    public static Object canonicalCommandIdentity(@Nullable Command command) {
+        if (command == null) {
+            return null;
+        }
+        try {
+            Field nodeField = command.getClass().getField("vanillaCommand");
+            Object node = nodeField.get(command);
+            if (node != null) {
+                Method getRedirect = node.getClass().getMethod("getRedirect");
+                getRedirect.trySetAccessible();
+                for (int depth = 0; depth < 8; depth++) {
+                    Object redirect = getRedirect.invoke(node);
+                    if (redirect == null || redirect == node) {
+                        break;
+                    }
+                    node = redirect;
+                }
+                return node;
+            }
+        } catch (ReflectiveOperationException ignored) {
+            // Not a VanillaCommandWrapper; compare by Command instance identity below.
+        }
+        return command;
+    }
+
     @Nullable
     public static Map<String, Command> resolveKnownCommands(CommandMap commandMap) {
         return GuardedAccessor.resolveKnownCommandsOnly(commandMap, msg -> {});
@@ -188,50 +231,57 @@ public final class CommandMapBridge {
     private static final class GuardedAccessor {
 
         @Nullable
+        static CommandMap resolveCommandMapOnly(@Nullable Server server) {
+            CommandMapResolution resolved = resolveCommandMapWithMethod(server);
+            return resolved != null ? resolved.commandMap() : null;
+        }
+
+        @Nullable
+        private static CommandMapResolution resolveCommandMapWithMethod(@Nullable Server server) {
+            if (server == null) {
+                return null;
+            }
+            try {
+                Method method = server.getClass().getMethod("getCommandMap");
+                method.setAccessible(true);
+                Object result = method.invoke(server);
+                if (result instanceof CommandMap map) {
+                    return new CommandMapResolution(map, "Server#getCommandMap()");
+                }
+            } catch (ReflectiveOperationException ignored) {
+            }
+
+            Class<?> current = server.getClass();
+            while (current != null) {
+                try {
+                    Field field = current.getDeclaredField("commandMap");
+                    field.setAccessible(true);
+                    Object result = field.get(server);
+                    if (result instanceof CommandMap map) {
+                        return new CommandMapResolution(map, current.getName() + ".commandMap field");
+                    }
+                } catch (ReflectiveOperationException ignored) {
+                }
+                current = current.getSuperclass();
+            }
+            return null;
+        }
+
+        @Nullable
         static AccessReport inspectAndResolve(Server server, Consumer<String> diagnosticLogger) {
             if (server == null) {
                 diagnosticLogger.accept("CommandMapBridge failed: Server instance is null.");
                 return null;
             }
 
-            CommandMap commandMap = null;
-            String commandMapWay = null;
-            try {
-                Method method = server.getClass().getMethod("getCommandMap");
-                method.setAccessible(true);
-                Object result = method.invoke(server);
-                if (result instanceof CommandMap map) {
-                    commandMap = map;
-                    commandMapWay = "Server#getCommandMap()";
-                }
-            } catch (ReflectiveOperationException ignored) {
-            }
-
-            if (commandMap == null) {
-                Class<?> current = server.getClass();
-                while (current != null) {
-                    try {
-                        Field field = current.getDeclaredField("commandMap");
-                        field.setAccessible(true);
-                        Object result = field.get(server);
-                        if (result instanceof CommandMap map) {
-                            commandMap = map;
-                            commandMapWay = current.getName() + ".commandMap field";
-                            break;
-                        }
-                    } catch (ReflectiveOperationException ignored) {
-                    }
-                    current = current.getSuperclass();
-                }
-            }
-
-            if (commandMap == null) {
+            CommandMapResolution cm = resolveCommandMapWithMethod(server);
+            if (cm == null) {
                 diagnosticLogger.accept("CommandMapBridge failed to access CommandMap on server class "
                         + server.getClass().getName() + "; disabled-commands cannot yield labels.");
                 return null;
             }
 
-            KnownCommandsResolution kc = resolveKnownCommandsWithMethod(commandMap, diagnosticLogger);
+            KnownCommandsResolution kc = resolveKnownCommandsWithMethod(cm.commandMap(), diagnosticLogger);
             if (kc == null) {
                 return null;
             }
@@ -245,11 +295,11 @@ public final class CommandMapBridge {
 
             return new AccessReport(
                     server.getClass().getName(),
-                    commandMap.getClass().getName(),
-                    commandMapWay,
+                    cm.commandMap().getClass().getName(),
+                    cm.resolutionMethod(),
                     kc.resolutionMethod(),
                     syncSupported,
-                    commandMap,
+                    cm.commandMap(),
                     kc.knownCommands()
             );
         }
@@ -336,6 +386,12 @@ public final class CommandMapBridge {
                     }
                 }
             }
+        }
+
+        private record CommandMapResolution(
+                CommandMap commandMap,
+                String resolutionMethod
+        ) {
         }
 
         private record KnownCommandsResolution(

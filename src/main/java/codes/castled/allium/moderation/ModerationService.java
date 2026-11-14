@@ -1,6 +1,7 @@
 package codes.castled.allium.moderation;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.CommandMapBridge;
 import codes.castled.allium.core.FaultInjection;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.messaging.MessagingService;
@@ -18,6 +19,8 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Container;
 import org.bukkit.block.Lidded;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
@@ -104,14 +107,13 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             "/minecraft:msg",
             "/teammsg",
             "/msg",
+            "/allium:msg",
             "/reply",
-            "/r",
-            "/w",
-            "/whisper",
-            "/m",
-            "/t",
+            "/allium:reply",
             "/mail send",
-            "/mail gift"
+            "/allium:mail send",
+            "/mail gift",
+            "/allium:mail gift"
     );
 
     public enum MuteLoadState {
@@ -140,20 +142,28 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             return new MutedCommandRule(namespaced, List.of(parts));
         }
 
-        boolean matches(List<String> inputTokens, String unnamespacedCommand) {
-            if (inputTokens.size() < tokens.size()) {
-                return false;
-            }
-            String firstInput = namespaced ? inputTokens.get(0) : unnamespacedCommand;
-            if (!firstInput.equals(tokens.get(0))) {
+        String rootLabel() {
+            return tokens.get(0);
+        }
+
+        boolean matchesSubTokens(List<String> lowerInputTokens) {
+            if (lowerInputTokens.size() < tokens.size()) {
                 return false;
             }
             for (int i = 1; i < tokens.size(); i++) {
-                if (!inputTokens.get(i).equals(tokens.get(i))) {
+                if (!lowerInputTokens.get(i).equals(tokens.get(i))) {
                     return false;
                 }
             }
             return true;
+        }
+
+        boolean matchesTokensFallback(List<String> lowerInputTokens, String unnamespacedCommand) {
+            if (!matchesSubTokens(lowerInputTokens)) {
+                return false;
+            }
+            String firstInput = namespaced ? lowerInputTokens.get(0) : unnamespacedCommand;
+            return firstInput.equals(tokens.get(0));
         }
     }
 
@@ -163,6 +173,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             long retryFirstDelayMillis,
             long retryMaxDelayMillis,
             boolean allowVanishPublicChat,
+            boolean muteFailClosed,
             List<MutedCommandRule> mutedCommands
     ) {
         static ModerationSettings fromConfig(@Nullable ConfigurationSection section) {
@@ -176,6 +187,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             boolean allowPublicChat = vanishSection != null && vanishSection.getBoolean("allow-public-chat", false);
 
             ConfigurationSection muteSection = section == null ? null : section.getConfigurationSection("mute");
+            boolean muteFailClosed = muteSection == null || muteSection.getBoolean("fail-closed", true);
             List<String> rawCommands = (muteSection != null && muteSection.isList("muted-commands"))
                     ? muteSection.getStringList("muted-commands")
                     : DEFAULT_MUTED_COMMANDS;
@@ -186,7 +198,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                     rules.add(rule);
                 }
             }
-            return new ModerationSettings(preload, retries, firstDelay, maxDelay, allowPublicChat, List.copyOf(rules));
+            return new ModerationSettings(preload, retries, firstDelay, maxDelay, allowPublicChat, muteFailClosed, List.copyOf(rules));
         }
     }
 
@@ -216,6 +228,8 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
     private final AtomicLong generationCounter = new AtomicLong();
     private final Set<UUID> expiryQueued = ConcurrentHashMap.newKeySet();
     private volatile ModerationSettings settings;
+    private volatile boolean asyncTabListenerRegistered;
+    private volatile boolean xpPickupListenerRegistered;
     private volatile @Nullable java.util.function.Predicate<Player> additionalSleepIgnoreCheck;
     private volatile @Nullable BiConsumer<Player, Boolean> vanishTransitionListener;
     private TaskHandle tickHandle;
@@ -264,6 +278,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         PluginManager pm = plugin.getServer().getPluginManager();
         pm.registerEvents(this, plugin);
         registerOptionalPaperListeners(pm);
+        logSpigotVanishPlatformWarningIfApplicable();
 
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             if (online == null) {
@@ -288,6 +303,42 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                 return true;
             }, 500L, 500L);
         }
+    }
+
+    private void logSpigotVanishPlatformWarningIfApplicable() {
+        if (isVanishCommandDisabled()) {
+            return;
+        }
+        boolean missingAdvancementSuppress = ADVANCEMENT_MESSAGE_METHOD == null;
+        if (!asyncTabListenerRegistered || missingAdvancementSuppress || !xpPickupListenerRegistered) {
+            String serverName = plugin.getServer() == null || plugin.getServer().getName() == null
+                    ? "Spigot/Bukkit"
+                    : plugin.getServer().getName();
+            plugin.logger().warning(
+                    "Vanish is enabled on " + serverName + ", which lacks Paper APIs to suppress known vanish leaks: "
+                            + "vanilla tab completion (minecraft:* Brigadier suggestions), advancement announcements, "
+                            + "and physical XP orb pickup on collision. Paper is recommended for full vanish suppression."
+            );
+        }
+    }
+
+    private boolean isVanishCommandDisabled() {
+        if (plugin.getConfig() == null) {
+            return false;
+        }
+        for (String disabled : plugin.getConfig().getStringList("disabled-commands")) {
+            if (disabled == null) {
+                continue;
+            }
+            String norm = disabled.trim().toLowerCase(Locale.ROOT);
+            if (norm.startsWith("/")) {
+                norm = norm.substring(1);
+            }
+            if (norm.equals("vanish") || norm.equals("v") || norm.equals("allium:vanish") || norm.equals("allium:v")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void disable() {
@@ -347,6 +398,8 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
     }
 
     private void registerOptionalPaperListeners(PluginManager pm) {
+        asyncTabListenerRegistered = false;
+        xpPickupListenerRegistered = false;
         try {
             Class<? extends Event> asyncTabClass = Class.forName(
                     "com.destroystokyo.paper.event.server.AsyncTabCompleteEvent").asSubclass(Event.class);
@@ -361,6 +414,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                     filterPaperAsyncTabComplete(event, getSender, getCompletions, setCompletions, completionsMethod, suggestionMethod);
                 }
             }, plugin, true);
+            asyncTabListenerRegistered = true;
         } catch (ClassNotFoundException | NoSuchMethodException ignored) {
             // Spigot 1.20.1 does not expose Paper's AsyncTabCompleteEvent.
         }
@@ -381,6 +435,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                 } catch (ReflectiveOperationException ignored) {
                 }
             }, plugin, true);
+            xpPickupListenerRegistered = true;
         } catch (ClassNotFoundException | NoSuchMethodException ignored) {
             // Spigot 1.20.1 does not expose Paper's PlayerPickupExperienceEvent.
         }
@@ -631,6 +686,9 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
 
     @Override
     public boolean isMuteStateReady(UUID playerUuid) {
+        if (!settings.muteFailClosed()) {
+            return true;
+        }
         return playerUuid != null && muteLoadStates.get(playerUuid) == MuteLoadState.READY;
     }
 
@@ -879,7 +937,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         });
     }
 
-    // -- Pre-login loading with fail-closed mute state and bounded retry --------------------------
+    // -- Pre-login loading with configurable fail-closed mute state and bounded retry -------------
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onAsyncPreLogin(AsyncPlayerPreLoginEvent event) {
@@ -910,7 +968,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         try {
             loadFuture.get(waitMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException ignored) {
-            // Player joins while LOADING; mute enforcement fails closed until background load finishes.
+            // Player joins while LOADING; mute enforcement fails closed when moderation.mute.fail-closed=true.
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException ignored) {
@@ -973,7 +1031,10 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             muteLoadStates.put(playerUuid, MuteLoadState.FAILED);
             if (attempt == 0) {
                 plugin.logger().warning("Failed to load moderation state for " + playerUuid
-                        + " (speech will fail closed until retry succeeds): " + ex.getMessage());
+                        + (snapshot.muteFailClosed()
+                        ? " (speech will fail closed until retry succeeds): "
+                        : " (moderation.mute.fail-closed=false; speech stays open until retry succeeds): ")
+                        + ex.getMessage());
             }
             if (attempt < snapshot.loadRetries()) {
                 long nextDelay = nextRetryDelay(attempt, snapshot);
@@ -981,7 +1042,9 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                         nextDelay);
             } else {
                 plugin.logger().warning("Exhausted moderation load retries (" + snapshot.loadRetries() + ") for " + playerUuid
-                        + "; speech stays fail-closed for this session.");
+                        + (snapshot.muteFailClosed()
+                        ? "; speech stays fail-closed for this session."
+                        : "; speech remains open under moderation.mute.fail-closed=false."));
             }
         }
     }
@@ -1221,7 +1284,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         int colonIdx = label.indexOf(':');
         String unnamespaced = colonIdx >= 0 ? label.substring(colonIdx + 1) : label;
 
-        // 1. Muted (or still-loading / failed) players cannot run configured muted-commands.
+        // 1. Muted (or still-loading / failed when fail-closed) players cannot run configured muted-commands.
         if (matchesMutedCommand(tokens, unnamespaced)) {
             UUID playerId = player.getUniqueId();
             if (!isMuteStateReady(playerId)) {
@@ -1256,20 +1319,20 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         if (label.equals("minecraft:msg") || label.equals("minecraft:tell") || label.equals("minecraft:w")) {
             if (tokens.size() >= 2 && targetsHiddenVanishedPlayer(player, tokens.get(1))) {
                 event.setCancelled(true);
-                player.sendMessage("§cNo player was found");
+                player.sendMessage("\u00a7cNo player was found");
             }
             return;
         }
         if (label.equals("minecraft:tp") || label.equals("minecraft:teleport")) {
             if (tokens.size() >= 2 && targetsHiddenVanishedPlayer(player, tokens.get(1))) {
                 event.setCancelled(true);
-                player.sendMessage("§cNo player was found");
+                player.sendMessage("\u00a7cNo player was found");
                 return;
             }
             if (tokens.size() >= 3 && !looksNumericOrRelative(tokens.get(2))
                     && targetsHiddenVanishedPlayer(player, tokens.get(2))) {
                 event.setCancelled(true);
-                player.sendMessage("§cNo player was found");
+                player.sendMessage("\u00a7cNo player was found");
             }
         }
     }
@@ -1361,8 +1424,28 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         for (String t : rawTokens) {
             lowerTokens.add(t.toLowerCase(Locale.ROOT));
         }
+        CommandMap commandMap = CommandMapBridge.resolveCommandMapDirect(plugin.getServer());
+        if (commandMap != null) {
+            Command typedCommand = commandMap.getCommand(lowerTokens.get(0));
+            Object typedIdentity = CommandMapBridge.canonicalCommandIdentity(typedCommand);
+            if (typedIdentity == null) {
+                return false;
+            }
+            for (MutedCommandRule rule : settings.mutedCommands()) {
+                if (!rule.matchesSubTokens(lowerTokens)) {
+                    continue;
+                }
+                Command ruleCommand = commandMap.getCommand(rule.rootLabel());
+                Object ruleIdentity = CommandMapBridge.canonicalCommandIdentity(ruleCommand);
+                if (ruleIdentity != null && typedIdentity == ruleIdentity) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        // Fallback only when a unit-test mock Server exposes no CommandMap.
         for (MutedCommandRule rule : settings.mutedCommands()) {
-            if (rule.matches(lowerTokens, unnamespacedCommand)) {
+            if (rule.matchesTokensFallback(lowerTokens, unnamespacedCommand)) {
                 return true;
             }
         }

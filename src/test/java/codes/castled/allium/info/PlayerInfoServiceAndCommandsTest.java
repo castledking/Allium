@@ -423,6 +423,43 @@ class PlayerInfoServiceAndCommandsTest {
         assertTrue(consoleMessages.stream().anyMatch(m -> m.contains("/give <player>")));
     }
 
+    @Test
+    void pluginYmlDefaultsMakeSeenPublicAndWhoisStaffOnly() throws Exception {
+        try (var stream = getClass().getClassLoader().getResourceAsStream("plugin.yml")) {
+            assertNotNull(stream, "plugin.yml must be on classpath");
+            YamlConfiguration pluginYml = new YamlConfiguration();
+            pluginYml.options().pathSeparator('/');
+            pluginYml.load(new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8));
+            assertEquals("true", String.valueOf(pluginYml.get("permissions/allium.seen/default")).toLowerCase());
+            assertEquals("op", String.valueOf(pluginYml.get("permissions/allium.whois/default")).toLowerCase());
+            assertEquals("op", String.valueOf(pluginYml.get("permissions/allium.whois.location/default")).toLowerCase());
+        }
+
+        // Verify CommandSpec alignment & runtime enforcement via BukkitCommandRenderer
+        assertEquals("allium.seen", CoreCommandSpecs.SEEN.basePermission());
+        assertEquals("allium.whois", CoreCommandSpecs.WHOIS.basePermission());
+
+        CommandFamilyPolicy policy = new CommandFamilyPolicy();
+        policy.registerSpec(CoreCommandSpecs.WHOIS);
+        policy.registerSpec(CoreCommandSpecs.SEEN);
+        org.bukkit.command.Command mockCmd = mock(org.bukkit.command.Command.class);
+
+        FakePlayer plainPlayer = new FakePlayer(UUID.randomUUID(), "PublicUser", new Location(world, 0, 64, 0));
+        plainPlayer.grant("allium.seen"); // public default; does NOT grant allium.whois (op default)
+
+        BukkitCommandRenderer whoisRenderer = new BukkitCommandRenderer(plugin, policy, new WhoisCommand(plugin, infoService));
+        whoisRenderer.onCommand(plainPlayer.mock, mockCmd, "whois", new String[]{"InfoNorm"});
+        assertTrue(plainPlayer.messages.stream().anyMatch(m -> m.toLowerCase().contains("permission")),
+                "normal player without allium.whois must be denied /whois: " + plainPlayer.messages);
+
+        plainPlayer.messages.clear();
+        BukkitCommandRenderer seenRenderer = new BukkitCommandRenderer(plugin, policy, new SeenCommand(plugin, infoService));
+        seenRenderer.onCommand(plainPlayer.mock, mockCmd, "seen", new String[]{"InfoNorm"});
+        drainPools();
+        assertTrue(plainPlayer.messages.stream().anyMatch(m -> m.contains("InfoNorm is online")),
+                "public user with default allium.seen must be allowed /seen: " + plainPlayer.messages);
+    }
+
     private Player findByName(String name) {
         for (Player p : onlinePlayers) {
             if (p.getName().equalsIgnoreCase(name)) {

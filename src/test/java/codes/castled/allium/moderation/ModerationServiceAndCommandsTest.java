@@ -28,7 +28,11 @@ import org.bukkit.Material;
 import org.bukkit.Server;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandMap;
+import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Mob;
@@ -654,6 +658,240 @@ class ModerationServiceAndCommandsTest {
             slowService.disable();
             asyncPool.shutdownNow();
             // Restore main moderation listener registration for @AfterEach
+            moderation.enable();
+        }
+    }
+
+    public interface TestServerWithCommandMap extends Server {
+        CommandMap getCommandMap();
+    }
+
+    public static final class FakeVanillaNode {
+        private final FakeVanillaNode redirect;
+
+        FakeVanillaNode(@org.jetbrains.annotations.Nullable FakeVanillaNode redirect) {
+            this.redirect = redirect;
+        }
+
+        public FakeVanillaNode getRedirect() {
+            return redirect;
+        }
+    }
+
+    public static final class FakeVanillaCommand extends Command {
+        public final FakeVanillaNode vanillaCommand;
+
+        FakeVanillaCommand(String name, FakeVanillaNode vanillaCommand) {
+            super(name);
+            this.vanillaCommand = vanillaCommand;
+        }
+
+        @Override
+        public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+            return true;
+        }
+    }
+
+    private static Command testCommand(String name, List<String> aliases) {
+        Command cmd = new Command(name) {
+            @Override
+            public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+                return true;
+            }
+        };
+        cmd.setAliases(aliases);
+        return cmd;
+    }
+
+    @Test
+    void mutedCommandsResolveAliasesAndNamespacedRedirectsThroughCommandMapIdentity() throws Exception {
+        ServerWithCommandMapSetup: {
+            TestServerWithCommandMap mapServer = mock(TestServerWithCommandMap.class);
+            SimpleCommandMap commandMap = new SimpleCommandMap(mapServer);
+            when(mapServer.getCommandMap()).thenReturn(commandMap);
+            when(mapServer.getPluginManager()).thenReturn(pluginManager);
+            when(mapServer.getMaxPlayers()).thenReturn(20);
+            when(mapServer.getOnlinePlayers()).thenAnswer(inv -> onlinePlayers);
+            when(mapServer.getPlayerExact(anyString())).thenAnswer(inv -> server.getPlayerExact(inv.getArgument(0)));
+            when(mapServer.getPlayer(anyString())).thenAnswer(inv -> server.getPlayer((String) inv.getArgument(0)));
+            when(mapServer.getPlayer(any(UUID.class))).thenAnswer(inv -> server.getPlayer((UUID) inv.getArgument(0)));
+
+            // Register Allium commands first (matching CraftServer plugin command load), then vanilla Brigadier nodes
+            commandMap.register("allium", testCommand("msg", List.of("tell", "w", "whisper", "m", "t")));
+            commandMap.register("allium", testCommand("reply", List.of("r")));
+            commandMap.register("allium", testCommand("mail", List.of()));
+            commandMap.register("other", testCommand("othercmd", List.of("oc")));
+
+            FakeVanillaNode meNode = new FakeVanillaNode(null);
+            FakeVanillaNode sayNode = new FakeVanillaNode(null);
+            FakeVanillaNode mcMsgNode = new FakeVanillaNode(null);
+            FakeVanillaNode mcTellNode = new FakeVanillaNode(mcMsgNode);
+            FakeVanillaNode mcWNode = new FakeVanillaNode(mcMsgNode);
+            FakeVanillaNode teamMsgNode = new FakeVanillaNode(null);
+            FakeVanillaNode tmNode = new FakeVanillaNode(teamMsgNode);
+
+            commandMap.register("minecraft", new FakeVanillaCommand("me", meNode));
+            commandMap.register("minecraft", new FakeVanillaCommand("say", sayNode));
+            commandMap.register("minecraft", new FakeVanillaCommand("msg", mcMsgNode));
+            commandMap.register("minecraft", new FakeVanillaCommand("tell", mcTellNode));
+            commandMap.register("minecraft", new FakeVanillaCommand("w", mcWNode));
+            commandMap.register("minecraft", new FakeVanillaCommand("teammsg", teamMsgNode));
+            commandMap.register("minecraft", new FakeVanillaCommand("tm", tmNode));
+
+            when(plugin.getServer()).thenReturn(mapServer);
+            when(normalPlayer.player.getServer()).thenReturn(mapServer);
+            ModerationService mapMod = new ModerationService(plugin, repository, Runnable::run, clock::get);
+            mapMod.enable();
+            try {
+                new MuteCommand(plugin, mapMod).execute(
+                        new BukkitCommandContext(plugin, CoreCommandSpecs.MUTE, vanishedStaff.player, "mute",
+                                new String[]{"ModNorm", "5m", "Spam"}));
+
+                for (String aliasCmd : List.of(
+                        "/w ModObs hi",
+                        "/tell ModObs hi",
+                        "/whisper ModObs hi",
+                        "/m ModObs hi",
+                        "/t ModObs hi",
+                        "/allium:msg ModObs hi",
+                        "/allium:w ModObs hi",
+                        "/r back",
+                        "/allium:reply back",
+                        "/mail send ModObs body",
+                        "/allium:mail send ModObs body",
+                        "/mail gift ModObs 1 gift",
+                        "/allium:mail gift ModObs 1 gift",
+                        "/tm team ping",
+                        "/minecraft:tm team ping",
+                        "/teammsg team ping",
+                        "/minecraft:teammsg team ping",
+                        "/minecraft:tell ModObs hi",
+                        "/minecraft:w ModObs hi",
+                        "/minecraft:msg ModObs hi",
+                        "/me waves",
+                        "/minecraft:me waves",
+                        "/say hello",
+                        "/minecraft:say hello"
+                )) {
+                    normalPlayer.messages.clear();
+                    PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(normalPlayer.player, aliasCmd);
+                    mapMod.onCommandPreprocess(event);
+                    assertTrue(event.isCancelled(), "expected CommandMap identity to block muted command: " + aliasCmd);
+                    assertTrue(normalPlayer.messages.stream().anyMatch(m -> m.contains("You are muted") && m.contains("Spam")),
+                            "expected mute notice for " + aliasCmd + ", got " + normalPlayer.messages);
+                }
+
+                // Unrelated commands and /mail read stay permitted
+                for (String allowed : List.of("/othercmd", "/oc", "/mail read", "/allium:mail read", "/unknowncmd")) {
+                    PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(normalPlayer.player, allowed);
+                    mapMod.onCommandPreprocess(event);
+                    assertFalse(event.isCancelled(), "did not expect CommandMap match to block: " + allowed);
+                }
+
+                // Removing /minecraft:msg unblocks /minecraft:tell and /minecraft:w while /tell (Allium /msg alias) stays covered by /msg
+                config.set("moderation.mute.muted-commands", List.of("/msg"));
+                mapMod.reloadSettings();
+
+                PlayerCommandPreprocessEvent mcTellAfter = new PlayerCommandPreprocessEvent(normalPlayer.player, "/minecraft:tell ModObs hi");
+                mapMod.onCommandPreprocess(mcTellAfter);
+                assertFalse(mcTellAfter.isCancelled(), "removing /minecraft:msg must unblock redirected /minecraft:tell");
+
+                PlayerCommandPreprocessEvent mcWAfter = new PlayerCommandPreprocessEvent(normalPlayer.player, "/minecraft:w ModObs hi");
+                mapMod.onCommandPreprocess(mcWAfter);
+                assertFalse(mcWAfter.isCancelled(), "removing /minecraft:msg must unblock vanilla /minecraft:w");
+
+                PlayerCommandPreprocessEvent bareWAfter = new PlayerCommandPreprocessEvent(normalPlayer.player, "/w ModObs hi");
+                mapMod.onCommandPreprocess(bareWAfter);
+                assertFalse(bareWAfter.isCancelled(), "vanilla-claimed bare /w must follow /minecraft:msg identity when omitted");
+
+                for (String alliumAlias : List.of("/whisper ModObs hi", "/allium:w ModObs hi", "/m ModObs hi")) {
+                    PlayerCommandPreprocessEvent alliumAliasEvent = new PlayerCommandPreprocessEvent(normalPlayer.player, alliumAlias);
+                    mapMod.onCommandPreprocess(alliumAliasEvent);
+                    assertTrue(alliumAliasEvent.isCancelled(), "/msg rule must still cover Allium alias " + alliumAlias + " via identity");
+                }
+                break ServerWithCommandMapSetup;
+            } finally {
+                mapMod.disable();
+                when(plugin.getServer()).thenReturn(server);
+                when(normalPlayer.player.getServer()).thenReturn(server);
+                moderation.enable();
+            }
+        }
+    }
+
+    @Test
+    void muteFailClosedConfigSwitchAllowsFailOpenWhenDisabledAndEnforcesLoadedMutes() throws Exception {
+        UUID uuid = UUID.randomUUID();
+        FakePlayer joining = new FakePlayer(uuid, "OutagePlayer", Set.of("allium.msg", "allium.reply"));
+        onlinePlayers.add(joining.player);
+
+        doThrow(new SQLException("outage")).when(repository).loadActiveMute(uuid);
+        AsyncPlayerPreLoginEvent preLogin = new AsyncPlayerPreLoginEvent("OutagePlayer", InetAddress.getLoopbackAddress(), uuid);
+        moderation.onAsyncPreLogin(preLogin);
+        assertEquals(Optional.of(ModerationService.MuteLoadState.FAILED), moderation.muteLoadState(uuid));
+        assertFalse(moderation.isMuteStateReady(uuid), "fail-closed defaults to true");
+
+        // Disable fail-closed switch and reload
+        config.set("moderation.mute.fail-closed", false);
+        moderation.reloadSettings();
+        assertTrue(moderation.isMuteStateReady(uuid), "disabling fail-closed must permit unverified players");
+
+        AsyncPlayerChatEvent failOpenChat = new AsyncPlayerChatEvent(true, joining.player, "hello during outage", new HashSet<>(onlinePlayers));
+        moderation.onAsyncPlayerChat(failOpenChat);
+        moderation.onAsyncPlayerChatHighest(failOpenChat);
+        assertFalse(failOpenChat.isCancelled());
+
+        PlayerCommandPreprocessEvent failOpenMe = new PlayerCommandPreprocessEvent(joining.player, "/me waves");
+        moderation.onCommandPreprocess(failOpenMe);
+        assertFalse(failOpenMe.isCancelled());
+        assertEquals(MessagePolicy.Outcome.DELIVER, messaging.send(joining.player, staffObserver.player, "ModObs", "outage pm"));
+
+        // Once retry recovers and discovers a real active mute, it is still enforced even with fail-closed=false
+        MuteRecord active = new MuteRecord(uuid, "OutagePlayer", "ModStaff", "Caught up",
+                clock.get(), clock.get() + 60_000L);
+        doReturn(Optional.of(active)).when(repository).loadActiveMute(uuid);
+        scheduledRetries.remove(0).run();
+        assertTrue(moderation.isMuted(uuid));
+
+        AsyncPlayerChatEvent nowMutedChat = new AsyncPlayerChatEvent(true, joining.player, "should be muted", new HashSet<>(onlinePlayers));
+        moderation.onAsyncPlayerChat(nowMutedChat);
+        assertTrue(nowMutedChat.isCancelled());
+    }
+
+    @Test
+    void spigotStartupLogsKnownVanishLeaksWarningUnlessVanishIsDisabled() throws Exception {
+        List<String> warnings = new ArrayList<>();
+        AlliumLogger recordingLogger = mock(AlliumLogger.class);
+        doAnswer(inv -> {
+            warnings.add(inv.getArgument(0));
+            return null;
+        }).when(recordingLogger).warning(anyString());
+        when(plugin.logger()).thenReturn(recordingLogger);
+        when(server.getName()).thenReturn("CraftBukkit");
+
+        ModerationService warnService = new ModerationService(plugin, repository, Runnable::run, clock::get);
+        warnService.enable();
+        try {
+            assertTrue(warnings.stream().anyMatch(w ->
+                            w.contains("vanilla tab completion")
+                                    && w.contains("advancement announcements")
+                                    && w.contains("XP orb pickup")
+                                    && w.contains("Paper")),
+                    "expected Spigot startup vanish warning, got " + warnings);
+        } finally {
+            warnService.disable();
+        }
+
+        // Disabling vanish suppresses the Spigot vanish leak warning
+        warnings.clear();
+        config.set("disabled-commands", List.of("vanish"));
+        ModerationService disabledService = new ModerationService(plugin, repository, Runnable::run, clock::get);
+        disabledService.enable();
+        try {
+            assertTrue(warnings.isEmpty(), "expected no vanish warning when /vanish is disabled, got " + warnings);
+        } finally {
+            disabledService.disable();
+            config.set("disabled-commands", null);
             moderation.enable();
         }
     }

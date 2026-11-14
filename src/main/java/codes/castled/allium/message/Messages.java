@@ -134,6 +134,8 @@ public enum Messages {
     MUTES_HEADER("moderation.mutes-header", "{prefix} &fActive mutes &7({count}):"),
     MUTES_ENTRY("moderation.mutes-entry", "&7- &f{player} &7(&e{remaining}&7, by &f{actor}&7): &f{reason}"),
     MODERATION_STORAGE_FAILED("moderation.storage-failed", "{prefix} &cModeration state could not be saved; the change was undone."),
+    VANISH_CHAT_BLOCKED("moderation.vanish-chat-blocked", "{prefix} &cYou cannot send public chat while vanished. Use &f/vanish off &cor &f/msg&c."),
+    MUTE_UNAVAILABLE("moderation.mute-unavailable", "{prefix} &cYour moderation status is still loading; chat and messaging are temporarily unavailable. Try again shortly."),
 
     // -- Player --
     GAMEMODE_SELF("player.gamemode-self", "{prefix} &aGamemode set to &f{mode}&a."),

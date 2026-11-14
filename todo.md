@@ -82,7 +82,6 @@ two-server MySQL claims and cross-version signed-item transfer. See [S12 results
 repository checks also passed against SQLite and disposable MySQL. Unit coverage includes typed
 PDC, cancelled-kick quarantine, failed save proofs and interrupted schema migrations.
 
-The mute integration is a service hook; the moderation `/mute` command remains in its later slice.
 M3 economy costs are reserved, not implemented by mail. Physical database outages and the pack's
 manual visual checklist remain outside the S12 live claims. S13 begins M3 after this close-out.
 
@@ -103,12 +102,16 @@ Spigot 1.20.1 and Paper 26.3, including restart. **S16 complete:** free kits (`/
 persisted cooldowns and one-time status, paid-kit denial until M3 reservations exist,
 and durable delivery records + saved `player.dat` receipt verification.
 [S16 results](tests/live/kits/RESULTS.md): 7 cases / 57 checks on each of
-Spigot 1.20.1 and Paper 26.3 (114 live checks total). Full build: 531 tests pass. **S17 complete:**
+Spigot 1.20.1 and Paper 26.3 (114 live checks total). Full build: 531 tests pass. **S17 complete (+ follow-ups):**
 persistent `/vanish` (`/v`) and `/mute`, `/unmute`, `/mutes` (`/mutelist`, `/mute list`)
 replacing the stub `VanishSource` and `MuteSource` hooks across messaging, social spy, mail,
-teleport, and player-targeting commands; see [docs/vanish-mute.md](docs/vanish-mute.md) and
-[S17 results](tests/live/moderation/RESULTS.md) (75/75 live checks on each of Spigot 1.20.1
-and Paper 26.3, 150 total; 528 unit/integration tests pass).
+teleport, and player-targeting commands, hardened with vanilla leak controls, `HIGHEST` chat
+re-cancellation, configurable `muted-commands`, digit-leading duration rejection, fail-closed
+preload checks, opt-in live containers, and real MariaDB testing; see
+[docs/vanish-mute.md](docs/vanish-mute.md) and
+[S17 results](tests/live/moderation/RESULTS.md) (176/176 checks on Spigot 1.20.1 SQLite,
+176/176 on Paper 26.3 SQLite, and 71/71 on Spigot 1.20.1 MariaDB 10.11; 537 JUnit tests across
+all modules pass against SQLite and MariaDB).
 The economy implementation remains later work. **S14 design complete:** [economy-design.md](docs/economy-design.md)
 defines the replacement and records measured JDBC commit costs. The Vault adapter
 remains unimplemented and release-gated; this does not make the existing scaffold
@@ -382,8 +385,13 @@ result and must preserve the existing uncommitted work.
         (`/mutelist`, `/mute list`), applied across public chat, `/msg`, `/reply`, `/mail send`,
         and `/mail gift`, with remaining-time notices, automatic non-restart timed expiry, and
         SQL (`allium_moderation_audit`) + console audit logs.
-      - Gate passed: 3 cases / 75 checks on each of Spigot 1.20.1 and Paper 26.3 (150 live
-        checks total); SQLite live only (MySQL query syntax unit-tested).
+      - **Follow-ups:** vanilla `/list`, `/minecraft:msg`/`/tp`/`@a`/`@p`/tab filtering (with
+        documented Spigot 1.20.1 Brigadier/advancement/XP-pickup limits), `moderation.vanish.allow-public-chat`,
+        mute chat `HIGHEST` re-cancel, configurable `moderation.mute.muted-commands`, digit-leading
+        duration rejection, fail-closed `LOADING`/`FAILED` + backoff retries, explicit
+        `allium.vanish.container.live`, and visibility recomputation on join/`/vanish`/`/allium reload`.
+      - Gate passed: 176/176 checks on Spigot 1.20.1 (SQLite), 176/176 on Paper 26.3 (SQLite),
+        and 71/71 on Spigot 1.20.1 (MariaDB 10.11); 537 JUnit tests pass across SQLite and MariaDB.
 - [ ] **Travel follow-up — Pet teleport.** Explicit future slice, not provided by S15.
 - [ ] **Travel follow-up — Offline home/restore administration and legacy import.**
       Explicit future slice, not provided by S15.

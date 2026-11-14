@@ -32,6 +32,12 @@ public final class FaultInjection {
     /** A preference load fails as if the database were unreachable. */
     public static final String PREFERENCES_LOAD_FAIL = "preferences.load-fail";
 
+    /** A moderation pre-login load waits {@code ModerationService#SLOW_LOAD_FAULT_MILLIS} before reading. */
+    public static final String MODERATION_LOAD_SLOW = "moderation.load-slow";
+
+    /** A moderation pre-login or retry load fails as if the database were unreachable. */
+    public static final String MODERATION_LOAD_FAIL = "moderation.load-fail";
+
     private static final FaultInjection GLOBAL = new FaultInjection(Boolean.getBoolean(PROPERTY));
 
     private final boolean enabled;

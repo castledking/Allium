@@ -279,6 +279,9 @@ permissions:
   allium.vanish.see:
     description: See vanished players (world, tab list, messages, tab completion)
     default: op
+  allium.vanish.container.live:
+    description: Lets vanished players open containers live (read-write) instead of a silent read-only mirror. Explicit only; emits chest lid animation, sound, and trapped-chest redstone.
+    default: false
   allium.mute:
     description: Allows /mute and /mutes
     default: op

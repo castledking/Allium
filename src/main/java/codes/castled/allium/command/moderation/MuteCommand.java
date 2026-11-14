@@ -19,7 +19,8 @@ import java.util.OptionalLong;
 
 /**
  * {@code /mute <player> [duration] [reason]}. Also accepts {@code /mute list} as a convenience
- * alias for {@code /mutes}.
+ * alias for {@code /mutes}. A second token starting with a digit must parse as a valid duration;
+ * otherwise usage is returned instead of treating a malformed duration as part of a permanent mute reason.
  */
 public final class MuteCommand implements SpecCommandHandler {
 
@@ -68,6 +69,9 @@ public final class MuteCommand implements SpecCommandHandler {
                 if (args.length >= 3) {
                     reason = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
                 }
+            } else if (DurationParser.startsWithDigit(args[1])) {
+                context.sendInvalidArgs(spec().selfUsage());
+                return;
             } else {
                 reason = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
             }

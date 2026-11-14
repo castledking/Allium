@@ -1,21 +1,29 @@
-// Test-only S17 moderation client for 1.20.1 (763). Owned loopback ports 25770-25771 only.
+// Test-only S17 moderation client for 1.20.1 (763). Owned loopback ports 25770-25772 only.
 // Supports "cmd <command>", "say <message>", "tab <text>", and "stop".
 const [lane, portText, version, username = 'BaseBot'] = process.argv.slice(2), port = Number(portText);
-if (!lane || !([25770, 25771].includes(port)) || !['1.20.1'].includes(version)) throw Error('TEST ONLY: owned port 25770-25771 and version 1.20.1');
+if (!lane || !([25770, 25771, 25772].includes(port)) || !['1.20.1'].includes(version)) throw Error('TEST ONLY: owned port 25770-25772 and version 1.20.1');
 const mc = require(process.env.MC_PROTOCOL_MODULE || '/mnt/storage/.allium-validation/infra/client/node_modules/minecraft-protocol');
 const nbt = require(require.resolve('prismarine-nbt', {paths: [require.resolve(process.env.MC_PROTOCOL_MODULE || '/mnt/storage/.allium-validation/infra/client/node_modules/minecraft-protocol')]}));
 const {flatten} = require('../baseline/text-components.cjs');
 if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) throw Error('bad username');
+function extractTranslate(raw) {
+  let obj = raw;
+  if (typeof obj === 'string') { try { obj = JSON.parse(obj); } catch (_) { return {}; } }
+  if (!obj || typeof obj !== 'object' || !obj.translate) return {};
+  const args = Array.isArray(obj.with) ? obj.with.map(w => flatten(w).plain) : [];
+  return {translate: obj.translate, withPlain: args};
+}
 const client = mc.createClient({host: '127.0.0.1', port, username, auth: 'offline', version});
 let ready = false;
 client.on('packet', (packet, meta) => {
   if (meta.name === 'position') client.write('teleport_confirm', {teleportId: packet.teleportId});
+  if (meta.name === 'respawn') { client.write('settings', {locale: 'en_US', viewDistance: 2, chatFlags: 0, chatColors: true, skinParts: 127, mainHand: 1, enableTextFiltering: false, enableServerListing: true}); }
   if (meta.name === 'declare_commands' && !ready) { ready = true; client.write('settings', {locale: 'en_US', viewDistance: 2, chatFlags: 0, chatColors: true, skinParts: 127, mainHand: 1, enableTextFiltering: false, enableServerListing: true}); console.log('BASEG-WIRE READY ' + version + ' port=' + port + ' user=' + username); }
   if (meta.name === 'system_chat') {
     let content = packet.content;
     if (content && typeof content === 'object' && content.type) content = nbt.simplify(content);
     const raw = typeof content === 'string' ? content : JSON.stringify(content);
-    console.log('BASEG-CHAT ' + JSON.stringify(Object.assign(flatten(content), {overlay: !!(packet.isActionBar ?? packet.overlay),
+    console.log('BASEG-CHAT ' + JSON.stringify(Object.assign(flatten(content), extractTranslate(content), {overlay: !!(packet.isActionBar ?? packet.overlay),
       interactive: /clickEvent|hoverEvent|click_event|hover_event|"insertion"/.test(String(raw))})));
   }
   if (meta.name === 'player_chat') {

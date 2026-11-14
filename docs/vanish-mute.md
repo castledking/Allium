@@ -16,12 +16,22 @@ implementations in `ModerationService` and `ModerationRepository`.
   - `allium.vanish.others` (default `op`): use `/vanish` on another online player.
   - `allium.vanish.see` (default `op`): see vanished players in the world, tab list, tab completion,
     private messages, teleport requests, and moderation lists.
+  - `allium.vanish.container.live` (default `false`, explicit-only — **not** included under
+    `allium.*`): allows a vanished player to open lidded containers live (read-write) instead of
+    receiving the silent read-only `SilentContainerHolder` mirror. **Noise trade-off:** live opens
+    delegate to vanilla container interaction, which plays the container open/close sound, triggers
+    the lid animation, and updates trapped-chest / sculk signals visible/audible to nearby players.
 
 ### Mute
 - `/mute <player> [duration] [reason]`:
-  - Mutes `<player>` permanently (when `[duration]` is omitted or is part of the reason) or for a
-    timed duration (`5s`, `10m`, `2h`, `1d`, `1w`, or compound tokens like `1h30m`).
-  - `/mute list` (when the sender has no target named `list` in args) delegates to `/mutes`.
+  - Mutes `<player>` permanently (when `[duration]` is omitted) or for a timed duration (`5s`,
+    `10m`, `2h`, `1d`, `1w`, or compound tokens like `1h30m`).
+  - **Digit-leading invalid duration token check:** if the first token after `<player>` begins with
+    a digit (for example `10x`, `0s`, `5foo`, or `99`), it is parsed strictly as a duration and
+    **rejected with command usage** if invalid, rather than silently becoming the start of a
+    permanent mute reason.
+  - `/mute list` (when no online/offline target ambiguity exists in that subcommand form) delegates
+    to `/mutes`.
 - `/unmute <player> [reason]`:
   - Removes an active mute from `<player>` and notifies the player if online.
 - `/mutes` (alias `/mutelist`):
@@ -35,101 +45,130 @@ implementations in `ModerationService` and `ModerationRepository`.
 
 When a player is vanished (`ModerationService#isVanished`):
 1. **Entity & tab list hiding (`Player#hidePlayer`):**
-   - Every online player without `allium.vanish.see` has `viewer.hidePlayer(plugin, vanishedPlayer)`
-     applied immediately on `/vanish`, on viewer join, and on vanished player join.
+   - Visibility pairs (`viewer.hidePlayer(plugin, vanishedPlayer)` / `viewer.showPlayer(...)`) are
+     recomputed at:
+     1. plugin enable / `/vanish` state changes,
+     2. any player join (`PlayerJoinEvent` at `LOWEST`), and
+     3. `/allium reload` (`ModerationService#reload`, calling `recomputeVisibility()`).
+   - **Mid-session permission-change limitation:** if a permission plugin grants or revokes
+     `allium.vanish.see` for an already-connected viewer without triggering reconnect, Allium-owned
+     command/tab checks (`PlayerNameVisibility#canSeeTarget`) update immediately on the new
+     permission check, whereas Bukkit's underlying `hidePlayer`/`showPlayer` pair visibility is
+     re-synchronized on the viewer's next join, the target's next `/vanish`, or `/allium reload`.
    - Staff with `allium.vanish.see` retain `viewer.showPlayer(plugin, vanishedPlayer)` so they can
      see the vanished player in the world and tab list.
-   - The `"vanished"` metadata key (`FixedMetadataValue(plugin, true)`) is also maintained on the
-     player for compatibility with third-party plugins and `VanishSource.METADATA`.
-2. **Server list ping count (`ServerListPingEvent`):**
-   - Vanished players are removed from `ServerListPingEvent#iterator()`, reducing the reported
-     online player count and sample list on server list pings.
-3. **Join, quit, relog, and restart persistence:**
+   - The `"vanished"` metadata key (`FixedMetadataValue(plugin, true)`) is maintained on the player
+     for third-party compatibility and `VanishSource.METADATA`.
+2. **Server list ping & vanilla `/list` vs raw plugin online count:**
+   - **Server list ping (`ServerListPingEvent`):** vanished players are removed from
+     `ServerListPingEvent#iterator()`, reducing `players.online` and hiding them from the sample
+     (see Limits regarding Paper privacy-opt-out `"Anonymous Player"` entries).
+   - **Vanilla `/list` (`/minecraft:list`):** `ModerationService` rewrites non-`allium.vanish.see`
+     viewers' vanilla `/list` output via `commands.list.players` formatting (and player-name filtering)
+     so vanished players are omitted from both count and listed names, while `allium.vanish.see`
+     viewers see the full list. (S18 replaces `/list` with an Allium-owned vanish-aware `/list`.)
+   - **Raw `Bukkit.getOnlinePlayers().size()`:** Bukkit's raw online player collection always
+     includes every connected `Player` entity (`size = 3` in the 3-bot live harness) because hiding
+     entities per-viewer via `hidePlayer` does not remove players from `CraftServer.players`.
+     External plugins querying raw counts must filter by `viewer.canSee(player)` or check
+     `player.hasMetadata("vanished")` / `VanishSource`.
+3. **Vanish leaks outside Allium commands:**
+   - **Vanilla `/minecraft:msg`, `/minecraft:tell`, `/minecraft:w`, `/minecraft:tp` and selectors
+     (`@a`, `@p`, `@r`, etc.):** `ModerationService#onCommandPreprocess` intercepts vanilla aliases
+     when run by a player without `allium.vanish.see`. If any argument names a vanished player
+     (with or without `minecraft:` prefix) or uses a selector (`@a`/`@p`/`@r`...) resolving solely to
+     vanished players or leaking a vanished match, the command is blocked with vanilla's exact
+     `"No player was found"` message (`§cNo player was found`).
+   - **Vanilla command tab completion:** Paper 26.3 syncs Bukkit visibility into client Brigadier
+     suggestions automatically when `hidePlayer` is active, so `/minecraft:msg` and `/minecraft:tp`
+     hide vanished players from normal viewers. **Spigot 1.20.1 limitation:** Spigot 1.20.1's
+     vanilla Brigadier dispatcher for `minecraft:*` commands suggests all connected players directly
+     without firing `TabCompleteEvent` and cannot be filtered without protocol packet interception;
+     Allium-owned commands (`/msg`, `/tpa`, `/mail`, `/heal`, `/kit`, etc.) hide vanished players on
+     both Spigot and Paper.
+   - **Death & advancement messages:** `PlayerDeathEvent#setDeathMessage(null)` suppresses death
+     broadcasts for vanished players on both Spigot 1.20.1 and Paper 26.3. On Paper 26.3+,
+     `PlayerAdvancementDoneEvent#message(null)` (invoked reflectively) suppresses advancement
+     announcements cleanly. **Spigot 1.20.1 limitation:** Spigot 1.20.1 exposes no per-event
+     advancement message setter (`setMessage` is absent from Spigot API 1.20), so vanilla's
+     `chat.type.advancement.task` broadcast still fires unless `gamerule announceAdvancements false`
+     is configured.
+   - **Vanished player's public chat (`moderation.vanish.allow-public-chat`):** configurable boolean,
+     default `false`. When `false`, public chat sent by a vanished player is cancelled (unless they
+     also hold `allium.vanish.see`? Wait — no, ALL vanished players are blocked from accidentally
+     chatting while vanished unless `moderation.vanish.allow-public-chat: true`, with a reminder
+     notice `moderation.vanish-chat-blocked`). Setting `moderation.vanish.allow-public-chat: true`
+     allows public chat while vanished.
+   - **XP orb attraction & pickup:** `EntityTargetEvent` targeting a vanished player (such as
+     `ExperienceOrb` `CLOSEST_PLAYER` homing) is cancelled on both Spigot 1.20.1 and Paper 26.3. On
+     Paper 26.3+, `PlayerPickupExperienceEvent` is additionally cancelled reflectively so incidental
+     body overlap does not consume orbs. **Spigot 1.20.1 limitation:** Spigot 1.20.1 has no
+     cancellable `PlayerPickupExperienceEvent` (`PlayerExpChangeEvent` fires post-consumption and
+     is not `Cancellable`), so while XP orb homing toward a vanished player is blocked, colliding
+     physically with a stationary/drifting orb on Spigot 1.20.1 can still pick it up.
+4. **Join, quit, relog, and restart persistence:**
    - Vanish state is persisted per UUID in `allium_vanish`.
-   - `AsyncPlayerPreLoginEvent` refreshes the joining UUID's vanish state from SQL before the player
-     entity joins the main thread.
-   - `PlayerJoinEvent` (at `LOWEST` priority) suppresses the join message (`setJoinMessage(null)`)
-     and applies `hidePlayer` to all non-privileged viewers on the same tick before the join is
-     broadcast, so a relog or server restart never reveals a vanished player.
-   - `PlayerQuitEvent` (at `LOWEST` priority) suppresses the quit message (`setQuitMessage(null)`).
-4. **World & interaction side-effect suppression:**
+   - `AsyncPlayerPreLoginEvent` loads the joining UUID's vanish & mute state off the main thread
+     (waiting up to `moderation.preload-wait-millis`, default `2000` ms).
+   - `PlayerJoinEvent` (`LOWEST`) suppresses the join message (`setJoinMessage(null)`) and applies
+     `hidePlayer` to all non-privileged viewers on the same tick before join messages broadcast, so
+     a relog or server restart never reveals a vanished player.
+   - `PlayerQuitEvent` (`LOWEST`) suppresses the quit message (`setQuitMessage(null)`).
+5. **World & other interaction side-effect suppression:**
    - **No mob targeting:** existing nearby `Mob` targets on the player are cleared when entering
      vanish, and `EntityTargetEvent` targeting a vanished player is cancelled.
    - **No item or arrow pickup:** `EntityPickupItemEvent` and `PlayerPickupArrowEvent` are cancelled
      for vanished players.
-   - **No physical block triggers or sculk vibrations:** `PlayerInteractEvent` with
-     `Action.PHYSICAL` (pressure plates, tripwires, farmland trampling, turtle eggs, big dripleaf)
-     and `BlockReceiveGameEvent` (sculk sensors and shriekers) are cancelled when the actor is
-     vanished.
-   - **Sleep ignore:** `player.setSleepingIgnored(true)` is set while vanished so a vanished staff
-     member never blocks night skip.
-   - **Silent container opening:** right-clicking an `ENDER_CHEST` while vanished (and not sneaking)
-     cancels the block interaction and opens `player.getEnderChest()` directly without chest lid
-     animation or sound. Right-clicking an audible lidded container (`CHEST`, `TRAPPED_CHEST`,
-     `BARREL`, `*SHULKER_BOX`) while vanished cancels the block interaction and opens a read-only
-     virtual inventory snapshot (`SilentContainerHolder`) so no lid animation, sound, or redstone
-     observer/trapped-chest signal is emitted in the world.
-5. **Undiscoverable across every command and feature ("looks offline"):**
-   - `PlayerNameVisibility#canSeeTarget(viewer, target)` combines `ModerationService#isVanished`,
-     `ModerationService#syncPairVisibility`, and `viewer.canSee(target)` with `allium.vanish.see`.
-   - Normal players without `allium.vanish.see` never receive a vanished player's name in tab
-     completion (`BukkitCommandRenderer`, `PlayerNameService#complete`) and receive the exact same
-     `PLAYER_NOT_FOUND` / offline response as for an offline player in:
-     - `/msg`, `/reply`, `/ignore`, `/msgtoggle` (`MessagingService`, `MessagePolicy` — `/reply`
-       returns `You have nobody to reply to.` when a previous reply target is vanished, matching
-       offline behavior)
-     - `SocialSpy` (a spy without `allium.vanish.see` never receives spy notifications involving a
-       vanished participant)
-     - `/tpa`, `/tpahere`, `/tpaccept`, `/tpdeny` (`TeleportService`, `TeleportCommand`, and silent
-       cancellation of pending non-privileged teleport requests when a player vanishes so normal
-       players receive no leak)
-     - `/mail send` and `/mail gift` tab completion (`PlayerNameService#complete` hides vanished
-       online players from non-privileged completers; sending mail by typed name uses the offline
-       known-player mail path without leaking online status)
-     - `/heal <player>`, `/feed <player>`, `/fly <player>`, `/god <player>`, `/gamemode <mode> <player>`,
-       `/clearinventory <player>`, `/ping <player>`, `/ext <player>`, `/burn <player>`, `/smite <player>`
-       (`BukkitCommandContext#resolveSelfOrTarget`)
-     - `/kit <name> <player>` (`KitCommand`)
+   - **No physical block triggers or sculk vibrations:** `PlayerInteractEvent` (`Action.PHYSICAL`)
+     and `BlockReceiveGameEvent` are cancelled when triggered by a vanished player.
+   - **Sleep ignore:** `player.setSleepingIgnored(true)` is kept active while vanished.
+   - **Silent vs opt-in live container opening:** right-clicking an `ENDER_CHEST` while vanished
+     opens `player.getEnderChest()` directly (live, silent). Right-clicking `CHEST`,
+     `TRAPPED_CHEST`, `BARREL`, or `*SHULKER_BOX` cancels the block open and shows a read-only
+     `SilentContainerHolder` mirror by default — unless the player holds explicit
+     `allium.vanish.container.live`, which permits normal read/write opening with vanilla sound,
+     animation, and redstone side effects.
+6. **Undiscoverable across every Allium command and feature ("looks offline"):**
+   - `PlayerNameVisibility#canSeeTarget(viewer, target)` enforces the `"looks offline"` contract
+     across tab completion (`BukkitCommandRenderer`, `PlayerNameService#complete`), `/msg`,
+     `/reply`, `/ignore`, `/msgtoggle`, `SocialSpy`, `/tpa`, `/tpahere`, `/tpaccept`, `/tpdeny`,
+     `/mail send`, `/mail gift`, `/heal`, `/feed`, `/fly`, `/god`, `/gamemode`, `/clearinventory`,
+     `/ping`, `/ext`, `/burn`, `/smite`, and `/kit`.
 
-## Bukkit / Paper version capability matrix
+## Mute enforcement, hardening, and failure modes
 
-| Capability | Spigot 1.20.1 | Paper 26.3 | Notes |
-| --- | --- | --- | --- |
-| Entity & tab-list hiding (`Player#hidePlayer(Plugin, Player)`) | Supported | Supported | Hides entity tracker + removes player from client tab list |
-| Ping player count & sample (`ServerListPingEvent#iterator().remove()`) | Supported | Supported | Catches `UnsupportedOperationException` if a custom ping implementation disallows removal |
-| Join/quit message suppression (`setJoinMessage(null)` / `setQuitMessage(null)`) | Supported | Supported | Applied at `EventPriority.LOWEST` |
-| Mob targeting suppression (`EntityTargetEvent` + `Mob#setTarget(null)`) | Supported | Supported | Clears existing targets within 64 blocks on `/vanish on` |
-| Item & arrow pickup suppression (`EntityPickupItemEvent`, `PlayerPickupArrowEvent`) | Supported | Supported | Cancelled at `EventPriority.LOWEST` |
-| Pressure plate / tripwire / physical trigger suppression (`Action.PHYSICAL`) | Supported | Supported | Cancels `PlayerInteractEvent` for `Action.PHYSICAL` |
-| Sculk sensor / vibration suppression (`BlockReceiveGameEvent`) | Supported | Supported | Cancels `BlockReceiveGameEvent` when source entity is vanished |
-| Silent Ender Chest open (`player.openInventory(player.getEnderChest())`) | Supported (live R/W) | Supported (live R/W) | Opens the player's own Ender Chest inventory without block animation or sound |
-| Silent lidded container open (`CHEST`, `TRAPPED_CHEST`, `BARREL`, `SHULKER_BOX`) | Read-only snapshot mirror | Read-only snapshot mirror | Bukkit 1.20.1 lacks a cross-platform silent live-container open API; Allium cancels the block open and shows a cloned read-only `SilentContainerHolder` inventory so zero lid animation, sound, or trapped-chest redstone is emitted |
-
-## Mute enforcement and expiration
-
-1. **Unified `MuteSource` hook:**
-   - `ModerationService` implements `MuteSource` and registers itself on `MessagingService` during
-     `ModerationModule#onEnable`.
-   - `MailService` delegates `muted(UUID)` and `sendMutedNotice(CommandSender)` through
-     `MessagingService`, so `/msg`, `/reply`, `/mail send`, and `/mail gift` all enforce the same
-     active mute state.
-   - Public chat is intercepted by `ModerationService#onAsyncPlayerChat` at `EventPriority.LOWEST`
-     and cancelled when `activeMute(sender.getUniqueId())` is present.
-2. **Remaining-time feedback:**
-   - Whenever a muted player attempts to send public chat, `/msg`, `/reply`, `/mail send`, or
-     `/mail gift`, they receive `moderation.mute-blocked`:
-     `You are muted (<remaining> remaining). Reason: <reason>`.
-3. **Automatic timed mute expiration without restart:**
-   - Every timed mute stores `expires_at` in epoch milliseconds.
-   - `ModerationService#activeMute` checks `record.isExpired(now)` lazily on every chat/message/mail
-     check, and a repeating scheduler task (`tickExpiredMutes` every 500 ms) proactively expires
-     elapsed mutes in memory, deletes the expired row from `allium_mutes`, and writes a
-     `MUTE_EXPIRED` audit entry on the bounded storage executor.
+1. **Dual-priority chat enforcement (`LOWEST` + `HIGHEST`):**
+   - `ModerationService` listens to `AsyncPlayerChatEvent` at **both** `EventPriority.LOWEST`
+     (cancel immediately and notify the player) and `EventPriority.HIGHEST` (re-cancel silently if
+     another plugin's chat listener un-cancelled the event).
+2. **Unified `MuteSource` hook & configurable `muted-commands`:**
+   - `ModerationService` implements `MuteSource` (`MessagingService` and `MailService` enforce the
+     same mute state across `/msg`, `/reply`, `/mail send`, and `/mail gift`).
+   - `moderation.mute.muted-commands` (configurable list, default: `/me`, `/say`, `/tell`,
+     `/minecraft:msg`, `/teammsg`, `/msg`, `/reply`, `/r`, `/w`, `/whisper`, `/m`, `/t`,
+     `/mail send`, `/mail gift`) blocks command-based speech via `PlayerCommandPreprocessEvent` at
+     `LOWEST` when muted or fail-closed.
+3. **Fail-closed mute contract while loading or failed (`LOADING` / `FAILED`):**
+   - On join, if a player's moderation preload has not finished (`LOADING`) or failed (`FAILED`),
+     **mute checks fail closed** across public chat (`LOWEST` & `HIGHEST`), `muted-commands`,
+     `/msg`, `/reply`, `/mail send`, and `/mail gift`, returning `moderation.mute-unavailable`
+     (default: `Your moderation state is still loading or unavailable; chat and private messages are temporarily blocked.`).
+   - Background retries (`moderation.load-retry`: `retries: 4`, `first-delay-millis: 1000`,
+     `max-delay-millis: 15000`) automatically re-query the repository with capped exponential
+     backoff so transient database interruptions recover without relog.
+   - **Trade-off / cost:** this matches the S03 preferences fail-closed contract — a muted player can
+     never slip through during a slow or errored database load, at the cost that unmuted players
+     joining during a DB outage/stall are temporarily unable to chat or send mail until a background
+     retry reaches `READY`.
+4. **Automatic timed mute expiration without restart:**
+   - Every timed mute stores `expires_at` (epoch ms). `ModerationService#activeMute` checks
+     `record.isExpired(now)` lazily, and `tickExpiredMutes` (500 ms) clears expired mutes, deletes
+     the SQL row, and records `MUTE_EXPIRED`.
 
 ## Storage and audit trail
 
 All SQL operations run on a dedicated bounded executor (`allium-moderation`, 1 thread, queue capacity
-256) in `ModerationModule`. No synchronous SQL ever runs on the main server thread during gameplay:
+256) with schema migrations verified on both **SQLite** and **MariaDB 10.11 / MySQL**:
 - `allium_vanish`: `(player_uuid PRIMARY KEY, vanished, updated_at, actor_name)`
 - `allium_mutes`: `(player_uuid PRIMARY KEY, player_name, actor_name, reason, created_at, expires_at)`
 - `allium_moderation_audit`: `(id PRIMARY KEY AUTO_INCREMENT, created_at, action, actor_name, target_uuid, target_name, detail)`

@@ -19,6 +19,18 @@ public final class DurationParser {
     }
 
     /**
+     * Returns {@code true} when {@code raw} begins with an ASCII digit after trimming, indicating the
+     * caller attempted to supply a duration token even if {@link #parseMillis(String)} rejects it.
+     */
+    public static boolean startsWithDigit(String raw) {
+        if (raw == null) {
+            return false;
+        }
+        String trimmed = raw.trim();
+        return !trimmed.isEmpty() && trimmed.charAt(0) >= '0' && trimmed.charAt(0) <= '9';
+    }
+
+    /**
      * Parses a duration token into milliseconds. Returns empty if {@code raw} is not a positive
      * duration token in {@code <number><s|m|h|d|w>} format.
      */

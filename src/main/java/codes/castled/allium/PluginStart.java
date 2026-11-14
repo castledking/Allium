@@ -260,6 +260,10 @@ public final class PluginStart extends JavaPlugin {
                     && kits.kits() != null) {
                 kits.kits().reloadDefinitions();
             }
+            if (moduleManager.getModule("moderation") instanceof codes.castled.allium.module.ModerationModule mod && mod.isEnabled()
+                    && mod.moderation() != null) {
+                mod.moderation().reloadSettings();
+            }
             ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
             settings.warnings().forEach(logger::warning);
             if (settings.owner() != startupPackOwner) {

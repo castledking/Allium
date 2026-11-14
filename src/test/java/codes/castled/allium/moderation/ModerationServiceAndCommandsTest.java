@@ -37,11 +37,15 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockReceiveGameEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityTargetEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.ServerListPingEvent;
+import org.bukkit.event.server.TabCompleteEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -52,8 +56,10 @@ import org.bukkit.plugin.PluginManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import java.net.InetAddress;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -64,6 +70,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -77,7 +86,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
-import org.mockito.MockedStatic;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -89,6 +98,7 @@ class ModerationServiceAndCommandsTest {
     private PluginStart plugin;
     private Server server;
     private PluginManager pluginManager;
+    private YamlConfiguration config;
     private MessageManager messageManager;
     private ModerationRepository repository;
     private ModerationService moderation;
@@ -99,6 +109,7 @@ class ModerationServiceAndCommandsTest {
     private final Set<UUID> persistedVanished = new LinkedHashSet<>();
     private final Map<UUID, MuteRecord> persistedMutes = new HashMap<>();
     private final List<ModerationAuditRecord> persistedAudits = new ArrayList<>();
+    private final List<Runnable> scheduledRetries = new ArrayList<>();
 
     private FakePlayer vanishedStaff;
     private FakePlayer normalPlayer;
@@ -112,11 +123,13 @@ class ModerationServiceAndCommandsTest {
         plugin = mock(PluginStart.class);
         server = mock(Server.class);
         pluginManager = mock(PluginManager.class);
+        config = new YamlConfiguration();
         when(plugin.getServer()).thenReturn(server);
         when(server.getPluginManager()).thenReturn(pluginManager);
+        when(server.getMaxPlayers()).thenReturn(20);
         when(plugin.getName()).thenReturn("Allium");
         when(plugin.logger()).thenReturn(mock(AlliumLogger.class));
-        when(plugin.getConfig()).thenReturn(new YamlConfiguration());
+        when(plugin.getConfig()).thenReturn(config);
         when(plugin.getDescription()).thenReturn(new PluginDescriptionFile("Allium", "1.0.0", "codes.castled.allium.PluginStart"));
 
         LanguageManager langManager = mock(LanguageManager.class);
@@ -209,7 +222,8 @@ class ModerationServiceAndCommandsTest {
             playerNames.cache().put(p.getUniqueId(), p.getName(), clock.get());
         }
 
-        moderation = new ModerationService(plugin, repository, Runnable::run, clock::get);
+        scheduledRetries.clear();
+        moderation = new ModerationService(plugin, repository, Runnable::run, clock::get, (task, delay) -> scheduledRetries.add(task));
         moderation.enable();
         messaging.setVanishSource(moderation);
         messaging.setMuteSource(moderation);
@@ -339,7 +353,6 @@ class ModerationServiceAndCommandsTest {
         moderation.onPlayerQuit(quitEvent);
         assertNull(quitEvent.getQuitMessage());
 
-        // Simulate restart/relog with a fresh player instance for ModStaff
         FakePlayer rejoinedStaff = new FakePlayer(vanishedStaff.uuid, "ModStaff", vanishedStaff.permissions);
         onlinePlayers.set(0, rejoinedStaff.player);
         PlayerJoinEvent joinEvent = new PlayerJoinEvent(rejoinedStaff.player, "ModStaff joined the game");
@@ -410,6 +423,241 @@ class ModerationServiceAndCommandsTest {
         assertTrue(audits.stream().anyMatch(a -> a.action().equals("UNMUTE")));
     }
 
+    @Test
+    void muteRejectsMalformedDigitLeadingDurationTokensWithUsageInsteadOfPermanentReason() {
+        MuteCommand muteCmd = new MuteCommand(plugin, moderation);
+
+        for (String badToken : List.of("10x", "0s", "5foo", "123", "9999999999d")) {
+            vanishedStaff.messages.clear();
+            muteCmd.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.MUTE, vanishedStaff.player, "mute",
+                    new String[]{"ModNorm", badToken, "spam"}));
+            assertFalse(moderation.isMuted(normalPlayer.uuid), "bad token should not mute: " + badToken);
+            assertTrue(vanishedStaff.messages.stream().anyMatch(m -> m.contains("Usage:") && m.contains("/mute <player> [duration] [reason]")),
+                    "expected usage for bad token " + badToken + ", got " + vanishedStaff.messages);
+        }
+
+        // A non-digit second token remains the start of a permanent mute reason
+        muteCmd.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.MUTE, vanishedStaff.player, "mute",
+                new String[]{"ModNorm", "Repeatedly", "griefing"}));
+        MuteRecord record = moderation.activeMute(normalPlayer.uuid).orElseThrow();
+        assertTrue(record.isPermanent());
+        assertEquals("Repeatedly griefing", record.reason());
+    }
+
+    @Test
+    void muteReCancelsChatAtHighestAndBlocksConfigurableMutedCommands() {
+        MuteCommand muteCmd = new MuteCommand(plugin, moderation);
+        muteCmd.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.MUTE, vanishedStaff.player, "mute",
+                new String[]{"ModNorm", "5m", "Spam"}));
+
+        // Later plugin tries to un-cancel at NORMAL -> HIGHEST re-cancels without failing closed to broadcast
+        AsyncPlayerChatEvent chatEvent = new AsyncPlayerChatEvent(true, normalPlayer.player, "bypass attempt", new HashSet<>(onlinePlayers));
+        moderation.onAsyncPlayerChat(chatEvent);
+        assertTrue(chatEvent.isCancelled());
+        chatEvent.setCancelled(false);
+        moderation.onAsyncPlayerChatHighest(chatEvent);
+        assertTrue(chatEvent.isCancelled());
+
+        // Default muted commands: /me, /say, /tell, /minecraft:msg, /teammsg, /mail send
+        for (String cmdLine : List.of("/me waves", "/say hello", "/tell ModObs hi", "/minecraft:msg ModObs hi", "/teammsg yo", "/mail send ModObs hi")) {
+            normalPlayer.messages.clear();
+            PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(normalPlayer.player, cmdLine);
+            moderation.onCommandPreprocess(event);
+            assertTrue(event.isCancelled(), "expected muted command to be cancelled: " + cmdLine);
+            assertTrue(normalPlayer.messages.stream().anyMatch(m -> m.contains("You are muted") && m.contains("Spam")));
+        }
+
+        // Unrelated command & /mail read stay permitted
+        for (String allowed : List.of("/mail read", "/help")) {
+            PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(normalPlayer.player, allowed);
+            moderation.onCommandPreprocess(event);
+            assertFalse(event.isCancelled(), "did not expect command to be blocked: " + allowed);
+        }
+
+        // Custom muted-commands override via reload
+        config.set("moderation.mute.muted-commands", List.of("/customsay"));
+        moderation.reloadSettings();
+
+        PlayerCommandPreprocessEvent customBlocked = new PlayerCommandPreprocessEvent(normalPlayer.player, "/customsay test");
+        moderation.onCommandPreprocess(customBlocked);
+        assertTrue(customBlocked.isCancelled());
+
+        PlayerCommandPreprocessEvent nowUnblocked = new PlayerCommandPreprocessEvent(normalPlayer.player, "/me waves");
+        moderation.onCommandPreprocess(nowUnblocked);
+        assertFalse(nowUnblocked.isCancelled());
+    }
+
+    @Test
+    void vanishBlocksPublicChatByDefaultSupportsConfigToggleAndBlocksVanillaLeaks() {
+        moderation.setVanished(vanishedStaff.player, vanishedStaff.player, true);
+
+        // Public chat while vanished is blocked by default at both LOWEST and HIGHEST
+        vanishedStaff.messages.clear();
+        AsyncPlayerChatEvent vanishChat = new AsyncPlayerChatEvent(true, vanishedStaff.player, "oops global", new HashSet<>(onlinePlayers));
+        moderation.onAsyncPlayerChat(vanishChat);
+        assertTrue(vanishChat.isCancelled());
+        assertTrue(vanishedStaff.messages.stream().anyMatch(m -> m.contains("cannot send public chat while vanished")));
+        vanishChat.setCancelled(false);
+        moderation.onAsyncPlayerChatHighest(vanishChat);
+        assertTrue(vanishChat.isCancelled());
+
+        // Opting in via moderation.vanish.allow-public-chat allows public chat for unmuted vanished staff
+        config.set("moderation.vanish.allow-public-chat", true);
+        moderation.reloadSettings();
+        AsyncPlayerChatEvent allowedVanishChat = new AsyncPlayerChatEvent(true, vanishedStaff.player, "allowed global", new HashSet<>(onlinePlayers));
+        moderation.onAsyncPlayerChat(allowedVanishChat);
+        moderation.onAsyncPlayerChatHighest(allowedVanishChat);
+        assertFalse(allowedVanishChat.isCancelled());
+
+        // Vanilla /minecraft:list and /list hide vanishedStaff from ModNorm
+        normalPlayer.messages.clear();
+        PlayerCommandPreprocessEvent listEvent = new PlayerCommandPreprocessEvent(normalPlayer.player, "/minecraft:list");
+        moderation.onCommandPreprocess(listEvent);
+        assertTrue(listEvent.isCancelled());
+        assertTrue(normalPlayer.messages.stream().anyMatch(m -> m.contains("2 of a max of 20") && m.contains("ModNorm") && !m.contains("ModStaff")),
+                "expected filtered vanilla list without ModStaff, got " + normalPlayer.messages);
+
+        // Vanilla /minecraft:msg, /minecraft:tp and @a/@p selectors hide vanishedStaff from ModNorm
+        when(server.selectEntities(normalPlayer.player, "@p")).thenReturn(List.of(vanishedStaff.player));
+        when(server.selectEntities(normalPlayer.player, "@a")).thenReturn(List.of(normalPlayer.player, vanishedStaff.player));
+        for (String leakCmd : List.of("/minecraft:msg ModStaff hi", "/minecraft:tp ModStaff", "/minecraft:msg @p hi", "/minecraft:tp @a")) {
+            normalPlayer.messages.clear();
+            PlayerCommandPreprocessEvent cmdEvent = new PlayerCommandPreprocessEvent(normalPlayer.player, leakCmd);
+            moderation.onCommandPreprocess(cmdEvent);
+            assertTrue(cmdEvent.isCancelled(), "expected leak command cancelled: " + leakCmd);
+            assertTrue(normalPlayer.messages.stream().anyMatch(m -> m.contains("No player was found")));
+        }
+
+        // Staff with allium.vanish.see passes vanilla command check cleanly
+        PlayerCommandPreprocessEvent obsTp = new PlayerCommandPreprocessEvent(staffObserver.player, "/minecraft:tp ModStaff");
+        moderation.onCommandPreprocess(obsTp);
+        assertFalse(obsTp.isCancelled());
+
+        // TabCompleteEvent strips ModStaff for ModNorm, retains ModStaff for ModObs
+        TabCompleteEvent normTab = new TabCompleteEvent(normalPlayer.player, "/minecraft:msg ", new ArrayList<>(List.of("ModNorm", "ModObs", "ModStaff")));
+        moderation.onTabComplete(normTab);
+        assertEquals(List.of("ModNorm", "ModObs"), normTab.getCompletions());
+
+        TabCompleteEvent obsTab = new TabCompleteEvent(staffObserver.player, "/minecraft:msg ", new ArrayList<>(List.of("ModNorm", "ModObs", "ModStaff")));
+        moderation.onTabComplete(obsTab);
+        assertEquals(List.of("ModNorm", "ModObs", "ModStaff"), obsTab.getCompletions());
+
+        // Death message suppressed for vanished staff, preserved for normal player
+        PlayerDeathEvent staffDeath = new PlayerDeathEvent(vanishedStaff.player, List.of(), 0, "ModStaff fell from a high place");
+        moderation.onPlayerDeath(staffDeath);
+        assertNull(staffDeath.getDeathMessage());
+
+        PlayerDeathEvent normDeath = new PlayerDeathEvent(normalPlayer.player, List.of(), 0, "ModNorm fell from a high place");
+        moderation.onPlayerDeath(normDeath);
+        assertEquals("ModNorm fell from a high place", normDeath.getDeathMessage());
+    }
+
+    @Test
+    void liveContainerPermissionBypassesMirrorAndReloadRecomputesVisibility() {
+        moderation.setVanished(vanishedStaff.player, vanishedStaff.player, true);
+
+        // Grant opt-in live container permission -> chest open passes through natively (no SilentContainerHolder mirror)
+        vanishedStaff.permissions.add(ModerationService.PERMISSION_VANISH_CONTAINER_LIVE);
+        Block chestBlock = mock(Block.class);
+        when(chestBlock.getType()).thenReturn(Material.CHEST);
+        Chest chestState = mock(Chest.class);
+        when(chestBlock.getState()).thenReturn(chestState);
+        PlayerInteractEvent chestInteract = new PlayerInteractEvent(vanishedStaff.player, Action.RIGHT_CLICK_BLOCK, null, chestBlock, null);
+        moderation.onContainerInteract(chestInteract);
+        assertFalse(chestInteract.isCancelled());
+
+        // Mid-session permission change limitation: granting allium.vanish.see takes effect when reload recomputes visibility
+        assertFalse(normalPlayer.player.canSee(vanishedStaff.player));
+        normalPlayer.permissions.add(ModerationService.PERMISSION_VANISH_SEE);
+        assertFalse(normalPlayer.player.canSee(vanishedStaff.player));
+        moderation.reloadSettings();
+        assertTrue(normalPlayer.player.canSee(vanishedStaff.player));
+    }
+
+    @Test
+    void muteAndMessagingFailClosedWhileLoadingOrAfterLoadFailureAndRecoverOnRetry() throws Exception {
+        UUID pendingUuid = UUID.randomUUID();
+        FakePlayer pendingPlayer = new FakePlayer(pendingUuid, "JoinPending", Set.of("allium.msg", "allium.reply"));
+        onlinePlayers.add(pendingPlayer.player);
+
+        // 1. Simulate DB failure during AsyncPlayerPreLoginEvent -> state becomes FAILED and retry is scheduled
+        doThrow(new SQLException("db offline")).when(repository).loadActiveMute(pendingUuid);
+        AsyncPlayerPreLoginEvent failedPreLogin = new AsyncPlayerPreLoginEvent("JoinPending", InetAddress.getLoopbackAddress(), pendingUuid);
+        moderation.onAsyncPreLogin(failedPreLogin);
+
+        assertEquals(Optional.of(ModerationService.MuteLoadState.FAILED), moderation.muteLoadState(pendingUuid));
+        assertFalse(moderation.isMuteStateReady(pendingUuid));
+        assertFalse(scheduledRetries.isEmpty());
+
+        // Speech, /me, and /msg ALL fail closed while FAILED
+        pendingPlayer.messages.clear();
+        AsyncPlayerChatEvent failedChat = new AsyncPlayerChatEvent(true, pendingPlayer.player, "hello", new HashSet<>(onlinePlayers));
+        moderation.onAsyncPlayerChat(failedChat);
+        assertTrue(failedChat.isCancelled());
+        assertTrue(pendingPlayer.messages.stream().anyMatch(m -> m.contains("moderation status is still loading")));
+
+        failedChat.setCancelled(false);
+        moderation.onAsyncPlayerChatHighest(failedChat);
+        assertTrue(failedChat.isCancelled());
+
+        PlayerCommandPreprocessEvent failedMe = new PlayerCommandPreprocessEvent(pendingPlayer.player, "/me tests");
+        moderation.onCommandPreprocess(failedMe);
+        assertTrue(failedMe.isCancelled());
+
+        pendingPlayer.messages.clear();
+        assertEquals(MessagePolicy.Outcome.SENDER_MUTED, messaging.send(pendingPlayer.player, staffObserver.player, "ModObs", "hi"));
+        assertTrue(pendingPlayer.messages.stream().anyMatch(m -> m.contains("moderation status is still loading")));
+
+        // 2. Database recovers and retry runs -> transitions READY and permits unmuted speech
+        doReturn(Optional.empty()).when(repository).loadActiveMute(pendingUuid);
+        scheduledRetries.remove(0).run();
+
+        assertEquals(Optional.of(ModerationService.MuteLoadState.READY), moderation.muteLoadState(pendingUuid));
+        assertTrue(moderation.isMuteStateReady(pendingUuid));
+        AsyncPlayerChatEvent recoveredChat = new AsyncPlayerChatEvent(true, pendingPlayer.player, "now works", new HashSet<>(onlinePlayers));
+        moderation.onAsyncPlayerChat(recoveredChat);
+        assertFalse(recoveredChat.isCancelled());
+
+        // 3. Simulate slow DB causing pre-login wait to expire -> joins in LOADING (fail-closed) -> becomes READY once finished
+        UUID slowUuid = UUID.randomUUID();
+        FakePlayer slowPlayer = new FakePlayer(slowUuid, "JoinSlow", Set.of("allium.msg"));
+        onlinePlayers.add(slowPlayer.player);
+
+        ExecutorService asyncPool = Executors.newSingleThreadExecutor();
+        ModerationService slowService = new ModerationService(plugin, repository, asyncPool, clock::get, (task, delay) -> {});
+        config.set("moderation.preload-wait-millis", 10L);
+        CountDownLatch slowGate = new CountDownLatch(1);
+        doAnswer(inv -> {
+            slowGate.await();
+            return Optional.empty();
+        }).when(repository).loadActiveMute(slowUuid);
+        try {
+            slowService.enable();
+            AsyncPlayerPreLoginEvent slowPreLogin = new AsyncPlayerPreLoginEvent("JoinSlow", InetAddress.getLoopbackAddress(), slowUuid);
+            slowService.onAsyncPreLogin(slowPreLogin);
+            assertEquals(Optional.of(ModerationService.MuteLoadState.LOADING), slowService.muteLoadState(slowUuid));
+            assertFalse(slowService.isMuteStateReady(slowUuid));
+
+            AsyncPlayerChatEvent loadingChat = new AsyncPlayerChatEvent(true, slowPlayer.player, "too early", new HashSet<>(onlinePlayers));
+            slowService.onAsyncPlayerChat(loadingChat);
+            assertTrue(loadingChat.isCancelled());
+            assertTrue(slowPlayer.messages.stream().anyMatch(m -> m.contains("moderation status is still loading")));
+
+            slowGate.countDown();
+            long deadline = System.nanoTime() + 2_000_000_000L;
+            while (!slowService.isMuteStateReady(slowUuid) && System.nanoTime() < deadline) {
+                Thread.sleep(5);
+            }
+            assertTrue(slowService.isMuteStateReady(slowUuid));
+        } finally {
+            slowGate.countDown();
+            slowService.disable();
+            asyncPool.shutdownNow();
+            // Restore main moderation listener registration for @AfterEach
+            moderation.enable();
+        }
+    }
+
     private final class FakePlayer {
         final UUID uuid;
         final String name;
@@ -448,6 +696,7 @@ class ModerationServiceAndCommandsTest {
                 messages.add(ChatColor.stripColor(c.toPlainText()));
                 return null;
             }).when(spigot).sendMessage(any(net.md_5.bungee.api.chat.BaseComponent.class));
+            when(player.getServer()).thenReturn(server);
             when(player.getUniqueId()).thenReturn(uuid);
             when(player.getName()).thenReturn(name);
             when(player.isOnline()).thenReturn(true);

@@ -264,6 +264,10 @@ public final class PluginStart extends JavaPlugin {
                     && mod.moderation() != null) {
                 mod.moderation().reloadSettings();
             }
+            if (moduleManager.getModule("info") instanceof codes.castled.allium.module.PlayerInfoModule info && info.isEnabled()
+                    && info.info() != null) {
+                info.info().reloadSettings();
+            }
             ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
             settings.warnings().forEach(logger::warning);
             if (settings.owner() != startupPackOwner) {

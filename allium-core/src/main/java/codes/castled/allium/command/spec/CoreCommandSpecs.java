@@ -170,7 +170,28 @@ public final class CoreCommandSpecs {
             ))
     );
 
-    public static final List<CommandSpec> ITEM_SPECS = List.of(GIVE);
+    /**
+     * Self-use alias of {@link #GIVE}: uses the exact same {@code ItemSpecParser}, library,
+     * delivery pipeline, and {@code allium.give} / {@code allium.give.privileged} permissions.
+     */
+    public static final CommandSpec ITEM = new CommandSpec(
+            "i",
+            CommandSpec.DEFAULT_NAMESPACE,
+            "items",
+            List.of("item"),
+            "Give items to yourself",
+            "/i <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]",
+            "/give <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]",
+            "allium.give",
+            null,
+            List.of(
+                    CommandArgSpec.required("item", null, SuggestionSpec.none())
+            ),
+            List.of(),
+            GIVE.messageKeys()
+    );
+
+    public static final List<CommandSpec> ITEM_SPECS = List.of(GIVE, ITEM);
 
     /** {@code /allium}: plugin administration. {@code version} needs no permission; {@code reload} needs {@code allium.reload}. */
     public static final CommandSpec ALLIUM = new CommandSpec(
@@ -453,6 +474,91 @@ public final class CoreCommandSpecs {
             GOD,
             GAMEMODE
     );
+
+    public static final CommandSpec LIST = new CommandSpec(
+            "list",
+            CommandSpec.DEFAULT_NAMESPACE,
+            "info",
+            List.of("online"),
+            "List online players",
+            "/list",
+            "/list",
+            "allium.list",
+            null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec SEEN = new CommandSpec(
+            "seen",
+            CommandSpec.DEFAULT_NAMESPACE,
+            "info",
+            List.of(),
+            "Show when a player was last seen and first joined",
+            "/seen <player>",
+            "/seen <player>",
+            "allium.seen",
+            null,
+            List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec WHOIS = new CommandSpec(
+            "whois",
+            CommandSpec.DEFAULT_NAMESPACE,
+            "info",
+            List.of(),
+            "Inspect player UUID, name history, and staff-only location",
+            "/whois <player>",
+            "/whois <player>",
+            "allium.whois",
+            null,
+            List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec NEAR = new CommandSpec(
+            "near",
+            CommandSpec.DEFAULT_NAMESPACE,
+            "info",
+            List.of(),
+            "List nearby visible players",
+            "/near [radius]",
+            "/near [radius]",
+            "allium.near",
+            null,
+            List.of(
+                    CommandArgSpec.optional("radius", null, SuggestionSpec.literals(List.of("50", "100", "200", "500"), null))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec AFK = new CommandSpec(
+            "afk",
+            CommandSpec.DEFAULT_NAMESPACE,
+            "info",
+            List.of("away"),
+            "Toggle AFK status with an optional message",
+            "/afk [message]",
+            "/afk [message]",
+            "allium.afk",
+            null,
+            List.of(
+                    CommandArgSpec.optional("message", null, SuggestionSpec.none())
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final List<CommandSpec> INFO_SPECS = List.of(LIST, SEEN, WHOIS, NEAR, AFK);
 
     private CoreCommandSpecs() {
     }

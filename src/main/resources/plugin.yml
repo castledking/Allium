@@ -173,6 +173,34 @@ commands:
     aliases: [mutelist]
     permission: allium.mute
 
+  i:
+    description: Give items to yourself
+    usage: /<command> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
+    aliases: [item]
+    permission: allium.give
+  list:
+    description: List online players
+    usage: /<command>
+    aliases: [online]
+    permission: allium.list
+  seen:
+    description: Show when a player was last seen and first joined
+    usage: /<command> <player>
+    permission: allium.seen
+  whois:
+    description: Inspect player UUID, name history, and staff-only location
+    usage: /<command> <player>
+    permission: allium.whois
+  near:
+    description: List nearby visible players
+    usage: /<command> [radius]
+    permission: allium.near
+  afk:
+    description: Toggle AFK status with an optional message
+    usage: /<command> [message]
+    aliases: [away]
+    permission: allium.afk
+
 permissions:
   allium.*:
     description: All Allium permissions
@@ -211,6 +239,13 @@ permissions:
       allium.vanish.see: true
       allium.mute: true
       allium.unmute: true
+      allium.list: true
+      allium.seen: true
+      allium.whois: true
+      allium.whois.location: true
+      allium.near: true
+      allium.near.bypass-max: true
+      allium.afk: true
       allium.reload: true
       allium.import: true
   allium.reload:
@@ -430,4 +465,28 @@ permissions:
     default: op
   allium.kit.bypass.cooldown:
     description: Explicit kit cooldown bypass (never granted implicitly to operators)
+    default: false
+  allium.list:
+    description: Allows /list
+    default: true
+  allium.seen:
+    description: Allows /seen
+    default: true
+  allium.whois:
+    description: Allows /whois
+    default: true
+  allium.whois.location:
+    description: Shows online player coordinates in /whois (staff only)
+    default: op
+  allium.near:
+    description: Allows /near
+    default: true
+  allium.near.bypass-max:
+    description: Allows /near with radius above info.near.max-radius
+    default: op
+  allium.afk:
+    description: Allows /afk
+    default: true
+  allium.afk.kick.exempt:
+    description: Exempts player from AFK kick when kick-on-afk is enabled. Explicit only; not in allium.*.
     default: false

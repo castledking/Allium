@@ -135,6 +135,38 @@ moderation:
   vanish-chat-blocked: "{prefix} &cYou cannot send public chat while vanished. Use &f/vanish off &cor &f/msg&c."
   mute-unavailable: "{prefix} &cYour moderation status is still loading; chat and messaging are temporarily unavailable. Try again shortly."
 
+info:
+  list:
+    empty: "{prefix} &7There are &f0&7/&f{max} &7players online."
+    header: "{prefix} &fOnline players &7({online}/{max}):"
+    group: "&7{group} &8({count})&7: &f{players}"
+  seen:
+    online: "{prefix} &f{player} &ais online{tags} &7(for &f{duration}&7). First joined: &f{first_join}"
+    offline: "{prefix} &f{player} &7is offline (last seen &f{last_seen} &7ago, &f{last_seen_date}&7). First joined: &f{first_join}"
+    unknown: "{prefix} &cNo player called &f{player} &chas played here."
+  whois:
+    header: "{prefix} &fWhois &e{player} &7({status}{tags}):"
+    uuid: "&7UUID: &f{uuid}"
+    dates: "&7First joined: &f{first_join} &8| &7{seen_label}: &f{seen_value}"
+    location: "&7Location: &f{world} &7(&f{x}&7, &f{y}&7, &f{z}&7)"
+    names: "&7Known names: &f{names}"
+  near:
+    list: "{prefix} &fNearby players &7(within &f{radius}m&7, {count}): &f{players}"
+    empty: "{prefix} &7No players within &f{radius}m&7."
+    invalid-radius: "{prefix} &cRadius must be a positive number."
+    too-far: "{prefix} &cRadius cannot exceed &f{max}&c blocks."
+  afk:
+    enter: "{prefix} &7{player} is now AFK."
+    enter-reason: "{prefix} &7{player} is now AFK: &f{message}"
+    leave: "{prefix} &7{player} is no longer AFK."
+    self-enter: "{prefix} &7You are now AFK."
+    self-enter-reason: "{prefix} &7You are now AFK: &f{message}"
+    self-leave: "{prefix} &7You are no longer AFK."
+    kick: "You were kicked for being AFK."
+  player-only: "{prefix} &cOnly players can use /{cmd}."
+  storage-failed: "{prefix} &cPlayer info could not be loaded right now; try again shortly."
+
+
 player:
   gamemode-self: "{prefix} &aGamemode set to &f{mode}&a."
   gamemode-other: "{prefix} &aSet &f{player}&a's gamemode to &f{mode}&a."

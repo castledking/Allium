@@ -64,7 +64,9 @@ public final class ItemsModule extends AbstractModule {
         delivery = new ItemDeliveryService(
                 plugin.getScheduler().serverExecutor(), plugin.getScheduler()::isServerThread, Bukkit::getPlayer,
                 Bukkit.getPluginManager(), () -> skullFallback);
-        String route = registerGive(new GiveCommand(plugin, () -> parser, library, delivery, () -> overflow));
+        GiveCommand giveCommand = new GiveCommand(plugin, () -> parser, library, delivery, () -> overflow);
+        String route = registerGive(giveCommand);
+        plugin.getCommandManager().register(new codes.castled.allium.command.items.ItemSelfCommand(plugin, giveCommand));
         plugin.logger().info("Item library enabled: /give harness (" + route + "), overflow " + overflow.configName() + ", skull fallback "
                 + skullFallback.configName() + ", raw item data as "
                 + (version.hasDataComponents() ? "[...] components" : "{...} NBT") + " (server " + version + ").");

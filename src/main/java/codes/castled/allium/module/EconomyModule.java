@@ -15,7 +15,7 @@ import java.util.UUID;
 public final class EconomyModule extends AbstractModule {
 
     private final EconomyTable table;
-    private VaultEconomyProvider vaultProvider;
+    private VaultRegistration vaultRegistration;
 
     public EconomyModule(PluginStart plugin) {
         super(plugin);
@@ -32,18 +32,38 @@ public final class EconomyModule extends AbstractModule {
         table.init();
         plugin.getDatabaseManager().setEconomyTable(table);
 
-        if (Bukkit.getPluginManager().getPlugin("Vault") != null) {
-            vaultProvider = new VaultEconomyProvider();
-            Bukkit.getServicesManager().register(Economy.class, vaultProvider, plugin, ServicePriority.Highest);
-            plugin.logger().info("Hooked into Vault for economy.");
-        }
+        // This is the legacy, unsafe scaffold, not the S14 transaction engine. Check the
+        // explicit opt-in before loading any class that links against the optional Vault API.
+        if (!plugin.getConfig().getBoolean("economy.scaffold-vault-provider-enabled", false)) return;
+        if (Bukkit.getPluginManager().getPlugin("Vault") == null) return;
+        vaultRegistration = new VaultRegistration();
     }
 
     @Override
     public void onDisable() {
-        if (vaultProvider != null) {
-            Bukkit.getServicesManager().unregister(Economy.class, vaultProvider);
-            vaultProvider = null;
+        if (vaultRegistration != null) {
+            vaultRegistration.close();
+            vaultRegistration = null;
+        }
+    }
+
+    /** Loaded only after opt-in and Vault presence; keeps optional API linkage out of startup. */
+    private final class VaultRegistration {
+        private final VaultEconomyProvider provider = new VaultEconomyProvider();
+
+        private VaultRegistration() {
+            plugin.logger().warning("UNSAFE economy scaffold Vault provider explicitly enabled: "
+                    + "writes are not atomic or journalled and may report success after failure. "
+                    + "The S14 economy design is not implemented.");
+            if (Bukkit.getServicesManager().getRegistration(Economy.class) != null) {
+                plugin.logger().warning("An existing Vault economy provider is registered; "
+                        + "the unsafe Allium scaffold registers at Highest priority and may replace it.");
+            }
+            Bukkit.getServicesManager().register(Economy.class, provider, plugin, ServicePriority.Highest);
+        }
+
+        private void close() {
+            Bukkit.getServicesManager().unregister(Economy.class, provider);
         }
     }
 

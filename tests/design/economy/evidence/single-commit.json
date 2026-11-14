@@ -1,0 +1,4008 @@
+{
+  "manifest": {
+    "source_sha256": {
+      "MoneyBoundary.java": "acd018cb5f5c90221cc0c1b27ecd0e731e0a088c08c7712134a639d0792fc125",
+      "SingleCommitProbe.java": "9b15f08e1abfd13d8cfe0ab2bfacd8f030a05111bb4d38ec938d114ad63a47e1"
+    },
+    "dependencies": {
+      "Allium.jar": "bc0842dc492c19ace87b1469005c4be3fadbb666134519d84458dcf7d3998334",
+      "sqlite-jdbc-3.49.1.0.jar": "5c8609d2ca341deb8c6f71778974b5ba4995c7d32d7c7c89d9392a3e72c39291",
+      "mysql-connector-j-9.2.0.jar": "7e9941bbdcca244d878ea95bfff788fd9ba6a65af757f24be6c632930d61c7ed"
+    },
+    "java": "/usr/lib/jvm/java-17-openjdk/bin/java",
+    "mysql": "owned allium-gate-mysql 127.0.0.1:25733",
+    "credentials": "private environment only",
+    "passed": true,
+    "summary_ms": {
+      "sqlite-full": {
+        "single": {
+          "n": 100,
+          "p50": 0.9735,
+          "p95": 1.0713,
+          "p99": 1.4448,
+          "max": 1.5177
+        },
+        "burst3": {
+          "n": 60,
+          "p50": 0.9731,
+          "p95": 1.2669,
+          "p99": 2.1977,
+          "max": 2.1977
+        }
+      },
+      "sqlite-normal": {
+        "single": {
+          "n": 100,
+          "p50": 0.0363,
+          "p95": 0.0541,
+          "p99": 0.0672,
+          "max": 0.0809
+        },
+        "burst3": {
+          "n": 60,
+          "p50": 0.0498,
+          "p95": 0.1694,
+          "p99": 0.241,
+          "max": 0.241
+        }
+      },
+      "mysql-durable": {
+        "single": {
+          "n": 100,
+          "p50": 13.4628,
+          "p95": 24.1892,
+          "p99": 26.5557,
+          "max": 36.0993
+        },
+        "burst3": {
+          "n": 60,
+          "p50": 13.3692,
+          "p95": 30.1548,
+          "p99": 44.0402,
+          "max": 44.0402
+        }
+      }
+    },
+    "faults": [
+      {
+        "inner_commit_ack_discarded": false,
+        "lane": "sqlite-full",
+        "sqlite_busy_proven": true,
+        "blocked_then_resolved_ms": 183.77346,
+        "recovery": "REINSERT_APPLIED_ONCE",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "before_commit"
+      },
+      {
+        "inner_commit_ack_discarded": true,
+        "lane": "sqlite-full",
+        "sqlite_busy_proven": true,
+        "blocked_then_resolved_ms": 182.36787,
+        "recovery": "DUPLICATE_COMMITTED",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "after_commit"
+      },
+      {
+        "inner_commit_ack_discarded": false,
+        "lane": "sqlite-normal",
+        "sqlite_busy_proven": true,
+        "blocked_then_resolved_ms": 182.544644,
+        "recovery": "REINSERT_APPLIED_ONCE",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "before_commit"
+      },
+      {
+        "inner_commit_ack_discarded": true,
+        "lane": "sqlite-normal",
+        "sqlite_busy_proven": true,
+        "blocked_then_resolved_ms": 183.334165,
+        "recovery": "DUPLICATE_COMMITTED",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "after_commit"
+      },
+      {
+        "inner_commit_ack_discarded": false,
+        "lane": "mysql-durable",
+        "sqlite_busy_proven": false,
+        "blocked_then_resolved_ms": 175.813132,
+        "recovery": "REINSERT_APPLIED_ONCE",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "before_commit"
+      },
+      {
+        "inner_commit_ack_discarded": true,
+        "lane": "mysql-durable",
+        "sqlite_busy_proven": false,
+        "blocked_then_resolved_ms": 176.439941,
+        "recovery": "DUPLICATE_COMMITTED",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "after_commit"
+      }
+    ],
+    "checks": 2794,
+    "results_sha256": "0ddf8db6e6d7a2d276641225d24bf58823d30a63b29b14e2ffde8a5a729c9929",
+    "restored_mysql_running": true
+  },
+  "raw": {
+    "passed": true,
+    "samples": [
+      {
+        "commit_ns": 1482188,
+        "operation": 1,
+        "phase": "warmup",
+        "elapsed_ns": 3806560,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 686901,
+        "operation": 2,
+        "phase": "warmup",
+        "elapsed_ns": 883263,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 807935,
+        "operation": 3,
+        "phase": "warmup",
+        "elapsed_ns": 938715,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1328819,
+        "operation": 4,
+        "phase": "warmup",
+        "elapsed_ns": 1463480,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 797582,
+        "operation": 5,
+        "phase": "warmup",
+        "elapsed_ns": 957774,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 810110,
+        "operation": 6,
+        "phase": "warmup",
+        "elapsed_ns": 963978,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1226331,
+        "operation": 7,
+        "phase": "warmup",
+        "elapsed_ns": 1381066,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 768399,
+        "operation": 8,
+        "phase": "warmup",
+        "elapsed_ns": 944989,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 736182,
+        "operation": 9,
+        "phase": "warmup",
+        "elapsed_ns": 876917,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 841902,
+        "operation": 10,
+        "phase": "warmup",
+        "elapsed_ns": 976806,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 774361,
+        "operation": 11,
+        "phase": "warmup",
+        "elapsed_ns": 920438,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 804369,
+        "operation": 12,
+        "phase": "warmup",
+        "elapsed_ns": 925176,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 836661,
+        "operation": 13,
+        "phase": "warmup",
+        "elapsed_ns": 961312,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1356530,
+        "operation": 14,
+        "phase": "warmup",
+        "elapsed_ns": 1473469,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 749429,
+        "operation": 15,
+        "phase": "warmup",
+        "elapsed_ns": 877818,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 820393,
+        "operation": 16,
+        "phase": "warmup",
+        "elapsed_ns": 938405,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 830469,
+        "operation": 17,
+        "phase": "warmup",
+        "elapsed_ns": 957933,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 753940,
+        "operation": 18,
+        "phase": "warmup",
+        "elapsed_ns": 927593,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 717890,
+        "operation": 19,
+        "phase": "warmup",
+        "elapsed_ns": 835827,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 832909,
+        "operation": 20,
+        "phase": "warmup",
+        "elapsed_ns": 955459,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 880371,
+        "operation": 21,
+        "phase": "single",
+        "elapsed_ns": 987282,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 744430,
+        "operation": 22,
+        "phase": "single",
+        "elapsed_ns": 864109,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 778872,
+        "operation": 23,
+        "phase": "single",
+        "elapsed_ns": 918791,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 855273,
+        "operation": 24,
+        "phase": "single",
+        "elapsed_ns": 947722,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1224918,
+        "operation": 25,
+        "phase": "single",
+        "elapsed_ns": 1305044,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 816523,
+        "operation": 26,
+        "phase": "single",
+        "elapsed_ns": 912696,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 797822,
+        "operation": 27,
+        "phase": "single",
+        "elapsed_ns": 911490,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 850870,
+        "operation": 28,
+        "phase": "single",
+        "elapsed_ns": 934444,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 999213,
+        "operation": 29,
+        "phase": "single",
+        "elapsed_ns": 1072680,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 898384,
+        "operation": 30,
+        "phase": "single",
+        "elapsed_ns": 965239,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 855470,
+        "operation": 31,
+        "phase": "single",
+        "elapsed_ns": 935444,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 916367,
+        "operation": 32,
+        "phase": "single",
+        "elapsed_ns": 984776,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 953332,
+        "operation": 33,
+        "phase": "single",
+        "elapsed_ns": 1018492,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 875351,
+        "operation": 34,
+        "phase": "single",
+        "elapsed_ns": 941007,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 907149,
+        "operation": 35,
+        "phase": "single",
+        "elapsed_ns": 973516,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 927245,
+        "operation": 36,
+        "phase": "single",
+        "elapsed_ns": 988230,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 976745,
+        "operation": 37,
+        "phase": "single",
+        "elapsed_ns": 1043398,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 836936,
+        "operation": 38,
+        "phase": "single",
+        "elapsed_ns": 911019,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 911066,
+        "operation": 39,
+        "phase": "single",
+        "elapsed_ns": 976046,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 916948,
+        "operation": 40,
+        "phase": "single",
+        "elapsed_ns": 976953,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 970311,
+        "operation": 41,
+        "phase": "single",
+        "elapsed_ns": 1054570,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 850499,
+        "operation": 42,
+        "phase": "single",
+        "elapsed_ns": 926558,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 817470,
+        "operation": 43,
+        "phase": "single",
+        "elapsed_ns": 912765,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 857874,
+        "operation": 44,
+        "phase": "single",
+        "elapsed_ns": 983956,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 924336,
+        "operation": 45,
+        "phase": "single",
+        "elapsed_ns": 996108,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 936596,
+        "operation": 46,
+        "phase": "single",
+        "elapsed_ns": 1014503,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 864463,
+        "operation": 47,
+        "phase": "single",
+        "elapsed_ns": 921154,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 932976,
+        "operation": 48,
+        "phase": "single",
+        "elapsed_ns": 987356,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 955140,
+        "operation": 49,
+        "phase": "single",
+        "elapsed_ns": 1011217,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 914904,
+        "operation": 50,
+        "phase": "single",
+        "elapsed_ns": 974267,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 948141,
+        "operation": 51,
+        "phase": "single",
+        "elapsed_ns": 1001859,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 884921,
+        "operation": 52,
+        "phase": "single",
+        "elapsed_ns": 962741,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 935413,
+        "operation": 53,
+        "phase": "single",
+        "elapsed_ns": 1001736,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 852315,
+        "operation": 54,
+        "phase": "single",
+        "elapsed_ns": 935576,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 878545,
+        "operation": 55,
+        "phase": "single",
+        "elapsed_ns": 957721,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 873768,
+        "operation": 56,
+        "phase": "single",
+        "elapsed_ns": 946625,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 917171,
+        "operation": 57,
+        "phase": "single",
+        "elapsed_ns": 997868,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 835778,
+        "operation": 58,
+        "phase": "single",
+        "elapsed_ns": 925050,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 941161,
+        "operation": 59,
+        "phase": "single",
+        "elapsed_ns": 1038382,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 800271,
+        "operation": 60,
+        "phase": "single",
+        "elapsed_ns": 905986,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1004628,
+        "operation": 61,
+        "phase": "single",
+        "elapsed_ns": 1071346,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 803306,
+        "operation": 62,
+        "phase": "single",
+        "elapsed_ns": 864297,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 957996,
+        "operation": 63,
+        "phase": "single",
+        "elapsed_ns": 1008483,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 934406,
+        "operation": 64,
+        "phase": "single",
+        "elapsed_ns": 1022396,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 827751,
+        "operation": 65,
+        "phase": "single",
+        "elapsed_ns": 943863,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 867569,
+        "operation": 66,
+        "phase": "single",
+        "elapsed_ns": 917366,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 968978,
+        "operation": 67,
+        "phase": "single",
+        "elapsed_ns": 1010164,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 935753,
+        "operation": 68,
+        "phase": "single",
+        "elapsed_ns": 978223,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 979966,
+        "operation": 69,
+        "phase": "single",
+        "elapsed_ns": 1033172,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 890282,
+        "operation": 70,
+        "phase": "single",
+        "elapsed_ns": 942841,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 977389,
+        "operation": 71,
+        "phase": "single",
+        "elapsed_ns": 1015765,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 945110,
+        "operation": 72,
+        "phase": "single",
+        "elapsed_ns": 980154,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 932729,
+        "operation": 73,
+        "phase": "single",
+        "elapsed_ns": 967304,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1011789,
+        "operation": 74,
+        "phase": "single",
+        "elapsed_ns": 1053843,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 962406,
+        "operation": 75,
+        "phase": "single",
+        "elapsed_ns": 998814,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 970092,
+        "operation": 76,
+        "phase": "single",
+        "elapsed_ns": 1004670,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 967279,
+        "operation": 77,
+        "phase": "single",
+        "elapsed_ns": 1020709,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 786018,
+        "operation": 78,
+        "phase": "single",
+        "elapsed_ns": 852990,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 933244,
+        "operation": 79,
+        "phase": "single",
+        "elapsed_ns": 979070,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 949774,
+        "operation": 80,
+        "phase": "single",
+        "elapsed_ns": 989121,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 962885,
+        "operation": 81,
+        "phase": "single",
+        "elapsed_ns": 999740,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 973456,
+        "operation": 82,
+        "phase": "single",
+        "elapsed_ns": 1019833,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 878616,
+        "operation": 83,
+        "phase": "single",
+        "elapsed_ns": 943597,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 938674,
+        "operation": 84,
+        "phase": "single",
+        "elapsed_ns": 986917,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 960281,
+        "operation": 85,
+        "phase": "single",
+        "elapsed_ns": 997401,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 951481,
+        "operation": 86,
+        "phase": "single",
+        "elapsed_ns": 988263,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 987206,
+        "operation": 87,
+        "phase": "single",
+        "elapsed_ns": 1024497,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 894248,
+        "operation": 88,
+        "phase": "single",
+        "elapsed_ns": 953154,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 923428,
+        "operation": 89,
+        "phase": "single",
+        "elapsed_ns": 972650,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 922836,
+        "operation": 90,
+        "phase": "single",
+        "elapsed_ns": 974449,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1018547,
+        "operation": 91,
+        "phase": "single",
+        "elapsed_ns": 1063576,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 890026,
+        "operation": 92,
+        "phase": "single",
+        "elapsed_ns": 953607,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 883079,
+        "operation": 93,
+        "phase": "single",
+        "elapsed_ns": 934611,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 936409,
+        "operation": 94,
+        "phase": "single",
+        "elapsed_ns": 979248,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1020704,
+        "operation": 95,
+        "phase": "single",
+        "elapsed_ns": 1072951,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 804689,
+        "operation": 96,
+        "phase": "single",
+        "elapsed_ns": 879635,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 900835,
+        "operation": 97,
+        "phase": "single",
+        "elapsed_ns": 953732,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 960461,
+        "operation": 98,
+        "phase": "single",
+        "elapsed_ns": 1002444,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 722467,
+        "operation": 99,
+        "phase": "single",
+        "elapsed_ns": 1025855,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 801284,
+        "operation": 100,
+        "phase": "single",
+        "elapsed_ns": 891545,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 855378,
+        "operation": 101,
+        "phase": "single",
+        "elapsed_ns": 941432,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1351937,
+        "operation": 102,
+        "phase": "single",
+        "elapsed_ns": 1444756,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 857828,
+        "operation": 103,
+        "phase": "single",
+        "elapsed_ns": 943649,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 772328,
+        "operation": 104,
+        "phase": "single",
+        "elapsed_ns": 859887,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 849870,
+        "operation": 105,
+        "phase": "single",
+        "elapsed_ns": 931446,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 870929,
+        "operation": 106,
+        "phase": "single",
+        "elapsed_ns": 943340,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 941446,
+        "operation": 107,
+        "phase": "single",
+        "elapsed_ns": 1008733,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 806159,
+        "operation": 108,
+        "phase": "single",
+        "elapsed_ns": 889501,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 887531,
+        "operation": 109,
+        "phase": "single",
+        "elapsed_ns": 964073,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 848815,
+        "operation": 110,
+        "phase": "single",
+        "elapsed_ns": 925198,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1430391,
+        "operation": 111,
+        "phase": "single",
+        "elapsed_ns": 1517719,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 796374,
+        "operation": 112,
+        "phase": "single",
+        "elapsed_ns": 906385,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 852412,
+        "operation": 113,
+        "phase": "single",
+        "elapsed_ns": 935524,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 848754,
+        "operation": 114,
+        "phase": "single",
+        "elapsed_ns": 927101,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 871566,
+        "operation": 115,
+        "phase": "single",
+        "elapsed_ns": 950247,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 868209,
+        "operation": 116,
+        "phase": "single",
+        "elapsed_ns": 945411,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 888074,
+        "operation": 117,
+        "phase": "single",
+        "elapsed_ns": 954773,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 884177,
+        "operation": 118,
+        "phase": "single",
+        "elapsed_ns": 942705,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 910903,
+        "operation": 119,
+        "phase": "single",
+        "elapsed_ns": 979874,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 826100,
+        "operation": 120,
+        "phase": "single",
+        "elapsed_ns": 924500,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 820889,
+        "operation": 121,
+        "phase": "burst3",
+        "elapsed_ns": 893321,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 916229,
+        "operation": 122,
+        "phase": "burst3",
+        "elapsed_ns": 987249,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 835446,
+        "operation": 123,
+        "phase": "burst3",
+        "elapsed_ns": 921307,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 977971,
+        "operation": 124,
+        "phase": "burst3",
+        "elapsed_ns": 1180213,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 659482,
+        "operation": 125,
+        "phase": "burst3",
+        "elapsed_ns": 769750,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 781011,
+        "operation": 126,
+        "phase": "burst3",
+        "elapsed_ns": 897926,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1045021,
+        "operation": 127,
+        "phase": "burst3",
+        "elapsed_ns": 1266897,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 786826,
+        "operation": 128,
+        "phase": "burst3",
+        "elapsed_ns": 956836,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 857822,
+        "operation": 129,
+        "phase": "burst3",
+        "elapsed_ns": 919113,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1041842,
+        "operation": 130,
+        "phase": "burst3",
+        "elapsed_ns": 1252354,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1070140,
+        "operation": 131,
+        "phase": "burst3",
+        "elapsed_ns": 1119965,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 865968,
+        "operation": 132,
+        "phase": "burst3",
+        "elapsed_ns": 910742,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 655843,
+        "operation": 133,
+        "phase": "burst3",
+        "elapsed_ns": 786167,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 948184,
+        "operation": 134,
+        "phase": "burst3",
+        "elapsed_ns": 994648,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 948375,
+        "operation": 135,
+        "phase": "burst3",
+        "elapsed_ns": 985435,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1041808,
+        "operation": 136,
+        "phase": "burst3",
+        "elapsed_ns": 1194817,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 699422,
+        "operation": 137,
+        "phase": "burst3",
+        "elapsed_ns": 764466,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 883489,
+        "operation": 138,
+        "phase": "burst3",
+        "elapsed_ns": 941646,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 740791,
+        "operation": 139,
+        "phase": "burst3",
+        "elapsed_ns": 919620,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 864326,
+        "operation": 140,
+        "phase": "burst3",
+        "elapsed_ns": 964943,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 745293,
+        "operation": 141,
+        "phase": "burst3",
+        "elapsed_ns": 871190,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 765582,
+        "operation": 142,
+        "phase": "burst3",
+        "elapsed_ns": 973077,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 704053,
+        "operation": 143,
+        "phase": "burst3",
+        "elapsed_ns": 822306,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 768011,
+        "operation": 144,
+        "phase": "burst3",
+        "elapsed_ns": 882945,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1952685,
+        "operation": 145,
+        "phase": "burst3",
+        "elapsed_ns": 2197682,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1055259,
+        "operation": 146,
+        "phase": "burst3",
+        "elapsed_ns": 1181181,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 899212,
+        "operation": 147,
+        "phase": "burst3",
+        "elapsed_ns": 1026486,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1098742,
+        "operation": 148,
+        "phase": "burst3",
+        "elapsed_ns": 1346884,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1060953,
+        "operation": 149,
+        "phase": "burst3",
+        "elapsed_ns": 1138866,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 778226,
+        "operation": 150,
+        "phase": "burst3",
+        "elapsed_ns": 870372,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1024522,
+        "operation": 151,
+        "phase": "burst3",
+        "elapsed_ns": 1156969,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 803304,
+        "operation": 152,
+        "phase": "burst3",
+        "elapsed_ns": 869526,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1079859,
+        "operation": 153,
+        "phase": "burst3",
+        "elapsed_ns": 1140194,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 956234,
+        "operation": 154,
+        "phase": "burst3",
+        "elapsed_ns": 1103199,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 651306,
+        "operation": 155,
+        "phase": "burst3",
+        "elapsed_ns": 700573,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 730678,
+        "operation": 156,
+        "phase": "burst3",
+        "elapsed_ns": 1005631,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1260070,
+        "operation": 157,
+        "phase": "burst3",
+        "elapsed_ns": 1385775,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 889242,
+        "operation": 158,
+        "phase": "burst3",
+        "elapsed_ns": 942251,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 907207,
+        "operation": 159,
+        "phase": "burst3",
+        "elapsed_ns": 946244,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1121469,
+        "operation": 160,
+        "phase": "burst3",
+        "elapsed_ns": 1249824,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1009772,
+        "operation": 161,
+        "phase": "burst3",
+        "elapsed_ns": 1066560,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 960108,
+        "operation": 162,
+        "phase": "burst3",
+        "elapsed_ns": 999305,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 978571,
+        "operation": 163,
+        "phase": "burst3",
+        "elapsed_ns": 1103399,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 682380,
+        "operation": 164,
+        "phase": "burst3",
+        "elapsed_ns": 724009,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 922165,
+        "operation": 165,
+        "phase": "burst3",
+        "elapsed_ns": 955781,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 979231,
+        "operation": 166,
+        "phase": "burst3",
+        "elapsed_ns": 1129912,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1035365,
+        "operation": 167,
+        "phase": "burst3",
+        "elapsed_ns": 1097527,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1034914,
+        "operation": 168,
+        "phase": "burst3",
+        "elapsed_ns": 1090185,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1034330,
+        "operation": 169,
+        "phase": "burst3",
+        "elapsed_ns": 1171064,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 985167,
+        "operation": 170,
+        "phase": "burst3",
+        "elapsed_ns": 1043403,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 975949,
+        "operation": 171,
+        "phase": "burst3",
+        "elapsed_ns": 1019021,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 750170,
+        "operation": 172,
+        "phase": "burst3",
+        "elapsed_ns": 938652,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 857341,
+        "operation": 173,
+        "phase": "burst3",
+        "elapsed_ns": 922569,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 924624,
+        "operation": 174,
+        "phase": "burst3",
+        "elapsed_ns": 968682,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 692953,
+        "operation": 175,
+        "phase": "burst3",
+        "elapsed_ns": 829048,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 902286,
+        "operation": 176,
+        "phase": "burst3",
+        "elapsed_ns": 952915,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 938483,
+        "operation": 177,
+        "phase": "burst3",
+        "elapsed_ns": 977243,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 747939,
+        "operation": 178,
+        "phase": "burst3",
+        "elapsed_ns": 881003,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 897690,
+        "operation": 179,
+        "phase": "burst3",
+        "elapsed_ns": 951418,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 1149412,
+        "operation": 180,
+        "phase": "burst3",
+        "elapsed_ns": 1194743,
+        "lane": "sqlite-full"
+      },
+      {
+        "commit_ns": 647452,
+        "operation": 183,
+        "phase": "warmup",
+        "elapsed_ns": 750436,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 15692,
+        "operation": 184,
+        "phase": "warmup",
+        "elapsed_ns": 64885,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 23049,
+        "operation": 185,
+        "phase": "warmup",
+        "elapsed_ns": 78820,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14736,
+        "operation": 186,
+        "phase": "warmup",
+        "elapsed_ns": 45967,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 15000,
+        "operation": 187,
+        "phase": "warmup",
+        "elapsed_ns": 43166,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13535,
+        "operation": 188,
+        "phase": "warmup",
+        "elapsed_ns": 43946,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12844,
+        "operation": 189,
+        "phase": "warmup",
+        "elapsed_ns": 43058,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14557,
+        "operation": 190,
+        "phase": "warmup",
+        "elapsed_ns": 41644,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12517,
+        "operation": 191,
+        "phase": "warmup",
+        "elapsed_ns": 41161,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 17361,
+        "operation": 192,
+        "phase": "warmup",
+        "elapsed_ns": 47754,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 17063,
+        "operation": 193,
+        "phase": "warmup",
+        "elapsed_ns": 45767,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12976,
+        "operation": 194,
+        "phase": "warmup",
+        "elapsed_ns": 40791,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13656,
+        "operation": 195,
+        "phase": "warmup",
+        "elapsed_ns": 41691,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 20458,
+        "operation": 196,
+        "phase": "warmup",
+        "elapsed_ns": 60669,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14196,
+        "operation": 197,
+        "phase": "warmup",
+        "elapsed_ns": 46260,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13158,
+        "operation": 198,
+        "phase": "warmup",
+        "elapsed_ns": 55494,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13100,
+        "operation": 199,
+        "phase": "warmup",
+        "elapsed_ns": 39519,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11913,
+        "operation": 200,
+        "phase": "warmup",
+        "elapsed_ns": 36478,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13658,
+        "operation": 201,
+        "phase": "warmup",
+        "elapsed_ns": 37818,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11355,
+        "operation": 202,
+        "phase": "warmup",
+        "elapsed_ns": 35085,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11526,
+        "operation": 203,
+        "phase": "single",
+        "elapsed_ns": 52023,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12615,
+        "operation": 204,
+        "phase": "single",
+        "elapsed_ns": 45432,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14734,
+        "operation": 205,
+        "phase": "single",
+        "elapsed_ns": 50007,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 16791,
+        "operation": 206,
+        "phase": "single",
+        "elapsed_ns": 52196,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12547,
+        "operation": 207,
+        "phase": "single",
+        "elapsed_ns": 38638,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13950,
+        "operation": 208,
+        "phase": "single",
+        "elapsed_ns": 42574,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12274,
+        "operation": 209,
+        "phase": "single",
+        "elapsed_ns": 42417,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13631,
+        "operation": 210,
+        "phase": "single",
+        "elapsed_ns": 44486,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11246,
+        "operation": 211,
+        "phase": "single",
+        "elapsed_ns": 35459,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11318,
+        "operation": 212,
+        "phase": "single",
+        "elapsed_ns": 36564,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 15013,
+        "operation": 213,
+        "phase": "single",
+        "elapsed_ns": 46735,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14417,
+        "operation": 214,
+        "phase": "single",
+        "elapsed_ns": 40835,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12128,
+        "operation": 215,
+        "phase": "single",
+        "elapsed_ns": 36547,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11827,
+        "operation": 216,
+        "phase": "single",
+        "elapsed_ns": 35074,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11582,
+        "operation": 217,
+        "phase": "single",
+        "elapsed_ns": 34328,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11161,
+        "operation": 218,
+        "phase": "single",
+        "elapsed_ns": 34095,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13452,
+        "operation": 219,
+        "phase": "single",
+        "elapsed_ns": 37161,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11609,
+        "operation": 220,
+        "phase": "single",
+        "elapsed_ns": 34844,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12476,
+        "operation": 221,
+        "phase": "single",
+        "elapsed_ns": 35619,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14362,
+        "operation": 222,
+        "phase": "single",
+        "elapsed_ns": 39039,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13679,
+        "operation": 223,
+        "phase": "single",
+        "elapsed_ns": 41559,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11319,
+        "operation": 224,
+        "phase": "single",
+        "elapsed_ns": 39568,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13596,
+        "operation": 225,
+        "phase": "single",
+        "elapsed_ns": 39278,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11477,
+        "operation": 226,
+        "phase": "single",
+        "elapsed_ns": 36979,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11095,
+        "operation": 227,
+        "phase": "single",
+        "elapsed_ns": 37062,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13055,
+        "operation": 228,
+        "phase": "single",
+        "elapsed_ns": 35789,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11294,
+        "operation": 229,
+        "phase": "single",
+        "elapsed_ns": 35221,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11250,
+        "operation": 230,
+        "phase": "single",
+        "elapsed_ns": 35057,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12334,
+        "operation": 231,
+        "phase": "single",
+        "elapsed_ns": 35367,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 15540,
+        "operation": 232,
+        "phase": "single",
+        "elapsed_ns": 42354,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11667,
+        "operation": 233,
+        "phase": "single",
+        "elapsed_ns": 34471,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11439,
+        "operation": 234,
+        "phase": "single",
+        "elapsed_ns": 35211,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11458,
+        "operation": 235,
+        "phase": "single",
+        "elapsed_ns": 34309,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11516,
+        "operation": 236,
+        "phase": "single",
+        "elapsed_ns": 34631,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12515,
+        "operation": 237,
+        "phase": "single",
+        "elapsed_ns": 35499,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12086,
+        "operation": 238,
+        "phase": "single",
+        "elapsed_ns": 35515,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14709,
+        "operation": 239,
+        "phase": "single",
+        "elapsed_ns": 44697,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11658,
+        "operation": 240,
+        "phase": "single",
+        "elapsed_ns": 35222,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 10937,
+        "operation": 241,
+        "phase": "single",
+        "elapsed_ns": 33215,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11101,
+        "operation": 242,
+        "phase": "single",
+        "elapsed_ns": 34824,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11920,
+        "operation": 243,
+        "phase": "single",
+        "elapsed_ns": 47500,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12051,
+        "operation": 244,
+        "phase": "single",
+        "elapsed_ns": 37469,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11748,
+        "operation": 245,
+        "phase": "single",
+        "elapsed_ns": 36283,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13370,
+        "operation": 246,
+        "phase": "single",
+        "elapsed_ns": 39824,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11025,
+        "operation": 247,
+        "phase": "single",
+        "elapsed_ns": 35449,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11280,
+        "operation": 248,
+        "phase": "single",
+        "elapsed_ns": 34718,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11541,
+        "operation": 249,
+        "phase": "single",
+        "elapsed_ns": 34359,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11291,
+        "operation": 250,
+        "phase": "single",
+        "elapsed_ns": 34178,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11998,
+        "operation": 251,
+        "phase": "single",
+        "elapsed_ns": 34681,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11388,
+        "operation": 252,
+        "phase": "single",
+        "elapsed_ns": 35082,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11389,
+        "operation": 253,
+        "phase": "single",
+        "elapsed_ns": 33898,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11970,
+        "operation": 254,
+        "phase": "single",
+        "elapsed_ns": 40532,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 40010,
+        "operation": 255,
+        "phase": "single",
+        "elapsed_ns": 66099,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 17243,
+        "operation": 256,
+        "phase": "single",
+        "elapsed_ns": 67240,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12181,
+        "operation": 257,
+        "phase": "single",
+        "elapsed_ns": 36374,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12086,
+        "operation": 258,
+        "phase": "single",
+        "elapsed_ns": 47014,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12231,
+        "operation": 259,
+        "phase": "single",
+        "elapsed_ns": 36296,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 16558,
+        "operation": 260,
+        "phase": "single",
+        "elapsed_ns": 39426,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 18892,
+        "operation": 261,
+        "phase": "single",
+        "elapsed_ns": 54110,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12184,
+        "operation": 262,
+        "phase": "single",
+        "elapsed_ns": 38650,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12899,
+        "operation": 263,
+        "phase": "single",
+        "elapsed_ns": 37518,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14247,
+        "operation": 264,
+        "phase": "single",
+        "elapsed_ns": 38445,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13365,
+        "operation": 265,
+        "phase": "single",
+        "elapsed_ns": 41623,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11816,
+        "operation": 266,
+        "phase": "single",
+        "elapsed_ns": 35313,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11626,
+        "operation": 267,
+        "phase": "single",
+        "elapsed_ns": 34870,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11670,
+        "operation": 268,
+        "phase": "single",
+        "elapsed_ns": 34742,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11299,
+        "operation": 269,
+        "phase": "single",
+        "elapsed_ns": 34308,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12037,
+        "operation": 270,
+        "phase": "single",
+        "elapsed_ns": 35187,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11226,
+        "operation": 271,
+        "phase": "single",
+        "elapsed_ns": 34600,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 15691,
+        "operation": 272,
+        "phase": "single",
+        "elapsed_ns": 40656,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 17253,
+        "operation": 273,
+        "phase": "single",
+        "elapsed_ns": 50621,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11176,
+        "operation": 274,
+        "phase": "single",
+        "elapsed_ns": 36011,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 10670,
+        "operation": 275,
+        "phase": "single",
+        "elapsed_ns": 33108,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12011,
+        "operation": 276,
+        "phase": "single",
+        "elapsed_ns": 36688,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12400,
+        "operation": 277,
+        "phase": "single",
+        "elapsed_ns": 43540,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11281,
+        "operation": 278,
+        "phase": "single",
+        "elapsed_ns": 36146,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 10740,
+        "operation": 279,
+        "phase": "single",
+        "elapsed_ns": 32638,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11350,
+        "operation": 280,
+        "phase": "single",
+        "elapsed_ns": 34165,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11209,
+        "operation": 281,
+        "phase": "single",
+        "elapsed_ns": 34717,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13352,
+        "operation": 282,
+        "phase": "single",
+        "elapsed_ns": 39789,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11081,
+        "operation": 283,
+        "phase": "single",
+        "elapsed_ns": 33053,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12218,
+        "operation": 284,
+        "phase": "single",
+        "elapsed_ns": 33757,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12318,
+        "operation": 285,
+        "phase": "single",
+        "elapsed_ns": 41106,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 19000,
+        "operation": 286,
+        "phase": "single",
+        "elapsed_ns": 58741,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 31634,
+        "operation": 287,
+        "phase": "single",
+        "elapsed_ns": 80923,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 18851,
+        "operation": 288,
+        "phase": "single",
+        "elapsed_ns": 64087,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 10909,
+        "operation": 289,
+        "phase": "single",
+        "elapsed_ns": 34480,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12937,
+        "operation": 290,
+        "phase": "single",
+        "elapsed_ns": 38811,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 16541,
+        "operation": 291,
+        "phase": "single",
+        "elapsed_ns": 41502,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12075,
+        "operation": 292,
+        "phase": "single",
+        "elapsed_ns": 35146,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 10930,
+        "operation": 293,
+        "phase": "single",
+        "elapsed_ns": 34799,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 15621,
+        "operation": 294,
+        "phase": "single",
+        "elapsed_ns": 49142,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14976,
+        "operation": 295,
+        "phase": "single",
+        "elapsed_ns": 45821,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11144,
+        "operation": 296,
+        "phase": "single",
+        "elapsed_ns": 37371,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11991,
+        "operation": 297,
+        "phase": "single",
+        "elapsed_ns": 34791,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11181,
+        "operation": 298,
+        "phase": "single",
+        "elapsed_ns": 34920,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11023,
+        "operation": 299,
+        "phase": "single",
+        "elapsed_ns": 33463,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12906,
+        "operation": 300,
+        "phase": "single",
+        "elapsed_ns": 35499,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 10605,
+        "operation": 301,
+        "phase": "single",
+        "elapsed_ns": 32244,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 21758,
+        "operation": 302,
+        "phase": "single",
+        "elapsed_ns": 43081,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13944,
+        "operation": 303,
+        "phase": "burst3",
+        "elapsed_ns": 36417,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 10464,
+        "operation": 304,
+        "phase": "burst3",
+        "elapsed_ns": 32096,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13389,
+        "operation": 305,
+        "phase": "burst3",
+        "elapsed_ns": 35195,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 39529,
+        "operation": 306,
+        "phase": "burst3",
+        "elapsed_ns": 240961,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 23331,
+        "operation": 307,
+        "phase": "burst3",
+        "elapsed_ns": 81529,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12374,
+        "operation": 308,
+        "phase": "burst3",
+        "elapsed_ns": 45695,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 37001,
+        "operation": 309,
+        "phase": "burst3",
+        "elapsed_ns": 167597,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 15990,
+        "operation": 310,
+        "phase": "burst3",
+        "elapsed_ns": 60119,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11335,
+        "operation": 311,
+        "phase": "burst3",
+        "elapsed_ns": 38486,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 31999,
+        "operation": 312,
+        "phase": "burst3",
+        "elapsed_ns": 155885,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14316,
+        "operation": 313,
+        "phase": "burst3",
+        "elapsed_ns": 49521,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11440,
+        "operation": 314,
+        "phase": "burst3",
+        "elapsed_ns": 37463,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 31450,
+        "operation": 315,
+        "phase": "burst3",
+        "elapsed_ns": 154734,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14694,
+        "operation": 316,
+        "phase": "burst3",
+        "elapsed_ns": 48742,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12207,
+        "operation": 317,
+        "phase": "burst3",
+        "elapsed_ns": 43207,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 35529,
+        "operation": 318,
+        "phase": "burst3",
+        "elapsed_ns": 158766,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14791,
+        "operation": 319,
+        "phase": "burst3",
+        "elapsed_ns": 52910,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11123,
+        "operation": 320,
+        "phase": "burst3",
+        "elapsed_ns": 36532,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 30152,
+        "operation": 321,
+        "phase": "burst3",
+        "elapsed_ns": 151970,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 17636,
+        "operation": 322,
+        "phase": "burst3",
+        "elapsed_ns": 50294,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12775,
+        "operation": 323,
+        "phase": "burst3",
+        "elapsed_ns": 37995,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 31470,
+        "operation": 324,
+        "phase": "burst3",
+        "elapsed_ns": 163622,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13116,
+        "operation": 325,
+        "phase": "burst3",
+        "elapsed_ns": 50275,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14488,
+        "operation": 326,
+        "phase": "burst3",
+        "elapsed_ns": 41080,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 30090,
+        "operation": 327,
+        "phase": "burst3",
+        "elapsed_ns": 153887,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11993,
+        "operation": 328,
+        "phase": "burst3",
+        "elapsed_ns": 41565,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14336,
+        "operation": 329,
+        "phase": "burst3",
+        "elapsed_ns": 36904,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 28455,
+        "operation": 330,
+        "phase": "burst3",
+        "elapsed_ns": 147536,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 39844,
+        "operation": 331,
+        "phase": "burst3",
+        "elapsed_ns": 93345,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11854,
+        "operation": 332,
+        "phase": "burst3",
+        "elapsed_ns": 38914,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 35610,
+        "operation": 333,
+        "phase": "burst3",
+        "elapsed_ns": 189583,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 16330,
+        "operation": 334,
+        "phase": "burst3",
+        "elapsed_ns": 67010,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12624,
+        "operation": 335,
+        "phase": "burst3",
+        "elapsed_ns": 39560,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 32076,
+        "operation": 336,
+        "phase": "burst3",
+        "elapsed_ns": 151782,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 16881,
+        "operation": 337,
+        "phase": "burst3",
+        "elapsed_ns": 52383,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11588,
+        "operation": 338,
+        "phase": "burst3",
+        "elapsed_ns": 36747,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 31085,
+        "operation": 339,
+        "phase": "burst3",
+        "elapsed_ns": 152088,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13338,
+        "operation": 340,
+        "phase": "burst3",
+        "elapsed_ns": 47461,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13664,
+        "operation": 341,
+        "phase": "burst3",
+        "elapsed_ns": 40162,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 30211,
+        "operation": 342,
+        "phase": "burst3",
+        "elapsed_ns": 157323,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13099,
+        "operation": 343,
+        "phase": "burst3",
+        "elapsed_ns": 45494,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11313,
+        "operation": 344,
+        "phase": "burst3",
+        "elapsed_ns": 35160,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 38775,
+        "operation": 345,
+        "phase": "burst3",
+        "elapsed_ns": 154932,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 11795,
+        "operation": 346,
+        "phase": "burst3",
+        "elapsed_ns": 41273,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13360,
+        "operation": 347,
+        "phase": "burst3",
+        "elapsed_ns": 44883,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 29133,
+        "operation": 348,
+        "phase": "burst3",
+        "elapsed_ns": 149084,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12801,
+        "operation": 349,
+        "phase": "burst3",
+        "elapsed_ns": 47178,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13831,
+        "operation": 350,
+        "phase": "burst3",
+        "elapsed_ns": 38146,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 30753,
+        "operation": 351,
+        "phase": "burst3",
+        "elapsed_ns": 162782,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 16032,
+        "operation": 352,
+        "phase": "burst3",
+        "elapsed_ns": 52566,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12326,
+        "operation": 353,
+        "phase": "burst3",
+        "elapsed_ns": 39907,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 36343,
+        "operation": 354,
+        "phase": "burst3",
+        "elapsed_ns": 207488,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 14327,
+        "operation": 355,
+        "phase": "burst3",
+        "elapsed_ns": 49774,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12331,
+        "operation": 356,
+        "phase": "burst3",
+        "elapsed_ns": 38099,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 31504,
+        "operation": 357,
+        "phase": "burst3",
+        "elapsed_ns": 158325,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 21038,
+        "operation": 358,
+        "phase": "burst3",
+        "elapsed_ns": 64405,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 13156,
+        "operation": 359,
+        "phase": "burst3",
+        "elapsed_ns": 46195,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 33779,
+        "operation": 360,
+        "phase": "burst3",
+        "elapsed_ns": 169444,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 15615,
+        "operation": 361,
+        "phase": "burst3",
+        "elapsed_ns": 55489,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 12919,
+        "operation": 362,
+        "phase": "burst3",
+        "elapsed_ns": 40294,
+        "lane": "sqlite-normal"
+      },
+      {
+        "commit_ns": 16035947,
+        "operation": 365,
+        "phase": "warmup",
+        "elapsed_ns": 25466835,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 13399603,
+        "operation": 366,
+        "phase": "warmup",
+        "elapsed_ns": 16179627,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 15510935,
+        "operation": 367,
+        "phase": "warmup",
+        "elapsed_ns": 18891432,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 15823601,
+        "operation": 368,
+        "phase": "warmup",
+        "elapsed_ns": 17690355,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12531179,
+        "operation": 369,
+        "phase": "warmup",
+        "elapsed_ns": 14514707,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12695370,
+        "operation": 370,
+        "phase": "warmup",
+        "elapsed_ns": 14335270,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12527067,
+        "operation": 371,
+        "phase": "warmup",
+        "elapsed_ns": 14062717,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12475484,
+        "operation": 372,
+        "phase": "warmup",
+        "elapsed_ns": 13708274,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12379579,
+        "operation": 373,
+        "phase": "warmup",
+        "elapsed_ns": 13546918,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12686785,
+        "operation": 374,
+        "phase": "warmup",
+        "elapsed_ns": 14189219,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12508687,
+        "operation": 375,
+        "phase": "warmup",
+        "elapsed_ns": 13789818,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 16539880,
+        "operation": 376,
+        "phase": "warmup",
+        "elapsed_ns": 17774525,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 18703234,
+        "operation": 377,
+        "phase": "warmup",
+        "elapsed_ns": 20398974,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 15168838,
+        "operation": 378,
+        "phase": "warmup",
+        "elapsed_ns": 17516534,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 25493924,
+        "operation": 379,
+        "phase": "warmup",
+        "elapsed_ns": 27730253,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 32674229,
+        "operation": 380,
+        "phase": "warmup",
+        "elapsed_ns": 34703030,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 22226083,
+        "operation": 381,
+        "phase": "warmup",
+        "elapsed_ns": 23132930,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 34328017,
+        "operation": 382,
+        "phase": "warmup",
+        "elapsed_ns": 35744035,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17667400,
+        "operation": 383,
+        "phase": "warmup",
+        "elapsed_ns": 19305140,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 14989036,
+        "operation": 384,
+        "phase": "warmup",
+        "elapsed_ns": 17294043,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 15792997,
+        "operation": 385,
+        "phase": "single",
+        "elapsed_ns": 17903616,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12576951,
+        "operation": 386,
+        "phase": "single",
+        "elapsed_ns": 13663256,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12431673,
+        "operation": 387,
+        "phase": "single",
+        "elapsed_ns": 13321646,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12588145,
+        "operation": 388,
+        "phase": "single",
+        "elapsed_ns": 14656943,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12405023,
+        "operation": 389,
+        "phase": "single",
+        "elapsed_ns": 13935137,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 15197716,
+        "operation": 390,
+        "phase": "single",
+        "elapsed_ns": 17556261,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17089660,
+        "operation": 391,
+        "phase": "single",
+        "elapsed_ns": 18112762,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12260083,
+        "operation": 392,
+        "phase": "single",
+        "elapsed_ns": 13092909,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12645569,
+        "operation": 393,
+        "phase": "single",
+        "elapsed_ns": 13436967,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12399995,
+        "operation": 394,
+        "phase": "single",
+        "elapsed_ns": 14270408,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12491749,
+        "operation": 395,
+        "phase": "single",
+        "elapsed_ns": 14101447,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12563715,
+        "operation": 396,
+        "phase": "single",
+        "elapsed_ns": 14230017,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12672589,
+        "operation": 397,
+        "phase": "single",
+        "elapsed_ns": 14537341,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12381598,
+        "operation": 398,
+        "phase": "single",
+        "elapsed_ns": 13736689,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12544003,
+        "operation": 399,
+        "phase": "single",
+        "elapsed_ns": 13939220,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12424509,
+        "operation": 400,
+        "phase": "single",
+        "elapsed_ns": 13459146,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12294914,
+        "operation": 401,
+        "phase": "single",
+        "elapsed_ns": 13228225,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12194615,
+        "operation": 402,
+        "phase": "single",
+        "elapsed_ns": 13022509,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12354195,
+        "operation": 403,
+        "phase": "single",
+        "elapsed_ns": 13050361,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12430823,
+        "operation": 404,
+        "phase": "single",
+        "elapsed_ns": 13133527,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12414757,
+        "operation": 405,
+        "phase": "single",
+        "elapsed_ns": 13072924,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12440196,
+        "operation": 406,
+        "phase": "single",
+        "elapsed_ns": 13129011,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12335407,
+        "operation": 407,
+        "phase": "single",
+        "elapsed_ns": 12959231,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12628493,
+        "operation": 408,
+        "phase": "single",
+        "elapsed_ns": 13272387,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12473885,
+        "operation": 409,
+        "phase": "single",
+        "elapsed_ns": 13198601,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 18555761,
+        "operation": 410,
+        "phase": "single",
+        "elapsed_ns": 19155494,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12414124,
+        "operation": 411,
+        "phase": "single",
+        "elapsed_ns": 13083665,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12374555,
+        "operation": 412,
+        "phase": "single",
+        "elapsed_ns": 13279106,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12431737,
+        "operation": 413,
+        "phase": "single",
+        "elapsed_ns": 13314565,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12617971,
+        "operation": 414,
+        "phase": "single",
+        "elapsed_ns": 13376398,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 24327256,
+        "operation": 415,
+        "phase": "single",
+        "elapsed_ns": 26555725,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 34673938,
+        "operation": 416,
+        "phase": "single",
+        "elapsed_ns": 36099315,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12613851,
+        "operation": 417,
+        "phase": "single",
+        "elapsed_ns": 13639661,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12510590,
+        "operation": 418,
+        "phase": "single",
+        "elapsed_ns": 13353810,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12477977,
+        "operation": 419,
+        "phase": "single",
+        "elapsed_ns": 13108701,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12527078,
+        "operation": 420,
+        "phase": "single",
+        "elapsed_ns": 13154186,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12369796,
+        "operation": 421,
+        "phase": "single",
+        "elapsed_ns": 12958822,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17163440,
+        "operation": 422,
+        "phase": "single",
+        "elapsed_ns": 18081284,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12564586,
+        "operation": 423,
+        "phase": "single",
+        "elapsed_ns": 13492747,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12449361,
+        "operation": 424,
+        "phase": "single",
+        "elapsed_ns": 13128696,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12792350,
+        "operation": 425,
+        "phase": "single",
+        "elapsed_ns": 13773591,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12557656,
+        "operation": 426,
+        "phase": "single",
+        "elapsed_ns": 13628745,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12495446,
+        "operation": 427,
+        "phase": "single",
+        "elapsed_ns": 14224696,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 18863688,
+        "operation": 428,
+        "phase": "single",
+        "elapsed_ns": 19780149,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12510723,
+        "operation": 429,
+        "phase": "single",
+        "elapsed_ns": 13227649,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12277661,
+        "operation": 430,
+        "phase": "single",
+        "elapsed_ns": 12924313,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12551357,
+        "operation": 431,
+        "phase": "single",
+        "elapsed_ns": 13165350,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12503871,
+        "operation": 432,
+        "phase": "single",
+        "elapsed_ns": 13458265,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12321186,
+        "operation": 433,
+        "phase": "single",
+        "elapsed_ns": 13590877,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12242380,
+        "operation": 434,
+        "phase": "single",
+        "elapsed_ns": 12878691,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 18353338,
+        "operation": 435,
+        "phase": "single",
+        "elapsed_ns": 18924403,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17039495,
+        "operation": 436,
+        "phase": "single",
+        "elapsed_ns": 18257584,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12535508,
+        "operation": 437,
+        "phase": "single",
+        "elapsed_ns": 13694114,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12474445,
+        "operation": 438,
+        "phase": "single",
+        "elapsed_ns": 14081408,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12519205,
+        "operation": 439,
+        "phase": "single",
+        "elapsed_ns": 13955139,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12541565,
+        "operation": 440,
+        "phase": "single",
+        "elapsed_ns": 13300906,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12578610,
+        "operation": 441,
+        "phase": "single",
+        "elapsed_ns": 13522521,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 16905844,
+        "operation": 442,
+        "phase": "single",
+        "elapsed_ns": 17657719,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12654215,
+        "operation": 443,
+        "phase": "single",
+        "elapsed_ns": 13272579,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12452433,
+        "operation": 444,
+        "phase": "single",
+        "elapsed_ns": 13282946,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12367245,
+        "operation": 445,
+        "phase": "single",
+        "elapsed_ns": 12915746,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12636432,
+        "operation": 446,
+        "phase": "single",
+        "elapsed_ns": 13400059,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12513751,
+        "operation": 447,
+        "phase": "single",
+        "elapsed_ns": 13138406,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 23600721,
+        "operation": 448,
+        "phase": "single",
+        "elapsed_ns": 24275690,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 23784090,
+        "operation": 449,
+        "phase": "single",
+        "elapsed_ns": 25169260,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 23337571,
+        "operation": 450,
+        "phase": "single",
+        "elapsed_ns": 24189161,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 23691788,
+        "operation": 451,
+        "phase": "single",
+        "elapsed_ns": 24415408,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17305274,
+        "operation": 452,
+        "phase": "single",
+        "elapsed_ns": 18023139,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12425610,
+        "operation": 453,
+        "phase": "single",
+        "elapsed_ns": 12973766,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12625090,
+        "operation": 454,
+        "phase": "single",
+        "elapsed_ns": 14194638,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12478507,
+        "operation": 455,
+        "phase": "single",
+        "elapsed_ns": 13462824,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12760952,
+        "operation": 456,
+        "phase": "single",
+        "elapsed_ns": 13894274,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12550420,
+        "operation": 457,
+        "phase": "single",
+        "elapsed_ns": 13237700,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12628382,
+        "operation": 458,
+        "phase": "single",
+        "elapsed_ns": 13877790,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 19192453,
+        "operation": 459,
+        "phase": "single",
+        "elapsed_ns": 19975404,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17815360,
+        "operation": 460,
+        "phase": "single",
+        "elapsed_ns": 19367251,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17805305,
+        "operation": 461,
+        "phase": "single",
+        "elapsed_ns": 19528991,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12401278,
+        "operation": 462,
+        "phase": "single",
+        "elapsed_ns": 13263445,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12819335,
+        "operation": 463,
+        "phase": "single",
+        "elapsed_ns": 13612406,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12527796,
+        "operation": 464,
+        "phase": "single",
+        "elapsed_ns": 13986775,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 16295949,
+        "operation": 465,
+        "phase": "single",
+        "elapsed_ns": 17651236,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12620839,
+        "operation": 466,
+        "phase": "single",
+        "elapsed_ns": 13986143,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12528074,
+        "operation": 467,
+        "phase": "single",
+        "elapsed_ns": 13037654,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12640855,
+        "operation": 468,
+        "phase": "single",
+        "elapsed_ns": 14170586,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12527832,
+        "operation": 469,
+        "phase": "single",
+        "elapsed_ns": 13693343,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12409233,
+        "operation": 470,
+        "phase": "single",
+        "elapsed_ns": 12899160,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12469638,
+        "operation": 471,
+        "phase": "single",
+        "elapsed_ns": 13042294,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 16701158,
+        "operation": 472,
+        "phase": "single",
+        "elapsed_ns": 17462213,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12555023,
+        "operation": 473,
+        "phase": "single",
+        "elapsed_ns": 13197082,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12414218,
+        "operation": 474,
+        "phase": "single",
+        "elapsed_ns": 12890824,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12593727,
+        "operation": 475,
+        "phase": "single",
+        "elapsed_ns": 13023877,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12523592,
+        "operation": 476,
+        "phase": "single",
+        "elapsed_ns": 12949745,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12575245,
+        "operation": 477,
+        "phase": "single",
+        "elapsed_ns": 13089130,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12391283,
+        "operation": 478,
+        "phase": "single",
+        "elapsed_ns": 12868626,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17310374,
+        "operation": 479,
+        "phase": "single",
+        "elapsed_ns": 17910689,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12376592,
+        "operation": 480,
+        "phase": "single",
+        "elapsed_ns": 12992292,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12318384,
+        "operation": 481,
+        "phase": "single",
+        "elapsed_ns": 12856226,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12318682,
+        "operation": 482,
+        "phase": "single",
+        "elapsed_ns": 12739733,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12296023,
+        "operation": 483,
+        "phase": "single",
+        "elapsed_ns": 12812627,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 23475483,
+        "operation": 484,
+        "phase": "single",
+        "elapsed_ns": 24034177,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 29654950,
+        "operation": 485,
+        "phase": "burst3",
+        "elapsed_ns": 30154780,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12410321,
+        "operation": 486,
+        "phase": "burst3",
+        "elapsed_ns": 13053293,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12448917,
+        "operation": 487,
+        "phase": "burst3",
+        "elapsed_ns": 13163820,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12775352,
+        "operation": 488,
+        "phase": "burst3",
+        "elapsed_ns": 13369226,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12564065,
+        "operation": 489,
+        "phase": "burst3",
+        "elapsed_ns": 13299398,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12737412,
+        "operation": 490,
+        "phase": "burst3",
+        "elapsed_ns": 13446099,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12590522,
+        "operation": 491,
+        "phase": "burst3",
+        "elapsed_ns": 14597531,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12534935,
+        "operation": 492,
+        "phase": "burst3",
+        "elapsed_ns": 13238979,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12677078,
+        "operation": 493,
+        "phase": "burst3",
+        "elapsed_ns": 14487368,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 13472106,
+        "operation": 494,
+        "phase": "burst3",
+        "elapsed_ns": 14956025,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12607853,
+        "operation": 495,
+        "phase": "burst3",
+        "elapsed_ns": 13169466,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17717053,
+        "operation": 496,
+        "phase": "burst3",
+        "elapsed_ns": 18291079,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 42399468,
+        "operation": 497,
+        "phase": "burst3",
+        "elapsed_ns": 44040189,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 40507683,
+        "operation": 498,
+        "phase": "burst3",
+        "elapsed_ns": 41619544,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 38455351,
+        "operation": 499,
+        "phase": "burst3",
+        "elapsed_ns": 39616794,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17133206,
+        "operation": 500,
+        "phase": "burst3",
+        "elapsed_ns": 17707680,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12382359,
+        "operation": 501,
+        "phase": "burst3",
+        "elapsed_ns": 13112393,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12373166,
+        "operation": 502,
+        "phase": "burst3",
+        "elapsed_ns": 12896164,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 15469436,
+        "operation": 503,
+        "phase": "burst3",
+        "elapsed_ns": 16176923,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17395558,
+        "operation": 504,
+        "phase": "burst3",
+        "elapsed_ns": 17966158,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12371764,
+        "operation": 505,
+        "phase": "burst3",
+        "elapsed_ns": 12948971,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12369395,
+        "operation": 506,
+        "phase": "burst3",
+        "elapsed_ns": 13123383,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12730145,
+        "operation": 507,
+        "phase": "burst3",
+        "elapsed_ns": 14140026,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12384459,
+        "operation": 508,
+        "phase": "burst3",
+        "elapsed_ns": 12914942,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17748557,
+        "operation": 509,
+        "phase": "burst3",
+        "elapsed_ns": 19356822,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 18654132,
+        "operation": 510,
+        "phase": "burst3",
+        "elapsed_ns": 19204809,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17789209,
+        "operation": 511,
+        "phase": "burst3",
+        "elapsed_ns": 18952737,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12291405,
+        "operation": 512,
+        "phase": "burst3",
+        "elapsed_ns": 12787659,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12291206,
+        "operation": 513,
+        "phase": "burst3",
+        "elapsed_ns": 12712085,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12622785,
+        "operation": 514,
+        "phase": "burst3",
+        "elapsed_ns": 13059056,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 18511363,
+        "operation": 515,
+        "phase": "burst3",
+        "elapsed_ns": 19133763,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12349492,
+        "operation": 516,
+        "phase": "burst3",
+        "elapsed_ns": 12898913,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12328449,
+        "operation": 517,
+        "phase": "burst3",
+        "elapsed_ns": 12739495,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 15438701,
+        "operation": 518,
+        "phase": "burst3",
+        "elapsed_ns": 15995476,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17643648,
+        "operation": 519,
+        "phase": "burst3",
+        "elapsed_ns": 18103955,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12226431,
+        "operation": 520,
+        "phase": "burst3",
+        "elapsed_ns": 12620719,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 18060367,
+        "operation": 521,
+        "phase": "burst3",
+        "elapsed_ns": 18485693,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12568884,
+        "operation": 522,
+        "phase": "burst3",
+        "elapsed_ns": 13132643,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12361889,
+        "operation": 523,
+        "phase": "burst3",
+        "elapsed_ns": 13579699,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 15491421,
+        "operation": 524,
+        "phase": "burst3",
+        "elapsed_ns": 16658963,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12351706,
+        "operation": 525,
+        "phase": "burst3",
+        "elapsed_ns": 12995231,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12379261,
+        "operation": 526,
+        "phase": "burst3",
+        "elapsed_ns": 12864362,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 13448035,
+        "operation": 527,
+        "phase": "burst3",
+        "elapsed_ns": 14028326,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12471473,
+        "operation": 528,
+        "phase": "burst3",
+        "elapsed_ns": 13178004,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12272787,
+        "operation": 529,
+        "phase": "burst3",
+        "elapsed_ns": 12738284,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12378914,
+        "operation": 530,
+        "phase": "burst3",
+        "elapsed_ns": 13131722,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12302839,
+        "operation": 531,
+        "phase": "burst3",
+        "elapsed_ns": 12823399,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12338240,
+        "operation": 532,
+        "phase": "burst3",
+        "elapsed_ns": 12863644,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 16859523,
+        "operation": 533,
+        "phase": "burst3",
+        "elapsed_ns": 18323205,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12303360,
+        "operation": 534,
+        "phase": "burst3",
+        "elapsed_ns": 13609274,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12250042,
+        "operation": 535,
+        "phase": "burst3",
+        "elapsed_ns": 12697328,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 15621331,
+        "operation": 536,
+        "phase": "burst3",
+        "elapsed_ns": 16135280,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12353907,
+        "operation": 537,
+        "phase": "burst3",
+        "elapsed_ns": 12790691,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12292376,
+        "operation": 538,
+        "phase": "burst3",
+        "elapsed_ns": 12841556,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12279785,
+        "operation": 539,
+        "phase": "burst3",
+        "elapsed_ns": 12934625,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 18173549,
+        "operation": 540,
+        "phase": "burst3",
+        "elapsed_ns": 18618786,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 23329663,
+        "operation": 541,
+        "phase": "burst3",
+        "elapsed_ns": 23754417,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 29546671,
+        "operation": 542,
+        "phase": "burst3",
+        "elapsed_ns": 29997794,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 12086585,
+        "operation": 543,
+        "phase": "burst3",
+        "elapsed_ns": 12502559,
+        "lane": "mysql-durable"
+      },
+      {
+        "commit_ns": 17357053,
+        "operation": 544,
+        "phase": "burst3",
+        "elapsed_ns": 17764643,
+        "lane": "mysql-durable"
+      }
+    ],
+    "fault_boundary": "JDBC commit-return seam; SQLite native close; MySQL administrative KILL CONNECTION; no real packet-loss or power-failure injection",
+    "faults": [
+      {
+        "inner_commit_ack_discarded": false,
+        "lane": "sqlite-full",
+        "sqlite_busy_proven": true,
+        "blocked_then_resolved_ms": 183.77346,
+        "recovery": "REINSERT_APPLIED_ONCE",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "before_commit"
+      },
+      {
+        "inner_commit_ack_discarded": true,
+        "lane": "sqlite-full",
+        "sqlite_busy_proven": true,
+        "blocked_then_resolved_ms": 182.36787,
+        "recovery": "DUPLICATE_COMMITTED",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "after_commit"
+      },
+      {
+        "inner_commit_ack_discarded": false,
+        "lane": "sqlite-normal",
+        "sqlite_busy_proven": true,
+        "blocked_then_resolved_ms": 182.544644,
+        "recovery": "REINSERT_APPLIED_ONCE",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "before_commit"
+      },
+      {
+        "inner_commit_ack_discarded": true,
+        "lane": "sqlite-normal",
+        "sqlite_busy_proven": true,
+        "blocked_then_resolved_ms": 183.334165,
+        "recovery": "DUPLICATE_COMMITTED",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "after_commit"
+      },
+      {
+        "inner_commit_ack_discarded": false,
+        "lane": "mysql-durable",
+        "sqlite_busy_proven": false,
+        "blocked_then_resolved_ms": 175.813132,
+        "recovery": "REINSERT_APPLIED_ONCE",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "before_commit"
+      },
+      {
+        "inner_commit_ack_discarded": true,
+        "lane": "mysql-durable",
+        "sqlite_busy_proven": false,
+        "blocked_then_resolved_ms": 176.439941,
+        "recovery": "DUPLICATE_COMMITTED",
+        "caller": "OUTCOME_UNKNOWN",
+        "kill": "after_commit"
+      }
+    ],
+    "checks": 2794
+  },
+  "environment": {
+    "sqlite-full-environment.json": {
+      "lane": "sqlite-full",
+      "driver": "3.49.1.0",
+      "server": "3.49.1",
+      "synchronous": 2,
+      "journal_mode": "WAL"
+    },
+    "sqlite-normal-environment.json": {
+      "lane": "sqlite-normal",
+      "driver": "3.49.1.0",
+      "server": "3.49.1",
+      "synchronous": 1,
+      "journal_mode": "WAL"
+    },
+    "mysql-durable-environment.json": {
+      "lane": "mysql-durable",
+      "driver": "mysql-connector-j-9.2.0 (Revision: a3909bfeb62d5a517ab444bb88ba7ecf26100297)",
+      "server": "8.4.13",
+      "innodb_flush_log_at_trx_commit": 1,
+      "sync_binlog": 1,
+      "log_bin": 1
+    }
+  },
+  "host": {
+    "platform": "Linux-7.2.14-arch1-1-x86_64-with-glibc2.44",
+    "java": "Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/home/towkio/.local/share/PandoraLauncher/custom_cacerts -Djavax.net.ssl.trustStorePassword=changeit\nopenjdk version \"17.0.21.0.3\" 2026-10-24\nOpenJDK Runtime Environment (build 17.0.21.0.3+1)\nOpenJDK 64-Bit Server VM (build 17.0.21.0.3+1, mixed mode, sharing)\n",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700KF"
+  },
+  "run": "/mnt/storage/.allium-validation/20261113/s14-revision/run-20261114T065519Z",
+  "notes": [
+    "No production engine or Vault API was invoked.",
+    "Kill-after-commit discards JDBC return at a fault seam, not actual TCP acknowledgement loss.",
+    "SQLite native close is the embedded equivalent of ending a client connection, not killing a server process."
+  ],
+  "final_cleanup": {
+    "owned_mysql_running": false,
+    "unique_probe_database_dropped": true
+  }
+}

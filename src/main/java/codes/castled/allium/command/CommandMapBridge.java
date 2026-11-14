@@ -178,6 +178,39 @@ public final class CommandMapBridge {
         return root;
     }
 
+    /** Startup diagnostic for missing default mute commands and split fallback identities. */
+    public static void checkMutedCommandIdentities(CommandMap map, Collection<String> defaults,
+                                                    Consumer<String> warning) {
+        java.util.Set<String> checked = new java.util.HashSet<>();
+        Map<String, Command> known = resolveKnownCommands(map);
+        for (String entry : defaults) {
+            String label = entry.trim().replaceFirst("^/", "").split("\\s+", 2)[0].toLowerCase(Locale.ROOT);
+            if (!checked.add(label)) continue;
+            Command command = map.getCommand(label);
+            if (command == null) {
+                warning.accept("MUTED-COMMAND SELF-TEST: unresolved default label /" + label);
+                continue;
+            }
+            String bare = label.substring(label.indexOf(':') + 1);
+            if (known == null) {
+                warning.accept("MUTED-COMMAND SELF-TEST: cannot inspect fallback labels for /" + label);
+                continue;
+            }
+            for (var candidate : known.entrySet()) {
+                if (!candidate.getKey().endsWith(":" + bare)) continue;
+                Command other = candidate.getValue();
+                // A plugin may legitimately shadow a vanilla label. Only compare the same owner.
+                boolean sameOwner = command instanceof PluginIdentifiableCommand a
+                        ? other instanceof PluginIdentifiableCommand b && a.getPlugin() == b.getPlugin()
+                        : !(other instanceof PluginIdentifiableCommand) && command.getClass() == other.getClass();
+                if (sameOwner && canonicalCommandIdentity(command) != canonicalCommandIdentity(other)) {
+                    warning.accept("MUTED-COMMAND SELF-TEST: IDENTITY MISMATCH /" + label
+                            + " and /" + candidate.getKey() + "; muted-command coverage may be incomplete!");
+                }
+            }
+        }
+    }
+
     @Nullable
     public static Map<String, Command> resolveKnownCommands(CommandMap commandMap) {
         return GuardedAccessor.resolveKnownCommandsOnly(commandMap, msg -> {});

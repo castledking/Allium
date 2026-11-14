@@ -294,6 +294,14 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         syncAllOnlineVisibility();
 
         if (plugin.getScheduler() != null) {
+            // Vanilla fallback wrappers are populated after plugin enable; inspect them next tick.
+            plugin.getScheduler().repeatOnServer(() -> {
+                CommandMap map = CommandMapBridge.resolveCommandMapDirect(plugin.getServer());
+                if (map == null) plugin.logger().warning("MUTED-COMMAND SELF-TEST: CommandMap unavailable!");
+                else CommandMapBridge.checkMutedCommandIdentities(map, DEFAULT_MUTED_COMMANDS,
+                        message -> plugin.logger().warning(message));
+                return false;
+            }, 500L, 500L);
             tickHandle = plugin.getScheduler().repeatOnServer(() -> {
                 if (closed) {
                     return false;

@@ -24,6 +24,8 @@ public final class IgnoreRepository {
     private static final String CREATE = "CREATE TABLE IF NOT EXISTS " + TABLE + " (owner CHAR(36) NOT NULL, ignored CHAR(36) NOT NULL, "
             + "created_at BIGINT NOT NULL, PRIMARY KEY (owner, ignored))";
 
+    private volatile codes.castled.allium.economy.EconomyCoordinator economyCoordinator;
+    public void coordinateWritesWith(codes.castled.allium.economy.EconomyCoordinator coordinator) { this.economyCoordinator=coordinator; }
     private final ConnectionSource source;
     private final SqlDialect dialect;
     private final LongSupplier clock;
@@ -55,6 +57,10 @@ public final class IgnoreRepository {
 
     /** @return whether a new entry was added */
     public boolean add(UUID owner, UUID ignored) throws SQLException {
+        var coordinator=economyCoordinator;
+        return coordinator==null?addDirect(owner, ignored):coordinator.call(()->addDirect(owner, ignored));
+    }
+    private boolean addDirect(UUID owner, UUID ignored) throws SQLException {
         String sql = (dialect == SqlDialect.MYSQL ? "INSERT IGNORE INTO " : "INSERT OR IGNORE INTO ") + TABLE
                 + " (owner, ignored, created_at) VALUES (?, ?, ?)";
         try (Connection c = source.connection(); PreparedStatement s = c.prepareStatement(sql)) {
@@ -67,6 +73,10 @@ public final class IgnoreRepository {
 
     /** @return whether an entry was removed */
     public boolean remove(UUID owner, UUID ignored) throws SQLException {
+        var coordinator=economyCoordinator;
+        return coordinator==null?removeDirect(owner, ignored):coordinator.call(()->removeDirect(owner, ignored));
+    }
+    private boolean removeDirect(UUID owner, UUID ignored) throws SQLException {
         try (Connection c = source.connection();
              PreparedStatement s = c.prepareStatement("DELETE FROM " + TABLE + " WHERE owner = ? AND ignored = ?")) {
             s.setString(1, owner.toString());

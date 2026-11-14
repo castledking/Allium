@@ -47,6 +47,9 @@ public final class PreferenceRepository {
                     List.of("ALTER TABLE " + TABLE + " ADD COLUMN social_spy BOOLEAN NULL"),
                     List.of("ALTER TABLE " + TABLE + " ADD COLUMN social_spy BOOLEAN NULL")));
 
+    private volatile codes.castled.allium.economy.EconomyCoordinator economyCoordinator;
+    public void coordinateWritesWith(codes.castled.allium.economy.EconomyCoordinator coordinator) { this.economyCoordinator=coordinator; }
+
     private final ConnectionSource connections;
     private final SqlDialect dialect;
     private final LongSupplier clock;
@@ -88,6 +91,11 @@ public final class PreferenceRepository {
 
     /** Applies a patch and returns the row as stored afterwards. */
     public StoredPreferences apply(UUID uuid, PreferenceChange change) throws SQLException {
+        var coordinator=economyCoordinator;
+        return coordinator==null?applyDirect(uuid, change):coordinator.call(()->applyDirect(uuid, change));
+    }
+
+    private StoredPreferences applyDirect(UUID uuid, PreferenceChange change) throws SQLException {
         if (change.isEmpty()) {
             return load(uuid).orElse(StoredPreferences.empty(uuid));
         }

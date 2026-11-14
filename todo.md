@@ -534,5 +534,5 @@ SF is a single SQLite server, Phase 1 only, WAL `synchronous=FULL`. No policy mu
 
 - [x] **S20 E1:** exact Money/settings/typed outcomes and SQLite economy component schema. 600 tests, +9 from 591; zero failures/skips.
 - [x] **S20 E2:** single-commit engine and SQLite replay/concurrency. +13 tests, 600 → 613; zero failures/skips.
-- [ ] **S20 E3:** authoritative async payment commands.
+- [x] **S20 E3:** authoritative async payment commands and coordinated policy/reload ordering. +5 tests, 613 → 618; zero failures/skips. No durable PREPARED acknowledgement promised by command PAY.
 - [ ] **S20 E4:** synchronous Vault, real-server recovery and FULL contention/latency gate. Stop here before E5.

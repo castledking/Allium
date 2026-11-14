@@ -14,7 +14,7 @@ public final class EconomyEngine {
     /** Fault boundary used by integration/live gates; real commit remains exactly once. */
     @FunctionalInterface public interface Committer { void commit(Connection connection, UUID operation) throws SQLException; }
     private final ConnectionSource connections;
-    private final ReentrantLock coordinator=new ReentrantLock(true);
+    private final EconomyCoordinator coordinator=new EconomyCoordinator();
     private final PaymentPolicy policy;
     private final Committer committer;
     private volatile EconomySettings settings;
@@ -43,19 +43,24 @@ public final class EconomyEngine {
         try(var c=connection()){Found found=read(c,id);return found==null?new Missing():found;}
         catch(SQLException|RuntimeException error){return new Unavailable(error.getMessage());}
     }
-    /** Policy writers use this same bounded coordinator, and commit before releasing it. */
-    public <T> T coordinated(java.util.concurrent.Callable<T> work) throws Exception {
-        if(!coordinator.tryLock(1,TimeUnit.SECONDS))throw new SQLException("economy admission busy");
-        try{return work.call();}finally{coordinator.unlock();}
-    }
+    public EconomyCoordinator coordinator(){return coordinator;}
+    public <T> T coordinated(java.util.concurrent.Callable<T> work)throws SQLException{return coordinator.call(work);}
     public Mutation execute(EconomyRequest request){
-        boolean locked=false;
-        try{
-            locked=coordinator.tryLock(1,TimeUnit.SECONDS);
-            if(!locked)return new Unavailable("economy admission busy");
-            return transact(request);
-        }catch(InterruptedException error){Thread.currentThread().interrupt();return new Unavailable("interrupted before execution");}
-        finally{if(locked)coordinator.unlock();}
+        try{return coordinator.call(()->transact(request));}
+        catch(SQLException error){return new Unavailable(error.getMessage());}
+    }
+    /** Caller first closes admission and drains its async queue. Validation and install share writer ordering. */
+    public void installSettings(EconomySettings next)throws SQLException {
+        coordinator.call(()->{
+            try(var c=connection();var s=c.createStatement();var r=s.executeQuery("SELECT balance_minor,reserved_minor FROM "+EconomySchema.ACCOUNTS)){
+                while(r.next()){
+                    long balance=r.getLong(1),held=r.getLong(2);
+                    if(balance<next.minimum().minor()||balance>next.maximum().minor()||held>Math.max(0,Math.subtractExact(balance,next.minimum().minor())))
+                        throw new SQLException("settings would strand an account or reservation");
+                }
+            }
+            settings=next;return null;
+        });
     }
     private Mutation transact(EconomyRequest q){
         boolean begun=false, committing=false;

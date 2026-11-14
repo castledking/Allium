@@ -7,7 +7,10 @@ import java.util.HexFormat;
 
 /** Validated immutable Phase 1 settings; install only after admission is drained. */
 public record EconomySettings(Money starting, Money minimum, Money maximum, Money minimumPay,
-                              boolean offlinePay, boolean excludesIgnore) {
+                              boolean offlinePay, boolean excludesIgnore, boolean defaultAcceptance) {
+    public EconomySettings(Money starting, Money minimum, Money maximum, Money minimumPay, boolean offlinePay, boolean excludesIgnore) {
+        this(starting,minimum,maximum,minimumPay,offlinePay,excludesIgnore,true);
+    }
     public EconomySettings {
         if (minimum.minor() > 0 || maximum.minor() < 0 || minimum.compareTo(maximum) >= 0
                 || starting.compareTo(minimum) < 0 || starting.compareTo(maximum) > 0
@@ -18,7 +21,7 @@ public record EconomySettings(Money starting, Money minimum, Money maximum, Mone
         return new EconomySettings(new Money(10_000), new Money(0), new Money(Money.HARD), new Money(1), true, true);
     }
     public String fingerprint() {
-        String canonical = "v1|"+starting.minor()+"|"+minimum.minor()+"|"+maximum.minor()+"|"+minimumPay.minor()+"|"+offlinePay+"|"+excludesIgnore;
+        String canonical = "v1|"+starting.minor()+"|"+minimum.minor()+"|"+maximum.minor()+"|"+minimumPay.minor()+"|"+offlinePay+"|"+excludesIgnore+"|"+defaultAcceptance;
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.US_ASCII))); }
         catch (NoSuchAlgorithmException impossible) { throw new AssertionError(impossible); }
     }

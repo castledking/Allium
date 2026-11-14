@@ -47,6 +47,8 @@ public final class IgnoreService implements Listener {
         this.writes = writes;
     }
 
+    public IgnoreRepository repository() { return repository; }
+
     public void enable() {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         for (Player online : Bukkit.getOnlinePlayers()) {

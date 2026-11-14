@@ -246,6 +246,9 @@ public final class PluginStart extends JavaPlugin {
     public boolean reloadConfiguration(java.util.function.Consumer<String> reply) {
         try {
             configManager.reloadAll();
+            if(moduleManager.getModule("economy") instanceof codes.castled.allium.module.EconomyModule economy
+                    && economy.isEnabled() && economy.runtime()!=null && !economy.runtime().reload())
+                throw new IllegalArgumentException("invalid/busy economy settings; previous settings retained");
             languageManager.reload();
             commandManager.reload();
             if (moduleManager.getModule("preferences") instanceof codes.castled.allium.module.PreferencesModule preferences

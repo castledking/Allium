@@ -53,7 +53,7 @@ that the replacement economy engine and gated Vault adapter replace the scaffold
 ## Phase 1: one process owns the economy
 
 The first implementation supports **one Allium process as the sole money/policy writer**, with
-SQLite or a dedicated MySQL database. Multiple independent servers sharing money are Phase 2.
+SQLite WAL with synchronous=FULL. MySQL economy operation and multiple independent servers sharing money are outside this Phase 1 implementation.
 Use a bounded process coordinator to serialize money, payment-policy changes and configuration
 changes. All relevant writers, including preference/ignore administration and imports, must join
 it; the existing unrelated async repository calls cannot bypass it. Pure reads use authoritative
@@ -82,7 +82,7 @@ whitespace. Parse BigDecimal without a rounding MathContext; use
 Read config as decimal text, never through `getDouble`. Formatting is presentation only, fixed
 two decimals with explicit locale/symbol rules; it cannot feed money back into persistence.
 
-Proposed replacement settings (design only, separate from the existing scaffold switch):
+Replacement settings (implemented for command admission in E3):
 
 ```yaml
 economy:
@@ -528,3 +528,11 @@ Core Money, immutable validated EconomySettings, typed Found/Missing/Unavailable
 The Phase 1 engine inserts the operation as COMMITTED first under BEGIN IMMEDIATE, reads point accounts in UUID order, validates authoritative payment policy on that connection, conditionally updates balances/versions, inserts entries, freezes the receipt and commits once. Business rejection rolls back only the effect savepoint and stores a REJECTED receipt. Specific operation-key uniqueness conflicts reconcile exact payload bytes and SHA-256; other SQL errors remain unavailable. A commit exception is OUTCOME_UNKNOWN with its operation ID; reinsertion/replay recovers without compensation. OPEN is the sole initial-grant path; reads never open accounts.
 
 E2 adds 13 tests (600 → 613), including independent JDBC owners contending on finite funds, opposing transfers, cap rollback, exact replay and payload conflict, before-commit failure and lost commit acknowledgement. Full isolated check plus final core recheck pass with zero failures/skips. No MySQL economy lane, shared epoch or mutex rows are introduced.
+
+### E3 command and policy status
+
+Commands `/balance` (`/bal`), `/pay`, `/paytoggle [on|off] [player]`, `/eco <open|give|take|set> <player> [amount]`, and bounded `/baltop` use the journalled engine. Execution resolves names without network access, freezes UUIDs at admission, validates plain decimal amounts, enforces explicit `allium.pay.offline`, and uses the common vanish/mute readiness rules. Recipient acceptance/ignore policy is read on the money transaction connection. Preference and ignore repository writers join the same bounded process coordinator; pending online refusals also block new PAY admission immediately.
+
+Decision: command PAY has no PREPARED stage. A queued command receives no durable acceptance acknowledgement and success is sent only after the execution commit. A pre-execution crash therefore has no promised accepted payment to replay; an indeterminate commit returns `OUTCOME_UNKNOWN:<id>` and the original keyed intent can reconcile by ID. This differs from a future API promising durable asynchronous acceptance, which would require PREPARED.
+
+Reload closes command admission, drains accepted work through a worker barrier, validates all balances/holds against the replacement settings, and installs one immutable settings snapshot. Rejected reload retains prior economy settings. Commands use the shared bounded TaskScheduler pool and fence callbacks to the original player object. E3 adds 5 tests (613 → 618); full isolated check/shadowJar passes with zero failures/skips. Optional legacy scaffold registration remains explicitly unsafe/off until E4 retires its writer and flag; the new commands never call that writer.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""S20 discipline gate: real protocol commands, three clients and console; disposable loopback lanes."""
+"""Economy correctness and labelled realistic/stress measurements in disposable loopback copies."""
 import argparse
 import fcntl
 import hashlib
@@ -33,16 +33,30 @@ P.add_argument('--suite', choices=['spigot', 'paper'], required=True)
 P.add_argument('--allium-jar', type=Path, required=True)
 P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash')
 P.add_argument('--run-name', required=True)
+P.add_argument('--latency-only', action='store_true')
+P.add_argument('--stress-only',action='store_true',help='diagnostic stress workload, never a release gate')
+P.add_argument('--duration', type=int, default=600)
 P.add_argument('--check', action='store_true')
 P.add_argument('--harness-manifest', type=Path, default=HERE / 'evidence/harness-freeze.json')
 P.add_argument('--run-root', type=Path, default=Path('/mnt/storage/.allium-validation/20261114/s20-economy/runs'))
 P.add_argument('--paper-template', type=Path, default=Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3'))
+P.add_argument('--infra',type=Path,default=INFRA)
+P.add_argument('--java17',type=Path,default=Path('/usr/lib/jvm/java-17-openjdk'))
+P.add_argument('--java25',type=Path,default=Path('/usr/lib/jvm/java-25-openjdk'))
+P.add_argument('--vault-api',type=Path)
+P.add_argument('--host-copy',action='store_true',help='allow a different empty disposable run root; never points at a running server')
 A = P.parse_args()
+INFRA=A.infra.resolve()
 VAULT_API=Path('/home/towkio/.gradle/caches/modules-2/files-2.1/com.github.MilkBowl/VaultAPI/1.7.1/24d63ed39e2d36a5a03fb0addbe8cfe1eff0036/VaultAPI-1.7.1.jar')
 if not re.fullmatch(r'[a-zA-Z0-9_][a-zA-Z0-9_.-]*', A.run_name):
     P.error('invalid run-name')
-if not re.fullmatch(r'/mnt/storage/\.allium-validation/\d{8}/s20-economy/runs', str(A.run_root.resolve())):
+if not A.host_copy and not re.fullmatch(r'/mnt/storage/\.allium-validation/\d{8}/s20-economy/runs', str(A.run_root.resolve())):
     P.error('require disposable /mnt/storage/.allium-validation/YYYYMMDD/s20-economy/runs')
+if A.host_copy and (not (A.latency_only or A.stress_only) or A.run_root.resolve()==Path('/') or 'runs'!=A.run_root.name):
+    P.error('--host-copy requires --latency-only or --stress-only and a disposable directory named runs')
+if A.vault_api: VAULT_API=A.vault_api.resolve()
+if A.latency_only and A.stress_only:P.error('choose realistic or stress, not both')
+if A.duration<600:P.error('duration must be at least 600 seconds')
 A.allium_jar = A.allium_jar.resolve()
 if not re.fullmatch('[0-9a-f]{64}', A.sha256) or hashlib.sha256(A.allium_jar.read_bytes()).hexdigest() != A.sha256:
     P.error('frozen jar SHA256 mismatch')
@@ -259,12 +273,12 @@ def build():
     classes = RUN / 'helper/classes'
     classes.mkdir(parents=True)
     code,output=run_tracked([
-        '/usr/lib/jvm/java-17-openjdk/bin/javac','--release','17','-cp',f'{API}:{JAR}:{VAULT_API}',
+        str(A.java17/'bin/javac'),'--release','17','-cp',f'{API}:{JAR}:{VAULT_API}',
         '-d',str(classes),str(HERE/'plugin/gate/EconomyGate.java')],'fixture-javac')
     (RUN/'helper/javac.log').write_text(output)
     if code: raise RuntimeError('fixture compilation failed; see helper/javac.log')
     shutil.copy2(HERE/'plugin/plugin.yml',classes/'plugin.yml')
-    code,output=run_tracked(['/usr/lib/jvm/java-17-openjdk/bin/jar','cf',str(RUN/'helper/EconomyGate.jar'),'-C',str(classes),'.'],'fixture-jar')
+    code,output=run_tracked([str(A.java17/'bin/jar'),'cf',str(RUN/'helper/EconomyGate.jar'),'-C',str(classes),'.'],'fixture-jar')
     (RUN/'helper/jar.log').write_text(output)
     if code: raise RuntimeError('fixture packaging failed; see helper/jar.log')
     for path in [RUN/'helper/EconomyGate.jar',*sorted(classes.rglob('*.class'))]:
@@ -274,10 +288,10 @@ def build():
         for name in vault.namelist():
             if name.startswith('net/milkbowl/vault/economy/') and name.endswith('.class'):
                 dest=vault_classes/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(vault.read(name))
-    code,output=run_tracked(['/usr/lib/jvm/java-17-openjdk/bin/javac','--release','17','-cp',str(API),'-d',str(vault_classes),str(HERE/'plugin/gate/VaultHost.java')],'vault-host-javac')
+    code,output=run_tracked([str(A.java17/'bin/javac'),'--release','17','-cp',str(API),'-d',str(vault_classes),str(HERE/'plugin/gate/VaultHost.java')],'vault-host-javac')
     if code:raise RuntimeError(output)
     (vault_classes/'plugin.yml').write_text('name: Vault\nversion: "1.7.1-testhost"\nmain: gate.VaultHost\napi-version: "1.20"\n')
-    code,output=run_tracked(['/usr/lib/jvm/java-17-openjdk/bin/jar','cf',str(RUN/'helper/Vault.jar'),'-C',str(vault_classes),'.'],'vault-host-jar')
+    code,output=run_tracked([str(A.java17/'bin/jar'),'cf',str(RUN/'helper/Vault.jar'),'-C',str(vault_classes),'.'],'vault-host-jar')
     if code:raise RuntimeError(output)
     HELPER_HASHES['helper/Vault.jar']=hashlib.sha256((RUN/'helper/Vault.jar').read_bytes()).hexdigest()
     observations['vaultHost']=dict(api=str(VAULT_API),apiSha256=hashlib.sha256(VAULT_API.read_bytes()).hexdigest(),scope='unmodified VaultAPI1.7.1 economy classes hosted by test plugin named Vault; actual registered provider is Allium')
@@ -439,7 +453,7 @@ max-tick-time=120000
         lanes.append(self)
 
     def argv(self):
-        java = '/usr/lib/jvm/java-' + ('17' if self.kind == 'spigot' else '25') + '-openjdk/bin/java'
+        java = str((A.java17 if self.kind=='spigot' else A.java25)/'bin/java')
         cmd = [
             java, '-Xms256M', '-Xmx1200M', '-Dterminal.jline=false', '-Dterminal.ansi=false',
             '-Dallium.fault-injection=true',
@@ -702,30 +716,58 @@ def crash_boundary(lane,phase,exit_code):
 
 def percentiles(values):
     values=sorted(values)
-    return dict(n=len(values),p50=values[int((len(values)-1)*.50)],p95=values[int((len(values)-1)*.95)],p99=values[int((len(values)-1)*.99)],max=values[-1])
+    return dict(n=len(values),p50=values[int((len(values)-1)*.50)],p95=values[int((len(values)-1)*.95)],p99=values[int((len(values)-1)*.99)],p999=values[int((len(values)-1)*.999)],max=values[-1])
 
 
 def benchmark(lane):
     # Existing write load is real mail, moderation and preference repository traffic.
-    for separate in [False,True]:
+    for separate in [False]: # Stress only; never creates a separate economy database.
         lane.fixture('benchmark MoneyA '+str(separate).lower())
         result=wait(lambda:(lambda r:r if r.get('done') else None)(lane.fixture('benchmarkstate')),'FULL contention benchmark',120)
-        record=dict(layout='separate-economy.db prototype' if separate else 'shared-allium.db',
+        record=dict(workload='stress',releaseGate=False,layout='separate-economy.db prototype' if separate else 'shared-allium.db',
                     calls=percentiles(result['callsMs']),economyWallPerTick=percentiles(result['tickEconomyWallMs']),
                     serverThreadCpuPerTick=percentiles(result['serverThreadCpuPerTickMs']),otherRepositoryWriteRounds=result['writerRounds'],errors=result['errors'])
         observations[lane.name+('-separate' if separate else '-shared')]=record
         require(not result['errors'] and result['writerRounds']>0,lane.name+': benchmark executes healthy Vault calls concurrently with all three repositories',record)
-        record['latencyTargetPassed']=record['calls']['p99']<=2 and record['calls']['max']<=25
+        record['stress2msReferenceMet']=record['calls']['p99']<=2 and record['calls']['max']<=25
         emit('LATENCY '+json.dumps(record))
+
+
+def machine_info():
+    commands={'kernel':['uname','-srvmo'],'cpu':['lscpu'],'filesystem':['findmnt','-T',str(RUN),'-o','TARGET,SOURCE,FSTYPE,OPTIONS'],'disks':['lsblk','-o','NAME,TYPE,SIZE,ROTA,MODEL,FSTYPE,MOUNTPOINTS'],'memory':['free','-b']}
+    return {key:subprocess.run(cmd,capture_output=True,text=True).stdout.strip() for key,cmd in commands.items()}
+
+
+def realistic(lane):
+    lane.fixture('realistic MoneyA '+str(A.duration))
+    def completed():
+        try:return json.loads((lane.path/'plugins/EconomyGate/realistic.json').read_text())
+        except (FileNotFoundError,json.JSONDecodeError):return None
+    result=wait(completed,'realistic FULL workload',A.duration+180)
+    (RUN/'realistic-raw.json').write_text(json.dumps(result)+'\n')
+    record=dict(workload='realistic',writes=percentiles(result['writeCallsMs']),reads=percentiles(result['readCallsMs']),
+        allCalls=percentiles(result['writeCallsMs']+result['readCallsMs']),economyWallPerTick=percentiles(result['tickEconomyWallMs']),
+        economyCpuPerTick=percentiles(result['tickEconomyCpuMs']),ticksOver5ms=sum(v>5 for v in result['tickEconomyWallMs']),
+        elapsedSeconds=result['elapsedSeconds'],backgroundWrites=result['backgroundWrites'],backgroundIntervalsMs=result['backgroundIntervalsMs'],errors=result['errors'])
+    observations[lane.name+'-realistic']=record
+    require(not result['errors'] and len(result['writeCallsMs'])>=3000 and len(result['readCallsMs'])>=30000 and min(result['backgroundWrites'].values())>0,lane.name+': ten-minute realistic workload completes',record)
+    emit('REALISTIC '+json.dumps(record))
 
 
 try:
     build();lane=Lane(A.suite+'-economy',A.suite,25800 if A.suite=='spigot' else 25801)
-    case(lane.name+': startup and exact command payments',lambda:(setup(lane),commands(lane)))
-    case(lane.name+': ordinary restart and payment-policy persistence',lambda:restart_persistence(lane))
-    case(lane.name+': Vault API correctness and concurrency',lambda:vault_calls(lane))
-    for phase,code in [('before',77),('after',78)]:case(lane.name+': journal halt '+phase,lambda p=phase,c=code:crash_boundary(lane,p,c))
-    case(lane.name+': synchronous Vault FULL contention latency',lambda:benchmark(lane))
+    if A.stress_only:
+        case(lane.name+': stress setup',lambda:setup(lane))
+        case(lane.name+': diagnostic stress, not release gate',lambda:benchmark(lane))
+    elif A.latency_only:
+        case(lane.name+': realistic setup',lambda:setup(lane))
+        case(lane.name+': ten minute realistic latency',lambda:realistic(lane))
+    else:
+        case(lane.name+': startup and exact command payments',lambda:(setup(lane),commands(lane)))
+        case(lane.name+': ordinary restart and payment-policy persistence',lambda:restart_persistence(lane))
+        case(lane.name+': Vault API correctness and concurrency',lambda:vault_calls(lane))
+        for phase,code in [('before',77),('after',78)]:case(lane.name+': journal halt '+phase,lambda p=phase,c=code:crash_boundary(lane,p,c))
+        case(lane.name+': diagnostic stress, not release gate',lambda:benchmark(lane))
 except BaseException:
     (RUN/'exceptions.log').open('a').write(traceback.format_exc()+'\n');require(False,'unhandled economy gate exception')
 finally:
@@ -738,10 +780,10 @@ finally:
     try:final_log_scan()
     except Exception as error:require(False,'final log scan',str(error))
     performance=[v for k,v in observations.items() if k.endswith('-shared')]
-    manifest=dict(suite=A.suite,run=str(RUN),alliumJar=str(JAR),alliumSha256=A.sha256,sourceHashes=SOURCE_HASHES,helperHashes=HELPER_HASHES,
+    manifest=dict(releaseDecision='UNAPPROVED',workload='realistic' if A.latency_only else 'stress' if A.stress_only else 'stress-and-correctness',machine=machine_info(),suite=A.suite,run=str(RUN),alliumJar=str(JAR),alliumSha256=A.sha256,sourceHashes=SOURCE_HASHES,helperHashes=HELPER_HASHES,
                   passed=not failures,passedCount=sum(c['passed'] for c in checks),failedCount=len(failures),failures=failures,checks=checks,scopes=scopes,
-                  processes=processes,integrityChecks=integrity,observations=observations,latencyTargetPassed=bool(performance) and all(r['latencyTargetPassed'] for r in performance),
-                  limitations=['Phase1 SQLite FULL only; no MySQL economy lane.','VaultAPI1.7.1 hosted by a test plugin; actual Allium provider and service calls exercised.','Separate economy.db benchmark is a prototype for Vault-only mutations; PAY policy ownership would need design before adopting it.'])
+                  processes=processes,integrityChecks=integrity,observations=observations,stress2msReferenceMet=bool(performance) and all(r['stress2msReferenceMet'] for r in performance),
+                  limitations=['Phase1 SQLite FULL only; no MySQL economy lane.','VaultAPI1.7.1 hosted by a test plugin; actual Allium provider and service calls exercised.','No separate economy database in current lanes; historical prototype is not adopted. SF host run and user budget approval remain required.'])
     (RUN/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-    emit('SUMMARY correctness='+str(manifest['passed'])+' checks='+str(manifest['passedCount'])+'/'+str(len(checks))+' latencyTarget='+str(manifest['latencyTargetPassed']))
+    emit('SUMMARY correctness='+str(manifest['passed'])+' checks='+str(manifest['passedCount'])+'/'+str(len(checks))+' releaseDecision='+manifest['releaseDecision'])
     sys.exit(0 if manifest['passed'] else 1)

@@ -87,6 +87,7 @@ public final class EconomyGate extends JavaPlugin {
                 case "parallelstate" -> out.putAll(parallel);
                 case "benchmark" -> {startBenchmark(args[1],Boolean.parseBoolean(args[2]));out.put("started",true);}
                 case "benchmarkstate" -> out.putAll(benchmark);
+                case "realistic" -> {startRealistic(args[1],Integer.parseInt(args[2]));out.put("started",true);}
                 default -> throw new IllegalArgumentException("unknown fixture command");
             }
             getLogger().info("S20G-DONE "+text+" => "+json(out));
@@ -133,6 +134,50 @@ public final class EconomyGate extends JavaPlugin {
             }
             ticks.add((System.nanoTime()-tick)/1e6);
             if(++batch[0]>=100){cancel();load.set(false);try{loadWork.get(10,TimeUnit.SECONDS);if(physical!=null)physical.close();}catch(Exception error){errors.add("writer completion "+error);}benchmark=Map.of("done",true,"separate",separate,"callsMs",calls,"tickEconomyWallMs",ticks,"serverThreadCpuPerTickMs",cpu,"writerRounds",writeRounds.get(),"errors",errors);}
+        }}.runTaskTimer(this,1,1);
+    }
+    private void startRealistic(String name,int seconds)throws Exception {
+        if(seconds<600||!load.compareAndSet(false,true))throw new IllegalArgumentException("at least 600s, one workload at a time");
+        benchmark=Map.of("done",false);
+        var preferences=(PreferencesModule)allium.getModuleManager().getModule("preferences");
+        var moderation=(ModerationModule)allium.getModuleManager().getModule("moderation");
+        var mail=new MailRepository(allium.getDatabaseManager().connectionSource(),allium.getDatabaseManager().dialect(),System::currentTimeMillis);
+        UUID writer=uuid("RealisticLoad");var errors=new CopyOnWriteArrayList<String>();
+        int preferenceMs=Integer.getInteger("allium.bench.preference-ms",2000),moderationMs=Integer.getInteger("allium.bench.moderation-ms",10000),mailMs=Integer.getInteger("allium.bench.mail-ms",15000);
+        if(Math.min(preferenceMs,Math.min(moderationMs,mailMs))<100)throw new IllegalArgumentException("background intervals >=100ms");
+        long begin=System.nanoTime();var counts=new java.util.concurrent.ConcurrentHashMap<String,Integer>();
+        var workers=new ArrayList<Future<?>>();
+        for(String type:List.of("preferences","moderation","mail"))workers.add(background.submit(()->{
+            int interval=type.equals("preferences")?preferenceMs:type.equals("moderation")?moderationMs:mailMs;
+            try{while(load.get()){
+                Thread.sleep(interval);if(!load.get())break;
+                if(type.equals("preferences"))preferences.repository().apply(writer,PreferenceChange.set(PreferenceKey.ACCEPT_MESSAGES,(counts.getOrDefault(type,0)%2)==0));
+                if(type.equals("moderation"))moderation.repository().recordAudit("REALISTIC","Gate",writer,"RealisticLoad","paced FULL workload");
+                if(type.equals("mail")){long now=System.currentTimeMillis();mail.send(MailRecord.text(UUID.randomUUID(),writer,null,"Gate","load","gate",now,0),new MailLimits(10000,10000,1000,256,0,64),true);}
+                counts.merge(type,1,Integer::sum);
+            }}catch(InterruptedException expected){Thread.currentThread().interrupt();}catch(Exception error){errors.add(type+": "+error);}
+        }));
+        var writes=new ArrayList<Double>();var reads=new ArrayList<Double>();var ticks=new ArrayList<Double>();var cpu=new ArrayList<Double>();var player=account(name);
+        var bean=ManagementFactory.getThreadMXBean();int[] tickNumber={0},writeNumber={0};
+        new org.bukkit.scheduler.BukkitRunnable(){@Override public void run(){
+            int phase=tickNumber[0]%20;int n=phase==0?3:(phase==10||phase==15?1:0);
+            long start=System.nanoTime(),cpuStart=bean.getCurrentThreadCpuTime();
+            for(int i=0;i<n;i++){
+                long call=System.nanoTime();var result=(writeNumber[0]++%2==0)?vault.depositPlayer(player,.01):vault.withdrawPlayer(player,.01);
+                writes.add((System.nanoTime()-call)/1e6);if(!result.transactionSuccess())errors.add("Vault write: "+result.errorMessage);
+            }
+            for(int i=0;i<(phase%2==0?2:3);i++){long call=System.nanoTime();try{vault.getBalance(player);}catch(Exception error){errors.add("Vault read: "+error);}reads.add((System.nanoTime()-call)/1e6);}
+            cpu.add((bean.getCurrentThreadCpuTime()-cpuStart)/1e6);ticks.add((System.nanoTime()-start)/1e6);tickNumber[0]++;
+            if(tickNumber[0]%1200==0)getLogger().info("S20G realistic progress seconds="+(System.nanoTime()-begin)/1e9+" ticks="+tickNumber[0]);
+            if(tickNumber[0]>=seconds*20 && System.nanoTime()-begin>=seconds*1_000_000_000L){
+                cancel();load.set(false);
+                // Publish on worker completion; never join sleepers on the server thread.
+                background.submit(()->{try{for(var work:workers)work.get(20,TimeUnit.SECONDS);}catch(Exception error){errors.add("completion: "+error);}
+                    Map<String,Object> result=new LinkedHashMap<>();result.put("done",true);result.put("elapsedSeconds",(System.nanoTime()-begin)/1e9);
+                    result.put("writeCallsMs",writes);result.put("readCallsMs",reads);result.put("tickEconomyWallMs",ticks);result.put("tickEconomyCpuMs",cpu);result.put("backgroundWrites",counts);result.put("backgroundIntervalsMs",Map.of("preferences",preferenceMs,"moderation",moderationMs,"mail",mailMs));result.put("errors",errors);
+                    try{Files.writeString(getDataFolder().toPath().resolve("realistic.json"),json(result));benchmark=Map.of("done",true,"file","realistic.json");}catch(Exception error){benchmark=Map.of("done",true,"error",error.toString());}
+                });
+            }
         }}.runTaskTimer(this,1,1);
     }
     private static String json(Object v) {

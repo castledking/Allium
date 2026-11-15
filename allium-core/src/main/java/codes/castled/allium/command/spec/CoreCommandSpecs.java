@@ -102,11 +102,18 @@ public final class CoreCommandSpecs {
             ))
     );
 
+    /** Fixed-mode aliases share the gamemode command family and its permission policy. */
+    public static String gamemodeAlias(String label) {
+        if(label==null)return null;
+        String name=label.substring(label.lastIndexOf(':')+1).toLowerCase(java.util.Locale.ROOT);
+        return switch(name){case "gmc","creative"->"creative";case "gma","adventure"->"adventure";
+            case "gms","survival"->"survival";case "gmsp","spectator"->"spectator";default->null;};
+    }
     public static final CommandSpec GAMEMODE = new CommandSpec(
             "gamemode",
             CommandSpec.DEFAULT_NAMESPACE,
             "essentials",
-            List.of("gm"),
+            List.of("gm","gmc","gma","gms","gmsp","creative","survival","spectator","adventure"),
             "Change your gamemode",
             "/gamemode <mode> [player]",
             "/gamemode <mode> <player>",

@@ -41,7 +41,7 @@ commands:
   gamemode:
     description: Change your gamemode
     usage: /<command> <mode> [player]
-    aliases: [gm]
+    aliases: [gm, gmc, gma, gms, gmsp, creative, survival, spectator, adventure]
     permission: allium.gamemode
   msg:
     description: Send a private message

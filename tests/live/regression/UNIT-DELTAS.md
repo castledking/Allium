@@ -41,3 +41,7 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
 - S21 service matrix and required sweep retention: **+55**, 667 → 722; actual SignService listeners across all eleven types, create/use/break permission checks, late protection cancellation, waxed/unwaxed routing and type/command/module disabling. Full test task passes, zero failures/skips; production code unchanged.
 
 - S22 revised shop phases/withdrawal/griefing design: **+0**, 722 unchanged; docs only. Server shops first; player shops and trades require separate later gates.
+
+- Fixed gamemode aliases: **+8**, 722 → 730; each shortcut verifies denied base
+  permission, self selection, denied others, namespaced target selection and
+  disabled-family enforcement. Existing command and completion policies are reused.

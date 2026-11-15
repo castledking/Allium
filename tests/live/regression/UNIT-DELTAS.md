@@ -24,3 +24,8 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
 - `f86f465` stall investigation: **+4**, 627 → 631; opt-in diagnostics and committed-state/read-only regression checks. Full isolated check/shadowJar, zero failures/skips.
 
 - E5 receipt-backed reservations: **+21**, 631 → 652; full isolated check/shadowJar, zero failures/skips. Both live lanes pass 388 checks each on one frozen jar; no provider release.
+
+- E5 safety/operator/startup follow-ups: **+9**, 652 → 661; full check/shadowJar,
+  zero failures/skips. Default-off/explicit-opt-in provider tests, offline saved
+  receipt/absence/unknown/online/kit recovery, audited capture/release preserving
+  workflow, and full native inspection. Spigot live evidence: economy/FOLLOWUPS.md.

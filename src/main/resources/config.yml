@@ -53,6 +53,8 @@ modules:
   tools: true
 
 economy:
+  # Opt-in only after host validation; commands and paid workflows do not need Vault.
+  vault-provider-enabled: false
   # Phase 1 single-server SQLite money. Amounts must remain quoted decimal text.
   starting-balance: '100.00'
   min-money: '0.00'

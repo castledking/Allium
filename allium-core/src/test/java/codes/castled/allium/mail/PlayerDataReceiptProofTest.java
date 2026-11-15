@@ -26,6 +26,15 @@ class PlayerDataReceiptProofTest {
     Path directory;
 
     @Test
+    void inspectionReturnsOnlyFullyValidatedReceiptOrAbsence()throws IOException {
+        var saved=nbt(out->receipt(out,RECEIPT));
+        org.junit.jupiter.api.Assertions.assertEquals(RECEIPT,PlayerDataReceiptProof.read(saved,PlayerDataReceiptProof.MAIL_RECEIPTS));
+        byte[] bytes=Files.readAllBytes(saved);bytes[bytes.length-8]^=1;Files.write(saved,bytes);
+        assertThrows(IOException.class,()->PlayerDataReceiptProof.read(saved,PlayerDataReceiptProof.MAIL_RECEIPTS));
+        org.junit.jupiter.api.Assertions.assertNull(PlayerDataReceiptProof.read(nbt(out->{}),PlayerDataReceiptProof.MAIL_RECEIPTS));
+        assertThrows(IOException.class,()->PlayerDataReceiptProof.read(nbt(out->receipt(out,"")),PlayerDataReceiptProof.MAIL_RECEIPTS));
+    }
+    @Test
     void provesAbsenceOnlyFromACompleteValidNativeSnapshot()throws IOException {
         assertDoesNotThrow(()->PlayerDataReceiptProof.verifyAbsent(nbt(out->{}),PlayerDataReceiptProof.MAIL_RECEIPTS));
         assertThrows(IOException.class,()->PlayerDataReceiptProof.verifyAbsent(directory.resolve("missing.dat"),PlayerDataReceiptProof.MAIL_RECEIPTS));

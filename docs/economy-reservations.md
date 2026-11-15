@@ -18,7 +18,7 @@ Kit definitions retain their quoted `cost`. A paid kit is a self claim by the ta
 Economy schema migration 2 adds reservations keyed by `(KIT|MAIL, workflow UUID)`, with payer, exact amount, framed intent hash, HELD/CAPTURED/RELEASED state, version and original/final journal IDs. Original migration 1 and legacy balances are retained. Full mail/kit intents are hashed with length framing so a changed payload under an existing workflow key conflicts even at the same price.
 
 - Reserve: under `BEGIN IMMEDIATE`, read the payer account, enforce available funds, increase R, write a zero-book/positive-held entry, insert HELD and insert the PENDING mail/kit delivery intent in the same commit.
-- Capture: require HELD, reduce B and R together, record the sink/held entries, and save workflow completion/acknowledgement in the same commit. Native receipt verification runs inside the SQL transition while item admission remains locked.
+- Capture: require HELD, reduce B and R together, record the sink/held entries, and save workflow completion/acknowledgement in the same commit. Native receipt verification precedes the write transaction while item admission remains locked; HELD state and workflow ownership are rechecked under the write lock.
 - Release: require HELD and a validated native snapshot proving absence of that receipt. Reduce only R and cancel the workflow in the same commit. Missing, corrupt or ambiguous playerdata is unknown evidence; retain the hold and pending workflow.
 - Text mail: SPEND collapses send/capture, READY row and CAPTURED reservation into one commit, without a visible hold or native item receipt.
 
@@ -39,3 +39,52 @@ After an interrupted capture, a saved K/S receipt finishes the original capture 
 The proof validates native save/readback and process-crash recovery. It does not establish atomicity between SQLite and playerdata under hardware power loss, nor replace coordinated backups/restores. No such power-fault guarantee is claimed by the live Runtime.halt tests.
 
 [Live/unit results](../tests/live/economy/E5.md) record the frozen artifact, sufficient/insufficient funds, finite-balance races, retry, persistence, and real before/after-capture and pre-delivery halts on Spigot and Paper. Signs remain S21.
+
+## Operator inspection and explicit money resolution
+
+The Vault provider is disabled by default (`economy.vault-provider-enabled: false`).
+Commands and paid workflows do not need it. Enabling it still requires successful
+schema validation and startup recovery readiness.
+
+`/eco reservations [player]` lists the latest 100 reservations, including payer,
+workflow kind/UUID, amount and state. Console or `allium.eco.admin` is required.
+Before deciding a stuck hold, stop that player's activity and disconnect them;
+preserve the native playerdata file and a coordinated SQLite backup, including WAL.
+Inspect the inventory, complete K/S receipt, unknown P marker, workflow intent,
+reservation and journal. Missing or corrupt evidence is not proof of absence.
+
+Use exactly one explicit decision with a case reference and meaningful reason:
+
+```
+eco resolve KIT <workflow-uuid> capture confirmed kit delivery; incident 42
+eco resolve MAIL <workflow-uuid> release verified sender inventory restored; incident 43
+```
+
+Capture consumes the held money; release makes it available without changing book
+balance. The decision, actor, action, reason and time enter
+`allium_economy_reservation_audit` in the same transaction as the original keyed
+terminal operation. The HELD state is checked again under the writer lock. A
+terminal reservation cannot be reversed with another resolve command. Inspection
+and resolution never delete the native marker, workflow intent, reservation,
+journal or audit. They never deliver/remove items or clear a quarantine. Operator
+resolution intentionally freezes automatic completion of that workflow: preserve
+the evidence for inventory reconciliation. This command settles money only; it is
+not an automatic inventory repair or a command to make an unknown partial effect
+safe. Do not delete a P marker to bypass quarantine.
+
+## Offline startup sweep and write-lock scope
+
+Startup materializes HELD workflow identities, closes the query connection, then
+reads each offline payer's complete native NBT/GZIP snapshot. A matching kit token
+and name or sender S receipt completes the original capture and workflow; valid
+absence releases it. Unknown entries, wrong tokens, missing/corrupt snapshots and
+missing/conflicting workflow intents leave the hold untouched and log its ID.
+Online players use their existing inventory-locked recovery path. The sweep does
+not mutate playerdata or deliver items, and terminal rows are skipped on restart.
+
+Before this follow-up, paid reserve/capture/release callbacks read native files
+inside `BEGIN IMMEDIATE`. They now verify first, keeping inventory admission
+locked through the subsequent SQL commit. The engine rechecks the current HELD
+state and version inside that transaction. Workflow ownership and acknowledgements
+are still checked on the same SQL connection. File I/O no longer extends SQLite's
+write lock; no weaker durability setting or separate money database is involved.

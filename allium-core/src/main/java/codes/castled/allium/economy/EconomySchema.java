@@ -48,7 +48,8 @@ public final class EconomySchema {
         }
         new SchemaMigrator(source, SqlDialect.SQLITE, System::currentTimeMillis).migrate("economy",
             List.of(Migration.of(1, "exact money accounts, atomic operations and entries", DDL.subList(0,3), List.of()),
-                Migration.of(2,"workflow holds and terminal receipts",List.of(DDL.get(3),"CREATE INDEX allium_economy_reservations_by_account ON "+RESERVATIONS+" (account_uuid,state)"),List.of())));
+                Migration.of(2,"workflow holds and terminal receipts",List.of(DDL.get(3),"CREATE INDEX allium_economy_reservations_by_account ON "+RESERVATIONS+" (account_uuid,state)"),List.of()),
+                Migration.of(3,"operator reservation audit",List.of("CREATE TABLE allium_economy_reservation_audit (workflow_kind TEXT NOT NULL, workflow_id TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, reason TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY(workflow_kind,workflow_id))"),List.of())));
         // Refuse a pre-existing lookalike table instead of trusting CREATE IF NOT EXISTS.
         try (var c = source.connection(); var q = c.prepareStatement("SELECT sql FROM sqlite_master WHERE type='table' AND name=?")) {
             for (int i=0;i<DDL.size();i++) {

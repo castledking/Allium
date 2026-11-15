@@ -567,8 +567,27 @@ Burst ticks: three writes occur on 5% of ticks and represent 60% of writes. At ~
 
 [Reservation rules](economy-reservations.md) and [live/unit evidence](../tests/live/economy/E5.md) record schema component migration 2, ordered one-account cost transitions, stable workflow/step operation IDs and intent hashes, held-fund invariants, and atomic native-receipt completion. Reserve, capture and release each use one SQLite transaction; connection-taking kit/mail methods never independently borrow or commit. Text SPEND collapses READY and capture into one commit. R equals the sum of HELD reservations, reconciled independently to all entry deltas after both live lanes.
 
-Gift mail holds funds with PENDING, captures with verified native sender receipt and READY acknowledgement, and releases only on a complete saved absence proof. Kit receipt verification, capture, usage/cooldown and immutable acknowledgement share the completion transaction. Terminal evidence failure rolls back the whole attempt so the same original ID remains recoverable. Unknown commits preserve their IDs; unknown text outcomes warn not to resend. Recipient gift claims and original-ID retries never charge again. Paid marker rows persist so disabling economy cannot activate a paid workflow for free.
+Gift mail holds funds with PENDING, captures with verified native sender receipt and READY acknowledgement, and releases only on a complete saved absence proof. Kit receipt verification precedes the completion transaction; capture, usage/cooldown and immutable acknowledgement share that transaction after the HELD/ownership recheck. Terminal evidence failure rolls back the whole attempt so the same original ID remains recoverable. Unknown commits preserve their IDs; unknown text outcomes warn not to resend. Recipient gift claims and original-ID retries never charge again. Paid marker rows persist so disabling economy cannot activate a paid workflow for free.
 
 The partial-kit policy is REFUSE the entire plan before mutation; unexpected partial effects persist an unknown marker, retain HELD and quarantine across reconnect for operator reconciliation. Paid kits support self claims; staff/console grants to others remain denied, and existing free grants are preserved. Mail prices are quoted `mail.costs.text/gift`, free by default; console text mail has no payer. The pure CostPolicy hook remains a veto, never a money side effect.
 
 E5 adds **21 tests (631 → 652)**; full isolated check/shadowJar passes with zero failures/skips. Live Spigot 1.20.1 and Paper 26.3 each pass **388/388**, including sufficient/insufficient funds, finite-balance races, normal restart, retry, before/after-capture halts and pre-delivery absence halts for both kit and gift mail. Native process-crash proof is not a hardware-power-loss or cross-file restore guarantee. The same frozen E5 jar passed both lanes; a comment-only rebuild is byte-for-byte identical. **Stop after E5. No Vault release, durability relaxation, separate database, production reader switch or budget approval. Signs remain S21.**
+
+### Accepted investigation and provisional development-host budget
+
+The repeat matrix is three Spigot pooled/dedicated pairs and one Paper pair,
+with ten minutes per phase (264,040 calls). The original >=500ms stall did not
+recur. The matrix and raw evidence are retained in [STALL](../tests/live/economy/STALL.md).
+Shorter tails have multiple observed sources: GC pauses, commit latency and
+unclassified overhead. Diagnostic allocation, checkpoint probes, fixed phase
+ordering and shared-host activity introduce noise; absence of recurrence does
+not identify the original 600.934ms sample's cause.
+
+The proposed realistic budget is met on the development host in the accepted
+repeat matrix. This remains **provisional pending three matching workload runs
+on SF's actual host**. It is not provider release approval. Keep SQLite WAL FULL,
+one allium.db, pooled production reads, and `economy.vault-provider-enabled: false`.
+The new opt-in flag also requires schema and recovery readiness. Native paid
+workflow receipt reads now precede money write transactions, whose HELD/version
+checks remain authoritative. Offline startup recovery and audited explicit money
+resolution are described in [the reservation procedure](economy-reservations.md).

@@ -27,7 +27,7 @@ public final class PaidWorkflowSupport {
         if(result instanceof Unknown unknown)throw new UnknownCommit(unknown.operationId());
         throw new SQLException("paid workflow storage unavailable");
     }
-    /** Executed inside the capture/release transaction, while inventory admission remains locked. */
+    /** Verify before opening a money write transaction; keep inventory admission locked through commit. */
     public static void prove(Path file,String key,String expected)throws SQLException{
         try{if(expected==null||expected.isEmpty())PlayerDataReceiptProof.verifyAbsent(file,key);else PlayerDataReceiptProof.verify(file,key,expected);}
         catch(IOException error){throw new SQLException("saved native receipt evidence is unavailable",error);}

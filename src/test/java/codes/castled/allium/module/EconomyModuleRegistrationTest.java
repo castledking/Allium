@@ -21,14 +21,34 @@ class EconomyModuleRegistrationTest {
         var server=mock(Server.class);when(p.getServer()).thenReturn(server);when(server.getPluginManager()).thenReturn(mock(PluginManager.class));when(server.getServicesManager()).thenReturn(mock(ServicesManager.class));
         when(p.getCommandManager()).thenReturn(mock(CommandManager.class));return p;
     }
+    @Test void defaultOffEvenWhenVaultIsPresent()throws Exception {
+        var p=plugin();when(p.getServer().getPluginManager().getPlugin("Vault")).thenReturn(mock(org.bukkit.plugin.Plugin.class));
+        try(var mocked=mockConstruction(EconomyRuntime.class,(m,c)->when(m.ready()).thenReturn(true))){
+            var module=new EconomyModule(p);module.onEnable();
+            verifyNoInteractions(p.getServer().getServicesManager());
+            verify(p.logger()).info("Vault economy provider is off (economy.vault-provider-enabled=false).");
+            module.onDisable();
+        }
+    }
     @Test void absentVaultLeavesReadyCommandsAndDoesNotRegisterService()throws Exception {
-        var p=plugin();try(var mocked=mockConstruction(EconomyRuntime.class,(m,c)->when(m.ready()).thenReturn(true))){
+        var p=plugin();p.getConfig().set("economy.vault-provider-enabled",true);try(var mocked=mockConstruction(EconomyRuntime.class,(m,c)->when(m.ready()).thenReturn(true))){
             var module=new EconomyModule(p);module.onEnable();verifyNoInteractions(p.getServer().getServicesManager());
             module.onDisable();verify(mocked.constructed().get(0)).close();
         }
     }
+    @Test void explicitOptInRegistersOnlyAfterReadyAndUnregisters()throws Exception {
+        var p=plugin();p.getConfig().set("economy.vault-provider-enabled",true);
+        when(p.getDatabaseManager().connectionSource()).thenReturn(mock(codes.castled.allium.storage.ConnectionSource.class));
+        when(p.getServer().getPluginManager().getPlugin("Vault")).thenReturn(mock(org.bukkit.plugin.Plugin.class));
+        try(var runtime=mockConstruction(EconomyRuntime.class,(m,c)->when(m.ready()).thenReturn(true));
+            var provider=mockConstruction(codes.castled.allium.economy.VaultEconomyProvider.class)){
+            var module=new EconomyModule(p);module.onEnable();
+            verify(p.getServer().getServicesManager()).register(eq(net.milkbowl.vault.economy.Economy.class),same(provider.constructed().get(0)),same(p),eq(org.bukkit.plugin.ServicePriority.Highest));
+            module.onDisable();verify(p.getServer().getServicesManager()).unregister(eq(net.milkbowl.vault.economy.Economy.class),same(provider.constructed().get(0)));
+        }
+    }
     @Test void unreadyRecoveryNeverRegistersProviderAndClosesRuntime()throws Exception {
-        var p=plugin();try(var mocked=mockConstruction(EconomyRuntime.class)){
+        var p=plugin();p.getConfig().set("economy.vault-provider-enabled",true);try(var mocked=mockConstruction(EconomyRuntime.class)){
             assertThrows(IllegalStateException.class,()->new EconomyModule(p).onEnable());
             verifyNoInteractions(p.getServer().getServicesManager());verify(mocked.constructed().get(0)).close();
         }

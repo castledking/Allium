@@ -44,7 +44,7 @@ class EconomyFoundationTest {
         EconomySchema.migrate(()->DriverManager.getConnection(url)); EconomySchema.migrate(()->DriverManager.getConnection(url));
         try(var c=DriverManager.getConnection(url);var s=c.createStatement()) {
             assertFalse(s.executeQuery("PRAGMA foreign_key_list("+EconomySchema.ACCOUNTS+")").next());
-            assertEquals(2,s.executeQuery("SELECT version FROM allium_schema WHERE component='economy'").getInt(1));
+            assertEquals(3,s.executeQuery("SELECT version FROM allium_schema WHERE component='economy'").getInt(1));
         }
     }
     @Test void sqliteRejectsRealMoneyStorage() throws Exception {

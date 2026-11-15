@@ -1,0 +1,133 @@
+{
+  "jarSha256": "dc65d8127d058e1d8a1644cda645224470eef2d4c7e9c5bfc39b8ed370b128b8",
+  "units": 661,
+  "unitDelta": 9,
+  "originalPassedCount": 397,
+  "originalFailedCount": 1,
+  "retainedFailure": {
+    "label": "spigot-economy: realistic lane overlaps durable paid kit and gift claims",
+    "passed": false,
+    "detail": {
+      "rounds": 96,
+      "errors": []
+    }
+  },
+  "independentAudit": {
+    "backgroundKitCaptures": 96,
+    "backgroundGiftCaptures": 96,
+    "backgroundGiftRows": 96,
+    "foreignKeyViolations": 0,
+    "heldInvariantViolations": 0
+  },
+  "observations": {
+    "vaultHost": {
+      "api": "/home/towkio/.gradle/caches/modules-2/files-2.1/com.github.MilkBowl/VaultAPI/1.7.1/24d63ed39e2d36a5a03fb0addbe8cfe1eff0036/VaultAPI-1.7.1.jar",
+      "apiSha256": "46cbb044e6013b0f14e99b08c2afc273f5554b7da5320e36614ddb9d719cebcc",
+      "scope": "unmodified VaultAPI1.7.1 economy classes hosted by test plugin named Vault; actual registered provider is Allium"
+    },
+    "spigot-economy-realistic-pooled": {
+      "workload": "realistic",
+      "readMode": "pooled",
+      "activeSeconds": 600.047368506,
+      "timingSamples": 0,
+      "checkpointProbes": 0,
+      "writes": {
+        "n": 3003,
+        "p50": 2.147322,
+        "p95": 3.249525,
+        "p99": 4.981236,
+        "p999": 8.511694,
+        "max": 10.319101
+      },
+      "reads": {
+        "n": 30002,
+        "p50": 0.094844,
+        "p95": 0.319663,
+        "p99": 0.41398,
+        "p999": 0.652569,
+        "max": 5.643478
+      },
+      "allCalls": {
+        "n": 33005,
+        "p50": 0.112237,
+        "p95": 2.036235,
+        "p99": 2.884451,
+        "p999": 4.96526,
+        "max": 10.319101
+      },
+      "economyWallPerTick": {
+        "n": 12001,
+        "p50": 0.416084,
+        "p95": 3.644348,
+        "p99": 7.385427,
+        "p999": 10.421023,
+        "max": 15.495818
+      },
+      "economyCpuPerTick": {
+        "n": 12001,
+        "p50": 0.407718,
+        "p95": 2.115106,
+        "p99": 4.155649,
+        "p999": 5.67684,
+        "max": 6.875051
+      },
+      "ticksOver5ms": 472,
+      "elapsedSeconds": 600.502773084,
+      "backgroundWrites": {
+        "preferences": 299,
+        "mail": 39,
+        "moderation": 59
+      },
+      "backgroundIntervalsMs": {
+        "mail": 15000,
+        "moderation": 10000,
+        "preferences": 2000
+      },
+      "errors": []
+    },
+    "postShutdownLogScan": {
+      "files": [
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy/gc.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy/logs/2026-11-15-1.log.gz",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy/logs/2026-11-15-2.log.gz",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy/logs/2026-11-15-3.log.gz",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy/logs/2026-11-15-4.log.gz",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy/logs/2026-11-15-5.log.gz",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy/logs/2026-11-15-6.log.gz",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy/logs/2026-11-15-7.log.gz",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy/logs/latest.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyA-client-1.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyA-client-2.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyA-client-3.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyA-client-4.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyA-client-5.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyA-client-6.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyA-client-7.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyA-client-8.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyB-client-1.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyB-client-2.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyB-client-3.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyB-client-4.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyB-client-5.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyB-client-6.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyB-client-7.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyB-client-8.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyObs-client-1.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyObs-client-2.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyObs-client-3.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyObs-client-4.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyObs-client-5.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyObs-client-6.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyObs-client-7.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-MoneyObs-client-8.log",
+        "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/spigot-economy-server.log"
+      ],
+      "pattern": "allium.{0,100}task.{0,50}fail|scheduler|callback|could not pass event|\\bSEVERE\\b|decoder|client.?error|(?<![\\\"A-Za-z0-9_])ERROR(?![\\\"A-Za-z0-9_])|S20G-FAIL|error processing packet",
+      "findings": [],
+      "preciseTransportExemptions": []
+    }
+  },
+  "manifestPath": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/followups-spigot-r1/manifest.json",
+  "manifestSha256": "03ff40ef728608ee9c231dfd677cc0b2a3a7b1668b34fe0f8cadc671fdc89720",
+  "rawSamplesSha256": "53867d461b88ebac4698786f244662993f143e3948f0dced7b9c4d974e0e6278"
+}

@@ -216,8 +216,8 @@ public final class MailService implements Listener {
     private MailRepository.SendResult sendPriced(MailRecord mail,MailLimits rules,boolean bypass,Money price,java.nio.file.Path file,String baseline)throws SQLException{
         if(price.minor()==0)return repository.send(mail,rules,bypass);
         var outcome=new java.util.concurrent.atomic.AtomicReference<MailRepository.SendResult>();
+        if(mail.kind()==MailKind.GIFT)PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.MAIL_RECEIPTS,baseline);
         EconomyEngine.WorkflowTransition intent=c->{
-            if(mail.kind()==MailKind.GIFT)PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.MAIL_RECEIPTS,baseline);
             var result=repository.send(c,mail,rules,bypass);outcome.set(result);return result==MailRepository.SendResult.SAVED;
         };
         var reservations=PaidWorkflowSupport.reservations(plugin);
@@ -228,18 +228,19 @@ public final class MailService implements Listener {
     }
     private boolean activate(UUID id,java.nio.file.Path file,String expected)throws SQLException{
         if(!repository.paid(id))return repository.activate(id);
+        if(MailReceipts.parse(expected).stream().noneMatch(r->r instanceof MailReceipts.Sent sent&&sent.mail().equals(id)))throw new SQLException("missing matching sender receipt");
+        PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.MAIL_RECEIPTS,expected);
+        if(PaidWorkflowSupport.reservations(plugin).operatorResolved(EconomyReservations.Kind.MAIL,id))throw new SQLException("operator-resolved workflow remains quarantined");
         return PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin).capture(EconomyReservations.Kind.MAIL,id,c->{
-            if(MailReceipts.parse(expected).stream().noneMatch(r->r instanceof MailReceipts.Sent sent&&sent.mail().equals(id)))throw new SQLException("missing matching sender receipt");
-            PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.MAIL_RECEIPTS,expected);return repository.activate(c,id);
+            return repository.activate(c,id);
         }));
     }
     private boolean cancelPending(UUID id,java.nio.file.Path file,String expected)throws SQLException{
         if(!repository.paid(id))return repository.cancelPending(id);
+        if(MailReceipts.parse(expected).stream().anyMatch(r->r instanceof MailReceipts.Sent sent&&sent.mail().equals(id)))throw new SQLException("cannot release a gift with a sender receipt");
+        PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.MAIL_RECEIPTS,expected);
+        if(PaidWorkflowSupport.reservations(plugin).operatorResolved(EconomyReservations.Kind.MAIL,id))throw new SQLException("operator-resolved workflow remains quarantined");
         return PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin).release(EconomyReservations.Kind.MAIL,id,c->{
-            {
-                if(MailReceipts.parse(expected).stream().anyMatch(r->r instanceof MailReceipts.Sent sent&&sent.mail().equals(id)))throw new SQLException("cannot release a gift with a sender receipt");
-                PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.MAIL_RECEIPTS,expected);
-            }
             return repository.cancelPending(c,id);
         }));
     }

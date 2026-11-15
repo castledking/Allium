@@ -636,6 +636,10 @@ permissions:
     default: true
   allium.paytoggle.others:
     default: op
+  allium.eco.admin:
+    default: op
+    children:
+      allium.eco: true
   allium.eco:
     default: op
   allium.baltop:

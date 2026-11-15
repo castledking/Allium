@@ -66,6 +66,13 @@ public final class EconomyGate extends JavaPlugin {
                     else out.putAll(response(action.equals("withdraw")?vault.withdrawPlayer(p,Double.parseDouble(args[3])):vault.depositPlayer(p,Double.parseDouble(args[3]))));
                     out.put("ms",(System.nanoTime()-start)/1e6);
                 }
+                case "adminhold" -> {
+                    UUID id=UUID.randomUUID(),payer=uuid(args[1]);
+                    var repository=new MailRepository(allium.getDatabaseManager().connectionSource(),codes.castled.allium.storage.SqlDialect.SQLITE,System::currentTimeMillis);
+                    var intent=MailRecord.pendingGift(id,uuid("MoneyA"),payer,args[1],"operator fixture","fixture-preserved",1,"gate",System.currentTimeMillis());
+                    var result=runtime.reservations().reserve(EconomyReservations.Kind.MAIL,id,payer,new Money(1),c->repository.send(c,intent,MailLimits.DEFAULTS,true)==MailRepository.SendResult.SAVED);
+                    if(!(result instanceof Committed))throw new SQLException("hold failed");out.put("id",id.toString());
+                }
                 case "paidstate" -> {
                     var p=player(args[1]);UUID id=p.getUniqueId();out.put("uuid",id.toString());out.putAll(found(runtime.engine().balance(id)));
                     Map<String,Integer> items=new TreeMap<>();for(var item:p.getInventory().getStorageContents())if(item!=null&&!item.getType().isAir())items.merge(item.getType().name(),item.getAmount(),Integer::sum);out.put("items",items);

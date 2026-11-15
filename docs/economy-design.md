@@ -591,3 +591,12 @@ The new opt-in flag also requires schema and recovery readiness. Native paid
 workflow receipt reads now precede money write transactions, whose HELD/version
 checks remain authoritative. Offline startup recovery and audited explicit money
 resolution are described in [the reservation procedure](economy-reservations.md).
+
+### S21/S22 closeout
+
+S21 opt-in service signs pass real-client SQLite gates on Spigot 1.20.1 and Paper
+26.3, 373 checks per lane. [Sign rules](signs.md) and [evidence](../tests/live/signs/RESULTS.md)
+record the fixed artifact and permissions/protection/persistence/destruction scope.
+S22 is [design only](shop-signs-design.md): no buy/sell/trade code or migration.
+The unit ledger ends at 667; S21 adds six and S22 adds zero. The Vault provider
+and signs remain disabled by default, and no provider release is authorized.

@@ -1,6 +1,6 @@
 # Economy design and S20 implementation contract
 
-**E1–E4 are implemented. Correctness passes, but the synchronous Vault release gate is blocked by measured p99 latency.** Final isolated check/shadowJar: 627 unit tests, zero failures/skips. Real-client correctness: 165/165 on Spigot 1.20.1 and 165/165 on Paper 26.3. Shared-file FULL p99 is 3.903/5.176 ms versus the 2 ms target; the separate-file prototype also misses the target. No production release or deployment is claimed. E5 has not started.
+**E1–E4 correctness is accepted; provider release remains unapproved and E5 has not started.** The stress test missed p99 <=2ms and is now labelled diagnostic, not a release gate. Ten-minute realistic FULL lanes also miss 2ms for writes: p99 5.054ms Spigot / 4.204ms Paper; one healthy Spigot read took 600.934ms. No durability relaxation or separate economy.db is authorized. See the [realistic report and proposed budget](../tests/live/economy/REALISTIC.md). Existing unit total 627, this follow-up +0.
 
 **Decision: SF is one server on SQLite. Phase 1 uses WAL with `synchronous=FULL`. No policy mutex rows, shared settings epoch, or MySQL economy lane.**
 
@@ -280,7 +280,7 @@ money/account/commit rules. Do not relabel ordinary player payments as payouts.
 ## Three measured durability options — user decision remains open
 
 All options require bounded borrow/lock/busy deadlines and verified per-connection settings;
-WAL by itself is not a durability contract. No option is silently selected by this design.
+WAL by itself is not a durability contract. The current Phase 1 decision is SQLite FULL. The alternatives below are informational; no change is authorized or selected by this follow-up.
 
 | Option | Contract/caveat to approve |
 | --- | --- |
@@ -531,3 +531,20 @@ The scaffold writer/flag are retired. The provider is synchronous; native double
 E4 adds 9 tests (618 → 627); full check/shadowJar passes, zero failures/skips. [Live correctness and workload report](../tests/live/economy/RESULTS.md) records 330 passing checks and the failed latency release target. Each layout/lane has 1,000 synchronous calls over 100 ticks with simultaneous real preference, moderation and mail repository writes. All healthy calls stayed below 25 ms, but p99 exceeded 2 ms.
 
 A separate FULL economy.db prototype reduced p99 from 3.903 to 3.420 ms on Spigot and from 5.176 to 4.644 ms on Paper; it still fails. It reuses a physical connection and isolates Vault-only money from the other three writers. Adopting it would require authoritative payment-policy data to reside with the money journal; two WAL files cannot be assumed to commit PAY/policy atomically. File isolation alone is not a demonstrated fix on the measured storage, so further storage/connection analysis is needed before release. Durability is unchanged. Stop here: no E5 reservation work, paid kits remain denied, and signs remain S21.
+
+
+### Realistic-lane release-budget proposal (unapproved)
+
+[Full report](../tests/live/economy/REALISTIC.md) and [host command](../tests/live/economy/MEASURE.md) retain p50/p95/p99/p99.9/max per call class, economy wall/CPU cost per tick, raw-sample hashes, process exits, source freezes and independently verified background writes. Both live lanes ran sequentially for at least ten minutes: nominal 5 writes/s (bursts of three), 50 reads/s, preference writes every 2s, moderation every 10s, mail every 15s. Those background rates are assumptions, not SF observations. Both persisted 299 preference versions, 59 audits, 39 mails. Spigot exceeded 5ms economy wall work on 455/12,001 ticks (3.791%); Paper on 309/12,001 (2.575%). Economy wall/tick p99 was 6.651/6.172ms, maximum 601.096/13.936ms. These are economy callback costs, not whole tick durations.
+
+| Durability option | Measured evidence and current decision |
+| --- | --- |
+| SQLite WAL FULL | Current implementation only. Fresh diagnostic stress call p99 5.816ms Spigot / 5.207ms Paper misses 2ms; original stress was 3.903/5.176ms. Realistic write p99 5.054/4.204ms; read p99 0.435/0.405ms. Healthy-call maximum 600.934/8.622ms. Neither stress nor realistic writes meet the old 2ms target. No release approved. |
+| SQLite WAL NORMAL | Historical S14 core probe only: single p99 0.0672ms, burst per-operation 0.2410ms. No matching live-engine realistic or stress result exists. It can lose acknowledged transactions on OS/power failure. Not selected, not rerun, no durability relaxation authorized. |
+| MySQL durable InnoDB | Historical S14 core probe only: single p99 26.5557ms, burst per-operation 44.0402ms. No matching live-engine result exists. Outside SF single-server SQLite Phase 1; no MySQL economy lane added. |
+
+The older prototype figures above are not comparable live-engine workloads and cannot justify a durability change. Device/fsync guarantees remain prerequisites even for FULL. Current machine and storage are recorded for both fresh workloads: i7-12700KF (20 logical CPUs), Linux x86_64, Extreme 55AE SSD, /dev/sda4 ext4 rw,noatime. Manifests contain the full CPU/kernel/block-device/mount inventory. SF's real host must run its own disposable-copy measurement; this idle-client flat-world workload does not reproduce full production gameplay or other plugins.
+
+**Candidate budget for the user's consideration, not adopted:** write p99 <=6ms, read p99 <=1ms, each class p99.9 <=10ms; retain a hard maximum <=25ms for every healthy call. Economy wall/tick p99 <=10ms, with <=5% of ticks exceeding 5ms of economy work. These proposed percentile limits come from the realistic distributions; stress remains diagnostic. Require both server lanes on SF's actual host under agreed background rates before accepting a replacement budget.
+
+Paper meets that candidate on this machine; Spigot fails its maximum (write 28.996ms, read 600.934ms). The slow read's tick consumed 601.096ms wall and only 0.827ms economy CPU. Its cause was not instrumented, and the sample is retained. Raising the maximum to permit it is not recommended. Investigate and rerun rather than approving release from pooled read-heavy percentiles. The budget choice stays with the user. **Stop: E5 is not started, no provider release/deployment, FULL unchanged, no separate economy.db added. Signs remain S21.**

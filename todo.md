@@ -536,3 +536,5 @@ SF is a single SQLite server, Phase 1 only, WAL `synchronous=FULL`. No policy mu
 - [x] **S20 E2:** single-commit engine and SQLite replay/concurrency. +13 tests, 600 → 613; zero failures/skips.
 - [x] **S20 E3:** authoritative async payment commands and coordinated policy/reload ordering. +5 tests, 613 → 618; zero failures/skips. No durable PREPARED acknowledgement promised by command PAY.
 - [x] **S20 E4 implementation and gate executed:** synchronous Vault; +9 tests, 618 → 627; live correctness 330/330. **Release blocked by p99 latency**: shared-file Spigot 3.903 ms, Paper 5.176 ms; separate-file prototype 3.420/4.644 ms also misses 2 ms. FULL retained. [Report](tests/live/economy/RESULTS.md). **Stopped before E5.**
+
+- [x] **E4 realistic latency follow-up:** +0 units (627 unchanged), ten-minute Spigot/Paper FULL lanes plus labelled diagnostic stress, machine/storage manifests and portable host command. [Detailed results](tests/live/economy/REALISTIC.md). Proposed budget awaits user choice; Spigot healthy read max 600.934ms prevents recommending release. No E5, separate economy.db, durability change or provider release.

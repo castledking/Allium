@@ -35,6 +35,8 @@ P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash
 P.add_argument('--run-name', required=True)
 P.add_argument('--diagnostics',action='store_true',help='opt-in engine phase samples, GC log and PASSIVE checkpoint probe')
 P.add_argument('--paired-reads',action='store_true',help='run pooled then dedicated read-only ten-minute phases')
+P.add_argument('--signs-piston-only',action='store_true')
+P.add_argument('--signs',action='store_true',help='S21 real-client face/permission/protection/persistence/destruction gate')
 P.add_argument('--followup-gates',action='store_true',help='operator resolution and realistic latency with background paid claims')
 P.add_argument('--paid-workflows',action='store_true',help='E5 reservations, native receipts, real client and crash gates')
 P.add_argument('--latency-only', action='store_true')
@@ -50,6 +52,7 @@ P.add_argument('--java25',type=Path,default=Path('/usr/lib/jvm/java-25-openjdk')
 P.add_argument('--vault-api',type=Path)
 P.add_argument('--host-copy',action='store_true',help='allow a different empty disposable run root; never points at a running server')
 A = P.parse_args()
+if A.signs_piston_only:A.signs=True
 INFRA=A.infra.resolve()
 VAULT_API=Path('/home/towkio/.gradle/caches/modules-2/files-2.1/com.github.MilkBowl/VaultAPI/1.7.1/24d63ed39e2d36a5a03fb0addbe8cfe1eff0036/VaultAPI-1.7.1.jar')
 if not re.fullmatch(r'[a-zA-Z0-9_][a-zA-Z0-9_.-]*', A.run_name):
@@ -424,10 +427,11 @@ class Lane:
         config.setdefault('economy',{})['vault-provider-enabled']=True # disposable measurement copy only
         for m in ['moderation', 'teleport']:
             config.setdefault('modules', {})[m] = True
-        if A.paid_workflows:
+        if A.paid_workflows or A.signs:
             config.setdefault('mail',{}).update({'costs':{'text':'0.25','gift':'1.50'},'mailbox-size':1000,'rate-limit':{'sends':1000,'per-seconds':60}})
             kitdir=self.path/'plugins/Allium/kits';kitdir.mkdir(exist_ok=True)
             (kitdir/'paid.yml').write_text(yaml.safe_dump(dict(name='paid',enabled=True,**{'cooldown-seconds':0,'one-time':False},cost='2.00',items=['minecraft:diamond 1'])))
+        if A.signs:config.update({'enabledSigns':['color','warp','kit','balance','heal','repair','disposal','workbench','anvil','mail','info'],'sign-use-per-second':4})
         (self.path / 'plugins/Allium/config.yml').write_text(yaml.safe_dump(config, sort_keys=False))
         os.chmod(self.path / 'plugins/Allium/config.yml', 0o600)
 
@@ -953,9 +957,93 @@ def paid_latency(lane):
     require(not thread.is_alive() and not failures and len(rounds)>=90,lane.name+': realistic lane overlaps durable paid kit and gift claims',dict(rounds=len(rounds),errors=failures))
 
 
+def signs_piston(lane):
+    a=lane.bots['MoneyA'];fixture=lambda action:lane.fixture('signs MoneyA '+action)
+    for action in ['create','use','break']:lane.perm('MoneyA','allium.signs.'+action+'.kit',True)
+    fixture('prepare standing');fixture('editor FRONT')
+    a.write('signedit '+json.dumps(dict(location=dict(x=320,y=65,z=320),front=True,lines=['[kit]','paid','',''])))
+    window(1);require(bool(fixture('state')['FRONT']),lane.name+': piston probe authenticated sign')
+    fixture('piston');window(1);fixture('pistonoff');window(2);state=fixture('state');emit('PISTON_DIAG '+json.dumps(state))
+    require(state['extensions']>0 and not state.get('FRONT') and state['material']=='AIR',lane.name+': actual piston extension destroys supported sign',state)
+
+
+def signs_gate(lane):
+    a=lane.bots['MoneyA'];types=['color','warp','kit','balance','heal','repair','disposal','workbench','anvil','mail','info']
+    commands=['warp','kit','balance','heal','repair','disposal','workbench','anvil','mail','info']
+    for cmd in commands:lane.perm('MoneyA','allium.'+cmd,True)
+    lane.perm('MoneyA','allium.setwarp',True);a.command('setwarp signwarp','Warp signwarp')
+    lane.perm('MoneyA','allium.signs.create.warp.public',True)
+    location=dict(x=320,y=65,z=320)
+    def fixture(action):return lane.fixture('signs MoneyA '+action)
+    def packet(kind,extra=''):
+        mark=len(a.lines);a.write(kind+' '+extra)
+        wait(lambda:any('SIGN-SENT ' in s for s in a.lines[mark:]),'sign client packet '+kind);window(.3)
+    def edit(t,side='FRONT'):
+        fixture('editor '+side);packet('signedit',json.dumps(dict(location=location,front=side=='FRONT',lines=['['+('colour' if t=='color' else t)+']','signwarp' if t=='warp' else 'paid' if t=='kit' else '', 'public' if t=='warp' else '', '&aLive sign'])))
+    def click(hand=0):packet('signuse','320 65 320 '+str(hand))
+    for index,t in enumerate(types):
+        fixture('prepare '+('hanging' if index%2 else 'standing'))
+        for action in ['create','use','break']:lane.perm('MoneyA','allium.signs.'+action+'.'+t,False)
+        edit(t);require(not fixture('state')['FRONT'],lane.name+': '+t+' cannot create without permission')
+        lane.perm('MoneyA','allium.signs.create.'+t,True);fixture('protect true false false');edit(t);require(not fixture('state')['FRONT'],lane.name+': '+t+' create protection rejects identity');fixture('protect false false false');edit(t)
+        front=fixture('state')['FRONT'];require(bool(front),lane.name+': '+t+' real sign editor stores server identity')
+        fixture('resetplayer');before=fixture('state');mark=len(a.lines);click()
+        after=fixture('state');require(before['health']==after['health'] and before['window']==after['window'] and before['damage']==after['damage'] and not a.chats(mark),lane.name+': '+t+' denies use without permission')
+        lane.perm('MoneyA','allium.signs.use.'+t,True)
+        # Every type gets front/back, waxed use and a hanging or standing sign.
+        lane.perm('MoneyA','allium.signs.break.'+t,True);edit(t,'BACK');back=fixture('state')['BACK'];require(bool(back) and fixture('state')['FRONT']==front,lane.name+': '+t+' independent back identity retains front')
+        fixture('wax true')
+        for side in ['FRONT','BACK']:
+            fixture('return '+side);fixture('resetplayer');before=paid_state(lane);mark=len(a.lines);click();window(.7)
+            state=fixture('state')
+            if t=='heal':ok=state['health']==20
+            elif t=='repair':ok=state['damage']==0
+            elif t in ['workbench','anvil','disposal']:ok=state['window']==dict(workbench='WORKBENCH',anvil='ANVIL',disposal='CHEST')[t]
+            elif t=='kit':ok=paid_ready(lane)['book']==before['book']-200 and paid_state(lane)['kitUsage']==before['kitUsage']+1
+            elif t=='warp':
+                window(4);ok=any('teleport' in c['plain'].lower() or 'warp' in c['plain'].lower() for c in a.chats(mark))
+            elif t=='color':ok=bool(state[side])
+            else:ok=bool(a.chats(mark))
+            require(ok,lane.name+': '+t+' '+side+' waxed real click reaches shared service',state)
+        fixture('return FRONT');fixture('resetplayer');fixture('protect false true false');mark=len(a.lines);click()
+        state=fixture('state');require(state['health']==10 and state['damage']==100 and state['window']=='CREATIVE' and not a.chats(mark),lane.name+': '+t+' protection cancels action')
+        if t!='color':
+            config_path=lane.path/'plugins/Allium/config.yml';baseline=yaml.safe_load(config_path.read_text())
+            command=t if t!='balance' else 'balance'
+            module={'warp':'travel','kit':'kits','balance':'economy','mail':'mail'}.get(t,'essentials')
+            for mode in ['command','module','type']:
+                settings=__import__('copy').deepcopy(baseline)
+                if mode=='command':settings['disabled-commands']=[command]
+                elif mode=='module':settings.setdefault('modules',{})[module]=False
+                else:settings['enabledSigns']=[v for v in types if v!=t]
+                config_path.write_text(yaml.safe_dump(settings,sort_keys=False));lane.reload_allium();window(.3)
+                fixture('resetplayer');mark=len(a.lines);click();current=fixture('state')
+                require(current['health']==10 and current['damage']==100 and current['window']=='CREATIVE' and not a.chats(mark),lane.name+': '+t+' disabled '+mode+' blocks sign')
+            config_path.write_text(yaml.safe_dump(baseline,sort_keys=False));lane.reload_allium();window(.3)
+        fixture('protect false false true');fixture('breakready');packet('signbreak','320 65 320');require(bool(fixture('state').get('FRONT')),lane.name+': '+t+' break protection retained sign')
+        fixture('protect false false false');lane.perm('MoneyA','allium.signs.break.'+t,False);fixture('breakready');packet('signbreak','320 65 320');require(bool(fixture('state').get('FRONT')),lane.name+': '+t+' cannot break without permission')
+        lane.perm('MoneyA','allium.signs.break.'+t,True);fixture('breakready');packet('signbreak','320 65 320');require(fixture('state')['material']=='AIR',lane.name+': '+t+' authorized destruction removes identity')
+    # Paid sign spam: two hands and repeat packets admit at most one purchase in the tick.
+    fixture('prepare standing');edit('kit');fixture('resetplayer');before=paid_ready(lane)
+    for hand in [0,1,0,1,0]:a.write('signuse 320 65 320 '+str(hand))
+    window(1);after=paid_ready(lane);require(after['book']==before['book']-200 and after['kitUsage']==before['kitUsage']+1,lane.name+': click spam and both hands produce one paid claim')
+    original=fixture('state')['FRONT'];fixture('away');window(10);fixture('unload');require(fixture('state')['FRONT']==original,lane.name+': unloaded chunk reload preserves identity')
+    fixture('return FRONT');lane.stop();lane.boot()
+    for name in ['MoneyA','MoneyB','MoneyObs']:lane.bot(name);amount(lane,name);paid_ready(lane,name)
+    a=lane.bots['MoneyA'];paid_permissions(lane)
+    for action in ['create','use','break']:lane.perm('MoneyA','allium.signs.'+action+'.kit',True)
+    require(fixture('state')['FRONT']==original,lane.name+': restart preserves face identity')
+    fixture('return FRONT');fixture('explode');window(.7);require(fixture('state')['material']=='AIR',lane.name+': real explosion destroys identity')
+    fixture('prepare standing');edit('kit');require(bool(fixture('state')['FRONT']),lane.name+': piston fixture has authenticated sign');fixture('piston');window(1);fixture('pistonoff');window(2);require(not fixture('state').get('FRONT') and fixture('state')['material'] not in ['OAK_SIGN','OAK_HANGING_SIGN'],lane.name+': real piston destroys sign identity')
+    fixture('prepare standing');require(not fixture('state')['FRONT'],lane.name+': replacement block inherits no destroyed sign authority')
+
+
 try:
     build();lane=Lane(A.suite+'-economy',A.suite,25800 if A.suite=='spigot' else 25801)
-    if A.paid_workflows:
+    if A.signs:
+        case(lane.name+': S21 setup',lambda:paid_setup(lane))
+        case(lane.name+': S21 signs',lambda:signs_piston(lane) if A.signs_piston_only else signs_gate(lane))
+    elif A.paid_workflows:
         case(lane.name+': E5 setup',lambda:paid_setup(lane))
         case(lane.name+': sufficient/insufficient paid kits and mail',lambda:paid_success(lane))
         case(lane.name+': concurrent workflows cannot overspend',lambda:paid_concurrent(lane))

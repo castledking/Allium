@@ -516,6 +516,10 @@ public final class CoreCommandSpecs {
                 usage, usage, "allium." + command, null, args, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
     }
 
+    public static final List<CommandSpec> UTILITY_SPECS = java.util.stream.Stream.of("repair","disposal","workbench","anvil","info")
+        .map(name->new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"essentials",List.of(),"Allium utility: "+name,
+            "/"+name,"/"+name,"allium."+name,null,List.of(),List.of(),CommandMessageKeys.ofOutcomes(Map.of()))).toList();
+
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(
             HEAL,
             FEED,

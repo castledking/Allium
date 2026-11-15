@@ -7,6 +7,21 @@ authors: [castledking]
 softdepend: [Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, GriefPrevention, GriefPrevention3D]
 
 commands:
+  repair:
+    description: Self-service repair
+    permission: allium.repair
+  disposal:
+    description: Self-service disposal
+    permission: allium.disposal
+  workbench:
+    description: Self-service workbench
+    permission: allium.workbench
+  anvil:
+    description: Self-service anvil
+    permission: allium.anvil
+  info:
+    description: Self-service info
+    permission: allium.info
   heal:
     description: Heal yourself or another player
     usage: /<command> [player]
@@ -644,3 +659,82 @@ permissions:
     default: op
   allium.baltop:
     default: op
+
+  allium.repair:
+    default: op
+  allium.disposal:
+    default: op
+  allium.workbench:
+    default: op
+  allium.anvil:
+    default: op
+  allium.info:
+    default: op
+  allium.signs.create.warp.public:
+    default: false
+  allium.signs.create.color:
+    default: false
+  allium.signs.create.warp:
+    default: false
+  allium.signs.create.kit:
+    default: false
+  allium.signs.create.balance:
+    default: false
+  allium.signs.create.heal:
+    default: false
+  allium.signs.create.repair:
+    default: false
+  allium.signs.create.disposal:
+    default: false
+  allium.signs.create.workbench:
+    default: false
+  allium.signs.create.anvil:
+    default: false
+  allium.signs.create.mail:
+    default: false
+  allium.signs.create.info:
+    default: false
+  allium.signs.use.color:
+    default: false
+  allium.signs.use.warp:
+    default: false
+  allium.signs.use.kit:
+    default: false
+  allium.signs.use.balance:
+    default: false
+  allium.signs.use.heal:
+    default: false
+  allium.signs.use.repair:
+    default: false
+  allium.signs.use.disposal:
+    default: false
+  allium.signs.use.workbench:
+    default: false
+  allium.signs.use.anvil:
+    default: false
+  allium.signs.use.mail:
+    default: false
+  allium.signs.use.info:
+    default: false
+  allium.signs.break.color:
+    default: false
+  allium.signs.break.warp:
+    default: false
+  allium.signs.break.kit:
+    default: false
+  allium.signs.break.balance:
+    default: false
+  allium.signs.break.heal:
+    default: false
+  allium.signs.break.repair:
+    default: false
+  allium.signs.break.disposal:
+    default: false
+  allium.signs.break.workbench:
+    default: false
+  allium.signs.break.anvil:
+    default: false
+  allium.signs.break.mail:
+    default: false
+  allium.signs.break.info:
+    default: false

@@ -196,4 +196,18 @@ class EssentialsCommandsTest {
         verify(self, never()).setGameMode(any());
         assertEquals(List.of(), gm.onTabComplete(self, command, "gm", new String[]{"c"}));
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"gmc,CREATIVE","creative,CREATIVE","gms,SURVIVAL","survival,SURVIVAL","gma,ADVENTURE","adventure,ADVENTURE","gmsp,SPECTATOR","spectator,SPECTATOR"})
+    void fixedAliasesSharePermissionsAndTargetResolution(String alias,GameMode mode){
+        var renderer=new BukkitCommandRenderer(plugin,policy,new GamemodeCommand(plugin));
+        renderer.onCommand(self,command,alias,new String[0]);verify(self,never()).setGameMode(any());
+        when(self.hasPermission("allium.gamemode")).thenReturn(true);
+        renderer.onCommand(self,command,alias,new String[0]);verify(self).setGameMode(mode);
+        renderer.onCommand(self,command,alias,new String[]{"Bob"});verify(other,never()).setGameMode(any());
+        when(self.hasPermission("allium.gamemode.others")).thenReturn(true);
+        renderer.onCommand(self,command,"allium:"+alias,new String[]{"Bob"});verify(other).setGameMode(mode);
+        policy.applyReload(java.util.List.of("gamemode"));
+        renderer.onCommand(self,command,alias,new String[0]);verify(self,times(1)).setGameMode(mode);
+    }
+
 }

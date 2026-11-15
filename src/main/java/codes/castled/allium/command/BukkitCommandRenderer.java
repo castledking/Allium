@@ -4,6 +4,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.spec.CommandCompletionContext;
 import codes.castled.allium.command.spec.CommandFamilyPolicy;
 import codes.castled.allium.command.spec.CommandSpec;
+import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.module.KitsModule;
 import codes.castled.allium.module.MailModule;
 import codes.castled.allium.naming.PlayerNameService;
@@ -73,9 +74,16 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             return true;
         }
 
+        String fixedMode=spec.canonicalName().equals("gamemode")?CoreCommandSpecs.gamemodeAlias(label):null;
+        if(fixedMode!=null){
+            if(args.length>1){plugin.getMessageManager().sendByKey(sender,spec.messageKeys().invalidArgsKey(),"{usage}","/"+label+" [player]");return true;}
+            args=withMode(fixedMode,args);
+        }
         handler.execute(new BukkitCommandContext(plugin, spec, sender, label, args));
         return true;
     }
+
+    private static String[] withMode(String mode,String[] args){String[] expanded=new String[args.length+1];expanded[0]=mode;System.arraycopy(args,0,expanded,1,args.length);return expanded;}
 
     @Override
     public @Nullable List<String> onTabComplete(
@@ -146,7 +154,8 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             }
         };
 
-        return spec.complete(completionContext, args);
+        String fixedMode=spec.canonicalName().equals("gamemode")?CoreCommandSpecs.gamemodeAlias(alias):null;
+        return spec.complete(completionContext,fixedMode==null?args:withMode(fixedMode,args));
     }
 
     public static List<String> collectVisibleOnlinePlayers(Server server, CommandSender sender) {

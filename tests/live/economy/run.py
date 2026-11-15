@@ -33,6 +33,8 @@ P.add_argument('--suite', choices=['spigot', 'paper'], required=True)
 P.add_argument('--allium-jar', type=Path, required=True)
 P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash')
 P.add_argument('--run-name', required=True)
+P.add_argument('--diagnostics',action='store_true',help='opt-in engine phase samples, GC log and PASSIVE checkpoint probe')
+P.add_argument('--paired-reads',action='store_true',help='run pooled then dedicated read-only ten-minute phases')
 P.add_argument('--latency-only', action='store_true')
 P.add_argument('--stress-only',action='store_true',help='diagnostic stress workload, never a release gate')
 P.add_argument('--duration', type=int, default=600)
@@ -457,6 +459,8 @@ max-tick-time=120000
         cmd = [
             java, '-Xms256M', '-Xmx1200M', '-Dterminal.jline=false', '-Dterminal.ansi=false',
             '-Dallium.fault-injection=true',
+            '-Xlog:gc*:file='+str(self.path/'gc.log')+':time,uptime,level,tags',
+            '-Dallium.economy.timing='+str(A.diagnostics).lower(),
             '-Djava.io.tmpdir=' + str(self.path / 'tmp')
         ]
         if self.kind == 'spigot':
@@ -738,18 +742,18 @@ def machine_info():
     return {key:subprocess.run(cmd,capture_output=True,text=True).stdout.strip() for key,cmd in commands.items()}
 
 
-def realistic(lane):
-    lane.fixture('realistic MoneyA '+str(A.duration))
+def realistic(lane,mode='pooled'):
+    lane.fixture('realistic MoneyA '+str(A.duration)+' '+mode)
     def completed():
-        try:return json.loads((lane.path/'plugins/EconomyGate/realistic.json').read_text())
+        try:return json.loads((lane.path/('plugins/EconomyGate/realistic-'+mode+'.json')).read_text())
         except (FileNotFoundError,json.JSONDecodeError):return None
     result=wait(completed,'realistic FULL workload',A.duration+180)
-    (RUN/'realistic-raw.json').write_text(json.dumps(result)+'\n')
-    record=dict(workload='realistic',writes=percentiles(result['writeCallsMs']),reads=percentiles(result['readCallsMs']),
+    (RUN/('realistic-'+mode+'-raw.json')).write_text(json.dumps(result)+'\n')
+    record=dict(workload='realistic',readMode=mode,activeSeconds=result['activeSeconds'],timingSamples=len(result['timings']),checkpointProbes=len(result['checkpoints']),writes=percentiles(result['writeCallsMs']),reads=percentiles(result['readCallsMs']),
         allCalls=percentiles(result['writeCallsMs']+result['readCallsMs']),economyWallPerTick=percentiles(result['tickEconomyWallMs']),
         economyCpuPerTick=percentiles(result['tickEconomyCpuMs']),ticksOver5ms=sum(v>5 for v in result['tickEconomyWallMs']),
         elapsedSeconds=result['elapsedSeconds'],backgroundWrites=result['backgroundWrites'],backgroundIntervalsMs=result['backgroundIntervalsMs'],errors=result['errors'])
-    observations[lane.name+'-realistic']=record
+    observations[lane.name+'-realistic-'+mode]=record
     require(not result['errors'] and len(result['writeCallsMs'])>=3000 and len(result['readCallsMs'])>=30000 and min(result['backgroundWrites'].values())>0,lane.name+': ten-minute realistic workload completes',record)
     emit('REALISTIC '+json.dumps(record))
 
@@ -761,7 +765,8 @@ try:
         case(lane.name+': diagnostic stress, not release gate',lambda:benchmark(lane))
     elif A.latency_only:
         case(lane.name+': realistic setup',lambda:setup(lane))
-        case(lane.name+': ten minute realistic latency',lambda:realistic(lane))
+        for mode in (['pooled','dedicated'] if A.paired_reads else ['pooled']):
+            case(lane.name+': ten minute realistic latency '+mode,lambda m=mode:realistic(lane,m))
     else:
         case(lane.name+': startup and exact command payments',lambda:(setup(lane),commands(lane)))
         case(lane.name+': ordinary restart and payment-policy persistence',lambda:restart_persistence(lane))

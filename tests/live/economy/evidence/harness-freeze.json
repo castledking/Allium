@@ -1,7 +1,7 @@
 {
   "sourceHashes": {
-    "tests/live/economy/run.py": "ee7c92b35e7095587ae9f4cd1bc876354c5c771057502eafecb3636e9c7db8c4",
-    "tests/live/economy/plugin/gate/EconomyGate.java": "54d6f4015a78a354652aa476e9bd169088a640e4378e5b59e85d46535d4b575b",
+    "tests/live/economy/run.py": "8dd33036b89be5411d21b89ab4e5bb17db32c8de84f6446581ed7cc8caafbd25",
+    "tests/live/economy/plugin/gate/EconomyGate.java": "559afab85e955b0c3341d1e9347bf8c0803a41deada750b6d20118c43241c90e",
     "tests/live/economy/plugin/plugin.yml": "116546459f71af774c7204c564decb7651a6af3f55af88afb272c9df32fd34e2",
     "tests/live/economy/client-mcp.cjs": "7f5f3fa163db38f91a70e8d577c7fdc6907889923cf7dcc5348d3a627c91487e",
     "tests/live/economy/client-raw26.cjs": "f67a53d28638e2c6c5fd76e0044bd268ae6563ca7da029efb7b9b1680b1dd87c",

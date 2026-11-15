@@ -1,0 +1,4369 @@
+{
+  "thresholdMs": 500,
+  "clockToleranceMs": 2,
+  "scope": "Core phases time JDBC execute methods only; commit includes SQLite sync path but does not isolate physical fsync. GC/probe overlap is correlation. Outer envelope conservatively places uninstrumented adapter/observer time before or after core scope.",
+  "runs": [
+    {
+      "run": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-1",
+      "passed": true,
+      "artifactSha256": "4360db01ce3d710efcc8e74b5149f76e22f21c725d43528dfe7f15865fea155b",
+      "manifestSha256": "bda037593e7dbfa2bb4edbecb9841388987e3d0bbc1a0059bb2714adc43a7c50",
+      "gcLog": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-1/spigot-economy/gc.log",
+      "gcSha256": "3120572e0690656d5af7fe9e761c61020b871210ac447544cae972a346602995",
+      "machine": {
+        "kernel": "Linux 7.2.14-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 30 Oct 2026 14:32:40 +0000 x86_64 GNU/Linux",
+        "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  20\nOn-line CPU(s) list:                     0-19\nVendor ID:                               GenuineIntel\nModel name:                              12th Gen Intel(R) Core(TM) i7-12700KF\nCPU family:                              6\nModel:                                   151\nThread(s) per core:                      2\nCore(s) per socket:                      12\nSocket(s):                               1\nStepping:                                2\nMicrocode version:                       0x2e\nCPU(s) scaling MHz:                      84%\nCPU max MHz:                             5000.0000\nCPU min MHz:                             800.0000\nBogoMIPS:                                7219.20\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities\nVirtualization:                          VT-x\nL1d cache:                               512 KiB (12 instances)\nL1i cache:                               512 KiB (12 instances)\nL2 cache:                                12 MiB (9 instances)\nL3 cache:                                25 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-19\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Vulnerable\nVulnerability Reg file data sampling:    Vulnerable: No microcode\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Mitigation; IBPB before exit to userspace",
+        "filesystem": "TARGET       SOURCE    FSTYPE OPTIONS\n/mnt/storage /dev/sda4 ext4   rw,noatime",
+        "disks": "NAME        TYPE   SIZE ROTA MODEL                   FSTYPE   MOUNTPOINTS\nloop0       loop 614.5M    0                         squashfs /var/lib/snapd/snap/gnome-46-2404/164\nloop1       loop     4K    0                         squashfs /var/lib/snapd/snap/bare/5\nloop2       loop 144.2M    0                         squashfs /var/lib/snapd/snap/blockbench-snapcraft/544\nloop3       loop  66.8M    0                         squashfs /var/lib/snapd/snap/core24/1643\nloop4       loop 144.1M    0                         squashfs /var/lib/snapd/snap/blockbench-snapcraft/542\nloop5       loop  66.8M    0                         squashfs /var/lib/snapd/snap/core24/2124\nloop6       loop   616M    0                         squashfs /var/lib/snapd/snap/gnome-46-2404/177\nloop7       loop  91.7M    0                         squashfs /var/lib/snapd/snap/gtk-common-themes/1535\nloop8       loop   395M    0                         squashfs /var/lib/snapd/snap/mesa-2404/1165\nloop9       loop   402M    0                         squashfs /var/lib/snapd/snap/mesa-2404/1839\nloop10      loop  44.7M    0                         squashfs /var/lib/snapd/snap/snapd/28254\nloop11      loop  32.5M    0                         squashfs /var/lib/snapd/snap/snapd/28332\nsda         disk   1.8T    0 Extreme 55AE                     \n\u251c\u2500sda1      part   500M    0                         vfat     \n\u251c\u2500sda2      part    16M    0                                  \n\u251c\u2500sda3      part   931G    0                         ntfs     \n\u2514\u2500sda4      part 931.5G    0                         ext4     /mnt/storage\nzram0       disk     8G    0                         swap     [SWAP]\nzram1       disk     8G    0                         ext2     /mnt/zram1\nnvme0n1     disk 931.5G    0 Samsung SSD 980 PRO 1TB          \n\u251c\u2500nvme0n1p1 part   512M    0                         vfat     /boot\n\u2514\u2500nvme0n1p2 part   931G    0                         btrfs    /home/.snapshots\n                                                              /var/log\n                                                              /home\n                                                              /var/cache\n                                                              /.snapshots\n                                                              /",
+        "memory": "total        used        free      shared  buff/cache   available\nMem:     33464201216 16478040064  2044932096   235229184 15804530688 16986161152\nSwap:    27917279232   844931072 27072348160"
+      },
+      "phases": {
+        "pooled": {
+          "rawSamples": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-1/realistic-pooled-raw.json",
+          "rawSha256": "42e09a94c5539fd98fe4db9921cf973487794a73d719eda85bc04359976b3bc6",
+          "measurement": {
+            "workload": "realistic",
+            "readMode": "pooled",
+            "activeSeconds": 600.055728981,
+            "timingSamples": 33005,
+            "checkpointProbes": 19,
+            "writes": {
+              "n": 3003,
+              "p50": 2.006134,
+              "p95": 3.048752,
+              "p99": 4.496626,
+              "p999": 7.744207,
+              "max": 21.396939
+            },
+            "reads": {
+              "n": 30002,
+              "p50": 0.115708,
+              "p95": 0.351668,
+              "p99": 0.472224,
+              "p999": 0.952497,
+              "max": 13.020619
+            },
+            "allCalls": {
+              "n": 33005,
+              "p50": 0.134039,
+              "p95": 1.899871,
+              "p99": 2.685372,
+              "p999": 4.32544,
+              "max": 21.396939
+            },
+            "economyWallPerTick": {
+              "n": 12001,
+              "p50": 0.425444,
+              "p95": 3.767008,
+              "p99": 7.036118,
+              "p999": 10.905852,
+              "max": 30.343713
+            },
+            "economyCpuPerTick": {
+              "n": 12001,
+              "p50": 0.415885,
+              "p95": 2.189023,
+              "p99": 4.085252,
+              "p999": 5.788152,
+              "max": 26.113842
+            },
+            "ticksOver5ms": 452,
+            "elapsedSeconds": 600.529385863,
+            "backgroundWrites": {
+              "preferences": 299,
+              "mail": 39,
+              "moderation": 59
+            },
+            "backgroundIntervalsMs": {
+              "mail": 15000,
+              "moderation": 10000,
+              "preferences": 2000
+            },
+            "errors": []
+          },
+          "outerMappingExact": true,
+          "phaseStats": {
+            "reads": {
+              "totalMs": {
+                "n": 30002,
+                "p50": 0.11184,
+                "p95": 0.336429,
+                "p99": 0.438794,
+                "p999": 0.798071,
+                "max": 13.017705
+              },
+              "connectionMs": {
+                "n": 30002,
+                "p50": 0.000734,
+                "p95": 0.006648,
+                "p99": 0.011341,
+                "p999": 0.049918,
+                "max": 2.256894
+              },
+              "statementMs": {
+                "n": 30002,
+                "p50": 0.063428,
+                "p95": 0.193639,
+                "p99": 0.234851,
+                "p999": 0.35576,
+                "max": 8.909179
+              },
+              "commitMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "coordinatorMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "otherMs": {
+                "n": 30002,
+                "p50": 0.047487,
+                "p95": 0.136733,
+                "p99": 0.203579,
+                "p999": 0.381546,
+                "max": 12.961163
+              }
+            },
+            "writes": {
+              "totalMs": {
+                "n": 3003,
+                "p50": 1.958739,
+                "p95": 2.95796,
+                "p99": 4.410695,
+                "p999": 7.69571,
+                "max": 19.995827
+              },
+              "connectionMs": {
+                "n": 3003,
+                "p50": 0.001687,
+                "p95": 0.008297,
+                "p99": 0.013667,
+                "p999": 0.840198,
+                "max": 1.399418
+              },
+              "statementMs": {
+                "n": 3003,
+                "p50": 0.292841,
+                "p95": 0.490286,
+                "p99": 0.572523,
+                "p999": 1.005409,
+                "max": 1.333335
+              },
+              "commitMs": {
+                "n": 3003,
+                "p50": 1.131829,
+                "p95": 1.691827,
+                "p99": 3.317203,
+                "p999": 6.645732,
+                "max": 14.691362
+              },
+              "coordinatorMs": {
+                "n": 3003,
+                "p50": 0.00689,
+                "p95": 0.017355,
+                "p99": 0.029554,
+                "p999": 0.118241,
+                "max": 1.705116
+              },
+              "otherMs": {
+                "n": 3003,
+                "p50": 0.508083,
+                "p95": 0.893848,
+                "p99": 1.122594,
+                "p999": 1.545564,
+                "max": 17.075694
+              }
+            }
+          },
+          "thresholdEvents": [],
+          "over25msEvents": [],
+          "extremes": [
+            {
+              "kind": "READ",
+              "sampleIndex": 18624,
+              "startEpochMillis": 1794752941542,
+              "totalMs": 13.017705,
+              "outerMs": 13.020619,
+              "connectionMs": 0.000232,
+              "statementMs": 0.05631,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 12.961163,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [
+                {
+                  "startEpochMillis": 1794752941542.271,
+                  "endEpochMillis": 1794752941555.0,
+                  "durationMs": 12.729,
+                  "line": "[2026-11-15T06:29:01.555-0800][381.494s][info][gc          ] GC(42) Pause Young (Mixed) (G1 Evacuation Pause) 422M->332M(675M) 12.729ms"
+                }
+              ],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": [
+                {
+                  "startEpochMillis": 1794752941542.271,
+                  "endEpochMillis": 1794752941555.0,
+                  "durationMs": 12.729,
+                  "line": "[2026-11-15T06:29:01.555-0800][381.494s][info][gc          ] GC(42) Pause Young (Mixed) (G1 Evacuation Pause) 422M->332M(675M) 12.729ms"
+                }
+              ]
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794752569093,
+              "totalMs": 19.995827,
+              "outerMs": 21.396939,
+              "connectionMs": 0.135592,
+              "statementMs": 0.512196,
+              "commitMs": 2.25756,
+              "coordinatorMs": 0.014785,
+              "otherMs": 17.075694,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 21015,
+              "startEpochMillis": 1794752989392,
+              "totalMs": 2.533605,
+              "outerMs": 2.542644,
+              "connectionMs": 2.256894,
+              "statementMs": 0.169049,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.107662,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 2025,
+              "startEpochMillis": 1794752974092,
+              "totalMs": 3.536762,
+              "outerMs": 3.583306,
+              "connectionMs": 1.399418,
+              "statementMs": 0.452958,
+              "commitMs": 0.892138,
+              "coordinatorMs": 0.013585,
+              "otherMs": 0.778663,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 15338,
+              "startEpochMillis": 1794752875844,
+              "totalMs": 9.000931,
+              "outerMs": 9.004743,
+              "connectionMs": 0.00025,
+              "statementMs": 8.909179,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.091502,
+              "dominantPhase": "statementMs",
+              "gcCoreOverlap": [
+                {
+                  "startEpochMillis": 1794752875843.333,
+                  "endEpochMillis": 1794752875852.0,
+                  "durationMs": 8.667,
+                  "line": "[2026-11-15T06:27:55.852-0800][315.791s][info][gc          ] GC(39) Pause Young (Concurrent Start) (G1 Evacuation Pause) 582M->404M(675M) 8.667ms"
+                }
+              ],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": [
+                {
+                  "startEpochMillis": 1794752875843.333,
+                  "endEpochMillis": 1794752875852.0,
+                  "durationMs": 8.667,
+                  "line": "[2026-11-15T06:27:55.852-0800][315.791s][info][gc          ] GC(39) Pause Young (Concurrent Start) (G1 Evacuation Pause) 582M->404M(675M) 8.667ms"
+                }
+              ]
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 240,
+              "startEpochMillis": 1794752617092,
+              "totalMs": 3.652815,
+              "outerMs": 3.771981,
+              "connectionMs": 0.008607,
+              "statementMs": 1.333335,
+              "commitMs": 1.398126,
+              "coordinatorMs": 0.015901,
+              "otherMs": 0.896846,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794752569120,
+              "totalMs": 1.250916,
+              "outerMs": 1.697478,
+              "connectionMs": 0.013212,
+              "statementMs": 0.171331,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 1.066373,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 811,
+              "startEpochMillis": 1794752731094,
+              "totalMs": 15.220565,
+              "outerMs": 15.24606,
+              "connectionMs": 0.000791,
+              "statementMs": 0.18852,
+              "commitMs": 14.691362,
+              "coordinatorMs": 0.004157,
+              "otherMs": 0.335735,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            }
+          ],
+          "checkpointProbes": [
+            {
+              "startEpochMillis": 1794752599046,
+              "startNano": 22673510546593,
+              "busy": 0,
+              "walFrames": 399,
+              "checkpointedFrames": 399,
+              "statementMs": 3.14471,
+              "totalMs": 4.837608
+            },
+            {
+              "startEpochMillis": 1794752629050,
+              "startNano": 22703515438955,
+              "busy": 0,
+              "walFrames": 698,
+              "checkpointedFrames": 698,
+              "statementMs": 2.750303,
+              "totalMs": 3.63373
+            },
+            {
+              "startEpochMillis": 1794752659054,
+              "startNano": 22733519144069,
+              "busy": 0,
+              "walFrames": 998,
+              "checkpointedFrames": 998,
+              "statementMs": 3.29966,
+              "totalMs": 4.159325
+            },
+            {
+              "startEpochMillis": 1794752689058,
+              "startNano": 22763523352455,
+              "busy": 0,
+              "walFrames": 302,
+              "checkpointedFrames": 302,
+              "statementMs": 4.145165,
+              "totalMs": 5.166943
+            },
+            {
+              "startEpochMillis": 1794752719064,
+              "startNano": 22793528570457,
+              "busy": 0,
+              "walFrames": 322,
+              "checkpointedFrames": 322,
+              "statementMs": 4.54522,
+              "totalMs": 5.467519
+            },
+            {
+              "startEpochMillis": 1794752749069,
+              "startNano": 22823534085042,
+              "busy": 0,
+              "walFrames": 277,
+              "checkpointedFrames": 277,
+              "statementMs": 4.496653,
+              "totalMs": 5.372453
+            },
+            {
+              "startEpochMillis": 1794752779074,
+              "startNano": 22853539506442,
+              "busy": 0,
+              "walFrames": 340,
+              "checkpointedFrames": 340,
+              "statementMs": 4.746829,
+              "totalMs": 5.733239
+            },
+            {
+              "startEpochMillis": 1794752809080,
+              "startNano": 22883545286867,
+              "busy": 0,
+              "walFrames": 335,
+              "checkpointedFrames": 335,
+              "statementMs": 3.967683,
+              "totalMs": 4.579695
+            },
+            {
+              "startEpochMillis": 1794752839085,
+              "startNano": 22913549900738,
+              "busy": 0,
+              "walFrames": 370,
+              "checkpointedFrames": 370,
+              "statementMs": 3.896792,
+              "totalMs": 4.558939
+            },
+            {
+              "startEpochMillis": 1794752869089,
+              "startNano": 22943554498222,
+              "busy": 0,
+              "walFrames": 365,
+              "checkpointedFrames": 365,
+              "statementMs": 4.830294,
+              "totalMs": 5.841701
+            },
+            {
+              "startEpochMillis": 1794752899095,
+              "startNano": 22973560381552,
+              "busy": 0,
+              "walFrames": 765,
+              "checkpointedFrames": 765,
+              "statementMs": 2.701018,
+              "totalMs": 3.488256
+            },
+            {
+              "startEpochMillis": 1794752929099,
+              "startNano": 23003563895550,
+              "busy": 0,
+              "walFrames": 64,
+              "checkpointedFrames": 64,
+              "statementMs": 2.928429,
+              "totalMs": 3.475863
+            },
+            {
+              "startEpochMillis": 1794752959102,
+              "startNano": 23033567411265,
+              "busy": 0,
+              "walFrames": 358,
+              "checkpointedFrames": 358,
+              "statementMs": 4.970839,
+              "totalMs": 5.844186
+            },
+            {
+              "startEpochMillis": 1794752989108,
+              "startNano": 23063573281756,
+              "busy": 0,
+              "walFrames": 340,
+              "checkpointedFrames": 340,
+              "statementMs": 3.411325,
+              "totalMs": 3.81823
+            },
+            {
+              "startEpochMillis": 1794753019112,
+              "startNano": 23093577138399,
+              "busy": 0,
+              "walFrames": 342,
+              "checkpointedFrames": 342,
+              "statementMs": 5.405641,
+              "totalMs": 6.28153
+            },
+            {
+              "startEpochMillis": 1794753049118,
+              "startNano": 23123583459159,
+              "busy": 0,
+              "walFrames": 364,
+              "checkpointedFrames": 364,
+              "statementMs": 5.92837,
+              "totalMs": 6.844826
+            },
+            {
+              "startEpochMillis": 1794753079125,
+              "startNano": 23153590353242,
+              "busy": 0,
+              "walFrames": 292,
+              "checkpointedFrames": 292,
+              "statementMs": 5.216385,
+              "totalMs": 6.358217
+            },
+            {
+              "startEpochMillis": 1794753109132,
+              "startNano": 23183596757419,
+              "busy": 0,
+              "walFrames": 355,
+              "checkpointedFrames": 355,
+              "statementMs": 5.906406,
+              "totalMs": 6.834464
+            },
+            {
+              "startEpochMillis": 1794753139139,
+              "startNano": 23213603632820,
+              "busy": 0,
+              "walFrames": 369,
+              "checkpointedFrames": 369,
+              "statementMs": 5.886379,
+              "totalMs": 6.75868
+            }
+          ],
+          "gcPausesInWindow": [
+            {
+              "startEpochMillis": 1794752606293.004,
+              "endEpochMillis": 1794752606300.0,
+              "durationMs": 6.996,
+              "line": "[2026-11-15T06:23:26.300-0800][46.238s][info][gc          ] GC(34) Pause Young (Normal) (G1 Evacuation Pause) 547M->401M(675M) 6.996ms"
+            },
+            {
+              "startEpochMillis": 1794752655395.407,
+              "endEpochMillis": 1794752655403.0,
+              "durationMs": 7.593,
+              "line": "[2026-11-15T06:24:15.403-0800][95.342s][info][gc          ] GC(35) Pause Young (Normal) (G1 Evacuation Pause) 556M->401M(675M) 7.593ms"
+            },
+            {
+              "startEpochMillis": 1794752707496.372,
+              "endEpochMillis": 1794752707505.0,
+              "durationMs": 8.628,
+              "line": "[2026-11-15T06:25:07.505-0800][147.444s][info][gc          ] GC(36) Pause Young (Normal) (G1 Evacuation Pause) 563M->402M(675M) 8.628ms"
+            },
+            {
+              "startEpochMillis": 1794752762095.315,
+              "endEpochMillis": 1794752762097.0,
+              "durationMs": 1.685,
+              "line": "[2026-11-15T06:26:02.097-0800][202.036s][info][gc          ] GC(37) Pause Young (Normal) (G1 Evacuation Pause) 571M->403M(675M) 1.685ms"
+            },
+            {
+              "startEpochMillis": 1794752818545.751,
+              "endEpochMillis": 1794752818555.0,
+              "durationMs": 9.249,
+              "line": "[2026-11-15T06:26:58.555-0800][258.493s][info][gc          ] GC(38) Pause Young (Normal) (G1 Evacuation Pause) 577M->403M(675M) 9.249ms"
+            },
+            {
+              "startEpochMillis": 1794752875843.333,
+              "endEpochMillis": 1794752875852.0,
+              "durationMs": 8.667,
+              "line": "[2026-11-15T06:27:55.852-0800][315.791s][info][gc          ] GC(39) Pause Young (Concurrent Start) (G1 Evacuation Pause) 582M->404M(675M) 8.667ms"
+            },
+            {
+              "startEpochMillis": 1794752875896.223,
+              "endEpochMillis": 1794752875898.0,
+              "durationMs": 1.777,
+              "line": "[2026-11-15T06:27:55.898-0800][315.836s][info][gc          ] GC(40) Pause Remark 404M->400M(675M) 1.777ms"
+            },
+            {
+              "startEpochMillis": 1794752875914.884,
+              "endEpochMillis": 1794752875915.0,
+              "durationMs": 0.116,
+              "line": "[2026-11-15T06:27:55.915-0800][315.854s][info][gc          ] GC(40) Pause Cleanup 400M->400M(675M) 0.116ms"
+            },
+            {
+              "startEpochMillis": 1794752934343.278,
+              "endEpochMillis": 1794752934351.0,
+              "durationMs": 7.722,
+              "line": "[2026-11-15T06:28:54.351-0800][374.290s][info][gc          ] GC(41) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 582M->400M(675M) 7.722ms"
+            },
+            {
+              "startEpochMillis": 1794752941542.271,
+              "endEpochMillis": 1794752941555.0,
+              "durationMs": 12.729,
+              "line": "[2026-11-15T06:29:01.555-0800][381.494s][info][gc          ] GC(42) Pause Young (Mixed) (G1 Evacuation Pause) 422M->332M(675M) 12.729ms"
+            },
+            {
+              "startEpochMillis": 1794752951243.871,
+              "endEpochMillis": 1794752951252.0,
+              "durationMs": 8.129,
+              "line": "[2026-11-15T06:29:11.252-0800][391.191s][info][gc          ] GC(43) Pause Young (Mixed) (G1 Evacuation Pause) 362M->265M(675M) 8.129ms"
+            },
+            {
+              "startEpochMillis": 1794752961043.73,
+              "endEpochMillis": 1794752961051.0,
+              "durationMs": 7.27,
+              "line": "[2026-11-15T06:29:21.051-0800][400.989s][info][gc          ] GC(44) Pause Young (Mixed) (G1 Evacuation Pause) 295M->209M(675M) 7.270ms"
+            },
+            {
+              "startEpochMillis": 1794752970709.912,
+              "endEpochMillis": 1794752970719.0,
+              "durationMs": 9.088,
+              "line": "[2026-11-15T06:29:30.719-0800][410.657s][info][gc          ] GC(45) Pause Young (Mixed) (G1 Evacuation Pause) 239M->208M(675M) 9.088ms"
+            },
+            {
+              "startEpochMillis": 1794753088293.117,
+              "endEpochMillis": 1794753088305.0,
+              "durationMs": 11.883,
+              "line": "[2026-11-15T06:31:28.305-0800][528.244s][info][gc          ] GC(46) Pause Young (Concurrent Start) (G1 Evacuation Pause) 573M->209M(675M) 11.883ms"
+            },
+            {
+              "startEpochMillis": 1794753088358.505,
+              "endEpochMillis": 1794753088360.0,
+              "durationMs": 1.495,
+              "line": "[2026-11-15T06:31:28.360-0800][528.299s][info][gc          ] GC(47) Pause Remark 210M->210M(675M) 1.495ms"
+            },
+            {
+              "startEpochMillis": 1794753088378.912,
+              "endEpochMillis": 1794753088379.0,
+              "durationMs": 0.088,
+              "line": "[2026-11-15T06:31:28.379-0800][528.317s][info][gc          ] GC(47) Pause Cleanup 210M->210M(675M) 0.088ms"
+            }
+          ]
+        },
+        "dedicated": {
+          "rawSamples": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-1/realistic-dedicated-raw.json",
+          "rawSha256": "e1f7dbd61929d4b68e5d91d4f58507870cd00133a9200131013e3e6b2b8d4eff",
+          "measurement": {
+            "workload": "realistic",
+            "readMode": "dedicated",
+            "activeSeconds": 600.042392868,
+            "timingSamples": 33005,
+            "checkpointProbes": 19,
+            "writes": {
+              "n": 3003,
+              "p50": 1.605048,
+              "p95": 2.565899,
+              "p99": 3.679156,
+              "p999": 9.32332,
+              "max": 10.289136
+            },
+            "reads": {
+              "n": 30002,
+              "p50": 0.125005,
+              "p95": 0.370052,
+              "p99": 0.448094,
+              "p999": 0.639378,
+              "max": 6.943116
+            },
+            "allCalls": {
+              "n": 33005,
+              "p50": 0.145861,
+              "p95": 1.543991,
+              "p99": 2.28564,
+              "p999": 3.645721,
+              "max": 10.289136
+            },
+            "economyWallPerTick": {
+              "n": 12001,
+              "p50": 0.46621,
+              "p95": 3.354135,
+              "p99": 6.344677,
+              "p999": 10.695862,
+              "max": 15.392114
+            },
+            "economyCpuPerTick": {
+              "n": 12001,
+              "p50": 0.457446,
+              "p95": 1.754655,
+              "p99": 3.546284,
+              "p999": 4.686816,
+              "max": 10.526867
+            },
+            "ticksOver5ms": 323,
+            "elapsedSeconds": 600.472115727,
+            "backgroundWrites": {
+              "preferences": 299,
+              "mail": 39,
+              "moderation": 59
+            },
+            "backgroundIntervalsMs": {
+              "mail": 15000,
+              "moderation": 10000,
+              "preferences": 2000
+            },
+            "errors": []
+          },
+          "outerMappingExact": true,
+          "phaseStats": {
+            "reads": {
+              "totalMs": {
+                "n": 30002,
+                "p50": 0.121968,
+                "p95": 0.358775,
+                "p99": 0.435046,
+                "p999": 0.609954,
+                "max": 6.843254
+              },
+              "connectionMs": {
+                "n": 30002,
+                "p50": 0.001256,
+                "p95": 0.011345,
+                "p99": 0.017662,
+                "p999": 0.03733,
+                "max": 5.290704
+              },
+              "statementMs": {
+                "n": 30002,
+                "p50": 0.067589,
+                "p95": 0.202538,
+                "p99": 0.24263,
+                "p999": 0.373463,
+                "max": 1.091379
+              },
+              "commitMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "coordinatorMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "otherMs": {
+                "n": 30002,
+                "p50": 0.052221,
+                "p95": 0.148513,
+                "p99": 0.185977,
+                "p999": 0.305384,
+                "max": 1.009985
+              }
+            },
+            "writes": {
+              "totalMs": {
+                "n": 3003,
+                "p50": 1.56908,
+                "p95": 2.52158,
+                "p99": 3.646243,
+                "p999": 9.276754,
+                "max": 10.244222
+              },
+              "connectionMs": {
+                "n": 3003,
+                "p50": 0.001058,
+                "p95": 0.001816,
+                "p99": 0.002147,
+                "p999": 0.173999,
+                "max": 1.115538
+              },
+              "statementMs": {
+                "n": 3003,
+                "p50": 0.231519,
+                "p95": 0.416189,
+                "p99": 0.513763,
+                "p999": 0.616547,
+                "max": 1.076386
+              },
+              "commitMs": {
+                "n": 3003,
+                "p50": 0.933033,
+                "p95": 1.514883,
+                "p99": 2.995352,
+                "p999": 8.529256,
+                "max": 9.50319
+              },
+              "coordinatorMs": {
+                "n": 3003,
+                "p50": 0.005296,
+                "p95": 0.010438,
+                "p99": 0.01248,
+                "p999": 0.042788,
+                "max": 1.176706
+              },
+              "otherMs": {
+                "n": 3003,
+                "p50": 0.363483,
+                "p95": 0.63835,
+                "p99": 0.808915,
+                "p999": 1.051684,
+                "max": 2.081024
+              }
+            }
+          },
+          "thresholdEvents": [],
+          "over25msEvents": [],
+          "extremes": [
+            {
+              "kind": "READ",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794753169898,
+              "totalMs": 6.843254,
+              "outerMs": 6.943116,
+              "connectionMs": 5.290704,
+              "statementMs": 1.021804,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.530746,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 2513,
+              "startEpochMillis": 1794753672392,
+              "totalMs": 10.244222,
+              "outerMs": 10.289136,
+              "connectionMs": 0.001484,
+              "statementMs": 0.306768,
+              "commitMs": 9.50319,
+              "coordinatorMs": 0.000341,
+              "otherMs": 0.432439,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 1601,
+              "startEpochMillis": 1794753489894,
+              "totalMs": 2.798058,
+              "outerMs": 2.819574,
+              "connectionMs": 1.115538,
+              "statementMs": 0.28355,
+              "commitMs": 0.835434,
+              "coordinatorMs": 0.007887,
+              "otherMs": 0.555649,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 4580,
+              "startEpochMillis": 1794753261492,
+              "totalMs": 1.289879,
+              "outerMs": 1.300642,
+              "connectionMs": 0.009263,
+              "statementMs": 1.091379,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.189237,
+              "dominantPhase": "statementMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 2901,
+              "startEpochMillis": 1794753749895,
+              "totalMs": 3.073733,
+              "outerMs": 3.08765,
+              "connectionMs": 0.000681,
+              "statementMs": 1.076386,
+              "commitMs": 1.173469,
+              "coordinatorMs": 0.000416,
+              "otherMs": 0.822781,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 28730,
+              "startEpochMillis": 1794753744492,
+              "totalMs": 1.303571,
+              "outerMs": 1.311598,
+              "connectionMs": 0.002835,
+              "statementMs": 0.290751,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 1.009985,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 2311,
+              "startEpochMillis": 1794753631895,
+              "totalMs": 3.698867,
+              "outerMs": 3.721849,
+              "connectionMs": 0.000712,
+              "statementMs": 0.396,
+              "commitMs": 1.214301,
+              "coordinatorMs": 0.00683,
+              "otherMs": 2.081024,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            }
+          ],
+          "checkpointProbes": [
+            {
+              "startEpochMillis": 1794753199853,
+              "startNano": 23274317906870,
+              "busy": 0,
+              "walFrames": 651,
+              "checkpointedFrames": 651,
+              "statementMs": 3.087394,
+              "totalMs": 4.081609
+            },
+            {
+              "startEpochMillis": 1794753229857,
+              "startNano": 23304322051284,
+              "busy": 0,
+              "walFrames": 973,
+              "checkpointedFrames": 973,
+              "statementMs": 7.458988,
+              "totalMs": 8.452877
+            },
+            {
+              "startEpochMillis": 1794753259866,
+              "startNano": 23334330560464,
+              "busy": 0,
+              "walFrames": 328,
+              "checkpointedFrames": 328,
+              "statementMs": 6.666457,
+              "totalMs": 7.802032
+            },
+            {
+              "startEpochMillis": 1794753289873,
+              "startNano": 23364338406237,
+              "busy": 0,
+              "walFrames": 336,
+              "checkpointedFrames": 336,
+              "statementMs": 6.105867,
+              "totalMs": 6.976504
+            },
+            {
+              "startEpochMillis": 1794753319880,
+              "startNano": 23394345423265,
+              "busy": 0,
+              "walFrames": 362,
+              "checkpointedFrames": 362,
+              "statementMs": 6.311271,
+              "totalMs": 7.358837
+            },
+            {
+              "startEpochMillis": 1794753349888,
+              "startNano": 23424352819433,
+              "busy": 0,
+              "walFrames": 302,
+              "checkpointedFrames": 302,
+              "statementMs": 5.517582,
+              "totalMs": 6.204748
+            },
+            {
+              "startEpochMillis": 1794753379894,
+              "startNano": 23454359069118,
+              "busy": 0,
+              "walFrames": 649,
+              "checkpointedFrames": 649,
+              "statementMs": 3.024349,
+              "totalMs": 3.915349
+            },
+            {
+              "startEpochMillis": 1794753409898,
+              "startNano": 23484363039875,
+              "busy": 0,
+              "walFrames": 991,
+              "checkpointedFrames": 991,
+              "statementMs": 7.789191,
+              "totalMs": 8.542303
+            },
+            {
+              "startEpochMillis": 1794753439907,
+              "startNano": 23514371614523,
+              "busy": 0,
+              "walFrames": 327,
+              "checkpointedFrames": 327,
+              "statementMs": 5.009877,
+              "totalMs": 5.650808
+            },
+            {
+              "startEpochMillis": 1794753469912,
+              "startNano": 23544377316504,
+              "busy": 0,
+              "walFrames": 404,
+              "checkpointedFrames": 404,
+              "statementMs": 6.592275,
+              "totalMs": 7.55836
+            },
+            {
+              "startEpochMillis": 1794753499920,
+              "startNano": 23574384907606,
+              "busy": 0,
+              "walFrames": 392,
+              "checkpointedFrames": 392,
+              "statementMs": 4.629464,
+              "totalMs": 5.032623
+            },
+            {
+              "startEpochMillis": 1794753529925,
+              "startNano": 23604389984520,
+              "busy": 0,
+              "walFrames": 314,
+              "checkpointedFrames": 314,
+              "statementMs": 6.178808,
+              "totalMs": 7.180924
+            },
+            {
+              "startEpochMillis": 1794753559932,
+              "startNano": 23634397216056,
+              "busy": 0,
+              "walFrames": 315,
+              "checkpointedFrames": 315,
+              "statementMs": 4.514915,
+              "totalMs": 5.064516
+            },
+            {
+              "startEpochMillis": 1794753589937,
+              "startNano": 23664402337437,
+              "busy": 0,
+              "walFrames": 349,
+              "checkpointedFrames": 349,
+              "statementMs": 5.92935,
+              "totalMs": 6.658392
+            },
+            {
+              "startEpochMillis": 1794753619944,
+              "startNano": 23694409084953,
+              "busy": 0,
+              "walFrames": 346,
+              "checkpointedFrames": 346,
+              "statementMs": 5.461815,
+              "totalMs": 6.099207
+            },
+            {
+              "startEpochMillis": 1794753649950,
+              "startNano": 23724415227409,
+              "busy": 0,
+              "walFrames": 325,
+              "checkpointedFrames": 325,
+              "statementMs": 6.899473,
+              "totalMs": 7.713824
+            },
+            {
+              "startEpochMillis": 1794753679958,
+              "startNano": 23754422986209,
+              "busy": 0,
+              "walFrames": 349,
+              "checkpointedFrames": 349,
+              "statementMs": 7.165206,
+              "totalMs": 8.027515
+            },
+            {
+              "startEpochMillis": 1794753709966,
+              "startNano": 23784431070007,
+              "busy": 0,
+              "walFrames": 300,
+              "checkpointedFrames": 300,
+              "statementMs": 7.107938,
+              "totalMs": 7.981986
+            },
+            {
+              "startEpochMillis": 1794753739974,
+              "startNano": 23814439113012,
+              "busy": 0,
+              "walFrames": 361,
+              "checkpointedFrames": 361,
+              "statementMs": 7.407435,
+              "totalMs": 8.438565
+            }
+          ],
+          "gcPausesInWindow": [
+            {
+              "startEpochMillis": 1794753172541.96,
+              "endEpochMillis": 1794753172545.0,
+              "durationMs": 3.04,
+              "line": "[2026-11-15T06:32:52.545-0800][612.484s][info][gc          ] GC(48) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 622M->210M(675M) 3.040ms"
+            },
+            {
+              "startEpochMillis": 1794753181546.133,
+              "endEpochMillis": 1794753181563.0,
+              "durationMs": 16.867,
+              "line": "[2026-11-15T06:33:01.563-0800][621.501s][info][gc          ] GC(49) Pause Young (Mixed) (G1 Evacuation Pause) 238M->204M(675M) 16.867ms"
+            },
+            {
+              "startEpochMillis": 1794753306193.206,
+              "endEpochMillis": 1794753306203.0,
+              "durationMs": 9.794,
+              "line": "[2026-11-15T06:35:06.203-0800][746.141s][info][gc          ] GC(50) Pause Young (Concurrent Start) (G1 Evacuation Pause) 589M->205M(675M) 9.794ms"
+            },
+            {
+              "startEpochMillis": 1794753306284.486,
+              "endEpochMillis": 1794753306286.0,
+              "durationMs": 1.514,
+              "line": "[2026-11-15T06:35:06.286-0800][746.224s][info][gc          ] GC(51) Pause Remark 205M->205M(675M) 1.514ms"
+            },
+            {
+              "startEpochMillis": 1794753306303.922,
+              "endEpochMillis": 1794753306304.0,
+              "durationMs": 0.078,
+              "line": "[2026-11-15T06:35:06.304-0800][746.243s][info][gc          ] GC(51) Pause Cleanup 205M->205M(675M) 0.078ms"
+            },
+            {
+              "startEpochMillis": 1794753431494.294,
+              "endEpochMillis": 1794753431504.0,
+              "durationMs": 9.706,
+              "line": "[2026-11-15T06:37:11.504-0800][871.443s][info][gc          ] GC(52) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 591M->203M(675M) 9.706ms"
+            },
+            {
+              "startEpochMillis": 1794753441145.224,
+              "endEpochMillis": 1794753441153.0,
+              "durationMs": 7.776,
+              "line": "[2026-11-15T06:37:21.153-0800][881.092s][info][gc          ] GC(53) Pause Young (Mixed) (G1 Evacuation Pause) 233M->198M(675M) 7.776ms"
+            },
+            {
+              "startEpochMillis": 1794753568095.439,
+              "endEpochMillis": 1794753568107.0,
+              "durationMs": 11.561,
+              "line": "[2026-11-15T06:39:28.107-0800][1008.046s][info][gc          ] GC(54) Pause Young (Concurrent Start) (G1 Evacuation Pause) 593M->199M(675M) 11.561ms"
+            },
+            {
+              "startEpochMillis": 1794753568153.759,
+              "endEpochMillis": 1794753568159.0,
+              "durationMs": 5.241,
+              "line": "[2026-11-15T06:39:28.159-0800][1008.097s][info][gc          ] GC(55) Pause Remark 200M->200M(675M) 5.241ms"
+            },
+            {
+              "startEpochMillis": 1794753568178.92,
+              "endEpochMillis": 1794753568179.0,
+              "durationMs": 0.08,
+              "line": "[2026-11-15T06:39:28.179-0800][1008.117s][info][gc          ] GC(55) Pause Cleanup 200M->200M(675M) 0.080ms"
+            },
+            {
+              "startEpochMillis": 1794753696043.97,
+              "endEpochMillis": 1794753696059.0,
+              "durationMs": 15.03,
+              "line": "[2026-11-15T06:41:36.059-0800][1135.997s][info][gc          ] GC(56) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 594M->201M(675M) 15.030ms"
+            },
+            {
+              "startEpochMillis": 1794753705095.208,
+              "endEpochMillis": 1794753705112.0,
+              "durationMs": 16.792,
+              "line": "[2026-11-15T06:41:45.112-0800][1145.051s][info][gc          ] GC(57) Pause Young (Mixed) (G1 Evacuation Pause) 229M->197M(675M) 16.792ms"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "run": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-2",
+      "passed": true,
+      "artifactSha256": "4360db01ce3d710efcc8e74b5149f76e22f21c725d43528dfe7f15865fea155b",
+      "manifestSha256": "d51afe3099a3b028cc306040bc732eb43a193e8ee145f38363801f1917691ed6",
+      "gcLog": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-2/spigot-economy/gc.log",
+      "gcSha256": "00cbfcde90adf6a1e6f4f88ccc74e96b70eba735e5f33d3f68df71f6458e53d8",
+      "machine": {
+        "kernel": "Linux 7.2.14-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 30 Oct 2026 14:32:40 +0000 x86_64 GNU/Linux",
+        "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  20\nOn-line CPU(s) list:                     0-19\nVendor ID:                               GenuineIntel\nModel name:                              12th Gen Intel(R) Core(TM) i7-12700KF\nCPU family:                              6\nModel:                                   151\nThread(s) per core:                      2\nCore(s) per socket:                      12\nSocket(s):                               1\nStepping:                                2\nMicrocode version:                       0x2e\nCPU(s) scaling MHz:                      84%\nCPU max MHz:                             5000.0000\nCPU min MHz:                             800.0000\nBogoMIPS:                                7219.20\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities\nVirtualization:                          VT-x\nL1d cache:                               512 KiB (12 instances)\nL1i cache:                               512 KiB (12 instances)\nL2 cache:                                12 MiB (9 instances)\nL3 cache:                                25 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-19\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Vulnerable\nVulnerability Reg file data sampling:    Vulnerable: No microcode\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Mitigation; IBPB before exit to userspace",
+        "filesystem": "TARGET       SOURCE    FSTYPE OPTIONS\n/mnt/storage /dev/sda4 ext4   rw,noatime",
+        "disks": "NAME        TYPE   SIZE ROTA MODEL                   FSTYPE   MOUNTPOINTS\nloop0       loop 614.5M    0                         squashfs /var/lib/snapd/snap/gnome-46-2404/164\nloop1       loop     4K    0                         squashfs /var/lib/snapd/snap/bare/5\nloop2       loop 144.2M    0                         squashfs /var/lib/snapd/snap/blockbench-snapcraft/544\nloop3       loop  66.8M    0                         squashfs /var/lib/snapd/snap/core24/1643\nloop4       loop 144.1M    0                         squashfs /var/lib/snapd/snap/blockbench-snapcraft/542\nloop5       loop  66.8M    0                         squashfs /var/lib/snapd/snap/core24/2124\nloop6       loop   616M    0                         squashfs /var/lib/snapd/snap/gnome-46-2404/177\nloop7       loop  91.7M    0                         squashfs /var/lib/snapd/snap/gtk-common-themes/1535\nloop8       loop   395M    0                         squashfs /var/lib/snapd/snap/mesa-2404/1165\nloop9       loop   402M    0                         squashfs /var/lib/snapd/snap/mesa-2404/1839\nloop10      loop  44.7M    0                         squashfs /var/lib/snapd/snap/snapd/28254\nloop11      loop  32.5M    0                         squashfs /var/lib/snapd/snap/snapd/28332\nsda         disk   1.8T    0 Extreme 55AE                     \n\u251c\u2500sda1      part   500M    0                         vfat     \n\u251c\u2500sda2      part    16M    0                                  \n\u251c\u2500sda3      part   931G    0                         ntfs     \n\u2514\u2500sda4      part 931.5G    0                         ext4     /mnt/storage\nzram0       disk     8G    0                         swap     [SWAP]\nzram1       disk     8G    0                         ext2     /mnt/zram1\nnvme0n1     disk 931.5G    0 Samsung SSD 980 PRO 1TB          \n\u251c\u2500nvme0n1p1 part   512M    0                         vfat     /boot\n\u2514\u2500nvme0n1p2 part   931G    0                         btrfs    /home/.snapshots\n                                                              /var/log\n                                                              /home\n                                                              /var/cache\n                                                              /.snapshots\n                                                              /",
+        "memory": "total        used        free      shared  buff/cache   available\nMem:     33464201216 16373899264  2286546944   229036032 15606345728 17090301952\nSwap:    27917279232   905150464 27012128768"
+      },
+      "phases": {
+        "pooled": {
+          "rawSamples": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-2/realistic-pooled-raw.json",
+          "rawSha256": "86f57c29a86b031ce498e7ab5c216fd62bb1ea41fee03ddfb1ed43dcf6cc786d",
+          "measurement": {
+            "workload": "realistic",
+            "readMode": "pooled",
+            "activeSeconds": 600.049738893,
+            "timingSamples": 33005,
+            "checkpointProbes": 19,
+            "writes": {
+              "n": 3003,
+              "p50": 2.116213,
+              "p95": 3.12254,
+              "p99": 5.075244,
+              "p999": 7.889252,
+              "max": 8.667107
+            },
+            "reads": {
+              "n": 30002,
+              "p50": 0.132423,
+              "p95": 0.365171,
+              "p99": 0.502901,
+              "p999": 0.935331,
+              "max": 16.995886
+            },
+            "allCalls": {
+              "n": 33005,
+              "p50": 0.148803,
+              "p95": 2.020982,
+              "p99": 2.742393,
+              "p999": 4.990411,
+              "max": 16.995886
+            },
+            "economyWallPerTick": {
+              "n": 12001,
+              "p50": 0.471577,
+              "p95": 3.863844,
+              "p99": 7.047925,
+              "p999": 10.641421,
+              "max": 21.547874
+            },
+            "economyCpuPerTick": {
+              "n": 12001,
+              "p50": 0.462623,
+              "p95": 2.271026,
+              "p99": 4.165674,
+              "p999": 5.938153,
+              "max": 8.384076
+            },
+            "ticksOver5ms": 503,
+            "elapsedSeconds": 600.516013105,
+            "backgroundWrites": {
+              "preferences": 299,
+              "mail": 39,
+              "moderation": 59
+            },
+            "backgroundIntervalsMs": {
+              "preferences": 2000,
+              "moderation": 10000,
+              "mail": 15000
+            },
+            "errors": []
+          },
+          "outerMappingExact": true,
+          "phaseStats": {
+            "reads": {
+              "totalMs": {
+                "n": 30002,
+                "p50": 0.1286,
+                "p95": 0.34881,
+                "p99": 0.464996,
+                "p999": 0.808052,
+                "max": 16.990322
+              },
+              "connectionMs": {
+                "n": 30002,
+                "p50": 0.000841,
+                "p95": 0.007299,
+                "p99": 0.011194,
+                "p999": 0.046888,
+                "max": 1.425499
+              },
+              "statementMs": {
+                "n": 30002,
+                "p50": 0.07392,
+                "p95": 0.202668,
+                "p99": 0.25463,
+                "p999": 0.399294,
+                "max": 16.910502
+              },
+              "commitMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "coordinatorMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "otherMs": {
+                "n": 30002,
+                "p50": 0.053949,
+                "p95": 0.142616,
+                "p99": 0.220924,
+                "p999": 0.381048,
+                "max": 1.114433
+              }
+            },
+            "writes": {
+              "totalMs": {
+                "n": 3003,
+                "p50": 2.071437,
+                "p95": 3.021803,
+                "p99": 4.975755,
+                "p999": 7.661372,
+                "max": 8.604475
+              },
+              "connectionMs": {
+                "n": 3003,
+                "p50": 0.001773,
+                "p95": 0.008542,
+                "p99": 0.012692,
+                "p999": 0.334214,
+                "max": 3.81933
+              },
+              "statementMs": {
+                "n": 3003,
+                "p50": 0.324569,
+                "p95": 0.49202,
+                "p99": 0.605325,
+                "p999": 0.89129,
+                "max": 1.125731
+              },
+              "commitMs": {
+                "n": 3003,
+                "p50": 1.171029,
+                "p95": 1.746462,
+                "p99": 3.868408,
+                "p999": 6.81909,
+                "max": 7.469658
+              },
+              "coordinatorMs": {
+                "n": 3003,
+                "p50": 0.007145,
+                "p95": 0.018958,
+                "p99": 0.03086,
+                "p999": 0.097852,
+                "max": 1.817644
+              },
+              "otherMs": {
+                "n": 3003,
+                "p50": 0.548385,
+                "p95": 0.893314,
+                "p99": 1.217752,
+                "p999": 1.707145,
+                "max": 4.826584
+              }
+            }
+          },
+          "thresholdEvents": [],
+          "over25msEvents": [],
+          "extremes": [
+            {
+              "kind": "READ",
+              "sampleIndex": 28571,
+              "startEpochMillis": 1794754355106,
+              "totalMs": 16.990322,
+              "outerMs": 16.995886,
+              "connectionMs": 0.001483,
+              "statementMs": 16.910502,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.078337,
+              "dominantPhase": "statementMs",
+              "gcCoreOverlap": [
+                {
+                  "startEpochMillis": 1794754355105.416,
+                  "endEpochMillis": 1794754355122.0,
+                  "durationMs": 16.584,
+                  "line": "[2026-11-15T06:52:35.122-0800][580.325s][info][gc          ] GC(38) Pause Young (Normal) (G1 Evacuation Pause) 711M->353M(842M) 16.584ms"
+                }
+              ],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": [
+                {
+                  "startEpochMillis": 1794754355105.416,
+                  "endEpochMillis": 1794754355122.0,
+                  "durationMs": 16.584,
+                  "line": "[2026-11-15T06:52:35.122-0800][580.325s][info][gc          ] GC(38) Pause Young (Normal) (G1 Evacuation Pause) 711M->353M(842M) 16.584ms"
+                }
+              ]
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 2468,
+              "startEpochMillis": 1794754277205,
+              "totalMs": 8.604475,
+              "outerMs": 8.667107,
+              "connectionMs": 0.002552,
+              "statementMs": 0.406592,
+              "commitMs": 7.469658,
+              "coordinatorMs": 0.010156,
+              "otherMs": 0.715517,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 29522,
+              "startEpochMillis": 1794754374155,
+              "totalMs": 1.730795,
+              "outerMs": 1.739963,
+              "connectionMs": 1.425499,
+              "statementMs": 0.183587,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.121709,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 2101,
+              "startEpochMillis": 1794754203710,
+              "totalMs": 6.63837,
+              "outerMs": 6.67991,
+              "connectionMs": 3.81933,
+              "statementMs": 0.32025,
+              "commitMs": 1.967467,
+              "coordinatorMs": 0.007064,
+              "otherMs": 0.524259,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 1888,
+              "startEpochMillis": 1794754161205,
+              "totalMs": 3.383682,
+              "outerMs": 3.423429,
+              "connectionMs": 0.002002,
+              "statementMs": 1.125731,
+              "commitMs": 1.297762,
+              "coordinatorMs": 0.008675,
+              "otherMs": 0.949512,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794753783716,
+              "totalMs": 0.353881,
+              "outerMs": 0.515438,
+              "connectionMs": 0.004609,
+              "statementMs": 0.047072,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.3022,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 2552,
+              "startEpochMillis": 1794753834755,
+              "totalMs": 1.313885,
+              "outerMs": 1.345182,
+              "connectionMs": 0.008534,
+              "statementMs": 0.190918,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 1.114433,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794753783705,
+              "totalMs": 7.242547,
+              "outerMs": 7.889252,
+              "connectionMs": 0.055624,
+              "statementMs": 0.195448,
+              "commitMs": 2.158839,
+              "coordinatorMs": 0.006052,
+              "otherMs": 4.826584,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            }
+          ],
+          "checkpointProbes": [
+            {
+              "startEpochMillis": 1794753813659,
+              "startNano": 23888124436830,
+              "busy": 0,
+              "walFrames": 391,
+              "checkpointedFrames": 391,
+              "statementMs": 5.776427,
+              "totalMs": 7.11176
+            },
+            {
+              "startEpochMillis": 1794753843667,
+              "startNano": 23918131583154,
+              "busy": 0,
+              "walFrames": 661,
+              "checkpointedFrames": 661,
+              "statementMs": 3.340749,
+              "totalMs": 4.051836
+            },
+            {
+              "startEpochMillis": 1794753873671,
+              "startNano": 23948135679796,
+              "busy": 0,
+              "walFrames": 952,
+              "checkpointedFrames": 952,
+              "statementMs": 7.007325,
+              "totalMs": 7.922149
+            },
+            {
+              "startEpochMillis": 1794753903679,
+              "startNano": 23978143659740,
+              "busy": 0,
+              "walFrames": 266,
+              "checkpointedFrames": 266,
+              "statementMs": 2.493486,
+              "totalMs": 3.496355
+            },
+            {
+              "startEpochMillis": 1794753933682,
+              "startNano": 24008147240520,
+              "busy": 0,
+              "walFrames": 597,
+              "checkpointedFrames": 597,
+              "statementMs": 3.239756,
+              "totalMs": 4.148979
+            },
+            {
+              "startEpochMillis": 1794753963686,
+              "startNano": 24038151437838,
+              "busy": 0,
+              "walFrames": 921,
+              "checkpointedFrames": 921,
+              "statementMs": 3.078576,
+              "totalMs": 3.875917
+            },
+            {
+              "startEpochMillis": 1794753993690,
+              "startNano": 24068155338484,
+              "busy": 0,
+              "walFrames": 205,
+              "checkpointedFrames": 205,
+              "statementMs": 3.081735,
+              "totalMs": 3.448155
+            },
+            {
+              "startEpochMillis": 1794754023694,
+              "startNano": 24098158804523,
+              "busy": 0,
+              "walFrames": 546,
+              "checkpointedFrames": 546,
+              "statementMs": 4.143562,
+              "totalMs": 4.731161
+            },
+            {
+              "startEpochMillis": 1794754053699,
+              "startNano": 24128163564834,
+              "busy": 0,
+              "walFrames": 873,
+              "checkpointedFrames": 873,
+              "statementMs": 4.158054,
+              "totalMs": 4.595486
+            },
+            {
+              "startEpochMillis": 1794754083703,
+              "startNano": 24158168175413,
+              "busy": 0,
+              "walFrames": 212,
+              "checkpointedFrames": 212,
+              "statementMs": 2.527639,
+              "totalMs": 2.790791
+            },
+            {
+              "startEpochMillis": 1794754113706,
+              "startNano": 24188171012617,
+              "busy": 0,
+              "walFrames": 564,
+              "checkpointedFrames": 564,
+              "statementMs": 2.834788,
+              "totalMs": 3.683774
+            },
+            {
+              "startEpochMillis": 1794754143710,
+              "startNano": 24218174742540,
+              "busy": 0,
+              "walFrames": 840,
+              "checkpointedFrames": 840,
+              "statementMs": 6.405965,
+              "totalMs": 7.542308
+            },
+            {
+              "startEpochMillis": 1794754173717,
+              "startNano": 24248182309350,
+              "busy": 0,
+              "walFrames": 338,
+              "checkpointedFrames": 338,
+              "statementMs": 3.153757,
+              "totalMs": 3.404632
+            },
+            {
+              "startEpochMillis": 1794754203721,
+              "startNano": 24278185751499,
+              "busy": 0,
+              "walFrames": 364,
+              "checkpointedFrames": 364,
+              "statementMs": 4.466777,
+              "totalMs": 5.341832
+            },
+            {
+              "startEpochMillis": 1794754233726,
+              "startNano": 24308191134183,
+              "busy": 0,
+              "walFrames": 725,
+              "checkpointedFrames": 725,
+              "statementMs": 5.653327,
+              "totalMs": 6.343284
+            },
+            {
+              "startEpochMillis": 1794754263733,
+              "startNano": 24338197530637,
+              "busy": 0,
+              "walFrames": 378,
+              "checkpointedFrames": 378,
+              "statementMs": 6.414351,
+              "totalMs": 7.496965
+            },
+            {
+              "startEpochMillis": 1794754293740,
+              "startNano": 24368205078993,
+              "busy": 0,
+              "walFrames": 770,
+              "checkpointedFrames": 770,
+              "statementMs": 5.999009,
+              "totalMs": 6.650987
+            },
+            {
+              "startEpochMillis": 1794754323747,
+              "startNano": 24398211785291,
+              "busy": 0,
+              "walFrames": 169,
+              "checkpointedFrames": 169,
+              "statementMs": 5.997187,
+              "totalMs": 7.131938
+            },
+            {
+              "startEpochMillis": 1794754353754,
+              "startNano": 24428218953104,
+              "busy": 0,
+              "walFrames": 329,
+              "checkpointedFrames": 329,
+              "statementMs": 4.889234,
+              "totalMs": 5.520705
+            }
+          ],
+          "gcPausesInWindow": [
+            {
+              "startEpochMillis": 1794753853715.556,
+              "endEpochMillis": 1794753853723.0,
+              "durationMs": 7.444,
+              "line": "[2026-11-15T06:44:13.723-0800][78.925s][info][gc          ] GC(33) Pause Young (Normal) (G1 Evacuation Pause) 618M->348M(842M) 7.444ms"
+            },
+            {
+              "startEpochMillis": 1794753941306.798,
+              "endEpochMillis": 1794753941315.0,
+              "durationMs": 8.202,
+              "line": "[2026-11-15T06:45:41.315-0800][166.517s][info][gc          ] GC(34) Pause Young (Normal) (G1 Evacuation Pause) 638M->349M(842M) 8.202ms"
+            },
+            {
+              "startEpochMillis": 1794754038460.61,
+              "endEpochMillis": 1794754038470.0,
+              "durationMs": 9.39,
+              "line": "[2026-11-15T06:47:18.470-0800][263.672s][info][gc          ] GC(35) Pause Young (Normal) (G1 Evacuation Pause) 669M->350M(842M) 9.390ms"
+            },
+            {
+              "startEpochMillis": 1794754139981.185,
+              "endEpochMillis": 1794754139989.0,
+              "durationMs": 7.815,
+              "line": "[2026-11-15T06:48:59.989-0800][365.192s][info][gc          ] GC(36) Pause Young (Normal) (G1 Evacuation Pause) 687M->351M(842M) 7.815ms"
+            },
+            {
+              "startEpochMillis": 1794754246106.108,
+              "endEpochMillis": 1794754246121.0,
+              "durationMs": 14.892,
+              "line": "[2026-11-15T06:50:46.121-0800][471.323s][info][gc          ] GC(37) Pause Young (Normal) (G1 Evacuation Pause) 701M->352M(842M) 14.892ms"
+            },
+            {
+              "startEpochMillis": 1794754355105.416,
+              "endEpochMillis": 1794754355122.0,
+              "durationMs": 16.584,
+              "line": "[2026-11-15T06:52:35.122-0800][580.325s][info][gc          ] GC(38) Pause Young (Normal) (G1 Evacuation Pause) 711M->353M(842M) 16.584ms"
+            }
+          ]
+        },
+        "dedicated": {
+          "rawSamples": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-2/realistic-dedicated-raw.json",
+          "rawSha256": "1a27b2600592154e5ac060f81b2728d19c38818d3f52d7995fb0498618b45616",
+          "measurement": {
+            "workload": "realistic",
+            "readMode": "dedicated",
+            "activeSeconds": 600.05032749,
+            "timingSamples": 33005,
+            "checkpointProbes": 19,
+            "writes": {
+              "n": 3003,
+              "p50": 1.90345,
+              "p95": 2.827744,
+              "p99": 4.259961,
+              "p999": 9.420452,
+              "max": 14.666331
+            },
+            "reads": {
+              "n": 30002,
+              "p50": 0.130979,
+              "p95": 0.376174,
+              "p99": 0.455897,
+              "p999": 0.577776,
+              "max": 1.879486
+            },
+            "allCalls": {
+              "n": 33005,
+              "p50": 0.15094,
+              "p95": 1.810645,
+              "p99": 2.592035,
+              "p999": 4.12394,
+              "max": 14.666331
+            },
+            "economyWallPerTick": {
+              "n": 12001,
+              "p50": 0.474168,
+              "p95": 3.490711,
+              "p99": 6.789748,
+              "p999": 11.962244,
+              "max": 17.644477
+            },
+            "economyCpuPerTick": {
+              "n": 12001,
+              "p50": 0.465318,
+              "p95": 2.112448,
+              "p99": 3.977003,
+              "p999": 4.998445,
+              "max": 6.566505
+            },
+            "ticksOver5ms": 427,
+            "elapsedSeconds": 600.454179008,
+            "backgroundWrites": {
+              "preferences": 299,
+              "mail": 39,
+              "moderation": 59
+            },
+            "backgroundIntervalsMs": {
+              "preferences": 2000,
+              "moderation": 10000,
+              "mail": 15000
+            },
+            "errors": []
+          },
+          "outerMappingExact": true,
+          "phaseStats": {
+            "reads": {
+              "totalMs": {
+                "n": 30002,
+                "p50": 0.127614,
+                "p95": 0.365218,
+                "p99": 0.44285,
+                "p999": 0.564435,
+                "max": 1.85275
+              },
+              "connectionMs": {
+                "n": 30002,
+                "p50": 0.001426,
+                "p95": 0.011936,
+                "p99": 0.01676,
+                "p999": 0.041776,
+                "max": 1.389436
+              },
+              "statementMs": {
+                "n": 30002,
+                "p50": 0.070082,
+                "p95": 0.205249,
+                "p99": 0.244708,
+                "p999": 0.356369,
+                "max": 0.962336
+              },
+              "commitMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "coordinatorMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "otherMs": {
+                "n": 30002,
+                "p50": 0.055342,
+                "p95": 0.153034,
+                "p99": 0.189919,
+                "p999": 0.302159,
+                "max": 1.116143
+              }
+            },
+            "writes": {
+              "totalMs": {
+                "n": 3003,
+                "p50": 1.86816,
+                "p95": 2.771079,
+                "p99": 4.231216,
+                "p999": 9.401639,
+                "max": 14.640664
+              },
+              "connectionMs": {
+                "n": 3003,
+                "p50": 0.001374,
+                "p95": 0.002324,
+                "p99": 0.002713,
+                "p999": 0.067171,
+                "max": 13.029345
+              },
+              "statementMs": {
+                "n": 3003,
+                "p50": 0.297379,
+                "p95": 0.480411,
+                "p99": 0.570907,
+                "p999": 0.934836,
+                "max": 1.157878
+              },
+              "commitMs": {
+                "n": 3003,
+                "p50": 1.101325,
+                "p95": 1.699417,
+                "p99": 3.316999,
+                "p999": 8.539407,
+                "max": 9.197864
+              },
+              "coordinatorMs": {
+                "n": 3003,
+                "p50": 0.005641,
+                "p95": 0.010808,
+                "p99": 0.01197,
+                "p999": 0.046959,
+                "max": 1.245506
+              },
+              "otherMs": {
+                "n": 3003,
+                "p50": 0.466703,
+                "p95": 0.748283,
+                "p99": 0.868211,
+                "p999": 1.122666,
+                "max": 1.372771
+              }
+            }
+          },
+          "thresholdEvents": [],
+          "over25msEvents": [],
+          "extremes": [
+            {
+              "kind": "READ",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794754384460,
+              "totalMs": 1.85275,
+              "outerMs": 1.879486,
+              "connectionMs": 1.389436,
+              "statementMs": 0.294893,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.168421,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 1651,
+              "startEpochMillis": 1794754714457,
+              "totalMs": 14.640664,
+              "outerMs": 14.666331,
+              "connectionMs": 13.029345,
+              "statementMs": 0.20981,
+              "commitMs": 1.048019,
+              "coordinatorMs": 0.003987,
+              "otherMs": 0.349503,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [
+                {
+                  "startEpochMillis": 1794754714456.428,
+                  "endEpochMillis": 1794754714468.0,
+                  "durationMs": 11.572,
+                  "line": "[2026-11-15T06:58:34.468-0800][939.670s][info][gc          ] GC(43) Pause Young (Normal) (G1 Evacuation Pause) 728M->350M(842M) 11.572ms"
+                }
+              ],
+              "checkpointCoreOverlap": [
+                {
+                  "startEpochMillis": 1794754714468,
+                  "startNano": 24788933308896,
+                  "busy": 0,
+                  "walFrames": 326,
+                  "checkpointedFrames": 326,
+                  "statementMs": 2.559651,
+                  "totalMs": 3.421803
+                }
+              ],
+              "gcOuterEnvelopeOverlap": [
+                {
+                  "startEpochMillis": 1794754714456.428,
+                  "endEpochMillis": 1794754714468.0,
+                  "durationMs": 11.572,
+                  "line": "[2026-11-15T06:58:34.468-0800][939.670s][info][gc          ] GC(43) Pause Young (Normal) (G1 Evacuation Pause) 728M->350M(842M) 11.572ms"
+                }
+              ]
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 5805,
+              "startEpochMillis": 1794754500555,
+              "totalMs": 1.167996,
+              "outerMs": 1.175647,
+              "connectionMs": 0.002954,
+              "statementMs": 0.962336,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.202706,
+              "dominantPhase": "statementMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 640,
+              "startEpochMillis": 1794754512455,
+              "totalMs": 3.106878,
+              "outerMs": 3.150097,
+              "connectionMs": 0.001819,
+              "statementMs": 1.157878,
+              "commitMs": 1.365899,
+              "coordinatorMs": 0.009128,
+              "otherMs": 0.572154,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 2960,
+              "startEpochMillis": 1794754976455,
+              "totalMs": 10.140663,
+              "outerMs": 10.183923,
+              "connectionMs": 0.002182,
+              "statementMs": 0.396271,
+              "commitMs": 9.197864,
+              "coordinatorMs": 0.000677,
+              "otherMs": 0.543669,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 5976,
+              "startEpochMillis": 1794754503957,
+              "totalMs": 1.246316,
+              "outerMs": 1.251695,
+              "connectionMs": 0.000723,
+              "statementMs": 0.12945,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 1.116143,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 1569,
+              "startEpochMillis": 1794754698205,
+              "totalMs": 3.185497,
+              "outerMs": 3.239874,
+              "connectionMs": 0.002933,
+              "statementMs": 0.463176,
+              "commitMs": 1.334754,
+              "coordinatorMs": 0.011863,
+              "otherMs": 1.372771,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            }
+          ],
+          "checkpointProbes": [
+            {
+              "startEpochMillis": 1794754414408,
+              "startNano": 24488873145405,
+              "busy": 0,
+              "walFrames": 603,
+              "checkpointedFrames": 603,
+              "statementMs": 5.630198,
+              "totalMs": 6.262848
+            },
+            {
+              "startEpochMillis": 1794754444414,
+              "startNano": 24518879477831,
+              "busy": 0,
+              "walFrames": 980,
+              "checkpointedFrames": 980,
+              "statementMs": 3.505276,
+              "totalMs": 4.400581
+            },
+            {
+              "startEpochMillis": 1794754474419,
+              "startNano": 24548883923482,
+              "busy": 0,
+              "walFrames": 391,
+              "checkpointedFrames": 391,
+              "statementMs": 3.031637,
+              "totalMs": 3.884939
+            },
+            {
+              "startEpochMillis": 1794754504423,
+              "startNano": 24578887845673,
+              "busy": 0,
+              "walFrames": 764,
+              "checkpointedFrames": 764,
+              "statementMs": 4.008017,
+              "totalMs": 4.904469
+            },
+            {
+              "startEpochMillis": 1794754534428,
+              "startNano": 24608892772526,
+              "busy": 0,
+              "walFrames": 107,
+              "checkpointedFrames": 107,
+              "statementMs": 3.412273,
+              "totalMs": 3.775778
+            },
+            {
+              "startEpochMillis": 1794754564432,
+              "startNano": 24638896584917,
+              "busy": 0,
+              "walFrames": 467,
+              "checkpointedFrames": 467,
+              "statementMs": 5.970429,
+              "totalMs": 6.660756
+            },
+            {
+              "startEpochMillis": 1794754594438,
+              "startNano": 24668903283960,
+              "busy": 0,
+              "walFrames": 879,
+              "checkpointedFrames": 879,
+              "statementMs": 6.744224,
+              "totalMs": 7.37295
+            },
+            {
+              "startEpochMillis": 1794754624446,
+              "startNano": 24698910701596,
+              "busy": 0,
+              "walFrames": 370,
+              "checkpointedFrames": 370,
+              "statementMs": 6.164791,
+              "totalMs": 6.974696
+            },
+            {
+              "startEpochMillis": 1794754654453,
+              "startNano": 24728917725640,
+              "busy": 0,
+              "walFrames": 346,
+              "checkpointedFrames": 346,
+              "statementMs": 6.075373,
+              "totalMs": 6.724125
+            },
+            {
+              "startEpochMillis": 1794754684459,
+              "startNano": 24758924464204,
+              "busy": 0,
+              "walFrames": 715,
+              "checkpointedFrames": 715,
+              "statementMs": 5.062649,
+              "totalMs": 5.287826
+            },
+            {
+              "startEpochMillis": 1794754714468,
+              "startNano": 24788933308896,
+              "busy": 0,
+              "walFrames": 326,
+              "checkpointedFrames": 326,
+              "statementMs": 2.559651,
+              "totalMs": 3.421803
+            },
+            {
+              "startEpochMillis": 1794754744472,
+              "startNano": 24818936757678,
+              "busy": 0,
+              "walFrames": 643,
+              "checkpointedFrames": 643,
+              "statementMs": 2.025431,
+              "totalMs": 2.484162
+            },
+            {
+              "startEpochMillis": 1794754774474,
+              "startNano": 24848939280293,
+              "busy": 0,
+              "walFrames": 0,
+              "checkpointedFrames": 0,
+              "statementMs": 1.709744,
+              "totalMs": 2.579085
+            },
+            {
+              "startEpochMillis": 1794754804477,
+              "startNano": 24878941924266,
+              "busy": 0,
+              "walFrames": 346,
+              "checkpointedFrames": 346,
+              "statementMs": 5.840599,
+              "totalMs": 6.743472
+            },
+            {
+              "startEpochMillis": 1794754834484,
+              "startNano": 24908948693525,
+              "busy": 0,
+              "walFrames": 710,
+              "checkpointedFrames": 710,
+              "statementMs": 7.661906,
+              "totalMs": 8.386855
+            },
+            {
+              "startEpochMillis": 1794754864492,
+              "startNano": 24938957122726,
+              "busy": 0,
+              "walFrames": 298,
+              "checkpointedFrames": 298,
+              "statementMs": 5.572092,
+              "totalMs": 6.263882
+            },
+            {
+              "startEpochMillis": 1794754894498,
+              "startNano": 24968963425428,
+              "busy": 0,
+              "walFrames": 302,
+              "checkpointedFrames": 302,
+              "statementMs": 6.297982,
+              "totalMs": 7.003409
+            },
+            {
+              "startEpochMillis": 1794754924505,
+              "startNano": 24998970477047,
+              "busy": 0,
+              "walFrames": 404,
+              "checkpointedFrames": 404,
+              "statementMs": 7.508633,
+              "totalMs": 8.411231
+            },
+            {
+              "startEpochMillis": 1794754954514,
+              "startNano": 25028978916179,
+              "busy": 0,
+              "walFrames": 369,
+              "checkpointedFrames": 369,
+              "statementMs": 6.389775,
+              "totalMs": 7.201888
+            }
+          ],
+          "gcPausesInWindow": [
+            {
+              "startEpochMillis": 1794754487210.991,
+              "endEpochMillis": 1794754487220.0,
+              "durationMs": 9.009,
+              "line": "[2026-11-15T06:54:47.220-0800][712.422s][info][gc          ] GC(41) Pause Young (Normal) (G1 Evacuation Pause) 729M->351M(842M) 9.009ms"
+            },
+            {
+              "startEpochMillis": 1794754599957.989,
+              "endEpochMillis": 1794754599967.0,
+              "durationMs": 9.011,
+              "line": "[2026-11-15T06:56:39.967-0800][825.170s][info][gc          ] GC(42) Pause Young (Normal) (G1 Evacuation Pause) 722M->350M(842M) 9.011ms"
+            },
+            {
+              "startEpochMillis": 1794754714456.428,
+              "endEpochMillis": 1794754714468.0,
+              "durationMs": 11.572,
+              "line": "[2026-11-15T06:58:34.468-0800][939.670s][info][gc          ] GC(43) Pause Young (Normal) (G1 Evacuation Pause) 728M->350M(842M) 11.572ms"
+            },
+            {
+              "startEpochMillis": 1794754829990.16,
+              "endEpochMillis": 1794754830001.0,
+              "durationMs": 10.84,
+              "line": "[2026-11-15T07:00:30.001-0800][1055.203s][info][gc          ] GC(44) Pause Young (Normal) (G1 Evacuation Pause) 731M->351M(842M) 10.840ms"
+            },
+            {
+              "startEpochMillis": 1794754946508.8,
+              "endEpochMillis": 1794754946521.0,
+              "durationMs": 12.2,
+              "line": "[2026-11-15T07:02:26.521-0800][1171.723s][info][gc          ] GC(45) Pause Young (Normal) (G1 Evacuation Pause) 735M->352M(842M) 12.200ms"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "run": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-3",
+      "passed": true,
+      "artifactSha256": "4360db01ce3d710efcc8e74b5149f76e22f21c725d43528dfe7f15865fea155b",
+      "manifestSha256": "6128e6e9a15eb8b1b711848c479ff47ff26238f1249a339b9ede65ea4ccfef55",
+      "gcLog": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-3/spigot-economy/gc.log",
+      "gcSha256": "6b849a4f2fc6b1ae8070a087a07b1e510b24ff93e4fa65b5c1f6dcad7277a81a",
+      "machine": {
+        "kernel": "Linux 7.2.14-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 30 Oct 2026 14:32:40 +0000 x86_64 GNU/Linux",
+        "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  20\nOn-line CPU(s) list:                     0-19\nVendor ID:                               GenuineIntel\nModel name:                              12th Gen Intel(R) Core(TM) i7-12700KF\nCPU family:                              6\nModel:                                   151\nThread(s) per core:                      2\nCore(s) per socket:                      12\nSocket(s):                               1\nStepping:                                2\nMicrocode version:                       0x2e\nCPU(s) scaling MHz:                      69%\nCPU max MHz:                             5000.0000\nCPU min MHz:                             800.0000\nBogoMIPS:                                7219.20\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities\nVirtualization:                          VT-x\nL1d cache:                               512 KiB (12 instances)\nL1i cache:                               512 KiB (12 instances)\nL2 cache:                                12 MiB (9 instances)\nL3 cache:                                25 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-19\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Vulnerable\nVulnerability Reg file data sampling:    Vulnerable: No microcode\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Mitigation; IBPB before exit to userspace",
+        "filesystem": "TARGET       SOURCE    FSTYPE OPTIONS\n/mnt/storage /dev/sda4 ext4   rw,noatime",
+        "disks": "NAME        TYPE   SIZE ROTA MODEL                   FSTYPE   MOUNTPOINTS\nloop0       loop 614.5M    0                         squashfs /var/lib/snapd/snap/gnome-46-2404/164\nloop1       loop     4K    0                         squashfs /var/lib/snapd/snap/bare/5\nloop2       loop 144.2M    0                         squashfs /var/lib/snapd/snap/blockbench-snapcraft/544\nloop3       loop  66.8M    0                         squashfs /var/lib/snapd/snap/core24/1643\nloop4       loop 144.1M    0                         squashfs /var/lib/snapd/snap/blockbench-snapcraft/542\nloop5       loop  66.8M    0                         squashfs /var/lib/snapd/snap/core24/2124\nloop6       loop   616M    0                         squashfs /var/lib/snapd/snap/gnome-46-2404/177\nloop7       loop  91.7M    0                         squashfs /var/lib/snapd/snap/gtk-common-themes/1535\nloop8       loop   395M    0                         squashfs /var/lib/snapd/snap/mesa-2404/1165\nloop9       loop   402M    0                         squashfs /var/lib/snapd/snap/mesa-2404/1839\nloop10      loop  44.7M    0                         squashfs /var/lib/snapd/snap/snapd/28254\nloop11      loop  32.5M    0                         squashfs /var/lib/snapd/snap/snapd/28332\nsda         disk   1.8T    0 Extreme 55AE                     \n\u251c\u2500sda1      part   500M    0                         vfat     \n\u251c\u2500sda2      part    16M    0                                  \n\u251c\u2500sda3      part   931G    0                         ntfs     \n\u2514\u2500sda4      part 931.5G    0                         ext4     /mnt/storage\nzram0       disk     8G    0                         swap     [SWAP]\nzram1       disk     8G    0                         ext2     /mnt/zram1\nnvme0n1     disk 931.5G    0 Samsung SSD 980 PRO 1TB          \n\u251c\u2500nvme0n1p1 part   512M    0                         vfat     /boot\n\u2514\u2500nvme0n1p2 part   931G    0                         btrfs    /home/.snapshots\n                                                              /var/log\n                                                              /home\n                                                              /var/cache\n                                                              /.snapshots\n                                                              /",
+        "memory": "total        used        free      shared  buff/cache   available\nMem:     33464201216 16329531392  1997459456   211255296 15922016256 17134669824\nSwap:    27917279232   912179200 27005100032"
+      },
+      "phases": {
+        "pooled": {
+          "rawSamples": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-3/realistic-pooled-raw.json",
+          "rawSha256": "fcc4af22ea4fdf7aaa44b123a92f7add5ee92f9e501d7f52bc294578ebe15ebb",
+          "measurement": {
+            "workload": "realistic",
+            "readMode": "pooled",
+            "activeSeconds": 600.05807608,
+            "timingSamples": 33005,
+            "checkpointProbes": 19,
+            "writes": {
+              "n": 3003,
+              "p50": 1.964882,
+              "p95": 3.113871,
+              "p99": 4.871217,
+              "p999": 7.767915,
+              "max": 21.517379
+            },
+            "reads": {
+              "n": 30002,
+              "p50": 0.125017,
+              "p95": 0.367137,
+              "p99": 0.496966,
+              "p999": 0.962356,
+              "max": 8.552381
+            },
+            "allCalls": {
+              "n": 33005,
+              "p50": 0.143195,
+              "p95": 1.850906,
+              "p99": 2.711109,
+              "p999": 4.657899,
+              "max": 21.517379
+            },
+            "economyWallPerTick": {
+              "n": 12001,
+              "p50": 0.453746,
+              "p95": 3.792349,
+              "p99": 7.119841,
+              "p999": 10.407645,
+              "max": 26.207946
+            },
+            "economyCpuPerTick": {
+              "n": 12001,
+              "p50": 0.445084,
+              "p95": 2.192702,
+              "p99": 4.099958,
+              "p999": 5.685032,
+              "max": 22.254996
+            },
+            "ticksOver5ms": 449,
+            "elapsedSeconds": 600.515142836,
+            "backgroundWrites": {
+              "preferences": 299,
+              "mail": 39,
+              "moderation": 59
+            },
+            "backgroundIntervalsMs": {
+              "mail": 15000,
+              "moderation": 10000,
+              "preferences": 2000
+            },
+            "errors": []
+          },
+          "outerMappingExact": true,
+          "phaseStats": {
+            "reads": {
+              "totalMs": {
+                "n": 30002,
+                "p50": 0.121148,
+                "p95": 0.352524,
+                "p99": 0.461811,
+                "p999": 0.841084,
+                "max": 8.543883
+              },
+              "connectionMs": {
+                "n": 30002,
+                "p50": 0.000832,
+                "p95": 0.007112,
+                "p99": 0.011496,
+                "p999": 0.041224,
+                "max": 1.931143
+              },
+              "statementMs": {
+                "n": 30002,
+                "p50": 0.068808,
+                "p95": 0.206549,
+                "p99": 0.262801,
+                "p999": 0.422479,
+                "max": 8.429718
+              },
+              "commitMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "coordinatorMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "otherMs": {
+                "n": 30002,
+                "p50": 0.050678,
+                "p95": 0.142529,
+                "p99": 0.219887,
+                "p999": 0.378604,
+                "max": 1.24946
+              }
+            },
+            "writes": {
+              "totalMs": {
+                "n": 3003,
+                "p50": 1.92298,
+                "p95": 3.005349,
+                "p99": 4.689413,
+                "p999": 7.723247,
+                "max": 20.44632
+              },
+              "connectionMs": {
+                "n": 3003,
+                "p50": 0.001624,
+                "p95": 0.008538,
+                "p99": 0.014959,
+                "p999": 0.110673,
+                "max": 1.915692
+              },
+              "statementMs": {
+                "n": 3003,
+                "p50": 0.291485,
+                "p95": 0.493799,
+                "p99": 0.631046,
+                "p999": 0.94937,
+                "max": 1.466058
+              },
+              "commitMs": {
+                "n": 3003,
+                "p50": 1.106115,
+                "p95": 1.758033,
+                "p99": 3.486484,
+                "p999": 6.520799,
+                "max": 8.55451
+              },
+              "coordinatorMs": {
+                "n": 3003,
+                "p50": 0.00664,
+                "p95": 0.017409,
+                "p99": 0.02923,
+                "p999": 0.095736,
+                "max": 2.234029
+              },
+              "otherMs": {
+                "n": 3003,
+                "p50": 0.508119,
+                "p95": 0.890121,
+                "p99": 1.262128,
+                "p999": 1.915329,
+                "max": 17.641505
+              }
+            }
+          },
+          "thresholdEvents": [],
+          "over25msEvents": [],
+          "extremes": [
+            {
+              "kind": "READ",
+              "sampleIndex": 10117,
+              "startEpochMillis": 1794755201216,
+              "totalMs": 8.543883,
+              "outerMs": 8.552381,
+              "connectionMs": 0.002146,
+              "statementMs": 8.429718,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.112019,
+              "dominantPhase": "statementMs",
+              "gcCoreOverlap": [
+                {
+                  "startEpochMillis": 1794755201215.982,
+                  "endEpochMillis": 1794755201224.0,
+                  "durationMs": 8.018,
+                  "line": "[2026-11-15T07:06:41.224-0800][211.296s][info][gc          ] GC(40) Pause Young (Normal) (G1 Evacuation Pause) 565M->210M(719M) 8.018ms"
+                }
+              ],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": [
+                {
+                  "startEpochMillis": 1794755201215.982,
+                  "endEpochMillis": 1794755201224.0,
+                  "durationMs": 8.018,
+                  "line": "[2026-11-15T07:06:41.224-0800][211.296s][info][gc          ] GC(40) Pause Young (Normal) (G1 Evacuation Pause) 565M->210M(719M) 8.018ms"
+                }
+              ]
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794754998867,
+              "totalMs": 20.44632,
+              "outerMs": 21.517379,
+              "connectionMs": 0.110673,
+              "statementMs": 0.427103,
+              "commitMs": 2.253348,
+              "coordinatorMs": 0.013691,
+              "otherMs": 17.641505,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 8906,
+              "startEpochMillis": 1794755176967,
+              "totalMs": 2.250794,
+              "outerMs": 2.257711,
+              "connectionMs": 1.931143,
+              "statementMs": 0.135709,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.183942,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 1950,
+              "startEpochMillis": 1794755388866,
+              "totalMs": 3.657215,
+              "outerMs": 3.684013,
+              "connectionMs": 1.915692,
+              "statementMs": 0.221925,
+              "commitMs": 1.102765,
+              "coordinatorMs": 0.006479,
+              "otherMs": 0.410354,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [
+                {
+                  "startEpochMillis": 1794755388865,
+                  "startNano": 25463329811187,
+                  "busy": 0,
+                  "walFrames": 323,
+                  "checkpointedFrames": 323,
+                  "statementMs": 4.109817,
+                  "totalMs": 4.614738
+                }
+              ],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 3,
+              "startEpochMillis": 1794754999366,
+              "totalMs": 5.051303,
+              "outerMs": 5.450932,
+              "connectionMs": 0.028876,
+              "statementMs": 1.466058,
+              "commitMs": 1.873372,
+              "coordinatorMs": 0.018615,
+              "otherMs": 1.664382,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794754998892,
+              "totalMs": 0.496092,
+              "outerMs": 0.721128,
+              "connectionMs": 0.004945,
+              "statementMs": 0.064137,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.42701,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 93,
+              "startEpochMillis": 1794755017366,
+              "totalMs": 9.797383,
+              "outerMs": 9.980492,
+              "connectionMs": 0.007439,
+              "statementMs": 0.362312,
+              "commitMs": 8.55451,
+              "coordinatorMs": 0.021977,
+              "otherMs": 0.851145,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 12,
+              "startEpochMillis": 1794754999116,
+              "totalMs": 2.486021,
+              "outerMs": 2.645765,
+              "connectionMs": 0.030084,
+              "statementMs": 1.206477,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 1.24946,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            }
+          ],
+          "checkpointProbes": [
+            {
+              "startEpochMillis": 1794755028819,
+              "startNano": 25103284240015,
+              "busy": 0,
+              "walFrames": 393,
+              "checkpointedFrames": 393,
+              "statementMs": 2.85803,
+              "totalMs": 4.963447
+            },
+            {
+              "startEpochMillis": 1794755058824,
+              "startNano": 25133289259440,
+              "busy": 0,
+              "walFrames": 656,
+              "checkpointedFrames": 656,
+              "statementMs": 4.378867,
+              "totalMs": 5.057987
+            },
+            {
+              "startEpochMillis": 1794755088829,
+              "startNano": 25163294345151,
+              "busy": 0,
+              "walFrames": 971,
+              "checkpointedFrames": 971,
+              "statementMs": 2.429745,
+              "totalMs": 2.950594
+            },
+            {
+              "startEpochMillis": 1794755118832,
+              "startNano": 25193297346565,
+              "busy": 0,
+              "walFrames": 299,
+              "checkpointedFrames": 299,
+              "statementMs": 3.067254,
+              "totalMs": 3.893173
+            },
+            {
+              "startEpochMillis": 1794755148836,
+              "startNano": 25223301263879,
+              "busy": 0,
+              "walFrames": 626,
+              "checkpointedFrames": 626,
+              "statementMs": 2.552609,
+              "totalMs": 2.800879
+            },
+            {
+              "startEpochMillis": 1794755178839,
+              "startNano": 25253304096183,
+              "busy": 0,
+              "walFrames": 977,
+              "checkpointedFrames": 977,
+              "statementMs": 4.051912,
+              "totalMs": 4.51996
+            },
+            {
+              "startEpochMillis": 1794755208844,
+              "startNano": 25283308630454,
+              "busy": 0,
+              "walFrames": 327,
+              "checkpointedFrames": 327,
+              "statementMs": 2.616712,
+              "totalMs": 2.908052
+            },
+            {
+              "startEpochMillis": 1794755238847,
+              "startNano": 25313311577746,
+              "busy": 0,
+              "walFrames": 670,
+              "checkpointedFrames": 670,
+              "statementMs": 3.607085,
+              "totalMs": 4.467848
+            },
+            {
+              "startEpochMillis": 1794755268851,
+              "startNano": 25343316071531,
+              "busy": 1,
+              "walFrames": -1,
+              "checkpointedFrames": -1,
+              "statementMs": 0.884827,
+              "totalMs": 1.480214
+            },
+            {
+              "startEpochMillis": 1794755298853,
+              "startNano": 25373317609139,
+              "busy": 0,
+              "walFrames": 307,
+              "checkpointedFrames": 307,
+              "statementMs": 3.162478,
+              "totalMs": 4.128632
+            },
+            {
+              "startEpochMillis": 1794755328857,
+              "startNano": 25403321773962,
+              "busy": 0,
+              "walFrames": 667,
+              "checkpointedFrames": 667,
+              "statementMs": 2.935048,
+              "totalMs": 3.617671
+            },
+            {
+              "startEpochMillis": 1794755358860,
+              "startNano": 25433325425695,
+              "busy": 0,
+              "walFrames": 998,
+              "checkpointedFrames": 998,
+              "statementMs": 3.491064,
+              "totalMs": 4.347997
+            },
+            {
+              "startEpochMillis": 1794755388865,
+              "startNano": 25463329811187,
+              "busy": 0,
+              "walFrames": 323,
+              "checkpointedFrames": 323,
+              "statementMs": 4.109817,
+              "totalMs": 4.614738
+            },
+            {
+              "startEpochMillis": 1794755418869,
+              "startNano": 25493334504878,
+              "busy": 0,
+              "walFrames": 714,
+              "checkpointedFrames": 714,
+              "statementMs": 3.534059,
+              "totalMs": 4.761898
+            },
+            {
+              "startEpochMillis": 1794755448874,
+              "startNano": 25523339302618,
+              "busy": 0,
+              "walFrames": 135,
+              "checkpointedFrames": 135,
+              "statementMs": 1.614503,
+              "totalMs": 2.237089
+            },
+            {
+              "startEpochMillis": 1794755478877,
+              "startNano": 25553341569453,
+              "busy": 0,
+              "walFrames": 466,
+              "checkpointedFrames": 466,
+              "statementMs": 5.264914,
+              "totalMs": 5.920042
+            },
+            {
+              "startEpochMillis": 1794755508883,
+              "startNano": 25583347523015,
+              "busy": 0,
+              "walFrames": 750,
+              "checkpointedFrames": 750,
+              "statementMs": 6.252312,
+              "totalMs": 6.90163
+            },
+            {
+              "startEpochMillis": 1794755538889,
+              "startNano": 25613354495639,
+              "busy": 0,
+              "walFrames": 156,
+              "checkpointedFrames": 156,
+              "statementMs": 1.312304,
+              "totalMs": 1.674993
+            },
+            {
+              "startEpochMillis": 1794755568891,
+              "startNano": 25643356194764,
+              "busy": 0,
+              "walFrames": 454,
+              "checkpointedFrames": 454,
+              "statementMs": 2.852574,
+              "totalMs": 3.487218
+            }
+          ],
+          "gcPausesInWindow": [
+            {
+              "startEpochMillis": 1794755082370.352,
+              "endEpochMillis": 1794755082377.0,
+              "durationMs": 6.648,
+              "line": "[2026-11-15T07:04:42.377-0800][92.449s][info][gc          ] GC(39) Pause Young (Normal) (G1 Evacuation Pause) 505M->208M(719M) 6.648ms"
+            },
+            {
+              "startEpochMillis": 1794755201215.982,
+              "endEpochMillis": 1794755201224.0,
+              "durationMs": 8.018,
+              "line": "[2026-11-15T07:06:41.224-0800][211.296s][info][gc          ] GC(40) Pause Young (Normal) (G1 Evacuation Pause) 565M->210M(719M) 8.018ms"
+            },
+            {
+              "startEpochMillis": 1794755325417.046,
+              "endEpochMillis": 1794755325424.0,
+              "durationMs": 6.954,
+              "line": "[2026-11-15T07:08:45.424-0800][335.496s][info][gc          ] GC(41) Pause Young (Normal) (G1 Evacuation Pause) 582M->211M(719M) 6.954ms"
+            },
+            {
+              "startEpochMillis": 1794755453017.954,
+              "endEpochMillis": 1794755453030.0,
+              "durationMs": 12.046,
+              "line": "[2026-11-15T07:10:53.030-0800][463.102s][info][gc          ] GC(42) Pause Young (Normal) (G1 Evacuation Pause) 594M->212M(719M) 12.046ms"
+            },
+            {
+              "startEpochMillis": 1794755584416.83,
+              "endEpochMillis": 1794755584420.0,
+              "durationMs": 3.17,
+              "line": "[2026-11-15T07:13:04.420-0800][594.491s][info][gc          ] GC(43) Pause Young (Concurrent Start) (G1 Evacuation Pause) 604M->213M(719M) 3.170ms"
+            },
+            {
+              "startEpochMillis": 1794755584451.323,
+              "endEpochMillis": 1794755584453.0,
+              "durationMs": 1.677,
+              "line": "[2026-11-15T07:13:04.453-0800][594.525s][info][gc          ] GC(44) Pause Remark 214M->214M(719M) 1.677ms"
+            },
+            {
+              "startEpochMillis": 1794755584471.895,
+              "endEpochMillis": 1794755584472.0,
+              "durationMs": 0.105,
+              "line": "[2026-11-15T07:13:04.472-0800][594.544s][info][gc          ] GC(44) Pause Cleanup 214M->214M(719M) 0.105ms"
+            }
+          ]
+        },
+        "dedicated": {
+          "rawSamples": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-3/realistic-dedicated-raw.json",
+          "rawSha256": "cc26f5dafba0512996a8b8e83be51222b0bc06afb9ccc569571477fc85ed2124",
+          "measurement": {
+            "workload": "realistic",
+            "readMode": "dedicated",
+            "activeSeconds": 600.05380485,
+            "timingSamples": 33005,
+            "checkpointProbes": 19,
+            "writes": {
+              "n": 3003,
+              "p50": 1.887374,
+              "p95": 2.904768,
+              "p99": 5.212922,
+              "p999": 9.853915,
+              "max": 15.40703
+            },
+            "reads": {
+              "n": 30002,
+              "p50": 0.131549,
+              "p95": 0.375235,
+              "p99": 0.453562,
+              "p999": 0.685842,
+              "max": 10.427112
+            },
+            "allCalls": {
+              "n": 33005,
+              "p50": 0.150332,
+              "p95": 1.775047,
+              "p99": 2.621331,
+              "p999": 4.947362,
+              "max": 15.40703
+            },
+            "economyWallPerTick": {
+              "n": 12001,
+              "p50": 0.472592,
+              "p95": 3.63918,
+              "p99": 6.706649,
+              "p999": 10.470762,
+              "max": 21.344831
+            },
+            "economyCpuPerTick": {
+              "n": 12001,
+              "p50": 0.464535,
+              "p95": 2.128308,
+              "p99": 3.843675,
+              "p999": 4.880647,
+              "max": 16.546245
+            },
+            "ticksOver5ms": 423,
+            "elapsedSeconds": 600.449063392,
+            "backgroundWrites": {
+              "preferences": 299,
+              "mail": 39,
+              "moderation": 59
+            },
+            "backgroundIntervalsMs": {
+              "mail": 15000,
+              "moderation": 10000,
+              "preferences": 2000
+            },
+            "errors": []
+          },
+          "outerMappingExact": true,
+          "phaseStats": {
+            "reads": {
+              "totalMs": {
+                "n": 30002,
+                "p50": 0.128223,
+                "p95": 0.363691,
+                "p99": 0.437958,
+                "p999": 0.661953,
+                "max": 10.292401
+              },
+              "connectionMs": {
+                "n": 30002,
+                "p50": 0.001362,
+                "p95": 0.011887,
+                "p99": 0.018214,
+                "p999": 0.042295,
+                "max": 7.438463
+              },
+              "statementMs": {
+                "n": 30002,
+                "p50": 0.071121,
+                "p95": 0.205571,
+                "p99": 0.242372,
+                "p999": 0.375829,
+                "max": 1.910468
+              },
+              "commitMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "coordinatorMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "otherMs": {
+                "n": 30002,
+                "p50": 0.054838,
+                "p95": 0.150735,
+                "p99": 0.189113,
+                "p999": 0.318632,
+                "max": 1.059217
+              }
+            },
+            "writes": {
+              "totalMs": {
+                "n": 3003,
+                "p50": 1.850455,
+                "p95": 2.857253,
+                "p99": 5.150765,
+                "p999": 9.814267,
+                "max": 15.384004
+              },
+              "connectionMs": {
+                "n": 3003,
+                "p50": 0.001331,
+                "p95": 0.002288,
+                "p99": 0.00276,
+                "p999": 0.729222,
+                "max": 3.293512
+              },
+              "statementMs": {
+                "n": 3003,
+                "p50": 0.294127,
+                "p95": 0.484734,
+                "p99": 0.573678,
+                "p999": 0.940197,
+                "max": 2.398761
+              },
+              "commitMs": {
+                "n": 3003,
+                "p50": 1.082955,
+                "p95": 1.738288,
+                "p99": 3.801529,
+                "p999": 9.173207,
+                "max": 14.67556
+              },
+              "coordinatorMs": {
+                "n": 3003,
+                "p50": 0.005666,
+                "p95": 0.010608,
+                "p99": 0.012319,
+                "p999": 0.064512,
+                "max": 1.594157
+              },
+              "otherMs": {
+                "n": 3003,
+                "p50": 0.466562,
+                "p95": 0.765924,
+                "p99": 0.90411,
+                "p999": 1.170238,
+                "max": 1.497486
+              }
+            }
+          },
+          "thresholdEvents": [],
+          "over25msEvents": [],
+          "extremes": [
+            {
+              "kind": "READ",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794755599625,
+              "totalMs": 10.292401,
+              "outerMs": 10.427112,
+              "connectionMs": 7.438463,
+              "statementMs": 1.910468,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.94347,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 536,
+              "startEpochMillis": 1794755706619,
+              "totalMs": 15.384004,
+              "outerMs": 15.40703,
+              "connectionMs": 0.000878,
+              "statementMs": 0.237878,
+              "commitMs": 14.67556,
+              "coordinatorMs": 0.010828,
+              "otherMs": 0.45886,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 2251,
+              "startEpochMillis": 1794756049627,
+              "totalMs": 4.952596,
+              "outerMs": 4.978884,
+              "connectionMs": 3.293512,
+              "statementMs": 0.321005,
+              "commitMs": 0.814685,
+              "coordinatorMs": 0.004625,
+              "otherMs": 0.518769,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 1189,
+              "startEpochMillis": 1794755837366,
+              "totalMs": 5.150765,
+              "outerMs": 5.212922,
+              "connectionMs": 0.001943,
+              "statementMs": 2.398761,
+              "commitMs": 1.60236,
+              "coordinatorMs": 0.011513,
+              "otherMs": 1.136188,
+              "dominantPhase": "statementMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 1,
+              "startEpochMillis": 1794755599635,
+              "totalMs": 1.472239,
+              "outerMs": 1.526762,
+              "connectionMs": 0.060589,
+              "statementMs": 0.352433,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 1.059217,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 1046,
+              "startEpochMillis": 1794755808619,
+              "totalMs": 2.844864,
+              "outerMs": 2.86494,
+              "connectionMs": 0.000784,
+              "statementMs": 0.260927,
+              "commitMs": 1.079704,
+              "coordinatorMs": 0.005963,
+              "otherMs": 1.497486,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            }
+          ],
+          "checkpointProbes": [
+            {
+              "startEpochMillis": 1794755629570,
+              "startNano": 25704034598008,
+              "busy": 0,
+              "walFrames": 92,
+              "checkpointedFrames": 92,
+              "statementMs": 3.234013,
+              "totalMs": 4.624695
+            },
+            {
+              "startEpochMillis": 1794755659574,
+              "startNano": 25734039257550,
+              "busy": 0,
+              "walFrames": 449,
+              "checkpointedFrames": 449,
+              "statementMs": 1.905544,
+              "totalMs": 2.433417
+            },
+            {
+              "startEpochMillis": 1794755689577,
+              "startNano": 25764041720930,
+              "busy": 0,
+              "walFrames": 784,
+              "checkpointedFrames": 784,
+              "statementMs": 3.398443,
+              "totalMs": 4.352002
+            },
+            {
+              "startEpochMillis": 1794755719581,
+              "startNano": 25794046121694,
+              "busy": 0,
+              "walFrames": 170,
+              "checkpointedFrames": 170,
+              "statementMs": 3.683888,
+              "totalMs": 4.565536
+            },
+            {
+              "startEpochMillis": 1794755749586,
+              "startNano": 25824050723286,
+              "busy": 0,
+              "walFrames": 526,
+              "checkpointedFrames": 526,
+              "statementMs": 2.662733,
+              "totalMs": 3.180781
+            },
+            {
+              "startEpochMillis": 1794755779589,
+              "startNano": 25854053936302,
+              "busy": 0,
+              "walFrames": 847,
+              "checkpointedFrames": 847,
+              "statementMs": 2.78006,
+              "totalMs": 3.439713
+            },
+            {
+              "startEpochMillis": 1794755809592,
+              "startNano": 25884057417907,
+              "busy": 0,
+              "walFrames": 145,
+              "checkpointedFrames": 145,
+              "statementMs": 2.845516,
+              "totalMs": 3.619783
+            },
+            {
+              "startEpochMillis": 1794755839596,
+              "startNano": 25914061068084,
+              "busy": 0,
+              "walFrames": 544,
+              "checkpointedFrames": 544,
+              "statementMs": 1.413883,
+              "totalMs": 1.739054
+            },
+            {
+              "startEpochMillis": 1794755869598,
+              "startNano": 25944062851102,
+              "busy": 0,
+              "walFrames": 903,
+              "checkpointedFrames": 903,
+              "statementMs": 2.830759,
+              "totalMs": 3.692344
+            },
+            {
+              "startEpochMillis": 1794755899602,
+              "startNano": 25974066587592,
+              "busy": 0,
+              "walFrames": 221,
+              "checkpointedFrames": 221,
+              "statementMs": 6.227,
+              "totalMs": 7.13562
+            },
+            {
+              "startEpochMillis": 1794755929609,
+              "startNano": 26004073759324,
+              "busy": 0,
+              "walFrames": 572,
+              "checkpointedFrames": 572,
+              "statementMs": 2.624842,
+              "totalMs": 3.342169
+            },
+            {
+              "startEpochMillis": 1794755959612,
+              "startNano": 26034077143770,
+              "busy": 0,
+              "walFrames": 921,
+              "checkpointedFrames": 921,
+              "statementMs": 2.994477,
+              "totalMs": 3.752166
+            },
+            {
+              "startEpochMillis": 1794755989616,
+              "startNano": 26064080911143,
+              "busy": 0,
+              "walFrames": 289,
+              "checkpointedFrames": 289,
+              "statementMs": 1.301936,
+              "totalMs": 1.543513
+            },
+            {
+              "startEpochMillis": 1794756019617,
+              "startNano": 26094082476391,
+              "busy": 0,
+              "walFrames": 645,
+              "checkpointedFrames": 645,
+              "statementMs": 2.100251,
+              "totalMs": 2.649942
+            },
+            {
+              "startEpochMillis": 1794756049620,
+              "startNano": 26124085161033,
+              "busy": 1,
+              "walFrames": -1,
+              "checkpointedFrames": -1,
+              "statementMs": 1.344413,
+              "totalMs": 2.118632
+            },
+            {
+              "startEpochMillis": 1794756079622,
+              "startNano": 26154087324141,
+              "busy": 0,
+              "walFrames": 426,
+              "checkpointedFrames": 426,
+              "statementMs": 6.096175,
+              "totalMs": 6.787096
+            },
+            {
+              "startEpochMillis": 1794756109629,
+              "startNano": 26184094156172,
+              "busy": 0,
+              "walFrames": 324,
+              "checkpointedFrames": 324,
+              "statementMs": 6.717541,
+              "totalMs": 7.62573
+            },
+            {
+              "startEpochMillis": 1794756139637,
+              "startNano": 26214101826892,
+              "busy": 0,
+              "walFrames": 575,
+              "checkpointedFrames": 575,
+              "statementMs": 2.837606,
+              "totalMs": 3.745189
+            },
+            {
+              "startEpochMillis": 1794756169641,
+              "startNano": 26244105602000,
+              "busy": 0,
+              "walFrames": 863,
+              "checkpointedFrames": 863,
+              "statementMs": 2.033493,
+              "totalMs": 2.519434
+            }
+          ],
+          "gcPausesInWindow": [
+            {
+              "startEpochMillis": 1794755679917.609,
+              "endEpochMillis": 1794755679923.0,
+              "durationMs": 5.391,
+              "line": "[2026-11-15T07:14:39.923-0800][689.995s][info][gc          ] GC(45) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 649M->209M(719M) 5.391ms"
+            },
+            {
+              "startEpochMillis": 1794755690467.659,
+              "endEpochMillis": 1794755690476.0,
+              "durationMs": 8.341,
+              "line": "[2026-11-15T07:14:50.476-0800][700.548s][info][gc          ] GC(46) Pause Young (Mixed) (G1 Evacuation Pause) 240M->201M(719M) 8.341ms"
+            },
+            {
+              "startEpochMillis": 1794755830567.234,
+              "endEpochMillis": 1794755830577.0,
+              "durationMs": 9.766,
+              "line": "[2026-11-15T07:17:10.577-0800][840.648s][info][gc          ] GC(47) Pause Young (Normal) (G1 Evacuation Pause) 618M->202M(719M) 9.766ms"
+            },
+            {
+              "startEpochMillis": 1794755971971.83,
+              "endEpochMillis": 1794755971984.0,
+              "durationMs": 12.17,
+              "line": "[2026-11-15T07:19:31.984-0800][982.056s][info][gc          ] GC(48) Pause Young (Concurrent Start) (G1 Evacuation Pause) 622M->203M(719M) 12.170ms"
+            },
+            {
+              "startEpochMillis": 1794755972045.48,
+              "endEpochMillis": 1794755972047.0,
+              "durationMs": 1.52,
+              "line": "[2026-11-15T07:19:32.047-0800][982.119s][info][gc          ] GC(49) Pause Remark 204M->204M(690M) 1.520ms"
+            },
+            {
+              "startEpochMillis": 1794755972065.916,
+              "endEpochMillis": 1794755972066.0,
+              "durationMs": 0.084,
+              "line": "[2026-11-15T07:19:32.066-0800][982.137s][info][gc          ] GC(49) Pause Cleanup 204M->204M(690M) 0.084ms"
+            },
+            {
+              "startEpochMillis": 1794756113166.968,
+              "endEpochMillis": 1794756113180.0,
+              "durationMs": 13.032,
+              "line": "[2026-11-15T07:21:53.180-0800][1123.252s][info][gc          ] GC(50) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 626M->205M(690M) 13.032ms"
+            },
+            {
+              "startEpochMillis": 1794756122470.188,
+              "endEpochMillis": 1794756122486.0,
+              "durationMs": 15.812,
+              "line": "[2026-11-15T07:22:02.486-0800][1132.558s][info][gc          ] GC(51) Pause Young (Mixed) (G1 Evacuation Pause) 233M->199M(690M) 15.812ms"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "run": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-paper-1",
+      "passed": true,
+      "artifactSha256": "4360db01ce3d710efcc8e74b5149f76e22f21c725d43528dfe7f15865fea155b",
+      "manifestSha256": "b191a76a6f94b780161aea98288139a5b1af5ad6ea8f8a1cb59354e23ba6ec33",
+      "gcLog": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-paper-1/paper-economy/gc.log",
+      "gcSha256": "9e88980b704115b0dd3334a54dcce97fab4291e3b63bc6bf56bb1c69ac7f2f4e",
+      "machine": {
+        "kernel": "Linux 7.2.14-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 30 Oct 2026 14:32:40 +0000 x86_64 GNU/Linux",
+        "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  20\nOn-line CPU(s) list:                     0-19\nVendor ID:                               GenuineIntel\nModel name:                              12th Gen Intel(R) Core(TM) i7-12700KF\nCPU family:                              6\nModel:                                   151\nThread(s) per core:                      2\nCore(s) per socket:                      12\nSocket(s):                               1\nStepping:                                2\nMicrocode version:                       0x2e\nCPU(s) scaling MHz:                      84%\nCPU max MHz:                             5000.0000\nCPU min MHz:                             800.0000\nBogoMIPS:                                7219.20\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities\nVirtualization:                          VT-x\nL1d cache:                               512 KiB (12 instances)\nL1i cache:                               512 KiB (12 instances)\nL2 cache:                                12 MiB (9 instances)\nL3 cache:                                25 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-19\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Vulnerable\nVulnerability Reg file data sampling:    Vulnerable: No microcode\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Mitigation; IBPB before exit to userspace",
+        "filesystem": "TARGET       SOURCE    FSTYPE OPTIONS\n/mnt/storage /dev/sda4 ext4   rw,noatime",
+        "disks": "NAME        TYPE   SIZE ROTA MODEL                   FSTYPE   MOUNTPOINTS\nloop0       loop 614.5M    0                         squashfs /var/lib/snapd/snap/gnome-46-2404/164\nloop1       loop     4K    0                         squashfs /var/lib/snapd/snap/bare/5\nloop2       loop 144.2M    0                         squashfs /var/lib/snapd/snap/blockbench-snapcraft/544\nloop3       loop  66.8M    0                         squashfs /var/lib/snapd/snap/core24/1643\nloop4       loop 144.1M    0                         squashfs /var/lib/snapd/snap/blockbench-snapcraft/542\nloop5       loop  66.8M    0                         squashfs /var/lib/snapd/snap/core24/2124\nloop6       loop   616M    0                         squashfs /var/lib/snapd/snap/gnome-46-2404/177\nloop7       loop  91.7M    0                         squashfs /var/lib/snapd/snap/gtk-common-themes/1535\nloop8       loop   395M    0                         squashfs /var/lib/snapd/snap/mesa-2404/1165\nloop9       loop   402M    0                         squashfs /var/lib/snapd/snap/mesa-2404/1839\nloop10      loop  44.7M    0                         squashfs /var/lib/snapd/snap/snapd/28254\nloop11      loop  32.5M    0                         squashfs /var/lib/snapd/snap/snapd/28332\nsda         disk   1.8T    0 Extreme 55AE                     \n\u251c\u2500sda1      part   500M    0                         vfat     \n\u251c\u2500sda2      part    16M    0                                  \n\u251c\u2500sda3      part   931G    0                         ntfs     \n\u2514\u2500sda4      part 931.5G    0                         ext4     /mnt/storage\nzram0       disk     8G    0                         swap     [SWAP]\nzram1       disk     8G    0                         ext2     /mnt/zram1\nnvme0n1     disk 931.5G    0 Samsung SSD 980 PRO 1TB          \n\u251c\u2500nvme0n1p1 part   512M    0                         vfat     /boot\n\u2514\u2500nvme0n1p2 part   931G    0                         btrfs    /home/.snapshots\n                                                              /var/log\n                                                              /home\n                                                              /var/cache\n                                                              /.snapshots\n                                                              /",
+        "memory": "total        used        free      shared  buff/cache   available\nMem:     33464201216 18106200064  1681403904   260030464 14510239744 15358001152\nSwap:    27917279232   974663680 26942615552"
+      },
+      "phases": {
+        "pooled": {
+          "rawSamples": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-paper-1/realistic-pooled-raw.json",
+          "rawSha256": "57dac0fd97f425f58c55d3b05303f2039189726e371e3ec589fbda70af3f9e6d",
+          "measurement": {
+            "workload": "realistic",
+            "readMode": "pooled",
+            "activeSeconds": 600.050503745,
+            "timingSamples": 33005,
+            "checkpointProbes": 19,
+            "writes": {
+              "n": 3003,
+              "p50": 1.689796,
+              "p95": 2.951817,
+              "p99": 4.403085,
+              "p999": 7.131019,
+              "max": 10.331212
+            },
+            "reads": {
+              "n": 30002,
+              "p50": 0.093567,
+              "p95": 0.355804,
+              "p99": 0.514465,
+              "p999": 0.93248,
+              "max": 13.674839
+            },
+            "allCalls": {
+              "n": 33005,
+              "p50": 0.11156,
+              "p95": 1.609482,
+              "p99": 2.577542,
+              "p999": 4.373391,
+              "max": 13.674839
+            },
+            "economyWallPerTick": {
+              "n": 12001,
+              "p50": 0.380815,
+              "p95": 3.622388,
+              "p99": 6.48522,
+              "p999": 9.542687,
+              "max": 13.939762
+            },
+            "economyCpuPerTick": {
+              "n": 12001,
+              "p50": 0.373853,
+              "p95": 1.928408,
+              "p99": 3.729107,
+              "p999": 5.273003,
+              "max": 10.108221
+            },
+            "ticksOver5ms": 328,
+            "elapsedSeconds": 600.484969522,
+            "backgroundWrites": {
+              "preferences": 299,
+              "mail": 39,
+              "moderation": 59
+            },
+            "backgroundIntervalsMs": {
+              "preferences": 2000,
+              "mail": 15000,
+              "moderation": 10000
+            },
+            "errors": []
+          },
+          "outerMappingExact": true,
+          "phaseStats": {
+            "reads": {
+              "totalMs": {
+                "n": 30002,
+                "p50": 0.091312,
+                "p95": 0.342369,
+                "p99": 0.492051,
+                "p999": 0.876513,
+                "max": 13.672119
+              },
+              "connectionMs": {
+                "n": 30002,
+                "p50": 0.000689,
+                "p95": 0.005819,
+                "p99": 0.010488,
+                "p999": 0.039173,
+                "max": 2.061619
+              },
+              "statementMs": {
+                "n": 30002,
+                "p50": 0.050951,
+                "p95": 0.19311,
+                "p99": 0.274216,
+                "p999": 0.455245,
+                "max": 13.595341
+              },
+              "commitMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "coordinatorMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "otherMs": {
+                "n": 30002,
+                "p50": 0.037414,
+                "p95": 0.14045,
+                "p99": 0.22708,
+                "p999": 0.415022,
+                "max": 1.543788
+              }
+            },
+            "writes": {
+              "totalMs": {
+                "n": 3003,
+                "p50": 1.653676,
+                "p95": 2.867634,
+                "p99": 4.326568,
+                "p999": 7.084583,
+                "max": 9.564033
+              },
+              "connectionMs": {
+                "n": 3003,
+                "p50": 0.001241,
+                "p95": 0.007531,
+                "p99": 0.014643,
+                "p999": 0.370917,
+                "max": 1.530097
+              },
+              "statementMs": {
+                "n": 3003,
+                "p50": 0.277308,
+                "p95": 0.518507,
+                "p99": 0.70826,
+                "p999": 1.233945,
+                "max": 2.011196
+              },
+              "commitMs": {
+                "n": 3003,
+                "p50": 0.922091,
+                "p95": 1.607093,
+                "p99": 3.171398,
+                "p999": 5.972711,
+                "max": 8.48441
+              },
+              "coordinatorMs": {
+                "n": 3003,
+                "p50": 0.006224,
+                "p95": 0.015418,
+                "p99": 0.024638,
+                "p999": 0.090024,
+                "max": 1.535947
+              },
+              "otherMs": {
+                "n": 3003,
+                "p50": 0.401226,
+                "p95": 0.775699,
+                "p99": 1.020047,
+                "p999": 1.773636,
+                "max": 6.543483
+              }
+            }
+          },
+          "thresholdEvents": [],
+          "over25msEvents": [],
+          "extremes": [
+            {
+              "kind": "READ",
+              "sampleIndex": 28598,
+              "startEpochMillis": 1794756785437,
+              "totalMs": 13.672119,
+              "outerMs": 13.674839,
+              "connectionMs": 0.000355,
+              "statementMs": 13.595341,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.076423,
+              "dominantPhase": "statementMs",
+              "gcCoreOverlap": [
+                {
+                  "startEpochMillis": 1794756785436.699,
+                  "endEpochMillis": 1794756785450.0,
+                  "durationMs": 13.301,
+                  "line": "[2026-11-15T07:33:05.450-0800][579.993s][info][gc          ] GC(34) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 513M->297M(547M) 13.301ms"
+                }
+              ],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": [
+                {
+                  "startEpochMillis": 1794756785436.699,
+                  "endEpochMillis": 1794756785450.0,
+                  "durationMs": 13.301,
+                  "line": "[2026-11-15T07:33:05.450-0800][579.993s][info][gc          ] GC(34) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 513M->297M(547M) 13.301ms"
+                }
+              ]
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794756213487,
+              "totalMs": 9.564033,
+              "outerMs": 10.331212,
+              "connectionMs": 0.063994,
+              "statementMs": 0.691382,
+              "commitMs": 2.259193,
+              "coordinatorMs": 0.005981,
+              "otherMs": 6.543483,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 28221,
+              "startEpochMillis": 1794756777887,
+              "totalMs": 2.271342,
+              "outerMs": 2.275232,
+              "connectionMs": 2.061619,
+              "statementMs": 0.132053,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.07767,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 1726,
+              "startEpochMillis": 1794756558489,
+              "totalMs": 3.146173,
+              "outerMs": 3.185337,
+              "connectionMs": 1.530097,
+              "statementMs": 0.311187,
+              "commitMs": 0.902669,
+              "coordinatorMs": 0.008776,
+              "otherMs": 0.393444,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 3,
+              "startEpochMillis": 1794756213987,
+              "totalMs": 5.234283,
+              "outerMs": 5.541731,
+              "connectionMs": 0.051458,
+              "statementMs": 2.011196,
+              "commitMs": 1.66346,
+              "coordinatorMs": 0.019131,
+              "otherMs": 1.489038,
+              "dominantPhase": "statementMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794756213500,
+              "totalMs": 0.104903,
+              "outerMs": 0.309424,
+              "connectionMs": 0.004931,
+              "statementMs": 0.046467,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.053505,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 2592,
+              "startEpochMillis": 1794756731491,
+              "totalMs": 9.424954,
+              "outerMs": 9.450232,
+              "connectionMs": 0.000796,
+              "statementMs": 0.425788,
+              "commitMs": 8.48441,
+              "coordinatorMs": 0.006032,
+              "otherMs": 0.507928,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 82,
+              "startEpochMillis": 1794756215137,
+              "totalMs": 1.854176,
+              "outerMs": 1.957977,
+              "connectionMs": 0.025446,
+              "statementMs": 0.284942,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 1.543788,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            }
+          ],
+          "checkpointProbes": [
+            {
+              "startEpochMillis": 1794756243440,
+              "startNano": 26317905260855,
+              "busy": 0,
+              "walFrames": 393,
+              "checkpointedFrames": 393,
+              "statementMs": 2.888882,
+              "totalMs": 4.260838
+            },
+            {
+              "startEpochMillis": 1794756273445,
+              "startNano": 26347909595291,
+              "busy": 0,
+              "walFrames": 651,
+              "checkpointedFrames": 651,
+              "statementMs": 5.196264,
+              "totalMs": 6.314095
+            },
+            {
+              "startEpochMillis": 1794756303451,
+              "startNano": 26377915974289,
+              "busy": 0,
+              "walFrames": 930,
+              "checkpointedFrames": 930,
+              "statementMs": 3.731519,
+              "totalMs": 4.942126
+            },
+            {
+              "startEpochMillis": 1794756333456,
+              "startNano": 26407920981105,
+              "busy": 0,
+              "walFrames": 264,
+              "checkpointedFrames": 264,
+              "statementMs": 2.314015,
+              "totalMs": 3.055663
+            },
+            {
+              "startEpochMillis": 1794756363459,
+              "startNano": 26437924127129,
+              "busy": 0,
+              "walFrames": 601,
+              "checkpointedFrames": 601,
+              "statementMs": 2.986047,
+              "totalMs": 4.005816
+            },
+            {
+              "startEpochMillis": 1794756393463,
+              "startNano": 26467928163594,
+              "busy": 0,
+              "walFrames": 928,
+              "checkpointedFrames": 928,
+              "statementMs": 3.382161,
+              "totalMs": 3.724015
+            },
+            {
+              "startEpochMillis": 1794756423467,
+              "startNano": 26497931932740,
+              "busy": 0,
+              "walFrames": 260,
+              "checkpointedFrames": 260,
+              "statementMs": 4.756231,
+              "totalMs": 5.857253
+            },
+            {
+              "startEpochMillis": 1794756453473,
+              "startNano": 26527937852754,
+              "busy": 0,
+              "walFrames": 622,
+              "checkpointedFrames": 622,
+              "statementMs": 3.658706,
+              "totalMs": 4.593401
+            },
+            {
+              "startEpochMillis": 1794756483477,
+              "startNano": 26557942501726,
+              "busy": 0,
+              "walFrames": 912,
+              "checkpointedFrames": 912,
+              "statementMs": 3.821207,
+              "totalMs": 4.897278
+            },
+            {
+              "startEpochMillis": 1794756513482,
+              "startNano": 26587947461262,
+              "busy": 0,
+              "walFrames": 260,
+              "checkpointedFrames": 260,
+              "statementMs": 1.937126,
+              "totalMs": 2.435887
+            },
+            {
+              "startEpochMillis": 1794756543485,
+              "startNano": 26617949970249,
+              "busy": 0,
+              "walFrames": 542,
+              "checkpointedFrames": 542,
+              "statementMs": 2.965294,
+              "totalMs": 3.94519
+            },
+            {
+              "startEpochMillis": 1794756573489,
+              "startNano": 26647953962551,
+              "busy": 0,
+              "walFrames": 907,
+              "checkpointedFrames": 907,
+              "statementMs": 2.387508,
+              "totalMs": 3.509915
+            },
+            {
+              "startEpochMillis": 1794756603492,
+              "startNano": 26677957509528,
+              "busy": 0,
+              "walFrames": 249,
+              "checkpointedFrames": 249,
+              "statementMs": 3.679669,
+              "totalMs": 4.244015
+            },
+            {
+              "startEpochMillis": 1794756633497,
+              "startNano": 26707961801786,
+              "busy": 0,
+              "walFrames": 600,
+              "checkpointedFrames": 600,
+              "statementMs": 5.401794,
+              "totalMs": 6.254771
+            },
+            {
+              "startEpochMillis": 1794756663503,
+              "startNano": 26737968088464,
+              "busy": 0,
+              "walFrames": 937,
+              "checkpointedFrames": 937,
+              "statementMs": 1.704203,
+              "totalMs": 2.186642
+            },
+            {
+              "startEpochMillis": 1794756693505,
+              "startNano": 26767970304149,
+              "busy": 0,
+              "walFrames": 260,
+              "checkpointedFrames": 260,
+              "statementMs": 1.751382,
+              "totalMs": 2.428959
+            },
+            {
+              "startEpochMillis": 1794756723508,
+              "startNano": 26797972785293,
+              "busy": 0,
+              "walFrames": 633,
+              "checkpointedFrames": 633,
+              "statementMs": 3.687063,
+              "totalMs": 4.778595
+            },
+            {
+              "startEpochMillis": 1794756753513,
+              "startNano": 26827977598514,
+              "busy": 0,
+              "walFrames": 993,
+              "checkpointedFrames": 993,
+              "statementMs": 1.790295,
+              "totalMs": 2.372206
+            },
+            {
+              "startEpochMillis": 1794756783515,
+              "startNano": 26857980029822,
+              "busy": 0,
+              "walFrames": 345,
+              "checkpointedFrames": 345,
+              "statementMs": 6.437215,
+              "totalMs": 7.498479
+            }
+          ],
+          "gcPausesInWindow": [
+            {
+              "startEpochMillis": 1794756243923.536,
+              "endEpochMillis": 1794756243933.0,
+              "durationMs": 9.464,
+              "line": "[2026-11-15T07:24:03.933-0800][38.476s][info][gc          ] GC(26) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 474M->302M(547M) 9.464ms"
+            },
+            {
+              "startEpochMillis": 1794756275787.117,
+              "endEpochMillis": 1794756275794.0,
+              "durationMs": 6.883,
+              "line": "[2026-11-15T07:24:35.794-0800][70.337s][info][gc          ] GC(27) Pause Young (Mixed) (G1 Evacuation Pause) 484M->302M(547M) 6.883ms"
+            },
+            {
+              "startEpochMillis": 1794756310187.962,
+              "endEpochMillis": 1794756310196.0,
+              "durationMs": 8.038,
+              "line": "[2026-11-15T07:25:10.196-0800][104.738s][info][gc          ] GC(28) Pause Young (Concurrent Start) (G1 Evacuation Pause) 491M->303M(547M) 8.038ms"
+            },
+            {
+              "startEpochMillis": 1794756310266.61,
+              "endEpochMillis": 1794756310270.0,
+              "durationMs": 3.39,
+              "line": "[2026-11-15T07:25:10.270-0800][104.813s][info][gc          ] GC(29) Pause Remark 303M->303M(547M) 3.390ms"
+            },
+            {
+              "startEpochMillis": 1794756310285.973,
+              "endEpochMillis": 1794756310286.0,
+              "durationMs": 0.027,
+              "line": "[2026-11-15T07:25:10.286-0800][104.828s][info][gc          ] GC(29) Pause Cleanup 303M->303M(547M) 0.027ms"
+            },
+            {
+              "startEpochMillis": 1794756344641.133,
+              "endEpochMillis": 1794756344651.0,
+              "durationMs": 9.867,
+              "line": "[2026-11-15T07:25:44.651-0800][139.194s][info][gc          ] GC(30) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 499M->303M(547M) 9.867ms"
+            },
+            {
+              "startEpochMillis": 1794756374737.889,
+              "endEpochMillis": 1794756374745.0,
+              "durationMs": 7.111,
+              "line": "[2026-11-15T07:26:14.745-0800][169.287s][info][gc          ] GC(31) Pause Young (Mixed) (G1 Evacuation Pause) 505M->293M(547M) 7.111ms"
+            },
+            {
+              "startEpochMillis": 1794756555923.006,
+              "endEpochMillis": 1794756555932.0,
+              "durationMs": 8.994,
+              "line": "[2026-11-15T07:29:15.932-0800][350.474s][info][gc          ] GC(32) Pause Young (Concurrent Start) (G1 Evacuation Pause) 508M->293M(547M) 8.994ms"
+            },
+            {
+              "startEpochMillis": 1794756555984.327,
+              "endEpochMillis": 1794756555989.0,
+              "durationMs": 4.673,
+              "line": "[2026-11-15T07:29:15.989-0800][350.531s][info][gc          ] GC(33) Pause Remark 294M->294M(547M) 4.673ms"
+            },
+            {
+              "startEpochMillis": 1794756556003.975,
+              "endEpochMillis": 1794756556004.0,
+              "durationMs": 0.025,
+              "line": "[2026-11-15T07:29:16.004-0800][350.546s][info][gc          ] GC(33) Pause Cleanup 294M->294M(547M) 0.025ms"
+            },
+            {
+              "startEpochMillis": 1794756785436.699,
+              "endEpochMillis": 1794756785450.0,
+              "durationMs": 13.301,
+              "line": "[2026-11-15T07:33:05.450-0800][579.993s][info][gc          ] GC(34) Pause Young (Prepare Mixed) (G1 Evacuation Pause) 513M->297M(547M) 13.301ms"
+            }
+          ]
+        },
+        "dedicated": {
+          "rawSamples": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-paper-1/realistic-dedicated-raw.json",
+          "rawSha256": "88eddddb2e59ebc5ae9384e583da80560edbe212794106de92c5ec920a182188",
+          "measurement": {
+            "workload": "realistic",
+            "readMode": "dedicated",
+            "activeSeconds": 600.050312464,
+            "timingSamples": 33005,
+            "checkpointProbes": 19,
+            "writes": {
+              "n": 3003,
+              "p50": 1.467625,
+              "p95": 2.739815,
+              "p99": 4.634804,
+              "p999": 8.719948,
+              "max": 19.770321
+            },
+            "reads": {
+              "n": 30002,
+              "p50": 0.085055,
+              "p95": 0.316643,
+              "p99": 0.398744,
+              "p999": 0.579463,
+              "max": 9.567462
+            },
+            "allCalls": {
+              "n": 33005,
+              "p50": 0.089704,
+              "p95": 1.386605,
+              "p99": 2.409776,
+              "p999": 4.616133,
+              "max": 19.770321
+            },
+            "economyWallPerTick": {
+              "n": 12001,
+              "p50": 0.360498,
+              "p95": 3.209641,
+              "p99": 5.976772,
+              "p999": 9.614793,
+              "max": 25.89235
+            },
+            "economyCpuPerTick": {
+              "n": 12001,
+              "p50": 0.354445,
+              "p95": 1.634415,
+              "p99": 3.328108,
+              "p999": 4.593446,
+              "max": 13.134715
+            },
+            "ticksOver5ms": 277,
+            "elapsedSeconds": 600.399261834,
+            "backgroundWrites": {
+              "preferences": 299,
+              "mail": 39,
+              "moderation": 59
+            },
+            "backgroundIntervalsMs": {
+              "preferences": 2000,
+              "mail": 15000,
+              "moderation": 10000
+            },
+            "errors": []
+          },
+          "outerMappingExact": true,
+          "phaseStats": {
+            "reads": {
+              "totalMs": {
+                "n": 30002,
+                "p50": 0.083522,
+                "p95": 0.310621,
+                "p99": 0.389632,
+                "p999": 0.566545,
+                "max": 9.470314
+              },
+              "connectionMs": {
+                "n": 30002,
+                "p50": 0.001043,
+                "p95": 0.007252,
+                "p99": 0.013568,
+                "p999": 0.036455,
+                "max": 7.998205
+              },
+              "statementMs": {
+                "n": 30002,
+                "p50": 0.04571,
+                "p95": 0.176727,
+                "p99": 0.223346,
+                "p999": 0.350291,
+                "max": 0.992722
+              },
+              "commitMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "coordinatorMs": {
+                "n": 30002,
+                "p50": 0.0,
+                "p95": 0.0,
+                "p99": 0.0,
+                "p999": 0.0,
+                "max": 0.0
+              },
+              "otherMs": {
+                "n": 30002,
+                "p50": 0.035585,
+                "p95": 0.128473,
+                "p99": 0.160262,
+                "p999": 0.288852,
+                "max": 0.992064
+              }
+            },
+            "writes": {
+              "totalMs": {
+                "n": 3003,
+                "p50": 1.448006,
+                "p95": 2.693034,
+                "p99": 4.598873,
+                "p999": 8.701791,
+                "max": 19.75231
+              },
+              "connectionMs": {
+                "n": 3003,
+                "p50": 0.000878,
+                "p95": 0.002022,
+                "p99": 0.002495,
+                "p999": 0.982383,
+                "max": 1.288026
+              },
+              "statementMs": {
+                "n": 3003,
+                "p50": 0.227636,
+                "p95": 0.495043,
+                "p99": 0.622153,
+                "p999": 0.866462,
+                "max": 1.313403
+              },
+              "commitMs": {
+                "n": 3003,
+                "p50": 0.897728,
+                "p95": 1.615299,
+                "p99": 3.659988,
+                "p999": 7.936738,
+                "max": 19.032413
+              },
+              "coordinatorMs": {
+                "n": 3003,
+                "p50": 0.004018,
+                "p95": 0.0123,
+                "p99": 0.014042,
+                "p999": 0.058397,
+                "max": 1.878154
+              },
+              "otherMs": {
+                "n": 3003,
+                "p50": 0.309225,
+                "p95": 0.625384,
+                "p99": 0.77399,
+                "p999": 0.922684,
+                "max": 1.3823
+              }
+            }
+          },
+          "thresholdEvents": [],
+          "over25msEvents": [],
+          "extremes": [
+            {
+              "kind": "READ",
+              "sampleIndex": 0,
+              "startEpochMillis": 1794756814143,
+              "totalMs": 9.470314,
+              "outerMs": 9.567462,
+              "connectionMs": 7.998205,
+              "statementMs": 0.957163,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.514946,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 1671,
+              "startEpochMillis": 1794757148139,
+              "totalMs": 19.75231,
+              "outerMs": 19.770321,
+              "connectionMs": 0.000815,
+              "statementMs": 0.298309,
+              "commitMs": 19.032413,
+              "coordinatorMs": 0.006674,
+              "otherMs": 0.414099,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "WITHDRAW",
+              "sampleIndex": 1801,
+              "startEpochMillis": 1794757174139,
+              "totalMs": 2.801565,
+              "outerMs": 2.831056,
+              "connectionMs": 1.288026,
+              "statementMs": 0.313518,
+              "commitMs": 0.790234,
+              "coordinatorMs": 0.003579,
+              "otherMs": 0.406208,
+              "dominantPhase": "connectionMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 9298,
+              "startEpochMillis": 1794757000087,
+              "totalMs": 1.403669,
+              "outerMs": 1.410802,
+              "connectionMs": 0.001079,
+              "statementMs": 0.992722,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.409868,
+              "dominantPhase": "statementMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 2454,
+              "startEpochMillis": 1794757304887,
+              "totalMs": 3.809774,
+              "outerMs": 3.845417,
+              "connectionMs": 0.001655,
+              "statementMs": 1.313403,
+              "commitMs": 1.431882,
+              "coordinatorMs": 0.001331,
+              "otherMs": 1.061503,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "READ",
+              "sampleIndex": 6254,
+              "startEpochMillis": 1794756939187,
+              "totalMs": 1.046817,
+              "outerMs": 1.050223,
+              "connectionMs": 0.000303,
+              "statementMs": 0.05445,
+              "commitMs": 0.0,
+              "coordinatorMs": 0.0,
+              "otherMs": 0.992064,
+              "dominantPhase": "otherMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            },
+            {
+              "kind": "DEPOSIT",
+              "sampleIndex": 2604,
+              "startEpochMillis": 1794757334887,
+              "totalMs": 3.725874,
+              "outerMs": 3.764254,
+              "connectionMs": 0.001953,
+              "statementMs": 0.858606,
+              "commitMs": 1.481663,
+              "coordinatorMs": 0.001352,
+              "otherMs": 1.3823,
+              "dominantPhase": "commitMs",
+              "gcCoreOverlap": [],
+              "checkpointCoreOverlap": [],
+              "gcOuterEnvelopeOverlap": []
+            }
+          ],
+          "checkpointProbes": [
+            {
+              "startEpochMillis": 1794756844090,
+              "startNano": 26918554593939,
+              "busy": 0,
+              "walFrames": 667,
+              "checkpointedFrames": 667,
+              "statementMs": 2.543511,
+              "totalMs": 3.127777
+            },
+            {
+              "startEpochMillis": 1794756874093,
+              "startNano": 26948557754320,
+              "busy": 0,
+              "walFrames": 14,
+              "checkpointedFrames": 14,
+              "statementMs": 1.800057,
+              "totalMs": 2.359896
+            },
+            {
+              "startEpochMillis": 1794756904095,
+              "startNano": 26978560156149,
+              "busy": 0,
+              "walFrames": 388,
+              "checkpointedFrames": 388,
+              "statementMs": 2.982068,
+              "totalMs": 3.872073
+            },
+            {
+              "startEpochMillis": 1794756934099,
+              "startNano": 27008564077726,
+              "busy": 0,
+              "walFrames": 699,
+              "checkpointedFrames": 699,
+              "statementMs": 3.403487,
+              "totalMs": 4.336275
+            },
+            {
+              "startEpochMillis": 1794756964103,
+              "startNano": 27038568463250,
+              "busy": 0,
+              "walFrames": 989,
+              "checkpointedFrames": 989,
+              "statementMs": 4.323855,
+              "totalMs": 5.364578
+            },
+            {
+              "startEpochMillis": 1794756994109,
+              "startNano": 27068573853366,
+              "busy": 0,
+              "walFrames": 272,
+              "checkpointedFrames": 272,
+              "statementMs": 3.106744,
+              "totalMs": 3.397822
+            },
+            {
+              "startEpochMillis": 1794757024112,
+              "startNano": 27098577293291,
+              "busy": 0,
+              "walFrames": 343,
+              "checkpointedFrames": 343,
+              "statementMs": 7.073403,
+              "totalMs": 8.035005
+            },
+            {
+              "startEpochMillis": 1794757054120,
+              "startNano": 27128585384061,
+              "busy": 0,
+              "walFrames": 690,
+              "checkpointedFrames": 690,
+              "statementMs": 3.443159,
+              "totalMs": 4.66205
+            },
+            {
+              "startEpochMillis": 1794757084125,
+              "startNano": 27158590073557,
+              "busy": 0,
+              "walFrames": 74,
+              "checkpointedFrames": 74,
+              "statementMs": 1.133097,
+              "totalMs": 1.367271
+            },
+            {
+              "startEpochMillis": 1794757114126,
+              "startNano": 27188591478921,
+              "busy": 0,
+              "walFrames": 426,
+              "checkpointedFrames": 426,
+              "statementMs": 7.042744,
+              "totalMs": 8.050352
+            },
+            {
+              "startEpochMillis": 1794757144135,
+              "startNano": 27218599584264,
+              "busy": 0,
+              "walFrames": 809,
+              "checkpointedFrames": 809,
+              "statementMs": 8.307878,
+              "totalMs": 9.299511
+            },
+            {
+              "startEpochMillis": 1794757174144,
+              "startNano": 27248608928616,
+              "busy": 0,
+              "walFrames": 224,
+              "checkpointedFrames": 224,
+              "statementMs": 5.403802,
+              "totalMs": 6.739697
+            },
+            {
+              "startEpochMillis": 1794757204151,
+              "startNano": 27278615702498,
+              "busy": 0,
+              "walFrames": 327,
+              "checkpointedFrames": 327,
+              "statementMs": 3.608869,
+              "totalMs": 3.872273
+            },
+            {
+              "startEpochMillis": 1794757234155,
+              "startNano": 27308619614802,
+              "busy": 0,
+              "walFrames": 340,
+              "checkpointedFrames": 340,
+              "statementMs": 6.963672,
+              "totalMs": 7.977248
+            },
+            {
+              "startEpochMillis": 1794757264163,
+              "startNano": 27338627650840,
+              "busy": 0,
+              "walFrames": 323,
+              "checkpointedFrames": 323,
+              "statementMs": 6.371083,
+              "totalMs": 7.41207
+            },
+            {
+              "startEpochMillis": 1794757294170,
+              "startNano": 27368635114906,
+              "busy": 0,
+              "walFrames": 336,
+              "checkpointedFrames": 336,
+              "statementMs": 7.23547,
+              "totalMs": 9.093714
+            },
+            {
+              "startEpochMillis": 1794757324179,
+              "startNano": 27398644261318,
+              "busy": 0,
+              "walFrames": 367,
+              "checkpointedFrames": 367,
+              "statementMs": 6.686645,
+              "totalMs": 7.501725
+            },
+            {
+              "startEpochMillis": 1794757354187,
+              "startNano": 27428651802013,
+              "busy": 0,
+              "walFrames": 310,
+              "checkpointedFrames": 310,
+              "statementMs": 4.818605,
+              "totalMs": 5.458845
+            },
+            {
+              "startEpochMillis": 1794757384192,
+              "startNano": 27458657282201,
+              "busy": 0,
+              "walFrames": 338,
+              "checkpointedFrames": 338,
+              "statementMs": 4.008527,
+              "totalMs": 4.281289
+            }
+          ],
+          "gcPausesInWindow": [
+            {
+              "startEpochMillis": 1794756894587.413,
+              "endEpochMillis": 1794756894595.0,
+              "durationMs": 7.587,
+              "line": "[2026-11-15T07:34:54.595-0800][689.138s][info][gc          ] GC(35) Pause Young (Mixed) (G1 Evacuation Pause) 546M->284M(558M) 7.587ms"
+            },
+            {
+              "startEpochMillis": 1794757170093.215,
+              "endEpochMillis": 1794757170108.0,
+              "durationMs": 14.785,
+              "line": "[2026-11-15T07:39:30.108-0800][964.650s][info][gc          ] GC(36) Pause Young (Concurrent Start) (G1 Evacuation Pause) 526M->287M(558M) 14.785ms"
+            },
+            {
+              "startEpochMillis": 1794757170155.109,
+              "endEpochMillis": 1794757170165.0,
+              "durationMs": 9.891,
+              "line": "[2026-11-15T07:39:30.165-0800][964.708s][info][gc          ] GC(37) Pause Remark 290M->290M(558M) 9.891ms"
+            },
+            {
+              "startEpochMillis": 1794757170179.966,
+              "endEpochMillis": 1794757170180.0,
+              "durationMs": 0.034,
+              "line": "[2026-11-15T07:39:30.180-0800][964.722s][info][gc          ] GC(37) Pause Cleanup 290M->290M(558M) 0.034ms"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "unitTests": 631,
+  "unitDelta": 4,
+  "unitFailures": 0,
+  "unitSkipped": 0,
+  "providerRelease": "UNAPPROVED",
+  "readerAdoption": false,
+  "analyserSha256": "34d16495f806cd6d8ee64c5ef77e91affe86d1f1b6573d9bc5455456cde8bee3",
+  "totalMeasuredCalls": 264040,
+  "liveChecks": 224,
+  "thresholdEventCount": 0,
+  "stoppedSqlProof": [
+    {
+      "run": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-1",
+      "expected": {
+        "preferences": 598,
+        "moderation": 118,
+        "mail": 78
+      },
+      "actual": {
+        "preferences": 598,
+        "moderation": 118,
+        "mail": 78
+      }
+    },
+    {
+      "run": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-2",
+      "expected": {
+        "preferences": 598,
+        "moderation": 118,
+        "mail": 78
+      },
+      "actual": {
+        "preferences": 598,
+        "moderation": 118,
+        "mail": 78
+      }
+    },
+    {
+      "run": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-spigot-3",
+      "expected": {
+        "preferences": 598,
+        "moderation": 118,
+        "mail": 78
+      },
+      "actual": {
+        "preferences": 598,
+        "moderation": 118,
+        "mail": 78
+      }
+    },
+    {
+      "run": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/stall-paper-1",
+      "expected": {
+        "preferences": 598,
+        "moderation": 118,
+        "mail": 78
+      },
+      "actual": {
+        "preferences": 598,
+        "moderation": 118,
+        "mail": 78
+      }
+    }
+  ]
+}

@@ -20,3 +20,5 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
 - E4: +9, 618 → 627; full isolated check/shadowJar passes, zero failures/skips. Correctness passes 330/330; latency release gate fails and is reported without weakening FULL.
 
 - E4 realistic/stress measurement follow-up: **+0**, 627 unchanged. Harness/tools/docs only; accepted production jar unchanged. No new unit build claimed.
+
+- Stall investigation: **+4**, 627 → 631; opt-in diagnostics and committed-state/read-only regression checks. Full isolated check/shadowJar, zero failures/skips.

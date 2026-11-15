@@ -14,7 +14,6 @@ public final class DatabaseManager {
     private final PluginStart plugin;
     private HikariDataSource dataSource;
     private DatabaseType type;
-    private EconomyTable economyTable;
 
     public DatabaseManager(PluginStart plugin) {
         this.plugin = plugin;
@@ -123,11 +122,7 @@ public final class DatabaseManager {
         }
     }
 
-    public void setEconomyTable(EconomyTable table) {
-        this.economyTable = table;
-    }
 
-    public EconomyTable getEconomyTable() {
-        return economyTable;
-    }
+
+
 }

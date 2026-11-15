@@ -13,6 +13,8 @@ public final class EconomyResult {
     public record Unavailable(String diagnostic) implements Balance, Mutation {}
     public sealed interface Mutation permits Committed, Rejected, Unknown, Unavailable {}
     public record Committed(UUID operationId, Found source, Found recipient, boolean replay) implements Mutation {}
-    public record Rejected(UUID operationId, String reason) implements Mutation {}
+    public record Rejected(UUID operationId, String reason, Found source, Found recipient) implements Mutation {
+        public Rejected(UUID operationId,String reason){this(operationId,reason,null,null);}
+    }
     public record Unknown(UUID operationId, String diagnostic) implements Mutation {}
 }

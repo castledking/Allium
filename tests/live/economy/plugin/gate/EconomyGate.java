@@ -66,6 +66,40 @@ public final class EconomyGate extends JavaPlugin {
                     else out.putAll(response(action.equals("withdraw")?vault.withdrawPlayer(p,Double.parseDouble(args[3])):vault.depositPlayer(p,Double.parseDouble(args[3]))));
                     out.put("ms",(System.nanoTime()-start)/1e6);
                 }
+                case "paidstate" -> {
+                    var p=player(args[1]);UUID id=p.getUniqueId();out.put("uuid",id.toString());out.putAll(found(runtime.engine().balance(id)));
+                    Map<String,Integer> items=new TreeMap<>();for(var item:p.getInventory().getStorageContents())if(item!=null&&!item.getType().isAir())items.merge(item.getType().name(),item.getAmount(),Integer::sum);out.put("items",items);
+                    var kits=((KitsModule)allium.getModuleManager().getModule("kits")).kits();var mail=((MailModule)allium.getModuleManager().getModule("mail")).mail();
+                    out.put("kitReady",kits.ready(p));out.put("mailBusy",mail.busy(p));
+                    out.put("kitReceipt",Objects.toString(p.getPersistentDataContainer().get(new org.bukkit.NamespacedKey(allium,"kit_receipts"),org.bukkit.persistence.PersistentDataType.STRING),""));
+                    out.put("mailReceipt",Objects.toString(p.getPersistentDataContainer().get(new org.bukkit.NamespacedKey(allium,"mail_receipts"),org.bukkit.persistence.PersistentDataType.STRING),""));
+                    try(var c=allium.getDatabaseManager().getConnection()){
+                        var rows=new ArrayList<Map<String,Object>>();
+                        try(var q=c.prepareStatement("SELECT workflow_kind,workflow_id,amount_minor,state FROM allium_economy_reservations WHERE account_uuid=? ORDER BY created_at,workflow_id")){q.setString(1,id.toString());try(var r=q.executeQuery()){while(r.next())rows.add(Map.of("kind",r.getString(1),"id",r.getString(2),"amount",r.getLong(3),"state",r.getString(4)));}}out.put("reservations",rows);
+                        for(var entry:Map.of("kitPending","SELECT count(*) FROM allium_kit_deliveries WHERE player_uuid=?","kitReceipts","SELECT count(*) FROM allium_kit_claim_receipts WHERE player_uuid=?","kitUsage","SELECT COALESCE(sum(claim_count),0) FROM allium_kit_usages WHERE player_uuid=?","sentPending","SELECT count(*) FROM allium_mail WHERE sender=? AND state='PENDING'").entrySet()){
+                            try(var q=c.prepareStatement(entry.getValue())){q.setString(1,id.toString());try(var r=q.executeQuery()){r.next();out.put(entry.getKey(),r.getLong(1));}}
+                        }
+                        var box=new ArrayList<Map<String,Object>>();try(var q=c.prepareStatement("SELECT id,kind,state FROM allium_mail WHERE recipient=? ORDER BY created_at,id")){q.setString(1,id.toString());try(var r=q.executeQuery()){while(r.next())box.add(Map.of("id",r.getString(1),"kind",r.getString(2),"state",r.getString(3)));}}out.put("mailbox",box);
+                    }
+                }
+                case "seeditems" -> {
+                    var p=player(args[1]);var kits=((KitsModule)allium.getModuleManager().getModule("kits")).kits();var mail=((MailModule)allium.getModuleManager().getModule("mail")).mail();
+                    if(!kits.ready(p)||mail.busy(p))throw new IllegalStateException("cannot seed items during recovery");
+                    p.getInventory().setStorageContents(new org.bukkit.inventory.ItemStack[36]);p.getInventory().setHeldItemSlot(0);
+                    if(!args[2].equals("AIR"))p.getInventory().setItem(0,new org.bukkit.inventory.ItemStack(org.bukkit.Material.valueOf(args[2]),Integer.parseInt(args[3])));
+                    p.saveData();out.put("saved",true);
+                }
+                case "fillinventory" -> {
+                    var p=player(args[1]);if(!((KitsModule)allium.getModuleManager().getModule("kits")).kits().ready(p)||((MailModule)allium.getModuleManager().getModule("mail")).mail().busy(p))throw new IllegalStateException("recovery active");
+                    var slots=new org.bukkit.inventory.ItemStack[36];for(int i=0;i<slots.length;i++)slots[i]=new org.bukkit.inventory.ItemStack(org.bukkit.Material.STONE,64);p.getInventory().setStorageContents(slots);p.saveData();out.put("saved",true);
+                }
+                case "retrycapture" -> {
+                    var reservations=runtime.reservations();var kind=EconomyReservations.Kind.valueOf(args[1]);var id=UUID.fromString(args[2]);
+                    EconomyResult.Mutation result;
+                    if(args.length>3&&args[3].equals("SPEND")){var row=reservations.find(kind,id).orElseThrow();result=reservations.spend(kind,id,row.account(),row.amount(),row.intentHash(),c->{throw new SQLException("committed retry must not enter workflow");});}
+                    else result=reservations.capture(kind,id,c->{throw new SQLException("committed retry must not enter workflow");});
+                    out.put("kind",result.getClass().getSimpleName());if(result instanceof Committed done)out.put("replay",done.replay());
+                }
                 case "operation" -> {
                     UUID id=UUID.fromString(args[1]);var kind=EconomyRequest.Kind.valueOf(args[2]);
                     UUID from=uuid(args[3]),to=args[4].equals("-")?null:uuid(args[4]);

@@ -43,6 +43,15 @@ public final class PlayerDataReceiptProof {
         if (expected == null || expected.isEmpty()) {
             throw new IOException("Expected player data receipt must not be empty");
         }
+        readSnapshot(playerDat,receiptKey,expected);
+    }
+
+    /** Proves absence by validating the complete existing NBT/GZIP file; missing/corrupt files are unknown. */
+    public static void verifyAbsent(Path playerDat,String receiptKey)throws IOException {
+        if(receiptKey==null||receiptKey.isEmpty())throw new IOException("Player data receipt key must not be empty");
+        readSnapshot(playerDat,receiptKey,null);
+    }
+    private static void readSnapshot(Path playerDat,String receiptKey,String expected)throws IOException {
         try (InputStream file = Files.newInputStream(playerDat);
              InputStream gzip = new GZIPInputStream(new BufferedInputStream(file));
              LimitedInputStream limited = new LimitedInputStream(gzip);
@@ -79,7 +88,7 @@ public final class PlayerDataReceiptProof {
             if (input.read() != -1) {
                 throw new IOException("Trailing data after player data root");
             }
-            if (!foundReceipt) {
+            if (expected!=null&&!foundReceipt) {
                 throw new IOException("Player data receipt is missing");
             }
         }
@@ -104,7 +113,7 @@ public final class PlayerDataReceiptProof {
                         throw new IOException("Invalid or duplicate player data receipt");
                     }
                     String actual = input.readUTF();
-                    if (actual.isEmpty() || !expected.equals(actual)) {
+                    if (expected==null || actual.isEmpty() || !expected.equals(actual)) {
                         throw new IOException("Player data receipt does not match the saved receipt");
                     }
                     foundReceipt = true;

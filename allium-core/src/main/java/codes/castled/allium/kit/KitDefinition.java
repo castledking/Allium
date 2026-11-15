@@ -10,8 +10,8 @@ import java.util.regex.Pattern;
  * Immutable definition of a server kit loaded from {@code plugins/Allium/kits/<name>.yml}.
  *
  * <p>Per the S14 economy rule, {@code cost} is canonical decimal text ({@code '0.00'}), never a
- * binary floating-point {@code double}. Paid kits ({@code cost > 0.00}) are parsed and validated
- * now, and denied at claim time until M3 economy reservations exist.
+ * binary floating-point {@code double}. Positive costs use E5 receipt-backed reservations;
+ * paid claims fail closed when the economy or saved delivery evidence is unavailable.
  */
 public record KitDefinition(
         String name,

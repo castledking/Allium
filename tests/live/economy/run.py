@@ -35,6 +35,7 @@ P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash
 P.add_argument('--run-name', required=True)
 P.add_argument('--diagnostics',action='store_true',help='opt-in engine phase samples, GC log and PASSIVE checkpoint probe')
 P.add_argument('--paired-reads',action='store_true',help='run pooled then dedicated read-only ten-minute phases')
+P.add_argument('--paid-workflows',action='store_true',help='E5 reservations, native receipts, real client and crash gates')
 P.add_argument('--latency-only', action='store_true')
 P.add_argument('--stress-only',action='store_true',help='diagnostic stress workload, never a release gate')
 P.add_argument('--duration', type=int, default=600)
@@ -421,6 +422,10 @@ class Lane:
             config = yaml.safe_load(z.read('config.yml'))
         for m in ['moderation', 'teleport']:
             config.setdefault('modules', {})[m] = True
+        if A.paid_workflows:
+            config.setdefault('mail',{}).update({'costs':{'text':'0.25','gift':'1.50'},'mailbox-size':1000,'rate-limit':{'sends':1000,'per-seconds':60}})
+            kitdir=self.path/'plugins/Allium/kits';kitdir.mkdir(exist_ok=True)
+            (kitdir/'paid.yml').write_text(yaml.safe_dump(dict(name='paid',enabled=True,**{'cooldown-seconds':0,'one-time':False},cost='2.00',items=['minecraft:diamond 1'])))
         (self.path / 'plugins/Allium/config.yml').write_text(yaml.safe_dump(config, sort_keys=False))
         os.chmod(self.path / 'plugins/Allium/config.yml', 0o600)
 
@@ -758,9 +763,161 @@ def realistic(lane,mode='pooled'):
     emit('REALISTIC '+json.dumps(record))
 
 
+def paid_state(lane,name='MoneyA'):
+    return lane.fixture('paidstate '+name)
+
+
+def paid_ready(lane,name='MoneyA'):
+    return wait(lambda:(lambda s:s if s['kitReady'] and not s['mailBusy'] else None)(paid_state(lane,name)),name+' item receipt recovery ready',60)
+
+
+
+def paid_permissions(lane):
+    for name in ['MoneyA','MoneyB','MoneyObs']:
+        for node in ['allium.kit','allium.kits.paid','allium.mail','allium.mail.send','allium.mail.gift','allium.mail.claim','allium.mail.read']:
+            lane.perm(name,node,True)
+        paid_ready(lane,name)
+
+def paid_setup(lane):
+    setup(lane)
+    paid_permissions(lane)
+    require(lane.fixture('state MoneyA')['ready'],lane.name+': E5 authoritative economy and receipt services ready')
+
+
+def paid_seed(lane,name='MoneyA',material='AIR',amount=0):
+    paid_ready(lane,name)
+    lane.fixture('seeditems '+name+' '+material+' '+str(amount))
+
+
+def paid_invariant(lane):
+    with sqlite3.connect('file:'+str(lane.path/'plugins/Allium/allium.db')+'?mode=ro',uri=True) as db:
+        mismatches=db.execute("SELECT account_uuid FROM allium_economy_accounts a WHERE reserved_minor<>(SELECT COALESCE(SUM(amount_minor),0) FROM allium_economy_reservations r WHERE r.account_uuid=a.account_uuid AND state='HELD')").fetchall()
+    require(not mismatches,lane.name+': R equals sum of HELD across both workflow types',mismatches)
+
+
+def paid_retry(lane,row,step='CAPTURE'):
+    before=paid_state(lane)
+    result=lane.fixture('retrycapture '+row['kind']+' '+row['id']+' '+step)
+    after=paid_state(lane)
+    require(result['kind']=='Committed' and result['replay'] and after['book']==before['book'] and after['reserved']==before['reserved'] and after['items']==before['items'] and after['kitUsage']==before['kitUsage'],lane.name+': stable '+row['kind']+' capture retry has no second charge, item grant or cooldown',result)
+
+
+def paid_success(lane):
+    a,b=lane.bots['MoneyA'],lane.bots['MoneyB']
+    set_balance(lane,'MoneyA','10.00');paid_seed(lane);paid_seed(lane,'MoneyB')
+    a.command('kit paid','Received kit paid')
+    state=paid_ready(lane)
+    require(state['book']==800 and state['reserved']==0 and state['items'].get('DIAMOND',0)==1 and state['kitUsage']==1,lane.name+': paid kit item, charge, acknowledgement and usage commit',state)
+    paid_retry(lane,next(r for r in reversed(state['reservations']) if r['kind']=='KIT'))
+    set_balance(lane,'MoneyA','1.00');before=paid_state(lane)
+    a.command('kit paid','You cannot pay for that kit')
+    state=paid_ready(lane)
+    require(state['book']==100 and state['reserved']==0 and state['items']==before['items'] and state['kitUsage']==before['kitUsage'],lane.name+': insufficient paid kit grants nothing and burns no usage')
+    set_balance(lane,'MoneyA','10.00');lane.fixture('fillinventory MoneyA');before=paid_state(lane)
+    a.command('kit paid','Your inventory cannot hold all items')
+    state=wait(lambda:(lambda s:s if s['reserved']==0 and s['kitPending']==0 and s['kitReady'] else None)(paid_state(lane)),'full paid kit releases hold')
+    require(state['book']==1000 and state['items']==before['items'] and state['kitUsage']==before['kitUsage'],lane.name+': REFUSE partial kit policy releases full-inventory hold without charge')
+    require(any(r['kind']=='KIT' and r['state']=='RELEASED' for r in state['reservations']),lane.name+': full inventory stores terminal RELEASED intent')
+    paid_seed(lane)
+    a.command('mail send MoneyB paid-text','Mail sent to MoneyB')
+    state=paid_state(lane)
+    require(state['book']==975 and state['reserved']==0,lane.name+': text mail saves READY with single-commit charge')
+    paid_retry(lane,next(r for r in reversed(state['reservations']) if r['kind']=='MAIL'),'SPEND')
+    box_before=paid_state(lane,'MoneyB')['mailbox'];lane.fixture('fault economy.commit-unknown 1')
+    a.command('mail send MoneyB unknown-text','Payment outcome')
+    unknown_state=paid_state(lane);unknown_box=paid_state(lane,'MoneyB')['mailbox']
+    require(unknown_state['book']==950 and len(unknown_box)==len(box_before)+1,lane.name+': unknown text acknowledgement preserves committed charge and one mail')
+    paid_retry(lane,next(r for r in reversed(unknown_state['reservations']) if r['kind']=='MAIL'),'SPEND')
+    before_box=paid_state(lane,'MoneyB')['mailbox'];set_balance(lane,'MoneyA','0.10')
+    a.command('mail send MoneyB denied-text','You cannot pay for that mail')
+    require(paid_state(lane)['book']==10 and paid_state(lane,'MoneyB')['mailbox']==before_box,lane.name+': insufficient text mail stores no message and charges nothing')
+    set_balance(lane,'MoneyA','10.00');paid_seed(lane,material='STONE',amount=4)
+    a.command('mail gift MoneyB 2 paid-gift','Gift of 2 item(s) sent to MoneyB')
+    state=paid_ready(lane);row=next(r for r in reversed(state['reservations']) if r['kind']=='MAIL' and r['amount']==150)
+    require(state['book']==850 and state['reserved']==0 and state['items'].get('STONE')==2 and row['state']=='CAPTURED',lane.name+': gift charges only with saved sender receipt and READY acknowledgement',state)
+    target_before=paid_state(lane,'MoneyB');b.command('mail claim '+row['id'][:8],'Claimed gift')
+    target=paid_ready(lane,'MoneyB')
+    require(target['items'].get('STONE',0)==target_before['items'].get('STONE',0)+2 and target['book']==target_before['book'] and paid_state(lane)['book']==850,lane.name+': claiming paid gift never charges sender or recipient again')
+    b.command('mail claim '+row['id'][:8],'You have no mail')
+    require(paid_state(lane,'MoneyB')['items']==target['items'] and paid_state(lane)['book']==850,lane.name+': repeated gift claim neither duplicates items nor charges')
+    paid_retry(lane,row)
+    set_balance(lane,'MoneyA','0.50');before=paid_state(lane);box=paid_state(lane,'MoneyB')['mailbox']
+    a.command('mail gift MoneyB 1 denied-gift','You cannot pay for that mail')
+    after=paid_ready(lane)
+    require(after['book']==50 and after['reserved']==0 and after['items']==before['items'] and paid_state(lane,'MoneyB')['mailbox']==box,lane.name+': insufficient gift preserves held item, money and mailbox')
+    paid_invariant(lane)
+
+
+def paid_concurrent(lane):
+    config=lane.path/'plugins/Allium/config.yml';settings=yaml.safe_load(config.read_text());settings['mail']['costs']['text']='2.00';config.write_text(yaml.safe_dump(settings,sort_keys=False));lane.reload_allium()
+    set_balance(lane,'MoneyA','3.00');paid_seed(lane);before=paid_state(lane);box=paid_state(lane,'MoneyB')['mailbox'];a=lane.bots['MoneyA'];mark=len(a.lines)
+    a.write('cmd mail send MoneyB competing-intent');a.write('cmd kit paid')
+    wait(lambda:len(a.chats(mark))>=2,'two real client workflow responses',30)
+    state=wait(lambda:(lambda s:s if s['book']==100 and s['reserved']==0 and s['kitReady'] and not s['mailBusy'] else None)(paid_state(lane)),'concurrent workflows settle',30)
+    count=int(state['kitUsage']>before['kitUsage'])+int(len(paid_state(lane,'MoneyB')['mailbox'])>len(box))
+    require(count==1 and state['book']==100 and state['reserved']==0,lane.name+': racing text/kit intents spend one finite balance once',state)
+    paid_invariant(lane);settings['mail']['costs']['text']='0.25';config.write_text(yaml.safe_dump(settings,sort_keys=False));lane.reload_allium()
+
+
+def paid_restart(lane):
+    snapshots={name:paid_ready(lane,name) for name in ['MoneyA','MoneyB']}
+    lane.stop();lane.boot()
+    for name in ['MoneyA','MoneyB','MoneyObs']:lane.bot(name);amount(lane,name);paid_ready(lane,name)
+    paid_permissions(lane)
+    for name,old in snapshots.items():
+        new=paid_state(lane,name)
+        require(new['book']==old['book'] and new['reserved']==old['reserved'] and new['items']==old['items'] and new['kitUsage']==old['kitUsage'],lane.name+': '+name+' ordinary restart preserves charge, item inventory and usage')
+    paid_invariant(lane)
+
+
+def paid_crash(lane,kind,phase,exit_code):
+    a=lane.bots['MoneyA'];paid_ready(lane);set_balance(lane,'MoneyA','10.00');paid_seed(lane,material='STONE' if kind=='MAIL' else 'AIR',amount=4 if kind=='MAIL' else 0)
+    before=paid_state(lane);previous={r['id'] for r in before['reservations']}
+    fault=('kit.claim.halt-before-deliver' if kind=='KIT' else 'mail.send.halt-before-take') if phase=='absent' else 'economy.capture.halt-'+phase
+    lane.fixture('fault '+fault+' 1');proc=lane.proc;proc._gate_record['expectedExit']=exit_code
+    for bot in lane.bots.values():bot.expected_exit=True;bot.proc._gate_record['expectedCrash']=True
+    a.write('cmd '+('kit paid' if kind=='KIT' else 'mail gift MoneyB 2 crash-gift'))
+    wait(lambda:proc.poll() is not None,'real '+kind+' '+phase+' capture halt',30,monitor=False)
+    require(proc.returncode==exit_code,lane.name+': '+kind+' '+phase+' actual JVM halt has expected exit',proc.returncode)
+    for bot in lane.bots.values():
+        if bot.proc:
+            bot.proc.wait(timeout=15);finish_process(bot.proc,intentional=True);bot.proc=None;bot.expected_exit=False
+    finish_process(proc,intentional=True);lane.proc=None
+    with sqlite3.connect('file:'+str(lane.path/'plugins/Allium/allium.db')+'?mode=ro',uri=True) as db:
+        rows=db.execute("SELECT workflow_id,state,amount_minor FROM allium_economy_reservations WHERE workflow_kind=? AND account_uuid=?",(kind,before['uuid'])).fetchall()
+        fresh=[r for r in rows if r[0] not in previous]
+        require(len(fresh)==1,lane.name+': crash retains exactly one stable workflow',fresh)
+        workflow,status,cost=fresh[0]
+        money=db.execute('SELECT balance_minor,reserved_minor FROM allium_economy_accounts WHERE account_uuid=?',(before['uuid'],)).fetchone()
+        require(status==('CAPTURED' if phase=='after' else 'HELD') and tuple(money)==((1000-cost,0) if phase=='after' else (1000,cost)),lane.name+': stopped '+kind+' boundary is atomic',dict(state=status,money=money))
+    lane.boot()
+    for name in ['MoneyA','MoneyB','MoneyObs']:lane.bot(name);amount(lane,name);paid_ready(lane,name)
+    paid_permissions(lane)
+    state=paid_ready(lane);current=next(r for r in state['reservations'] if r['id']==workflow)
+    require(current['state']==('RELEASED' if phase=='absent' else 'CAPTURED') and state['reserved']==0 and state['book']==(1000 if phase=='absent' else 1000-cost),lane.name+': '+kind+' '+phase+' recovers original intent without duplicate charge',state)
+    if kind=='KIT':
+        require(state['items'].get('DIAMOND',0)==(0 if phase=='absent' else 1) and state['kitUsage']==before['kitUsage']+(0 if phase=='absent' else 1),lane.name+': kit native receipt recovery neither duplicates nor burns usage on absence')
+    else:
+        require(state['items'].get('STONE',0)==(4 if phase=='absent' else 2),lane.name+': gift native sender receipt and inventory recover together')
+        box=paid_state(lane,'MoneyB')['mailbox'];require(any(r['id']==workflow and r['state']=='READY' for r in box)==(phase!='absent'),lane.name+': paid gift READY agrees with capture')
+        if phase!='absent':
+            b_before=paid_state(lane,'MoneyB');lane.bots['MoneyB'].command('mail claim '+workflow[:8],'Claimed gift');b_after=paid_ready(lane,'MoneyB')
+            require(b_after['items'].get('STONE',0)==b_before['items'].get('STONE',0)+2 and paid_state(lane)['book']==1000-cost,lane.name+': recovered gift claims once without extra payment')
+    if phase!='absent':paid_retry(lane,current)
+    paid_invariant(lane)
+
+
 try:
     build();lane=Lane(A.suite+'-economy',A.suite,25800 if A.suite=='spigot' else 25801)
-    if A.stress_only:
+    if A.paid_workflows:
+        case(lane.name+': E5 setup',lambda:paid_setup(lane))
+        case(lane.name+': sufficient/insufficient paid kits and mail',lambda:paid_success(lane))
+        case(lane.name+': concurrent workflows cannot overspend',lambda:paid_concurrent(lane))
+        case(lane.name+': ordinary restart persistence',lambda:paid_restart(lane))
+        for kind in ['KIT','MAIL']:
+            for phase,code in [('before',77),('after',78),('absent',77)]:
+                case(lane.name+': '+kind+' capture '+phase,lambda k=kind,p=phase,c=code:paid_crash(lane,k,p,c))
+    elif A.stress_only:
         case(lane.name+': stress setup',lambda:setup(lane))
         case(lane.name+': diagnostic stress, not release gate',lambda:benchmark(lane))
     elif A.latency_only:
@@ -785,7 +942,7 @@ finally:
     try:final_log_scan()
     except Exception as error:require(False,'final log scan',str(error))
     performance=[v for k,v in observations.items() if k.endswith('-shared')]
-    manifest=dict(releaseDecision='UNAPPROVED',workload='realistic' if A.latency_only else 'stress' if A.stress_only else 'stress-and-correctness',machine=machine_info(),suite=A.suite,run=str(RUN),alliumJar=str(JAR),alliumSha256=A.sha256,sourceHashes=SOURCE_HASHES,helperHashes=HELPER_HASHES,
+    manifest=dict(releaseDecision='UNAPPROVED',workload='paid-workflows' if A.paid_workflows else 'realistic' if A.latency_only else 'stress' if A.stress_only else 'stress-and-correctness',machine=machine_info(),suite=A.suite,run=str(RUN),alliumJar=str(JAR),alliumSha256=A.sha256,sourceHashes=SOURCE_HASHES,helperHashes=HELPER_HASHES,
                   passed=not failures,passedCount=sum(c['passed'] for c in checks),failedCount=len(failures),failures=failures,checks=checks,scopes=scopes,
                   processes=processes,integrityChecks=integrity,observations=observations,stress2msReferenceMet=bool(performance) and all(r['stress2msReferenceMet'] for r in performance),
                   limitations=['Phase1 SQLite FULL only; no MySQL economy lane.','VaultAPI1.7.1 hosted by a test plugin; actual Allium provider and service calls exercised.','No separate economy database in current lanes; historical prototype is not adopted. SF host run and user budget approval remain required.'])

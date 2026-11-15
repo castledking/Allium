@@ -492,6 +492,44 @@ class KitServiceTest {
         assertNull(pdc2.get(new NamespacedKey(plugin, "kit_receipts")), "verified receipt is cleared after recovery");
     }
 
+    private codes.castled.allium.economy.EconomyEngine paidFixture(boolean complete)throws Exception {
+        var source=(codes.castled.allium.storage.ConnectionSource)()->java.sql.DriverManager.getConnection("jdbc:sqlite:"+tempDir.resolve("paid.db"));
+        repository=new KitRepository(source,codes.castled.allium.storage.SqlDialect.SQLITE,System::currentTimeMillis);repository.migrate();
+        var engine=new codes.castled.allium.economy.EconomyEngine(source,codes.castled.allium.economy.EconomySettings.defaults(),(c,a,b)->true);
+        assertInstanceOf(codes.castled.allium.economy.EconomyResult.Committed.class,engine.execute(engine.request(UUID.randomUUID(),"test","open",codes.castled.allium.economy.EconomyRequest.Kind.OPEN,"test",playerId,null,engine.settings().starting())));
+        var manager=mock(codes.castled.allium.core.ModuleManager.class);var economy=mock(codes.castled.allium.module.EconomyModule.class);var runtime=mock(codes.castled.allium.economy.EconomyRuntime.class);
+        when(plugin.getModuleManager()).thenReturn(manager);when(manager.getModule("economy")).thenReturn(economy);when(economy.isEnabled()).thenReturn(true);when(economy.runtime()).thenReturn(runtime);when(runtime.ready()).thenReturn(true);when(runtime.reservations()).thenReturn(engine.reservations());
+        newLoader().save(new KitDefinition("paid",true,600,true,"2.00",List.of("minecraft:diamond 2"),"kits/paid.yml"));
+        playerGrants.add("allium.kit");playerGrants.add("allium.kits.paid");
+        var contents=new AtomicReference<>(new ItemStack[36]);when(playerInventory.getStorageContents()).thenAnswer(call->contents.get());
+        doAnswer(call->{Object receipt=pdc.get(new NamespacedKey(plugin,"kit_receipts"));writePlayerDatWithKitReceipt(playerDataDir.resolve(playerId+".dat"),receipt instanceof String value?value:null);return null;}).when(player).saveData();
+        ItemLibrary library=mock(ItemLibrary.class);when(library.build(any(),anyBoolean())).thenReturn(new ItemLibrary.Prepared(List.of(new ItemLibrary.PreparedItem(new ValueStack(Material.DIAMOND,2),null)),List.of()));
+        ItemDeliveryService delivery=mock(ItemDeliveryService.class);
+        when(delivery.planMail(any(),eq(player),any())).thenAnswer(call->{ItemStack[] after=contents.get().clone();after[0]=new ValueStack(Material.DIAMOND,2);return new ItemDeliveryService.MailPlan(contents.get(),after,List.of(),List.of(2));});
+        when(delivery.applyMail(eq(player),any())).thenAnswer(call->{ItemStack[] applied=((ItemDeliveryService.MailPlan)call.getArgument(1)).after();if(!complete)applied[0]=new ValueStack(Material.DIAMOND,1);contents.set(applied);return true;});
+        KitService service=newService(Runnable::run,library,delivery);service.enable();service.claim(player,player,"paid");
+        if(!complete){
+            assertTrue(KitReceipts.parse((String)pdc.get(new NamespacedKey(plugin,"kit_receipts"))).stream().anyMatch(r->r instanceof KitReceipts.Unknown));
+            service.onQuit(new org.bukkit.event.player.PlayerQuitEvent(player,""));service.onJoinEarly(new org.bukkit.event.player.PlayerJoinEvent(player,""));service.onJoin(new org.bukkit.event.player.PlayerJoinEvent(player,""));
+            verify(player,atLeast(2)).kickPlayer(contains("inventory needs kit recovery"));
+        }
+        return engine;
+    }
+    @Test void paidKitCapturesOnlyAfterExactEffectsAndVerifiedSavedReceipt()throws Exception {
+        var engine=paidFixture(true);var balance=(codes.castled.allium.economy.EconomyResult.Found)engine.balance(playerId);
+        assertEquals(9800,balance.book().minor());assertEquals(0,balance.reserved().minor());assertTrue(repository.usage(playerId,"paid").orElseThrow().oneTimeClaimed());verify(messages).send(player,Messages.KIT_RECEIVED,"{name}","paid");
+    }
+    @Test void unexpectedPartialPaidKitKeepsHoldAndDurableQuarantineMarkerAcrossReconnect()throws Exception {
+        var engine=paidFixture(false);var balance=(codes.castled.allium.economy.EconomyResult.Found)engine.balance(playerId);
+        assertEquals(10000,balance.book().minor());assertEquals(200,balance.reserved().minor());assertTrue(repository.usage(playerId,"paid").isEmpty());assertEquals(1,repository.claimingFor(playerId,"server-a").size());
+    }
+    private static final class ValueStack extends ItemStack {
+        ValueStack(Material type,int amount){super(type,amount);}
+        @Override public ValueStack clone(){return new ValueStack(getType(),getAmount());}
+        @Override public boolean equals(Object other){return other instanceof ItemStack item&&getType()==item.getType()&&getAmount()==item.getAmount();}
+        @Override public int hashCode(){return 31*getType().hashCode()+getAmount();}
+    }
+
     private static void writePlayerDatWithKitReceipt(Path file, String receiptValue) throws IOException {
         ByteArrayOutputStream raw = new ByteArrayOutputStream();
         try (DataOutputStream out = new DataOutputStream(new GZIPOutputStream(raw))) {
@@ -499,9 +537,9 @@ class KitServiceTest {
             out.writeUTF("");
             out.writeByte(10); // TAG_Compound BukkitValues
             out.writeUTF("BukkitValues");
-            out.writeByte(8); // TAG_String
+            if(receiptValue!=null){out.writeByte(8); // TAG_String
             out.writeUTF("allium:kit_receipts");
-            out.writeUTF(receiptValue);
+            out.writeUTF(receiptValue);}
             out.writeByte(0); // end BukkitValues
             out.writeByte(0); // end root
         }

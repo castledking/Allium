@@ -1,6 +1,8 @@
 package codes.castled.allium.kit;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.economy.*;
+import codes.castled.allium.economy.EconomyResult.*;
 import codes.castled.allium.core.FaultInjection;
 import codes.castled.allium.item.delivery.ItemDeliveryService;
 import codes.castled.allium.item.library.ItemBuildException;
@@ -56,8 +58,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
- * Kits (S16): free kit claiming, cooldowns, one-time kits, {@code /createkit} and {@code /delkit},
- * with durable exactly-once delivery on SQLite and MySQL.
+ * Kits: free claims, E5 paid self claims, cooldowns, one-time kits, {@code /createkit} and {@code /delkit}.
+ * Free delivery supports SQLite/MySQL; paid receipt-backed reservations use Phase 1 SQLite only.
  *
  * <h2>Giving a kit to another player ({@code /kit <name> <player>})</h2>
  * <ul>
@@ -222,7 +224,7 @@ public final class KitService implements Listener {
             return List.of();
         }
         return definitions.values().stream()
-                .filter(def -> KitNames.isValid(def.name()) && !def.paid() && hasKitAccess(sender, def.name()))
+                .filter(def -> KitNames.isValid(def.name()) && (!def.paid() || sender instanceof Player && PaidWorkflowSupport.ready(plugin)) && hasKitAccess(sender, def.name()))
                 .map(KitDefinition::name)
                 .filter(name -> name.startsWith(lower))
                 .sorted()
@@ -232,7 +234,7 @@ public final class KitService implements Listener {
 
     public void listKits(CommandSender sender) {
         List<String> available = definitions.values().stream()
-                .filter(def -> KitNames.isValid(def.name()) && !def.paid() && hasKitAccess(sender, def.name()))
+                .filter(def -> KitNames.isValid(def.name()) && (!def.paid() || sender instanceof Player && PaidWorkflowSupport.ready(plugin)) && hasKitAccess(sender, def.name()))
                 .map(KitDefinition::name)
                 .sorted()
                 .toList();
@@ -368,7 +370,7 @@ public final class KitService implements Listener {
             send(actor, Messages.KIT_NO_PERMISSION, "{name}", name);
             return;
         }
-        if (def.paid()) {
+        if (def.paid() && (other || !PaidWorkflowSupport.ready(plugin))) {
             send(actor, Messages.KIT_PAID_DENIED, "{name}", name);
             return;
         }
@@ -459,11 +461,14 @@ public final class KitService implements Listener {
                 def.cooldownMillis(), def.oneTime(), bypassCooldown, now);
 
         locks.lock(target);
+        // A valid saved baseline is required to prove absence if the JVM halts before delivery.
+        if(def.paid())try{target.saveData();}catch(RuntimeException error){locks.unlock(target);send(actor,Messages.KIT_FAILED);return;}
+        String baseline=playerReceipt(target);Path baselineFile=playerFile(target);
         inFlight.add(deliveryId);
         submitCritical(target, deliveryId, () -> {
             try {
                 failIfArmed();
-                KitRepository.BeginOutcome outcome = repository.beginClaim(record, System.currentTimeMillis());
+                KitRepository.BeginOutcome outcome = beginClaim(record,def,baselineFile,baseline);
                 if (!(outcome instanceof KitRepository.BeginOutcome.Claiming claiming)) {
                     onServer(() -> {
                         finishInFlight(target, deliveryId);
@@ -474,7 +479,7 @@ public final class KitService implements Listener {
                 if (FaultInjection.trip(FAULT_CLAIM_SLOW)) {
                     sleep(SLOW_MILLIS);
                 }
-                onServer(() -> deliverClaim(actor, target, other, generation, claiming.delivery(), stacks));
+                onServer(() -> deliverClaim(actor, target, other, generation, claiming.delivery(), stacks,def.paid()));
             } catch (SQLException e) {
                 plugin.logger().warning("Kit claim for " + target.getName() + " failed before delivery: " + e.getMessage());
                 onServer(() -> {
@@ -486,8 +491,42 @@ public final class KitService implements Listener {
         }, false);
     }
 
+    private KitRepository.BeginOutcome beginClaim(KitDeliveryRecord record,KitDefinition definition,Path file,String baseline)throws SQLException {
+        if(!definition.paid())return repository.beginClaim(record,System.currentTimeMillis());
+        Money amount;try{amount=Money.parse(definition.cost(),false).positive();}catch(RuntimeException invalid){return new KitRepository.BeginOutcome.CostRefused();}
+        var observed=new java.util.concurrent.atomic.AtomicReference<KitRepository.BeginOutcome>();
+        Mutation result=PaidWorkflowSupport.reservations(plugin).reserve(EconomyReservations.Kind.KIT,record.id(),record.playerUuid(),amount,EconomyReservations.fingerprint(record.id().toString(),record.playerUuid().toString(),record.kitName(),record.claimToken().toString(),record.claimOwner(),record.itemsPayload(),Integer.toString(record.itemCount()),Long.toString(record.cooldownMillis()),Boolean.toString(record.oneTime()),Boolean.toString(record.bypassCooldown()),Long.toString(record.createdAt())),c->{
+            PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.KIT_RECEIPTS,baseline);
+            var outcome=repository.beginClaim(c,record,System.currentTimeMillis());observed.set(outcome);
+            return outcome instanceof KitRepository.BeginOutcome.Claiming claim&&claim.delivery().id().equals(record.id())&&claim.delivery().claimToken().equals(record.claimToken());
+        });
+        if(result instanceof Rejected){return observed.get() instanceof KitRepository.BeginOutcome.Claiming?new KitRepository.BeginOutcome.AlreadyClaiming():observed.get()!=null?observed.get():new KitRepository.BeginOutcome.CostRefused();}
+        PaidWorkflowSupport.committed(result);
+        return repository.findDelivery(record.id()).<KitRepository.BeginOutcome>map(KitRepository.BeginOutcome.Claiming::new).orElseGet(KitRepository.BeginOutcome.AlreadyClaiming::new);
+    }
+    private boolean finishClaim(UUID id,UUID token,long now,Path file,String expected)throws SQLException {
+        if(!repository.paid(id))return repository.finishClaim(id,token,serverId,now);
+        return PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin).capture(EconomyReservations.Kind.KIT,id,c->{
+            if(KitReceipts.parse(expected).stream().noneMatch(r->r instanceof KitReceipts.Claimed receipt&&receipt.deliveryId().equals(id)&&receipt.token().equals(token)))throw new SQLException("missing matching kit receipt");
+            PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.KIT_RECEIPTS,expected);
+            return repository.finishClaim(c,id,token,serverId,now);
+        }));
+    }
+    private boolean releaseClaim(UUID id,UUID token,Path file,String expected)throws SQLException {
+        if(!repository.paid(id))return repository.releaseClaim(id,token,serverId);
+        return PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin).release(EconomyReservations.Kind.KIT,id,c->{
+            {
+                if(KitReceipts.parse(expected).stream().anyMatch(r->r instanceof KitReceipts.Claimed receipt&&receipt.deliveryId().equals(id)))throw new SQLException("cannot release a kit with a delivery receipt");
+                PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.KIT_RECEIPTS,expected);
+            }
+            return repository.releaseClaim(c,id,token,serverId);
+        }));
+    }
+
     private void reportRefusedBegin(CommandSender actor, String kitName, KitRepository.BeginOutcome outcome) {
-        if (outcome instanceof KitRepository.BeginOutcome.AlreadyClaiming) {
+        if(outcome instanceof KitRepository.BeginOutcome.CostRefused){
+            send(actor,Messages.KIT_COST_REFUSED);
+        }else if (outcome instanceof KitRepository.BeginOutcome.AlreadyClaiming) {
             send(actor, Messages.KIT_BUSY);
         } else if (outcome instanceof KitRepository.BeginOutcome.OneTimeClaimed) {
             send(actor, Messages.KIT_ONE_TIME_CLAIMED, "{name}", kitName);
@@ -497,7 +536,7 @@ public final class KitService implements Listener {
     }
 
     private void deliverClaim(CommandSender actor, Player target, boolean other, long generation,
-                              KitDeliveryRecord record, List<ItemStack> stacks) {
+                              KitDeliveryRecord record, List<ItemStack> stacks,boolean paid) {
         if (FaultInjection.trip(FAULT_CLAIM_HALT_BEFORE)) {
             Runtime.getRuntime().halt(77);
         }
@@ -524,11 +563,27 @@ public final class KitService implements Listener {
             release(target, record.id(), record.claimToken());
             return;
         }
-        if (!deliveryService.applyMail(target, plan)) {
+        // An in-memory marker accompanies any unexpected partial mutation into native playerdata.
+        String partialMarker="P/"+record.id();
+        if(paid)addReceipt(target,new KitReceipts.Unknown(partialMarker));
+        boolean applied;
+        try{applied=deliveryService.applyMail(target,plan);}catch(RuntimeException error){
+            try{target.saveData();}catch(RuntimeException ignored){}
+            inFlight.remove(record.id());quarantine(target,"Kit apply failed with unknown partial effects "+record.id(),error);return;
+        }
+        if (!applied) {
+            if(paid)removeReceipt(target,r->r instanceof KitReceipts.Unknown unknown&&unknown.raw().equals(partialMarker));
             release(target, record.id(), record.claimToken());
             send(actor, Messages.KIT_FAILED);
             return;
         }
+        // REFUSE partial kits. If an unexpected provider/plugin changes the applied result, retain
+        // the hold and quarantine; neither a charge nor a timeout refund can prove completion.
+        if(paid&&!java.util.Arrays.equals(plan.after(),target.getInventory().getStorageContents())){
+            try{target.saveData();}catch(RuntimeException ignored){}
+            inFlight.remove(record.id());quarantine(target,"Kit inventory effects differ from the complete plan "+record.id(),null);return;
+        }
+        if(paid)removeReceipt(target,r->r instanceof KitReceipts.Unknown unknown&&unknown.raw().equals(partialMarker));
         addReceipt(target, new KitReceipts.Claimed(record.id(), record.claimToken(), record.kitName()));
         try {
             target.saveData();
@@ -546,8 +601,7 @@ public final class KitService implements Listener {
             try {
                 PlayerDataReceiptProof.verify(playerFile, PlayerDataReceiptProof.KIT_RECEIPTS, expectedReceipt);
                 failIfArmed();
-                boolean finished = repository.finishClaim(
-                        record.id(), record.claimToken(), serverId, System.currentTimeMillis());
+                boolean finished = finishClaim(record.id(),record.claimToken(),System.currentTimeMillis(),playerFile,expectedReceipt);
                 onServer(() -> {
                     finishInFlight(target, record.id());
                     if (!same(target) || generation(target.getUniqueId()) != generation) return;
@@ -577,9 +631,10 @@ public final class KitService implements Listener {
     }
 
     private void release(Player target, UUID deliveryId, UUID token) {
+        Path proofFile=playerFile(target);String proofReceipt=playerReceipt(target);
         submitCritical(target, deliveryId, () -> {
             try {
-                repository.releaseClaim(deliveryId, token, serverId);
+                releaseClaim(deliveryId,token,proofFile,proofReceipt);
                 onServer(() -> finishInFlight(target, deliveryId));
             } catch (SQLException e) {
                 onServer(() -> {
@@ -644,6 +699,7 @@ public final class KitService implements Listener {
                     PlayerDataReceiptProof.verify(savedFile, PlayerDataReceiptProof.KIT_RECEIPTS, expectedReceipt);
                 }
                 List<KitDeliveryRecord> claiming = repository.claimingFor(player.getUniqueId(), serverId);
+                if(receipts.isEmpty())for(var row:claiming)if(repository.paid(row.id()))PaidWorkflowSupport.prove(savedFile,PlayerDataReceiptProof.KIT_RECEIPTS,expectedReceipt);
                 onServer(() -> recover(player, generation, receipts, claiming));
             } catch (IOException e) {
                 onServer(() -> {
@@ -664,6 +720,7 @@ public final class KitService implements Listener {
             locks.unlock(player);
             return; // Wait for the previous connection's in-flight callback to settle.
         }
+        Path recoveryFile=playerFile(player);
         List<RecoveryStep> steps = new ArrayList<>();
         for (KitReceipts.Entry entry : receipts) {
             if (entry instanceof KitReceipts.Claimed receipt) {
@@ -679,7 +736,7 @@ public final class KitService implements Listener {
                     });
                 } else {
                     steps.add(() -> {
-                        if (!repository.finishClaim(receipt.deliveryId(), receipt.token(), serverId, System.currentTimeMillis())) {
+                        if (!finishClaim(receipt.deliveryId(),receipt.token(),System.currentTimeMillis(),recoveryFile,KitReceipts.format(receipts))) {
                             throw new SQLException("kit claim ownership changed " + receipt.token());
                         }
                     });
@@ -690,7 +747,7 @@ public final class KitService implements Listener {
             boolean hasReceipt = receipts.stream().anyMatch(r -> r instanceof KitReceipts.Claimed c
                     && c.deliveryId().equals(row.id()) && c.token().equals(row.claimToken()));
             if (!hasReceipt) {
-                steps.add(() -> repository.releaseClaim(row.id(), row.claimToken(), serverId));
+                steps.add(() -> releaseClaim(row.id(),row.claimToken(),recoveryFile,KitReceipts.format(receipts)));
             }
         }
         submitRecovery(player, generation, () -> {

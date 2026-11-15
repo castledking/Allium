@@ -27,8 +27,14 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     public EconomyRuntime(PluginStart plugin)throws SQLException {
         this.plugin=plugin;
         engine=new EconomyEngine(plugin.getDatabaseManager().connectionSource(),readSettings(plugin),this::permits,(c,id)->{
+            boolean capture=false;
+            if(codes.castled.allium.core.FaultInjection.armed("economy.capture.halt-before")>0||codes.castled.allium.core.FaultInjection.armed("economy.capture.halt-after")>0){
+                try(var s=c.prepareStatement("SELECT kind FROM allium_economy_operations WHERE operation_id=?")){s.setString(1,id.toString());try(var r=s.executeQuery()){capture=r.next()&&(r.getString(1).equals("CAPTURE")||r.getString(1).equals("SPEND"));}}
+            }
+            if(capture&&codes.castled.allium.core.FaultInjection.trip("economy.capture.halt-before"))Runtime.getRuntime().halt(77);
             if(codes.castled.allium.core.FaultInjection.trip("economy.halt-before-commit"))Runtime.getRuntime().halt(77);
             try(var statement=c.createStatement()){statement.execute("COMMIT");}
+            if(capture&&codes.castled.allium.core.FaultInjection.trip("economy.capture.halt-after"))Runtime.getRuntime().halt(78);
             if(codes.castled.allium.core.FaultInjection.trip("economy.halt-after-commit"))Runtime.getRuntime().halt(78);
             if(codes.castled.allium.core.FaultInjection.trip("economy.commit-unknown"))throw new SQLException("fault injection: committed acknowledgement discarded");
         },VaultMoney::validate);
@@ -37,6 +43,11 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         var messaging=messaging();if(messaging!=null)messaging.ignores().repository().coordinateWritesWith(engine.coordinator());
     }
     public EconomyEngine engine(){return engine;}
+    public EconomyReservations reservations(){return engine.reservations(this::synchronousWorkflow);}
+    private Mutation synchronousWorkflow(EconomyRequest request,EconomyEngine.WorkflowTransition transition){
+        if(!admit())return new Unavailable("economy admission is closed");
+        try{return engine.execute(request,transition);}finally{accepted.arriveAndDeregister();}
+    }
     public boolean ready(){return !closed&&engine.ready();}
     public Mutation synchronous(EconomyRequest request){
         if(!admit())return new Unavailable("economy admission is closed");

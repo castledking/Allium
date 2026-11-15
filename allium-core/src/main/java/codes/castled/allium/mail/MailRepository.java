@@ -45,7 +45,8 @@ public final class MailRepository {
     public enum SendResult {
         SAVED,
         MAILBOX_FULL,
-        RATE_LIMITED
+        RATE_LIMITED,
+        COST_REFUSED
     }
 
     private final ConnectionSource connections;
@@ -101,6 +102,8 @@ public final class MailRepository {
     public int migrate() throws SQLException {
         return new SchemaMigrator(connections, dialect, clock).migrate(COMPONENT, migrations());
     }
+
+    public boolean paid(UUID id)throws SQLException {return codes.castled.allium.economy.EconomyReservations.paid(connections,dialect,codes.castled.allium.economy.EconomyReservations.Kind.MAIL,id);}
 
     @FunctionalInterface
     private interface Work<T> {
@@ -169,7 +172,13 @@ public final class MailRepository {
      */
     public SendResult send(MailRecord mail, MailLimits limits, boolean bypassLimits) throws SQLException {
         long now = mail.createdAt();
-        return transaction(c -> {
+        return transaction(c -> send(c,mail,limits,bypassLimits));
+    }
+
+    /** Joins an existing transaction; never borrows, commits or changes autocommit. */
+    public SendResult send(Connection c, MailRecord mail, MailLimits limits, boolean bypassLimits) throws SQLException {
+        long now=mail.createdAt();
+
             TreeSet<String> locks = new TreeSet<>();
             locks.add(mail.recipient().toString());
             if (mail.sender() != null) {
@@ -200,8 +209,9 @@ public final class MailRepository {
                         mail.id().toString(), mail.sender().toString(), now);
             }
             return SendResult.SAVED;
-        });
+
     }
+
 
     /** Takes the row lock of one player's mailbox (creating the row first). */
     private void lockBox(Connection c, String uuid) throws SQLException {
@@ -238,25 +248,37 @@ public final class MailRepository {
 
     /** PENDING to READY: the gift's items durably left the sender. False when it was not PENDING. */
     public boolean activate(UUID mail) throws SQLException {
-        return transaction(c -> {
+        return transaction(c -> activate(c,mail));
+    }
+
+    /** Joins an existing transaction; never borrows, commits or changes autocommit. */
+    public boolean activate(Connection c, UUID mail) throws SQLException {
+
             if (count(c, "SELECT COUNT(*) FROM allium_mail_activations WHERE id = ?", mail.toString()) > 0) return true;
             if (update(c, "UPDATE allium_mail SET state = 'READY', version = version + 1 WHERE id = ? AND state = 'PENDING'",
                     mail.toString()) != 1) return false;
             update(c, "INSERT INTO allium_mail_activations (id) VALUES (?)", mail.toString());
             return true;
-        });
+
     }
+
 
     /** Deletes a PENDING gift whose items never left the sender, and refunds its rate-limit slot. */
     public boolean cancelPending(UUID mail) throws SQLException {
-        return transaction(c -> {
+        return transaction(c -> cancelPending(c,mail));
+    }
+
+    /** Joins an existing transaction; never borrows, commits or changes autocommit. */
+    public boolean cancelPending(Connection c, UUID mail) throws SQLException {
+
             int n = update(c, "DELETE FROM allium_mail WHERE id = ? AND state = 'PENDING'", mail.toString());
             if (n == 1) {
                 update(c, "DELETE FROM allium_mail_sends WHERE id = ?", mail.toString());
             }
             return n == 1;
-        });
+
     }
+
 
     public Optional<MailRecord> find(UUID mail) throws SQLException {
         return plain(c -> query(c, "SELECT * FROM allium_mail WHERE id = ?", mail.toString())).stream().findFirst();

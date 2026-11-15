@@ -45,3 +45,7 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
 - Fixed gamemode aliases: **+8**, 722 → 730; each shortcut verifies denied base
   permission, self selection, denied others, namespaced target selection and
   disabled-family enforcement. Existing command and completion policies are reused.
+
+- Importer inventory/design: **+0**, 730 unchanged; source-backed mappings,
+  explicit unsupported/proposed destinations, dry-run/idempotency/backup/rollback
+  and frozen-format list. No importer implementation or data mutation.

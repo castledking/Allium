@@ -108,18 +108,21 @@ public final class TravelService implements Listener {
         String rendered=String.join(", ",names.stream().limit(1000).toList())+(names.size()>1000?" (first 1000 of "+names.size()+")":"");
         send(p,warp?Messages.WARP_LIST:Messages.HOME_LIST,"{warps}",rendered,"{homes}",rendered);
     }
-    public void use(Player p,String raw,boolean warp) {
+    public void use(Player p,String raw,boolean warp) {use(p,raw,warp,false);}
+    /** Public access is frozen only in a server-owned sign whose creator has the extra permission. */
+    public void useSign(Player p,String raw,boolean publicAccess){use(p,raw,true,publicAccess);}
+    private void use(Player p,String raw,boolean warp,boolean publicAccess) {
         if(!permission(p,warp?"warp":"home"))return;
         String name=name(p,raw);if(name==null)return;
         Session s=session(p);if(s==null||!admit(s))return;
         if(warp&&!warpsLoaded){s.busy=false;send(p,Messages.TRAVEL_LOADING);return;}
-        if(warp&&!access(p,name)){s.busy=false;notFound(p,name,true);return;}
+        if(warp&&!publicAccess&&!access(p,name)){s.busy=false;notFound(p,name,true);return;}
         readEntry(s,name,warp,found->{
             if(found.isEmpty()){forget(s,name,warp);notFound(p,name,warp);return;}
             StoredDestination entry=found.get();remember(s,entry,warp);
-            if(warp&&!access(p,name)){notFound(p,name,true);return;}
+            if(warp&&!publicAccess&&!access(p,name)){notFound(p,name,true);return;}
             teleports.teleport(p,()->location(entry.location()),warp?"warp":"home",()->same(s)&&s.loaded
-                    &&(!warp||warpsLoaded&&access(p,name))&&Objects.equals((warp?warpRevisions:s.revisions).get(name),entry.revision())
+                    &&(!warp||warpsLoaded&&(publicAccess||access(p,name)))&&Objects.equals((warp?warpRevisions:s.revisions).get(name),entry.revision())
                     &&Objects.equals((warp?warps:s.homes).get(name),entry.location()));
         });
     }

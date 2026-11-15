@@ -21,6 +21,8 @@ public final class EssentialsModule extends AbstractModule {
 
     @Override
     public void onEnable() {
+        for(var spec:codes.castled.allium.command.spec.CoreCommandSpecs.UTILITY_SPECS)
+            plugin.getCommandManager().register(new codes.castled.allium.command.essentials.UtilityCommand(plugin,spec));
         plugin.getCommandManager().register(new HealCommand(plugin));
         plugin.getCommandManager().register(new FeedCommand(plugin));
         plugin.getCommandManager().register(new FlyCommand(plugin));

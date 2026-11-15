@@ -334,3 +334,8 @@ info:
     kick-after-seconds: 600
     broadcast: true
     ignore-sleep: true
+
+# Opt-in sign types: color, warp, kit, balance, heal, repair, disposal, workbench, anvil, mail, info.
+# Legacy colour is accepted as color. One shared click limit across all types.
+enabledSigns: []
+sign-use-per-second: 4

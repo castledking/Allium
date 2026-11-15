@@ -46,6 +46,16 @@ client.on('end', reason => { console.log('BASEG-WIRE END ' + reason); process.ex
 let tabId = 0;
 require('node:readline').createInterface({input: process.stdin}).on('line', line => {
   const text = line.replace(/\r?\n$/, '');
+  if(text.startsWith('signuse ')){
+    const [x,y,z,hand=0]=text.slice(8).split(/\s+/).map(Number);
+    client.write('block_place',{hand,location:{x,y,z},direction:3,cursorX:.5,cursorY:.5,cursorZ:.5,insideBlock:false,sequence:0});console.log('SIGN-SENT use');
+  }
+  if(text.startsWith('signedit ')){
+    const data=JSON.parse(text.slice(9));client.write('update_sign',{location:data.location,isFrontText:data.front,text1:data.lines[0],text2:data.lines[1],text3:data.lines[2],text4:data.lines[3]});console.log('SIGN-SENT edit');
+  }
+  if(text.startsWith('signbreak ')){
+    const [x,y,z]=text.slice(10).split(/\s+/).map(Number);client.write('block_dig',{status:0,location:{x,y,z},face:3,sequence:0});console.log('SIGN-SENT break');
+  }
   if (text.trim() === 'stop') { client.end('gate finished'); return; }
   if (text.startsWith('cmd ')) { (client.chat || client._signedChat)('/' + text.slice(4)); console.log('BASEG-WIRE SENT /' + text.slice(4)); }
   if (text.startsWith('say ')) { (client.chat || client._signedChat)(text.slice(4)); console.log('BASEG-WIRE SAY ' + text.slice(4)); }

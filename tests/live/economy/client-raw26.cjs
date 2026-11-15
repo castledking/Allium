@@ -105,6 +105,17 @@ socket.on('close', () => { console.log('BASEG-WIRE END'); process.exit(process.e
 let tabId = 0;
 require('node:readline').createInterface({input: process.stdin}).on('line', line => {
   const text = line.replace(/\r?\n$/, '');
+  function blockPosition(x,y,z){const b=Buffer.alloc(8);b.writeBigUInt64BE((BigInt(x)&0x3ffffffn)<<38n|(BigInt(z)&0x3ffffffn)<<12n|(BigInt(y)&0xfffn));return b;}
+  if(text.startsWith('signuse ')){
+    const [x,y,z,hand=0]=text.slice(8).split(/\s+/).map(Number);const hit=Buffer.alloc(12);hit.writeFloatBE(.5,0);hit.writeFloatBE(.5,4);hit.writeFloatBE(.5,8);
+    game('use_item_on',Buffer.concat([vi(hand),blockPosition(x,y,z),vi(3),hit,Buffer.from([0,0]),vi(0)]));game('client_tick_end');console.log('SIGN-SENT use');
+  }
+  if(text.startsWith('signedit ')){
+    const data=JSON.parse(text.slice(9));game('sign_update',Buffer.concat([blockPosition(data.location.x,data.location.y,data.location.z),...data.lines.map(str),vi(data.front?1:0)]));game('client_tick_end');console.log('SIGN-SENT edit');
+  }
+  if(text.startsWith('signbreak ')){
+    const [x,y,z]=text.slice(10).split(/\s+/).map(Number);game('player_action',Buffer.concat([vi(0),blockPosition(x,y,z),Buffer.from([3]),vi(0)]));game('client_tick_end');console.log('SIGN-SENT break');
+  }
   if (text.trim() === 'stop') { stopping = true; socket.end(); return; }
   if (!ready) return;
   if (text.startsWith('cmd ')) { game('chat_command', str(text.slice(4))); game('client_tick_end'); console.log('BASEG-WIRE SENT /' + text.slice(4)); }

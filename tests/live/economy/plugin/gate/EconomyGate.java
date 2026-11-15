@@ -15,6 +15,18 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.nio.file.*;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
+import org.bukkit.*;
+import org.bukkit.block.*;
+import org.bukkit.block.data.Rotatable;
+import org.bukkit.block.sign.Side;
+import org.bukkit.entity.Player;
+import org.bukkit.event.*;
+import org.bukkit.event.block.*;
+import org.bukkit.event.player.*;
+import org.bukkit.persistence.PersistentDataType;
+import java.util.*;
+
+
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -25,6 +37,7 @@ public final class EconomyGate extends JavaPlugin {
     private PluginStart allium;
     private EconomyRuntime runtime;
     private Economy vault;
+    private SignsGate signs;
     private final Map<UUID,PermissionAttachment> grants=new HashMap<>();
     private final ExecutorService background=Executors.newFixedThreadPool(5);
     private final AtomicBoolean load=new AtomicBoolean();
@@ -66,6 +79,7 @@ public final class EconomyGate extends JavaPlugin {
                     else out.putAll(response(action.equals("withdraw")?vault.withdrawPlayer(p,Double.parseDouble(args[3])):vault.depositPlayer(p,Double.parseDouble(args[3]))));
                     out.put("ms",(System.nanoTime()-start)/1e6);
                 }
+                case "signs" -> {if(signs==null)signs=new SignsGate(allium,this);out.putAll(signs.run(player(args[1]),Arrays.copyOfRange(args,2,args.length)));}
                 case "adminhold" -> {
                     UUID id=UUID.randomUUID(),payer=uuid(args[1]);
                     var repository=new MailRepository(allium.getDatabaseManager().connectionSource(),codes.castled.allium.storage.SqlDialect.SQLITE,System::currentTimeMillis);
@@ -295,5 +309,55 @@ public final class EconomyGate extends JavaPlugin {
             }
             return result;
         }
+    }
+}
+
+/** Disposable fixture: real blocks, editor and client packets; no SignService invocation. */
+final class SignsGate implements Listener {
+    private final PluginStart allium;
+    private final org.bukkit.plugin.Plugin host;
+    private boolean protectedUse,protectedBreak,protectedCreate;
+    private int extensions;
+    @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void pistonEvent(BlockPistonExtendEvent event){if(event.getBlock().getX()==319)extensions++;}
+    private final int x=320,y=65,z=320;
+    SignsGate(PluginStart allium,org.bukkit.plugin.Plugin host){this.allium=allium;this.host=host;host.getServer().getPluginManager().registerEvents(this,host);}
+    @EventHandler(priority=EventPriority.HIGHEST) public void use(PlayerInteractEvent event){if(protectedUse&&event.getClickedBlock()!=null&&event.getClickedBlock().getX()==x)event.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST) public void breaking(BlockBreakEvent event){if(protectedBreak&&event.getBlock().getX()==x)event.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST) public void change(SignChangeEvent event){if(protectedCreate&&event.getBlock().getX()==x)event.setCancelled(true);}
+    Map<String,Object> run(Player p,String[] args){
+        var world=p.getWorld();var block=world.getBlockAt(x,y,z);String action=args[0];
+        switch(action){
+            case "prepare"->{
+                world.setGameRule(GameRule.NATURAL_REGENERATION,false);p.setGameMode(GameMode.CREATIVE);p.closeInventory();
+                world.getBlockAt(x,y-1,z).setType(Material.STONE);world.getBlockAt(x,y+1,z).setType(Material.STONE);
+                block.setType(Material.AIR);
+                block.setType(args.length>1&&args[1].equals("hanging")?Material.OAK_HANGING_SIGN:Material.OAK_SIGN);
+                var data=block.getBlockData();if(data instanceof Rotatable r){r.setRotation(BlockFace.SOUTH);block.setBlockData(r);}
+                p.teleport(new Location(world,x+.5,y,z+2.5));
+            }
+            case "editor"->{Side side=Side.valueOf(args[1]);p.teleport(new Location(world,x+.5,y,side==Side.FRONT?z+2.5:z-1.5));p.openSign((Sign)block.getState(),side);}
+            case "wax"->{var sign=(Sign)block.getState();sign.setWaxed(Boolean.parseBoolean(args[1]));sign.update(false,false);}
+            case "protect"->{protectedCreate=Boolean.parseBoolean(args[1]);protectedUse=Boolean.parseBoolean(args[2]);protectedBreak=Boolean.parseBoolean(args[3]);}
+            case "breakready"->{p.getInventory().setItemInMainHand(new org.bukkit.inventory.ItemStack(Material.AIR));}
+            case "resetplayer"->{p.closeInventory();p.setHealth(10);p.getInventory().clear();var sword=new org.bukkit.inventory.ItemStack(Material.DIAMOND_SWORD);var meta=(org.bukkit.inventory.meta.Damageable)sword.getItemMeta();meta.setDamage(100);sword.setItemMeta(meta);p.getInventory().setItem(0,sword);}
+            case "away"->{for(var player:world.getPlayers())player.teleport(new Location(world,0,70,0));world.setKeepSpawnInMemory(false);}
+            case "unload"->{if(!world.unloadChunk(x>>4,z>>4,true))throw new IllegalStateException("chunk refused unload");world.getChunkAt(x>>4,z>>4).load();}
+            case "return"->p.teleport(new Location(world,x+.5,y,args.length>1&&args[1].equals("BACK")?z-1.5:z+2.5));
+            case "explode"->world.createExplosion(x+.5,y+.5,z+.5,6,false,true);
+            case "pistonoff"->world.getBlockAt(x-2,y-1,z).setType(Material.AIR);
+            case "piston"->{
+                // Move the support sideways, then retract the temporary supporting head.
+                world.getBlockAt(x+1,y-1,z).setType(Material.AIR);world.getBlockAt(x-1,y-1,z).setType(Material.PISTON);var data=(org.bukkit.block.data.Directional)world.getBlockAt(x-1,y-1,z).getBlockData();data.setFacing(BlockFace.EAST);world.getBlockAt(x-1,y-1,z).setBlockData(data);
+                world.getBlockAt(x,y-1,z).setType(Material.STONE);world.getBlockAt(x-2,y-1,z).setType(Material.REDSTONE_BLOCK);
+            }
+            case "state"->{}
+            default->throw new IllegalArgumentException("unknown signs fixture");
+        }
+        var out=new LinkedHashMap<String,Object>();out.put("x",x);out.put("y",y);out.put("z",z);out.put("material",block.getType().name());
+        out.put("px",p.getLocation().getX());out.put("pz",p.getLocation().getZ());out.put("health",p.getHealth());out.put("window",p.getOpenInventory().getType().name());
+        var item=p.getInventory().getItemInMainHand();out.put("damage",item.hasItemMeta()&&item.getItemMeta() instanceof org.bukkit.inventory.meta.Damageable d?d.getDamage():0);
+        out.put("extensions",extensions);out.put("piston",world.getBlockAt(x-1,y-1,z).getBlockData().getAsString());out.put("powered",world.getBlockAt(x-1,y-1,z).isBlockPowered());out.put("support",world.getBlockAt(x,y-1,z).getType().name());
+        if(block.getState() instanceof Sign sign)for(var side:Side.values())out.put(side.name(),Objects.toString(sign.getPersistentDataContainer().get(new NamespacedKey(allium,"sign_"+side.name().toLowerCase(Locale.ROOT)),PersistentDataType.STRING),""));
+        return out;
     }
 }

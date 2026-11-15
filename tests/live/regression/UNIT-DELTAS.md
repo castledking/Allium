@@ -29,3 +29,8 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
   zero failures/skips. Default-off/explicit-opt-in provider tests, offline saved
   receipt/absence/unknown/online/kit recovery, audited capture/release preserving
   workflow, and full native inspection. Spigot live evidence: economy/FOLLOWUPS.md.
+
+- S21 service signs: **+6**, 661 → 667; full check/shadowJar, zero failures/skips.
+  Three identity/shared-budget regressions and three utility metadata/admission/
+  visibility regressions. Real-client SQLite gates: Spigot 373/373, Paper 373/373
+  on one frozen jar and identical harness sources. See signs/RESULTS.md.

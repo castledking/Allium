@@ -35,6 +35,7 @@ P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash
 P.add_argument('--run-name', required=True)
 P.add_argument('--diagnostics',action='store_true',help='opt-in engine phase samples, GC log and PASSIVE checkpoint probe')
 P.add_argument('--paired-reads',action='store_true',help='run pooled then dedicated read-only ten-minute phases')
+P.add_argument('--followup-gates',action='store_true',help='operator resolution and realistic latency with background paid claims')
 P.add_argument('--paid-workflows',action='store_true',help='E5 reservations, native receipts, real client and crash gates')
 P.add_argument('--latency-only', action='store_true')
 P.add_argument('--stress-only',action='store_true',help='diagnostic stress workload, never a release gate')
@@ -420,6 +421,7 @@ class Lane:
         shutil.copy2(RUN/'helper/Vault.jar',self.path/'plugins/Vault.jar')
         with zipfile.ZipFile(JAR) as z:
             config = yaml.safe_load(z.read('config.yml'))
+        config.setdefault('economy',{})['vault-provider-enabled']=True # disposable measurement copy only
         for m in ['moderation', 'teleport']:
             config.setdefault('modules', {})[m] = True
         if A.paid_workflows:
@@ -891,6 +893,9 @@ def paid_crash(lane,kind,phase,exit_code):
         money=db.execute('SELECT balance_minor,reserved_minor FROM allium_economy_accounts WHERE account_uuid=?',(before['uuid'],)).fetchone()
         require(status==('CAPTURED' if phase=='after' else 'HELD') and tuple(money)==((1000-cost,0) if phase=='after' else (1000,cost)),lane.name+': stopped '+kind+' boundary is atomic',dict(state=status,money=money))
     lane.boot()
+    with sqlite3.connect('file:'+str(lane.path/'plugins/Allium/allium.db')+'?mode=ro',uri=True) as db:
+        offline=db.execute('SELECT state FROM allium_economy_reservations WHERE workflow_id=?',(workflow,)).fetchone()[0]
+        require(offline==('RELEASED' if phase=='absent' else 'CAPTURED'),lane.name+': '+kind+' '+phase+' recovered at startup before any player rejoins',offline)
     for name in ['MoneyA','MoneyB','MoneyObs']:lane.bot(name);amount(lane,name);paid_ready(lane,name)
     paid_permissions(lane)
     state=paid_ready(lane);current=next(r for r in state['reservations'] if r['id']==workflow)
@@ -907,6 +912,47 @@ def paid_crash(lane,kind,phase,exit_code):
     paid_invariant(lane)
 
 
+def operator_resolution(lane):
+    # MoneyObs remains offline for both explicit audited decisions; preserve its native file.
+    bot=lane.bots['MoneyObs'];bot.disconnect();del lane.bots['MoneyObs']
+    window(1)
+    for action in ['capture','release']:
+        row=lane.fixture('adminhold MoneyObs')
+        workflow=row['id']
+        lane.console('eco reservations MoneyObs')
+        lane.console('eco resolve MAIL '+workflow+' '+action+' gate operator evidence ticket-42')
+        def observed():
+            with sqlite3.connect('file:'+str(lane.path/'plugins/Allium/allium.db')+'?mode=ro',uri=True) as db:
+                state=db.execute('SELECT state FROM allium_economy_reservations WHERE workflow_id=?',(workflow,)).fetchone()[0]
+                audit=db.execute('SELECT actor,action,reason FROM allium_economy_reservation_audit WHERE workflow_id=?',(workflow,)).fetchone()
+                intent=db.execute('SELECT state FROM allium_mail WHERE id=?',(workflow,)).fetchone()
+                return (state,audit,intent) if audit else None
+        result=wait(observed,'audited operator resolution',15)
+        require(result[0]==('CAPTURED' if action=='capture' else 'RELEASED') and result[1]==('CONSOLE',action.upper(),'gate operator evidence ticket-42') and result[2]==('PENDING',),lane.name+': operator '+action+' preserves intent and records required reason',result)
+
+
+def paid_latency(lane):
+    set_balance(lane,'MoneyB','10000.00')
+    lane.fixture('seeditems MoneyB AIR 0')
+    stop=threading.Event();failures=[];rounds=[]
+    def claims():
+        try:
+            while not stop.is_set():
+                # A full paid service claim and durable recipient gift acknowledgement each round.
+                paid_ready(lane,'MoneyB')
+                lane.bots['MoneyB'].command('kit paid','Received kit')
+                paid_ready(lane,'MoneyB')
+                lane.bots['MoneyB'].command('mail gift MoneyA 1 benchmark-paid','Gift of 1 item(s) sent to MoneyA')
+                paid_ready(lane,'MoneyB')
+                rounds.append(time.time())
+                stop.wait(5)
+        except Exception as error:failures.append(str(error))
+    thread=threading.Thread(target=claims);thread.start()
+    try:realistic(lane)
+    finally:stop.set();thread.join(timeout=60)
+    require(not thread.is_alive() and not failures and len(rounds)>=90,lane.name+': realistic lane overlaps durable paid kit and gift claims',dict(rounds=len(rounds),errors=failures))
+
+
 try:
     build();lane=Lane(A.suite+'-economy',A.suite,25800 if A.suite=='spigot' else 25801)
     if A.paid_workflows:
@@ -917,6 +963,8 @@ try:
         for kind in ['KIT','MAIL']:
             for phase,code in [('before',77),('after',78),('absent',77)]:
                 case(lane.name+': '+kind+' capture '+phase,lambda k=kind,p=phase,c=code:paid_crash(lane,k,p,c))
+        if A.followup_gates:case(lane.name+': operator tooling',lambda:operator_resolution(lane))
+        if A.followup_gates:case(lane.name+': realistic Vault with paid background claims',lambda:paid_latency(lane))
     elif A.stress_only:
         case(lane.name+': stress setup',lambda:setup(lane))
         case(lane.name+': diagnostic stress, not release gate',lambda:benchmark(lane))

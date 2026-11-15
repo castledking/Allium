@@ -495,8 +495,8 @@ public final class KitService implements Listener {
         if(!definition.paid())return repository.beginClaim(record,System.currentTimeMillis());
         Money amount;try{amount=Money.parse(definition.cost(),false).positive();}catch(RuntimeException invalid){return new KitRepository.BeginOutcome.CostRefused();}
         var observed=new java.util.concurrent.atomic.AtomicReference<KitRepository.BeginOutcome>();
+        PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.KIT_RECEIPTS,baseline);
         Mutation result=PaidWorkflowSupport.reservations(plugin).reserve(EconomyReservations.Kind.KIT,record.id(),record.playerUuid(),amount,EconomyReservations.fingerprint(record.id().toString(),record.playerUuid().toString(),record.kitName(),record.claimToken().toString(),record.claimOwner(),record.itemsPayload(),Integer.toString(record.itemCount()),Long.toString(record.cooldownMillis()),Boolean.toString(record.oneTime()),Boolean.toString(record.bypassCooldown()),Long.toString(record.createdAt())),c->{
-            PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.KIT_RECEIPTS,baseline);
             var outcome=repository.beginClaim(c,record,System.currentTimeMillis());observed.set(outcome);
             return outcome instanceof KitRepository.BeginOutcome.Claiming claim&&claim.delivery().id().equals(record.id())&&claim.delivery().claimToken().equals(record.claimToken());
         });
@@ -506,19 +506,19 @@ public final class KitService implements Listener {
     }
     private boolean finishClaim(UUID id,UUID token,long now,Path file,String expected)throws SQLException {
         if(!repository.paid(id))return repository.finishClaim(id,token,serverId,now);
+        if(KitReceipts.parse(expected).stream().noneMatch(r->r instanceof KitReceipts.Claimed receipt&&receipt.deliveryId().equals(id)&&receipt.token().equals(token)))throw new SQLException("missing matching kit receipt");
+        PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.KIT_RECEIPTS,expected);
+        if(PaidWorkflowSupport.reservations(plugin).operatorResolved(EconomyReservations.Kind.KIT,id))throw new SQLException("operator-resolved workflow remains quarantined");
         return PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin).capture(EconomyReservations.Kind.KIT,id,c->{
-            if(KitReceipts.parse(expected).stream().noneMatch(r->r instanceof KitReceipts.Claimed receipt&&receipt.deliveryId().equals(id)&&receipt.token().equals(token)))throw new SQLException("missing matching kit receipt");
-            PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.KIT_RECEIPTS,expected);
             return repository.finishClaim(c,id,token,serverId,now);
         }));
     }
     private boolean releaseClaim(UUID id,UUID token,Path file,String expected)throws SQLException {
         if(!repository.paid(id))return repository.releaseClaim(id,token,serverId);
+        if(KitReceipts.parse(expected).stream().anyMatch(r->r instanceof KitReceipts.Claimed receipt&&receipt.deliveryId().equals(id)))throw new SQLException("cannot release a kit with a delivery receipt");
+        PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.KIT_RECEIPTS,expected);
+        if(PaidWorkflowSupport.reservations(plugin).operatorResolved(EconomyReservations.Kind.KIT,id))throw new SQLException("operator-resolved workflow remains quarantined");
         return PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin).release(EconomyReservations.Kind.KIT,id,c->{
-            {
-                if(KitReceipts.parse(expected).stream().anyMatch(r->r instanceof KitReceipts.Claimed receipt&&receipt.deliveryId().equals(id)))throw new SQLException("cannot release a kit with a delivery receipt");
-                PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.KIT_RECEIPTS,expected);
-            }
             return repository.releaseClaim(c,id,token,serverId);
         }));
     }

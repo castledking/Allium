@@ -60,6 +60,15 @@ public final class PlayerDataReceiptProof {
         }
     }
 
+    /** Returns the receipt (or null), only after validating the complete NBT/GZIP snapshot. */
+    public static String read(Path file,String key)throws IOException {
+        if(key==null||key.isEmpty())throw new IOException("receipt key required");
+        try(InputStream raw=Files.newInputStream(file);InputStream gzip=new GZIPInputStream(new BufferedInputStream(raw));
+            LimitedInputStream limited=new LimitedInputStream(gzip);DataInputStream input=new DataInputStream(limited)){
+            Reader reader=new Reader(input,limited,key,null);reader.inspect=true;reader.verify();return reader.actualReceipt;
+        }
+    }
+
     private enum Location { ROOT, BUKKIT_VALUES, OTHER }
 
     private static final class Reader {
@@ -68,6 +77,8 @@ public final class PlayerDataReceiptProof {
         private final String receiptKey;
         private final String expected;
         private final byte[] scratch = new byte[8192];
+        private boolean inspect;
+        private String actualReceipt;
         private boolean foundBukkitValues;
         private boolean foundReceipt;
 
@@ -113,9 +124,11 @@ public final class PlayerDataReceiptProof {
                         throw new IOException("Invalid or duplicate player data receipt");
                     }
                     String actual = input.readUTF();
-                    if (expected==null || actual.isEmpty() || !expected.equals(actual)) {
+                    if (!inspect && (expected==null || actual.isEmpty() || !expected.equals(actual))) {
                         throw new IOException("Player data receipt does not match the saved receipt");
                     }
+                    if(inspect&&actual.isBlank())throw new IOException("Empty native receipt is ambiguous");
+                    actualReceipt=actual;
                     foundReceipt = true;
                 } else {
                     payload(type, depth);

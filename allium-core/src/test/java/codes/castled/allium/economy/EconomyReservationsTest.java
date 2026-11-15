@@ -123,4 +123,40 @@ class EconomyReservationsTest {
         var old=engine.settings();engine.installSettings(new EconomySettings(old.starting(),old.minimum(),old.maximum(),new Money(2),old.offlinePay(),old.excludesIgnore(),old.defaultAcceptance()));
         assertTrue(((Committed)holds.capture(MAIL,id,c->{fail("frozen replay");return false;})).replay());assertEquals(9700,balance().book().minor());invariant();
     }
+    void snapshot(String key,String value)throws Exception{
+        try(var out=new java.io.DataOutputStream(new java.util.zip.GZIPOutputStream(java.nio.file.Files.newOutputStream(path.resolve(payer+".dat"))))){
+            out.writeByte(10);out.writeUTF("");out.writeByte(10);out.writeUTF("BukkitValues");
+            if(value!=null){out.writeByte(8);out.writeUTF(key);out.writeUTF(value);}out.writeByte(0);out.writeByte(0);
+        }
+    }
+    void sweep()throws Exception{EconomyRecovery.sweep(source,holds,path,id->false,s->{});}
+    @Test void offlineStartupCapturesSavedSenderReceiptExactlyOnce()throws Exception{
+        UUID id=UUID.randomUUID();reserve(id,300);snapshot(PlayerDataReceiptProof.MAIL_RECEIPTS,"S/"+id);sweep();sweep();
+        assertEquals("CAPTURED",holds.find(MAIL,id).orElseThrow().state());assertEquals(MailState.READY,mail.find(id).orElseThrow().state());assertEquals(9700,balance().book().minor());invariant();
+    }
+    @Test void offlineStartupReleasesOnlyValidAbsence()throws Exception{
+        UUID id=UUID.randomUUID();reserve(id,300);sweep();assertEquals("HELD",holds.find(MAIL,id).orElseThrow().state());
+        snapshot(PlayerDataReceiptProof.MAIL_RECEIPTS,null);sweep();assertEquals("RELEASED",holds.find(MAIL,id).orElseThrow().state());assertEquals(10000,balance().book().minor());invariant();
+    }
+    @Test void offlineStartupRetainsUnknownAndSkipsOnlinePlayers()throws Exception{
+        UUID id=UUID.randomUUID();reserve(id,300);snapshot(PlayerDataReceiptProof.MAIL_RECEIPTS,"P/"+id);sweep();assertEquals("HELD",holds.find(MAIL,id).orElseThrow().state());
+        snapshot(PlayerDataReceiptProof.MAIL_RECEIPTS,"S/"+id);EconomyRecovery.sweep(source,holds,path,p->true,s->fail(s));assertEquals("HELD",holds.find(MAIL,id).orElseThrow().state());
+    }
+    @Test void offlineStartupFinishesKitWithMatchingTokenAndUsage()throws Exception{
+        UUID id=UUID.randomUUID(),token=UUID.randomUUID();var d=new KitDeliveryRecord(id,payer,"paid",token,"server","minecraft:diamond 1",1,60000,true,false,System.currentTimeMillis());
+        holds.reserve(KIT,id,payer,new Money(250),c->kits.beginClaim(c,d,System.currentTimeMillis()) instanceof KitRepository.BeginOutcome.Claiming);
+        snapshot(PlayerDataReceiptProof.KIT_RECEIPTS,"K/"+id+"/"+token+"/paid");sweep();sweep();
+        assertTrue(kits.claimAcknowledged(id,token));assertEquals(9750,balance().book().minor());assertEquals(1,kits.usage(payer,"paid").orElseThrow().claimCount());invariant();
+    }
+    @Test void operatorReleaseRequiresReasonAndPreservesWorkflowAndAudit()throws Exception{
+        UUID id=UUID.randomUUID();reserve(id,300);assertThrows(IllegalArgumentException.class,()->holds.resolve(MAIL,id,false,"CONSOLE"," "));
+        assertInstanceOf(Committed.class,holds.resolve(MAIL,id,false,"CONSOLE","inventory reconciled ticket 42"));
+        assertTrue(holds.operatorResolved(MAIL,id));assertTrue(mail.find(id).isPresent());assertEquals(1,count("allium_economy_reservation_audit"));
+        assertInstanceOf(Rejected.class,holds.resolve(MAIL,id,true,"CONSOLE","changed mind"));assertEquals(10000,balance().book().minor());invariant();
+    }
+    @Test void operatorCapturePreservesWorkflowAndDebitsOnce()throws Exception{
+        UUID id=UUID.randomUUID();reserve(id,300);assertInstanceOf(Committed.class,holds.resolve(MAIL,id,true,"CONSOLE","confirmed delivery"));
+        assertTrue(mail.find(id).isPresent());assertEquals("CAPTURED",holds.find(MAIL,id).orElseThrow().state());assertEquals(9700,balance().book().minor());assertEquals(1,count("allium_economy_reservation_audit"));invariant();
+    }
+
 }

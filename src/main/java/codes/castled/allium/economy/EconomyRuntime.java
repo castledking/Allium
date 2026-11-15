@@ -38,6 +38,9 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             if(codes.castled.allium.core.FaultInjection.trip("economy.halt-after-commit"))Runtime.getRuntime().halt(78);
             if(codes.castled.allium.core.FaultInjection.trip("economy.commit-unknown"))throw new SQLException("fault injection: committed acknowledgement discarded");
         },VaultMoney::validate);
+        EconomyRecovery.sweep(plugin.getDatabaseManager().connectionSource(),engine.reservations(),
+                codes.castled.allium.mail.PlayerDataFiles.directory(plugin.getServer()),
+                id->plugin.getServer().getPlayer(id)!=null,message->plugin.logger().warning(message));
         worker=plugin.getScheduler().boundedPool("Allium-Economy",1,256);
         var preferences=preferences();if(preferences!=null)preferences.repository().coordinateWritesWith(engine.coordinator());
         var messaging=messaging();if(messaging!=null)messaging.ignores().repository().coordinateWritesWith(engine.coordinator());
@@ -92,7 +95,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     private static String refusal(){return "That player can't receive payments right now.";}
     public void dispatch(CommandSender sender,String action,String[] args){
         if(closed||reloading){tell(sender,"Economy is unavailable.");return;}
-        if(!sender.hasPermission("allium."+action)){tell(sender,"You do not have permission.");return;}
+        if(!sender.hasPermission("allium."+action)&&!(action.equals("eco")&&(!(sender instanceof Player)||sender.hasPermission("allium.eco.admin")))){tell(sender,"You do not have permission.");return;}
         try{
             switch(action){
                 case "pay" -> pay(sender,args);
@@ -169,6 +172,9 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         else{if(!(sender instanceof Player p))throw new IllegalArgumentException("target required");change.accept(p.getUniqueId());}
     }
     private void admin(CommandSender sender,String[] args){
+        if(args.length>0&&(args[0].equalsIgnoreCase("reservations")||args[0].equalsIgnoreCase("resolve"))){
+            reservationAdmin(sender,args);return;
+        }
         if(args.length<2||args.length>3)throw new IllegalArgumentException("/eco <open|give|take|set> <player> [amount]");
         EconomyRequest.Kind kind=switch(args[0].toLowerCase(Locale.ROOT)){case "open"->EconomyRequest.Kind.OPEN;case "give"->EconomyRequest.Kind.DEPOSIT;case "take"->EconomyRequest.Kind.WITHDRAW;case "set"->EconomyRequest.Kind.ADMIN_SET;default->throw new IllegalArgumentException("admin action");};
         if(kind==EconomyRequest.Kind.OPEN&&args.length!=2||kind!=EconomyRequest.Kind.OPEN&&args.length!=3)throw new IllegalArgumentException("amount");
@@ -176,6 +182,25 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         if(kind!=EconomyRequest.Kind.OPEN&&kind!=EconomyRequest.Kind.ADMIN_SET)amount.positive();
         String actor=sender instanceof Player p?p.getUniqueId().toString():"CONSOLE";
         resolve(sender,args[1],id->{var request=engine.request(UUID.randomUUID(),"ADMIN",UUID.randomUUID().toString(),kind,actor,id,null,amount);submit(sender,()->receipt(sender,engine.execute(request),false));});
+    }
+    private void reservationAdmin(CommandSender sender,String[] args){
+        if(sender instanceof Player&&!sender.hasPermission("allium.eco.admin")){tell(sender,"You do not have permission.");return;}
+        if(args[0].equalsIgnoreCase("reservations")){
+            if(args.length>2)throw new IllegalArgumentException("reservations [player]");
+            java.util.function.Consumer<UUID> list=id->submit(sender,()->{try{
+                var rows=reservations().list(id);if(rows.isEmpty())tell(sender,"No reservations.");
+                for(var row:rows)tell(sender,row.kind()+" "+row.id()+" payer="+row.account()+" amount="+row.amount()+" state="+row.state());
+            }catch(SQLException error){tell(sender,"Reservation storage unavailable.");}});
+            if(args.length==2)resolve(sender,args[1],list);else list.accept(null);return;
+        }
+        if(args.length<5)throw new IllegalArgumentException("resolve <KIT|MAIL> <workflow UUID> <capture|release> <reason>");
+        var kind=EconomyReservations.Kind.valueOf(args[1].toUpperCase(Locale.ROOT));var id=UUID.fromString(args[2]);
+        boolean capture=args[3].equalsIgnoreCase("capture");if(!capture&&!args[3].equalsIgnoreCase("release"))throw new IllegalArgumentException("capture or release required");
+        String reason=String.join(" ",Arrays.copyOfRange(args,4,args.length));String actor=sender instanceof Player p?p.getUniqueId().toString():"CONSOLE";
+        try{var row=reservations().find(kind,id);if(row.isPresent()&&plugin.getServer().getPlayer(row.get().account())!=null){tell(sender,"Disconnect the payer before resolving a reservation; preserve their saved inventory first.");return;}}
+        catch(SQLException error){tell(sender,"Reservation storage unavailable.");return;}
+        submit(sender,()->{try{receipt(sender,reservations().resolve(kind,id,capture,actor,reason),false);tell(sender,"Native marker and workflow retained; inventory reconciliation remains an operator task.");}
+            catch(SQLException error){tell(sender,"Reservation resolution unavailable.");}});
     }
     private void top(CommandSender sender,String[] args){
         if(args.length!=0)throw new IllegalArgumentException("baltop");

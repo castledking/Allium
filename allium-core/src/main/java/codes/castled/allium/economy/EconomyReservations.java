@@ -39,6 +39,30 @@ public final class EconomyReservations {
         var row=find(kind,id);if(row.isEmpty())return new Rejected(operation(kind,id,step),"MISSING_RESERVATION");
         return execute(kind,id,row.get().account(),row.get().amount(),row.get().intentHash(),step,transition);
     }
+    public boolean operatorResolved(Kind kind,UUID id)throws SQLException {
+        try(var c=connections.connection();var s=c.prepareStatement("SELECT 1 FROM allium_economy_reservation_audit WHERE workflow_kind=? AND workflow_id=?")){
+            s.setString(1,kind.name());s.setString(2,id.toString());try(var r=s.executeQuery()){return r.next();}
+        }
+    }
+    /** Bounded operator view, including terminal reservations. */
+    public List<Reservation> list(UUID account)throws SQLException {
+        var out=new ArrayList<Reservation>();
+        try(var c=connections.connection();var s=c.prepareStatement("SELECT workflow_kind,workflow_id FROM "+EconomySchema.RESERVATIONS+(account==null?"":" WHERE account_uuid=?")+" ORDER BY created_at DESC,workflow_kind,workflow_id LIMIT 100")){
+            if(account!=null)s.setString(1,account.toString());
+            try(var r=s.executeQuery()){while(r.next())out.add(find(c,Kind.valueOf(r.getString(1)),UUID.fromString(r.getString(2))).orElseThrow());}
+        }return List.copyOf(out);
+    }
+    /** Explicit operator decision settles only money; native markers and workflow remain quarantined. */
+    public Mutation resolve(Kind kind,UUID id,boolean capture,String actor,String reason)throws SQLException {
+        if(actor==null||actor.isBlank()||reason==null||reason.isBlank()||reason.length()>1000)throw new IllegalArgumentException("actor and reason required (max 1000 characters)");
+        var row=find(kind,id);if(row.isEmpty()||!row.get().state().equals("HELD"))return new Rejected(operation(kind,id,capture?EconomyRequest.Kind.CAPTURE:EconomyRequest.Kind.RELEASE),"NOT_HELD");
+        EconomyEngine.WorkflowTransition audit=c->{
+            try(var s=c.prepareStatement("INSERT INTO allium_economy_reservation_audit VALUES(?,?,?,?,?,?)")){
+                s.setString(1,kind.name());s.setString(2,id.toString());s.setString(3,actor);s.setString(4,capture?"CAPTURE":"RELEASE");s.setString(5,reason);s.setLong(6,System.currentTimeMillis());return s.executeUpdate()==1;
+            }
+        };
+        return capture?capture(kind,id,audit):release(kind,id,audit);
+    }
     public Optional<Reservation> find(Kind kind,UUID id)throws SQLException{try(var c=connections.connection()){return find(c,kind,id);}}
     static Optional<Reservation> find(Connection c,Kind kind,UUID id)throws SQLException{
         try(var s=c.prepareStatement("SELECT account_uuid,amount_minor,intent_hash,state,version FROM "+EconomySchema.RESERVATIONS+" WHERE workflow_kind=? AND workflow_id=?")){

@@ -34,3 +34,6 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
   Three identity/shared-budget regressions and three utility metadata/admission/
   visibility regressions. Real-client SQLite gates: Spigot 373/373, Paper 373/373
   on one frozen jar and identical harness sources. See signs/RESULTS.md.
+
+- S22 shop-sign design only: **+0**, 667 unchanged. Documentation only; no shop
+  code, schema migration, provider enablement or deployment. See docs/shop-signs-design.md.

@@ -198,6 +198,10 @@ player-names:
 # /mail. Limits are read at the start of each send, so /allium reload applies them to the next
 # send and never to one already in progress.
 mail:
+  # Exact per-send prices; free by default. Gifts hold funds until native sender proof is saved.
+  costs:
+    text: '0.00'
+    gift: '0.00'
   # Most mails (text and gifts) a mailbox holds.
   mailbox-size: 50
   # Longest text body or gift note, in characters.

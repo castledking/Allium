@@ -1,6 +1,6 @@
 # Economy design and S20 implementation contract
 
-**E1–E4 correctness is accepted; provider release remains unapproved and E5 has not started.** The stress test missed p99 <=2ms and is now labelled diagnostic, not a release gate. Ten-minute realistic FULL lanes also miss 2ms for writes: p99 5.054ms Spigot / 4.204ms Paper; one healthy Spigot read took 600.934ms. No durability relaxation or separate economy.db is authorized. See the [realistic report and proposed budget](../tests/live/economy/REALISTIC.md). Existing unit total 627, this follow-up +0.
+**E1–E5 correctness is implemented and gated; Vault release remains unapproved.** Final full check/shadowJar: 652 tests, zero failures/skips. E5 adds 21 tests and passes 388/388 real-client checks on each server. The stall investigation adds 4 tests and records 264,040 calls across eight ten-minute phases without recurrence of the >=500ms class; the old 600.934ms read remains unattributed. The budget stays proposed, the dedicated reader stays an experiment, and FULL plus one database are unchanged. Stop after E5; signs remain S21. [E5 rules](economy-reservations.md), [gate report](../tests/live/economy/E5.md), [stall report](../tests/live/economy/STALL.md).
 
 **Decision: SF is one server on SQLite. Phase 1 uses WAL with `synchronous=FULL`. No policy mutex rows, shared settings epoch, or MySQL economy lane.**
 
@@ -414,7 +414,7 @@ Measure two independent clients/backends, opposing payments, toggle/ignore/defau
 and primary/failover behavior. Shared SQLite/network files are unsupported. Phase 1 neither
 implements nor claims these multi-server guarantees.
 
-## Future M3 mail/kit costs
+## E5 mail/kit reservation contract
 
 Keep `MailService.CostPolicy` a **side-effect-free preflight veto**. Do not withdraw/reserve in
 that callback or wrap delivery in unrelated Vault calls. A connection-aware reservation service
@@ -486,7 +486,7 @@ operation/timestamps/overrides. Resume by keys, not a “last processed row” c
 
 ## Follow-up acceptance
 
-Implement later: exact Money/settings/schema/typed results; Phase 1 transactions/recovery;
+Historical S14 follow-up scope (current E1–E5 results below): exact Money/settings/schema/typed results; Phase 1 transactions/recovery;
 coordinated PAY/policy; import rehearsal; measured Vault; independently reviewed M3 reservations;
 then separately Phase 2. Retire the scaffold writer before cutover; never wire new PAY to it.
 Migration keeps old balances read-only, validates original values/counts/BigInteger totals and
@@ -504,7 +504,7 @@ benchmark success is claimed by S14.
 
 ## Implementation sequence (revised S20)
 
-E1 money/settings/schema/typed results; E2 single-commit engine and SQLite concurrency/replay; E3 commands and authoritative payment policy; E4 synchronous Vault and real-server correctness/latency gates. Stop after E4 and report before E5 reservations. Paid kits stay denied until E5. Signs move to S21; balance and trade sign integration follows the gated engine. Durability is not weakened to meet latency targets; if FULL misses them, measure a separate economy.db option.
+E1 money/settings/schema/typed results; E2 single-commit engine and SQLite concurrency/replay; E3 commands and authoritative payment policy; E4 synchronous Vault and real-server correctness/latency gates. E5 reservations are now authorized and gated below; stop after E5. Signs move to S21; sign integration is separate work. Durability remains FULL; no separate economy.db or provider release is authorized. The revised latency budget remains proposed pending the user's choice and SF's own host run.
 
 ### E1 foundation status
 
@@ -524,13 +524,13 @@ Decision: command PAY has no PREPARED stage. A queued command receives no durabl
 
 Reload closes command admission, drains accepted work through a worker barrier, validates all balances/holds against the replacement settings, and installs one immutable settings snapshot. Rejected reload retains prior economy settings. Commands use the shared bounded TaskScheduler pool and fence callbacks to the original player object. E3 adds 5 tests (613 → 618); full isolated check/shadowJar passes with zero failures/skips. Optional legacy scaffold registration remains explicitly unsafe/off until E4 retires its writer and flag; the new commands never call that writer.
 
-### E4 gate and stop point
+### E4 gate history
 
 The scaffold writer/flag are retired. The provider is synchronous; native doubles snap only within 1e-8 major units, all receipt balances are validated for exact egress before commit, and schema/recovery readiness precedes registration. String overloads query local authoritative names without network resolution. Primitive storage failure throws EconomyUnavailableException, while writes preserve typed rejection/unavailable/unknown outcomes and original operation IDs.
 
 E4 adds 9 tests (618 → 627); full check/shadowJar passes, zero failures/skips. [Live correctness and workload report](../tests/live/economy/RESULTS.md) records 330 passing checks and the failed latency release target. Each layout/lane has 1,000 synchronous calls over 100 ticks with simultaneous real preference, moderation and mail repository writes. All healthy calls stayed below 25 ms, but p99 exceeded 2 ms.
 
-A separate FULL economy.db prototype reduced p99 from 3.903 to 3.420 ms on Spigot and from 5.176 to 4.644 ms on Paper; it still fails. It reuses a physical connection and isolates Vault-only money from the other three writers. Adopting it would require authoritative payment-policy data to reside with the money journal; two WAL files cannot be assumed to commit PAY/policy atomically. File isolation alone is not a demonstrated fix on the measured storage, so further storage/connection analysis is needed before release. Durability is unchanged. Stop here: no E5 reservation work, paid kits remain denied, and signs remain S21.
+A separate FULL economy.db prototype reduced p99 from 3.903 to 3.420 ms on Spigot and from 5.176 to 4.644 ms on Paper; it still fails. It reuses a physical connection and isolates Vault-only money from the other three writers. Adopting it would require authoritative payment-policy data to reside with the money journal; two WAL files cannot be assumed to commit PAY/policy atomically. File isolation alone is not a demonstrated fix on the measured storage, so further storage/connection analysis is needed before release. Durability is unchanged. That was the earlier E4 stop point; E5 was subsequently authorized and is recorded below. Signs remain S21.
 
 
 ### Realistic-lane release-budget proposal (unapproved)
@@ -561,3 +561,14 @@ Spigot pooled read p99 ranged 0.472–0.503ms, with maxima 8.552–16.996ms. Ded
 Noise limits: diagnostics allocate, pooled-first ordering warms caches/JIT, and shared development-host activity was not isolated (source drafting and one small offline analysis continued; no parallel benchmark or Gradle build). PASSIVE checkpoint probes every 30s perform real work and can offload automatic checkpoint work; all probe/GC times and >25ms samples remain in the evidence. Correlation uses ±2ms wall-clock tolerance and cannot isolate physical fsync. No outliers or first-call samples were removed. SF requires its own matching-jar/harness measurement, using [the documented commands](../tests/live/economy/MEASURE.md).
 
 Burst ticks: three writes occur on 5% of ticks and represent 60% of writes. At ~2ms median/write that tick naturally costs ~6ms plus reads. Many >5ms ticks are therefore structural burst work, not GC noise; tick p99 falls inside the burst population. A per-call target is not a per-burst-tick target. The candidate 6ms write p99 / 1ms read p99 / 10ms p99.9 / 25ms maximum, with tick p99 10ms and <=5% ticks over 5ms, remains **proposed, not approved**. FULL and one database are unchanged. No Vault release is authorized. E5 is a separately gated async reservation path.
+
+
+### E5 implementation and stop point
+
+[Reservation rules](economy-reservations.md) and [live/unit evidence](../tests/live/economy/E5.md) record schema component migration 2, ordered one-account cost transitions, stable workflow/step operation IDs and intent hashes, held-fund invariants, and atomic native-receipt completion. Reserve, capture and release each use one SQLite transaction; connection-taking kit/mail methods never independently borrow or commit. Text SPEND collapses READY and capture into one commit. R equals the sum of HELD reservations, reconciled independently to all entry deltas after both live lanes.
+
+Gift mail holds funds with PENDING, captures with verified native sender receipt and READY acknowledgement, and releases only on a complete saved absence proof. Kit receipt verification, capture, usage/cooldown and immutable acknowledgement share the completion transaction. Terminal evidence failure rolls back the whole attempt so the same original ID remains recoverable. Unknown commits preserve their IDs; unknown text outcomes warn not to resend. Recipient gift claims and original-ID retries never charge again. Paid marker rows persist so disabling economy cannot activate a paid workflow for free.
+
+The partial-kit policy is REFUSE the entire plan before mutation; unexpected partial effects persist an unknown marker, retain HELD and quarantine across reconnect for operator reconciliation. Paid kits support self claims; staff/console grants to others remain denied, and existing free grants are preserved. Mail prices are quoted `mail.costs.text/gift`, free by default; console text mail has no payer. The pure CostPolicy hook remains a veto, never a money side effect.
+
+E5 adds **21 tests (631 → 652)**; full isolated check/shadowJar passes with zero failures/skips. Live Spigot 1.20.1 and Paper 26.3 each pass **388/388**, including sufficient/insufficient funds, finite-balance races, normal restart, retry, before/after-capture halts and pre-delivery absence halts for both kit and gift mail. Native process-crash proof is not a hardware-power-loss or cross-file restore guarantee. The same frozen E5 jar passed both lanes; a comment-only rebuild is byte-for-byte identical. **Stop after E5. No Vault release, durability relaxation, separate database, production reader switch or budget approval. Signs remain S21.**

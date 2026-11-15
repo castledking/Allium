@@ -26,6 +26,20 @@ class PlayerDataReceiptProofTest {
     Path directory;
 
     @Test
+    void provesAbsenceOnlyFromACompleteValidNativeSnapshot()throws IOException {
+        assertDoesNotThrow(()->PlayerDataReceiptProof.verifyAbsent(nbt(out->{}),PlayerDataReceiptProof.MAIL_RECEIPTS));
+        assertThrows(IOException.class,()->PlayerDataReceiptProof.verifyAbsent(directory.resolve("missing.dat"),PlayerDataReceiptProof.MAIL_RECEIPTS));
+        assertThrows(IOException.class,()->PlayerDataReceiptProof.verifyAbsent(nbt(out->receipt(out,RECEIPT)),PlayerDataReceiptProof.MAIL_RECEIPTS));
+        assertThrows(IOException.class,()->PlayerDataReceiptProof.verifyAbsent(nbt(out->receipt(out,"")),PlayerDataReceiptProof.MAIL_RECEIPTS));
+    }
+    @Test
+    void absenceProofValidatesTheGzipTrailerAndDuplicateNativeCompounds()throws IOException {
+        Path valid=nbt(out->{});byte[] bytes=Files.readAllBytes(valid);bytes[bytes.length-8]^=1;Files.write(valid,bytes);
+        assertThrows(IOException.class,()->PlayerDataReceiptProof.verifyAbsent(valid,PlayerDataReceiptProof.KIT_RECEIPTS));
+        assertThrows(IOException.class,()->PlayerDataReceiptProof.verifyAbsent(nbt(out->{header(out,10,"BukkitValues");out.writeByte(0);header(out,10,"BukkitValues");out.writeByte(0);}),PlayerDataReceiptProof.KIT_RECEIPTS));
+    }
+
+    @Test
     void acceptsTheExactFullReceiptInRootBukkitValues() throws IOException {
         Path playerDat = nbt(out -> receipt(out, RECEIPT));
         assertDoesNotThrow(() -> PlayerDataReceiptProof.verify(playerDat, RECEIPT));

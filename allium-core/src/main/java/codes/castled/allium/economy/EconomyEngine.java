@@ -13,6 +13,9 @@ public final class EconomyEngine {
     @FunctionalInterface public interface PaymentPolicy { boolean permits(Connection transaction, UUID sender, UUID recipient) throws SQLException; }
     /** Fault boundary used by integration/live gates; real commit remains exactly once. */
     @FunctionalInterface public interface Committer { void commit(Connection connection, UUID operation) throws SQLException; }
+    @FunctionalInterface public interface WorkflowTransition { boolean apply(Connection transaction)throws SQLException; }
+    public EconomyReservations reservations(){return reservations(this::execute);}
+    public EconomyReservations reservations(EconomyReservations.Executor executor){return new EconomyReservations(this,connections,executor);}
     private final ConnectionSource connections;
     private final EconomyCoordinator coordinator=new EconomyCoordinator();
     private final PaymentPolicy policy;
@@ -40,8 +43,11 @@ public final class EconomyEngine {
             try(var r=s.executeQuery("SELECT COUNT(*) FROM "+EconomySchema.OPERATIONS+" WHERE (state='COMMITTED' AND (result_code<>'OK' OR source_balance IS NULL OR (recipient_uuid IS NOT NULL AND recipient_balance IS NULL))) OR (state='REJECTED' AND result_code IN ('OK','PENDING'))")){
                 if(!r.next()||r.getLong(1)!=0)throw new SQLException("economy recovery found incomplete journal receipts");
             }
-            for(String table:List.of(EconomySchema.ACCOUNTS,EconomySchema.OPERATIONS,EconomySchema.ENTRIES))
+            for(String table:List.of(EconomySchema.ACCOUNTS,EconomySchema.OPERATIONS,EconomySchema.ENTRIES,EconomySchema.RESERVATIONS))
                 try(var r=s.executeQuery("PRAGMA foreign_key_check("+table+")")){if(r.next())throw new SQLException("economy recovery found foreign-key violation");}
+        }
+        try(var c=connection();var s=c.createStatement();var r=s.executeQuery("SELECT a.account_uuid FROM "+EconomySchema.ACCOUNTS+" a WHERE a.reserved_minor<>(SELECT COALESCE(SUM(amount_minor),0) FROM "+EconomySchema.RESERVATIONS+" r WHERE r.account_uuid=a.account_uuid AND r.state='HELD') LIMIT 1")){
+            if(r.next())throw new SQLException("economy held-reservation invariant failed");
         }
         ready=true;
     }
@@ -75,9 +81,15 @@ public final class EconomyEngine {
     public EconomyCoordinator coordinator(){return coordinator;}
     public <T> T coordinated(java.util.concurrent.Callable<T> work)throws SQLException{return coordinator.call(work);}
     public Mutation execute(EconomyRequest request){
+        if(request.reservation())return new Rejected(request.id(),"WORKFLOW_REQUIRED");
+        return execute(request,null);
+    }
+    /** Transition runs inside the effect savepoint/commit; false rolls back both money and workflow. */
+    public Mutation execute(EconomyRequest request,WorkflowTransition transition){
+        if(request.reservation()&&transition==null)return new Rejected(request.id(),"WORKFLOW_REQUIRED");
         try(var timing=EconomyTiming.begin(request.kind().name(),this.timing)){
             long waiting=timing==null?0:System.nanoTime();
-            try{return coordinator.call(()->{if(timing!=null)timing.coordinator=System.nanoTime()-waiting;return transact(request);});}
+            try{return coordinator.call(()->{if(timing!=null)timing.coordinator=System.nanoTime()-waiting;return transact(request,transition);});}
             catch(SQLException error){if(timing!=null)timing.coordinator=System.nanoTime()-waiting;return new Unavailable(error.getMessage());}
         }
     }
@@ -94,7 +106,7 @@ public final class EconomyEngine {
             settings=next;return null;
         });
     }
-    private Mutation transact(EconomyRequest q){
+    private Mutation transact(EconomyRequest q,WorkflowTransition transition){
         boolean begun=false, committing=false;
         Connection c=null;
         try{
@@ -112,7 +124,7 @@ public final class EconomyEngine {
             }
             SqlSavepoint savepoint=new SqlSavepoint(c);
             String rejection=null;Found a=null,b=null;
-            if(!q.settings().equals(settings)) rejection="SETTINGS_CHANGED";
+            if(!q.settings().equals(settings)&&q.kind()!=EconomyRequest.Kind.CAPTURE&&q.kind()!=EconomyRequest.Kind.RELEASE) rejection="SETTINGS_CHANGED";
             else if(q.kind()==EconomyRequest.Kind.OPEN){
                 a=read(c,q.source());
                 if(a==null){
@@ -122,6 +134,10 @@ public final class EconomyEngine {
                     }
                     a=new Found(q.amount(),new Money(0),0);entry(c,q.id(),q.source(),0,0,a,q.amount().minor());
                 }
+            }else if(q.reservation()){
+                a=read(c,q.source());
+                if(a==null)rejection="MISSING_ACCOUNT";
+                else{String refusal=reservation(c,q,a);if(refusal!=null)rejection=refusal;else a=read(c,q.source());}
             }else{
                 // BEGIN IMMEDIATE owns the SQLite writer lock. Point reads still use UUID order.
                 var ids=new ArrayList<UUID>();ids.add(q.source());if(q.recipient()!=null)ids.add(q.recipient());ids.sort(Comparator.comparing(UUID::toString));
@@ -147,6 +163,11 @@ public final class EconomyEngine {
                     }
                 }
             }
+            if(rejection==null&&transition!=null&&!transition.apply(c)){
+                if(q.kind()==EconomyRequest.Kind.CAPTURE||q.kind()==EconomyRequest.Kind.RELEASE)throw new SQLException("terminal workflow evidence is not available");
+                rejection="WORKFLOW_REFUSED";
+            }
+            if(rejection==null)verifyHeld(c,q.source());
             if(rejection!=null){savepoint.rollback();a=read(c,q.source());b=q.recipient()==null?null:read(c,q.recipient());}
             savepoint.release();finish(c,q.id(),rejection,a,b);
             Mutation result=rejection==null?new Committed(q.id(),a,b,false):new Rejected(q.id(),rejection,a,b);
@@ -162,6 +183,45 @@ public final class EconomyEngine {
             return committing?new Unknown(q.id(),error.getMessage()):new Unavailable(error.getMessage());
         }finally{if(c!=null)try{c.close();}catch(SQLException ignored){/* commit outcome already fixed */}}
     }
+    private String reservation(Connection c,EconomyRequest q,Found before)throws SQLException {
+        var identity=EconomyReservations.identity(q);
+        verifyHeld(c,q.source());
+        var held=EconomyReservations.find(c,identity.kind(),identity.id());
+        long book=before.book().minor(),reserved=before.reserved().minor(),cost=q.amount().minor();
+        boolean initial=q.kind()==EconomyRequest.Kind.RESERVE||q.kind()==EconomyRequest.Kind.SPEND;
+        if(initial){
+            if(held.isPresent())return "WORKFLOW_EXISTS";
+            if(Math.subtractExact(Math.subtractExact(book,reserved),cost)<Math.max(0,settings.minimum().minor()))return "INSUFFICIENT_FUNDS";
+            if(q.kind()==EconomyRequest.Kind.RESERVE)reserved=Math.addExact(reserved,cost);else book=Math.subtractExact(book,cost);
+        }else{
+            if(held.isEmpty())return "MISSING_RESERVATION";
+            var row=held.get();if(!row.account().equals(q.source())||row.amount().minor()!=cost)return "WORKFLOW_CONFLICT";
+            if(!row.state().equals("HELD"))return "WORKFLOW_TERMINAL";
+            reserved=Math.subtractExact(reserved,cost);if(q.kind()==EconomyRequest.Kind.CAPTURE)book=Math.subtractExact(book,cost);
+        }
+        String state=q.kind()==EconomyRequest.Kind.RESERVE?"HELD":q.kind()==EconomyRequest.Kind.RELEASE?"RELEASED":"CAPTURED";
+        long now=System.currentTimeMillis();
+        if(initial){
+            try(var s=c.prepareStatement("INSERT INTO "+EconomySchema.RESERVATIONS+" VALUES(?,?,?,?,?,?,0,?,?,?,?)")){
+                s.setString(1,identity.kind().name());s.setString(2,identity.id().toString());s.setString(3,q.source().toString());s.setLong(4,cost);s.setString(5,q.actor().substring("WORKFLOW:".length()));s.setString(6,state);s.setString(7,q.id().toString());
+                s.setString(8,state.equals("HELD")?null:q.id().toString());s.setLong(9,now);if(state.equals("HELD"))s.setNull(10,Types.BIGINT);else s.setLong(10,now);requireOne(s.executeUpdate());
+            }
+        }else{
+            try(var s=c.prepareStatement("UPDATE "+EconomySchema.RESERVATIONS+" SET state=?,version=version+1,final_operation_id=?,finished_at=? WHERE workflow_kind=? AND workflow_id=? AND state='HELD' AND version=?")){
+                s.setString(1,state);s.setString(2,q.id().toString());s.setLong(3,now);s.setString(4,identity.kind().name());s.setString(5,identity.id().toString());s.setLong(6,held.orElseThrow().version());requireOne(s.executeUpdate());
+            }
+        }
+        try(var s=c.prepareStatement("UPDATE "+EconomySchema.ACCOUNTS+" SET balance_minor=?,reserved_minor=?,version=version+1,updated_at=? WHERE account_uuid=? AND balance_minor=? AND reserved_minor=? AND version=?")){
+            s.setLong(1,book);s.setLong(2,reserved);s.setLong(3,now);s.setString(4,q.source().toString());s.setLong(5,before.book().minor());s.setLong(6,before.reserved().minor());s.setLong(7,before.version());requireOne(s.executeUpdate());
+        }
+        entry(c,q.id(),q.source(),before.book().minor(),before.reserved().minor(),new Found(new Money(book),new Money(reserved),Math.addExact(before.version(),1)),Math.subtractExact(book,before.book().minor()));
+        return null;
+    }
+    private static void verifyHeld(Connection c,UUID account)throws SQLException{
+        try(var s=c.prepareStatement("SELECT reserved_minor,(SELECT COALESCE(SUM(amount_minor),0) FROM "+EconomySchema.RESERVATIONS+" WHERE account_uuid=? AND state='HELD') FROM "+EconomySchema.ACCOUNTS+" WHERE account_uuid=?")){
+            s.setString(1,account.toString());s.setString(2,account.toString());try(var r=s.executeQuery()){if(r.next()&&r.getLong(1)!=r.getLong(2))throw new SQLException("economy held-reservation invariant failed");}
+        }
+    }
     private static void rollback(Connection c){try(var s=c.createStatement()){s.execute("ROLLBACK");}catch(SQLException ignored){}}
     private static void requireOne(int count)throws SQLException{if(count!=1)throw new SQLException("economy conditional write affected "+count+" rows");}
     private static Found read(Connection c,UUID id)throws SQLException{
@@ -176,8 +236,8 @@ public final class EconomyEngine {
         }return new Found(new Money(next),old.reserved(),old.version()+1);
     }
     private static void entry(Connection c,UUID op,UUID account,long before,long held,Found after,long delta)throws SQLException{
-        try(var s=c.prepareStatement("INSERT INTO "+EconomySchema.ENTRIES+" VALUES(?,?,?,0,?,?,?,?,?)")){
-            s.setString(1,op.toString());s.setString(2,account.toString());s.setLong(3,delta);s.setLong(4,before);s.setLong(5,after.book().minor());s.setLong(6,held);s.setLong(7,after.reserved().minor());s.setLong(8,after.version());requireOne(s.executeUpdate());
+        try(var s=c.prepareStatement("INSERT INTO "+EconomySchema.ENTRIES+" VALUES(?,?,?,?,?,?,?,?,?)")){
+            s.setString(1,op.toString());s.setString(2,account.toString());s.setLong(3,delta);s.setLong(4,Math.subtractExact(after.reserved().minor(),held));s.setLong(5,before);s.setLong(6,after.book().minor());s.setLong(7,held);s.setLong(8,after.reserved().minor());s.setLong(9,after.version());requireOne(s.executeUpdate());
         }
     }
     private static void insertOperation(Connection c,EconomyRequest q,byte[] payload,byte[] hash)throws SQLException{

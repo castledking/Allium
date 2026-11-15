@@ -48,9 +48,10 @@ public final class KitRepository {
     public static final String COMPONENT = "kits";
 
     public sealed interface BeginOutcome permits BeginOutcome.Claiming, BeginOutcome.AlreadyClaiming,
-            BeginOutcome.OneTimeClaimed, BeginOutcome.OnCooldown {
+            BeginOutcome.OneTimeClaimed, BeginOutcome.OnCooldown, BeginOutcome.CostRefused {
         record Claiming(KitDeliveryRecord delivery) implements BeginOutcome {}
         record AlreadyClaiming() implements BeginOutcome {}
+        record CostRefused() implements BeginOutcome {}
         record OneTimeClaimed() implements BeginOutcome {}
         record OnCooldown(long remainingMillis) implements BeginOutcome {}
     }
@@ -109,6 +110,8 @@ public final class KitRepository {
     public int migrate() throws SQLException {
         return new SchemaMigrator(connections, dialect, clock).migrate(COMPONENT, migrations());
     }
+
+    public boolean paid(UUID id)throws SQLException {return codes.castled.allium.economy.EconomyReservations.paid(connections,dialect,codes.castled.allium.economy.EconomyReservations.Kind.KIT,id);}
 
     @FunctionalInterface
     private interface Work<T> {
@@ -180,7 +183,12 @@ public final class KitRepository {
      */
     public BeginOutcome beginClaim(KitDeliveryRecord delivery, long now) throws SQLException {
         Objects.requireNonNull(delivery, "delivery");
-        return transaction(c -> {
+        return transaction(c -> beginClaim(c,delivery,now));
+    }
+
+    /** Joins an existing transaction; never borrows, commits or changes autocommit. */
+    public BeginOutcome beginClaim(Connection c, KitDeliveryRecord delivery, long now) throws SQLException {
+
             lockPlayer(c, delivery.playerUuid());
 
             Optional<KitDeliveryRecord> existingById = findDelivery(c, delivery.id());
@@ -224,8 +232,9 @@ public final class KitRepository {
                     delivery.bypassCooldown(),
                     delivery.createdAt());
             return new BeginOutcome.Claiming(delivery);
-        });
+
     }
+
 
     /**
      * Atomically finalizes a verified kit delivery owned by {@code ownerServer}: records the
@@ -239,7 +248,12 @@ public final class KitRepository {
         Objects.requireNonNull(deliveryId, "deliveryId");
         Objects.requireNonNull(token, "token");
         Objects.requireNonNull(ownerServer, "ownerServer");
-        return transaction(c -> {
+        return transaction(c -> finishClaim(c,deliveryId,token,ownerServer,deliveredAt));
+    }
+
+    /** Joins an existing transaction; never borrows, commits or changes autocommit. */
+    public boolean finishClaim(Connection c, UUID deliveryId, UUID token, String ownerServer, long deliveredAt) throws SQLException {
+
             if (count(c, "SELECT COUNT(*) FROM allium_kit_claim_receipts WHERE token = ? AND delivery_id = ?",
                     token.toString(), deliveryId.toString()) > 0) {
                 return true;
@@ -276,8 +290,9 @@ public final class KitRepository {
                             + "VALUES (?, ?, ?, ?, ?)",
                     token.toString(), deliveryId.toString(), d.playerUuid().toString(), d.kitName(), effectiveTime);
             return true;
-        });
+
     }
+
 
     /**
      * Releases an undelivered kit claim owned by {@code ownerServer} without modifying
@@ -288,7 +303,12 @@ public final class KitRepository {
         Objects.requireNonNull(deliveryId, "deliveryId");
         Objects.requireNonNull(token, "token");
         Objects.requireNonNull(ownerServer, "ownerServer");
-        return transaction(c -> {
+        return transaction(c -> releaseClaim(c,deliveryId,token,ownerServer));
+    }
+
+    /** Joins an existing transaction; never borrows, commits or changes autocommit. */
+    public boolean releaseClaim(Connection c, UUID deliveryId, UUID token, String ownerServer) throws SQLException {
+
             Optional<KitDeliveryRecord> row = findDelivery(c, deliveryId);
             if (row.isEmpty() || !row.get().claimToken().equals(token) || !row.get().claimOwner().equals(ownerServer)) {
                 return false;
@@ -296,8 +316,9 @@ public final class KitRepository {
             lockPlayer(c, row.get().playerUuid());
             return update(c, "DELETE FROM allium_kit_deliveries WHERE id = ? AND claim_token = ? AND claim_owner = ?",
                     deliveryId.toString(), token.toString(), ownerServer) == 1;
-        });
+
     }
+
 
     public boolean claimAcknowledged(UUID deliveryId, UUID token) throws SQLException {
         return plain(c -> count(c, "SELECT COUNT(*) FROM allium_kit_claim_receipts WHERE token = ? AND delivery_id = ?",

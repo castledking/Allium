@@ -57,9 +57,11 @@ items:
 - **Default kit:** `kits/starter.yml` is installed once on first run and recorded in
   `kits/.defaults`. Deleting `kits/starter.yml` removes it permanently rather than recreating it on
   restart.
-- **Paid kits denied until M3 reservations:** any kit with `cost > '0.00'` is flagged as paid,
-  omitted from player kit listings/completions, and explicitly denied on `/kit <name>` until the M3
-  economy reservation engine exists. No economy debiting or console command execution runs from kits.
+- **E5 paid self claims:** positive quoted costs use the asynchronous SQLite reservation engine.
+  Paid kits appear only when that engine is ready. Paid staff/console grants to others remain denied;
+  existing free grants are unchanged. Full inventory refuses the entire kit and releases only with
+  saved absence proof; unexpected partial effects retain the hold and a durable quarantine marker.
+  [Cost, receipt and recovery rules](economy-reservations.md). No Vault debit/refund callbacks run from kits.
 - **Sign hook:** `[Kit]` sign interaction is deferred to the signs slice.
 
 ## Permissions, `/kit <name> <player>`, and cooldowns

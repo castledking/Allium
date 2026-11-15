@@ -19,9 +19,11 @@ available. Being offline or vanished does not prevent addressed mail or disclose
 `mail.*` in config.yml controls mailbox size, body length, the sender's sliding rate window,
 text expiry and gift amount. Each operation captures its limits. `/allium reload` keeps the same
 service, executor and pending transactions; storage type and server identity require a restart.
-The default is free mail. The reserved M3 `CostPolicy` is a side-effect-free preflight veto, not a
-money debit/refund implementation. A future cost implementation must join a durable economy
-transaction; callbacks that debit a balance are outside this contract.
+The default is free mail. `mail.costs.text` and `mail.costs.gift` are quoted decimal prices, both
+`'0.00'` by default. E5 reserves with PENDING and captures with saved sender receipt plus READY
+acknowledgement in one transaction; text may send/capture in one commit. Recipient claims never
+charge again. The `CostPolicy` stays a side-effect-free preflight veto; callbacks that debit a
+balance are outside this contract. [Reservation and unknown-outcome rules](economy-reservations.md).
 
 Name completion reads a bounded in-memory directory populated by joins and one startup query.
 It does not enumerate offline players or perform SQL, disk or network access per keystroke.

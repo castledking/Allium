@@ -1,6 +1,8 @@
 package codes.castled.allium.mail;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.economy.*;
+import codes.castled.allium.economy.EconomyResult.*;
 import codes.castled.allium.core.FaultInjection;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.messaging.IgnoreRepository;
@@ -203,6 +205,45 @@ public final class MailService implements Listener {
 
     // -- Text mail -------------------------------------------------------------------------------
 
+    private Money price(CommandSender sender,MailKind kind){
+        if(!(sender instanceof Player))return new Money(0); // Console mail has no payer.
+        try{
+            Object value=plugin.getConfig().get("mail.costs."+(kind==MailKind.TEXT?"text":"gift"),"0.00");
+            if(!(value instanceof String text))throw new IllegalArgumentException("mail costs require quoted decimal text");
+            Money amount=Money.parse(text,false);if(amount.minor()>0&&!PaidWorkflowSupport.ready(plugin))throw new IllegalArgumentException("paid mail economy unavailable");return amount;
+        }catch(RuntimeException error){send(sender,Messages.MAIL_COST_REFUSED);return null;}
+    }
+    private MailRepository.SendResult sendPriced(MailRecord mail,MailLimits rules,boolean bypass,Money price,java.nio.file.Path file,String baseline)throws SQLException{
+        if(price.minor()==0)return repository.send(mail,rules,bypass);
+        var outcome=new java.util.concurrent.atomic.AtomicReference<MailRepository.SendResult>();
+        EconomyEngine.WorkflowTransition intent=c->{
+            if(mail.kind()==MailKind.GIFT)PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.MAIL_RECEIPTS,baseline);
+            var result=repository.send(c,mail,rules,bypass);outcome.set(result);return result==MailRepository.SendResult.SAVED;
+        };
+        var reservations=PaidWorkflowSupport.reservations(plugin);
+        String fingerprint=EconomyReservations.fingerprint(mail.id().toString(),mail.recipient().toString(),mail.sender().toString(),mail.senderName(),mail.kind().name(),mail.body(),mail.items(),Integer.toString(mail.itemCount()),mail.origin(),Long.toString(mail.createdAt()),Long.toString(mail.expiresAt()),mail.source(),mail.sourceRef());
+        Mutation result=mail.kind()==MailKind.TEXT?reservations.spend(EconomyReservations.Kind.MAIL,mail.id(),mail.sender(),price,fingerprint,intent):reservations.reserve(EconomyReservations.Kind.MAIL,mail.id(),mail.sender(),price,fingerprint,intent);
+        if(result instanceof Rejected)return outcome.get()!=null?outcome.get():MailRepository.SendResult.COST_REFUSED;
+        PaidWorkflowSupport.committed(result);return MailRepository.SendResult.SAVED;
+    }
+    private boolean activate(UUID id,java.nio.file.Path file,String expected)throws SQLException{
+        if(!repository.paid(id))return repository.activate(id);
+        return PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin).capture(EconomyReservations.Kind.MAIL,id,c->{
+            if(MailReceipts.parse(expected).stream().noneMatch(r->r instanceof MailReceipts.Sent sent&&sent.mail().equals(id)))throw new SQLException("missing matching sender receipt");
+            PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.MAIL_RECEIPTS,expected);return repository.activate(c,id);
+        }));
+    }
+    private boolean cancelPending(UUID id,java.nio.file.Path file,String expected)throws SQLException{
+        if(!repository.paid(id))return repository.cancelPending(id);
+        return PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin).release(EconomyReservations.Kind.MAIL,id,c->{
+            {
+                if(MailReceipts.parse(expected).stream().anyMatch(r->r instanceof MailReceipts.Sent sent&&sent.mail().equals(id)))throw new SQLException("cannot release a gift with a sender receipt");
+                PaidWorkflowSupport.prove(file,PlayerDataReceiptProof.MAIL_RECEIPTS,expected);
+            }
+            return repository.cancelPending(c,id);
+        }));
+    }
+
     public void sendText(CommandSender sender, String typedName, String body) {
         if (!senderReady(sender)) return;
         MailLimits rules = limits.get();
@@ -220,6 +261,7 @@ public final class MailService implements Listener {
             send(sender, Messages.MAIL_COST_REFUSED);
             return;
         }
+        Money price=price(sender,MailKind.TEXT);if(price==null)return;
         decide(sender, senderId, muted, target).thenAcceptAsync(decision -> {
             if (decision.outcome() != MailPolicy.Outcome.DELIVER) {
                 onServer(() -> {
@@ -233,11 +275,12 @@ public final class MailService implements Listener {
             MailRepository.SendResult result;
             try {
                 failIfArmed();
-                result = repository.send(mail, rules, bypass);
+                result = sendPriced(mail,rules,bypass,price,null,null);
             } catch (SQLException e) {
                 plugin.logger().warning("Mail to " + target + " could not be stored: " + e.getMessage());
                 onServer(() -> {
-                    send(sender, Messages.MAIL_FAILED);
+                    if(e instanceof PaidWorkflowSupport.UnknownCommit unknown)send(sender,Messages.MAIL_COST_UNKNOWN,"{id}",unknown.operationId().toString());
+                    else send(sender, Messages.MAIL_FAILED);
                 });
                 return;
             }
@@ -296,12 +339,15 @@ public final class MailService implements Listener {
             send(sender, Messages.MAIL_COST_REFUSED);
             return;
         }
+        Money price=price(sender,MailKind.GIFT);if(price==null)return;
         UUID senderId = sender.getUniqueId();
         long generation = generation(senderId);
         boolean muted = muted(senderId);
         boolean bypass = sender.hasPermission(PERMISSION_BYPASS_LIMITS);
         UUID mailId = UUID.randomUUID();
         locks.lock(sender);
+        if(price.minor()>0)try{sender.saveData();}catch(RuntimeException error){locks.unlock(sender);send(sender,Messages.MAIL_FAILED);return;}
+        String baseline=playerReceipt(sender);java.nio.file.Path baselineFile=playerFile(sender);
         inFlight.add(mailId);
         decide(sender, senderId, muted, target).thenAcceptAsync(decision -> {
             if (decision.outcome() != MailPolicy.Outcome.DELIVER) {
@@ -319,7 +365,7 @@ public final class MailService implements Listener {
                     sleep(SLOW_MILLIS);
                 }
                 failIfArmed();
-                result = repository.send(pending, rules, bypass);
+                result = sendPriced(pending,rules,bypass,price,baselineFile,baseline);
             } catch (SQLException e) {
                 plugin.logger().warning("A gift to " + target + " could not be stored; nothing left " + sender.getName() + ": " + e.getMessage());
                 onServer(() -> {
@@ -335,7 +381,7 @@ public final class MailService implements Listener {
                     limited(sender, result, decision.recipient().name());
                     return;
                 }
-                takeAndActivate(sender, generation, slot, gift, mailId, decision.recipient());
+                takeAndActivate(sender, generation, slot, gift, mailId, decision.recipient(),price.minor()>0);
             });
         }, io).exceptionally(error -> {
             onServer(() -> {
@@ -348,14 +394,16 @@ public final class MailService implements Listener {
     }
 
     /** Step 3 and 4 of a gift send, on the server thread. */
-    private void takeAndActivate(Player sender, long generation, int slot, ItemStack gift, UUID mailId, NameCache.Entry recipient) {
+    private void takeAndActivate(Player sender, long generation, int slot, ItemStack gift, UUID mailId, NameCache.Entry recipient,boolean paid) {
+        if(FaultInjection.trip("mail.send.halt-before-take"))Runtime.getRuntime().halt(77);
+        java.nio.file.Path proofFile=playerFile(sender);String proofReceipt=playerReceipt(sender);
         if (!same(sender) || generation(sender.getUniqueId()) != generation || muted(sender.getUniqueId())) {
             // The sender left: their saved inventory still holds the items. Drop the PENDING gift.
             locks.unlock(sender);
 
             submitCritical(sender, mailId, () -> {
                 try {
-                    repository.cancelPending(mailId);
+                    cancelPending(mailId,proofFile,proofReceipt);
                     plugin.logger().info("Gift " + mailId + " cancelled: " + sender.getName() + " left before the items were taken.");
                 } catch (SQLException e) {
                     plugin.logger().warning("Gift " + mailId + " stays PENDING (cancel failed, retried at the sender's next join): " + e.getMessage());
@@ -375,7 +423,7 @@ public final class MailService implements Listener {
             send(sender, Messages.MAIL_FAILED);
             submitCritical(sender, mailId, () -> {
                 try {
-                    repository.cancelPending(mailId);
+                    cancelPending(mailId,proofFile,proofReceipt);
                 } catch (SQLException e) {
                     plugin.logger().warning("Gift " + mailId + " stays PENDING: " + e.getMessage());
                 } finally {
@@ -384,12 +432,26 @@ public final class MailService implements Listener {
             });
             return;
         }
-        if (now.getAmount() == gift.getAmount()) {
+        String partialMarker="P/"+mailId;
+        if(paid)addReceipt(sender,new MailReceipts.Unknown(partialMarker));
+        int expectedRemaining=now.getAmount()-gift.getAmount();
+        try{if (now.getAmount() == gift.getAmount()) {
             inventory.setItem(slot, null);
         } else {
             now.setAmount(now.getAmount() - gift.getAmount());
             inventory.setItem(slot, now);
         }
+        }catch(RuntimeException error){
+            try{sender.saveData();}catch(RuntimeException ignored){}
+            inFlight.remove(mailId);quarantine(sender,"Gift removal has unknown partial effects "+mailId,error);return;
+        }
+        ItemStack remaining=inventory.getItem(slot);
+        boolean exact=expectedRemaining==0?(remaining==null||remaining.getType().isAir()):remaining!=null&&remaining.isSimilar(gift)&&remaining.getAmount()==expectedRemaining;
+        if(paid&&!exact){
+            try{sender.saveData();}catch(RuntimeException ignored){}
+            inFlight.remove(mailId);quarantine(sender,"Gift removal differs from its exact plan "+mailId,null);return;
+        }
+        if(paid)removeReceipt(sender,r->r instanceof MailReceipts.Unknown unknown&&unknown.raw().equals(partialMarker));
         addReceipt(sender, new MailReceipts.Sent(mailId));
         try {
             sender.saveData();
@@ -409,7 +471,7 @@ public final class MailService implements Listener {
             try {
                 PlayerDataReceiptProof.verify(playerFile, expectedReceipt);
                 failIfArmed();
-                activated = repository.activate(mailId);
+                activated = activate(mailId,playerFile,expectedReceipt);
             } catch (IOException e) {
                 onServer(() -> {
                     finishSend(sender, mailId);
@@ -728,6 +790,7 @@ public final class MailService implements Listener {
             try {
                 if (!receipts.isEmpty()) PlayerDataReceiptProof.verify(savedFile, expectedReceipt);
                 List<MailRecord> pending = repository.pendingFrom(player.getUniqueId(), serverId);
+                if(receipts.isEmpty())for(var row:pending)if(repository.paid(row.id()))PaidWorkflowSupport.prove(savedFile,PlayerDataReceiptProof.MAIL_RECEIPTS,expectedReceipt);
                 List<MailRecord> claiming = repository.claimingFor(player.getUniqueId(), serverId);
                 onServer(() -> recover(player, generation, receipts, pending, claiming));
             } catch (IOException e) {
@@ -749,11 +812,13 @@ public final class MailService implements Listener {
             locks.unlock(player);
             return; // A previous connection's callback must settle before we interpret an absent receipt.
         }
+        java.nio.file.Path recoveryFile=playerFile(player);
+        String recoverySnapshot=MailReceipts.format(receipts);
         List<RecoveryStep> steps = new ArrayList<>();
         try {
             for (MailReceipts.Entry entry : receipts) {
                 if (entry instanceof MailReceipts.Sent sent) {
-                    steps.add(() -> { if (!repository.activate(sent.mail())) throw new SQLException("missing activation proof " + sent.mail()); });
+                    steps.add(() -> { if (!activate(sent.mail(),recoveryFile,recoverySnapshot)) throw new SQLException("missing activation proof " + sent.mail()); });
                 } else if (entry instanceof MailReceipts.Claimed receipt) {
                     MailRecord row = claiming.stream().filter(m -> m.id().equals(receipt.mail()) && receipt.token().equals(m.claimToken()))
                             .findFirst().orElse(null);
@@ -778,7 +843,7 @@ public final class MailService implements Listener {
             }
             for (MailRecord row : pending) {
                 if (receipts.stream().noneMatch(r -> r instanceof MailReceipts.Sent sent && sent.mail().equals(row.id())))
-                    steps.add(() -> repository.cancelPending(row.id()));
+                    steps.add(() -> cancelPending(row.id(),recoveryFile,recoverySnapshot));
             }
             for (MailRecord row : claiming) {
                 if (row.claimToken() != null && receipts.stream().noneMatch(r -> r instanceof MailReceipts.Claimed c
@@ -969,7 +1034,8 @@ public final class MailService implements Listener {
 
     private void limited(CommandSender sender, MailRepository.SendResult result, String target) {
         MailLimits rules = limits.get();
-        if (result == MailRepository.SendResult.MAILBOX_FULL) {
+        if(result==MailRepository.SendResult.COST_REFUSED){send(sender,Messages.MAIL_COST_REFUSED);}
+        else if (result == MailRepository.SendResult.MAILBOX_FULL) {
             send(sender, Messages.MAIL_MAILBOX_FULL, "{player}", target);
         } else {
             send(sender, Messages.MAIL_RATE_LIMITED, "{sends}", Integer.toString(rules.sendsPerWindow()),

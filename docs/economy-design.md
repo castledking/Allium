@@ -1,9 +1,7 @@
 # Economy design and S20 implementation contract
 
-**E1/E2 core foundations and the SQLite transaction engine are implemented; Bukkit commands and the replacement Vault provider remain gated by E3/E4.** S14 supplied this design and a small JDBC/money
-prototype under [tests/design/economy](../tests/design/economy/README.md), and a safety switch
-for the existing scaffold. SQL prototype measurements do not validate Allium or Vault latency.
-The replacement provider remains unreleased until the correctness and server-workload gates pass.
+**E1–E4 are implemented. Correctness passes, but the synchronous Vault release gate is blocked by measured p99 latency.** Final isolated check/shadowJar: 627 unit tests, zero failures/skips. Real-client correctness: 165/165 on Spigot 1.20.1 and 165/165 on Paper 26.3. Shared-file FULL p99 is 3.903/5.176 ms versus the 2 ms target; the separate-file prototype also misses the target. No production release or deployment is claimed. E5 has not started.
+
 **Decision: SF is one server on SQLite. Phase 1 uses WAL with `synchronous=FULL`. No policy mutex rows, shared settings epoch, or MySQL economy lane.**
 
 ## Scope and source evidence
@@ -15,7 +13,7 @@ are inspected local reference files, not evidence of a running server's schema o
 | Source | Design consequence |
 | --- | --- |
 | [EconomyModule.java](../src/main/java/codes/castled/allium/module/EconomyModule.java), baseline lines 31–38, 50–71, 153–187 | Reads create defaults; withdrawal has a separate precheck; Vault ignores write results. Registration is not evidence of transaction safety. |
-| [EconomyTable.java](../src/main/java/codes/castled/allium/database/EconomyTable.java), lines 22–98 | `allium_balances(uuid, balance DECIMAL(40,2))`, cascading player FK, missing/error conflation, read-modify-write and replacement/upsert must be retired. |
+| Retired `EconomyTable.java`, lines 22–98 | `allium_balances(uuid, balance DECIMAL(40,2))`, cascading player FK, missing/error conflation, read-modify-write and replacement/upsert must be retired. |
 | [DatabaseManager.java](../src/main/java/codes/castled/allium/database/DatabaseManager.java), lines 38–114 | SQLite WAL attempt, one pooled connection, 10-second busy timeout and MySQL reconnect configuration need explicit validation/replacement. |
 | [PreferenceRepository.java](../allium-core/src/main/java/codes/castled/allium/preference/PreferenceRepository.java), lines 33–90; [PreferencesModule.java](../src/main/java/codes/castled/allium/module/PreferencesModule.java), lines 133–217 | Nullable `accept_payments`, defaults and local pending state must preserve missing-versus-unavailable semantics. |
 | [IgnoreRepository.java](../allium-core/src/main/java/codes/castled/allium/messaging/IgnoreRepository.java), lines 18–69; [IgnoreService.java](../src/main/java/codes/castled/allium/messaging/IgnoreService.java), lines 26–159 | Direction is `(owner, ignored)`; current independent connections/local overlays do not establish policy/debit ordering. |
@@ -35,20 +33,9 @@ Legacy Allium references are `/mnt/storage/repos/Allium/src/main/java/codes/cast
 sequential transfer/refund; import must read source records directly. Serialization/schema
 fixtures against the supported source versions are still required before import implementation.
 
-The only runtime change in this revision is the temporary scaffold registration guard:
+The S14 scaffold guard was temporary. E4 removes the `scaffold-vault-provider-enabled` key and the Java `EconomyTable` writer entirely. Existing legacy `allium_balances` rows are retained and never silently imported, rounded or used as journalled balances. Reads do not create accounts; explicit OPEN is the only starting grant. A reviewed legacy import remains separate work.
 
-```yaml
-economy:
-  scaffold-vault-provider-enabled: false
-```
-
-An absent/false key never registers the scaffold provider. Explicit true **and** a present Vault
-plugin are required, with the flag checked before any Vault API linkage/static access. The
-existing optional soft dependency remains. Opt-in emits an unsafe-scaffold warning and warns
-when an economy provider is already registered; it does not repair money semantics. Registration
-tests cover default/false, missing Vault, explicit opt-in and existing-provider diagnostics.
-The scaffold table still exists; this flag is a temporary safety state whose release condition is
-that the replacement economy engine and gated Vault adapter replace the scaffold entirely.
+The optional Vault provider now links only after Vault presence, schema validation and recovery readiness. Storage-failed primitive reads throw `EconomyUnavailableException`; mutations report failures, including `OUTCOME_UNKNOWN:<id>`. Registration readiness is not a claim that the measured latency release gate passed.
 
 ## Phase 1: one process owns the economy
 
@@ -111,19 +98,19 @@ while unavailable must not fabricate an empty balance or a starting grant.
 
 ### Vault doubles: narrowly snap binary residue
 
-Revised S20 contract: the adapter uses approximately `1e-6` of one cent (`1e-8` major units) as its snap tolerance. The older S14 examples below describe the earlier, broader prototype tolerance and are historical fixtures; E4 must replace them with the narrower boundary tests before release.
+The production adapter uses `1e-6` of one cent (`1e-8` major units) as its inclusive snap tolerance. Core/command parsing remains strict. The old S14 prototype used a broader tolerance and is not the production adapter.
 
-Only the double adapter allows **distance <= `0.000001` major units from the nearest cent**.
+Only the double adapter allows **distance <= `0.00000001` major units from the nearest cent**.
 Check finiteness and nonnegative sign first; convert with `BigDecimal.valueOf(double)`, find the
 nearest scale-2 HALF_EVEN value, compare absolute decimal distance with that inclusive epsilon,
-then convert exactly and apply hard/configured/mutation/minimum rules. This is 0.0001 of a cent,
+then convert exactly and apply hard/configured/mutation/minimum rules. This is 0.000001 of a cent,
 not permission to round genuine sub-cent prices. Negative tiny values fail before snapping;
 near-zero positives may snap to zero and then fail a positive mutation. Signed zero is zero.
 
 Examples/required fixtures:
 
-- `0.1 + 0.2` / `0.30000000000000004` → `0.30`; `1.2300009` and `1.2299991` → `1.23`.
-- Inclusive edges `1.230001` / `1.229999` pass; `1.2300011` / `1.2299989` fail.
+- `0.1 + 0.2` / `0.30000000000000004` → `0.30`; `1.230000009` and `1.229999991` → `1.23`.
+- Inclusive edges `1.23000001` / `1.22999999` pass; `1.230000011` / `1.229999989` fail.
 - `0.001`, `0.005`, `1.001`, NaN, infinities, negative amounts, overflow and out-of-bound inputs fail.
 - The same residue supplied as exact core BigDecimal/command text still fails strict conversion.
 - Egress is `BigDecimal.valueOf(minor, 2).doubleValue()`; finite output must convert back through
@@ -135,7 +122,7 @@ Examples/required fixtures:
 NOT_IMPLEMENTED. `getBalance`/response balances expose available funds. `has` compares validated
 integer money with authoritative available money; it reserves nothing. Negative/nonfinite/
 excess-precision queries fail closed with diagnostics. [MoneyBoundary.java](../tests/design/economy/MoneyBoundary.java)
-is a passing design fixture, not a production adapter.
+is a historical design fixture, not the production adapter; production uses `VaultMoney` and its narrower boundary tests.
 
 ## Transactions, journal and recovery
 
@@ -536,3 +523,11 @@ Commands `/balance` (`/bal`), `/pay`, `/paytoggle [on|off] [player]`, `/eco <ope
 Decision: command PAY has no PREPARED stage. A queued command receives no durable acceptance acknowledgement and success is sent only after the execution commit. A pre-execution crash therefore has no promised accepted payment to replay; an indeterminate commit returns `OUTCOME_UNKNOWN:<id>` and the original keyed intent can reconcile by ID. This differs from a future API promising durable asynchronous acceptance, which would require PREPARED.
 
 Reload closes command admission, drains accepted work through a worker barrier, validates all balances/holds against the replacement settings, and installs one immutable settings snapshot. Rejected reload retains prior economy settings. Commands use the shared bounded TaskScheduler pool and fence callbacks to the original player object. E3 adds 5 tests (613 → 618); full isolated check/shadowJar passes with zero failures/skips. Optional legacy scaffold registration remains explicitly unsafe/off until E4 retires its writer and flag; the new commands never call that writer.
+
+### E4 gate and stop point
+
+The scaffold writer/flag are retired. The provider is synchronous; native doubles snap only within 1e-8 major units, all receipt balances are validated for exact egress before commit, and schema/recovery readiness precedes registration. String overloads query local authoritative names without network resolution. Primitive storage failure throws EconomyUnavailableException, while writes preserve typed rejection/unavailable/unknown outcomes and original operation IDs.
+
+E4 adds 9 tests (618 → 627); full check/shadowJar passes, zero failures/skips. [Live correctness and workload report](../tests/live/economy/RESULTS.md) records 330 passing checks and the failed latency release target. Each layout/lane has 1,000 synchronous calls over 100 ticks with simultaneous real preference, moderation and mail repository writes. All healthy calls stayed below 25 ms, but p99 exceeded 2 ms.
+
+A separate FULL economy.db prototype reduced p99 from 3.903 to 3.420 ms on Spigot and from 5.176 to 4.644 ms on Paper; it still fails. It reuses a physical connection and isolates Vault-only money from the other three writers. Adopting it would require authoritative payment-policy data to reside with the money journal; two WAL files cannot be assumed to commit PAY/policy atomically. File isolation alone is not a demonstrated fix on the measured storage, so further storage/connection analysis is needed before release. Durability is unchanged. Stop here: no E5 reservation work, paid kits remain denied, and signs remain S21.

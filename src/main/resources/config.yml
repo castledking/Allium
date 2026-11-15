@@ -60,8 +60,6 @@ economy:
   minimum-pay-amount: '0.01'
   offline-pay-enabled: true
   pay-excludes-ignore-list: true
-  # Development-only legacy provider. Leave off until the journalled engine replaces it.
-  scaffold-vault-provider-enabled: false
 
 # Staple tools. Each works with its built-in item and with Nexo, CraftEngine or Oraxen items;
 # an item's appearance never changes the tool's behavior.

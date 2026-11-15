@@ -1,0 +1,8 @@
+name: EconomyGate
+version: "1.0"
+main: gate.EconomyGate
+api-version: "1.20"
+depend: [Allium, Vault]
+commands:
+  s20g:
+    description: Disposable economy gate fixture

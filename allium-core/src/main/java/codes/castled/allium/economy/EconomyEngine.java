@@ -17,14 +17,30 @@ public final class EconomyEngine {
     private final EconomyCoordinator coordinator=new EconomyCoordinator();
     private final PaymentPolicy policy;
     private final Committer committer;
+    private final java.util.function.Consumer<Mutation> validator;
+    private volatile boolean ready;
+    public boolean ready(){return ready;}
     private volatile EconomySettings settings;
     public EconomyEngine(ConnectionSource connections, EconomySettings settings, PaymentPolicy policy) throws SQLException {
         this(connections,settings,policy,(c,id)->{try(var s=c.createStatement()){s.execute("COMMIT");}});
     }
     public EconomyEngine(ConnectionSource connections, EconomySettings settings, PaymentPolicy policy, Committer committer) throws SQLException {
+        this(connections,settings,policy,committer,ignored->{});
+    }
+    public EconomyEngine(ConnectionSource connections,EconomySettings settings,PaymentPolicy policy,Committer committer,java.util.function.Consumer<Mutation> validator)throws SQLException {
         this.connections=Objects.requireNonNull(connections);this.settings=Objects.requireNonNull(settings);
         this.policy=Objects.requireNonNull(policy);this.committer=Objects.requireNonNull(committer);
+        this.validator=Objects.requireNonNull(validator);
         EconomySchema.migrate(connections);
+        installSettings(settings);
+        try(var c=connection();var s=c.createStatement()){
+            try(var r=s.executeQuery("SELECT COUNT(*) FROM "+EconomySchema.OPERATIONS+" WHERE (state='COMMITTED' AND (result_code<>'OK' OR source_balance IS NULL OR (recipient_uuid IS NOT NULL AND recipient_balance IS NULL))) OR (state='REJECTED' AND result_code IN ('OK','PENDING'))")){
+                if(!r.next()||r.getLong(1)!=0)throw new SQLException("economy recovery found incomplete journal receipts");
+            }
+            for(String table:List.of(EconomySchema.ACCOUNTS,EconomySchema.OPERATIONS,EconomySchema.ENTRIES))
+                try(var r=s.executeQuery("PRAGMA foreign_key_check("+table+")")){if(r.next())throw new SQLException("economy recovery found foreign-key violation");}
+        }
+        ready=true;
     }
     public EconomySettings settings(){return settings;}
     public EconomyRequest request(UUID id,String origin,String key,EconomyRequest.Kind kind,String actor,UUID source,UUID recipient,Money amount){
@@ -115,10 +131,12 @@ public final class EconomyEngine {
                     }
                 }
             }
-            if(rejection!=null){savepoint.rollback();a=null;b=null;}
+            if(rejection!=null){savepoint.rollback();a=read(c,q.source());b=q.recipient()==null?null:read(c,q.recipient());}
             savepoint.release();finish(c,q.id(),rejection,a,b);
+            Mutation result=rejection==null?new Committed(q.id(),a,b,false):new Rejected(q.id(),rejection,a,b);
+            validator.accept(result);
             committing=true;committer.commit(c,q.id());begun=false;
-            return rejection==null?new Committed(q.id(),a,b,false):new Rejected(q.id(),rejection);
+            return result;
         }catch(Exception error){
             if(begun && c!=null)rollback(c);
             return committing?new Unknown(q.id(),error.getMessage()):new Unavailable(error.getMessage());
@@ -165,7 +183,7 @@ public final class EconomyEngine {
                 if(!r.next())return null;
                 UUID id=UUID.fromString(r.getString(1));
                 if(!Arrays.equals(payload,r.getBytes(2))||!Arrays.equals(hash,r.getBytes(3)))return new Rejected(q.id(),"IDEMPOTENCY_CONFLICT");
-                Mutation receipt=r.getString(4).equals("REJECTED")?new Rejected(id,r.getString(5)):new Committed(id,resultFound(r,6),resultFound(r,9),true);
+                Mutation receipt=r.getString(4).equals("REJECTED")?new Rejected(id,r.getString(5),resultFound(r,6),resultFound(r,9)):new Committed(id,resultFound(r,6),resultFound(r,9),true);
                 if(r.next())return new Rejected(q.id(),"IDEMPOTENCY_CONFLICT");
                 return receipt;
             }

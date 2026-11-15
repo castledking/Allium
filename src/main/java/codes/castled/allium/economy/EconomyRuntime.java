@@ -22,15 +22,31 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     private final EconomyEngine engine;
     private final Executor worker;
     private final Phaser accepted=new Phaser(1);
+    private final Object admission=new Object();
     private volatile boolean closed,reloading;
     public EconomyRuntime(PluginStart plugin)throws SQLException {
         this.plugin=plugin;
-        engine=new EconomyEngine(plugin.getDatabaseManager().connectionSource(),readSettings(plugin),this::permits);
+        engine=new EconomyEngine(plugin.getDatabaseManager().connectionSource(),readSettings(plugin),this::permits,(c,id)->{
+            if(codes.castled.allium.core.FaultInjection.trip("economy.halt-before-commit"))Runtime.getRuntime().halt(77);
+            try(var statement=c.createStatement()){statement.execute("COMMIT");}
+            if(codes.castled.allium.core.FaultInjection.trip("economy.halt-after-commit"))Runtime.getRuntime().halt(78);
+            if(codes.castled.allium.core.FaultInjection.trip("economy.commit-unknown"))throw new SQLException("fault injection: committed acknowledgement discarded");
+        },VaultMoney::validate);
         worker=plugin.getScheduler().boundedPool("Allium-Economy",1,256);
         var preferences=preferences();if(preferences!=null)preferences.repository().coordinateWritesWith(engine.coordinator());
         var messaging=messaging();if(messaging!=null)messaging.ignores().repository().coordinateWritesWith(engine.coordinator());
     }
     public EconomyEngine engine(){return engine;}
+    public boolean ready(){return !closed&&engine.ready();}
+    public Mutation synchronous(EconomyRequest request){
+        if(!admit())return new Unavailable("economy admission is closed");
+        try{return engine.execute(request);}finally{accepted.arriveAndDeregister();}
+    }
+    public Balance synchronousBalance(UUID id){
+        if(!admit())return new Unavailable("economy admission is closed");
+        try{return engine.balance(id);}finally{accepted.arriveAndDeregister();}
+    }
+
     public static EconomySettings readSettings(PluginStart plugin){
         var c=plugin.getConfig();
         return new EconomySettings(decimal(c.get("economy.starting-balance","100.00")),decimal(c.get("economy.min-money","0.00")),
@@ -55,9 +71,9 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             engine.execute(engine.request(operation,"OPEN",id.toString(),EconomyRequest.Kind.OPEN,"SYSTEM",id,null,engine.settings().starting()));
         }
     });}
+    private boolean admit(){synchronized(admission){if(closed||reloading)return false;accepted.register();return true;}}
     private boolean submit(CommandSender sender,Runnable task){
-        if(closed||reloading){if(sender!=null)tell(sender,"Economy is unavailable.");return false;}
-        accepted.register();
+        if(!admit()){if(sender!=null)tell(sender,"Economy is unavailable.");return false;}
         try{worker.execute(()->{try{task.run();}finally{accepted.arriveAndDeregister();}});return true;}
         catch(RejectedExecutionException error){accepted.arriveAndDeregister();if(sender!=null)tell(sender,"Economy is busy; try again.");return false;}
     }
@@ -169,7 +185,9 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         finally{reloading=false;}
     }
     @Override public void close(){
-        closed=true;HandlerList.unregisterAll(this);int phase=accepted.arriveAndDeregister();
+        int phase;
+        synchronized(admission){if(closed)return;closed=true;phase=accepted.arriveAndDeregister();}
+        HandlerList.unregisterAll(this);
         try{accepted.awaitAdvanceInterruptibly(phase,10,TimeUnit.SECONDS);}
         catch(InterruptedException error){Thread.currentThread().interrupt();}
         catch(TimeoutException error){plugin.logger().warning("Economy shutdown has unresolved accepted work; journal recovery remains authoritative.");}

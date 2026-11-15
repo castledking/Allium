@@ -136,6 +136,7 @@ dependencies {
     testRuntimeOnly("org.jetbrains.kotlin:kotlin-stdlib:2.1.20")
     testImplementation("net.kyori:adventure-api:4.17.0")
     testImplementation("net.kyori:adventure-text-serializer-legacy:4.17.0")
+    testImplementation("com.github.MilkBowl:VaultAPI:1.7.1")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
     testImplementation("org.mockito:mockito-junit-jupiter:5.16.0")

@@ -26,7 +26,7 @@ public final class EconomyGate extends JavaPlugin {
     private EconomyRuntime runtime;
     private Economy vault;
     private final Map<UUID,PermissionAttachment> grants=new HashMap<>();
-    private final ExecutorService background=Executors.newFixedThreadPool(4);
+    private final ExecutorService background=Executors.newFixedThreadPool(5);
     private final AtomicBoolean load=new AtomicBoolean();
     private final AtomicInteger writeRounds=new AtomicInteger();
     private volatile Map<String,Object> benchmark=Map.of("done",false),parallel=Map.of("done",false);
@@ -87,7 +87,7 @@ public final class EconomyGate extends JavaPlugin {
                 case "parallelstate" -> out.putAll(parallel);
                 case "benchmark" -> {startBenchmark(args[1],Boolean.parseBoolean(args[2]));out.put("started",true);}
                 case "benchmarkstate" -> out.putAll(benchmark);
-                case "realistic" -> {startRealistic(args[1],Integer.parseInt(args[2]));out.put("started",true);}
+                case "realistic" -> {startRealistic(args[1],Integer.parseInt(args[2]),args.length>3?args[3]:"pooled");out.put("started",true);}
                 default -> throw new IllegalArgumentException("unknown fixture command");
             }
             getLogger().info("S20G-DONE "+text+" => "+json(out));
@@ -136,9 +136,23 @@ public final class EconomyGate extends JavaPlugin {
             if(++batch[0]>=100){cancel();load.set(false);try{loadWork.get(10,TimeUnit.SECONDS);if(physical!=null)physical.close();}catch(Exception error){errors.add("writer completion "+error);}benchmark=Map.of("done",true,"separate",separate,"callsMs",calls,"tickEconomyWallMs",ticks,"serverThreadCpuPerTickMs",cpu,"writerRounds",writeRounds.get(),"errors",errors);}
         }}.runTaskTimer(this,1,1);
     }
-    private void startRealistic(String name,int seconds)throws Exception {
+    private void startRealistic(String name,int seconds,String mode)throws Exception {
         if(seconds<600||!load.compareAndSet(false,true))throw new IllegalArgumentException("at least 600s, one workload at a time");
         benchmark=Map.of("done",false);
+        if(!Set.of("pooled","dedicated").contains(mode))throw new IllegalArgumentException("read mode");
+        var timings=new ConcurrentLinkedQueue<EconomyTiming.Sample>();
+        if(Boolean.getBoolean("allium.economy.timing"))runtime.engine().observeTiming(timings::add);
+        java.sql.Connection dedicated=null;Economy selected=vault;
+        if(mode.equals("dedicated")){
+            dedicated=DriverManager.getConnection("jdbc:sqlite:file:"+allium.getDataFolder().toPath().resolve("allium.db").toAbsolutePath()+"?mode=ro");
+            try(var s=dedicated.createStatement()){s.execute("PRAGMA query_only=ON");s.execute("PRAGMA busy_timeout=1000");}
+            final var physical=dedicated;
+            codes.castled.allium.storage.ConnectionSource readSource=()->(Connection)java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{Connection.class},(p,m,a)->{if(m.getName().equals("close"))return null;try{return m.invoke(physical,a);}catch(java.lang.reflect.InvocationTargetException e){throw e.getCause();}});
+            selected=new VaultEconomyProvider(runtime.engine(),n->uuid(n),runtime::ready,id->runtime.engine().balance(id,readSource),runtime::synchronous);
+            // All reads remain independent autocommit SELECTs, no retained snapshot or cached balance.
+        }
+        final var readConnection=dedicated;final Economy provider=selected;
+        var checkpoints=new CopyOnWriteArrayList<Map<String,Object>>();
         var preferences=(PreferencesModule)allium.getModuleManager().getModule("preferences");
         var moderation=(ModerationModule)allium.getModuleManager().getModule("moderation");
         var mail=new MailRepository(allium.getDatabaseManager().connectionSource(),allium.getDatabaseManager().dialect(),System::currentTimeMillis);
@@ -157,25 +171,41 @@ public final class EconomyGate extends JavaPlugin {
                 counts.merge(type,1,Integer::sum);
             }}catch(InterruptedException expected){Thread.currentThread().interrupt();}catch(Exception error){errors.add(type+": "+error);}
         }));
+        if(Boolean.getBoolean("allium.economy.timing"))workers.add(background.submit(()->{
+            try{while(load.get()){
+                Thread.sleep(30000);if(!load.get())break;
+                long epoch=System.currentTimeMillis(),nano=System.nanoTime();Map<String,Object> probe=new LinkedHashMap<>();probe.put("startEpochMillis",epoch);probe.put("startNano",nano);
+                try(var c=DriverManager.getConnection("jdbc:sqlite:"+allium.getDataFolder().toPath().resolve("allium.db"));var s=c.createStatement()){
+                    s.execute("PRAGMA busy_timeout=1000");long statement=System.nanoTime();
+                    try(var r=s.executeQuery("PRAGMA wal_checkpoint(PASSIVE)")){r.next();probe.put("busy",r.getInt(1));probe.put("walFrames",r.getInt(2));probe.put("checkpointedFrames",r.getInt(3));}
+                    probe.put("statementMs",(System.nanoTime()-statement)/1e6);
+                }catch(Exception error){probe.put("error",error.toString());}
+                probe.put("totalMs",(System.nanoTime()-nano)/1e6);checkpoints.add(probe);
+            }}catch(InterruptedException expected){Thread.currentThread().interrupt();}
+        }));
         var writes=new ArrayList<Double>();var reads=new ArrayList<Double>();var ticks=new ArrayList<Double>();var cpu=new ArrayList<Double>();var player=account(name);
         var bean=ManagementFactory.getThreadMXBean();int[] tickNumber={0},writeNumber={0};
         new org.bukkit.scheduler.BukkitRunnable(){@Override public void run(){
             int phase=tickNumber[0]%20;int n=phase==0?3:(phase==10||phase==15?1:0);
             long start=System.nanoTime(),cpuStart=bean.getCurrentThreadCpuTime();
             for(int i=0;i<n;i++){
-                long call=System.nanoTime();var result=(writeNumber[0]++%2==0)?vault.depositPlayer(player,.01):vault.withdrawPlayer(player,.01);
+                long call=System.nanoTime();var result=(writeNumber[0]++%2==0)?provider.depositPlayer(player,.01):provider.withdrawPlayer(player,.01);
                 writes.add((System.nanoTime()-call)/1e6);if(!result.transactionSuccess())errors.add("Vault write: "+result.errorMessage);
             }
-            for(int i=0;i<(phase%2==0?2:3);i++){long call=System.nanoTime();try{vault.getBalance(player);}catch(Exception error){errors.add("Vault read: "+error);}reads.add((System.nanoTime()-call)/1e6);}
+            for(int i=0;i<(phase%2==0?2:3);i++){long call=System.nanoTime();try{provider.getBalance(player);}catch(Exception error){errors.add("Vault read: "+error);}reads.add((System.nanoTime()-call)/1e6);}
             cpu.add((bean.getCurrentThreadCpuTime()-cpuStart)/1e6);ticks.add((System.nanoTime()-start)/1e6);tickNumber[0]++;
             if(tickNumber[0]%1200==0)getLogger().info("S20G realistic progress seconds="+(System.nanoTime()-begin)/1e9+" ticks="+tickNumber[0]);
             if(tickNumber[0]>=seconds*20 && System.nanoTime()-begin>=seconds*1_000_000_000L){
                 cancel();load.set(false);
                 // Publish on worker completion; never join sleepers on the server thread.
-                background.submit(()->{try{for(var work:workers)work.get(20,TimeUnit.SECONDS);}catch(Exception error){errors.add("completion: "+error);}
-                    Map<String,Object> result=new LinkedHashMap<>();result.put("done",true);result.put("elapsedSeconds",(System.nanoTime()-begin)/1e9);
+                runtime.engine().observeTiming(null);
+                long activeSecondsNano=System.nanoTime()-begin;
+                background.submit(()->{try{for(var work:workers)work.get(40,TimeUnit.SECONDS);if(readConnection!=null)readConnection.close();}catch(Exception error){errors.add("completion: "+error);}
+                    Map<String,Object> result=new LinkedHashMap<>();result.put("done",true);result.put("readMode",mode);result.put("activeSeconds",activeSecondsNano/1e9);result.put("checkpoints",checkpoints);
+                    result.put("timings",timings.stream().map(t->Map.of("kind",t.kind(),"threadId",t.threadId(),"startEpochMillis",t.startEpochMillis(),"startNano",t.startNano(),"totalNanos",t.totalNanos(),"connectionNanos",t.connectionNanos(),"statementNanos",t.statementNanos(),"commitNanos",t.commitNanos(),"coordinatorNanos",t.coordinatorNanos(),"otherNanos",t.otherNanos())).toList());
+                    result.put("elapsedSeconds",(System.nanoTime()-begin)/1e9);
                     result.put("writeCallsMs",writes);result.put("readCallsMs",reads);result.put("tickEconomyWallMs",ticks);result.put("tickEconomyCpuMs",cpu);result.put("backgroundWrites",counts);result.put("backgroundIntervalsMs",Map.of("preferences",preferenceMs,"moderation",moderationMs,"mail",mailMs));result.put("errors",errors);
-                    try{Files.writeString(getDataFolder().toPath().resolve("realistic.json"),json(result));benchmark=Map.of("done",true,"file","realistic.json");}catch(Exception error){benchmark=Map.of("done",true,"error",error.toString());}
+                    try{Files.writeString(getDataFolder().toPath().resolve("realistic-"+mode+".json"),json(result));benchmark=Map.of("done",true,"file","realistic-"+mode+".json");}catch(Exception error){benchmark=Map.of("done",true,"error",error.toString());}
                 });
             }
         }}.runTaskTimer(this,1,1);

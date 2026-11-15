@@ -18,6 +18,9 @@ public final class EconomyEngine {
     private final PaymentPolicy policy;
     private final Committer committer;
     private final java.util.function.Consumer<Mutation> validator;
+    private volatile java.util.function.Consumer<EconomyTiming.Sample> timing;
+    /** Null disables diagnostics (the default); observers must be nonblocking. */
+    public void observeTiming(java.util.function.Consumer<EconomyTiming.Sample> observer){timing=observer;}
     private volatile boolean ready;
     public boolean ready(){return ready;}
     private volatile EconomySettings settings;
@@ -47,23 +50,36 @@ public final class EconomyEngine {
         return new EconomyRequest(id,origin,key,kind,actor,source,recipient,amount,settings);
     }
     private Connection connection() throws SQLException {
-        Connection c=connections.connection();
+        return connection(connections,false);
+    }
+    private Connection connection(ConnectionSource source,boolean readOnly)throws SQLException {
+        var timing=EconomyTiming.CURRENT.get();long start=timing==null?0:System.nanoTime();Connection acquired;
+        try{acquired=source.connection();}finally{if(timing!=null)timing.connection+=System.nanoTime()-start;}
+        Connection c=EconomyTiming.wrap(acquired);
         try(var s=c.createStatement()){
             if(!c.getAutoCommit()) throw new SQLException("economy requires a clean autocommit connection");
-            s.execute("PRAGMA busy_timeout=1000");s.execute("PRAGMA foreign_keys=ON");s.execute("PRAGMA journal_mode=WAL");s.execute("PRAGMA synchronous=FULL");
+            s.execute("PRAGMA busy_timeout=1000");s.execute("PRAGMA foreign_keys=ON");if(!readOnly)s.execute("PRAGMA journal_mode=WAL");
+            else try(var r=s.executeQuery("PRAGMA journal_mode")){if(!r.next()||!r.getString(1).equalsIgnoreCase("wal"))throw new SQLException("read-only experiment requires WAL");}s.execute("PRAGMA synchronous=FULL");
             try(var r=s.executeQuery("PRAGMA synchronous")){if(!r.next()||r.getInt(1)!=2)throw new SQLException("SQLite FULL durability unavailable");}
             return c;
         }catch(SQLException error){c.close();throw error;}
     }
-    public Balance balance(UUID id){
-        try(var c=connection()){Found found=read(c,id);return found==null?new Missing():found;}
-        catch(SQLException|RuntimeException error){return new Unavailable(error.getMessage());}
+    public Balance balance(UUID id){return balance(id,null);}
+    /** Experimental caller-owned read-only source to the same committed WAL database; no cache/transaction retained. */
+    public Balance balance(UUID id,ConnectionSource readOnlySource){
+        try(var timing=EconomyTiming.begin("READ",this.timing)){
+            try(var c=readOnlySource==null?connection():connection(readOnlySource,true)){Found found=read(c,id);return found==null?new Missing():found;}
+            catch(SQLException|RuntimeException error){return new Unavailable(error.getMessage());}
+        }
     }
     public EconomyCoordinator coordinator(){return coordinator;}
     public <T> T coordinated(java.util.concurrent.Callable<T> work)throws SQLException{return coordinator.call(work);}
     public Mutation execute(EconomyRequest request){
-        try{return coordinator.call(()->transact(request));}
-        catch(SQLException error){return new Unavailable(error.getMessage());}
+        try(var timing=EconomyTiming.begin(request.kind().name(),this.timing)){
+            long waiting=timing==null?0:System.nanoTime();
+            try{return coordinator.call(()->{if(timing!=null)timing.coordinator=System.nanoTime()-waiting;return transact(request);});}
+            catch(SQLException error){if(timing!=null)timing.coordinator=System.nanoTime()-waiting;return new Unavailable(error.getMessage());}
+        }
     }
     /** Caller first closes admission and drains its async queue. Validation and install share writer ordering. */
     public void installSettings(EconomySettings next)throws SQLException {
@@ -135,7 +151,11 @@ public final class EconomyEngine {
             savepoint.release();finish(c,q.id(),rejection,a,b);
             Mutation result=rejection==null?new Committed(q.id(),a,b,false):new Rejected(q.id(),rejection,a,b);
             validator.accept(result);
-            committing=true;committer.commit(c,q.id());begun=false;
+            committing=true;
+            var timing=EconomyTiming.CURRENT.get();long start=timing==null?0:System.nanoTime();
+            if(timing!=null)timing.committing=true;
+            try{committer.commit(c,q.id());}finally{if(timing!=null){timing.commit+=System.nanoTime()-start;timing.committing=false;}}
+            begun=false;
             return result;
         }catch(Exception error){
             if(begun && c!=null)rollback(c);

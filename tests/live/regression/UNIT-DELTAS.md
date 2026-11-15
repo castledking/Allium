@@ -37,3 +37,5 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
 
 - S22 shop-sign design only: **+0**, 667 unchanged. Documentation only; no shop
   code, schema migration, provider enablement or deployment. See docs/shop-signs-design.md.
+
+- S21 service matrix and required sweep retention: **+55**, 667 → 722; actual SignService listeners across all eleven types, create/use/break permission checks, late protection cancellation, waxed/unwaxed routing and type/command/module disabling. Full test task passes, zero failures/skips; production code unchanged.

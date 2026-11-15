@@ -5,6 +5,41 @@ release or deployment is introduced here. Use one SQLite WAL FULL database and
 reuse E5's reservations, native receipts and recovery decisions. A Vault
 withdraw/refund sequence is not a substitute for a transactional workflow.
 
+## Phases and shop ownership
+
+1. **First implementation: server shops, buy and sell only.** Owner is the literal
+   server authority, never a player's UUID. Supply is infinite; no SQL item stock
+   or item escrow exists. A server sell creates the configured exact item; a
+   server buyback consumes accepted items. Money is an explicitly configured,
+   journalled server sink/source. Normal account bounds still apply. Creating a
+   sign cannot mint money: staff must publish an authorized server quote and
+   buyback limits. Disabled quotes stop new admissions. No player owner is debited.
+2. **Later phase: player shops.** Exact finite items are escrowed in SQL and
+   buybacks use the owner's explicitly funded budget. Stocking, buying, selling
+   and stock withdrawal each need their own receipt-backed workflows and gates.
+3. **Later phase: trades.** Item-for-item (optionally money) exchange requires its
+   own recovery/delivery-obligation gates. It is not included with server shops
+   or implicitly enabled when player shops arrive.
+
+Each phase needs its own schema/version, domain/concurrency tests, crash matrix,
+real-client Spigot/Paper gates and latency evidence. None is implemented by S22.
+
+Server shops have **no item-stock escrow**. Buyer money reservations still protect
+paid delivery as in E5; they are not a finite shop-stock balance. For server sales,
+reserve buyer money plus the PENDING delivery intent, deliver/save/prove once,
+then capture into an audited server sink with the acknowledgement. Receipt absence
+releases the buyer hold. Infinite supply never authorizes redelivery on recovery.
+
+For server buybacks, freeze the accepted item/slot plan and exact payout in a
+PENDING workflow; validate recipient cap and configured buyback limits before any
+removal. Remove items once and save/prove a native removal receipt. One keyed
+transaction credits the player from the audited server source and acknowledges
+consumption. There is no owner-fund or stock reservation and no zero-value money
+hold. If the recipient cap changes before credit, preserve the consumed-item
+receipt and payout obligation for recovery/operator reconciliation. Never repeat
+removal, silently drop the payout, or refund with a new ID. Server source/sink
+operations need explicit engine support and tests, not a fabricated player account.
+
 ## Sign identity, ownership and frozen quote
 
 Server-owned tile PDC identifies a sign UUID and revision. Display headers are
@@ -27,7 +62,7 @@ price and exact total. Zero-price and item-only workflows still need item holds.
 
 ## Stock and strict item identity
 
-Stock is durable SQL escrow of exact serialized stacks, not a count inferred from
+For **player shops only**, stock is durable SQL escrow of exact serialized stacks, not a count inferred from
 a nearby chest. Stocking is itself a receipt-backed removal workflow. A chest
 integration needs a separate ownership/receipt model and is outside the first
 implementation. Reserve stock units and funds in the same transaction using
@@ -60,7 +95,7 @@ This is recoverable exactly-once processing across SQL and native playerdata,
 not a claim that two files become one hardware-atomic write. Preserve E5's
 process-halt versus OS/power-loss and coordinated-backup limitations.
 
-### Buy: SQL stock to buyer inventory
+### Player buy: SQL stock to buyer inventory
 
 1. Reserve buyer funds and stock together, inserting PENDING delivery intent and
    frozen baseline evidence in one commit.
@@ -72,7 +107,7 @@ process-halt versus OS/power-loss and coordinated-backup limitations.
    receipt finishes capture without delivering again; valid saved absence releases
    both stock and money. Ambiguous evidence retains both and quarantines.
 
-### Sell: seller inventory to SQL stock and seller money
+### Player sell: seller inventory to SQL stock and seller money
 
 1. Reserve the shop's explicitly funded buyer budget and stock capacity, saving
    the exact offered item/slot intent and seller baseline.
@@ -83,7 +118,7 @@ process-halt versus OS/power-loss and coordinated-backup limitations.
 4. A removal receipt is not authority to return goods automatically. Reconcile
    its original workflow and money acknowledgement before any cleanup.
 
-### Trade: offered A to outgoing B, optionally with money
+### Later trade phase: offered A to outgoing B, optionally with money
 
 First escrow A using a saved removal receipt. Its confirmed receipt activates a
 durable exchange entitlement. One SQL commit consumes incoming escrow, reserves
@@ -93,6 +128,42 @@ deliver B persists until complete; it cannot charge or remove A again. Inventory
 admission remains fenced during recovery. No player/owner can withdraw stock
 pledged to the exchange. This is a recoverable multi-phase exchange, not an
 instantaneous cross-file inventory swap.
+
+## Player stock withdrawal (later player-shop phase)
+
+Only the UUID owner or an explicitly audited stock administrator can withdraw.
+Freeze withdrawal UUID, shop/stock version, exact serialized identity/counts,
+recipient UUID and native inventory baseline. Reserve only **unpledged** stock
+units in the same transaction as the PENDING withdrawal intent. Units reserved
+for buyers, trade obligations or another withdrawal cannot be taken. Withdrawals
+never create a money charge or illegal zero-amount monetary hold.
+
+Plan the entire delivery and refuse without mutation if it will not fit. Apply
+once under inventory admission, save a versioned native withdrawal receipt and
+verify it outside the writer lock. Under a stock/version/token recheck, atomically
+consume the reserved stock and write the immutable withdrawal acknowledgement.
+Saved receipt recovery finishes that transition without delivering again; proven
+absence cancels the intent and unlocks stock. Missing/corrupt/partial evidence
+retains the stock reservation and quarantines. Lost SQL acknowledgement replays
+only the original withdrawal ID. Deleting a shop/sign, transferring ownership or
+restarting does not erase a withdrawal obligation or change its frozen recipient.
+
+## Sign identity under griefing and concurrent edits
+
+A block binding is `(world UUID, x, y, z, placement epoch)` with one active shop
+UUID/owner. Front/back quotes may share that shop, but two different shops cannot
+claim the same block: enforce a unique binding transactionally, with concurrent
+creation yielding one winner. Replacing the sign creates a new epoch and cannot
+adopt old workflows merely because its coordinates match. Preserve S21's existing
+PDC format; shop metadata needs a separately versioned identity rather than
+reinterpreting service-sign bytes.
+
+Breaking, exploding or replacing a sign with open workflows disables its new
+admissions but leaves those workflows, receipts, reservations and journal rows
+intact. Old callbacks must not clear or mutate the replacement's identity. Text
+or price changed before admission requires a fresh validated quote revision.
+After admission, execution/recovery uses only the frozen original intent and
+price; current sign text cannot change an existing purchase or manufacture a retry.
 
 ## Crash and failure decisions
 
@@ -130,6 +201,14 @@ reason and never silently deletes markers or reissues goods.
 - Finite funds/stock contention, simultaneous buy/sell/opposing trades, ordered
   locks, stale versions/quotes, no overselling, balanced ledger entries and
   R/stock/escrow invariants.
+- Server-shop infinite supply/sink/source/cap/limit cases, with no item escrow
+  or player-owner debit; player shops and trades gated separately.
+- Stock withdrawal: reserved-unit exclusion, owner/admin authorization, full
+  inventory refusal, partial save, before/after acknowledgement crashes, replay,
+  competing buyers/withdrawals, ownership transfer and sign removal.
+- Sign griefing: break/replace with open workflows, simultaneous two shops on
+  one block, front/back conflicting owners, stale placement epochs, and text or
+  price changed both before and after admission; no adopted or lost obligations.
 - Every crash boundary above, before/after item mutation/save and SQL commit;
   lost acknowledgements, original-ID replay after restart and interrupted cleanup.
 - Full inventories, refused/partial plans, unknown markers, missing/truncated/

@@ -590,8 +590,16 @@ def run_suite(lane):
             lane.name + ': real movement un-AFKs InfoObs and clears sleepingIgnored')
 
     # 4. Auto-AFK and kick-on-AFK (default off, opt-in on)
+    lane.fixture('perm InfoNorm allium.afk.auto false')
+    norm.move(1.6,0.0)
+    norm.command('afk','You are now AFK.')
+    require(lane.fixture('state')['normAfk'],lane.name+': manual AFK works with auto permission denied')
+    norm.move(1.6,0.0)
     lane.update_afk_config(auto_afk_seconds=3, kick_on_afk=False, kick_after_seconds=2)
     lane.console_cmd('allium reload', 'reloaded')
+    window(4.5)
+    require(not lane.fixture('state')['normAfk'],lane.name+': explicit allium.afk.auto=false blocks idle transition')
+    lane.fixture('perm InfoNorm allium.afk.auto true')
     wait(lambda: lane.fixture('state')['normAfk'] and lane.fixture('state')['obsAfk'],
          lane.name + ': auto-AFK triggers after 3s inactivity', 12)
     window(2.8)

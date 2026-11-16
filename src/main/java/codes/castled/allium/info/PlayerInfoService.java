@@ -62,6 +62,7 @@ public final class PlayerInfoService implements Listener {
     public static final String PERMISSION_NEAR = "allium.near";
     public static final String PERMISSION_NEAR_BYPASS_MAX = "allium.near.bypass-max";
     public static final String PERMISSION_AFK = "allium.afk";
+    public static final String PERMISSION_AFK_AUTO = "allium.afk.auto";
     public static final String PERMISSION_AFK_KICK_EXEMPT = "allium.afk.kick.exempt";
     public static final String LIST_GROUP_PERMISSION_PREFIX = "allium.list.group.";
 
@@ -616,7 +617,7 @@ public final class PlayerInfoService implements Listener {
             }
             PlayerSession session = sessionFor(player);
             if (!session.afk) {
-                if (current.autoAfkSeconds() > 0 && now - session.lastActivity >= autoMillis) {
+                if (current.autoAfkSeconds() > 0 && player.hasPermission(PERMISSION_AFK_AUTO) && now - session.lastActivity >= autoMillis) {
                     setAfk(player, true, null);
                 }
             } else if (current.kickOnAfk()

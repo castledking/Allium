@@ -1,0 +1,35 @@
+{
+  "sha256": "bcc4640c0a507523d05599f1a433cd0a5719824f89f5c7fdbdbcd5412508784e",
+  "unitDelta": 3,
+  "totalUnits": 821,
+  "runs": [
+    {
+      "gate": "gc",
+      "server": "spigot",
+      "passed": 117,
+      "report": "/mnt/storage/.allium-validation/20261116/s25-utilities/runs/lang-feedback-gc-spigot/summary.json",
+      "reportSha256": "c209416a2f27660a564530ead5028c97ce5ed8fee5dab13e65a34967a0c26af4"
+    },
+    {
+      "gate": "gc",
+      "server": "paper",
+      "passed": 117,
+      "report": "/mnt/storage/.allium-validation/20261116/s25-utilities/runs/lang-feedback-gc-paper/summary.json",
+      "reportSha256": "f2f8b2f86b8cc66d086258feca3338298571b2c64e870d270cfc695d8c2fd1eb"
+    },
+    {
+      "gate": "chat",
+      "server": "spigot",
+      "passed": 125,
+      "report": "/mnt/storage/.allium-validation/20261116/s20-economy/runs/lang-feedback-chat-spigot/manifest.json",
+      "reportSha256": "85962b735171d36d6290d8f8a95a78fe5794042aaebd066516bd402b52916038"
+    },
+    {
+      "gate": "chat",
+      "server": "paper",
+      "passed": 125,
+      "report": "/mnt/storage/.allium-validation/20261116/s20-economy/runs/lang-feedback-chat-paper/manifest.json",
+      "reportSha256": "cc4ce29070783f84968b2d5b0cb0770917e2e746dfae8a77fd703668d7f9dbee"
+    }
+  ]
+}

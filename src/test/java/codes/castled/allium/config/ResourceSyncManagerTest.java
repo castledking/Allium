@@ -19,6 +19,14 @@ class ResourceSyncManagerTest {
     }
 
     @Test
+    void existingPlainMessageRemainsPlainWhenBundledDefaultAddsSound() throws Exception {
+        var bundled=yaml("core:\n  reload-success:\n    text: fresh\n    sound: minecraft:ui.button.click\n");
+        var installed=yaml("core:\n  reload-success: customized\n");
+        new ResourceSyncManager(mock(PluginStart.class,RETURNS_DEEP_STUBS)).mergeDefaults(bundled,installed,"");
+        assertEquals("customized",installed.getString("core.reload-success"));assertFalse(installed.isConfigurationSection("core.reload-success"));
+    }
+
+    @Test
     void aMessageEntryIsOneValueSoAnOmittedVolumeOrPitchIsNeverPutBack() throws Exception {
         ResourceSyncManager sync = new ResourceSyncManager(mock(PluginStart.class, RETURNS_DEEP_STUBS));
         YamlConfiguration bundled = yaml("""

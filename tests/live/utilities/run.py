@@ -614,6 +614,7 @@ def run_suite(kind, base_port):
     scopes.append(lane.name + ':gc-time-weather-enchant')
     gc_start = staff.cmd('gc')
     gc_line1 = staff.chat(gc_start, 'Runtime uptime:')
+    require('#ff55ff' in gc_line1.get('colors',[]) and '#aaaaaa' in gc_line1.get('colors',[]),lane.name+': /gc uses colored language prefix and body',gc_line1)
     staff.chat(gc_start, 'Memory:')
     staff.chat(gc_start, 'world:')
     if kind == 'spigot':

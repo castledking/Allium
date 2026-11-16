@@ -471,6 +471,21 @@ economy:
     pitch: 0.8
 
 chat:
+  delete:
+    success:
+      text: "{prefix} &aMessage deleted."
+      sound: minecraft:item.book.page_turn
+      volume: 0.4
+      pitch: 1.0
+    multiple:
+      text: "{prefix} &aMessages deleted."
+      sound: minecraft:item.book.page_turn
+      volume: 0.4
+      pitch: 1.0
+    not-found: "{prefix} &cMessage not found."
+    amount: "{prefix} &cAmount must be 1..200."
+    usage: "{prefix} &cUsage: &f/delmsg <id> &cor &f/delmsg <player> <amount>"
+  player-not-found: "{prefix} &cPlayer not found."
   msg-format: "&7[&f{sender} &7-> &f{receiver}&7] &f{message}"
   no-reply:
     text: "{prefix} &cNo one to reply to."
@@ -902,6 +917,13 @@ player:
     pitch: 1.0
 
 utility:
+  gc:
+    runtime: "{prefix} &7Runtime uptime: &f{uptime}&7, TPS: &f{tps}"
+    memory: "{prefix} &7Memory: &f{used} MB &7used / &f{allocated} MB &7allocated / &f{max} MB &7max{disk}"
+    disk: "&7, Disk free: &f{disk}"
+    players: "{prefix} &7Players: &f{online}/{max}&7, Worlds (&f{worlds}&7):"
+    world: "&7  - &f{world}&7: &f{chunks} &7chunks, &f{entities} &7entities{paused}"
+    paused: " &e[TIME PAUSED]"
   time-set:
     text: "{prefix} &aTime set to &f{time} &ain &f{world}&a."
     sound: minecraft:block.note_block.bell

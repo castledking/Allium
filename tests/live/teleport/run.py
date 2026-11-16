@@ -74,7 +74,7 @@ checks=[];failures=[];cases=[];observations={};processes=[];lane=None
 PLANNED_CASES=['request-accept-tpahere-back','deny-expiry-cancel','real-movement-cancels-warmup','real-damage-cancels-warmup',
                'toggle-off-cancels-pending','offline-mid-warmup','unsafe-lava-void-headspace-fall','tab-vanish',
                'unloaded-preferences-generic-refusal','staff-distinct-permission-toggle-bypass-audit-console','crossworld-back-spawn',
-               'death-back-config-switch','history-write-fault-retry','restart-persistence-back-spawn-toggle-cooldown','final-callback-client-service-health']
+               'death-back-config-switch','history-write-fault-retry','restart-persistence-back-spawn-toggle-cooldown','offline-teleport-command','final-callback-client-service-health']
 if A.focus=='death-back':PLANNED_CASES=['death-back-config-switch']
 started=time.time()
 def emit(s):
@@ -563,6 +563,41 @@ def persistence():
     lane.place(a,0);clear(a);a.cmd('spawn');arrived(a,observations['savedSpawn'],'saved crossworld spawn persists across restart');ready(a)
     b.cmd('tptoggle on')
 
+def offline_command():
+    a,b,c=lane.bots.values()
+    lane.reload({'teleport.warmup-seconds':1,'teleport.cooldowns.tpoffline':0})
+    lane.perm(a,'allium.teleport.bypass.cooldown',False)
+    origin=lane.place(a,0);dest=lane.place(b,30);clear(a,b)
+    mark=a.cmd('otp '+b.name);stationary(a,origin,'offline alias denied without permission',.2)
+    require(bool(a.chats(mark)),'permission denial has native or localized feedback')
+    lane.perm(a,'allium.tp.offline');lane.perm(a,'allium.tp')
+    a.cmd('otp '+b.name);arrived(a,dest,'online offline-alias target delegates to ordinary authorized tp');ready(a)
+    lane.place(a,0);clear(a);lane.fixture('vanish '+b.name+' on')
+    mark=a.cmd('tpoffline '+b.name);stationary(a,origin,'vanished online target cannot fall back to logout history',.2)
+    hidden=[m['plain'] for m in a.chats(mark)]
+    lane.fixture('vanish '+b.name+' off');mark=a.cmd('tpoffline UnknownNeverSeen')
+    require([m['plain'] for m in a.chats(mark)]==hidden,'unknown and vanished targets receive identical offline refusal')
+    b.disconnect()
+    require(b.name in a.tab('otp Tele'),'known offline name completes from index')
+    for alias in ['tpoffline','otp','offlinetp','allium:otp']:
+        origin=lane.place(a,0);clear(a);mark=a.cmd(alias+' '+b.name)
+        arrived(a,dest,alias+' reaches saved logout point');ready(a)
+        require(len(physical(a))==1 and any('last saved logout location' in m['plain'] for m in a.chats(mark)),alias+' moves once and uses dedicated acknowledgement')
+        a.cmd('back');arrived(a,origin,alias+' records back origin');ready(a)
+    origin=lane.place(a,0);clear(a)
+    lane.reload({'teleport.warmup-seconds':3})
+    a.cmd('otp '+b.name);warm(a);b.connect()
+    stationary(a,origin,'target rejoin during offline warmup cancels physical move',3.2)
+    lane.place(b,30);b.disconnect();clear(a)
+    a.cmd('otp '+b.name);warm(a);lane.perm(a,'allium.tp.offline',False)
+    stationary(a,origin,'offline permission revoked during warmup cancels move',3.2)
+    lane.perm(a,'allium.tp.offline');lane.reload({'teleport.warmup-seconds':1})
+    # Keep target offline across an actual stop/restart, then use the persisted row.
+    lane.stop();lane.boot();lane.fixture('world gate_other');a.connect();c.connect()
+    lane.perm(a,'allium.tp.offline');origin=lane.place(a,0);clear(a)
+    a.cmd('otp '+b.name);arrived(a,dest,'offline logout destination survives restart without target rejoining');ready(a)
+    b.connect();b.cmd('tptoggle on')
+
 def final_health():
     for b in lane.bots.values():require(b.state()['sameService'],'single teleport service survives reloads for '+b.name)
     # Any unexpected callback/task/fixture exception remains a failure, even if later cases work.
@@ -582,7 +617,7 @@ try:
                         ('unsafe-lava-void-headspace-fall',unsafe),('tab-vanish',visibility),('unloaded-preferences-generic-refusal',unloaded),
                         ('staff-distinct-permission-toggle-bypass-audit-console',staff),('crossworld-back-spawn',crossworld),
                         ('death-back-config-switch',death_back),('history-write-fault-retry',faults),('restart-persistence-back-spawn-toggle-cooldown',persistence),
-                        ('final-callback-client-service-health',final_health)]
+                        ('offline-teleport-command',offline_command),('final-callback-client-service-health',final_health)]
         if A.focus=='death-back':
             window(5)
             case('death-back-config-switch',death_back)

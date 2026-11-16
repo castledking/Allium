@@ -33,6 +33,7 @@ public final class TeleportCommand implements SpecCommandHandler {
         }
         if(!(sender instanceof Player player)){plugin.getMessageManager().send(sender,Messages.PLAYER_ONLY);return;}
         switch(command){
+            case "tpoffline" -> {if(args.length!=1){context.sendInvalidArgs(spec.selfUsage());return;}service.offline(player,args[0]);}
             case "tpa","tpahere","tphere" -> {
                 if(args.length!=1){context.sendInvalidArgs(spec.selfUsage());return;}
                 Player to=target(sender,args[0]);if(to==null)return;

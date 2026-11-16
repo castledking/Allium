@@ -544,18 +544,19 @@ public final class CoreCommandSpecs {
             teleportSpec("back", List.of()), teleportSpec("spawn", List.of()), teleportSpec("setspawn", List.of()),
             teleportSpec("tp", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
                     CommandArgSpec.optional("target", "allium.tp.others", SuggestionSpec.onlinePlayers("allium.tp.others")))),
+            teleportSpec("tpoffline", List.of(CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)))),
             teleportSpec("tphere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))));
 
     private static CommandSpec teleportSpec(String command, List<CommandArgSpec> args) {
         String usage = "/" + command + switch(command) {
-            case "tpa", "tpahere", "tphere" -> " <player>";
+            case "tpa", "tpahere", "tphere", "tpoffline" -> " <player>";
             case "tpaccept", "tpdeny" -> " [requester]";
             case "tp" -> " <player> [target]";
             case "tptoggle" -> " [on|off] [player]";
             default -> "";
         };
-        return new CommandSpec(command, CommandSpec.DEFAULT_NAMESPACE, "teleport", List.of(), "Allium safe teleport: " + command,
-                usage, usage, "allium." + command, null, args, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+        return new CommandSpec(command, CommandSpec.DEFAULT_NAMESPACE, "teleport", command.equals("tpoffline")?List.of("otp","offlinetp"):List.of(), "Allium safe teleport: " + command,
+                usage, usage, command.equals("tpoffline")?"allium.tp.offline":"allium." + command, null, args, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
     }
 
     public static final CommandSpec REPAIR = new CommandSpec(

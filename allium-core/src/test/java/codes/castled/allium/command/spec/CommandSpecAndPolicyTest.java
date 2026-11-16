@@ -11,6 +11,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CommandSpecAndPolicyTest {
+    @Test void offlineAliasesSharePermissionDisableFamilyAndKnownNameCompletion(){
+        var spec=CoreCommandSpecs.TELEPORT_SPECS.stream().filter(s->s.canonicalName().equals("tpoffline")).findFirst().orElseThrow();
+        assertEquals("allium.tp.offline",spec.basePermission());assertEquals(List.of("otp","offlinetp"),spec.aliases());
+        var context=new CommandCompletionContext(){public boolean hasPermission(String p){return true;}public List<String> visibleOnlinePlayers(){return List.of("Online");}public List<String> knownPlayers(String p){return List.of("Departed");}};
+        assertEquals(List.of("Departed"),spec.complete(context,new String[]{"Dep"}));
+        var policy=new CommandFamilyPolicy();policy.registerSpecs(CoreCommandSpecs.TELEPORT_SPECS);policy.initializeStartup(List.of("allium:otp"));
+        for(String label:List.of("tpoffline","otp","offlinetp","allium:tpoffline","allium:otp","allium:offlinetp"))assertTrue(policy.isDisabled(label));
+    }
+
 
     @Test
     void disablingAliasOrNamespacedFormDisablesEntireFamily() {

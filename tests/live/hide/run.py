@@ -13,7 +13,7 @@ for p in HERE.rglob('*'):
     if p.is_file():
         SOURCE_HASHES[str(p.relative_to(REPO))]=hashlib.sha256(p.read_bytes()).hexdigest()
         dest=RUN/'harness'/p.relative_to(REPO);dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,dest)
-HERE=RUN/'harness/tests/live/hide' 
+HERE=RUN/'harness/tests/live/hide'
 original_build=build
 
 def build():

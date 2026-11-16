@@ -66,6 +66,12 @@ error:
     - "{prefix} &cThis feature is currently disabled."
     - "[sound] entity.villager.no 0.9"
 teleport:
+  offline-success:
+    - "{prefix} &aTeleported to &f{target}&a's last saved logout location."
+    - "[sound] entity.enderman.teleport 1.2"
+  offline-unavailable:
+    - "{prefix} &cNo saved offline location is available for that player."
+    - "[sound] block.note_block.bass 0.8"
   success:
     - "{prefix} &aTeleported to &f{target}&a."
     - "[sound] entity.enderman.teleport 1.15"

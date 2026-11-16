@@ -1,0 +1,24 @@
+{
+  "jarSha256": "942df7dd441f68857c1fc9aa49deeec9eea9923525bfa1e148570f7483fe2d05",
+  "unitDelta": 10,
+  "unitsBefore": 877,
+  "unitsAfter": 887,
+  "lanes": {
+    "spigot": {
+      "manifest": "/mnt/storage/.allium-validation/20261116/s13-teleport/runs/offline-command-spigot-r1/manifest.json",
+      "manifestSha256": "309afd7a9fcc8f0a84463dd2859ac26250620fbebd0530d0b8407a8af09abe58",
+      "casesPassed": 16,
+      "checksPassed": 156,
+      "checksTotal": 156,
+      "failures": []
+    },
+    "paper": {
+      "manifest": "/mnt/storage/.allium-validation/20261116/s13-teleport/runs/offline-command-paper-r1/manifest.json",
+      "manifestSha256": "2cb77a7bd0d69f3ebc5ec2867c8836dea1d0f4b3cf90572d785e4db597534817",
+      "casesPassed": 16,
+      "checksPassed": 156,
+      "checksTotal": 156,
+      "failures": []
+    }
+  }
+}

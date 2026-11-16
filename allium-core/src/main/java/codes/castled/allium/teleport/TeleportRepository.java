@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 /**
  * Blocking JDBC storage for teleport locations and cooldowns; callers run it off the server thread.
  * Server-wide spawn uses owner {@code new UUID(0, 0)}, slot {@code spawn}; player return locations
- * use slot {@code back}. Slot {@code death} is reserved for an optional death-location adapter.
+ * use slot {@code back}; last successful logout snapshots use {@code logout}. Slot {@code death} is reserved for an optional death-location adapter.
  */
 public final class TeleportRepository {
 

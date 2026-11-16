@@ -66,6 +66,12 @@ error:
     - "{prefix} &cEsta funcion esta desactivada."
     - "[sound] entity.villager.no 0.9"
 teleport:
+  offline-success:
+    - "{prefix} &aTeletransportado a la última ubicación guardada de &f{target}&a."
+    - "[sound] entity.enderman.teleport 1.2"
+  offline-unavailable:
+    - "{prefix} &cNo hay una ubicación guardada disponible para ese jugador."
+    - "[sound] block.note_block.bass 0.8"
   success:
     - "{prefix} &aTeletransportado a &f{target}&a."
     - "[sound] entity.enderman.teleport 1.15"

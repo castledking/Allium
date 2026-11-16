@@ -557,9 +557,254 @@ public final class CoreCommandSpecs {
                 usage, usage, "allium." + command, null, args, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
     }
 
-    public static final List<CommandSpec> UTILITY_SPECS = java.util.stream.Stream.of("repair","disposal","workbench","anvil","info")
-        .map(name->new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"essentials",List.of(),"Allium utility: "+name,
-            "/"+name,"/"+name,"allium."+name,null,List.of(),List.of(),CommandMessageKeys.ofOutcomes(Map.of()))).toList();
+    public static final CommandSpec REPAIR = new CommandSpec(
+            "repair", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Repair the held item or all damaged items",
+            "/repair [hand|all]", "/repair [hand|all]",
+            "allium.repair", null,
+            List.of(CommandArgSpec.optional("scope", null,
+                    SuggestionSpec.literals(List.of("hand", "all"), null))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec DISPOSAL = new CommandSpec(
+            "disposal", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("trash", "dispose"),
+            "Open a disposal inventory",
+            "/disposal", "/disposal",
+            "allium.disposal", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec WORKBENCH = new CommandSpec(
+            "workbench", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("craft"),
+            "Open a virtual crafting table",
+            "/workbench", "/workbench",
+            "allium.workbench", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec ANVIL = new CommandSpec(
+            "anvil", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Open a virtual anvil",
+            "/anvil", "/anvil",
+            "allium.anvil", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec INFO = new CommandSpec(
+            "info", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Show server info and visible online player count",
+            "/info", "/info",
+            "allium.info", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final List<CommandSpec> UTILITY_SPECS = List.of(
+            REPAIR, DISPOSAL, WORKBENCH, ANVIL, INFO
+    );
+
+    public static final CommandSpec SPEED = new CommandSpec(
+            "speed", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Change walk or fly speed (0-10 or reset)",
+            "/speed [walk|fly] <0..10|reset> [player]", "/speed [walk|fly] <0..10|reset> <player>",
+            "allium.speed", "allium.speed.others",
+            List.of(
+                    CommandArgSpec.required("typeOrSpeed", null,
+                            SuggestionSpec.literals(List.of("walk", "fly", "reset", "1", "2", "5", "10"), null)),
+                    CommandArgSpec.optional("speedOrPlayer", null,
+                            SuggestionSpec.literals(List.of("reset", "1", "2", "5", "10"), null)),
+                    CommandArgSpec.optional("player", "allium.speed.others",
+                            SuggestionSpec.onlinePlayers("allium.speed.others"))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of("set", "player.speed-set"))
+    );
+
+    public static final CommandSpec PING = new CommandSpec(
+            "ping", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Check your ping or another player's ping",
+            "/ping [player]", "/ping <player>",
+            "allium.ping", "allium.ping.others",
+            List.of(CommandArgSpec.optional("player", "allium.ping.others",
+                    SuggestionSpec.onlinePlayers("allium.ping.others"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec EXT = new CommandSpec(
+            "ext", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("extinguish"),
+            "Extinguish fire on yourself or another player",
+            "/ext [player]", "/ext <player>",
+            "allium.ext", "allium.ext.others",
+            List.of(CommandArgSpec.optional("player", "allium.ext.others",
+                    SuggestionSpec.onlinePlayers("allium.ext.others"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec BURN = new CommandSpec(
+            "burn", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Set a player on fire for a duration in seconds",
+            "/burn <player> [seconds]", "/burn <player> [seconds]",
+            "allium.burn", null,
+            List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
+                    CommandArgSpec.optional("seconds", null,
+                            SuggestionSpec.literals(List.of("5", "10", "30"), null))
+            ),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec SMITE = new CommandSpec(
+            "smite", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("lightning", "strike"),
+            "Strike a player with visual lightning",
+            "/smite <player>", "/smite <player>",
+            "allium.smite", null,
+            List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec NV = new CommandSpec(
+            "nv", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("nightvision"),
+            "Toggle night vision for yourself or another player",
+            "/nv [on|off] [player]", "/nv [on|off] <player>",
+            "allium.nv", "allium.nv.others",
+            List.of(
+                    CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
+                    CommandArgSpec.optional("player", "allium.nv.others",
+                            SuggestionSpec.onlinePlayers("allium.nv.others"))
+            ),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec CLEARINVENTORY = new CommandSpec(
+            "clearinventory", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("clear", "ci"),
+            "Clear inventory items for yourself or another player",
+            "/clearinventory [player] [material] [maxCount]", "/clearinventory <player> [material] [maxCount]",
+            "allium.clearinventory", "allium.clearinventory.others",
+            List.of(CommandArgSpec.optional("player", "allium.clearinventory.others",
+                    SuggestionSpec.onlinePlayers("allium.clearinventory.others"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec MORE = new CommandSpec(
+            "more", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Refill the held item stack",
+            "/more [amount] [player]", "/more <amount|max> <player>",
+            "allium.more", "allium.more.others",
+            List.of(
+                    CommandArgSpec.optional("amount", null,
+                            SuggestionSpec.literals(List.of("64"), null)),
+                    CommandArgSpec.optional("player", "allium.more.others",
+                            SuggestionSpec.onlinePlayers("allium.more.others"))
+            ),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec HAT = new CommandSpec(
+            "hat", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Wear the held item on your head",
+            "/hat", "/hat",
+            "allium.hat", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec SKULL = new CommandSpec(
+            "skull", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("head", "playerhead"),
+            "Give yourself or another player a player skull",
+            "/skull [owner] [player]", "/skull <owner> <player>",
+            "allium.skull", "allium.skull.others",
+            List.of(
+                    CommandArgSpec.optional("owner", null, SuggestionSpec.knownPlayers(null)),
+                    CommandArgSpec.optional("player", "allium.skull.others",
+                            SuggestionSpec.onlinePlayers("allium.skull.others"))
+            ),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec ITEMDB = new CommandSpec(
+            "itemdb", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("iteminfo"),
+            "Inspect the held item ID, durability, and Allium identity",
+            "/itemdb [player]", "/itemdb <player>",
+            "allium.itemdb", "allium.itemdb.others",
+            List.of(CommandArgSpec.optional("player", "allium.itemdb.others",
+                    SuggestionSpec.onlinePlayers("allium.itemdb.others"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec GC = new CommandSpec(
+            "gc", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("uptime", "lag", "tps"),
+            "Display runtime uptime, memory, disk, TPS, and world counts",
+            "/gc", "/gc",
+            "allium.gc", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec TIME = new CommandSpec(
+            "time", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "View, set, add, or pause world time",
+            "/time [set|add|pause] [value] [world|*]", "/time [set|add|pause] [value] <world|*>",
+            "allium.time", null,
+            List.of(
+                    CommandArgSpec.optional("action", null,
+                            SuggestionSpec.literals(List.of("set", "add", "pause", "day", "noon", "night", "midnight"), null)),
+                    CommandArgSpec.optional("value", null,
+                            SuggestionSpec.literals(List.of("day", "noon", "sunset", "night", "midnight", "sunrise"), null))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of("set", "utility.time-set"))
+    );
+
+    public static final CommandSpec DAY = new CommandSpec(
+            "day", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Set world time to day",
+            "/day [world|*]", "/day <world|*>",
+            "allium.time.set", null,
+            List.of(), List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of("set", "utility.time-set"))
+    );
+
+    public static final CommandSpec NIGHT = new CommandSpec(
+            "night", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Set world time to night",
+            "/night [world|*]", "/night <world|*>",
+            "allium.time.set", null,
+            List.of(), List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of("set", "utility.time-set"))
+    );
+
+    public static final CommandSpec WEATHER = new CommandSpec(
+            "weather", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Change world weather",
+            "/weather <clear|sun|rain|storm|thunder> [duration] [world|*]",
+            "/weather <clear|sun|rain|storm|thunder> [duration] <world|*>",
+            "allium.weather", null,
+            List.of(
+                    CommandArgSpec.required("condition", null,
+                            SuggestionSpec.literals(List.of("clear", "rain", "thunder"), null)),
+                    CommandArgSpec.optional("duration", null,
+                            SuggestionSpec.literals(List.of("60", "300", "600"), null))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of("set", "utility.weather-set"))
+    );
+
+    public static final CommandSpec ENCHANT = new CommandSpec(
+            "enchant", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Apply or remove an enchantment on the held item",
+            "/enchant <enchantment> <level> [player]", "/enchant <enchantment> <level> <player>",
+            "allium.enchant", "allium.enchant.others",
+            List.of(
+                    CommandArgSpec.required("enchantment", null, SuggestionSpec.none()),
+                    CommandArgSpec.required("level", null, SuggestionSpec.literals(List.of("0", "1", "3", "5"), null)),
+                    CommandArgSpec.optional("player", "allium.enchant.others",
+                            SuggestionSpec.onlinePlayers("allium.enchant.others"))
+            ),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
+            SPEED, PING, EXT, BURN, SMITE, NV, CLEARINVENTORY, MORE, HAT, SKULL,
+            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT
+    );
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(
             HEAL,

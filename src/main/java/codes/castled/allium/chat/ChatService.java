@@ -245,7 +245,7 @@ public final class ChatService implements Listener,AutoCloseable {
         Session session=sessions.get(id);if(session!=null&&session.busy){tell(sender,"Chat profile is busy.");return;}
         if(session!=null)session.busy=true;
         work(()->{repository.nickname(id,raw);return repository.load(id);},stored->{
-            Session current=sessions.get(id);if(current!=null){current.nickname=stored.nickname();current.busy=false;if(current.ready)update(current);}tell(sender,raw==null?"Nickname reset.":"Nickname saved.");
+            Session current=sessions.get(id);if(current!=null){current.nickname=stored.nickname();current.busy=false;if(current.ready)update(current);}if(raw==null)tell(sender,Messages.NICK_RESET);else tell(sender,Messages.NICK_SET,"{nick}",stored.nickname());
         },error->{if(session!=null)session.busy=false;tell(sender,"Nickname could not be saved.");});
     }
     private void channel(CommandSender sender,String label,String[] args){
@@ -298,7 +298,7 @@ public final class ChatService implements Listener,AutoCloseable {
         }catch(ReflectiveOperationException error){plugin.logger().warning("InteractiveChat delayed-deletion guard unavailable.");}
     }
     private void auditDeletion(CommandSender sender,List<String> ids){plugin.logger().info("Chat deletion actor="+(sender instanceof Player p?p.getUniqueId():"CONSOLE")+" messages="+String.join(",",ids));}
-    private void tell(CommandSender sender,Messages message){if(!closed&&(!(sender instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(sender,message,new String[0]);}
+    private void tell(CommandSender sender,Messages message,String... args){if(!closed&&(!(sender instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(sender,message,args);}
     private void tell(CommandSender sender,String text){if(!closed&&(!(sender instanceof Player p)||p.isOnline()))sender.sendMessage("[Allium] "+text);}
     @FunctionalInterface private interface Query<T>{T run()throws Exception;}
     private <T> void work(Query<T> query,java.util.function.Consumer<T> done,java.util.function.Consumer<Throwable> failed){

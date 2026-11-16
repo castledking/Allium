@@ -52,6 +52,11 @@ class ChatServiceTest {
     void command(Player p,String action,String label,String...args){var context=mock(BukkitCommandContext.class);when(context.sender()).thenReturn(p);when(context.label()).thenReturn(label);when(context.args()).thenReturn(args);when(context.spec()).thenReturn(CoreCommandSpecs.CHAT_SPECS.stream().filter(s->s.canonicalName().equals(action)).findFirst().orElseThrow());service.dispatch(context);}
     List<ChatHistory.Message> history(Player p){return service.history().visible(p.getUniqueId(),System.currentTimeMillis());}
     void say(Player p,String body){service.send(p,null,body,null);}
+    @Test void nicknameSaveUsesDedicatedLanguageKeyAfterCommit()throws Exception{
+        var saved=new ChatRepository.State(alice.getUniqueId(),"Red","default",Set.of("default"),1);when(repository.load(alice.getUniqueId())).thenReturn(saved);
+        command(alice,"nick","nick","Red");verify(plugin.getMessageManager(),never()).send(eq(alice),eq(codes.castled.allium.message.Messages.NICK_SET),any(String[].class));flush();
+        verify(plugin.getMessageManager()).send(alice,codes.castled.allium.message.Messages.NICK_SET,"{nick}","Red");
+    }
     @Test void deletionFeedbackUsesLanguagePipeline(){
         var messages=mock(codes.castled.allium.message.MessageManager.class);when(plugin.getMessageManager()).thenReturn(messages);
         say(alice,"remove me");grants.get(alice).add("allium.delmsg");command(alice,"delmsg","delmsg",history(bob).get(0).id());

@@ -322,7 +322,8 @@ def basics():
     origin=lane.place(a,0);dest=lane.place(b,30);lane.place(c,60);clear(a,b,c)
     request(a,b);b.cmd('tpaccept '+a.name);arrived(a,dest,'request accept moves actual coordinates')
     require(len(physical(a))==1,'request accept exactly one physical teleport',physical(a));ready(a)
-    a.cmd('back');arrived(a,origin,'back restores successful teleport origin');ready(a)
+    back_mark=a.cmd('back');arrived(a,origin,'back restores successful teleport origin');ready(a)
+    require(bool(wait(lambda:next((m for m in a.chats(back_mark) if 'Returned to your previous location.' in m['plain']),None),'dedicated back language message')),'back emits teleport.back after commit')
     lane.place(a,0);lane.place(b,30);clear(a,b)
     request(a,b,'tpahere');b.cmd('tpaccept '+a.name);arrived(b,origin,'tpahere accept moves recipient to requester');ready(b)
 
@@ -491,7 +492,8 @@ def crossworld():
     request(a,b);b.cmd('tpaccept '+a.name);arrived(a,dest,'request crosses world UUID through service');ready(a)
     a.cmd('back');arrived(a,origin,'back crosses to original world UUID');ready(a)
     lane.perm(c,'allium.setspawn');spawn=lane.place(c,60,world='gate_other');c.cmd('setspawn');ready(c)
-    lane.place(a,0);clear(a);a.cmd('spawn');arrived(a,spawn,'spawn uses saved crossworld UUID');ready(a)
+    lane.place(a,0);clear(a);spawn_mark=a.cmd('spawn');arrived(a,spawn,'spawn uses saved crossworld UUID');ready(a)
+    require(bool(wait(lambda:next((m for m in a.chats(spawn_mark) if 'Teleported to spawn.' in m['plain']),None),'dedicated spawn language message')),'spawn emits spawn.teleport after commit')
     observations['savedSpawn']=spawn
 
 def death_back():

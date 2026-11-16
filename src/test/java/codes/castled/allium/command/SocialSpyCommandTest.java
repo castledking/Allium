@@ -82,12 +82,12 @@ class SocialSpyCommandTest {
         assertFalse(resource("config.yml").getBoolean("messaging.socialspy.log-to-console", true));
         for (String language : new String[]{"en_US", "es_ES"}) {
             YamlConfiguration lang = resource("lang/" + language + ".yml");
-            assertTrue(lang.getString(Messages.SOCIALSPY_MESSAGE.getKey()).contains("{message}"));
-            assertNotNull(lang.getString(Messages.SOCIALSPY_ON.getKey()));
-            assertNotNull(lang.getString(Messages.SOCIALSPY_OFF.getKey()));
-            assertNotNull(lang.getString(Messages.SOCIALSPY_DISABLED.getKey()));
-            assertNotNull(lang.getString(Messages.SOCIALSPY_SAVE_FAILED.getKey()));
-            assertNotNull(lang.getString("messaging.received.text"), "existing messaging translation retained");
+            assertTrue(codes.castled.allium.message.LanguageEntry.read(lang.get(Messages.SOCIALSPY_MESSAGE.getKey())).text().contains("{message}"));
+            assertNotNull(codes.castled.allium.message.LanguageEntry.read(lang.get(Messages.SOCIALSPY_ON.getKey())).text());
+            assertNotNull(codes.castled.allium.message.LanguageEntry.read(lang.get(Messages.SOCIALSPY_OFF.getKey())).text());
+            assertNotNull(codes.castled.allium.message.LanguageEntry.read(lang.get(Messages.SOCIALSPY_DISABLED.getKey())).text());
+            assertNotNull(codes.castled.allium.message.LanguageEntry.read(lang.get(Messages.SOCIALSPY_SAVE_FAILED.getKey())).text());
+            assertNotNull(codes.castled.allium.message.LanguageEntry.read(lang.get("messaging.received")).text(), "existing messaging translation retained");
         }
     }
 

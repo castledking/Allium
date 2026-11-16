@@ -286,7 +286,7 @@ public final class TeleportService implements Listener {
         long until=System.currentTimeMillis()+(operation.actor().hasPermission("allium.teleport.bypass.cooldown")?0:operation.rules().cooldown(operation.command()));
         session.cooldowns.put(operation.command(),until);
         saveHistory(session,session.back,operation.command(),until,0,()->{
-            send(mover,Messages.TELEPORT_SUCCESS,"{target}",operation.anchor()==null?operation.command():operation.anchor().getName());
+            send(mover,switch(operation.command()){case "back"->Messages.TELEPORT_BACK;case "spawn"->Messages.SPAWN_TELEPORT;default->Messages.TELEPORT_SUCCESS;},"{target}",operation.anchor()==null?operation.command():operation.anchor().getName());
         });
     }
     private boolean allowed(Player requester,Player recipient,CommandSender actor,boolean force,boolean notify) {

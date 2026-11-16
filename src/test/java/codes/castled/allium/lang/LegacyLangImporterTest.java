@@ -61,12 +61,12 @@ class LegacyLangImporterTest {
         File backup = LegacyLangImporter.apply(plan);
         assertArrayEquals(before, Files.readAllBytes(backup.toPath()), "the backup is the file as it was");
         YamlConfiguration written = YamlConfiguration.loadConfiguration(target.toFile());
-        assertEquals("&7(From &f{sender}&7) &r{message}", written.getString("messaging.received.text"));
-        assertEquals("minecraft:block.note_block.pling", written.getString("messaging.received.sound"));
-        assertEquals(0.5D, written.getDouble("messaging.received.volume"));
-        assertEquals(1.5D, written.getDouble("messaging.received.pitch"));
-        assertEquals("{prefix} You have no one to reply to.", written.getString("messaging.no-reply-target"));
-        assertEquals("<gradient:#B2C3EE:#ADF3FD>Core</gradient>", written.getString("prefix"));
+        assertEquals("&7(From &f{sender}&7) &r{message}", codes.castled.allium.message.LanguageEntry.read(written.get("messaging.received")).text());
+        assertEquals("minecraft:block.note_block.pling", codes.castled.allium.message.LanguageEntry.read(written.get("messaging.received")).sound().soundId());
+        assertEquals(0.5D, codes.castled.allium.message.LanguageEntry.read(written.get("messaging.received")).sound().volume());
+        assertEquals(1.5D, codes.castled.allium.message.LanguageEntry.read(written.get("messaging.received")).sound().pitch());
+        assertEquals("{prefix} You have no one to reply to.", codes.castled.allium.message.LanguageEntry.read(written.get("messaging.no-reply-target")).text());
+        assertEquals("<gradient:#B2C3EE:#ADF3FD>Core</gradient>", codes.castled.allium.message.LanguageEntry.read(written.get("prefix")).text());
         assertEquals("{prefix} &bPatched up.", written.getString("player.heal"), "the customized message is kept");
         assertTrue(written.contains("messaging.sent"), "the rest of the file is still there");
         assertArrayEquals(legacyBefore, Files.readAllBytes(folder.resolve("lang.yml")), "the legacy file is only read");
@@ -87,7 +87,7 @@ class LegacyLangImporterTest {
         LegacyLangImporter.Plan plan = LegacyLangImporter.plan(folder.toFile(), "en_US", LegacyLangImporterTest::bundled);
         LegacyLangImporter.apply(plan);
         YamlConfiguration written = YamlConfiguration.loadConfiguration(target.toFile());
-        assertEquals("&7(From &f{sender}&7) {message}", written.getString("messaging.received"));
+        assertEquals("&7(From &f{sender}&7) {message}", codes.castled.allium.message.LanguageEntry.read(written.get("messaging.received")).text());
         assertNull(written.getConfigurationSection("messaging.received"));
     }
 }

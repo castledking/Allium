@@ -1,1664 +1,1063 @@
-# ==========================================
-#   Allium Archivo de Idioma - Espanol (ES)
-# ==========================================
+# Allium language: text lines plus optional "[sound] id [pitch] [volume]".
+# Volume omitted below: use the configured server default.
 
 prefix: "&7[&dAllium&7]"
-
 core:
   reload-success:
-    text: "{prefix} &aConfiguracion recargada."
-    sound: minecraft:block.note_block.chime
-    volume: 0.55
-    pitch: 1.35
+    - "{prefix} &aConfiguracion recargada."
+    - "[sound] block.note_block.chime 1.35"
   reload-failed:
-    text: "{prefix} &cFallo al recargar. Revisa la consola."
-    sound: minecraft:block.note_block.bass
-    volume: 0.6
-    pitch: 0.75
+    - "{prefix} &cFallo al recargar. Revisa la consola."
+    - "[sound] block.note_block.bass 0.75"
   version:
-    text: "{prefix} &fEjecutando Allium &dv{version}&f."
-    sound: minecraft:ui.button.click
-    volume: 0.4
-    pitch: 1.25
+    - "{prefix} &fEjecutando Allium &dv{version}&f."
+    - "[sound] ui.button.click 1.25"
   import:
     lang-no-source:
-      text: "{prefix} &cNo hay un archivo de idioma anterior en &f{file}&c."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &cNo hay un archivo de idioma anterior en &f{file}&c."
+      - "[sound] block.note_block.bass 0.8"
     lang-report:
-      text: "{prefix} &7{mode}: &f{write} &7por escribir, &f{same} &7ya importados, &f{kept} &7conservados (personalizados), &f{unmapped} &7aun no portables. Los detalles estan en la consola."
-      sound: minecraft:item.book.page_turn
-      volume: 0.6
-      pitch: 1.0
+      - "{prefix} &7{mode}: &f{write} &7por escribir, &f{same} &7ya importados, &f{kept} &7conservados (personalizados), &f{unmapped} &7aun no portables. Los detalles estan en la consola."
+      - "[sound] item.book.page_turn 1.0"
     lang-applied:
-      text: "{prefix} &aImportados &f{write} &amensaje(s) en &f{file}&a; el archivo anterior se guardo como &f{backup}&a."
-      sound: minecraft:entity.player.levelup
-      volume: 0.5
-      pitch: 1.35
+      - "{prefix} &aImportados &f{write} &amensaje(s) en &f{file}&a; el archivo anterior se guardo como &f{backup}&a."
+      - "[sound] entity.player.levelup 1.35"
     lang-nothing:
-      text: "{prefix} &aNada que importar; &f{file} &aesta al dia."
-      sound: minecraft:block.note_block.hat
-      volume: 0.45
-      pitch: 1.15
+      - "{prefix} &aNada que importar; &f{file} &aesta al dia."
+      - "[sound] block.note_block.hat 1.15"
     lang-failed:
-      text: "{prefix} &cLa importacion del idioma fallo: &f{reason}"
-      sound: minecraft:block.note_block.bass
-      volume: 0.6
-      pitch: 0.75
+      - "{prefix} &cLa importacion del idioma fallo: &f{reason}"
+      - "[sound] block.note_block.bass 0.75"
   adopt-window:
     opened:
-      text: "{prefix} &eLas herramientas privilegiadas anteriores al recode se adoptan al primer uso durante los proximos &f{duration}&e. Cada adopcion queda registrada. Cierralo antes con &f/allium adopt-window off&e."
-      sound: minecraft:block.beacon.activate
-      volume: 0.45
-      pitch: 1.25
+      - "{prefix} &eLas herramientas privilegiadas anteriores al recode se adoptan al primer uso durante los proximos &f{duration}&e. Cada adopcion queda registrada. Cierralo antes con &f/allium adopt-window off&e."
+      - "[sound] block.beacon.activate 1.25"
     closed:
-      text: "{prefix} &aLa ventana de adopcion esta cerrada."
-      sound: minecraft:block.beacon.deactivate
-      volume: 0.45
-      pitch: 1.0
+      - "{prefix} &aLa ventana de adopcion esta cerrada."
+      - "[sound] block.beacon.deactivate 1.0"
     status:
-      text: "{prefix} &7La ventana de adopcion esta &f{state}&7."
-      sound: minecraft:ui.button.click
-      volume: 0.4
-      pitch: 1.1
-
+      - "{prefix} &7La ventana de adopcion esta &f{state}&7."
+      - "[sound] ui.button.click 1.1"
 error:
   no-permission:
-    text: "{prefix} &cNo tienes permiso para hacer eso."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 1.0
-  player-only: "{prefix} &cEste comando solo puede ser usado por jugadores."
+    - "{prefix} &cNo tienes permiso para hacer eso."
+    - "[sound] entity.villager.no 1.0"
+  player-only:
+    - "{prefix} &cEste comando solo puede ser usado por jugadores."
   console-only:
-    text: "{prefix} &cEste comando solo puede ser usado desde la consola."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.95
+    - "{prefix} &cEste comando solo puede ser usado desde la consola."
+    - "[sound] entity.villager.no 0.95"
   invalid-args:
-    text: "{prefix} &cUso: &f{usage}"
-    sound: minecraft:ui.button.click
-    volume: 0.4
-    pitch: 0.75
+    - "{prefix} &cUso: &f{usage}"
+    - "[sound] ui.button.click 0.75"
   player-not-found:
-    text: "{prefix} &cJugador &f{player} &cno encontrado."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cJugador &f{player} &cno encontrado."
+    - "[sound] block.note_block.bass 0.8"
   number-invalid:
-    text: "{prefix} &c'{input}' no es un numero valido."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &c'{input}' no es un numero valido."
+    - "[sound] block.note_block.bass 0.8"
   world-not-found:
-    text: "{prefix} &cMundo &f{world} &cno encontrado."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cMundo &f{world} &cno encontrado."
+    - "[sound] block.note_block.bass 0.8"
   cooldown-active:
-    text: "{prefix} &cEspera &f{time} &cantes de usar esto de nuevo."
-    sound: minecraft:block.note_block.hat
-    volume: 0.5
-    pitch: 0.85
+    - "{prefix} &cEspera &f{time} &cantes de usar esto de nuevo."
+    - "[sound] block.note_block.hat 0.85"
   module-disabled:
-    text: "{prefix} &cEsta funcion esta desactivada."
-    sound: minecraft:entity.villager.no
-    volume: 0.5
-    pitch: 0.9
-
+    - "{prefix} &cEsta funcion esta desactivada."
+    - "[sound] entity.villager.no 0.9"
 teleport:
   success:
-    text: "{prefix} &aTeletransportado a &f{target}&a."
-    sound: minecraft:entity.enderman.teleport
-    volume: 0.5
-    pitch: 1.15
+    - "{prefix} &aTeletransportado a &f{target}&a."
+    - "[sound] entity.enderman.teleport 1.15"
   request-sent:
-    text: "{prefix} &aSolicitud de teletransporte enviada a &f{player}&a."
-    sound: minecraft:block.note_block.pling
-    volume: 0.45
-    pitch: 1.35
+    - "{prefix} &aSolicitud de teletransporte enviada a &f{player}&a."
+    - "[sound] block.note_block.pling 1.35"
   request-received:
-    text: "{prefix} &f{player} &aquiere teletransportarse a ti. &f/tpaccept &ao &f/tpdeny"
-    sound: minecraft:block.note_block.bell
-    volume: 0.6
-    pitch: 1.25
+    - "{prefix} &f{player} &aquiere teletransportarse a ti. &f/tpaccept &ao &f/tpdeny"
+    - "[sound] block.note_block.bell 1.25"
   accepted:
-    text: "{prefix} &aSolicitud de teletransporte aceptada."
-    sound: minecraft:block.note_block.pling
-    volume: 0.5
-    pitch: 1.5
+    - "{prefix} &aSolicitud de teletransporte aceptada."
+    - "[sound] block.note_block.pling 1.5"
   denied:
-    text: "{prefix} &cSolicitud de teletransporte denegada."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cSolicitud de teletransporte denegada."
+    - "[sound] block.note_block.bass 0.8"
   cancelled:
-    text: "{prefix} &cSolicitud de teletransporte expirada."
-    sound: minecraft:block.note_block.bass
-    volume: 0.45
-    pitch: 0.75
+    - "{prefix} &cSolicitud de teletransporte expirada."
+    - "[sound] block.note_block.bass 0.75"
   back:
-    text: "{prefix} &aRegresaste a tu ubicacion anterior."
-    sound: minecraft:entity.enderman.teleport
-    volume: 0.5
-    pitch: 0.95
+    - "{prefix} &aRegresaste a tu ubicacion anterior."
+    - "[sound] entity.enderman.teleport 0.95"
   no-back:
-    text: "{prefix} &cNo hay ubicacion anterior."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cNo hay ubicacion anterior."
+    - "[sound] block.note_block.bass 0.8"
   no-pending:
-    text: "{prefix} &cNo tienes solicitudes pendientes."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.85
+    - "{prefix} &cNo tienes solicitudes pendientes."
+    - "[sound] block.note_block.bass 0.85"
   here-received:
-    text: "{prefix} &f{player} &aquiere que te teletransportes hacia el. &f/tpaccept &ao &f/tpdeny"
-    sound: minecraft:block.note_block.bell
-    volume: 0.6
-    pitch: 1.15
+    - "{prefix} &f{player} &aquiere que te teletransportes hacia el. &f/tpaccept &ao &f/tpdeny"
+    - "[sound] block.note_block.bell 1.15"
   request-cancelled:
-    text: "{prefix} &cSolicitud de teletransporte cancelada."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.8
+    - "{prefix} &cSolicitud de teletransporte cancelada."
+    - "[sound] block.note_block.hat 0.8"
   warmup:
-    text: "{prefix} &eTeletransportando en {time}s. Quedate quieto y evita dano."
-    sound: minecraft:block.note_block.chime
-    volume: 0.45
-    pitch: 1.0
+    - "{prefix} &eTeletransportando en {time}s. Quedate quieto y evita dano."
+    - "[sound] block.note_block.chime 1.0"
   interrupted:
-    text: "{prefix} &cTeletransporte cancelado: {reason}."
-    sound: minecraft:item.shield.break
-    volume: 0.45
-    pitch: 1.15
+    - "{prefix} &cTeletransporte cancelado: {reason}."
+    - "[sound] item.shield.break 1.15"
   refused:
-    text: "{prefix} &c{player} no puede recibir teletransportes ahora mismo."
-    sound: minecraft:entity.villager.no
-    volume: 0.5
-    pitch: 1.0
+    - "{prefix} &c{player} no puede recibir teletransportes ahora mismo."
+    - "[sound] entity.villager.no 1.0"
   loading:
-    text: "{prefix} &cTus datos de teletransporte aun se estan cargando. Intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.9
+    - "{prefix} &cTus datos de teletransporte aun se estan cargando. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.hat 0.9"
   storage-failed:
-    text: "{prefix} &cNo se pudieron guardar los datos de teletransporte. Intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.bass
-    volume: 0.6
-    pitch: 0.7
+    - "{prefix} &cNo se pudieron guardar los datos de teletransporte. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.bass 0.7"
   unsafe:
-    text: "{prefix} &cNo se encontro un destino seguro. No se teletransporto nada."
-    sound: minecraft:item.shield.break
-    volume: 0.5
-    pitch: 0.95
+    - "{prefix} &cNo se encontro un destino seguro. No se teletransporto nada."
+    - "[sound] item.shield.break 0.95"
   busy:
-    text: "{prefix} &cYa hay un teletransporte pendiente. Intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.85
+    - "{prefix} &cYa hay un teletransporte pendiente. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.hat 0.85"
   self:
-    text: "{prefix} &cNo puedes enviarte una solicitud de teletransporte a ti mismo."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.8
+    - "{prefix} &cNo puedes enviarte una solicitud de teletransporte a ti mismo."
+    - "[sound] block.note_block.bass 0.8"
   toggle-on:
-    text: "{prefix} &a{player} ahora acepta solicitudes de teletransporte."
-    sound: minecraft:block.note_block.pling
-    volume: 0.45
-    pitch: 1.4
+    - "{prefix} &a{player} ahora acepta solicitudes de teletransporte."
+    - "[sound] block.note_block.pling 1.4"
   toggle-off:
-    text: "{prefix} &c{player} ya no acepta solicitudes de teletransporte. Solicitudes entrantes canceladas."
-    sound: minecraft:block.note_block.bass
-    volume: 0.45
-    pitch: 0.85
-
+    - "{prefix} &c{player} ya no acepta solicitudes de teletransporte. Solicitudes entrantes canceladas."
+    - "[sound] block.note_block.bass 0.85"
 travel:
   loading:
-    text: "{prefix} &cLos datos de viaje se estan cargando. Intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.9
+    - "{prefix} &cLos datos de viaje se estan cargando. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.hat 0.9"
   busy:
-    text: "{prefix} &cEl almacenamiento de viajes esta ocupado. Intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.85
+    - "{prefix} &cEl almacenamiento de viajes esta ocupado. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.hat 0.85"
   storage-failed:
-    text: "{prefix} &cNo se pudieron guardar los datos de viaje. Intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.bass
-    volume: 0.6
-    pitch: 0.7
+    - "{prefix} &cNo se pudieron guardar los datos de viaje. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.bass 0.7"
   name-invalid:
-    text: "{prefix} &cUsa de 1 a 32 letras, digitos, guiones bajos o guiones para el nombre."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cUsa de 1 a 32 letras, digitos, guiones bajos o guiones para el nombre."
+    - "[sound] block.note_block.bass 0.8"
   confirm:
-    text: "{prefix} &eEste nombre ya existe. Ejecuta &f{command} &epara confirmar la ubicacion capturada."
-    sound: minecraft:block.note_block.bell
-    volume: 0.55
-    pitch: 1.1
+    - "{prefix} &eEste nombre ya existe. Ejecuta &f{command} &epara confirmar la ubicacion capturada."
+    - "[sound] block.note_block.bell 1.1"
   confirm-expired:
-    text: "{prefix} &cNo hay ninguna confirmacion de sobrescritura activa. Ejecuta de nuevo el comando para establecer."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.75
+    - "{prefix} &cNo hay ninguna confirmacion de sobrescritura activa. Ejecuta de nuevo el comando para establecer."
+    - "[sound] block.note_block.bass 0.75"
   changed:
-    text: "{prefix} &cEste destino cambio. Ejecuta el comando de nuevo."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cEste destino cambio. Ejecuta el comando de nuevo."
+    - "[sound] block.note_block.bass 0.8"
   limit:
-    text: "{prefix} &cHas alcanzado tu limite de hogares ({limit})."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.95
-
+    - "{prefix} &cHas alcanzado tu limite de hogares ({limit})."
+    - "[sound] entity.villager.no 0.95"
 home:
   set:
-    text: "{prefix} &aHogar &f{name} &aestablecido."
-    sound: minecraft:block.note_block.chime
-    volume: 0.55
-    pitch: 1.3
+    - "{prefix} &aHogar &f{name} &aestablecido."
+    - "[sound] block.note_block.chime 1.3"
   deleted:
-    text: "{prefix} &aHogar &f{name} &aeliminado."
-    sound: minecraft:item.book.page_turn
-    volume: 0.55
-    pitch: 0.9
+    - "{prefix} &aHogar &f{name} &aeliminado."
+    - "[sound] item.book.page_turn 0.9"
   not-found:
-    text: "{prefix} &cHogar &f{name} &cno encontrado."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cHogar &f{name} &cno encontrado."
+    - "[sound] block.note_block.bass 0.8"
   limit-reached:
-    text: "{prefix} &cHas alcanzado el limite de hogares (&f{limit}&c)."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.95
+    - "{prefix} &cHas alcanzado el limite de hogares (&f{limit}&c)."
+    - "[sound] entity.villager.no 0.95"
   list:
-    text: "{prefix} &fHogares: &d{homes}"
-    sound: minecraft:item.book.page_turn
-    volume: 0.55
-    pitch: 1.1
+    - "{prefix} &fHogares: &d{homes}"
+    - "[sound] item.book.page_turn 1.1"
   none:
-    text: "{prefix} &cNo tienes hogares establecidos."
-    sound: minecraft:block.note_block.hat
-    volume: 0.4
-    pitch: 0.9
-
+    - "{prefix} &cNo tienes hogares establecidos."
+    - "[sound] block.note_block.hat 0.9"
 warp:
   set:
-    text: "{prefix} &aWarp &f{name} &aestablecido."
-    sound: minecraft:block.enchantment_table.use
-    volume: 0.5
-    pitch: 1.25
+    - "{prefix} &aWarp &f{name} &aestablecido."
+    - "[sound] block.enchantment_table.use 1.25"
   deleted:
-    text: "{prefix} &aWarp &f{name} &aeliminado."
-    sound: minecraft:item.book.page_turn
-    volume: 0.55
-    pitch: 0.9
+    - "{prefix} &aWarp &f{name} &aeliminado."
+    - "[sound] item.book.page_turn 0.9"
   not-found:
-    text: "{prefix} &cWarp &f{name} &cno encontrado."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cWarp &f{name} &cno encontrado."
+    - "[sound] block.note_block.bass 0.8"
   list:
-    text: "{prefix} &fWarps: &d{warps}"
-    sound: minecraft:item.book.page_turn
-    volume: 0.55
-    pitch: 1.1
+    - "{prefix} &fWarps: &d{warps}"
+    - "[sound] item.book.page_turn 1.1"
   none:
-    text: "{prefix} &cNo hay warps disponibles."
-    sound: minecraft:block.note_block.hat
-    volume: 0.4
-    pitch: 0.9
-
+    - "{prefix} &cNo hay warps disponibles."
+    - "[sound] block.note_block.hat 0.9"
 spawn:
   set:
-    text: "{prefix} &aPunto de aparicion establecido."
-    sound: minecraft:block.beacon.activate
-    volume: 0.5
-    pitch: 1.2
+    - "{prefix} &aPunto de aparicion establecido."
+    - "[sound] block.beacon.activate 1.2"
   teleport:
-    text: "{prefix} &aTeletransportado al spawn."
-    sound: minecraft:entity.enderman.teleport
-    volume: 0.5
-    pitch: 1.25
+    - "{prefix} &aTeletransportado al spawn."
+    - "[sound] entity.enderman.teleport 1.25"
   not-set:
-    text: "{prefix} &cEl spawn no ha sido establecido."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
-
+    - "{prefix} &cEl spawn no ha sido establecido."
+    - "[sound] block.note_block.bass 0.8"
 kit:
   received:
-    text: "{prefix} &aKit &f{name} &arecibido."
-    sound: minecraft:entity.player.levelup
-    volume: 0.5
-    pitch: 1.4
+    - "{prefix} &aKit &f{name} &arecibido."
+    - "[sound] entity.player.levelup 1.4"
   given:
-    text: "{prefix} &aKit &f{name} &aentregado a &f{player}&a."
-    sound: minecraft:entity.item.pickup
-    volume: 0.55
-    pitch: 1.2
+    - "{prefix} &aKit &f{name} &aentregado a &f{player}&a."
+    - "[sound] entity.item.pickup 1.2"
   not-found:
-    text: "{prefix} &cKit &f{name} &cno encontrado."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cKit &f{name} &cno encontrado."
+    - "[sound] block.note_block.bass 0.8"
   no-permission:
-    text: "{prefix} &cNo tienes permiso para reclamar el kit &f{name}&c."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 1.0
+    - "{prefix} &cNo tienes permiso para reclamar el kit &f{name}&c."
+    - "[sound] entity.villager.no 1.0"
   list:
-    text: "{prefix} &fKits: &d{kits}"
-    sound: minecraft:item.book.page_turn
-    volume: 0.55
-    pitch: 1.1
+    - "{prefix} &fKits: &d{kits}"
+    - "[sound] item.book.page_turn 1.1"
   none:
-    text: "{prefix} &cNo hay kits disponibles."
-    sound: minecraft:block.note_block.hat
-    volume: 0.4
-    pitch: 0.9
+    - "{prefix} &cNo hay kits disponibles."
+    - "[sound] block.note_block.hat 0.9"
   cooldown:
-    text: "{prefix} &cKit &f{name} &cen espera. Espera &f{time}&c."
-    sound: minecraft:block.note_block.hat
-    volume: 0.5
-    pitch: 0.85
+    - "{prefix} &cKit &f{name} &cen espera. Espera &f{time}&c."
+    - "[sound] block.note_block.hat 0.85"
   one-time-claimed:
-    text: "{prefix} &cYa reclamaste el kit de un solo uso &f{name}&c."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.95
+    - "{prefix} &cYa reclamaste el kit de un solo uso &f{name}&c."
+    - "[sound] entity.villager.no 0.95"
   paid-denied:
-    text: "{prefix} &cEl kit de pago &f{name} &crequiere reclamo propio y una economia disponible."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.9
+    - "{prefix} &cEl kit de pago &f{name} &crequiere reclamo propio y una economia disponible."
+    - "[sound] entity.villager.no 0.9"
   cost-refused:
-    text: "{prefix} &cNo puedes pagar por ese kit."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.9
+    - "{prefix} &cNo puedes pagar por ese kit."
+    - "[sound] entity.villager.no 0.9"
   full:
-    text: "{prefix} &cTu inventario no tiene espacio para todos los objetos del kit &f{name}&c; no se entrego nada."
-    sound: minecraft:item.shield.break
-    volume: 0.45
-    pitch: 0.95
+    - "{prefix} &cTu inventario no tiene espacio para todos los objetos del kit &f{name}&c; no se entrego nada."
+    - "[sound] item.shield.break 0.95"
   busy:
-    text: "{prefix} &cYa hay una operacion de kit o inventario en curso. Intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.85
+    - "{prefix} &cYa hay una operacion de kit o inventario en curso. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.hat 0.85"
   failed:
-    text: "{prefix} &cLa entrega de kits no esta disponible ahora; no se entrego ni consumio nada."
-    sound: minecraft:block.note_block.bass
-    volume: 0.6
-    pitch: 0.7
+    - "{prefix} &cLa entrega de kits no esta disponible ahora; no se entrego ni consumio nada."
+    - "[sound] block.note_block.bass 0.7"
   invalid:
-    text: "{prefix} &cEl kit &f{name} &ctiene una definicion de objeto invalida: &f{reason}"
-    sound: minecraft:block.note_block.bass
-    volume: 0.6
-    pitch: 0.75
+    - "{prefix} &cEl kit &f{name} &ctiene una definicion de objeto invalida: &f{reason}"
+    - "[sound] block.note_block.bass 0.75"
   created:
-    text: "{prefix} &aKit &f{name} &acreado con &f{items} &apila(s) de objetos."
-    sound: minecraft:block.anvil.use
-    volume: 0.5
-    pitch: 1.25
+    - "{prefix} &aKit &f{name} &acreado con &f{items} &apila(s) de objetos."
+    - "[sound] block.anvil.use 1.25"
   deleted:
-    text: "{prefix} &aKit &f{name} &aeliminado."
-    sound: minecraft:item.book.page_turn
-    volume: 0.55
-    pitch: 0.85
+    - "{prefix} &aKit &f{name} &aeliminado."
+    - "[sound] item.book.page_turn 0.85"
   already-exists:
-    text: "{prefix} &cEl kit &f{name} &cya existe. Eliminalo primero con &f/delkit {name}&c."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.85
+    - "{prefix} &cEl kit &f{name} &cya existe. Eliminalo primero con &f/delkit {name}&c."
+    - "[sound] block.note_block.bass 0.85"
   create-empty:
-    text: "{prefix} &cColoca al menos un objeto en tu inventario antes de usar &f/createkit&c."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cColoca al menos un objeto en tu inventario antes de usar &f/createkit&c."
+    - "[sound] block.note_block.bass 0.8"
   name-invalid:
-    text: "{prefix} &cUsa de 1 a 32 letras minusculas, digitos, guiones bajos o guiones para el nombre del kit."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cUsa de 1 a 32 letras minusculas, digitos, guiones bajos o guiones para el nombre del kit."
+    - "[sound] block.note_block.bass 0.8"
   capture-privileged:
-    text: "{prefix} &cNo se puede capturar la ranura &f{slot} &c(&f{item}&c / &f{behavior}&c): capturar objetos privilegiados requiere &f{permission}&c."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.95
+    - "{prefix} &cNo se puede capturar la ranura &f{slot} &c(&f{item}&c / &f{behavior}&c): capturar objetos privilegiados requiere &f{permission}&c."
+    - "[sound] entity.villager.no 0.95"
   capture-unsupported:
-    text: "{prefix} &cNo se puede crear el kit: la ranura &f{slot} &ccontiene datos de objeto no soportados (&f{reason}&c). Quita o reemplaza el objeto para no degradar el kit."
-    sound: minecraft:block.note_block.bass
-    volume: 0.6
-    pitch: 0.75
-
+    - "{prefix} &cNo se puede crear el kit: la ranura &f{slot} &ccontiene datos de objeto no soportados (&f{reason}&c). Quita o reemplaza el objeto para no degradar el kit."
+    - "[sound] block.note_block.bass 0.75"
 economy:
   balance:
-    text: "{prefix} &fSaldo: &a{amount}"
-    sound: minecraft:ui.button.click
-    volume: 0.4
-    pitch: 1.3
+    - "{prefix} &fSaldo: &a{amount}"
+    - "[sound] ui.button.click 1.3"
   balance-other:
-    text: "{prefix} &fSaldo de &f{player}&f: &a{amount}"
-    sound: minecraft:ui.button.click
-    volume: 0.4
-    pitch: 1.3
+    - "{prefix} &fSaldo de &f{player}&f: &a{amount}"
+    - "[sound] ui.button.click 1.3"
   pay-sent:
-    text: "{prefix} &aEnviaste &f{amount} &aa &f{player}&a."
-    sound: minecraft:entity.experience_orb.pickup
-    volume: 0.5
-    pitch: 0.95
+    - "{prefix} &aEnviaste &f{amount} &aa &f{player}&a."
+    - "[sound] entity.experience_orb.pickup 0.95"
   pay-received:
-    text: "{prefix} &aRecibiste &f{amount} &ade &f{player}&a."
-    sound: minecraft:entity.experience_orb.pickup
-    volume: 0.6
-    pitch: 1.35
+    - "{prefix} &aRecibiste &f{amount} &ade &f{player}&a."
+    - "[sound] entity.experience_orb.pickup 1.35"
   insufficient:
-    text: "{prefix} &cFondos insuficientes."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cFondos insuficientes."
+    - "[sound] block.note_block.bass 0.8"
   invalid-amount:
-    text: "{prefix} &cLa cantidad debe ser mayor que cero."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
-
+    - "{prefix} &cLa cantidad debe ser mayor que cero."
+    - "[sound] block.note_block.bass 0.8"
 chat:
   delete:
     success:
-      text: "{prefix} &aMensaje eliminado."
-      sound: minecraft:item.book.page_turn
-      volume: 0.4
-      pitch: 1.0
+      - "{prefix} &aMensaje eliminado."
+      - "[sound] item.book.page_turn 1.0"
     multiple:
-      text: "{prefix} &aMensajes eliminados."
-      sound: minecraft:item.book.page_turn
-      volume: 0.4
-      pitch: 1.0
-    not-found: "{prefix} &cMensaje no encontrado."
-    amount: "{prefix} &cLa cantidad debe estar entre 1 y 200."
-    usage: "{prefix} &cUso: &f/delmsg <id> &co &f/delmsg <player> <amount>"
-  player-not-found: "{prefix} &cJugador no encontrado."
-  msg-format: "&7[&f{sender} &7-> &f{receiver}&7] &f{message}"
+      - "{prefix} &aMensajes eliminados."
+      - "[sound] item.book.page_turn 1.0"
+    not-found:
+      - "{prefix} &cMensaje no encontrado."
+    amount:
+      - "{prefix} &cLa cantidad debe estar entre 1 y 200."
+    usage:
+      - "{prefix} &cUso: &f/delmsg <id> &co &f/delmsg <player> <amount>"
+  player-not-found:
+    - "{prefix} &cJugador no encontrado."
+  msg-format:
+    - "&7[&f{sender} &7-> &f{receiver}&7] &f{message}"
   no-reply:
-    text: "{prefix} &cNo hay nadie a quien responder."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.85
+    - "{prefix} &cNo hay nadie a quien responder."
+    - "[sound] block.note_block.bass 0.85"
   socialspy-toggle:
-    text: "{prefix} &fSocialSpy {state}&f."
-    sound: minecraft:ui.button.click
-    volume: 0.4
-    pitch: 1.15
+    - "{prefix} &fSocialSpy {state}&f."
+    - "[sound] ui.button.click 1.15"
   broadcast:
-    text: "&4[Anuncio] &c{message}"
-    sound: minecraft:block.note_block.bell
-    volume: 0.55
-    pitch: 1.05
-
+    - "&4[Anuncio] &c{message}"
+    - "[sound] block.note_block.bell 1.05"
 moderation:
   discipline:
     usage:
-      text: "{prefix} &cUso: {usage}"
-      sound: minecraft:ui.button.click
-      volume: 0.4
-      pitch: 0.75
+      - "{prefix} &cUso: {usage}"
+      - "[sound] ui.button.click 0.75"
     unavailable:
-      text: "{prefix} &cLos datos de moderacion no estan disponibles. Intentalo de nuevo en un momento."
-      sound: minecraft:block.note_block.bass
-      volume: 0.6
-      pitch: 0.7
+      - "{prefix} &cLos datos de moderacion no estan disponibles. Intentalo de nuevo en un momento."
+      - "[sound] block.note_block.bass 0.7"
     busy:
-      text: "{prefix} &cYa hay una accion de moderacion pendiente o limitada por frecuencia. Intentalo de nuevo en un momento."
-      sound: minecraft:block.note_block.hat
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &cYa hay una accion de moderacion pendiente o limitada por frecuencia. Intentalo de nuevo en un momento."
+      - "[sound] block.note_block.hat 0.85"
     exempt:
-      text: "{prefix} &cNo puedes actuar sobre este jugador segun la jerarquia de moderacion."
-      sound: minecraft:entity.villager.no
-      volume: 0.55
-      pitch: 0.9
+      - "{prefix} &cNo puedes actuar sobre este jugador segun la jerarquia de moderacion."
+      - "[sound] entity.villager.no 0.9"
     success:
-      text: "{prefix} &a{action}: {player}."
-      sound: minecraft:block.note_block.pling
-      volume: 0.5
-      pitch: 1.25
+      - "{prefix} &a{action}: {player}."
+      - "[sound] block.note_block.pling 1.25"
     not-active:
-      text: "{prefix} &cNo hay ningun registro activo coincidente para {player}."
-      sound: minecraft:block.note_block.bass
-      volume: 0.5
-      pitch: 0.85
+      - "{prefix} &cNo hay ningun registro activo coincidente para {player}."
+      - "[sound] block.note_block.bass 0.85"
     ip-disabled:
-      text: "{prefix} &cLos baneos de IP estan desactivados en la configuracion."
-      sound: minecraft:entity.villager.no
-      volume: 0.5
-      pitch: 0.9
+      - "{prefix} &cLos baneos de IP estan desactivados en la configuracion."
+      - "[sound] entity.villager.no 0.9"
     jail-not-found:
-      text: "{prefix} &cNo se encontro la carcel {jail}."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &cNo se encontro la carcel {jail}."
+      - "[sound] block.note_block.bass 0.8"
     unsafe-location:
-      text: "{prefix} &cLa carcel o la ubicacion de retorno no esta disponible o no es segura."
-      sound: minecraft:item.shield.break
-      volume: 0.5
-      pitch: 0.95
-    ban-denied: "Estas baneado: {message}"
-    login-unavailable: "Los datos de moderacion no estan disponibles. Por favor intentalo de nuevo en un momento."
-    kick-notice: "Fuiste expulsado: {message}"
+      - "{prefix} &cLa carcel o la ubicacion de retorno no esta disponible o no es segura."
+      - "[sound] item.shield.break 0.95"
+    ban-denied:
+      - "Estas baneado: {message}"
+    login-unavailable:
+      - "Los datos de moderacion no estan disponibles. Por favor intentalo de nuevo en un momento."
+    kick-notice:
+      - "Fuiste expulsado: {message}"
     warning-notice:
-      text: "{prefix} &eAdvertencia: {message}"
-      sound: minecraft:block.note_block.bell
-      volume: 0.6
-      pitch: 0.9
+      - "{prefix} &eAdvertencia: {message}"
+      - "[sound] block.note_block.bell 0.9"
     list-header:
-      text: "{prefix} &fRegistros de moderacion ({count}):"
-      sound: minecraft:item.book.page_turn
-      volume: 0.55
-      pitch: 1.0
-    list-entry: "&7- {player} por {actor}: {message}"
+      - "{prefix} &fRegistros de moderacion ({count}):"
+      - "[sound] item.book.page_turn 1.0"
+    list-entry:
+      - "&7- {player} por {actor}: {message}"
     list-empty:
-      text: "{prefix} &7No se encontraron registros de moderacion."
-      sound: minecraft:block.note_block.hat
-      volume: 0.4
-      pitch: 0.95
+      - "{prefix} &7No se encontraron registros de moderacion."
+      - "[sound] block.note_block.hat 0.95"
   inspect:
     self:
-      text: "{prefix} &cNo puedes usar /invsee contigo mismo."
-      sound: minecraft:block.note_block.bass
-      volume: 0.5
-      pitch: 0.8
+      - "{prefix} &cNo puedes usar /invsee contigo mismo."
+      - "[sound] block.note_block.bass 0.8"
     busy:
-      text: "{prefix} &cEse inventario esta ocupado ahora mismo. Intentalo de nuevo en un momento."
-      sound: minecraft:block.note_block.hat
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &cEse inventario esta ocupado ahora mismo. Intentalo de nuevo en un momento."
+      - "[sound] block.note_block.hat 0.85"
     offline-required:
-      text: "{prefix} &cLa inspeccion desconectada requiere &f{permission}&c."
-      sound: minecraft:entity.villager.no
-      volume: 0.55
-      pitch: 0.95
+      - "{prefix} &cLa inspeccion desconectada requiere &f{permission}&c."
+      - "[sound] entity.villager.no 0.95"
     offline-unavailable:
-      text: "{prefix} &cLos datos desconectados de &f{player} &cno estan disponibles ahora mismo."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.75
+      - "{prefix} &cLos datos desconectados de &f{player} &cno estan disponibles ahora mismo."
+      - "[sound] block.note_block.bass 0.75"
     offline-corrupt:
-      text: "{prefix} &cLos datos desconectados de &f{player} &cno pudieron leerse de forma segura; no se modifico nada."
-      sound: minecraft:item.shield.break
-      volume: 0.55
-      pitch: 0.85
+      - "{prefix} &cLos datos desconectados de &f{player} &cno pudieron leerse de forma segura; no se modifico nada."
+      - "[sound] item.shield.break 0.85"
     offline-newer-version:
-      text: "{prefix} &cLos datos desconectados de &f{player} &cfueron guardados por una version mas nueva de Minecraft; no se modifico nada."
-      sound: minecraft:item.shield.break
-      volume: 0.55
-      pitch: 0.9
+      - "{prefix} &cLos datos desconectados de &f{player} &cfueron guardados por una version mas nueva de Minecraft; no se modifico nada."
+      - "[sound] item.shield.break 0.9"
     offline-version-rewrite:
-      text: "{prefix} &cLos datos desconectados de &f{player} &cusan una DataVersion diferente de Minecraft; se rechaza la edicion para no reescribir nada."
-      sound: minecraft:item.shield.break
-      volume: 0.55
-      pitch: 0.9
+      - "{prefix} &cLos datos desconectados de &f{player} &cusan una DataVersion diferente de Minecraft; se rechaza la edicion para no reescribir nada."
+      - "[sound] item.shield.break 0.9"
     offline-hold:
-      text: "{prefix} &cLa edicion desconectada para &f{player} &ces rechazada mientras exista una retencion pendiente."
-      sound: minecraft:entity.villager.no
-      volume: 0.55
-      pitch: 0.9
+      - "{prefix} &cLa edicion desconectada para &f{player} &ces rechazada mientras exista una retencion pendiente."
+      - "[sound] entity.villager.no 0.9"
     offline-edit-disabled:
-      text: "{prefix} &cLa edicion de datos de jugadores desconectados esta desactivada debido a un fallo en el autotest del codec."
-      sound: minecraft:block.anvil.break
-      volume: 0.45
-      pitch: 0.9
+      - "{prefix} &cLa edicion de datos de jugadores desconectados esta desactivada debido a un fallo en el autotest del codec."
+      - "[sound] block.anvil.break 0.9"
     conflict:
-      text: "{prefix} &cLos datos desconectados de &f{player} &ccambiaron externamente; inspeccion cerrada sin guardar."
-      sound: minecraft:item.shield.break
-      volume: 0.55
-      pitch: 0.95
+      - "{prefix} &cLos datos desconectados de &f{player} &ccambiaron externamente; inspeccion cerrada sin guardar."
+      - "[sound] item.shield.break 0.95"
     target-online:
-      text: "{prefix} &e{player} &eentro al servidor; inspeccion desconectada cerrada."
-      sound: minecraft:block.chest.close
-      volume: 0.5
-      pitch: 1.15
+      - "{prefix} &e{player} &eentro al servidor; inspeccion desconectada cerrada."
+      - "[sound] block.chest.close 1.15"
     target-offline:
-      text: "{prefix} &e{player} &ese desconecto; inspeccion en vivo cerrada."
-      sound: minecraft:block.chest.close
-      volume: 0.5
-      pitch: 0.9
+      - "{prefix} &e{player} &ese desconecto; inspeccion en vivo cerrada."
+      - "[sound] block.chest.close 0.9"
     target-died:
-      text: "{prefix} &e{player} &emurio; inspeccion de inventario en vivo cerrada."
-      sound: minecraft:block.chest.close
-      volume: 0.5
-      pitch: 0.8
+      - "{prefix} &e{player} &emurio; inspeccion de inventario en vivo cerrada."
+      - "[sound] block.chest.close 0.8"
     unavailable:
-      text: "{prefix} &cLa inspeccion no esta disponible ahora mismo. Intentalo de nuevo en un momento."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.75
+      - "{prefix} &cLa inspeccion no esta disponible ahora mismo. Intentalo de nuevo en un momento."
+      - "[sound] block.note_block.bass 0.75"
   ban:
-    text: "{prefix} &f{player} &cha sido baneado. Razon: &f{reason}"
-    sound: minecraft:block.anvil.use
-    volume: 0.55
-    pitch: 0.85
+    - "{prefix} &f{player} &cha sido baneado. Razon: &f{reason}"
+    - "[sound] block.anvil.use 0.85"
   tempban:
-    text: "{prefix} &f{player} &cbaneado por &f{duration}&c. Razon: &f{reason}"
-    sound: minecraft:block.anvil.use
-    volume: 0.55
-    pitch: 0.95
+    - "{prefix} &f{player} &cbaneado por &f{duration}&c. Razon: &f{reason}"
+    - "[sound] block.anvil.use 0.95"
   kick:
-    text: "{prefix} &f{player} &cha sido expulsado. Razon: &f{reason}"
-    sound: minecraft:entity.arrow.hit_player
-    volume: 0.5
-    pitch: 0.9
+    - "{prefix} &f{player} &cha sido expulsado. Razon: &f{reason}"
+    - "[sound] entity.arrow.hit_player 0.9"
   mute:
-    text: "{prefix} &f{player} &cha sido silenciado. Razon: &f{reason}"
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.75
+    - "{prefix} &f{player} &cha sido silenciado. Razon: &f{reason}"
+    - "[sound] block.note_block.bass 0.75"
   tempmute:
-    text: "{prefix} &f{player} &csilenciado por &f{duration}&c. Razon: &f{reason}"
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &f{player} &csilenciado por &f{duration}&c. Razon: &f{reason}"
+    - "[sound] block.note_block.bass 0.8"
   unmute:
-    text: "{prefix} &f{player} &aha sido des-silenciado."
-    sound: minecraft:block.note_block.chime
-    volume: 0.5
-    pitch: 1.25
+    - "{prefix} &f{player} &aha sido des-silenciado."
+    - "[sound] block.note_block.chime 1.25"
   warn:
-    text: "{prefix} &f{player} &cha sido advertido: &f{reason}"
-    sound: minecraft:block.note_block.bell
-    volume: 0.55
-    pitch: 0.9
+    - "{prefix} &f{player} &cha sido advertido: &f{reason}"
+    - "[sound] block.note_block.bell 0.9"
   muted-chat:
-    text: "{prefix} &cEstas silenciado y no puedes chatear."
-    sound: minecraft:entity.villager.no
-    volume: 0.5
-    pitch: 0.9
+    - "{prefix} &cEstas silenciado y no puedes chatear."
+    - "[sound] entity.villager.no 0.9"
   vanish-on:
-    text: "{prefix} &aVanish activado. Ahora estas oculto para jugadores sin &fallium.vanish.see&a."
-    sound: minecraft:entity.illusioner.mirror_move
-    volume: 0.5
-    pitch: 1.2
+    - "{prefix} &aVanish activado. Ahora estas oculto para jugadores sin &fallium.vanish.see&a."
+    - "[sound] entity.illusioner.mirror_move 1.2"
   vanish-off:
-    text: "{prefix} &7Vanish desactivado. Ahora eres visible."
-    sound: minecraft:entity.illusioner.cast_spell
-    volume: 0.45
-    pitch: 1.1
+    - "{prefix} &7Vanish desactivado. Ahora eres visible."
+    - "[sound] entity.illusioner.cast_spell 1.1"
   vanish-other-on:
-    text: "{prefix} &aActivaste vanish para &f{player}&a."
-    sound: minecraft:entity.illusioner.mirror_move
-    volume: 0.45
-    pitch: 1.2
+    - "{prefix} &aActivaste vanish para &f{player}&a."
+    - "[sound] entity.illusioner.mirror_move 1.2"
   vanish-other-off:
-    text: "{prefix} &7Desactivaste vanish para &f{player}&7."
-    sound: minecraft:entity.illusioner.cast_spell
-    volume: 0.45
-    pitch: 1.1
+    - "{prefix} &7Desactivaste vanish para &f{player}&7."
+    - "[sound] entity.illusioner.cast_spell 1.1"
   vanish-silent-container:
-    text: "{prefix} &7Contenedor abierto en silencio (solo lectura mientras estas en vanish)."
-    sound: minecraft:block.chest.open
-    volume: 0.35
-    pitch: 1.3
+    - "{prefix} &7Contenedor abierto en silencio (solo lectura mientras estas en vanish)."
+    - "[sound] block.chest.open 1.3"
   mute-target-notice:
-    text: "{prefix} &cHas sido silenciado (&f{remaining}&c restantes). Razon: &f{reason}"
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.85
+    - "{prefix} &cHas sido silenciado (&f{remaining}&c restantes). Razon: &f{reason}"
+    - "[sound] entity.villager.no 0.85"
   unmute-target-notice:
-    text: "{prefix} &aHas sido des-silenciado."
-    sound: minecraft:block.note_block.chime
-    volume: 0.5
-    pitch: 1.3
+    - "{prefix} &aHas sido des-silenciado."
+    - "[sound] block.note_block.chime 1.3"
   unmute-not-muted:
-    text: "{prefix} &c{player} no esta silenciado."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.85
+    - "{prefix} &c{player} no esta silenciado."
+    - "[sound] block.note_block.bass 0.85"
   mute-self:
-    text: "{prefix} &cNo puedes silenciarte a ti mismo."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.8
+    - "{prefix} &cNo puedes silenciarte a ti mismo."
+    - "[sound] block.note_block.bass 0.8"
   mute-blocked:
-    text: "{prefix} &cEstas silenciado (&f{remaining}&c restantes). Razon: &f{reason}"
-    sound: minecraft:entity.villager.no
-    volume: 0.5
-    pitch: 0.9
+    - "{prefix} &cEstas silenciado (&f{remaining}&c restantes). Razon: &f{reason}"
+    - "[sound] entity.villager.no 0.9"
   mutes-empty:
-    text: "{prefix} &7No hay silencios activos."
-    sound: minecraft:block.note_block.hat
-    volume: 0.4
-    pitch: 0.95
+    - "{prefix} &7No hay silencios activos."
+    - "[sound] block.note_block.hat 0.95"
   mutes-header:
-    text: "{prefix} &fSilencios activos &7({count}):"
-    sound: minecraft:item.book.page_turn
-    volume: 0.55
-    pitch: 1.0
-  mutes-entry: "&7- &f{player} &7(&e{remaining}&7, por &f{actor}&7): &f{reason}"
+    - "{prefix} &fSilencios activos &7({count}):"
+    - "[sound] item.book.page_turn 1.0"
+  mutes-entry:
+    - "&7- &f{player} &7(&e{remaining}&7, por &f{actor}&7): &f{reason}"
   storage-failed:
-    text: "{prefix} &cNo se pudo guardar el estado de moderacion; se deshizo el cambio."
-    sound: minecraft:block.note_block.bass
-    volume: 0.6
-    pitch: 0.7
+    - "{prefix} &cNo se pudo guardar el estado de moderacion; se deshizo el cambio."
+    - "[sound] block.note_block.bass 0.7"
   vanish-chat-blocked:
-    text: "{prefix} &cNo puedes enviar chat publico mientras estas en vanish. Usa &f/vanish off &co &f/msg&c."
-    sound: minecraft:entity.villager.no
-    volume: 0.5
-    pitch: 0.95
+    - "{prefix} &cNo puedes enviar chat publico mientras estas en vanish. Usa &f/vanish off &co &f/msg&c."
+    - "[sound] entity.villager.no 0.95"
   mute-unavailable:
-    text: "{prefix} &cTu estado de moderacion aun se esta cargando; el chat y los mensajes estan temporalmente no disponibles. Intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.85
-
+    - "{prefix} &cTu estado de moderacion aun se esta cargando; el chat y los mensajes estan temporalmente no disponibles. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.hat 0.85"
 info:
   list:
     empty:
-      text: "{prefix} &7Hay &f0&7/&f{max} &7jugadores en linea."
-      sound: minecraft:item.book.page_turn
-      volume: 0.45
-      pitch: 0.95
+      - "{prefix} &7Hay &f0&7/&f{max} &7jugadores en linea."
+      - "[sound] item.book.page_turn 0.95"
     header:
-      text: "{prefix} &fJugadores en linea &7({online}/{max}):"
-      sound: minecraft:item.book.page_turn
-      volume: 0.5
-      pitch: 1.15
-    group: "&7{group} &8({count})&7: &f{players}"
+      - "{prefix} &fJugadores en linea &7({online}/{max}):"
+      - "[sound] item.book.page_turn 1.15"
+    group:
+      - "&7{group} &8({count})&7: &f{players}"
   seen:
     online:
-      text: "{prefix} &f{player} &aesta en linea{tags} &7(hace &f{duration}&7). Primer ingreso: &f{first_join}"
-      sound: minecraft:block.note_block.chime
-      volume: 0.45
-      pitch: 1.25
+      - "{prefix} &f{player} &aesta en linea{tags} &7(hace &f{duration}&7). Primer ingreso: &f{first_join}"
+      - "[sound] block.note_block.chime 1.25"
     offline:
-      text: "{prefix} &f{player} &7esta desconectado (visto hace &f{last_seen}&7, &f{last_seen_date}&7). Primer ingreso: &f{first_join}"
-      sound: minecraft:item.book.page_turn
-      volume: 0.5
-      pitch: 1.0
+      - "{prefix} &f{player} &7esta desconectado (visto hace &f{last_seen}&7, &f{last_seen_date}&7). Primer ingreso: &f{first_join}"
+      - "[sound] item.book.page_turn 1.0"
     unknown:
-      text: "{prefix} &cNingun jugador llamado &f{player} &cha jugado aqui."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &cNingun jugador llamado &f{player} &cha jugado aqui."
+      - "[sound] block.note_block.bass 0.8"
   whois:
     header:
-      text: "{prefix} &fWhois &e{player} &7({status}{tags}):"
-      sound: minecraft:item.book.page_turn
-      volume: 0.5
-      pitch: 1.15
-    uuid: "&7UUID: &f{uuid}"
-    dates: "&7Primer ingreso: &f{first_join} &8| &7{seen_label}: &f{seen_value}"
-    location: "&7Ubicacion: &f{world} &7(&f{x}&7, &f{y}&7, &f{z}&7)"
-    names: "&7Nombres conocidos: &f{names}"
+      - "{prefix} &fWhois &e{player} &7({status}{tags}):"
+      - "[sound] item.book.page_turn 1.15"
+    uuid:
+      - "&7UUID: &f{uuid}"
+    dates:
+      - "&7Primer ingreso: &f{first_join} &8| &7{seen_label}: &f{seen_value}"
+    location:
+      - "&7Ubicacion: &f{world} &7(&f{x}&7, &f{y}&7, &f{z}&7)"
+    names:
+      - "&7Nombres conocidos: &f{names}"
   near:
     list:
-      text: "{prefix} &fJugadores cercanos &7(en &f{radius}m&7, {count}): &f{players}"
-      sound: minecraft:block.note_block.chime
-      volume: 0.45
-      pitch: 1.3
+      - "{prefix} &fJugadores cercanos &7(en &f{radius}m&7, {count}): &f{players}"
+      - "[sound] block.note_block.chime 1.3"
     empty:
-      text: "{prefix} &7No hay jugadores dentro de &f{radius}m&7."
-      sound: minecraft:block.note_block.hat
-      volume: 0.4
-      pitch: 0.95
+      - "{prefix} &7No hay jugadores dentro de &f{radius}m&7."
+      - "[sound] block.note_block.hat 0.95"
     invalid-radius:
-      text: "{prefix} &cEl radio debe ser un numero positivo."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &cEl radio debe ser un numero positivo."
+      - "[sound] block.note_block.bass 0.8"
     too-far:
-      text: "{prefix} &cEl radio no puede superar los &f{max}&c bloques."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &cEl radio no puede superar los &f{max}&c bloques."
+      - "[sound] block.note_block.bass 0.8"
   afk:
-    enter: "{prefix} &7{player} ahora esta AFK."
-    enter-reason: "{prefix} &7{player} ahora esta AFK: &f{message}"
-    leave: "{prefix} &7{player} ya no esta AFK."
+    enter:
+      - "{prefix} &7{player} ahora esta AFK."
+    enter-reason:
+      - "{prefix} &7{player} ahora esta AFK: &f{message}"
+    leave:
+      - "{prefix} &7{player} ya no esta AFK."
     self-enter:
-      text: "{prefix} &7Ahora estas AFK."
-      sound: minecraft:ui.button.click
-      volume: 0.35
-      pitch: 0.85
+      - "{prefix} &7Ahora estas AFK."
+      - "[sound] ui.button.click 0.85"
     self-enter-reason:
-      text: "{prefix} &7Ahora estas AFK: &f{message}"
-      sound: minecraft:ui.button.click
-      volume: 0.35
-      pitch: 0.85
+      - "{prefix} &7Ahora estas AFK: &f{message}"
+      - "[sound] ui.button.click 0.85"
     self-leave:
-      text: "{prefix} &7Ya no estas AFK."
-      sound: minecraft:ui.button.click
-      volume: 0.35
-      pitch: 1.2
-    kick: "Fuiste expulsado por estar AFK."
-  player-only: "{prefix} &cSolo los jugadores pueden usar /{cmd}."
+      - "{prefix} &7Ya no estas AFK."
+      - "[sound] ui.button.click 1.2"
+    kick:
+      - "Fuiste expulsado por estar AFK."
+  player-only:
+    - "{prefix} &cSolo los jugadores pueden usar /{cmd}."
   storage-failed:
-    text: "{prefix} &cNo se pudo cargar la informacion del jugador ahora mismo; intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.bass
-    volume: 0.6
-    pitch: 0.7
-
+    - "{prefix} &cNo se pudo cargar la informacion del jugador ahora mismo; intentalo de nuevo en un momento."
+    - "[sound] block.note_block.bass 0.7"
 player:
   gamemode-self:
-    text: "{prefix} &aModo de juego cambiado a &f{mode}&a."
-    sound: minecraft:ui.button.click
-    volume: 0.45
-    pitch: 1.35
+    - "{prefix} &aModo de juego cambiado a &f{mode}&a."
+    - "[sound] ui.button.click 1.35"
   gamemode-other:
-    text: "{prefix} &aCambiaste el modo de juego de &f{player} &aa &f{mode}&a."
-    sound: minecraft:ui.button.click
-    volume: 0.45
-    pitch: 1.25
+    - "{prefix} &aCambiaste el modo de juego de &f{player} &aa &f{mode}&a."
+    - "[sound] ui.button.click 1.25"
   fly-toggle:
-    text: "{prefix} &fModo vuelo {state} &fpara &d{player}&f."
-    sound: minecraft:entity.bat.takeoff
-    volume: 0.45
-    pitch: 1.15
+    - "{prefix} &fModo vuelo {state} &fpara &d{player}&f."
+    - "[sound] entity.bat.takeoff 1.15"
   god-toggle:
-    text: "{prefix} &fModo dios {state} &fpara &d{player}&f."
-    sound: minecraft:block.beacon.activate
-    volume: 0.45
-    pitch: 1.35
+    - "{prefix} &fModo dios {state} &fpara &d{player}&f."
+    - "[sound] block.beacon.activate 1.35"
   heal:
-    text: "{prefix} &aHas sido curado."
-    sound: minecraft:entity.player.levelup
-    volume: 0.5
-    pitch: 1.35
+    - "{prefix} &aHas sido curado."
+    - "[sound] entity.player.levelup 1.35"
   heal-other:
-    text: "{prefix} &aCuraste a &f{player}&a."
-    sound: minecraft:entity.player.levelup
-    volume: 0.5
-    pitch: 1.25
+    - "{prefix} &aCuraste a &f{player}&a."
+    - "[sound] entity.player.levelup 1.25"
   feed:
-    text: "{prefix} &aHas sido alimentado."
-    sound: minecraft:entity.generic.eat
-    volume: 0.55
-    pitch: 1.05
+    - "{prefix} &aHas sido alimentado."
+    - "[sound] entity.generic.eat 1.05"
   feed-other:
-    text: "{prefix} &aAlimentaste a &f{player}&a."
-    sound: minecraft:entity.generic.eat
-    volume: 0.55
-    pitch: 1.05
+    - "{prefix} &aAlimentaste a &f{player}&a."
+    - "[sound] entity.generic.eat 1.05"
   speed-set:
-    text: "{prefix} &aVelocidad de {type} establecida a &f{speed}&a."
-    sound: minecraft:block.note_block.bit
-    volume: 0.45
-    pitch: 1.4
+    - "{prefix} &aVelocidad de {type} establecida a &f{speed}&a."
+    - "[sound] block.note_block.bit 1.4"
   speed-set-other:
-    text: "{prefix} &aVelocidad de &f{type} &ade &f{player}&a establecida a &f{speed}&a."
-    sound: minecraft:block.note_block.bit
-    volume: 0.45
-    pitch: 1.3
+    - "{prefix} &aVelocidad de &f{type} &ade &f{player}&a establecida a &f{speed}&a."
+    - "[sound] block.note_block.bit 1.3"
   vanish-toggle:
-    text: "{prefix} &fVanish {state}&f."
-    sound: minecraft:entity.illusioner.mirror_move
-    volume: 0.45
-    pitch: 1.2
+    - "{prefix} &fVanish {state}&f."
+    - "[sound] entity.illusioner.mirror_move 1.2"
   afk-toggle:
-    text: "{prefix} &f{player} &7esta {state} AFK."
-    sound: minecraft:ui.button.click
-    volume: 0.4
-    pitch: 1.0
+    - "{prefix} &f{player} &7esta {state} AFK."
+    - "[sound] ui.button.click 1.0"
   nick-set:
-    text: "{prefix} &aApodo cambiado a &f{nick}&a."
-    sound: minecraft:block.note_block.chime
-    volume: 0.5
-    pitch: 1.3
+    - "{prefix} &aApodo cambiado a &f{nick}&a."
+    - "[sound] block.note_block.chime 1.3"
   nick-reset:
-    text: "{prefix} &aApodo restablecido."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 1.0
-
+    - "{prefix} &aApodo restablecido."
+    - "[sound] block.note_block.hat 1.0"
 utility:
   gc:
-    runtime: "{prefix} &7Tiempo activo: &f{uptime}&7, TPS: &f{tps}"
-    memory: "{prefix} &7Memoria: &f{used} MB &7usados / &f{allocated} MB &7asignados / &f{max} MB &7máximos{disk}"
-    disk: "&7, Disco libre: &f{disk}"
-    players: "{prefix} &7Jugadores: &f{online}/{max}&7, Mundos (&f{worlds}&7):"
-    world: "&7  - &f{world}&7: &f{chunks} &7chunks, &f{entities} &7entidades{paused}"
-    paused: " &e[TIEMPO PAUSADO]"
+    runtime:
+      - "{prefix} &7Tiempo activo: &f{uptime}&7, TPS: &f{tps}"
+    memory:
+      - "{prefix} &7Memoria: &f{used} MB &7usados / &f{allocated} MB &7asignados / &f{max} MB &7máximos{disk}"
+    disk:
+      - "&7, Disco libre: &f{disk}"
+    players:
+      - "{prefix} &7Jugadores: &f{online}/{max}&7, Mundos (&f{worlds}&7):"
+    world:
+      - "&7  - &f{world}&7: &f{chunks} &7chunks, &f{entities} &7entidades{paused}"
+    paused:
+      - " &e[TIEMPO PAUSADO]"
   time-set:
-    text: "{prefix} &aTiempo establecido a &f{time} &aen &f{world}&a."
-    sound: minecraft:block.note_block.bell
-    volume: 0.5
-    pitch: 1.2
+    - "{prefix} &aTiempo establecido a &f{time} &aen &f{world}&a."
+    - "[sound] block.note_block.bell 1.2"
   time-add:
-    text: "{prefix} &aAnadidos &f{delta} ticks &a(ahora &f{time}&a) en &f{world}&a."
-    sound: minecraft:block.note_block.chime
-    volume: 0.5
-    pitch: 1.25
+    - "{prefix} &aAnadidos &f{delta} ticks &a(ahora &f{time}&a) en &f{world}&a."
+    - "[sound] block.note_block.chime 1.25"
   time-query:
-    text: "{prefix} &fTiempo en {world}&7: &e{time}{status}"
-    sound: minecraft:ui.button.click
-    volume: 0.4
-    pitch: 1.2
+    - "{prefix} &fTiempo en {world}&7: &e{time}{status}"
+    - "[sound] ui.button.click 1.2"
   time-pause:
-    text: "{prefix} &fCiclo diurno {state} &fen &e{world} &7(en &f{time}&7)."
-    sound: minecraft:block.beacon.deactivate
-    volume: 0.4
-    pitch: 1.25
+    - "{prefix} &fCiclo diurno {state} &fen &e{world} &7(en &f{time}&7)."
+    - "[sound] block.beacon.deactivate 1.25"
   weather-set:
-    text: "{prefix} &aClima establecido a &f{weather} &aen &f{world}&a."
-    sound: minecraft:block.note_block.chime
-    volume: 0.5
-    pitch: 1.05
+    - "{prefix} &aClima establecido a &f{weather} &aen &f{world}&a."
+    - "[sound] block.note_block.chime 1.05"
   inventory-busy:
-    text: "{prefix} &cEl inventario de {player} esta ocupado con recuperacion de correo o kits. Intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.85
+    - "{prefix} &cEl inventario de {player} esta ocupado con recuperacion de correo o kits. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.hat 0.85"
   hold-item:
-    text: "{prefix} &cSosten un objeto en tu mano principal."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.85
+    - "{prefix} &cSosten un objeto en tu mano principal."
+    - "[sound] block.note_block.bass 0.85"
   ping-self:
-    text: "{prefix} &aTu ping: &f{ping}ms&a."
-    sound: minecraft:block.note_block.bit
-    volume: 0.45
-    pitch: 1.5
+    - "{prefix} &aTu ping: &f{ping}ms&a."
+    - "[sound] block.note_block.bit 1.5"
   ping-other:
-    text: "{prefix} &aPing de &f{player}&a: &f{ping}ms&a."
-    sound: minecraft:block.note_block.bit
-    volume: 0.45
-    pitch: 1.4
+    - "{prefix} &aPing de &f{player}&a: &f{ping}ms&a."
+    - "[sound] block.note_block.bit 1.4"
   ext-self:
-    text: "{prefix} &aHas sido extinguido."
-    sound: minecraft:entity.generic.extinguish_fire
-    volume: 0.5
-    pitch: 1.1
+    - "{prefix} &aHas sido extinguido."
+    - "[sound] entity.generic.extinguish_fire 1.1"
   ext-other:
-    text: "{prefix} &aExtinguiste a &f{player}&a."
-    sound: minecraft:entity.generic.extinguish_fire
-    volume: 0.5
-    pitch: 1.1
+    - "{prefix} &aExtinguiste a &f{player}&a."
+    - "[sound] entity.generic.extinguish_fire 1.1"
   burn:
-    text: "{prefix} &cPrendiste fuego a &f{player} &cpor &f{seconds}s&c."
-    sound: minecraft:item.firecharge.use
-    volume: 0.5
-    pitch: 1.05
+    - "{prefix} &cPrendiste fuego a &f{player} &cpor &f{seconds}s&c."
+    - "[sound] item.firecharge.use 1.05"
   burn-invalid:
-    text: "{prefix} &cLa duracion del fuego debe estar entre 1 y 300 segundos."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cLa duracion del fuego debe estar entre 1 y 300 segundos."
+    - "[sound] block.note_block.bass 0.8"
   smite:
-    text: "{prefix} &eGolpeaste a &f{player} &econ un rayo."
-    sound: minecraft:entity.lightning_bolt.thunder
-    volume: 0.45
-    pitch: 1.1
+    - "{prefix} &eGolpeaste a &f{player} &econ un rayo."
+    - "[sound] entity.lightning_bolt.thunder 1.1"
   smited:
-    text: "{prefix} &cFuiste alcanzado por un rayo."
-    sound: minecraft:entity.lightning_bolt.impact
-    volume: 0.55
-    pitch: 1.0
+    - "{prefix} &cFuiste alcanzado por un rayo."
+    - "[sound] entity.lightning_bolt.impact 1.0"
   nv-toggle:
-    text: "{prefix} &fVision nocturna {state} &fpara &d{player}&f."
-    sound: minecraft:entity.generic.drink
-    volume: 0.5
-    pitch: 1.2
+    - "{prefix} &fVision nocturna {state} &fpara &d{player}&f."
+    - "[sound] entity.generic.drink 1.2"
   clear-self:
-    text: "{prefix} &aSe limpiaron &f{count} &aobjeto(s) de tu inventario."
-    sound: minecraft:block.grindstone.use
-    volume: 0.45
-    pitch: 1.15
+    - "{prefix} &aSe limpiaron &f{count} &aobjeto(s) de tu inventario."
+    - "[sound] block.grindstone.use 1.15"
   clear-other:
-    text: "{prefix} &aSe limpiaron &f{count} &aobjeto(s) del inventario de &f{player}&a."
-    sound: minecraft:block.grindstone.use
-    volume: 0.45
-    pitch: 1.15
+    - "{prefix} &aSe limpiaron &f{count} &aobjeto(s) del inventario de &f{player}&a."
+    - "[sound] block.grindstone.use 1.15"
   clear-invalid-material:
-    text: "{prefix} &cMaterial desconocido &f{material}&c."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cMaterial desconocido &f{material}&c."
+    - "[sound] block.note_block.bass 0.8"
   more-self:
-    text: "{prefix} &aPila en mano llenada a &f{amount}&a."
-    sound: minecraft:entity.item.pickup
-    volume: 0.55
-    pitch: 1.35
+    - "{prefix} &aPila en mano llenada a &f{amount}&a."
+    - "[sound] entity.item.pickup 1.35"
   more-other:
-    text: "{prefix} &aPila en mano de &f{player}&a llenada a &f{amount}&a."
-    sound: minecraft:entity.item.pickup
-    volume: 0.55
-    pitch: 1.25
+    - "{prefix} &aPila en mano de &f{player}&a llenada a &f{amount}&a."
+    - "[sound] entity.item.pickup 1.25"
   more-cannot-stack:
-    text: "{prefix} &cEse objeto no puede apilarse por encima de &f{max}&c."
-    sound: minecraft:entity.villager.no
-    volume: 0.5
-    pitch: 0.95
+    - "{prefix} &cEse objeto no puede apilarse por encima de &f{max}&c."
+    - "[sound] entity.villager.no 0.95"
   hat-equipped:
-    text: "{prefix} &aEquipaste &f{item} &acomo sombrero."
-    sound: minecraft:item.armor.equip_generic
-    volume: 0.6
-    pitch: 1.15
+    - "{prefix} &aEquipaste &f{item} &acomo sombrero."
+    - "[sound] item.armor.equip_generic 1.15"
   skull-pending:
-    text: "{prefix} &7Resolviendo skin de cabeza para &f{owner}&7..."
-    sound: minecraft:ui.button.click
-    volume: 0.35
-    pitch: 1.0
+    - "{prefix} &7Resolviendo skin de cabeza para &f{owner}&7..."
+    - "[sound] ui.button.click 1.0"
   skull-given:
-    text: "{prefix} &aEntregada la cabeza de &f{owner}&a a &f{player}&a."
-    sound: minecraft:entity.item.pickup
-    volume: 0.55
-    pitch: 1.2
+    - "{prefix} &aEntregada la cabeza de &f{owner}&a a &f{player}&a."
+    - "[sound] entity.item.pickup 1.2"
   skull-degraded:
-    text: "{prefix} &eLa busqueda de skin fallo para &f{owner}&e ({reason}); se entrego una cabeza alternativa."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.9
+    - "{prefix} &eLa busqueda de skin fallo para &f{owner}&e ({reason}); se entrego una cabeza alternativa."
+    - "[sound] block.note_block.hat 0.9"
   skull-invalid:
-    text: "{prefix} &cPropietario de cabeza invalido &f{owner}&c."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cPropietario de cabeza invalido &f{owner}&c."
+    - "[sound] block.note_block.bass 0.8"
   repair-all:
-    text: "{prefix} &aReparado(s) &f{count} &aobjeto(s) danado(s)."
-    sound: minecraft:block.anvil.use
-    volume: 0.55
-    pitch: 1.2
+    - "{prefix} &aReparado(s) &f{count} &aobjeto(s) danado(s)."
+    - "[sound] block.anvil.use 1.2"
   repair-none:
-    text: "{prefix} &7No se encontraron objetos danados para reparar."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.9
+    - "{prefix} &7No se encontraron objetos danados para reparar."
+    - "[sound] block.note_block.hat 0.9"
   enchant-applied:
-    text: "{prefix} &aAplicado &f{enchant} {level} &aal &f{item}&a de &f{player}&a."
-    sound: minecraft:block.enchantment_table.use
-    volume: 0.6
-    pitch: 1.15
+    - "{prefix} &aAplicado &f{enchant} {level} &aal &f{item}&a de &f{player}&a."
+    - "[sound] block.enchantment_table.use 1.15"
   enchant-removed:
-    text: "{prefix} &aEliminado &f{enchant} &adel &f{item}&a de &f{player}&a."
-    sound: minecraft:block.grindstone.use
-    volume: 0.55
-    pitch: 1.05
+    - "{prefix} &aEliminado &f{enchant} &adel &f{item}&a de &f{player}&a."
+    - "[sound] block.grindstone.use 1.05"
   enchant-unknown:
-    text: "{prefix} &cEncantamiento desconocido &f{enchant}&c."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cEncantamiento desconocido &f{enchant}&c."
+    - "[sound] block.note_block.bass 0.8"
   enchant-unsafe-denied:
-    text: "{prefix} &cLos encantamientos o niveles inseguros requieren &fallium.enchant.unsafe&c."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.95
+    - "{prefix} &cLos encantamientos o niveles inseguros requieren &fallium.enchant.unsafe&c."
+    - "[sound] entity.villager.no 0.95"
   seen-online:
-    text: "{prefix} &f{player} &aesta en linea. Se unio hace &f{time}&a."
-    sound: minecraft:block.note_block.chime
-    volume: 0.45
-    pitch: 1.25
+    - "{prefix} &f{player} &aesta en linea. Se unio hace &f{time}&a."
+    - "[sound] block.note_block.chime 1.25"
   seen-offline:
-    text: "{prefix} &f{player} &cfue visto por ultima vez hace &f{time}&c."
-    sound: minecraft:item.book.page_turn
-    volume: 0.5
-    pitch: 1.0
+    - "{prefix} &f{player} &cfue visto por ultima vez hace &f{time}&c."
+    - "[sound] item.book.page_turn 1.0"
   near:
-    text: "{prefix} &fJugadores cercanos: &d{players}"
-    sound: minecraft:block.note_block.chime
-    volume: 0.45
-    pitch: 1.3
+    - "{prefix} &fJugadores cercanos: &d{players}"
+    - "[sound] block.note_block.chime 1.3"
   near-none:
-    text: "{prefix} &cNo hay jugadores cercanos."
-    sound: minecraft:block.note_block.hat
-    volume: 0.4
-    pitch: 0.95
-
+    - "{prefix} &cNo hay jugadores cercanos."
+    - "[sound] block.note_block.hat 0.95"
 tool:
   mob-disarmer:
-    disarmed: "{prefix} &aDesarmaste a &f{target}&a: &f{removed} &aretirados, &f{dropped} &asoltados. Cargas: &f{charges}&7/&f{max}"
-    disarmed-bypass: "{prefix} &aDesarmaste a &f{target}&a: &f{removed} &aretirados, &f{dropped} &asoltados."
+    disarmed:
+      - "{prefix} &aDesarmaste a &f{target}&a: &f{removed} &aretirados, &f{dropped} &asoltados. Cargas: &f{charges}&7/&f{max}"
+    disarmed-bypass:
+      - "{prefix} &aDesarmaste a &f{target}&a: &f{removed} &aretirados, &f{dropped} &asoltados."
     last-charge:
-      text: "{prefix} &cEsa fue la ultima carga. Se recargara completamente en &f{time}&c."
-      sound: minecraft:block.note_block.hat
-      volume: 0.55
-      pitch: 0.75
+      - "{prefix} &cEsa fue la ultima carga. Se recargara completamente en &f{time}&c."
+      - "[sound] block.note_block.hat 0.75"
     broke:
-      text: "{prefix} &cEl Desarmador de Mobs se rompio durante su uso."
-      sound: minecraft:entity.item.break
-      volume: 0.6
-      pitch: 0.9
+      - "{prefix} &cEl Desarmador de Mobs se rompio durante su uso."
+      - "[sound] entity.item.break 0.9"
     broken:
-      text: "{prefix} &cEste Desarmador de Mobs esta roto."
-      sound: minecraft:item.shield.break
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &cEste Desarmador de Mobs esta roto."
+      - "[sound] item.shield.break 0.85"
     recharging:
-      text: "{prefix} &cEl Desarmador de Mobs se esta recargando. Listo en &f{time}&c."
-      sound: minecraft:block.note_block.hat
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &cEl Desarmador de Mobs se esta recargando. Listo en &f{time}&c."
+      - "[sound] block.note_block.hat 0.85"
     status:
-      text: "{prefix} &eClic derecho sobre un mob para desarmarlo. &7Cargas: &a{charges}&7/{max}"
-      sound: minecraft:ui.button.click
-      volume: 0.4
-      pitch: 1.15
+      - "{prefix} &eClic derecho sobre un mob para desarmarlo. &7Cargas: &a{charges}&7/{max}"
+      - "[sound] ui.button.click 1.15"
     status-bypass:
-      text: "{prefix} &eClic derecho sobre un mob para desarmarlo. &7Cargas: &ailimitadas"
-      sound: minecraft:ui.button.click
-      volume: 0.4
-      pitch: 1.25
+      - "{prefix} &eClic derecho sobre un mob para desarmarlo. &7Cargas: &ailimitadas"
+      - "[sound] ui.button.click 1.25"
     player-target:
-      text: "{prefix} &cEl Desarmador de Mobs no funciona en jugadores."
-      sound: minecraft:entity.villager.no
-      volume: 0.5
-      pitch: 1.0
+      - "{prefix} &cEl Desarmador de Mobs no funciona en jugadores."
+      - "[sound] entity.villager.no 1.0"
     excluded:
-      text: "{prefix} &cEl Desarmador de Mobs no funciona en &f{target}&c."
-      sound: minecraft:entity.villager.no
-      volume: 0.5
-      pitch: 0.95
+      - "{prefix} &cEl Desarmador de Mobs no funciona en &f{target}&c."
+      - "[sound] entity.villager.no 0.95"
     too-far:
-      text: "{prefix} &cEse mob esta demasiado lejos."
-      sound: minecraft:block.note_block.bass
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &cEse mob esta demasiado lejos."
+      - "[sound] block.note_block.bass 0.85"
     protected:
-      text: "{prefix} &cNo puedes desarmar ese mob aqui."
-      sound: minecraft:entity.villager.no
-      volume: 0.55
-      pitch: 0.9
+      - "{prefix} &cNo puedes desarmar ese mob aqui."
+      - "[sound] entity.villager.no 0.9"
     protected-reason:
-      text: "{prefix} &c{reason}"
-      sound: minecraft:entity.villager.no
-      volume: 0.55
-      pitch: 0.9
+      - "{prefix} &c{reason}"
+      - "[sound] entity.villager.no 0.9"
     single-item:
-      text: "{prefix} &cSosten un solo Desarmador de Mobs, no una pila."
-      sound: minecraft:block.note_block.bass
-      volume: 0.5
-      pitch: 0.8
+      - "{prefix} &cSosten un solo Desarmador de Mobs, no una pila."
+      - "[sound] block.note_block.bass 0.8"
     update-failed:
-      text: "{prefix} &cNo se pudo actualizar el Desarmador de Mobs, asi que no se gasto nada."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.75
+      - "{prefix} &cNo se pudo actualizar el Desarmador de Mobs, asi que no se gasto nada."
+      - "[sound] block.note_block.bass 0.75"
   phantom-obliterator:
-    obliterated: "{prefix} &5Obliterados &d{count} &5fantasma(s) sin nombre. &7Cargas: &a{charges}&7/{max}"
-    obliterated-bypass: "{prefix} &5Obliterados &d{count} &5fantasma(s) sin nombre."
+    obliterated:
+      - "{prefix} &5Obliterados &d{count} &5fantasma(s) sin nombre. &7Cargas: &a{charges}&7/{max}"
+    obliterated-bypass:
+      - "{prefix} &5Obliterados &d{count} &5fantasma(s) sin nombre."
     nothing-in-range:
-      text: "{prefix} &7No hay fantasmas sin nombre en &d{radius} &7bloques. Cargas: &a{charges}&7/{max}"
-      sound: minecraft:block.note_block.hat
-      volume: 0.45
-      pitch: 0.9
+      - "{prefix} &7No hay fantasmas sin nombre en &d{radius} &7bloques. Cargas: &a{charges}&7/{max}"
+      - "[sound] block.note_block.hat 0.9"
     protected:
-      text: "{prefix} &cEsos fantasmas estan protegidos aqui, asi que no se gasto nada."
-      sound: minecraft:entity.villager.no
-      volume: 0.55
-      pitch: 0.9
+      - "{prefix} &cEsos fantasmas estan protegidos aqui, asi que no se gasto nada."
+      - "[sound] entity.villager.no 0.9"
     last-charge:
-      text: "{prefix} &cEsa fue la ultima carga. Se recargara completamente en &f{time}&c."
-      sound: minecraft:block.note_block.hat
-      volume: 0.55
-      pitch: 0.75
+      - "{prefix} &cEsa fue la ultima carga. Se recargara completamente en &f{time}&c."
+      - "[sound] block.note_block.hat 0.75"
     broke:
-      text: "{prefix} &cEl Obliterador de Fantasmas se rompio durante su uso."
-      sound: minecraft:entity.item.break
-      volume: 0.6
-      pitch: 0.85
+      - "{prefix} &cEl Obliterador de Fantasmas se rompio durante su uso."
+      - "[sound] entity.item.break 0.85"
     broken:
-      text: "{prefix} &cEste Obliterador de Fantasmas esta roto."
-      sound: minecraft:item.shield.break
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &cEste Obliterador de Fantasmas esta roto."
+      - "[sound] item.shield.break 0.85"
     recharging:
-      text: "{prefix} &cEl Obliterador de Fantasmas se esta recargando. Listo en &f{time}&c."
-      sound: minecraft:block.note_block.hat
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &cEl Obliterador de Fantasmas se esta recargando. Listo en &f{time}&c."
+      - "[sound] block.note_block.hat 0.85"
     single-item:
-      text: "{prefix} &cSosten un solo Obliterador de Fantasmas, no una pila."
-      sound: minecraft:block.note_block.bass
-      volume: 0.5
-      pitch: 0.8
+      - "{prefix} &cSosten un solo Obliterador de Fantasmas, no una pila."
+      - "[sound] block.note_block.bass 0.8"
     update-failed:
-      text: "{prefix} &cNo se pudo actualizar el Obliterador de Fantasmas, asi que no se gasto nada."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.75
+      - "{prefix} &cNo se pudo actualizar el Obliterador de Fantasmas, asi que no se gasto nada."
+      - "[sound] block.note_block.bass 0.75"
   lazy-axe:
     too-large:
-      text: "{prefix} &cEse arbol es demasiado grande para talar (mas de {max} bloques)."
-      sound: minecraft:entity.villager.no
-      volume: 0.5
-      pitch: 0.9
+      - "{prefix} &cEse arbol es demasiado grande para talar (mas de {max} bloques)."
+      - "[sound] entity.villager.no 0.9"
     busy:
-      text: "{prefix} &cYa estas talando un arbol."
-      sound: minecraft:block.note_block.hat
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &cYa estas talando un arbol."
+      - "[sound] block.note_block.hat 0.85"
     stopped-axe:
-      text: "{prefix} &cSe detuvo la tala para evitar que se rompa tu hacha."
-      sound: minecraft:item.shield.break
-      volume: 0.55
-      pitch: 1.05
-
+      - "{prefix} &cSe detuvo la tala para evitar que se rompa tu hacha."
+      - "[sound] item.shield.break 1.05"
 item:
   give:
     delivered:
-      text: "{prefix} &aEntregado &f{amount}x {item} &aa &f{player}&a."
-      sound: minecraft:entity.item.pickup
-      volume: 0.5
-      pitch: 1.25
+      - "{prefix} &aEntregado &f{amount}x {item} &aa &f{player}&a."
+      - "[sound] entity.item.pickup 1.25"
     dropped:
-      text: "{prefix} &aEntregados &f{given}&a de &f{amount}x {item} &aa &f{player}&a; &f{dropped} &ano cupieron y cayeron a sus pies."
-      sound: minecraft:entity.item.pickup
-      volume: 0.5
-      pitch: 1.0
+      - "{prefix} &aEntregados &f{given}&a de &f{amount}x {item} &aa &f{player}&a; &f{dropped} &ano cupieron y cayeron a sus pies."
+      - "[sound] entity.item.pickup 1.0"
     degraded:
-      text: "{prefix} &eEntregado &f{amount}x {item} &ea &f{player}&e, pero la cabeza se entrego sin su skin."
-      sound: minecraft:block.note_block.hat
-      volume: 0.45
-      pitch: 0.9
+      - "{prefix} &eEntregado &f{amount}x {item} &ea &f{player}&e, pero la cabeza se entrego sin su skin."
+      - "[sound] block.note_block.hat 0.9"
     refused-unresolved:
-      text: "{prefix} &cNo se pudo resolver la skin de {item}, asi que no se entrego nada a {player}."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &cNo se pudo resolver la skin de {item}, asi que no se entrego nada a {player}."
+      - "[sound] block.note_block.bass 0.8"
     partial:
-      text: "{prefix} &eEntregados &f{given}&e de &f{amount}x {item} &ea &f{player}&e; &f{leftover} &eno cupieron y no fueron entregados."
-      sound: minecraft:entity.item.pickup
-      volume: 0.45
-      pitch: 0.9
+      - "{prefix} &eEntregados &f{given}&e de &f{amount}x {item} &ea &f{player}&e; &f{leftover} &eno cupieron y no fueron entregados."
+      - "[sound] entity.item.pickup 0.9"
     refused:
-      text: "{prefix} &cEl inventario de {player} no puede contener &f{amount}x {item}&c, asi que no se entrego nada."
-      sound: minecraft:item.shield.break
-      volume: 0.45
-      pitch: 0.95
+      - "{prefix} &cEl inventario de {player} no puede contener &f{amount}x {item}&c, asi que no se entrego nada."
+      - "[sound] item.shield.break 0.95"
     offline:
-      text: "{prefix} &c{player} salio antes de que los objetos estuvieran listos, asi que no se entrego nada."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &c{player} salio antes de que los objetos estuvieran listos, asi que no se entrego nada."
+      - "[sound] block.note_block.bass 0.8"
     cancelled:
-      text: "{prefix} &cOtro plugin cancelo la entrega de {item} a {player}."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &cOtro plugin cancelo la entrega de {item} a {player}."
+      - "[sound] block.note_block.bass 0.8"
     failed:
-      text: "{prefix} &cNo se pudo entregar {item}: &f{reason}"
-      sound: minecraft:block.note_block.bass
-      volume: 0.6
-      pitch: 0.75
+      - "{prefix} &cNo se pudo entregar {item}: &f{reason}"
+      - "[sound] block.note_block.bass 0.75"
     no-target:
-      text: "{prefix} &c{reason}"
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &c{reason}"
+      - "[sound] block.note_block.bass 0.8"
     invalid:
-      text: "{prefix} &cEspecificacion de objeto invalida: &f{reason}"
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &cEspecificacion de objeto invalida: &f{reason}"
+      - "[sound] block.note_block.bass 0.8"
     unresolved:
-      text: "{prefix} &cNo se pudo entregar {item} ({status}): &f{reason}"
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &cNo se pudo entregar {item} ({status}): &f{reason}"
+      - "[sound] block.note_block.bass 0.8"
     privileged:
-      text: "{prefix} &cEntregar {item} ({behavior}) requiere &f{permission}&c."
-      sound: minecraft:entity.villager.no
-      volume: 0.55
-      pitch: 0.95
+      - "{prefix} &cEntregar {item} ({behavior}) requiere &f{permission}&c."
+      - "[sound] entity.villager.no 0.95"
     pending:
-      text: "{prefix} &7Resolviendo perfiles de cabeza para {player}..."
-      sound: minecraft:ui.button.click
-      volume: 0.35
-      pitch: 1.0
+      - "{prefix} &7Resolviendo perfiles de cabeza para {player}..."
+      - "[sound] ui.button.click 1.0"
     warning:
-      text: "{prefix} &eAdvertencia: {warning}"
-      sound: minecraft:block.note_block.bell
-      volume: 0.5
-      pitch: 0.95
+      - "{prefix} &eAdvertencia: {warning}"
+      - "[sound] block.note_block.bell 0.95"
     received:
-      text: "{prefix} &aRecibiste &f{amount}x {item}&a."
-      sound: minecraft:entity.item.pickup
-      volume: 0.55
-      pitch: 1.35
-
+      - "{prefix} &aRecibiste &f{amount}x {item}&a."
+      - "[sound] entity.item.pickup 1.35"
 mail:
   sent:
-    text: "{prefix} &aCorreo enviado a &f{player}&a."
-    sound: minecraft:entity.experience_orb.pickup
-    volume: 0.45
-    pitch: 1.3
+    - "{prefix} &aCorreo enviado a &f{player}&a."
+    - "[sound] entity.experience_orb.pickup 1.3"
   gift-sent:
-    text: "{prefix} &aRegalo de &f{amount} &aobjeto(s) enviado a &f{player}&a."
-    sound: minecraft:entity.experience_orb.pickup
-    volume: 0.5
-    pitch: 1.45
+    - "{prefix} &aRegalo de &f{amount} &aobjeto(s) enviado a &f{player}&a."
+    - "[sound] entity.experience_orb.pickup 1.45"
   gift-delayed:
-    text: "{prefix} &eTu regalo para &f{player} &eesta seguro y llegara en breve."
-    sound: minecraft:block.note_block.chime
-    volume: 0.45
-    pitch: 1.05
+    - "{prefix} &eTu regalo para &f{player} &eesta seguro y llegara en breve."
+    - "[sound] block.note_block.chime 1.05"
   too-long:
-    text: "{prefix} &cEs demasiado largo; el correo admite como maximo &f{max} &ccaracteres."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cEs demasiado largo; el correo admite como maximo &f{max} &ccaracteres."
+    - "[sound] block.note_block.bass 0.8"
   cost-unknown:
-    text: "{prefix} &eEl resultado del pago &f{id} &ees desconocido. No reenvies hasta que se verifique."
-    sound: minecraft:block.note_block.bell
-    volume: 0.55
-    pitch: 0.9
+    - "{prefix} &eEl resultado del pago &f{id} &ees desconocido. No reenvies hasta que se verifique."
+    - "[sound] block.note_block.bell 0.9"
   cost-refused:
-    text: "{prefix} &cNo puedes pagar por ese correo."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.9
+    - "{prefix} &cNo puedes pagar por ese correo."
+    - "[sound] entity.villager.no 0.9"
   failed:
-    text: "{prefix} &cEl correo no esta disponible ahora mismo. No se envio ni se tomo nada; intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.bass
-    volume: 0.6
-    pitch: 0.7
+    - "{prefix} &cEl correo no esta disponible ahora mismo. No se envio ni se tomo nada; intentalo de nuevo en un momento."
+    - "[sound] block.note_block.bass 0.7"
   busy:
-    text: "{prefix} &cTu ultimo regalo aun se esta enviando."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.85
+    - "{prefix} &cTu ultimo regalo aun se esta enviando."
+    - "[sound] block.note_block.hat 0.85"
   gift-empty-hand:
-    text: "{prefix} &cSosten el objeto que quieres enviar."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.85
+    - "{prefix} &cSosten el objeto que quieres enviar."
+    - "[sound] block.note_block.bass 0.85"
   gift-too-many:
-    text: "{prefix} &cUn regalo admite como maximo &f{max} &cobjetos."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.95
+    - "{prefix} &cUn regalo admite como maximo &f{max} &cobjetos."
+    - "[sound] entity.villager.no 0.95"
   empty:
-    text: "{prefix} &7No tienes correo."
-    sound: minecraft:block.chest.open
-    volume: 0.4
-    pitch: 0.95
+    - "{prefix} &7No tienes correo."
+    - "[sound] block.chest.open 0.95"
   header:
-    text: "{prefix} &fTu correo &7({count}):"
-    sound: minecraft:item.book.page_turn
-    volume: 0.55
-    pitch: 1.1
-  entry-text: "&7[&f{id}&7] &fDe {sender} &7({age}): &f{message}"
-  entry-gift: "&7[&f{id}&7] &dRegalo de {sender} &7({age}), {count} pila(s): &f{message} &7- &f/mail claim {id}"
-  entry-claiming: "&7[&f{id}&7] &dRegalo de {sender} &7({age}): reclamando. &f{message}"
+    - "{prefix} &fTu correo &7({count}):"
+    - "[sound] item.book.page_turn 1.1"
+  entry-text:
+    - "&7[&f{id}&7] &fDe {sender} &7({age}): &f{message}"
+  entry-gift:
+    - "&7[&f{id}&7] &dRegalo de {sender} &7({age}), {count} pila(s): &f{message} &7- &f/mail claim {id}"
+  entry-claiming:
+    - "&7[&f{id}&7] &dRegalo de {sender} &7({age}): reclamando. &f{message}"
   deleted:
-    text: "{prefix} &aCorreo &f{id} &aeliminado."
-    sound: minecraft:item.book.page_turn
-    volume: 0.55
-    pitch: 0.85
+    - "{prefix} &aCorreo &f{id} &aeliminado."
+    - "[sound] item.book.page_turn 0.85"
   delete-gift:
-    text: "{prefix} &cEl regalo &f{id} &caun contiene objetos; reclamalo primero."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.95
+    - "{prefix} &cEl regalo &f{id} &caun contiene objetos; reclamalo primero."
+    - "[sound] entity.villager.no 0.95"
   not-found:
-    text: "{prefix} &cNo tienes ningun correo &f{id}&c."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cNo tienes ningun correo &f{id}&c."
+    - "[sound] block.note_block.bass 0.8"
   cleared:
-    text: "{prefix} &aEliminados &f{count} &acorreos leidos."
-    sound: minecraft:item.book.page_turn
-    volume: 0.55
-    pitch: 0.95
+    - "{prefix} &aEliminados &f{count} &acorreos leidos."
+    - "[sound] item.book.page_turn 0.95"
   no-gifts:
-    text: "{prefix} &7No tienes regalos para reclamar."
-    sound: minecraft:block.note_block.hat
-    volume: 0.4
-    pitch: 0.95
+    - "{prefix} &7No tienes regalos para reclamar."
+    - "[sound] block.note_block.hat 0.95"
   not-a-gift:
-    text: "{prefix} &cEl correo &f{id} &cno es un regalo."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cEl correo &f{id} &cno es un regalo."
+    - "[sound] block.note_block.bass 0.8"
   claim-taken:
-    text: "{prefix} &cEl regalo &f{id} &cya esta siendo reclamado."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.85
+    - "{prefix} &cEl regalo &f{id} &cya esta siendo reclamado."
+    - "[sound] block.note_block.hat 0.85"
   claim-full:
-    text: "{prefix} &cTu inventario esta lleno; el regalo &f{id} &cpermanece en tu buzon."
-    sound: minecraft:item.shield.break
-    volume: 0.45
-    pitch: 0.95
+    - "{prefix} &cTu inventario esta lleno; el regalo &f{id} &cpermanece en tu buzon."
+    - "[sound] item.shield.break 0.95"
   claimed:
-    text: "{prefix} &aRegalo &f{id}&a reclamado: &f{given} &aobjeto(s)."
-    sound: minecraft:entity.player.levelup
-    volume: 0.5
-    pitch: 1.35
+    - "{prefix} &aRegalo &f{id}&a reclamado: &f{given} &aobjeto(s)."
+    - "[sound] entity.player.levelup 1.35"
   claimed-part:
-    text: "{prefix} &eReclamados &f{given} &eobjeto(s) del regalo &f{id}&e; &f{kept} &eno cupieron y quedan en tu buzon."
-    sound: minecraft:entity.item.pickup
-    volume: 0.55
-    pitch: 1.05
+    - "{prefix} &eReclamados &f{given} &eobjeto(s) del regalo &f{id}&e; &f{kept} &eno cupieron y quedan en tu buzon."
+    - "[sound] entity.item.pickup 1.05"
   unreadable:
-    text: "{prefix} &cEl regalo &f{id} &cno puede reclamarse en este servidor: {reason}. Permanece en tu buzon."
-    sound: minecraft:item.shield.break
-    volume: 0.5
-    pitch: 0.85
+    - "{prefix} &cEl regalo &f{id} &cno puede reclamarse en este servidor: {reason}. Permanece en tu buzon."
+    - "[sound] item.shield.break 0.85"
   unread:
-    text: "{prefix} &eTienes &f{count} &ecorreos sin leer. &f/mail read"
-    sound: minecraft:entity.experience_orb.pickup
-    volume: 0.6
+    - "{prefix} &eTienes &f{count} &ecorreos sin leer. &f/mail read"
+    - "[sound] entity.experience_orb.pickup"
   new:
-    text: "{prefix} &eNuevo correo de &f{sender}&e. &f/mail read"
-    sound: minecraft:entity.experience_orb.pickup
-    volume: 0.6
+    - "{prefix} &eNuevo correo de &f{sender}&e. &f/mail read"
+    - "[sound] entity.experience_orb.pickup"
   new-gift:
-    text: "{prefix} &dNuevo regalo de &f{sender}&d. &f/mail read"
-    sound: minecraft:entity.experience_orb.pickup
-    volume: 0.6
+    - "{prefix} &dNuevo regalo de &f{sender}&d. &f/mail read"
+    - "[sound] entity.experience_orb.pickup"
   unknown-player:
-    text: "{prefix} &cNingun jugador llamado &f{player} &cha jugado aqui."
-    sound: minecraft:block.note_block.bass
-    volume: 0.55
-    pitch: 0.8
+    - "{prefix} &cNingun jugador llamado &f{player} &cha jugado aqui."
+    - "[sound] block.note_block.bass 0.8"
   self:
-    text: "{prefix} &cNo puedes enviarte correo a ti mismo."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.8
+    - "{prefix} &cNo puedes enviarte correo a ti mismo."
+    - "[sound] block.note_block.bass 0.8"
   cannot-receive:
-    text: "{prefix} &c{player} no puede recibir correo ahora mismo."
-    sound: minecraft:entity.villager.no
-    volume: 0.5
-    pitch: 1.0
+    - "{prefix} &c{player} no puede recibir correo ahora mismo."
+    - "[sound] entity.villager.no 1.0"
   unavailable:
-    text: "{prefix} &c{player} no puede recibir correo ahora mismo; intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.85
+    - "{prefix} &c{player} no puede recibir correo ahora mismo; intentalo de nuevo en un momento."
+    - "[sound] block.note_block.hat 0.85"
   mailbox-full:
-    text: "{prefix} &cEl buzon de {player} esta lleno."
-    sound: minecraft:entity.villager.no
-    volume: 0.55
-    pitch: 0.9
+    - "{prefix} &cEl buzon de {player} esta lleno."
+    - "[sound] entity.villager.no 0.9"
   rate-limited:
-    text: "{prefix} &cPuedes enviar como maximo &f{sends} &ccorreos cada &f{seconds}&cs."
-    sound: minecraft:block.note_block.hat
-    volume: 0.5
-    pitch: 0.85
+    - "{prefix} &cPuedes enviar como maximo &f{sends} &ccorreos cada &f{seconds}&cs."
+    - "[sound] block.note_block.hat 0.85"
   disabled:
-    text: "{prefix} &cEl correo esta desactivado en este servidor."
-    sound: minecraft:entity.villager.no
-    volume: 0.5
-    pitch: 0.9
-
+    - "{prefix} &cEl correo esta desactivado en este servidor."
+    - "[sound] entity.villager.no 0.9"
 preferences:
   unavailable:
-    text: "{prefix} &cLos ajustes de {player} aun se estan cargando. Intentalo de nuevo en un momento."
-    sound: minecraft:block.note_block.hat
-    volume: 0.45
-    pitch: 0.85
-
+    - "{prefix} &cLos ajustes de {player} aun se estan cargando. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.hat 0.85"
 messaging:
   socialspy:
-    message: "&8[Espía] &7[&f{sender} &7→ &f{recipient}&7] &f{message}"
-    "on": "{prefix} &aEspía social activado."
-    "off": "{prefix} &7Espía social desactivado."
-    disabled: "{prefix} &cLas preferencias de espía social están desactivadas en este servidor."
-    save-failed: "{prefix} &cNo se pudo guardar tu preferencia de espía social; se deshizo el cambio."
+    message:
+      - "&8[Espía] &7[&f{sender} &7→ &f{recipient}&7] &f{message}"
+    "on":
+      - "{prefix} &aEspía social activado."
+    "off":
+      - "{prefix} &7Espía social desactivado."
+    disabled:
+      - "{prefix} &cLas preferencias de espía social están desactivadas en este servidor."
+    save-failed:
+      - "{prefix} &cNo se pudo guardar tu preferencia de espía social; se deshizo el cambio."
   sent:
-    text: "&7[&fyo &7→ &f{recipient}&7] &f{message}"
-    sound: minecraft:ui.button.click
-    volume: 0.35
-    pitch: 1.45
+    - "&7[&fyo &7→ &f{recipient}&7] &f{message}"
+    - "[sound] ui.button.click 1.45"
   received:
-    text: "&7[&f{sender} &7→ &fyo&7] &f{message}"
-    sound: minecraft:entity.experience_orb.pickup
-    volume: 0.6
+    - "&7[&f{sender} &7→ &fyo&7] &f{message}"
+    - "[sound] entity.experience_orb.pickup"
   cannot-receive:
-    text: "{prefix} &c{player} no puede recibir mensajes ahora mismo."
-    sound: minecraft:entity.villager.no
-    volume: 0.5
-    pitch: 1.0
+    - "{prefix} &c{player} no puede recibir mensajes ahora mismo."
+    - "[sound] entity.villager.no 1.0"
   no-reply-target:
-    text: "{prefix} &cNo tienes a quien responder."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.85
+    - "{prefix} &cNo tienes a quien responder."
+    - "[sound] block.note_block.bass 0.85"
   muted:
-    text: "{prefix} &cEstas silenciado."
-    sound: minecraft:entity.villager.no
-    volume: 0.5
-    pitch: 0.9
+    - "{prefix} &cEstas silenciado."
+    - "[sound] entity.villager.no 0.9"
   self:
-    text: "{prefix} &cNo puedes enviarte mensajes a ti mismo."
-    sound: minecraft:block.note_block.bass
-    volume: 0.5
-    pitch: 0.8
-  console-name: "Consola"
+    - "{prefix} &cNo puedes enviarte mensajes a ti mismo."
+    - "[sound] block.note_block.bass 0.8"
+  console-name:
+    - "Consola"
   ignore:
     added:
-      text: "{prefix} &aAhora ignoras los mensajes privados de &f{player}&a."
-      sound: minecraft:block.wooden_door.open
-      volume: 0.4
-      pitch: 0.85
+      - "{prefix} &aAhora ignoras los mensajes privados de &f{player}&a."
+      - "[sound] block.wooden_door.open 0.85"
     removed:
-      text: "{prefix} &aYa no ignoras a &f{player}&a."
-      sound: minecraft:block.wooden_door.open
-      volume: 0.4
-      pitch: 1.25
+      - "{prefix} &aYa no ignoras a &f{player}&a."
+      - "[sound] block.wooden_door.open 1.25"
     already:
-      text: "{prefix} &cYa ignoras a &f{player}&c."
-      sound: minecraft:block.note_block.bass
-      volume: 0.5
-      pitch: 0.85
+      - "{prefix} &cYa ignoras a &f{player}&c."
+      - "[sound] block.note_block.bass 0.85"
     not-ignored:
-      text: "{prefix} &cNo ignoras a &f{player}&c."
-      sound: minecraft:block.note_block.bass
-      volume: 0.5
-      pitch: 0.85
+      - "{prefix} &cNo ignoras a &f{player}&c."
+      - "[sound] block.note_block.bass 0.85"
     self:
-      text: "{prefix} &cNo puedes ignorarte a ti mismo."
-      sound: minecraft:block.note_block.bass
-      volume: 0.5
-      pitch: 0.8
+      - "{prefix} &cNo puedes ignorarte a ti mismo."
+      - "[sound] block.note_block.bass 0.8"
     full:
-      text: "{prefix} &cTu lista de ignorados esta llena."
-      sound: minecraft:entity.villager.no
-      volume: 0.55
-      pitch: 0.9
+      - "{prefix} &cTu lista de ignorados esta llena."
+      - "[sound] entity.villager.no 0.9"
     failed:
-      text: "{prefix} &cNo se pudo guardar tu lista de ignorados; se deshizo el cambio."
-      sound: minecraft:block.note_block.bass
-      volume: 0.6
-      pitch: 0.7
+      - "{prefix} &cNo se pudo guardar tu lista de ignorados; se deshizo el cambio."
+      - "[sound] block.note_block.bass 0.7"
     list:
-      text: "{prefix} &7Ignoras a: &f{players}"
-      sound: minecraft:item.book.page_turn
-      volume: 0.5
-      pitch: 1.1
+      - "{prefix} &7Ignoras a: &f{players}"
+      - "[sound] item.book.page_turn 1.1"
     list-empty:
-      text: "{prefix} &7No ignoras a nadie."
-      sound: minecraft:block.note_block.hat
-      volume: 0.4
-      pitch: 0.95
+      - "{prefix} &7No ignoras a nadie."
+      - "[sound] block.note_block.hat 0.95"
   toggle:
     "on":
-      text: "{prefix} &aAhora aceptas mensajes privados."
-      sound: minecraft:block.note_block.pling
-      volume: 0.45
-      pitch: 1.4
+      - "{prefix} &aAhora aceptas mensajes privados."
+      - "[sound] block.note_block.pling 1.4"
     "off":
-      text: "{prefix} &cYa no aceptas mensajes privados."
-      sound: minecraft:block.note_block.bass
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &cYa no aceptas mensajes privados."
+      - "[sound] block.note_block.bass 0.85"
     other-on:
-      text: "{prefix} &f{player} &aahora acepta mensajes privados."
-      sound: minecraft:block.note_block.pling
-      volume: 0.45
-      pitch: 1.35
+      - "{prefix} &f{player} &aahora acepta mensajes privados."
+      - "[sound] block.note_block.pling 1.35"
     other-off:
-      text: "{prefix} &f{player} &cya no acepta mensajes privados."
-      sound: minecraft:block.note_block.bass
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &f{player} &cya no acepta mensajes privados."
+      - "[sound] block.note_block.bass 0.85"
     disabled:
-      text: "{prefix} &cLas preferencias de mensajes estan desactivadas en este servidor."
-      sound: minecraft:entity.villager.no
-      volume: 0.5
-      pitch: 0.9
+      - "{prefix} &cLas preferencias de mensajes estan desactivadas en este servidor."
+      - "[sound] entity.villager.no 0.9"
   sounds:
     status-override:
-      text: "{prefix} &7Volumen de los sonidos de mensajes: &f{volume} &7(tu ajuste)."
-      sound: minecraft:ui.button.click
-      volume: 0.35
-      pitch: 1.15
+      - "{prefix} &7Volumen de los sonidos de mensajes: &f{volume} &7(tu ajuste)."
+      - "[sound] ui.button.click 1.15"
     status-default:
-      text: "{prefix} &7Volumen de los sonidos de mensajes: &f{volume} &7(el predeterminado del servidor)."
-      sound: minecraft:ui.button.click
-      volume: 0.35
-      pitch: 1.1
+      - "{prefix} &7Volumen de los sonidos de mensajes: &f{volume} &7(el predeterminado del servidor)."
+      - "[sound] ui.button.click 1.1"
     status-muted:
-      text: "{prefix} &7Los sonidos de mensajes estan &csilenciados&7. &f/mfx toggle &7los vuelve a activar a &f{volume}&7."
-      sound: minecraft:ui.button.click
-      volume: 0.35
-      pitch: 0.85
-    usage: "{prefix} &7Usa &f/mfx volume <0-1>&7, &f/mfx toggle &7o &f/mfx reset&7."
+      - "{prefix} &7Los sonidos de mensajes estan &csilenciados&7. &f/mfx toggle &7los vuelve a activar a &f{volume}&7."
+      - "[sound] ui.button.click 0.85"
+    usage:
+      - "{prefix} &7Usa &f/mfx volume <0-1>&7, &f/mfx toggle &7o &f/mfx reset&7."
     volume-set:
-      text: "{prefix} &aVolumen de los sonidos de mensajes: &f{volume}&a."
-      sound: minecraft:block.note_block.pling
-      volume: 0.5
-      pitch: 1.35
+      - "{prefix} &aVolumen de los sonidos de mensajes: &f{volume}&a."
+      - "[sound] block.note_block.pling 1.35"
     volume-invalid:
-      text: "{prefix} &c'{input}' no es un volumen entre 0 y 1; no se ha cambiado nada."
-      sound: minecraft:block.note_block.bass
-      volume: 0.55
-      pitch: 0.8
+      - "{prefix} &c'{input}' no es un volumen entre 0 y 1; no se ha cambiado nada."
+      - "[sound] block.note_block.bass 0.8"
     muted:
-      text: "{prefix} &cSonidos de mensajes silenciados. &7/mfx toggle los vuelve a activar."
-      sound: minecraft:block.note_block.bass
-      volume: 0.45
-      pitch: 0.75
+      - "{prefix} &cSonidos de mensajes silenciados. &7/mfx toggle los vuelve a activar."
+      - "[sound] block.note_block.bass 0.75"
     restored:
-      text: "{prefix} &aLos sonidos de mensajes vuelven a sonar a &f{volume}&a."
-      sound: minecraft:block.note_block.pling
-      volume: 0.5
-      pitch: 1.35
+      - "{prefix} &aLos sonidos de mensajes vuelven a sonar a &f{volume}&a."
+      - "[sound] block.note_block.pling 1.35"
     fallback:
-      text: "{prefix} &aLos sonidos de mensajes vuelven al volumen predeterminado del servidor, &f{volume}&a."
-      sound: minecraft:block.note_block.pling
-      volume: 0.5
-      pitch: 1.2
+      - "{prefix} &aLos sonidos de mensajes vuelven al volumen predeterminado del servidor, &f{volume}&a."
+      - "[sound] block.note_block.pling 1.2"
     fallback-silent:
-      text: "{prefix} &cEl volumen predeterminado del servidor es 0, asi que los sonidos siguen silenciados. &7Usa &f/mfx volume <0-1>&7."
-      sound: minecraft:block.note_block.hat
-      volume: 0.45
-      pitch: 0.85
+      - "{prefix} &cEl volumen predeterminado del servidor es 0, asi que los sonidos siguen silenciados. &7Usa &f/mfx volume <0-1>&7."
+      - "[sound] block.note_block.hat 0.85"
     reset:
-      text: "{prefix} &aAhora sigues el volumen de mensajes del servidor, &f{volume}&a."
-      sound: minecraft:block.note_block.chime
-      volume: 0.45
-      pitch: 1.2
+      - "{prefix} &aAhora sigues el volumen de mensajes del servidor, &f{volume}&a."
+      - "[sound] block.note_block.chime 1.2"
     disabled:
-      text: "{prefix} &cLas preferencias de sonido de mensajes estan desactivadas en este servidor."
-      sound: minecraft:entity.villager.no
-      volume: 0.5
-      pitch: 0.9
+      - "{prefix} &cLas preferencias de sonido de mensajes estan desactivadas en este servidor."
+      - "[sound] entity.villager.no 0.9"

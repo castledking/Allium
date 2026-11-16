@@ -110,6 +110,18 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
                 var names=plugin.getPlayerNames();return names==null?List.of():names.complete(sender,args[0],64);
             }
         }
+        if (spec.canonicalName().equals("enchant") && args.length == 1 && sender.hasPermission("allium.enchant")) {
+            String prefix = args[0].toLowerCase(java.util.Locale.ROOT);
+            List<String> enchants = new ArrayList<>();
+            for (var ench : org.bukkit.Registry.ENCHANTMENT) {
+                String key = ench.getKey().getKey();
+                if (key.startsWith(prefix)) {
+                    enchants.add(key);
+                }
+            }
+            enchants.sort(String::compareTo);
+            return enchants;
+        }
         CommandCompletionContext completionContext = new CommandCompletionContext() {
             @Override
             public List<String> travelNames(boolean warps, String prefix) {

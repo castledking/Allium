@@ -19,20 +19,102 @@ commands:
     description: Delete a retained logical chat message
     aliases: [deletemsg]
   repair:
-    description: Self-service repair
+    description: Self-service or inventory-wide repair
+    usage: /<command> [hand|all]
     permission: allium.repair
   disposal:
     description: Self-service disposal
+    usage: /<command>
+    aliases: [trash, dispose]
     permission: allium.disposal
   workbench:
     description: Self-service workbench
+    usage: /<command>
+    aliases: [craft]
     permission: allium.workbench
   anvil:
     description: Self-service anvil
+    usage: /<command>
     permission: allium.anvil
   info:
     description: Self-service info
+    usage: /<command>
     permission: allium.info
+  speed:
+    description: Change walk or fly speed
+    usage: /<command> [walk|fly] <0..10|reset> [player]
+    permission: allium.speed
+  ping:
+    description: Check ping
+    usage: /<command> [player]
+    permission: allium.ping
+  ext:
+    description: Extinguish fire on a player
+    usage: /<command> [player]
+    aliases: [extinguish]
+    permission: allium.ext
+  burn:
+    description: Set a player on fire
+    usage: /<command> <player> [seconds]
+    permission: allium.burn
+  smite:
+    description: Strike a player with visual lightning
+    usage: /<command> <player>
+    aliases: [lightning, strike]
+    permission: allium.smite
+  nv:
+    description: Toggle night vision
+    usage: /<command> [on|off] [player]
+    aliases: [nightvision]
+    permission: allium.nv
+  clearinventory:
+    description: Clear inventory items
+    usage: /<command> [player] [material] [maxCount]
+    aliases: [clear, ci]
+    permission: allium.clearinventory
+  more:
+    description: Refill held item stack
+    usage: /<command> [amount] [player]
+    permission: allium.more
+  hat:
+    description: Wear the held item on your head
+    usage: /<command>
+    permission: allium.hat
+  skull:
+    description: Give a player skull
+    usage: /<command> [owner] [player]
+    aliases: [head, playerhead]
+    permission: allium.skull
+  itemdb:
+    description: Inspect held item metadata
+    usage: /<command> [player]
+    aliases: [iteminfo]
+    permission: allium.itemdb
+  gc:
+    description: Show runtime memory, disk, TPS, and world counts
+    usage: /<command>
+    aliases: [uptime, lag, tps]
+    permission: allium.gc
+  time:
+    description: View, set, add, or pause world time
+    usage: /<command> [set|add|pause] [value] [world|*]
+    permission: allium.time
+  day:
+    description: Set world time to day
+    usage: /<command> [world|*]
+    permission: allium.time.set
+  night:
+    description: Set world time to night
+    usage: /<command> [world|*]
+    permission: allium.time.set
+  weather:
+    description: Change world weather
+    usage: /<command> <clear|sun|rain|storm|thunder> [duration] [world|*]
+    permission: allium.weather
+  enchant:
+    description: Apply or remove enchantments
+    usage: /<command> <enchantment> <level> [player]
+    permission: allium.enchant
   heal:
     description: Heal yourself or another player
     usage: /<command> [player]
@@ -376,6 +458,39 @@ permissions:
       allium.near: true
       allium.near.bypass-max: true
       allium.afk: true
+      allium.repair: true
+      allium.repair.all: true
+      allium.disposal: true
+      allium.workbench: true
+      allium.anvil: true
+      allium.info: true
+      allium.speed: true
+      allium.speed.others: true
+      allium.ping: true
+      allium.ping.others: true
+      allium.ext: true
+      allium.ext.others: true
+      allium.burn: true
+      allium.smite: true
+      allium.nv: true
+      allium.nv.others: true
+      allium.clearinventory: true
+      allium.clearinventory.others: true
+      allium.more: true
+      allium.more.others: true
+      allium.hat: true
+      allium.skull: true
+      allium.skull.others: true
+      allium.itemdb: true
+      allium.itemdb.others: true
+      allium.gc: true
+      allium.time: true
+      allium.time.set: true
+      allium.time.add: true
+      allium.time.pause: true
+      allium.weather: true
+      allium.enchant: true
+      allium.enchant.others: true
       allium.reload: true
       allium.import: true
   allium.reload:
@@ -708,6 +823,8 @@ permissions:
 
   allium.repair:
     default: op
+  allium.repair.all:
+    default: op
   allium.disposal:
     default: op
   allium.workbench:
@@ -716,6 +833,67 @@ permissions:
     default: op
   allium.info:
     default: op
+  allium.speed:
+    default: op
+  allium.speed.others:
+    default: op
+  allium.ping:
+    default: true
+  allium.ping.others:
+    default: op
+  allium.ext:
+    default: op
+  allium.ext.others:
+    default: op
+  allium.burn:
+    default: op
+  allium.smite:
+    default: op
+  allium.nv:
+    default: op
+  allium.nv.others:
+    default: op
+  allium.clearinventory:
+    default: op
+  allium.clearinventory.others:
+    default: op
+  allium.more:
+    default: op
+  allium.more.others:
+    default: op
+  allium.hat:
+    default: op
+  allium.skull:
+    default: op
+  allium.skull.others:
+    default: op
+  allium.itemdb:
+    default: op
+  allium.itemdb.others:
+    default: op
+  allium.gc:
+    default: op
+  allium.time:
+    default: op
+    children:
+      allium.time.set: true
+      allium.time.add: true
+      allium.time.pause: true
+  allium.time.set:
+    default: op
+  allium.time.add:
+    default: op
+  allium.time.pause:
+    default: op
+  allium.weather:
+    default: op
+  allium.enchant:
+    default: op
+  allium.enchant.others:
+    default: op
+  allium.enchant.unsafe:
+    description: Allows applying unsafe or incompatible enchantments and above-max vanilla levels. Explicit only; not in allium.*
+    default: false
   allium.signs.create.warp.public:
     default: false
   allium.signs.create.color:

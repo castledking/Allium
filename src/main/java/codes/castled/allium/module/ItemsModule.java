@@ -84,6 +84,10 @@ public final class ItemsModule extends AbstractModule {
         return delivery;
     }
 
+    public SkullProfiles skulls() {
+        return skulls;
+    }
+
     private static final String PAPER_GIVE = "codes.castled.allium.command.paper.PaperBrigadierGive";
     private boolean paperGive;
 

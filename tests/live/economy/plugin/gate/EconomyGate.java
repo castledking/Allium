@@ -38,6 +38,7 @@ public final class EconomyGate extends JavaPlugin {
     private EconomyRuntime runtime;
     private Economy vault;
     private SignsGate signs;
+    private ChatGate chat;
     private final Map<UUID,PermissionAttachment> grants=new HashMap<>();
     private final ExecutorService background=Executors.newFixedThreadPool(5);
     private final AtomicBoolean load=new AtomicBoolean();
@@ -79,6 +80,7 @@ public final class EconomyGate extends JavaPlugin {
                     else out.putAll(response(action.equals("withdraw")?vault.withdrawPlayer(p,Double.parseDouble(args[3])):vault.depositPlayer(p,Double.parseDouble(args[3]))));
                     out.put("ms",(System.nanoTime()-start)/1e6);
                 }
+                case "chat" -> {if(chat==null)chat=new ChatGate(allium);out.putAll(chat.run(player(args[1]),Arrays.copyOfRange(args,2,args.length)));}
                 case "signs" -> {if(signs==null)signs=new SignsGate(allium,this);out.putAll(signs.run(player(args[1]),Arrays.copyOfRange(args,2,args.length)));}
                 case "adminhold" -> {
                     UUID id=UUID.randomUUID(),payer=uuid(args[1]);
@@ -358,6 +360,41 @@ final class SignsGate implements Listener {
         var item=p.getInventory().getItemInMainHand();out.put("damage",item.hasItemMeta()&&item.getItemMeta() instanceof org.bukkit.inventory.meta.Damageable d?d.getDamage():0);
         out.put("extensions",extensions);out.put("piston",world.getBlockAt(x-1,y-1,z).getBlockData().getAsString());out.put("powered",world.getBlockAt(x-1,y-1,z).isBlockPowered());out.put("support",world.getBlockAt(x,y-1,z).getType().name());
         if(block.getState() instanceof Sign sign)for(var side:Side.values())out.put(side.name(),Objects.toString(sign.getPersistentDataContainer().get(new NamespacedKey(allium,"sign_"+side.name().toLowerCase(Locale.ROOT)),PersistentDataType.STRING),""));
+        return out;
+    }
+}
+
+/** Disposable chat observations and mock relay transport; native input still uses real clients. */
+final class ChatGate {
+    private final PluginStart allium;
+    private final codes.castled.allium.chat.ChatService service;
+    private final java.util.Map<String,Boolean> sent=new java.util.LinkedHashMap<>();
+    private final java.util.Map<String,codes.castled.allium.chat.ChatHistory.Message> pending=new java.util.LinkedHashMap<>();
+    ChatGate(PluginStart plugin){allium=plugin;service=((ChatModule)plugin.getModuleManager().getModule("chat")).chat();}
+    java.util.Map<String,Object> run(Player p,String[] args)throws Exception{
+        String action=args[0];
+        if(action.equals("position"))p.teleport(new org.bukkit.Location(p.getWorld(),Double.parseDouble(args[1]),70,Double.parseDouble(args[2])));
+        if(action.equals("mockrelay")){
+            var field=codes.castled.allium.chat.ChatService.class.getDeclaredField("relay");field.setAccessible(true);
+            field.set(service,new codes.castled.allium.chat.ChatRelay(){
+                public void send(codes.castled.allium.chat.ChatHistory.Message m,codes.castled.allium.chat.ChatSettings.Channel c,String player,String body){pending.put(m.id(),m);}
+                public void delete(String id){if(sent.containsKey(id))sent.put(id,true);}
+            });
+        }
+        if(action.equals("ack"))for(var entry:pending.entrySet())sent.put(entry.getKey(),entry.getValue().deleted().get());
+        if(action.equals("incoming"))service.inbound(args[1],args[2],args[3],String.join(" ",java.util.Arrays.copyOfRange(args,4,args.length)));
+        if(action.equals("palette")){
+            var peer=allium.getServer().getPluginManager().getPlugin("PlaceholderAPI");if(peer==null)throw new IllegalStateException("ABI fixture absent");
+            peer.getClass().getMethod("palette",java.util.UUID.class,String.class).invoke(peer,p.getUniqueId(),args[1]);
+        }
+        var out=new java.util.LinkedHashMap<String,Object>();out.put("ready",service.ready(p.getUniqueId()));out.put("display",p.getDisplayName());out.put("nickname",service.placeholder(p,false));out.put("gradient",service.placeholder(p,true));out.put("mode",p.getGameMode().name());out.put("uuid",p.getUniqueId().toString());out.put("x",p.getLocation().getX());out.put("z",p.getLocation().getZ());
+        var lines=new java.util.ArrayList<java.util.Map<String,Object>>();
+        for(var m:service.history().visible(p.getUniqueId(),System.currentTimeMillis()))lines.add(java.util.Map.of("id",m.id(),"sender",m.senderName(),"channel",m.channel(),"json",m.rendered().get(p.getUniqueId())));
+        out.put("history",lines);out.put("relayPending",pending.size());out.put("relayRemoved",sent.values().stream().filter(Boolean::booleanValue).count());
+        try(var c=allium.getDatabaseManager().getConnection()){
+            try(var q=c.prepareStatement("SELECT raw_text,version FROM allium_nicknames WHERE uuid=?")){q.setString(1,p.getUniqueId().toString());try(var r=q.executeQuery()){if(r.next()){out.put("storedNickname",java.util.Objects.toString(r.getString(1),""));out.put("nicknameVersion",r.getLong(2));}}}
+            try(var q=c.prepareStatement("SELECT write_channel,read_channels FROM allium_chat_preferences WHERE uuid=?")){q.setString(1,p.getUniqueId().toString());try(var r=q.executeQuery()){if(r.next()){out.put("write",r.getString(1));out.put("reads",r.getString(2));}}}
+        }
         return out;
     }
 }

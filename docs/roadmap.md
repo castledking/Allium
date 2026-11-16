@@ -804,3 +804,16 @@ sufficient. API versions and pack formats must be pinned during implementation.
 [nexo-api]: https://docs.nexomc.com/community-guides/api
 [oraxen-api]: https://docs.oraxen.com/developers/api
 [ce-api]: https://github.com/Xiao-MoMi/craft-engine#craftengine-api
+
+## S23 chat and nickname implementation contract
+
+The approved S23 scope includes persistent self/others/reset nicknames, safe
+public templates, cached optional Vault decorations, legacy read/write channels
+and local range, DiscordSRV bot/webhook relay, logical-ID deletion/replay, and
+PlaceholderAPI GradientPlus palette display names. See [chat contract](chat.md),
+[importer formats](importers-design.md) and the [S23 results](../tests/live/chat/RESULTS.md).
+S22 remains design only: server shops first, player stock escrow/withdrawal and
+trades later, each with their own gates. Importer design is complete; importer
+execution and addon migrations still need implementations and separate gates.
+The S21 native sign lanes remain required in the fixed-artifact regression sweep.
+Work stops after S23; this does not enable the Vault provider or begin S24.

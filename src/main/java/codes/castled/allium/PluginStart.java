@@ -273,6 +273,7 @@ public final class PluginStart extends JavaPlugin {
                 info.info().reloadSettings();
             }
             if(moduleManager.getModule("signs") instanceof codes.castled.allium.module.SignsModule signs && signs.isEnabled())signs.reloadSettings();
+            if(moduleManager.getModule("chat") instanceof codes.castled.allium.module.ChatModule chat && chat.isEnabled())chat.chat().reload();
             ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
             settings.warnings().forEach(logger::warning);
             if (settings.owner() != startupPackOwner) {

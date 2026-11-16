@@ -339,3 +339,43 @@ info:
 # Legacy colour is accepted as color. One shared click limit across all types.
 enabledSigns: []
 sign-use-per-second: 4
+
+# Static safe public chat; formatting does not require Vault. Optional peers supply decorations.
+enable-chat-formatting: true
+chat-format:
+  default: '<prefix><display_name>&f: <message>'
+  groups: {}
+chat-hover:
+  delete-hover-mode: name
+  groups: {}
+chat:
+  max-message-length: 512
+  replay-packets-per-tick: 64
+  deletion_resend:
+    clear_lines: 500
+  channels:
+    enabled: true
+    default-write-channel: default
+    staff-channel: staff-chat
+    local-channel:
+      radius: 100
+      format: '&8[Local] <display_name>&f: <message>'
+    list:
+      default:
+        display-name: Global
+        aliases: [g, global]
+        format: '<prefix><display_name>&f: <message>'
+        discord-channel-id: ''
+        discord-out-format: '{player}: {message}'
+        discord-in-format: '&8[Discord] &f{discord_username}: {message}'
+      staff-chat:
+        display-name: Staff
+        aliases: [a, staffchat]
+        format: '&8[Staff] <prefix><display_name>&f: <message>'
+        discord-channel-id: ''
+        webhook-delivery: false
+nickname:
+  max-length: 32
+  gradientplus-enabled: true
+  animate-tab: false
+  updates-per-tick: 16

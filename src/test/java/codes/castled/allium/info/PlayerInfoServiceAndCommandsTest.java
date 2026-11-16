@@ -339,6 +339,17 @@ class PlayerInfoServiceAndCommandsTest {
     }
 
     @Test
+    void autoAfkPermissionIsRecheckedAtDeadlineAndDoesNotClearExistingState(){
+        norm.perms.remove(PlayerInfoService.PERMISSION_AFK_AUTO);clock.addAndGet(300_000L);infoService.tickAfk();assertFalse(infoService.isAfk(norm.mock));
+        norm.grant(PlayerInfoService.PERMISSION_AFK_AUTO);infoService.tickAfk();assertTrue(infoService.isAfk(norm.mock));
+        norm.perms.remove(PlayerInfoService.PERMISSION_AFK_AUTO);infoService.tickAfk();assertTrue(infoService.isAfk(norm.mock));
+    }
+    @Test
+    void manualAfkStillWorksWhenAutomaticAfkPermissionIsDenied(){
+        norm.perms.remove(PlayerInfoService.PERMISSION_AFK_AUTO);new AfkCommand(plugin,infoService).execute(new BukkitCommandContext(plugin,CoreCommandSpecs.AFK,norm.mock,"afk",new String[0]));assertTrue(infoService.isAfk(norm.mock));
+    }
+
+    @Test
     void afkCoordinatesSleepWithVanishSuppressesVanishedBroadcastAndRespectsKickOptIn() {
         AfkCommand afk = new AfkCommand(plugin, infoService);
 
@@ -431,6 +442,7 @@ class PlayerInfoServiceAndCommandsTest {
             pluginYml.options().pathSeparator('/');
             pluginYml.load(new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8));
             assertEquals("true", String.valueOf(pluginYml.get("permissions/allium.seen/default")).toLowerCase());
+            assertEquals("true", String.valueOf(pluginYml.get("permissions/allium.afk.auto/default")).toLowerCase());
             assertEquals("op", String.valueOf(pluginYml.get("permissions/allium.whois/default")).toLowerCase());
             assertEquals("op", String.valueOf(pluginYml.get("permissions/allium.whois.location/default")).toLowerCase());
         }
@@ -498,6 +510,7 @@ class PlayerInfoServiceAndCommandsTest {
             this.name = name;
             this.location = location;
             this.mock = mock(Player.class);
+            perms.add(PlayerInfoService.PERMISSION_AFK_AUTO);
 
             when(mock.getUniqueId()).thenReturn(uuid);
             when(mock.getName()).thenReturn(name);

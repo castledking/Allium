@@ -288,6 +288,17 @@ commands:
     usage: /<command> <player> [add <note>]
     permission: allium.notes
 
+  invsee:
+    description: Inspect (and optionally edit) another player's inventory
+    usage: /<command> <player>
+    permission: allium.invsee
+
+  enderchest:
+    description: Open your own or inspect another player's ender chest
+    usage: /<command> [player]
+    aliases: [echest, ec]
+    permission: allium.enderchest
+
   balance:
     description: Read an economy balance
     aliases: [bal]
@@ -354,6 +365,9 @@ permissions:
       allium.unjail: true
       allium.warn: true
       allium.notes: true
+      allium.invsee: true
+      allium.enderchest: true
+      allium.enderchest.others: true
       allium.unmute: true
       allium.list: true
       allium.seen: true
@@ -648,6 +662,27 @@ permissions:
     default: false
   allium.moderation.bypass:
     description: Explicitly bypass moderation hierarchy and exempt policy; also authorizes offline actions
+    default: false
+  allium.invsee:
+    description: Allows /invsee (read-only by default)
+    default: op
+  allium.invsee.edit:
+    description: Allows modifying another player's inventory in /invsee. Explicit only; not in allium.*
+    default: false
+  allium.invsee.offline:
+    description: Allows offline /invsee when combined with allium.moderation.bypass. Explicit only; not in allium.*
+    default: false
+  allium.enderchest:
+    description: Allows /enderchest (/echest, /ec) for yourself
+    default: op
+  allium.enderchest.others:
+    description: Allows inspecting another player's ender chest (read-only by default)
+    default: op
+  allium.enderchest.edit:
+    description: Allows modifying another player's ender chest in /enderchest. Explicit only; not in allium.*
+    default: false
+  allium.enderchest.offline:
+    description: Allows offline /enderchest when combined with allium.moderation.bypass. Explicit only; not in allium.*
     default: false
 
   allium.balance:

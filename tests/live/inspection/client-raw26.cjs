@@ -1,0 +1,205 @@
+// Test-only S24 inspection client for protocol 777 (Paper 26.3). Owned loopback ports 25800-25802 only.
+// Supports "cmd <command>", "tab <text>", "click <slot> [button] [mode]", "drag <s1> [s2...]", "close", and "stop".
+const net = require('node:net'), z = require('node:zlib'), fs = require('node:fs'), crypto = require('node:crypto');
+const {flatten} = require('../baseline/text-components.cjs');
+const [lane, portText, username = 'InspBot'] = process.argv.slice(2), port = Number(portText);
+if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) throw Error('bad username');
+if (!lane || !([25800, 25801, 25802].includes(port))) throw Error('TEST ONLY: owned port 25800-25802');
+
+function extractTranslate(obj) {
+  if (!obj || typeof obj !== 'object' || !obj.translate) return {};
+  const args = Array.isArray(obj.with) ? obj.with.map(w => flatten(w).plain) : [];
+  return {translate: obj.translate, withPlain: args};
+}
+
+const ids = JSON.parse(fs.readFileSync(lane + '/plugins/InspectGate/wire-ids.json')).wirePackets;
+function vi(n) { const a = []; do { let b = n & 127; n >>>= 7; if (n) b |= 128; a.push(b); } while (n); return Buffer.from(a); }
+function read(b, o = 0) { let n = 0, s = 0; for (let i = o; i < b.length; i++) { const c = b[i]; n |= (c & 127) << s; if (!(c & 128)) return [n, i + 1]; s += 7; if (s > 35) throw Error('bad varint'); } return null; }
+function str(s) { const b = Buffer.from(s); return Buffer.concat([vi(b.length), b]); }
+function readStr(b, o) { const [n, start] = read(b, o); return [b.subarray(start, start + n).toString('utf8'), start + n]; }
+
+function nbtPayload(b, o, type) {
+  switch (type) {
+    case 1: return [b.readInt8(o), o + 1];
+    case 2: return [b.readInt16BE(o), o + 2];
+    case 3: return [b.readInt32BE(o), o + 4];
+    case 4: return [Number(b.readBigInt64BE(o)), o + 8];
+    case 5: return [b.readFloatBE(o), o + 4];
+    case 6: return [b.readDoubleBE(o), o + 8];
+    case 7: { const n = b.readInt32BE(o); return [[...b.subarray(o + 4, o + 4 + n)], o + 4 + n]; }
+    case 8: { const n = b.readUInt16BE(o); return [b.subarray(o + 2, o + 2 + n).toString('utf8'), o + 2 + n]; }
+    case 9: { const t = b[o], n = b.readInt32BE(o + 1); let p = o + 5; const out = []; for (let i = 0; i < n; i++) { const [v, q] = nbtPayload(b, p, t); out.push(v); p = q; } return [out, p]; }
+    case 10: { const out = {}; let p = o; while (true) { const t = b[p++]; if (t === 0) break; const n = b.readUInt16BE(p); const key = b.subarray(p + 2, p + 2 + n).toString('utf8'); p += 2 + n; const [v, q] = nbtPayload(b, p, t); out[key] = v; p = q; } return [out, p]; }
+    case 11: { const n = b.readInt32BE(o); const out = []; for (let i = 0; i < n; i++) out.push(b.readInt32BE(o + 4 + 4 * i)); return [out, o + 4 + 4 * n]; }
+    case 12: { const n = b.readInt32BE(o); return [[], o + 4 + 8 * n]; }
+    default: throw Error('nbt type ' + type);
+  }
+}
+function readNbt(b, o) { return nbtPayload(b, o + 1, b[o]); }
+
+let state = 'login', compressed = false, buffer = Buffer.alloc(0), ready = false, stopping = false;
+let openWindowId = 0;
+const stateIds = {};
+
+const socket = net.connect({host: '127.0.0.1', port});
+function send(id, data = Buffer.alloc(0)) {
+  if (stopping || socket.writableEnded || socket.destroyed) return;
+  let body = Buffer.concat([vi(id), data]);
+  if (compressed) body = Buffer.concat([vi(0), body]);
+  socket.write(Buffer.concat([vi(body.length), body]));
+}
+function named(flow, name, data) {
+  const id = ids[flow]['minecraft:' + name];
+  if (id === undefined) throw Error('Unknown packet ' + flow + '/' + name);
+  send(id, data);
+}
+function game(name, data) { named('game_SERVERBOUND', name, data); }
+
+socket.on('connect', () => {
+  const uuid = crypto.createHash('md5').update('OfflinePlayer:' + username).digest();
+  uuid[6] = (uuid[6] & 15) | 48;
+  uuid[8] = (uuid[8] & 63) | 128;
+  const p = Buffer.alloc(2); p.writeUInt16BE(port);
+  send(0, Buffer.concat([vi(777), str('127.0.0.1'), p, vi(2)]));
+  named('login_SERVERBOUND', 'hello', Buffer.concat([str(username), uuid]));
+});
+
+socket.on('data', chunk => {
+  try {
+    buffer = Buffer.concat([buffer, chunk]);
+    while (true) {
+      const length = read(buffer);
+      if (!length || buffer.length < length[1] + length[0]) break;
+      let body = buffer.subarray(length[1], length[1] + length[0]);
+      buffer = buffer.subarray(length[1] + length[0]);
+      if (compressed) {
+        const [n, start] = read(body);
+        body = n ? z.inflateSync(body.subarray(start)) : body.subarray(start);
+      }
+      const [id, start] = read(body), payload = body.subarray(start);
+      if (state === 'login') {
+        if (id === ids.login_CLIENTBOUND['minecraft:login_compression']) { compressed = true; continue; }
+        if (id === ids.login_CLIENTBOUND['minecraft:login_finished']) { state = 'configuration'; named('login_SERVERBOUND', 'login_acknowledged'); continue; }
+        if (id === ids.login_CLIENTBOUND['minecraft:login_disconnect']) throw Error('Login rejected ' + payload.toString('hex'));
+      } else if (state === 'configuration') {
+        if (id === ids.configuration_CLIENTBOUND['minecraft:select_known_packs']) named('configuration_SERVERBOUND', 'select_known_packs', vi(0));
+        if (id === ids.configuration_CLIENTBOUND['minecraft:cookie_request']) named('configuration_SERVERBOUND', 'cookie_response', Buffer.concat([payload, Buffer.from([0])]));
+        if (id === ids.configuration_CLIENTBOUND['minecraft:keep_alive']) named('configuration_SERVERBOUND', 'keep_alive', payload);
+        if (id === ids.configuration_CLIENTBOUND['minecraft:finish_configuration']) { named('configuration_SERVERBOUND', 'finish_configuration'); state = 'game'; }
+        if (id === ids.configuration_CLIENTBOUND['minecraft:disconnect']) throw Error('Configuration disconnected ' + payload.toString('hex'));
+      } else {
+        if (id === ids.game_CLIENTBOUND['minecraft:keep_alive']) game('keep_alive', payload);
+        if (id === ids.game_CLIENTBOUND['minecraft:player_position']) {
+          const [tp, o] = read(payload);
+          game('accept_teleportation', Buffer.concat([vi(tp), payload.subarray(o, o + 24), payload.subarray(o + 48, o + 56)]));
+        }
+        if (id === ids.game_CLIENTBOUND['minecraft:system_chat']) {
+          const [component, o] = readNbt(payload, 0);
+          console.log('INSP-CHAT ' + JSON.stringify(Object.assign(flatten(component), extractTranslate(component), {overlay: payload[o] === 1})));
+        }
+        if (id === ids.game_CLIENTBOUND['minecraft:command_suggestions']) {
+          let [tid, p] = read(payload); [, p] = read(payload, p); [, p] = read(payload, p);
+          let n; [n, p] = read(payload, p);
+          const matches = [];
+          for (let k = 0; k < n; k++) {
+            let m; [m, p] = readStr(payload, p);
+            matches.push(m);
+            if (payload[p++] === 1) { const [, q] = readNbt(payload, p); p = q; }
+          }
+          console.log('INSP-TAB ' + JSON.stringify({id: tid, matches}));
+        }
+        if (id === ids.game_CLIENTBOUND['minecraft:open_screen']) {
+          const [wid, o1] = read(payload);
+          const [menuType, o2] = read(payload, o1);
+          const [titleComp] = readNbt(payload, o2);
+          openWindowId = wid;
+          stateIds[wid] = stateIds[wid] || 0;
+          console.log('INSP-OPEN ' + JSON.stringify({windowId: wid, menuType, title: flatten(titleComp).plain}));
+        }
+        if (id === ids.game_CLIENTBOUND['minecraft:container_set_content']) {
+          const [wid, o1] = read(payload);
+          const [sid, o2] = read(payload, o1);
+          const [count] = read(payload, o2);
+          stateIds[wid] = sid;
+          console.log('INSP-CONTENT ' + JSON.stringify({windowId: wid, stateId: sid, count}));
+        }
+        if (id === ids.game_CLIENTBOUND['minecraft:container_set_slot']) {
+          const [wid, o1] = read(payload);
+          const [sid, o2] = read(payload, o1);
+          const slot = payload.readInt16BE(o2);
+          stateIds[wid] = sid;
+          console.log('INSP-SLOT ' + JSON.stringify({windowId: wid, stateId: sid, slot}));
+        }
+        if (id === ids.game_CLIENTBOUND['minecraft:container_close']) {
+          const [wid] = read(payload);
+          console.log('INSP-CLOSE ' + JSON.stringify({windowId: wid}));
+          if (wid === openWindowId) openWindowId = 0;
+        }
+        if (id === ids.game_CLIENTBOUND['minecraft:commands'] && !ready) {
+          ready = true;
+          game('client_information', Buffer.concat([str('en_us'), Buffer.from([2, 0, 1, 127, 1, 0, 1, 0])]));
+          game('player_loaded');
+          game('client_tick_end');
+          console.log('INSP-WIRE READY protocol777 port=' + port + ' user=' + username);
+        }
+        if (id === ids.game_CLIENTBOUND['minecraft:disconnect']) throw Error('Play disconnected ' + payload.toString('hex'));
+      }
+    }
+  } catch (e) {
+    console.log('INSP-CLIENTERROR ' + JSON.stringify({message: e.message}));
+    console.error(e.stack);
+    process.exitCode = 1;
+    socket.destroy();
+  }
+});
+
+socket.on('error', e => {
+  console.log((['ECONNRESET', 'EPIPE'].includes(e.code) ? 'INSP-TRANSPORT ' : 'INSP-CLIENTERROR ') + JSON.stringify({code: e.code, message: e.message}));
+  console.error(e);
+  process.exitCode = 1;
+});
+socket.on('close', () => { console.log('INSP-WIRE END'); process.exit(process.exitCode || 0); });
+
+let tabId = 0;
+function sendClick(slot, button = 0, mode = 0) {
+  const wid = openWindowId;
+  const sid = stateIds[wid] || 0;
+  const slotBuf = Buffer.alloc(2);
+  slotBuf.writeInt16BE(slot);
+  // ServerboundContainerClickPacket: containerId (VarInt), stateId (VarInt), slotNum (short),
+  // buttonNum (byte), clickType (VarInt), changedSlots (VarInt 0), carriedItem (HashedStack bool false)
+  game('container_click', Buffer.concat([vi(wid), vi(sid), slotBuf, Buffer.from([button & 0xFF]), vi(mode), vi(0), Buffer.from([0])]));
+  game('client_tick_end');
+  console.log('INSP-CLICK ' + JSON.stringify({windowId: wid, stateId: sid, slot, button, mode}));
+}
+
+require('node:readline').createInterface({input: process.stdin}).on('line', line => {
+  const text = line.replace(/\r?\n$/, '');
+  if (text.trim() === 'stop') { stopping = true; socket.end(); return; }
+  if (!ready) return;
+  if (text.startsWith('cmd ')) {
+    game('chat_command', str(text.slice(4)));
+    game('client_tick_end');
+    console.log('INSP-WIRE SENT /' + text.slice(4));
+  } else if (text.startsWith('tab ')) {
+    const id = ++tabId;
+    game('command_suggestion', Buffer.concat([vi(id), str('/' + text.slice(4))]));
+    console.log('INSP-TABREQ ' + JSON.stringify({id, text: text.slice(4)}));
+  } else if (text.startsWith('click ')) {
+    const [slotText, btnText = '0', modeText = '0'] = text.slice(6).trim().split(/\s+/);
+    sendClick(Number(slotText), Number(btnText), Number(modeText));
+  } else if (text.startsWith('drag ')) {
+    const slots = text.slice(5).trim().split(/\s+/).map(Number);
+    sendClick(-999, 0, 5);
+    for (const s of slots) sendClick(s, 1, 5);
+    sendClick(-999, 2, 5);
+  } else if (text.trim() === 'close') {
+    if (openWindowId !== 0) {
+      const wid = openWindowId;
+      game('container_close', vi(wid));
+      game('client_tick_end');
+      openWindowId = 0;
+      console.log('INSP-CLOSE-SENT ' + JSON.stringify({windowId: wid}));
+    }
+  }
+});

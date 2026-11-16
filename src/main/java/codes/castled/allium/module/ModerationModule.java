@@ -1,11 +1,14 @@
 package codes.castled.allium.module;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.moderation.EnderchestCommand;
+import codes.castled.allium.command.moderation.InvseeCommand;
 import codes.castled.allium.command.moderation.MuteCommand;
 import codes.castled.allium.command.moderation.MutesCommand;
 import codes.castled.allium.command.moderation.UnmuteCommand;
 import codes.castled.allium.command.moderation.VanishCommand;
 import codes.castled.allium.core.AbstractModule;
+import codes.castled.allium.moderation.InspectionService;
 import codes.castled.allium.moderation.ModerationRepository;
 import codes.castled.allium.moderation.ModerationService;
 import codes.castled.allium.moderation.DisciplineService;
@@ -17,15 +20,15 @@ import java.sql.SQLException;
 import java.util.concurrent.Executor;
 
 /**
- * Moderation module (S17): {@code /vanish}, {@code /mute}, {@code /unmute}, and {@code /mutes}.
- * Replaces the stub {@code VanishSource} and {@code MuteSource} hooks with SQL-persisted vanish
- * and mute implementations on the bounded storage pattern.
+ * Moderation module: {@code /vanish}, {@code /mute}, {@code /unmute}, {@code /mutes},
+ * discipline commands, and inventory/enderchest inspection ({@code /invsee}, {@code /enderchest}).
  */
 public final class ModerationModule extends AbstractModule {
 
     private ModerationRepository repository;
     private ModerationService moderation;
     private DisciplineService discipline;
+    private InspectionService inspection;
 
     public ModerationModule(PluginStart plugin) {
         super(plugin);
@@ -78,11 +81,17 @@ public final class ModerationModule extends AbstractModule {
             plugin.getCommandManager().register(new DisciplineCommand(plugin, discipline, spec));
         }
 
+        Executor inspectionPool = plugin.getScheduler().boundedPool("Allium-Inspection", 1, 256);
+        inspection = new InspectionService(plugin, repository, discipline, inspectionPool);
+        inspection.enable();
+
         plugin.getCommandManager().register(new VanishCommand(plugin, moderation));
         plugin.getCommandManager().register(new MuteCommand(plugin, moderation));
         plugin.getCommandManager().register(new UnmuteCommand(plugin, moderation));
         plugin.getCommandManager().register(new MutesCommand(plugin, moderation));
-        plugin.logger().info("Moderation enabled: /vanish, /mute, /unmute, /mutes.");
+        plugin.getCommandManager().register(new InvseeCommand(plugin, inspection));
+        plugin.getCommandManager().register(new EnderchestCommand(plugin, inspection));
+        plugin.logger().info("Moderation enabled: /vanish, /mute, /unmute, /mutes, /invsee, /enderchest.");
     }
 
     @Override
@@ -91,6 +100,9 @@ public final class ModerationModule extends AbstractModule {
                 && messagingModule.messaging() != null) {
             messagingModule.messaging().setVanishSource(null);
             messagingModule.messaging().setMuteSource(null);
+        }
+        if (inspection != null) {
+            inspection.disable();
         }
         if (discipline != null) {
             discipline.disable();
@@ -106,6 +118,10 @@ public final class ModerationModule extends AbstractModule {
 
     public DisciplineService discipline() {
         return discipline;
+    }
+
+    public InspectionService inspection() {
+        return inspection;
     }
 
     public ModerationRepository repository() {

@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 /** Reads back a receipt from the same compressed player data that contains the inventory. */
@@ -14,8 +17,15 @@ public final class PlayerDataReceiptProof {
     private static final long MAX_EXPANDED_BYTES = 8L * 1024 * 1024;
     private static final int MAX_DEPTH = 64;
     private static final String BUKKIT_VALUES = "BukkitValues";
+    private static final String DATA_VERSION = "DataVersion";
     public static final String MAIL_RECEIPTS = "allium:mail_receipts";
     public static final String KIT_RECEIPTS = "allium:kit_receipts";
+
+    public record Snapshot(int dataVersion, Map<String, String> bukkitValues) {
+        public Snapshot {
+            bukkitValues = bukkitValues == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(bukkitValues));
+        }
+    }
 
     private PlayerDataReceiptProof() {
     }
@@ -43,15 +53,47 @@ public final class PlayerDataReceiptProof {
         if (expected == null || expected.isEmpty()) {
             throw new IOException("Expected player data receipt must not be empty");
         }
-        readSnapshot(playerDat,receiptKey,expected);
+        readSnapshot(playerDat, receiptKey, expected);
     }
 
     /** Proves absence by validating the complete existing NBT/GZIP file; missing/corrupt files are unknown. */
-    public static void verifyAbsent(Path playerDat,String receiptKey)throws IOException {
-        if(receiptKey==null||receiptKey.isEmpty())throw new IOException("Player data receipt key must not be empty");
-        readSnapshot(playerDat,receiptKey,null);
+    public static void verifyAbsent(Path playerDat, String receiptKey) throws IOException {
+        if (receiptKey == null || receiptKey.isEmpty()) throw new IOException("Player data receipt key must not be empty");
+        readSnapshot(playerDat, receiptKey, null);
     }
-    private static void readSnapshot(Path playerDat,String receiptKey,String expected)throws IOException {
+
+    /**
+     * Validates the complete GZIP + NBT player data file (size <= 8 MiB, depth <= 64, valid EOF/CRC)
+     * and returns its {@code DataVersion} and all root {@code BukkitValues} string entries.
+     */
+    public static Snapshot inspect(Path playerDat) throws IOException {
+        try (InputStream file = Files.newInputStream(playerDat)) {
+            return inspect(file);
+        }
+    }
+
+    /**
+     * Validates the complete GZIP + NBT compressed byte array (size <= 8 MiB, depth <= 64, valid EOF/CRC)
+     * and returns its {@code DataVersion} and all root {@code BukkitValues} string entries.
+     */
+    public static Snapshot inspect(byte[] compressedPlayerDat) throws IOException {
+        try (InputStream bytes = new java.io.ByteArrayInputStream(compressedPlayerDat)) {
+            return inspect(bytes);
+        }
+    }
+
+    private static Snapshot inspect(InputStream raw) throws IOException {
+        try (InputStream gzip = new GZIPInputStream(new BufferedInputStream(raw));
+             LimitedInputStream limited = new LimitedInputStream(gzip);
+             DataInputStream input = new DataInputStream(limited)) {
+            Reader reader = new Reader(input, limited, null, null);
+            reader.captureAllBukkitValues = true;
+            reader.verify();
+            return new Snapshot(reader.dataVersion, reader.capturedBukkitValues);
+        }
+    }
+
+    private static void readSnapshot(Path playerDat, String receiptKey, String expected) throws IOException {
         try (InputStream file = Files.newInputStream(playerDat);
              InputStream gzip = new GZIPInputStream(new BufferedInputStream(file));
              LimitedInputStream limited = new LimitedInputStream(gzip);
@@ -61,11 +103,14 @@ public final class PlayerDataReceiptProof {
     }
 
     /** Returns the receipt (or null), only after validating the complete NBT/GZIP snapshot. */
-    public static String read(Path file,String key)throws IOException {
-        if(key==null||key.isEmpty())throw new IOException("receipt key required");
-        try(InputStream raw=Files.newInputStream(file);InputStream gzip=new GZIPInputStream(new BufferedInputStream(raw));
-            LimitedInputStream limited=new LimitedInputStream(gzip);DataInputStream input=new DataInputStream(limited)){
-            Reader reader=new Reader(input,limited,key,null);reader.inspect=true;reader.verify();return reader.actualReceipt;
+    public static String read(Path file, String key) throws IOException {
+        if (key == null || key.isEmpty()) throw new IOException("receipt key required");
+        try (InputStream raw = Files.newInputStream(file); InputStream gzip = new GZIPInputStream(new BufferedInputStream(raw));
+             LimitedInputStream limited = new LimitedInputStream(gzip); DataInputStream input = new DataInputStream(limited)) {
+            Reader reader = new Reader(input, limited, key, null);
+            reader.inspect = true;
+            reader.verify();
+            return reader.actualReceipt;
         }
     }
 
@@ -78,6 +123,10 @@ public final class PlayerDataReceiptProof {
         private final String expected;
         private final byte[] scratch = new byte[8192];
         private boolean inspect;
+        private boolean captureAllBukkitValues;
+        private int dataVersion;
+        private boolean foundDataVersion;
+        private final Map<String, String> capturedBukkitValues = new LinkedHashMap<>();
         private String actualReceipt;
         private boolean foundBukkitValues;
         private boolean foundReceipt;
@@ -99,7 +148,7 @@ public final class PlayerDataReceiptProof {
             if (input.read() != -1) {
                 throw new IOException("Trailing data after player data root");
             }
-            if (expected!=null&&!foundReceipt) {
+            if (expected != null && !foundReceipt) {
                 throw new IOException("Player data receipt is missing");
             }
         }
@@ -119,17 +168,29 @@ public final class PlayerDataReceiptProof {
                     }
                     foundBukkitValues = true;
                     compound(depth + 1, Location.BUKKIT_VALUES);
-                } else if (location == Location.BUKKIT_VALUES && receiptKey.equals(name)) {
+                } else if (location == Location.ROOT && captureAllBukkitValues && DATA_VERSION.equals(name)) {
+                    if (foundDataVersion || type != 3) {
+                        throw new IOException("Invalid or duplicate player DataVersion tag");
+                    }
+                    foundDataVersion = true;
+                    limited.requireAvailable(4);
+                    dataVersion = input.readInt();
+                } else if (location == Location.BUKKIT_VALUES && receiptKey != null && receiptKey.equals(name)) {
                     if (foundReceipt || type != 8) {
                         throw new IOException("Invalid or duplicate player data receipt");
                     }
                     String actual = input.readUTF();
-                    if (!inspect && (expected==null || actual.isEmpty() || !expected.equals(actual))) {
+                    if (!inspect && (expected == null || actual.isEmpty() || !expected.equals(actual))) {
                         throw new IOException("Player data receipt does not match the saved receipt");
                     }
-                    if(inspect&&actual.isBlank())throw new IOException("Empty native receipt is ambiguous");
-                    actualReceipt=actual;
+                    if (inspect && actual.isBlank()) throw new IOException("Empty native receipt is ambiguous");
+                    actualReceipt = actual;
                     foundReceipt = true;
+                } else if (location == Location.BUKKIT_VALUES && captureAllBukkitValues && type == 8) {
+                    String value = input.readUTF();
+                    if (capturedBukkitValues.putIfAbsent(name, value) != null) {
+                        throw new IOException("Duplicate BukkitValues string key: " + name);
+                    }
                 } else {
                     payload(type, depth);
                 }

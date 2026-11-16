@@ -155,6 +155,11 @@ public record CommandSpec(
                 case GAMEMODES, LITERAL_LIST -> suggestion.literals();
                 case ONLINE_PLAYERS -> context.visibleOnlinePlayers();
                 case KNOWN_PLAYERS -> context.knownPlayers(prefix);
+                case KNOWN_OR_ONLINE_PLAYERS -> {
+                    boolean canOffline = !suggestion.literals().isEmpty()
+                            && suggestion.literals().stream().allMatch(context::hasPermission);
+                    yield canOffline ? context.knownPlayers(prefix) : context.visibleOnlinePlayers();
+                }
                 case MAIL_DELETE_IDS -> context.mailIds(false);
                 case HOME_NAMES -> context.travelNames(false, prefix);
                 case WARP_NAMES -> context.travelNames(true, prefix);

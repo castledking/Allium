@@ -34,6 +34,22 @@ public record SuggestionSpec(
         return new SuggestionSpec(SuggestionSource.KNOWN_PLAYERS, List.of(), requiredPermission);
     }
 
+    /**
+     * Suggests known players (online + offline) if the sender holds all {@code offlinePermissions},
+     * otherwise only visible online players.
+     */
+    public static SuggestionSpec knownOrOnlinePlayers(String requiredPermission, String... offlinePermissions) {
+        List<String> offlinePerms = new java.util.ArrayList<>();
+        if (offlinePermissions != null) {
+            for (String perm : offlinePermissions) {
+                if (perm != null && !perm.isEmpty()) {
+                    offlinePerms.add(perm);
+                }
+            }
+        }
+        return new SuggestionSpec(SuggestionSource.KNOWN_OR_ONLINE_PLAYERS, List.copyOf(offlinePerms), requiredPermission);
+    }
+
     public static SuggestionSpec mailIds(boolean claimableOnly) {
         return new SuggestionSpec(claimableOnly ? SuggestionSource.MAIL_CLAIM_IDS : SuggestionSource.MAIL_DELETE_IDS,
                 List.of(), "allium.mail");

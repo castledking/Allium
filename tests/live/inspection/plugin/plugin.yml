@@ -1,0 +1,8 @@
+name: InspectGate
+version: '1.0'
+main: gate.InspectGate
+api-version: '1.20'
+depend: [Allium]
+commands:
+  s24g:
+    description: S24 inspection gate fixture command

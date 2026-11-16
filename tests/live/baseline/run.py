@@ -11,6 +11,7 @@ Item contract: the BaseGate fixture runs Allium's contract on the server's real 
 implementation, stores signed items in a chest, and the harness verifies them again after a restart.
 Disposable lanes only; exits nonzero on any failed check.
 """
+import yaml
 import argparse, hashlib, json, os, re, shutil, socket, subprocess, sys, threading, time, zipfile
 from pathlib import Path
 
@@ -19,14 +20,14 @@ REPO = HERE.parents[2]
 sys.path.insert(0, str(REPO / 'tests/live/providers/trigger'))
 from process_cleanup import stop_process  # noqa: E402
 
-CACHE = Path('/tmp/allium-server-cache')
+CACHE = Path('/mnt/storage/.allium-validation/infra/servers')
 LANES = {
     'spigot-1.20.1': {'port': 25660, 'java': '/usr/lib/jvm/java-17-openjdk/bin/java', 'client': ('mcp', '1.20.1'), 'jar': CACHE / 'spigot-1.20.1.jar'},
     'paper-1.20': {'port': 25661, 'java': '/usr/lib/jvm/java-17-openjdk/bin/java', 'client': ('mcp', '1.20.1'), 'jar': CACHE / 'paper-1.20-17.jar'},
     'paper-1.20.6': {'port': 25662, 'java': '/usr/lib/jvm/java-21-openjdk/bin/java', 'client': ('mcp', '1.20.6'), 'jar': CACHE / 'paper-1.20.6-151.jar'},
     'spigot-26.3': {'port': 25663, 'java': '/usr/lib/jvm/java-25-openjdk/bin/java', 'client': ('raw26', None), 'jar': CACHE / 'spigot-26.3.jar'},
     'paper-26.3': {'port': 25664, 'java': '/usr/lib/jvm/java-25-openjdk/bin/java', 'client': ('raw26', None),
-                   'template': Path('/tmp/allium-s05-20261105/provider-gate/lane')},
+                   'template': Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3')},
 }
 BOT = 'BaseBot'
 SOUND = 'minecraft:entity.experience_orb.pickup'
@@ -123,7 +124,7 @@ def build_fixture():
     out = run / 'fixture'
     classes = out / 'classes'
     classes.mkdir(parents=True)
-    api = '/tmp/allium-lane-spigot-1.20/bundler/libraries/spigot-api-1.20.1-R0.1-SNAPSHOT.jar'
+    api = '/mnt/storage/.allium-validation/infra/api/spigot-api-1.20.1-R0.1-SNAPSHOT.jar'
     gson = next((LANES['paper-26.3']['template'] / 'libraries/com/google/code/gson').rglob('*.jar'))
     subprocess.run(['/usr/lib/jvm/java-21-openjdk/bin/javac', '--release', '17', '-cp', f'{api}:{gson}:{a.allium_jar}',
                     '-d', str(classes), str(HERE / 'plugin/gate/BaseGate.java')], check=True)
@@ -144,12 +145,13 @@ def write_lane():
     config = (REPO / 'src/main/resources/config.yml').read_text()
     if '  locale: en_US\n' not in config:
         raise RuntimeError('locale injection failed')
-    (plugins / 'Allium/config.yml').write_text(config.replace('  locale: en_US\n', '  locale: es_ES\n'))
+    values=yaml.safe_load(config);values['settings']['locale']='es_ES';values['sounds']['defaults']['volume']=0.5
+    (plugins / 'Allium/config.yml').write_text(yaml.safe_dump(values,sort_keys=False))
     # The shipped es_ES file, with one test entry: a gradient, a hex colour and a sound at volume 0.5.
     es = (REPO / 'src/main/resources/lang/es_ES.yml').read_text()
     es, replaced = re.subn(
         r'(?m)^  heal:(?: .*\n|\n(?:    .*\n)+)',
-        f'  heal:\n    text: "{HEAL_TEXT}"\n    sound: {SOUND}\n    volume: 0.5\n',
+        f'  heal:\n    - "{HEAL_TEXT}"\n    - "[sound] entity.experience_orb.pickup 1.35"\n',
         es,
         count=1,
     )
@@ -275,7 +277,7 @@ def text_cases():
             and all(x[0] >= y[0] and x[2] <= y[2] for x, y in zip(rgb, rgb[1:])),
             f'<gradient:#ff0000:#0000ff> gives each of the {len(hexes)} letters its own colour, from {hexes[0]} to {hexes[-1]}')
     require(ok_color == '#00ff88', f'&#00ff88 gives "ok" the hex colour {ok_color}')
-    require(abs(sound['volume'] - 0.5) < 1e-6 and abs(sound['pitch'] - 1.0) < 1e-6 and sound['name'] == SOUND,
+    require(abs(sound['volume'] - 0.5) < 1e-6 and abs(sound['pitch'] - 1.35) < 1e-6 and sound['name'] == SOUND,
             f'Allium played the message sound itself: {sound}')
     evidence['heal'] = {'chat': chat, 'sound': sound}
 

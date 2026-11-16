@@ -63,7 +63,7 @@ public final class LanguageManager {
         file.getParentFile().mkdirs();
         YamlConfiguration config = new YamlConfiguration();
         for (Messages msg : Messages.values()) {
-            config.set(msg.getKey(), msg.getDefault());
+            config.set(msg.getKey(), msg==Messages.PREFIX?msg.getDefault():java.util.List.of(msg.getDefault()));
         }
         try {
             config.save(file);
@@ -81,7 +81,7 @@ public final class LanguageManager {
 
             for (Messages msg : Messages.values()) {
                 if (!config.contains(msg.getKey())) {
-                    config.set(msg.getKey(), msg.getDefault());
+                    config.set(msg.getKey(), msg==Messages.PREFIX?msg.getDefault():java.util.List.of(msg.getDefault()));
                     dirty = true;
                     plugin.logger().debug("Inserted missing key '" + msg.getKey() + "' into " + locale);
                 }
@@ -126,10 +126,7 @@ public final class LanguageManager {
     @Nullable
     public MessageSoundSpec getSound(String key) {
         FileConfiguration active = loadedLocales.get(activeLocale);
-        MessageSoundSpec spec = readSound(active, key);
-        if (spec != null) {
-            return spec;
-        }
+        if (readText(active, key) != null) return readSound(active, key);
 
         FileConfiguration fallback = loadedLocales.get(DEFAULT_LOCALE);
         return readSound(fallback, key);
@@ -143,43 +140,14 @@ public final class LanguageManager {
 
     @Nullable
     private static String readText(@Nullable FileConfiguration config, String key) {
-        if (config == null) {
-            return null;
-        }
-        if (config.isConfigurationSection(key)) {
-            ConfigurationSection section = config.getConfigurationSection(key);
-            if (section == null) {
-                return null;
-            }
-            if (section.contains("text")) {
-                return section.getString("text", "");
-            }
-            if (section.contains("sound")) {
-                // Sound-only entry is valid and has empty text
-                return "";
-            }
-            return null;
-        }
-        return config.getString(key);
+        LanguageEntry entry=config==null?null:LanguageEntry.read(config.get(key));
+        return entry==null?null:entry.text();
     }
 
     @Nullable
     private static MessageSoundSpec readSound(@Nullable FileConfiguration config, String key) {
-        if (config == null || !config.isConfigurationSection(key)) {
-            return null;
-        }
-        ConfigurationSection section = config.getConfigurationSection(key);
-        if (section == null) {
-            return null;
-        }
-        String soundId = section.getString("sound");
-        // "none" (or "off") switches a message's sound off without a diagnostic.
-        if (soundId == null || soundId.isBlank() || soundId.trim().equalsIgnoreCase("none") || soundId.trim().equalsIgnoreCase("off")) {
-            return null;
-        }
-        Double volume = section.contains("volume") ? section.getDouble("volume") : null;
-        Double pitch = section.contains("pitch") ? section.getDouble("pitch") : null;
-        return new MessageSoundSpec(soundId, volume, pitch);
+        LanguageEntry entry=config==null?null:LanguageEntry.read(config.get(key));
+        return entry==null?null:entry.sound();
     }
 
     public String getRaw(Messages message) {

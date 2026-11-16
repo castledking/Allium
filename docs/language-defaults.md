@@ -1,39 +1,43 @@
-# Language defaults and upgrades
+# Language message format
 
-Both message forms are supported:
-
-```yaml
-reload-success: '{prefix} &aConfiguration reloaded.'
-```
+Bundled messages use lists of text lines and an optional sound directive:
 
 ```yaml
-reload-success:
-  text: '{prefix} &aConfiguration reloaded.'
-  sound: minecraft:block.note_block.chime
-  volume: 0.55
-  pitch: 1.35
+teleport:
+  success:
+    - "{prefix} &aTeleported to &f{target}&a."
+    - "[sound] block.note_block.pling 1.35"
 ```
 
-A plain string has no per-message sound. Bundled defaults now use sections for
-many interactive messages, while detail rows remain silent. YAML's wrapped
-quoted strings are valid; the line wrapping is not why a message lacks colors.
+Quote the entire directive: unquoted `[sound]` is YAML flow-list syntax, not a
+message string. Text lines join with newlines. Only one sound is selected; sound
+lines do not appear in chat. This format never executes commands.
 
-Startup and `/allium reload` add missing message entries but preserve an existing
-entry as a whole. An existing string is not silently converted to a section, and
-omitted sound/volume/pitch values are not filled into an existing section. This
-protects operator text and sound customizations, even if the installed entry still
-matches a previous default.
+Sound syntax is `[sound] id [pitch] [volume]`. One number is **pitch**. Omitted
+volume uses `sounds.defaults.volume`; omitted pitch uses `sounds.defaults.pitch`.
+Bundled messages omit all volumes. Private-message notification scaling by `/mfx`
+still applies after these defaults. To specify volume while inheriting pitch,
+use `"[sound] custom:bell default 0.4"`. `none`/`off` explicitly silence the entry,
+including when the fallback locale has a sound.
 
-To adopt every current bundled default, first back up the active file under
-`plugins/Allium/lang/`, rename it out of the way, then run `/allium reload` with the
-updated jar. The missing bundled locale file is regenerated. Reapply desired
-customizations from the backup. Alternatively, replace only selected message
-entries with the section form. Do not delete the whole plugin data directory.
+Bare dotted IDs default to `minecraft:`. `minecraft:block.note_block.pling` is
+also valid, and `custom:bell` retains its namespace. The namespace may be omitted
+from vanilla sounds in the file; playback resolves it canonically.
 
-`utility.gc.*` controls diagnostic text, including world rows and the paused label.
-`chat.delete.*` controls deletion confirmations, usage and amount/not-found refusals.
-`chat.player-not-found` is the generic deletion target refusal. These paths now use
-the configured `{prefix}` and the normal language/color/sound renderer. GC detail
-rows are silent by default; deletion confirmations use a quiet page turn. Other
-chat-service feedback still has separate hardcoded text and is not migrated by
-this focused fix.
+Plain strings and the previous `{text, sound, volume, pitch}` sections remain
+supported. Startup and `/allium reload` preserve existing entries as a whole;
+upgrading the jar does not rewrite an operator's text, omitted fields or sound
+choices. New entries use bundled lists. The root `prefix` may remain a string.
+
+To adopt every current bundled default, back up the active locale file under
+`plugins/Allium/lang/`, rename it out of the way, then `/allium reload` with the
+updated jar. The missing bundled locale is regenerated; reapply customizations
+from the backup. Alternatively convert selected entries by hand. Never remove
+the whole plugin data directory.
+
+`utility.gc.*` controls diagnostic text; `chat.delete.*` controls deletion
+feedback. `/back` uses `teleport.back`, `/spawn` uses `spawn.teleport`, and nickname
+save/reset uses `player.nick-set`/`player.nick-reset`. See the
+[message-key audit](message-key-audit.md) for obsolete alternatives and dynamic
+lookups. Existing pre-recode language imports are parsed with their historical
+volume-then-pitch convention and converted into this new pitch-first list format.

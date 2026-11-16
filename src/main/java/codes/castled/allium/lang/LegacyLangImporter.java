@@ -61,13 +61,10 @@ public final class LegacyLangImporter {
             if (root == null || !root.contains(key)) {
                 return null;
             }
-            if (root.isConfigurationSection(key)) {
-                ConfigurationSection section = Objects.requireNonNull(root.getConfigurationSection(key));
-                return new Stored(section.getString("text", ""), section.getString("sound"),
-                        section.contains("volume") ? section.getDouble("volume") : null,
-                        section.contains("pitch") ? section.getDouble("pitch") : null);
-            }
-            return new Stored(String.valueOf(root.get(key)), null, null, null);
+            var entry=codes.castled.allium.message.LanguageEntry.read(root.get(key));
+            if(entry==null)return null;
+            var sound=entry.sound();
+            return new Stored(entry.text(),sound==null?null:sound.soundId(),sound==null?null:sound.volume(),sound==null?null:sound.pitch());
         }
     }
 
@@ -125,19 +122,15 @@ public final class LegacyLangImporter {
             }
             LegacyLangImport.Entry entry = item.entry();
             yaml.set(entry.key(), null);
-            if (entry.sound() == null) {
-                yaml.set(entry.key(), entry.text());
-            } else {
-                ConfigurationSection section = yaml.createSection(entry.key());
-                section.set("text", entry.text());
-                section.set("sound", entry.sound());
-                if (entry.volume() != null) {
-                    section.set("volume", entry.volume());
-                }
-                if (entry.pitch() != null) {
-                    section.set("pitch", entry.pitch());
-                }
+            var lines=new java.util.ArrayList<>(java.util.Arrays.asList(entry.text().split("\\n",-1)));
+            if(entry.sound()!=null){
+                String id=entry.sound().startsWith("minecraft:")?entry.sound().substring(10):entry.sound();
+                String directive="[sound] "+id;
+                if(entry.pitch()!=null||entry.volume()!=null)directive+=" "+(entry.pitch()==null?"default":entry.pitch());
+                if(entry.volume()!=null)directive+=" "+entry.volume();
+                lines.add(directive);
             }
+            yaml.set(entry.key(),lines);
         }
         target.getParentFile().mkdirs();
         yaml.save(target);

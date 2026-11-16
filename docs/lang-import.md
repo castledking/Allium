@@ -28,6 +28,10 @@ every note; the command reply gives the totals.
 - **Not portable yet:** legacy keys with no recode counterpart are counted and listed. Most
   belong to features the recode has not ported yet.
 
+The destination now uses list entries with pitch-first `[sound]` directives; the
+pre-recode source is still read using its historical volume/pitch convention.
+See [current language format](language-defaults.md).
+
 ## How a message is converted
 
 | Pre-recode | Recode |

@@ -1,0 +1,49 @@
+{
+  "sha256": "1d2d4e8ba7ff1da0a3f8ab60eb2f8c4db74e61af663a5d3a72cf24188341eaab",
+  "unitDelta": 12,
+  "totalUnits": 833,
+  "runs": [
+    {
+      "gate": "teleport",
+      "suite": "spigot",
+      "passed": 125,
+      "manifest": "/mnt/storage/.allium-validation/20261116/s13-teleport/runs/list-lang-teleport-spigot/manifest.json",
+      "digest": "6acaa29a065053f63829217aa03ac6c889fa43d245c2cca972d9713476b27fac"
+    },
+    {
+      "gate": "chat",
+      "suite": "spigot",
+      "passed": 125,
+      "manifest": "/mnt/storage/.allium-validation/20261116/s20-economy/runs/list-lang-chat-spigot/manifest.json",
+      "digest": "c77b12dfa28ca97b5ceb786826c4cc49317f66123b09b64bd9f6c1a439cb5f82"
+    },
+    {
+      "gate": "baseline-lists",
+      "suite": "spigot",
+      "passed": 31,
+      "evidence": "/mnt/storage/.allium-validation/20261116/language-lists/baseline-spigot",
+      "driver": "/mnt/storage/.allium-validation/20261116/language-lists/list-lang-baseline-spigot.log"
+    },
+    {
+      "gate": "teleport",
+      "suite": "paper",
+      "passed": 125,
+      "manifest": "/mnt/storage/.allium-validation/20261116/s13-teleport/runs/list-lang-teleport-paper-r2/manifest.json",
+      "digest": "464dd68814dbd266ac3fa121220ae3887e62ffab3863a6ee7f94122c1af614b8"
+    },
+    {
+      "gate": "chat",
+      "suite": "paper",
+      "passed": 125,
+      "manifest": "/mnt/storage/.allium-validation/20261116/s20-economy/runs/list-lang-chat-paper/manifest.json",
+      "digest": "6b9e3436564a45bb08251618d93cca56d9778d9889dbf8bbad9ac709e0e3d1a2"
+    },
+    {
+      "gate": "baseline-lists",
+      "suite": "paper",
+      "passed": 31,
+      "evidence": "/mnt/storage/.allium-validation/20261116/language-lists/baseline-paper",
+      "driver": "/mnt/storage/.allium-validation/20261116/language-lists/list-lang-baseline-paper.log"
+    }
+  ]
+}

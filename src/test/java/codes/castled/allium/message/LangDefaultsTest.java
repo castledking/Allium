@@ -73,14 +73,7 @@ class LangDefaultsTest {
     }
 
     private static String readText(YamlConfiguration yaml, String key) {
-        if (yaml.isConfigurationSection(key)) {
-            ConfigurationSection section = yaml.getConfigurationSection(key);
-            assertNotNull(section, key);
-            assertTrue(section.contains("text"), "Section missing text: " + key);
-            return section.getString("text");
-        }
-        assertTrue(yaml.isString(key), "Expected String or message section at " + key + ", got " + yaml.get(key));
-        return yaml.getString(key);
+        var entry=LanguageEntry.read(yaml.get(key));assertNotNull(entry,key);return entry.text();
     }
 
     private static Set<String> placeholdersOf(String text) {
@@ -157,61 +150,17 @@ class LangDefaultsTest {
             assertEquals(colorsOf(msg.getDefault()), colorsOf(esText),
                     "Color scheme mismatch in es_ES for " + key);
 
-            boolean enHasSection = en.isConfigurationSection(key);
-            boolean esHasSection = es.isConfigurationSection(key);
-            assertEquals(enHasSection, esHasSection, "Section vs plain-string mismatch between en_US and es_ES for " + key);
-
-            if (enHasSection) {
-                ConfigurationSection enSec = en.getConfigurationSection(key);
-                ConfigurationSection esSec = es.getConfigurationSection(key);
-                assertNotNull(enSec);
-                assertNotNull(esSec);
-
-                String soundId = enSec.getString("sound");
-                assertNotNull(soundId, "Expected sound for section " + key);
-                assertEquals(soundId, esSec.getString("sound"), "Sound mismatch between en_US and es_ES for " + key);
-                assertValidVanillaSound(soundId, key);
-
-                if (enSec.contains("volume")) {
-                    double vol = enSec.getDouble("volume");
-                    assertTrue(vol >= 0.0 && vol <= 2.0, "Volume out of range at " + key + ": " + vol);
-                    assertEquals(vol, esSec.getDouble("volume"), 1e-6, "Volume mismatch for " + key);
-                } else {
-                    assertFalse(esSec.contains("volume"), "Unexpected volume mismatch for " + key);
-                }
-
-                if (enSec.contains("pitch")) {
-                    double pitch = enSec.getDouble("pitch");
-                    assertTrue(pitch >= 0.5 && pitch <= 2.0, "Pitch out of SoundLevels range [0.5, 2.0] at " + key + ": " + pitch);
-                    assertEquals(pitch, esSec.getDouble("pitch"), 1e-6, "Pitch mismatch for " + key);
-                } else {
-                    assertFalse(esSec.contains("pitch"), "Unexpected pitch mismatch for " + key);
-                }
-
-                withSounds++;
-            }
+            assertEquals(en.isList(key),es.isList(key),key);
+            if(!key.equals("prefix"))assertTrue(en.isList(key),key);
+            var enSound=LanguageEntry.read(en.get(key)).sound();var esSound=LanguageEntry.read(es.get(key)).sound();
+            assertEquals(enSound,esSound,key);
+            if(enSound!=null){assertValidVanillaSound(enSound.soundId(),key);assertNull(enSound.volume(),"Bundled messages use the server volume: "+key);if(enSound.pitch()!=null)assertTrue(enSound.pitch()>=0.5&&enSound.pitch()<=2.0,key);withSounds++;}
         }
 
         assertTrue(withSounds >= 300, "Expected curated sound coverage across interactive lang defaults, got " + withSounds);
 
-        // Preserve live-test & unit-test contracts
-        for (Messages spyMsg : List.of(
-                Messages.SOCIALSPY_MESSAGE,
-                Messages.SOCIALSPY_ON,
-                Messages.SOCIALSPY_OFF,
-                Messages.SOCIALSPY_DISABLED,
-                Messages.SOCIALSPY_SAVE_FAILED
-        )) {
-            assertFalse(en.isConfigurationSection(spyMsg.getKey()), spyMsg.getKey() + " must stay plain string in en_US.yml");
-            assertFalse(es.isConfigurationSection(spyMsg.getKey()), spyMsg.getKey() + " must stay plain string in es_ES.yml");
-        }
-
-        for (String lockedOrbKey : List.of("messaging.received", "mail.unread", "mail.new", "mail.new-gift")) {
-            for (YamlConfiguration lang : List.of(en, es)) {
-                assertEquals("minecraft:entity.experience_orb.pickup", lang.getString(lockedOrbKey + ".sound"), lockedOrbKey);
-                assertEquals(0.6D, lang.getDouble(lockedOrbKey + ".volume"), 1e-6, lockedOrbKey);
-                assertNull(lang.get(lockedOrbKey + ".pitch"), lockedOrbKey + " must omit pitch");
-            }
+        for(String key:List.of("messaging.received","mail.unread","mail.new","mail.new-gift")){
+            var sound=LanguageEntry.read(en.get(key)).sound();assertEquals("minecraft:entity.experience_orb.pickup",sound.soundId());assertNull(sound.volume());assertNull(sound.pitch());
         }
     }
 }

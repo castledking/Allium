@@ -1089,11 +1089,11 @@ def chat_gate(lane):
     def config(change):
         path=lane.path/'plugins/Allium/config.yml';value=yaml.safe_load(path.read_text());change(value);path.write_text(yaml.safe_dump(value,sort_keys=False));lane.reload_allium();window(.3)
     # Permission and storage first: acknowledgements follow committed profile state.
-    a.command('nick Chive','Nickname saved.');require(state()['storedNickname']=='Chive' and 'Chive' in state()['display'],lane.name+': nickname committed before acknowledgement')
+    a.command('nick Chive','Nickname set to');require(state()['storedNickname']=='Chive' and 'Chive' in state()['display'],lane.name+': nickname committed before acknowledgement')
     a.command('nick &aGreen','Invalid nickname');require(state()['storedNickname']=='Chive',lane.name+': nickname color denied without permission')
-    lane.perm('MoneyA','allium.nick.color',True);a.command('nick &aGreen','Nickname saved.');require(state()['nickname']=='\u00a7aGreen' and re.sub(r'\u00a7.', '',state()['display'])=='Green',lane.name+': permitted nickname color renders')
+    lane.perm('MoneyA','allium.nick.color',True);a.command('nick &aGreen','Nickname set to');require(state()['nickname']=='\u00a7aGreen' and re.sub(r'\u00a7.', '',state()['display'])=='Green',lane.name+': permitted nickname color renders')
     a.command('nick MoneyB Stolen','permission');require('storedNickname' not in state('MoneyB'),lane.name+': nickname others denied')
-    lane.perm('MoneyA','allium.nick.others',True);b.disconnect();a.command('nick MoneyB Shallot','Nickname saved.');lane.bot('MoneyB');wait(lambda:state('MoneyB')['ready'],'offline nickname rejoin');require('Shallot' in state('MoneyB')['display'],lane.name+': offline nickname resolves UUID and persists')
+    lane.perm('MoneyA','allium.nick.others',True);b.disconnect();a.command('nick MoneyB Shallot','Nickname set to');lane.bot('MoneyB');wait(lambda:state('MoneyB')['ready'],'offline nickname rejoin');require('Shallot' in state('MoneyB')['display'],lane.name+': offline nickname resolves UUID and persists')
     a.command('nick MoneyB off','Nickname reset.');a.command('nick off','Nickname reset.');require(state()['storedNickname']=='' and state()['display']=='MoneyA',lane.name+': reset keeps null versioned row')
     # Actual native chat input reaches both audiences, separate untrusted body rendering.
     before=ids('MoneyB');mark=len(b.lines);say('S23-public-one');b.chat(mark,'S23-public-one');one=next(m for m in hist('MoneyB') if m['id'] not in before)
@@ -1147,7 +1147,7 @@ def chat_gate(lane):
         require('\u00a7x' in state()['gradient'] and 'MoneyA'==re.sub(r'\u00a7.', '',state()['gradient']),lane.name+': PAPI ABI palette colors cached gradient display name')
         lane.fixture('chat MoneyA palette &fMoneyA');window(1.5);require(state()['gradient']=='MoneyA',lane.name+': white GradientPlus palette falls back without white override')
     else:require(state()['gradient']=='MoneyA',lane.name+': absent PAPI and GradientPlus fall back safely')
-    a.command('nick Persistent','Nickname saved.');a.command('channel join staff-chat write','Channel preference saved:');run_id=hist('MoneyA')[-1]['id'].split(':')[0]
+    a.command('nick Persistent','Nickname set to');a.command('channel join staff-chat write','Channel preference saved:');run_id=hist('MoneyA')[-1]['id'].split(':')[0]
     lane.stop();lane.boot()
     for name in ['MoneyA','MoneyB','MoneyObs']:lane.bot(name);wait(lambda n=name:state(n)['ready'],name+' restarted chat profile')
     a=lane.bots['MoneyA'];lane.perm('MoneyA','allium.nick',True);lane.perm('MoneyA','allium.channel',True);lane.perm('MoneyA','allium.staffchat',True)

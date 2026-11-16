@@ -235,6 +235,18 @@ class TeleportServiceTest {
     }
 
     @Test
+    void backUsesDedicatedSuccessKeyAfterHistoryCommit()throws Exception{
+        var previous=snapshot(destination());when(repository.load(mover.getUniqueId(),"back")).thenReturn(Optional.of(previous));enable();service.back(mover);
+        verify(plugin.getMessageManager(),never()).send(eq(mover),eq(codes.castled.allium.message.Messages.TELEPORT_BACK),any(String[].class));
+        drainWorker();verify(plugin.getMessageManager()).send(eq(mover),eq(codes.castled.allium.message.Messages.TELEPORT_BACK),any(String[].class));
+    }
+    @Test
+    void spawnUsesDedicatedSuccessKey()throws Exception{
+        when(server.getWorlds()).thenReturn(List.of(world));when(world.getSpawnLocation()).thenReturn(destination());enable();service.spawn(mover);drainWorker();
+        verify(plugin.getMessageManager()).send(eq(mover),eq(codes.castled.allium.message.Messages.SPAWN_TELEPORT),any(String[].class));
+    }
+
+    @Test
     void acceptRechecksRecipientPolicyInsteadOfTrustingTheOriginalRequest() throws Exception {
         enable();
         service.request(mover, target, RequestTracker.Kind.TO_TARGET);

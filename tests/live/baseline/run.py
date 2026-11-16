@@ -147,10 +147,14 @@ def write_lane():
     (plugins / 'Allium/config.yml').write_text(config.replace('  locale: en_US\n', '  locale: es_ES\n'))
     # The shipped es_ES file, with one test entry: a gradient, a hex colour and a sound at volume 0.5.
     es = (REPO / 'src/main/resources/lang/es_ES.yml').read_text()
-    old = '  heal: "{prefix} &aHas sido curado."\n'
-    if old not in es:
+    es, replaced = re.subn(
+        r'(?m)^  heal:(?: .*\n|\n(?:    .*\n)+)',
+        f'  heal:\n    text: "{HEAL_TEXT}"\n    sound: {SOUND}\n    volume: 0.5\n',
+        es,
+        count=1,
+    )
+    if replaced != 1:
         raise RuntimeError('heal entry not found in es_ES.yml')
-    es = es.replace(old, f'  heal:\n    text: "{HEAL_TEXT}"\n    sound: {SOUND}\n    volume: 0.5\n')
     (plugins / 'Allium/lang/es_ES.yml').write_text(es)
     (lane / 'eula.txt').write_text('eula=true\n')
     (lane / 'server.properties').write_text(f'''server-ip=127.0.0.1

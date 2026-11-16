@@ -205,14 +205,15 @@ public final class CoreCommandSpecs {
             "allium",
             CommandSpec.DEFAULT_NAMESPACE,
             "core",
-            List.of(),
+            List.of("core"),
             "Allium administration",
-            "/allium <reload|version|import lang [apply]|adopt-window [<duration>|off]>",
-            "/allium <reload|version|import lang [apply]|adopt-window [<duration>|off]>",
+            "/allium <reload|version|import lang [apply]|adopt-window [<duration>|off]|hide>",
+            "/allium <reload|version|import lang [apply]|adopt-window [<duration>|off]|hide>",
             null,
             null,
             List.of(),
             List.of(
+                    new CommandNodeSpec("hide", List.of(), "allium.hide.admin", "/allium hide <status|reload|enabled|group|resolve|fix|unfix>", List.of(), List.of()),
                     new CommandNodeSpec("reload", List.of(), "allium.reload", "/allium reload", List.of(), List.of()),
                     new CommandNodeSpec("version", List.of(), null, "/allium version", List.of(), List.of()),
                     new CommandNodeSpec("import", List.of(), "allium.import", "/allium import lang [apply]", List.of(), List.of(

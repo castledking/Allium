@@ -26,6 +26,17 @@ public enum Messages {
     CHAT_DELETE_USAGE("chat.delete.usage", "{prefix} &cUsage: &f/delmsg <id> &cor &f/delmsg <player> <amount>"),
     CHAT_PLAYER_NOT_FOUND("chat.player-not-found", "{prefix} &cPlayer not found."),
 
+    // -- Command visibility --
+    HIDE_UNKNOWN("hide.unknown", "{prefix} &cUnknown command. Type &f/help &cfor help."),
+    HIDE_RELOADED("hide.reloaded", "{prefix} &aHide configuration reloaded."),
+    HIDE_UPDATED("hide.updated", "{prefix} &aHide configuration updated."),
+    HIDE_BUSY("hide.busy", "{prefix} &eA hide update is already pending. Try again shortly."),
+    HIDE_FAILED("hide.failed", "{prefix} &cHide configuration was refused. Check console for details."),
+    HIDE_INFO("hide.info", "{prefix} &7{message}"),
+    HIDE_PERMISSION("hide.permission", "{prefix} &f{player}&7: &f{command} &7via &f{source}&7, permission=&f{permission}&7, allowed=&f{allowed}"),
+    HIDE_USAGE("hide.usage", "{prefix} &cUsage: &f/allium hide <status|reload|enabled true/false|resolve player command|fix command permission|unfix command|group name create/whitelist/inherit/add/remove/check>"),
+    HIDE_HINT_FAILED("hide.hint-failed", "{prefix} &eHide rules are active, but the command hint pack could not be exported. Check console."),
+
     // -- Errors --
     NO_PERMISSION("error.no-permission", "{prefix} &cYou don't have permission to do that."),
     PLAYER_ONLY("error.player-only", "{prefix} &cThis command can only be used by players."),

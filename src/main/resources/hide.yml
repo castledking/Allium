@@ -1,0 +1,30 @@
+# Command execution and completion rules are independent. See docs/hide.md.
+# Opt in after configuring groups for your server; native permissions always apply.
+settings:
+  enabled: false
+  block-namespaced-commands-for-ops: false
+  hide-namespaced-commands-for-ops: false
+  unknown-command-completion-help-message: "&c&lERROR &8» &7Unknown command. Type &c/help &7for a list of commands."
+  remove-unsafe-commands: true
+  unsafe-commands-list: [plugins, pl, version, bukkit:plugins, bukkit:pl, bukkit:version]
+  filter-command-suggestions: true
+  cancel-bare-slash-request: true
+  cancel-unknown-suggestion-responses: true
+  allow-namespaced-suggestions: []
+  command-suggestion-filters: []
+# Used only when native/framework permission metadata cannot be resolved.
+permission-overrides: []
+groups:
+  # Vault membership or group.<name>; default applies when no group matches.
+  default:
+    whitelist: true
+    commands: [help, tpa, tpahere, tpaccept, tpdeny, tpcancel, tptoggle, spawn, back, msg, reply, r, mail, afk]
+    tabcompletes: ["^"]
+  moderator:
+    whitelist: false
+    commands: [op, deop]
+    tabcompletes: ["^"]
+  admin:
+    whitelist: true
+    commands: ["*"]
+    tabcompletes: ["^"]

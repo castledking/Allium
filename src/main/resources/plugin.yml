@@ -4,7 +4,7 @@ main: codes.castled.allium.PluginStart
 api-version: '1.20'
 description: A modern essentials suite
 authors: [castledking]
-softdepend: [Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, GriefPrevention, GriefPrevention3D]
+softdepend: [LuckPerms, Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, GriefPrevention, GriefPrevention3D]
 
 commands:
   nick:
@@ -172,8 +172,9 @@ commands:
     aliases: [msounds, mfx]
     permission: allium.messagesounds
   allium:
+    aliases: [core]
     description: Allium administration
-    usage: /<command> <reload|version|import lang [apply]|adopt-window [<duration>|off]>
+    usage: /<command> <reload|version|import lang [apply]|adopt-window [<duration>|off]|hide>
   give:
     description: Give items (M1 item-library harness)
     usage: /<command> <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
@@ -1002,3 +1003,10 @@ permissions:
     default: op
   allium.nick.impersonate:
     default: false
+
+  allium.hide.admin:
+    description: Manage hide.yml and inspect command permission metadata
+    default: op
+  allium.hide.bypass:
+    description: Bypass hide whitelist and completion restrictions (blacklists still apply to execution)
+    default: op

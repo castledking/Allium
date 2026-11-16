@@ -49,3 +49,10 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
 - Importer inventory/design: **+0**, 730 unchanged; source-backed mappings,
   explicit unsupported/proposed destinations, dry-run/idempotency/backup/rollback
   and frozen-format list. No importer implementation or data mutation.
+
+- Language lists and dedicated completion keys: **+12**, 821 → 833. Native baseline,
+  teleport and chat pass on Spigot 1.20.1/Paper 26.3; see chat/LIST-LANG.md.
+- Automatic AFK permission: **+2**, 833 → 835. Native playerinfo 35/35 on both lanes;
+  see playerinfo/AFK-AUTO.md.
+- Legacy hide policy, permissions and hint pack: **+42**, 835 → 877. Native hide
+  18/18 on both lanes, with and without PacketEvents; see hide/RESULTS.md.

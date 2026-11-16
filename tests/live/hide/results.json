@@ -1,0 +1,22 @@
+{
+  "jarSha256": "7e240591584ac89d6ef438f62a772fae4f43c4cc2a861c06e1a023c852567bf4",
+  "unitDelta": 42,
+  "unitsBefore": 835,
+  "unitsAfter": 877,
+  "lanes": {
+    "spigot": {
+      "manifest": "/mnt/storage/.allium-validation/20261116/s18-playerinfo/runs/hide-spigot-final/manifest.json",
+      "sha256": "b076a336265a9ec55e96557793ed659390849bd92359d5b4957e2bf15b5e11d9",
+      "passed": 18,
+      "total": 18,
+      "failures": []
+    },
+    "paper": {
+      "manifest": "/mnt/storage/.allium-validation/20261116/s18-playerinfo/runs/hide-paper-final/manifest.json",
+      "sha256": "0beea84ef1916b51c74e1f8b9121fc07a330de0ab79e318659fd9f05ffaeebdf",
+      "passed": 18,
+      "total": 18,
+      "failures": []
+    }
+  }
+}

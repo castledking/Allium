@@ -15,7 +15,9 @@ Frozen jar SHA256: `1fdaa5588eaa0af6c9eaca3d39d5cb28b62584ec0af1b0eb82bb9bdc600c
 | s23-recovered-r2-signs-paper | 375/375 |
 
 All six final-artifact manifests pass, including integrity and post-shutdown log
-scans and owned process cleanup. Full paths, manifest hashes, helper hashes and
+scans and owned process cleanup (`s23-final-spigot` ran before the storage
+failure and was not rerun; the five `s23-recovered-*` lanes ran after recovery).
+Full paths, manifest hashes, helper hashes and
 source freezes are in [machine evidence](evidence.json). These six lanes are the
 S23 change gates, not a new pass of the full 24-suite regression sweep. S21 sign
 gates remain mandatory in that sweep.

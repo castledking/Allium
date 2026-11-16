@@ -478,6 +478,12 @@ public final class CoreCommandSpecs {
     public static final List<CommandSpec> MODERATION_SPECS = java.util.stream.Stream.concat(
             java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES), DISCIPLINE_SPECS.stream()).toList();
 
+    public static final List<CommandSpec> CHAT_SPECS = java.util.stream.Stream.of("nick","channel","delmsg")
+        .map(name->new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"chat",
+            name.equals("nick")?List.of("nickname"):name.equals("delmsg")?List.of("deletemsg"):List.of("g","global","l","local","a","staffchat"),
+            "Allium chat: "+name,"/"+name,"/"+name,name.equals("delmsg")?null:"allium."+name,null,
+            List.of(CommandArgSpec.optional("arguments",null,null)),List.of(),CommandMessageKeys.ofOutcomes(Map.of()))).toList();
+
     public static final List<CommandSpec> ECONOMY_SPECS = java.util.stream.Stream.of("balance","pay","paytoggle","eco","baltop")
             .map(name -> new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"economy",
                     name.equals("balance")?List.of("bal"):List.of(),"Allium economy: "+name,

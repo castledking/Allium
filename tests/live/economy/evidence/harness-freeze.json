@@ -1,12 +1,15 @@
 {
   "sourceHashes": {
-    "tests/live/economy/run.py": "6644d16ec91517f60a89c437739831b7cc3910bb8c0a530b74d149177f58114a",
-    "tests/live/economy/plugin/gate/EconomyGate.java": "191cf0b57c0624b99f48061a99e388c96ba143d2f7efdfacfec021f8a499af8b",
+    "tests/live/economy/run.py": "9a85aa482d8f9d0170b5931525cd210f287a36c3814ccd485ead595277608919",
+    "tests/live/economy/plugin/gate/EconomyGate.java": "e76c5492fbb8f02e23358c782ae55c305a2c2640aa6bc05e7cab9868fa7fd425",
     "tests/live/economy/plugin/plugin.yml": "116546459f71af774c7204c564decb7651a6af3f55af88afb272c9df32fd34e2",
     "tests/live/economy/client-mcp.cjs": "4da4f08ef8fc66c9ff4802bd9f303f54692d603c299d7756c767217f9dee5186",
     "tests/live/economy/client-raw26.cjs": "bea28f3a7b3ad97845153e56e843ac1a16f929910403fd8518a4b1f3f4bac3bd",
     "tests/live/economy/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
     "tests/live/economy/process_cleanup.py": "ff8f8a5fe69dd7a2c0c23ebfe84f46ceac5ea921d7321a5ba1ab023bcce3e32e",
-    "tests/live/economy/plugin/gate/VaultHost.java": "b109a70bddfef98bef45d7fae81208ef114f750f6a47d2af956b70684f67a486"
+    "tests/live/economy/plugin/gate/VaultHost.java": "b109a70bddfef98bef45d7fae81208ef114f750f6a47d2af956b70684f67a486",
+    "tests/live/economy/plugin/papi/gate/PapiHost.java": "17120a8014c80054c896d694bd9d00b8fa666d9ae4587bce348a608241e11d53",
+    "tests/live/economy/plugin/papi/me/clip/placeholderapi/PlaceholderAPI.java": "d6970be51e6a5d62e6a445c1b34f1e8aa76273921776ca8e70b7ca01181bd66e",
+    "tests/live/economy/plugin/papi/me/clip/placeholderapi/expansion/PlaceholderExpansion.java": "c4e616e5c7ca54c28abe5990931c69f1cdce94916bb489d2d3045abef512bd59"
   }
 }

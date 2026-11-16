@@ -1,0 +1,274 @@
+{
+  "alliumSha256": "1fdaa5588eaa0af6c9eaca3d39d5cb28b62584ec0af1b0eb82bb9bdc600c736b",
+  "units": {
+    "tests": 781,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "unitDelta": 51,
+  "runs": [
+    {
+      "run": "s23-final-spigot",
+      "suite": "spigot",
+      "passed": 124,
+      "failed": 0,
+      "manifest": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/s23-final-spigot/manifest.json",
+      "manifestSha256": "03de96f42f10aface6ad7ba147c7047ef5c6bfdd975fd167fa8b0167363f80e0",
+      "alliumSha256": "1fdaa5588eaa0af6c9eaca3d39d5cb28b62584ec0af1b0eb82bb9bdc600c736b",
+      "helperHashes": {
+        "helper/EconomyGate.jar": "d06ed528e9bf3ac064bc894593d0916367ff0ce7ed985d8e7e366fd348575df3",
+        "helper/classes/gate/ChatGate$1.class": "445975b8b7d977cd82b7f434ab8d4a7035f2a132d65e98d5db617a7d6fe9ebb3",
+        "helper/classes/gate/ChatGate.class": "0c8681df0d818e5f38fcc905307979dc1e666bddf3b666e5285dc96b10c910d5",
+        "helper/classes/gate/EconomyGate$1.class": "01906ae78f37ed58aefa8928ad246c141faa30190534526c72318b9494976a27",
+        "helper/classes/gate/EconomyGate$2.class": "88bda3bd4cf9293e3c9c9d0e4a49ba64db5a45cb263bbe6678bb8a8a994886f6",
+        "helper/classes/gate/EconomyGate$WireIds.class": "16f745f17d47bdb1d7f969be880a6ca49878c3a71ea6721fdcaf6b126f923e1a",
+        "helper/classes/gate/EconomyGate.class": "b8a3d566106c2ae8354fa53cae97b237fd633554e3d7efb10de920ac5c06fe2b",
+        "helper/classes/gate/SignsGate.class": "c4f98cf4ae6c3c8aa34655914a2dd9bd793d86f3b17e83d8a888c859871e4d09",
+        "helper/Vault.jar": "8d89962a5bb9c032ff8c72ff8a932b5034722e337ee7c95d517744fd9a82d95d"
+      },
+      "sourceHashes": {
+        "tests/live/economy/run.py": "b4efe8ed93f5e9fb772148a3164fb83f3d560485c74da4086923fef1110388b4",
+        "tests/live/economy/plugin/gate/EconomyGate.java": "e76c5492fbb8f02e23358c782ae55c305a2c2640aa6bc05e7cab9868fa7fd425",
+        "tests/live/economy/plugin/plugin.yml": "116546459f71af774c7204c564decb7651a6af3f55af88afb272c9df32fd34e2",
+        "tests/live/economy/client-mcp.cjs": "4da4f08ef8fc66c9ff4802bd9f303f54692d603c299d7756c767217f9dee5186",
+        "tests/live/economy/client-raw26.cjs": "bea28f3a7b3ad97845153e56e843ac1a16f929910403fd8518a4b1f3f4bac3bd",
+        "tests/live/economy/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "tests/live/economy/process_cleanup.py": "ff8f8a5fe69dd7a2c0c23ebfe84f46ceac5ea921d7321a5ba1ab023bcce3e32e",
+        "tests/live/economy/plugin/gate/VaultHost.java": "b109a70bddfef98bef45d7fae81208ef114f750f6a47d2af956b70684f67a486",
+        "tests/live/economy/plugin/papi/gate/PapiHost.java": "17120a8014c80054c896d694bd9d00b8fa666d9ae4587bce348a608241e11d53",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/PlaceholderAPI.java": "d6970be51e6a5d62e6a445c1b34f1e8aa76273921776ca8e70b7ca01181bd66e",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/expansion/PlaceholderExpansion.java": "c4e616e5c7ca54c28abe5990931c69f1cdce94916bb489d2d3045abef512bd59"
+      },
+      "scopes": [
+        {
+          "label": "spigot-economy: S23 setup",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot-economy: S23 chat",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "run": "s23-recovered-paper",
+      "suite": "paper",
+      "passed": 124,
+      "failed": 0,
+      "manifest": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/s23-recovered-paper/manifest.json",
+      "manifestSha256": "ccdd6fd1b5347d04b34dfa4c8b47bc54e2ebd9a0acb621fa3c389cde8f4c0553",
+      "alliumSha256": "1fdaa5588eaa0af6c9eaca3d39d5cb28b62584ec0af1b0eb82bb9bdc600c736b",
+      "helperHashes": {
+        "helper/EconomyGate.jar": "74b159602f4d6a3eed8d460bc05c4a5187e717179b122b8357c12e92c163d7aa",
+        "helper/classes/gate/ChatGate$1.class": "445975b8b7d977cd82b7f434ab8d4a7035f2a132d65e98d5db617a7d6fe9ebb3",
+        "helper/classes/gate/ChatGate.class": "0c8681df0d818e5f38fcc905307979dc1e666bddf3b666e5285dc96b10c910d5",
+        "helper/classes/gate/EconomyGate$1.class": "01906ae78f37ed58aefa8928ad246c141faa30190534526c72318b9494976a27",
+        "helper/classes/gate/EconomyGate$2.class": "88bda3bd4cf9293e3c9c9d0e4a49ba64db5a45cb263bbe6678bb8a8a994886f6",
+        "helper/classes/gate/EconomyGate$WireIds.class": "16f745f17d47bdb1d7f969be880a6ca49878c3a71ea6721fdcaf6b126f923e1a",
+        "helper/classes/gate/EconomyGate.class": "b8a3d566106c2ae8354fa53cae97b237fd633554e3d7efb10de920ac5c06fe2b",
+        "helper/classes/gate/SignsGate.class": "c4f98cf4ae6c3c8aa34655914a2dd9bd793d86f3b17e83d8a888c859871e4d09",
+        "helper/Vault.jar": "6625806e3486c040dbfc510d4aeb557d29ec4ada46864254b4360587e691c84c"
+      },
+      "sourceHashes": {
+        "tests/live/economy/run.py": "08cfcb3cbf1c313dc9bba6684267c271132218ad1751fffa6fd3d413c0ec9b9c",
+        "tests/live/economy/plugin/gate/EconomyGate.java": "e76c5492fbb8f02e23358c782ae55c305a2c2640aa6bc05e7cab9868fa7fd425",
+        "tests/live/economy/plugin/plugin.yml": "116546459f71af774c7204c564decb7651a6af3f55af88afb272c9df32fd34e2",
+        "tests/live/economy/client-mcp.cjs": "4da4f08ef8fc66c9ff4802bd9f303f54692d603c299d7756c767217f9dee5186",
+        "tests/live/economy/client-raw26.cjs": "bea28f3a7b3ad97845153e56e843ac1a16f929910403fd8518a4b1f3f4bac3bd",
+        "tests/live/economy/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "tests/live/economy/process_cleanup.py": "ff8f8a5fe69dd7a2c0c23ebfe84f46ceac5ea921d7321a5ba1ab023bcce3e32e",
+        "tests/live/economy/plugin/gate/VaultHost.java": "b109a70bddfef98bef45d7fae81208ef114f750f6a47d2af956b70684f67a486",
+        "tests/live/economy/plugin/papi/gate/PapiHost.java": "17120a8014c80054c896d694bd9d00b8fa666d9ae4587bce348a608241e11d53",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/PlaceholderAPI.java": "d6970be51e6a5d62e6a445c1b34f1e8aa76273921776ca8e70b7ca01181bd66e",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/expansion/PlaceholderExpansion.java": "c4e616e5c7ca54c28abe5990931c69f1cdce94916bb489d2d3045abef512bd59"
+      },
+      "scopes": [
+        {
+          "label": "paper-economy: S23 setup",
+          "status": "PASS"
+        },
+        {
+          "label": "paper-economy: S23 chat",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "run": "s23-recovered-spigot-papi",
+      "suite": "spigot",
+      "passed": 129,
+      "failed": 0,
+      "manifest": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/s23-recovered-spigot-papi/manifest.json",
+      "manifestSha256": "fbfe2193d1f6b32e37c0465dcf22409b78c982976f8abfa8bd911a8159e08281",
+      "alliumSha256": "1fdaa5588eaa0af6c9eaca3d39d5cb28b62584ec0af1b0eb82bb9bdc600c736b",
+      "helperHashes": {
+        "helper/EconomyGate.jar": "7f5a3065135da7b72cf7a2614d1090044e4f0cc6102362ae07f2393fd7bee39e",
+        "helper/classes/gate/ChatGate$1.class": "445975b8b7d977cd82b7f434ab8d4a7035f2a132d65e98d5db617a7d6fe9ebb3",
+        "helper/classes/gate/ChatGate.class": "0c8681df0d818e5f38fcc905307979dc1e666bddf3b666e5285dc96b10c910d5",
+        "helper/classes/gate/EconomyGate$1.class": "01906ae78f37ed58aefa8928ad246c141faa30190534526c72318b9494976a27",
+        "helper/classes/gate/EconomyGate$2.class": "88bda3bd4cf9293e3c9c9d0e4a49ba64db5a45cb263bbe6678bb8a8a994886f6",
+        "helper/classes/gate/EconomyGate$WireIds.class": "16f745f17d47bdb1d7f969be880a6ca49878c3a71ea6721fdcaf6b126f923e1a",
+        "helper/classes/gate/EconomyGate.class": "b8a3d566106c2ae8354fa53cae97b237fd633554e3d7efb10de920ac5c06fe2b",
+        "helper/classes/gate/SignsGate.class": "c4f98cf4ae6c3c8aa34655914a2dd9bd793d86f3b17e83d8a888c859871e4d09",
+        "helper/Vault.jar": "4dd3fdf7bc519dd6055470f908eb978558a57e6d4a03a1868ee76f890319a38f",
+        "helper/PlaceholderAPI.jar": "900239c04d2fd05f0e9a800dfdbfbe975179ee27935796fe73a191941cb48892"
+      },
+      "sourceHashes": {
+        "tests/live/economy/run.py": "08cfcb3cbf1c313dc9bba6684267c271132218ad1751fffa6fd3d413c0ec9b9c",
+        "tests/live/economy/plugin/gate/EconomyGate.java": "e76c5492fbb8f02e23358c782ae55c305a2c2640aa6bc05e7cab9868fa7fd425",
+        "tests/live/economy/plugin/plugin.yml": "116546459f71af774c7204c564decb7651a6af3f55af88afb272c9df32fd34e2",
+        "tests/live/economy/client-mcp.cjs": "4da4f08ef8fc66c9ff4802bd9f303f54692d603c299d7756c767217f9dee5186",
+        "tests/live/economy/client-raw26.cjs": "bea28f3a7b3ad97845153e56e843ac1a16f929910403fd8518a4b1f3f4bac3bd",
+        "tests/live/economy/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "tests/live/economy/process_cleanup.py": "ff8f8a5fe69dd7a2c0c23ebfe84f46ceac5ea921d7321a5ba1ab023bcce3e32e",
+        "tests/live/economy/plugin/gate/VaultHost.java": "b109a70bddfef98bef45d7fae81208ef114f750f6a47d2af956b70684f67a486",
+        "tests/live/economy/plugin/papi/gate/PapiHost.java": "17120a8014c80054c896d694bd9d00b8fa666d9ae4587bce348a608241e11d53",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/PlaceholderAPI.java": "d6970be51e6a5d62e6a445c1b34f1e8aa76273921776ca8e70b7ca01181bd66e",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/expansion/PlaceholderExpansion.java": "c4e616e5c7ca54c28abe5990931c69f1cdce94916bb489d2d3045abef512bd59"
+      },
+      "scopes": [
+        {
+          "label": "spigot-economy: S23 setup",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot-economy: S23 chat",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "run": "s23-recovered-paper-papi",
+      "suite": "paper",
+      "passed": 129,
+      "failed": 0,
+      "manifest": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/s23-recovered-paper-papi/manifest.json",
+      "manifestSha256": "730064a2f683799e84e748545c1cfae78e7c879a2ab212a07d4ec3e91d4b3942",
+      "alliumSha256": "1fdaa5588eaa0af6c9eaca3d39d5cb28b62584ec0af1b0eb82bb9bdc600c736b",
+      "helperHashes": {
+        "helper/EconomyGate.jar": "d1f9f616450383b3d303f11036853679a0bf9db481e2223d4e5dae2a82e85fac",
+        "helper/classes/gate/ChatGate$1.class": "445975b8b7d977cd82b7f434ab8d4a7035f2a132d65e98d5db617a7d6fe9ebb3",
+        "helper/classes/gate/ChatGate.class": "0c8681df0d818e5f38fcc905307979dc1e666bddf3b666e5285dc96b10c910d5",
+        "helper/classes/gate/EconomyGate$1.class": "01906ae78f37ed58aefa8928ad246c141faa30190534526c72318b9494976a27",
+        "helper/classes/gate/EconomyGate$2.class": "88bda3bd4cf9293e3c9c9d0e4a49ba64db5a45cb263bbe6678bb8a8a994886f6",
+        "helper/classes/gate/EconomyGate$WireIds.class": "16f745f17d47bdb1d7f969be880a6ca49878c3a71ea6721fdcaf6b126f923e1a",
+        "helper/classes/gate/EconomyGate.class": "b8a3d566106c2ae8354fa53cae97b237fd633554e3d7efb10de920ac5c06fe2b",
+        "helper/classes/gate/SignsGate.class": "c4f98cf4ae6c3c8aa34655914a2dd9bd793d86f3b17e83d8a888c859871e4d09",
+        "helper/Vault.jar": "4087aa16f62caecd59351dbf9d4dc473d92e0cab86531a32795b4cfd6307a0c8",
+        "helper/PlaceholderAPI.jar": "750721e2c701a63d80a637f84d7b5d4876842d74caffbfc26b793fe1ef6e0f26"
+      },
+      "sourceHashes": {
+        "tests/live/economy/run.py": "08cfcb3cbf1c313dc9bba6684267c271132218ad1751fffa6fd3d413c0ec9b9c",
+        "tests/live/economy/plugin/gate/EconomyGate.java": "e76c5492fbb8f02e23358c782ae55c305a2c2640aa6bc05e7cab9868fa7fd425",
+        "tests/live/economy/plugin/plugin.yml": "116546459f71af774c7204c564decb7651a6af3f55af88afb272c9df32fd34e2",
+        "tests/live/economy/client-mcp.cjs": "4da4f08ef8fc66c9ff4802bd9f303f54692d603c299d7756c767217f9dee5186",
+        "tests/live/economy/client-raw26.cjs": "bea28f3a7b3ad97845153e56e843ac1a16f929910403fd8518a4b1f3f4bac3bd",
+        "tests/live/economy/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "tests/live/economy/process_cleanup.py": "ff8f8a5fe69dd7a2c0c23ebfe84f46ceac5ea921d7321a5ba1ab023bcce3e32e",
+        "tests/live/economy/plugin/gate/VaultHost.java": "b109a70bddfef98bef45d7fae81208ef114f750f6a47d2af956b70684f67a486",
+        "tests/live/economy/plugin/papi/gate/PapiHost.java": "17120a8014c80054c896d694bd9d00b8fa666d9ae4587bce348a608241e11d53",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/PlaceholderAPI.java": "d6970be51e6a5d62e6a445c1b34f1e8aa76273921776ca8e70b7ca01181bd66e",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/expansion/PlaceholderExpansion.java": "c4e616e5c7ca54c28abe5990931c69f1cdce94916bb489d2d3045abef512bd59"
+      },
+      "scopes": [
+        {
+          "label": "paper-economy: S23 setup",
+          "status": "PASS"
+        },
+        {
+          "label": "paper-economy: S23 chat",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "run": "s23-recovered-r2-signs-spigot",
+      "suite": "spigot",
+      "passed": 375,
+      "failed": 0,
+      "manifest": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/s23-recovered-r2-signs-spigot/manifest.json",
+      "manifestSha256": "89a11547afd8190f7dfe744962ac63697c2ef639e58b96d1f44476aaa2715693",
+      "alliumSha256": "1fdaa5588eaa0af6c9eaca3d39d5cb28b62584ec0af1b0eb82bb9bdc600c736b",
+      "helperHashes": {
+        "helper/EconomyGate.jar": "715894ff93d1da8eae2a376e37b5b2c83c66f828e401c01bec8c0074d3e0a791",
+        "helper/classes/gate/ChatGate$1.class": "445975b8b7d977cd82b7f434ab8d4a7035f2a132d65e98d5db617a7d6fe9ebb3",
+        "helper/classes/gate/ChatGate.class": "0c8681df0d818e5f38fcc905307979dc1e666bddf3b666e5285dc96b10c910d5",
+        "helper/classes/gate/EconomyGate$1.class": "01906ae78f37ed58aefa8928ad246c141faa30190534526c72318b9494976a27",
+        "helper/classes/gate/EconomyGate$2.class": "88bda3bd4cf9293e3c9c9d0e4a49ba64db5a45cb263bbe6678bb8a8a994886f6",
+        "helper/classes/gate/EconomyGate$WireIds.class": "16f745f17d47bdb1d7f969be880a6ca49878c3a71ea6721fdcaf6b126f923e1a",
+        "helper/classes/gate/EconomyGate.class": "b8a3d566106c2ae8354fa53cae97b237fd633554e3d7efb10de920ac5c06fe2b",
+        "helper/classes/gate/SignsGate.class": "c4f98cf4ae6c3c8aa34655914a2dd9bd793d86f3b17e83d8a888c859871e4d09",
+        "helper/Vault.jar": "14144fb4f417ec63a706766eb14c7fefe12af90f1d0f24b959d390997a40572c"
+      },
+      "sourceHashes": {
+        "tests/live/economy/run.py": "9a85aa482d8f9d0170b5931525cd210f287a36c3814ccd485ead595277608919",
+        "tests/live/economy/plugin/gate/EconomyGate.java": "e76c5492fbb8f02e23358c782ae55c305a2c2640aa6bc05e7cab9868fa7fd425",
+        "tests/live/economy/plugin/plugin.yml": "116546459f71af774c7204c564decb7651a6af3f55af88afb272c9df32fd34e2",
+        "tests/live/economy/client-mcp.cjs": "4da4f08ef8fc66c9ff4802bd9f303f54692d603c299d7756c767217f9dee5186",
+        "tests/live/economy/client-raw26.cjs": "bea28f3a7b3ad97845153e56e843ac1a16f929910403fd8518a4b1f3f4bac3bd",
+        "tests/live/economy/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "tests/live/economy/process_cleanup.py": "ff8f8a5fe69dd7a2c0c23ebfe84f46ceac5ea921d7321a5ba1ab023bcce3e32e",
+        "tests/live/economy/plugin/gate/VaultHost.java": "b109a70bddfef98bef45d7fae81208ef114f750f6a47d2af956b70684f67a486",
+        "tests/live/economy/plugin/papi/gate/PapiHost.java": "17120a8014c80054c896d694bd9d00b8fa666d9ae4587bce348a608241e11d53",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/PlaceholderAPI.java": "d6970be51e6a5d62e6a445c1b34f1e8aa76273921776ca8e70b7ca01181bd66e",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/expansion/PlaceholderExpansion.java": "c4e616e5c7ca54c28abe5990931c69f1cdce94916bb489d2d3045abef512bd59"
+      },
+      "scopes": [
+        {
+          "label": "spigot-economy: S21 setup",
+          "status": "PASS"
+        },
+        {
+          "label": "spigot-economy: S21 signs",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "run": "s23-recovered-r2-signs-paper",
+      "suite": "paper",
+      "passed": 375,
+      "failed": 0,
+      "manifest": "/mnt/storage/.allium-validation/20261115/s20-economy/runs/s23-recovered-r2-signs-paper/manifest.json",
+      "manifestSha256": "abbbc0c79e429a5847d03e83e5109370c945e220a4ccd69dd2fe341edd0513a9",
+      "alliumSha256": "1fdaa5588eaa0af6c9eaca3d39d5cb28b62584ec0af1b0eb82bb9bdc600c736b",
+      "helperHashes": {
+        "helper/EconomyGate.jar": "44502d2f6f8ca272eaaf69063598f3d726d3441d57d77cadada5e0459fec4a4f",
+        "helper/classes/gate/ChatGate$1.class": "445975b8b7d977cd82b7f434ab8d4a7035f2a132d65e98d5db617a7d6fe9ebb3",
+        "helper/classes/gate/ChatGate.class": "0c8681df0d818e5f38fcc905307979dc1e666bddf3b666e5285dc96b10c910d5",
+        "helper/classes/gate/EconomyGate$1.class": "01906ae78f37ed58aefa8928ad246c141faa30190534526c72318b9494976a27",
+        "helper/classes/gate/EconomyGate$2.class": "88bda3bd4cf9293e3c9c9d0e4a49ba64db5a45cb263bbe6678bb8a8a994886f6",
+        "helper/classes/gate/EconomyGate$WireIds.class": "16f745f17d47bdb1d7f969be880a6ca49878c3a71ea6721fdcaf6b126f923e1a",
+        "helper/classes/gate/EconomyGate.class": "b8a3d566106c2ae8354fa53cae97b237fd633554e3d7efb10de920ac5c06fe2b",
+        "helper/classes/gate/SignsGate.class": "c4f98cf4ae6c3c8aa34655914a2dd9bd793d86f3b17e83d8a888c859871e4d09",
+        "helper/Vault.jar": "4dd25628c0930cddc086e42b4a39d8909ab91f71228072f5db278c7665f699b0"
+      },
+      "sourceHashes": {
+        "tests/live/economy/run.py": "9a85aa482d8f9d0170b5931525cd210f287a36c3814ccd485ead595277608919",
+        "tests/live/economy/plugin/gate/EconomyGate.java": "e76c5492fbb8f02e23358c782ae55c305a2c2640aa6bc05e7cab9868fa7fd425",
+        "tests/live/economy/plugin/plugin.yml": "116546459f71af774c7204c564decb7651a6af3f55af88afb272c9df32fd34e2",
+        "tests/live/economy/client-mcp.cjs": "4da4f08ef8fc66c9ff4802bd9f303f54692d603c299d7756c767217f9dee5186",
+        "tests/live/economy/client-raw26.cjs": "bea28f3a7b3ad97845153e56e843ac1a16f929910403fd8518a4b1f3f4bac3bd",
+        "tests/live/economy/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
+        "tests/live/economy/process_cleanup.py": "ff8f8a5fe69dd7a2c0c23ebfe84f46ceac5ea921d7321a5ba1ab023bcce3e32e",
+        "tests/live/economy/plugin/gate/VaultHost.java": "b109a70bddfef98bef45d7fae81208ef114f750f6a47d2af956b70684f67a486",
+        "tests/live/economy/plugin/papi/gate/PapiHost.java": "17120a8014c80054c896d694bd9d00b8fa666d9ae4587bce348a608241e11d53",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/PlaceholderAPI.java": "d6970be51e6a5d62e6a445c1b34f1e8aa76273921776ca8e70b7ca01181bd66e",
+        "tests/live/economy/plugin/papi/me/clip/placeholderapi/expansion/PlaceholderExpansion.java": "c4e616e5c7ca54c28abe5990931c69f1cdce94916bb489d2d3045abef512bd59"
+      },
+      "scopes": [
+        {
+          "label": "paper-economy: S21 setup",
+          "status": "PASS"
+        },
+        {
+          "label": "paper-economy: S21 signs",
+          "status": "PASS"
+        }
+      ]
+    }
+  ],
+  "sourceManifest": "/mnt/storage/.allium-validation/20261115/s23/source-final.json",
+  "full24SuiteSweep": false
+}

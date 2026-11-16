@@ -111,6 +111,9 @@ dependencies {
     compileOnly("org.jetbrains:annotations:26.0.2")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
     compileOnly("me.clip:placeholderapi:2.11.6")
+    compileOnly("net.kyori:adventure-text-serializer-plain:4.17.0")
+    compileOnly("com.discordsrv:discordsrv:1.30.3") { isTransitive = false }
+    compileOnly("com.github.retrooper:packetevents-api:2.12.1") { isTransitive = false }
 
     // Shaded runtime dependencies (audited for Java 17 bytecode compatibility)
     implementation("com.zaxxer:HikariCP:5.1.0")
@@ -136,7 +139,11 @@ dependencies {
     testRuntimeOnly("org.jetbrains.kotlin:kotlin-stdlib:2.1.20")
     testImplementation("net.kyori:adventure-api:4.17.0")
     testImplementation("net.kyori:adventure-text-serializer-legacy:4.17.0")
+    testImplementation("net.kyori:adventure-text-serializer-gson:4.17.0")
     testImplementation("com.github.MilkBowl:VaultAPI:1.7.1")
+    testImplementation("com.discordsrv:discordsrv:1.30.3") { isTransitive = false }
+    testImplementation("com.github.retrooper:packetevents-api:2.12.1") { isTransitive = false }
+    testImplementation("com.github.retrooper:packetevents-netty-common:2.12.1") { isTransitive = false }
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
     testImplementation("org.mockito:mockito-junit-jupiter:5.16.0")
@@ -237,5 +244,14 @@ tasks {
         testLogging {
             exceptionFormat = TestExceptionFormat.FULL
         }
+    }
+}
+
+// DiscordSRV's distribution bundles an older unrelocated SnakeYAML. The server
+// supplies Bukkit's version first; reproduce that parent-library order in SDK tests.
+tasks.withType<Test>().configureEach {
+    doFirst {
+        val peers = classpath.filter { it.name.startsWith("discordsrv-") }
+        classpath = files(classpath.filter { !it.name.startsWith("discordsrv-") }, peers)
     }
 }

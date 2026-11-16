@@ -35,6 +35,8 @@ P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash
 P.add_argument('--run-name', required=True)
 P.add_argument('--diagnostics',action='store_true',help='opt-in engine phase samples, GC log and PASSIVE checkpoint probe')
 P.add_argument('--paired-reads',action='store_true',help='run pooled then dedicated read-only ten-minute phases')
+P.add_argument('--chat',action='store_true',help='S23 native chat, nickname, channel, deletion and gamemode aliases')
+P.add_argument('--chat-papi-fixture',action='store_true',help='test-only PAPI ABI host, not a real GradientPlus runtime')
 P.add_argument('--signs-piston-only',action='store_true')
 P.add_argument('--signs',action='store_true',help='S21 real-client face/permission/protection/persistence/destruction gate')
 P.add_argument('--followup-gates',action='store_true',help='operator resolution and realistic latency with background paid claims')
@@ -53,6 +55,7 @@ P.add_argument('--vault-api',type=Path)
 P.add_argument('--host-copy',action='store_true',help='allow a different empty disposable run root; never points at a running server')
 A = P.parse_args()
 if A.signs_piston_only:A.signs=True
+if A.chat_papi_fixture:A.chat=True
 INFRA=A.infra.resolve()
 VAULT_API=Path('/home/towkio/.gradle/caches/modules-2/files-2.1/com.github.MilkBowl/VaultAPI/1.7.1/24d63ed39e2d36a5a03fb0addbe8cfe1eff0036/VaultAPI-1.7.1.jar')
 if not re.fullmatch(r'[a-zA-Z0-9_][a-zA-Z0-9_.-]*', A.run_name):
@@ -75,7 +78,7 @@ for p in [API, MCP / 'package.json', INFRA / 'servers/spigot-1.20.1.jar', A.pape
 
 # Verify the reviewable source freeze before creating any run or starting a process.
 SOURCE_FILES = [HERE / f for f in ['run.py','plugin/gate/EconomyGate.java','plugin/plugin.yml',
-                                  'client-mcp.cjs','client-raw26.cjs','text-components.cjs','process_cleanup.py','plugin/gate/VaultHost.java']]
+                                  'client-mcp.cjs','client-raw26.cjs','text-components.cjs','process_cleanup.py','plugin/gate/VaultHost.java']] + sorted((HERE/'plugin/papi').rglob('*.java'))
 SOURCE_HASHES = {str(p.relative_to(REPO)): hashlib.sha256(p.read_bytes()).hexdigest() for p in SOURCE_FILES}
 FREEZE_SHA256=hashlib.sha256(A.harness_manifest.read_bytes()).hexdigest()
 frozen = json.loads(A.harness_manifest.read_text())
@@ -302,6 +305,15 @@ def build():
     if code:raise RuntimeError(output)
     HELPER_HASHES['helper/Vault.jar']=hashlib.sha256((RUN/'helper/Vault.jar').read_bytes()).hexdigest()
     observations['vaultHost']=dict(api=str(VAULT_API),apiSha256=hashlib.sha256(VAULT_API.read_bytes()).hexdigest(),scope='unmodified VaultAPI1.7.1 economy classes hosted by test plugin named Vault; actual registered provider is Allium')
+    if A.chat_papi_fixture:
+        classes=RUN/'papi-host/classes';classes.mkdir(parents=True)
+        sources=sorted((HERE/'plugin/papi').rglob('*.java'))
+        code,output=run_tracked([str(A.java17/'bin/javac'),'--release','17','-cp',str(API),'-d',str(classes),*[str(p) for p in sources]],'papi-host-javac')
+        if code:raise RuntimeError(output)
+        (classes/'plugin.yml').write_text('name: PlaceholderAPI\nversion: "2.11.6-ABI-fixture"\nmain: gate.PapiHost\napi-version: "1.20"\n')
+        code,output=run_tracked([str(A.java17/'bin/jar'),'cf',str(RUN/'helper/PlaceholderAPI.jar'),'-C',str(classes),'.'],'papi-host-jar')
+        if code:raise RuntimeError(output)
+        HELPER_HASHES['helper/PlaceholderAPI.jar']=hashlib.sha256((RUN/'helper/PlaceholderAPI.jar').read_bytes()).hexdigest()
     verify_integrity('after-helper-build')
 
 
@@ -422,6 +434,7 @@ class Lane:
         shutil.copy2(JAR, self.path / 'plugins/Allium.jar')
         shutil.copy2(RUN / 'helper/EconomyGate.jar', self.path / 'plugins/EconomyGate.jar')
         shutil.copy2(RUN/'helper/Vault.jar',self.path/'plugins/Vault.jar')
+        if A.chat_papi_fixture:shutil.copy2(RUN/'helper/PlaceholderAPI.jar',self.path/'plugins/PlaceholderAPI.jar')
         with zipfile.ZipFile(JAR) as z:
             config = yaml.safe_load(z.read('config.yml'))
         config.setdefault('economy',{})['vault-provider-enabled']=True # disposable measurement copy only
@@ -431,6 +444,10 @@ class Lane:
             config.setdefault('mail',{}).update({'costs':{'text':'0.25','gift':'1.50'},'mailbox-size':1000,'rate-limit':{'sends':1000,'per-seconds':60}})
             kitdir=self.path/'plugins/Allium/kits';kitdir.mkdir(exist_ok=True)
             (kitdir/'paid.yml').write_text(yaml.safe_dump(dict(name='paid',enabled=True,**{'cooldown-seconds':0,'one-time':False},cost='2.00',items=['minecraft:diamond 1'])))
+        if A.chat:
+            config.setdefault('nickname',{}).update({'animate-tab':True,'updates-per-tick':16})
+            config.setdefault('chat',{}).setdefault('channels',{}).setdefault('list',{}).setdefault('default',{})['discord-channel-id']='123456789'
+            config['chat']['channels']['list'].setdefault('staff-chat',{})['discord-channel-id']='987654321'
         if A.signs:config.update({'enabledSigns':['color','warp','kit','balance','heal','repair','disposal','workbench','anvil','mail','info'],'sign-use-per-second':4})
         (self.path / 'plugins/Allium/config.yml').write_text(yaml.safe_dump(config, sort_keys=False))
         os.chmod(self.path / 'plugins/Allium/config.yml', 0o600)
@@ -957,6 +974,15 @@ def paid_latency(lane):
     require(not thread.is_alive() and not failures and len(rounds)>=90,lane.name+': realistic lane overlaps durable paid kit and gift claims',dict(rounds=len(rounds),errors=failures))
 
 
+def signs_safe_observers(lane):
+    # Flat-world slimes can kill idle clients and broadcast unrelated death chat
+    # during a strict no-output sign assertion. Preserve the actor's damage probes.
+    for name in ['MoneyB','MoneyObs']:
+        lane.console('minecraft:gamemode creative '+name)
+        wait(lambda n=name:chat_state(lane,n)['mode']=='CREATIVE',name+' safe sign observer')
+        require(chat_state(lane,name)['mode']=='CREATIVE',lane.name+': '+name+' sign observer protected from mob deaths')
+
+
 def signs_piston(lane):
     a=lane.bots['MoneyA'];fixture=lambda action:lane.fixture('signs MoneyA '+action)
     for action in ['create','use','break']:lane.perm('MoneyA','allium.signs.'+action+'.kit',True)
@@ -1038,10 +1064,104 @@ def signs_gate(lane):
     fixture('prepare standing');require(not fixture('state')['FRONT'],lane.name+': replacement block inherits no destroyed sign authority')
 
 
+
+def chat_state(lane,name='MoneyA'):
+    return lane.fixture('chat '+name+' state')
+
+
+def chat_setup(lane):
+    setup(lane)
+    for name in lane.bots:
+        wait(lambda n=name:chat_state(lane,n)['ready'],name+' chat profile ready',30)
+    for node in ['allium.nick','allium.channel','allium.gamemode']:
+        lane.perm('MoneyA',node,True)
+    lane.perm('MoneyObs','allium.delmsg',True)
+    lane.fixture('chat MoneyA mockrelay')
+
+
+def chat_gate(lane):
+    a,b,o=[lane.bots[n] for n in ['MoneyA','MoneyB','MoneyObs']]
+    state=lambda name='MoneyA':chat_state(lane,name)
+    def hist(name):return state(name)['history']
+    def say(text):
+        a.write('say '+text);window(.7)
+    def ids(name):return {m['id'] for m in hist(name)}
+    def config(change):
+        path=lane.path/'plugins/Allium/config.yml';value=yaml.safe_load(path.read_text());change(value);path.write_text(yaml.safe_dump(value,sort_keys=False));lane.reload_allium();window(.3)
+    # Permission and storage first: acknowledgements follow committed profile state.
+    a.command('nick Chive','Nickname saved.');require(state()['storedNickname']=='Chive' and 'Chive' in state()['display'],lane.name+': nickname committed before acknowledgement')
+    a.command('nick &aGreen','Invalid nickname');require(state()['storedNickname']=='Chive',lane.name+': nickname color denied without permission')
+    lane.perm('MoneyA','allium.nick.color',True);a.command('nick &aGreen','Nickname saved.');require(state()['nickname']=='\u00a7aGreen' and re.sub(r'\u00a7.', '',state()['display'])=='Green',lane.name+': permitted nickname color renders')
+    a.command('nick MoneyB Stolen','permission');require('storedNickname' not in state('MoneyB'),lane.name+': nickname others denied')
+    lane.perm('MoneyA','allium.nick.others',True);b.disconnect();a.command('nick MoneyB Shallot','Nickname saved.');lane.bot('MoneyB');wait(lambda:state('MoneyB')['ready'],'offline nickname rejoin');require('Shallot' in state('MoneyB')['display'],lane.name+': offline nickname resolves UUID and persists')
+    a.command('nick MoneyB off','Nickname reset.');a.command('nick off','Nickname reset.');require(state()['storedNickname']=='' and state()['display']=='MoneyA',lane.name+': reset keeps null versioned row')
+    # Actual native chat input reaches both audiences, separate untrusted body rendering.
+    before=ids('MoneyB');mark=len(b.lines);say('S23-public-one');b.chat(mark,'S23-public-one');one=next(m for m in hist('MoneyB') if m['id'] not in before)
+    require(one['channel']=='default' and one['id'] in ids('MoneyObs'),lane.name+': native public chat routes once with shared logical id')
+    body='S23-literal <click:run_command:/op MoneyA> https://example.invalid &aGreen'
+    say(body);entry=hist('MoneyB')[-1]
+    require('<click:run_command:/op MoneyA>' in entry['json'] and '"clickEvent"' not in entry['json'] and '"open_url"' not in entry['json'],lane.name+': player body cannot inject template interactions')
+    # Explicit membership, permission and local radius isolate audiences and relay.
+    lane.perm('MoneyA','allium.staffchat',True);lane.perm('MoneyObs','allium.staffchat',True);lane.perm('MoneyObs','allium.channel',True)
+    o.command('channel join staff-chat read','Channel preference saved:')
+    before_b=ids('MoneyB');before_o=ids('MoneyObs');say('#S23-staff-secret')
+    staff=next(m for m in hist('MoneyObs') if m['id'] not in before_o)
+    require(staff['channel']=='staff-chat' and ids('MoneyB')==before_b,lane.name+': staff shortcut respects read membership and permission')
+    pending=state()['relayPending'];lane.perm('MoneyA','allium.channel.join.local.write',True)
+    lane.fixture('chat MoneyA position 0 0');lane.fixture('chat MoneyB position 5 0');lane.fixture('chat MoneyObs position 300 0')
+    mark=len(b.lines);before_o=ids('MoneyObs');a.command('l S23-local-only','S23-local-only');b.chat(mark,'S23-local-only')
+    require(ids('MoneyObs')==before_o and state()['relayPending']==pending,lane.name+': local radius excludes distant viewer and never relays')
+    # Native mute/vanish rules still hold at final admission.
+    o.command('mute MoneyA 5m chatgate','muted');before=ids('MoneyB');say('S23-muted-must-not-appear');require(ids('MoneyB')==before,lane.name+': muted public input has no delivery');o.command('unmute MoneyA','unmuted')
+    o.command('vanish MoneyA','vanish');before=ids('MoneyB');say('S23-vanished-must-not-appear');require(ids('MoneyB')==before,lane.name+': vanished public input has no delivery');o.command('vanish MoneyA','vanish')
+    # Exact-id deletion keeps duplicate bodies; no staff history leaks into replay.
+    say('S23-duplicate');first=hist('MoneyB')[-1];say('S23-duplicate');second=hist('MoneyB')[-1]
+    mark=len(b.lines);o.command('delmsg '+first['id'],'Message deleted.')
+    say('S23-arrived-during-replay');o.command('delmsg '+one['id'],'Message deleted.');window(5)
+    visible=ids('MoneyB');packets=b.chats(mark)
+    require(first['id'] not in visible and second['id'] in visible and one['id'] not in visible,lane.name+': overlapping id deletes preserve duplicate survivor')
+    require(any('S23-arrived-during-replay' in x['plain'] for x in packets) and not any('S23-staff-secret' in x['plain'] for x in packets),lane.name+': bounded replay includes live arrivals without private history')
+    lane.fixture('chat MoneyA ack');require(state()['relayRemoved']>=2,lane.name+': deleting before relay acknowledgement keeps tombstone')
+    # Fixture is provider seam only; SDK adapter has independent exact-id unit coverage.
+    before=ids('MoneyB');lane.fixture('chat MoneyA incoming 111111111 123456789 DiscordUser S23-from-discord');window(.5)
+    incoming=ids('MoneyB')-before;lane.fixture('chat MoneyA incoming 111111111 123456789 DiscordUser S23-from-discord');window(.3)
+    require(len(incoming)==1 and ids('MoneyB')-before==incoming,lane.name+': inbound relay routes configured destination exactly once')
+    before=ids('MoneyB');lane.fixture('chat MoneyA incoming 222222222 987654321 StaffDiscord S23-private-discord');window(.3);require(ids('MoneyB')==before,lane.name+': inbound staff relay excludes public reader')
+    # Fixed aliases use the command family permission and target permission.
+    aliases={'gmc':'CREATIVE','creative':'CREATIVE','gms':'SURVIVAL','survival':'SURVIVAL','gma':'ADVENTURE','adventure':'ADVENTURE','gmsp':'SPECTATOR','spectator':'SPECTATOR'}
+    for alias,mode in aliases.items():
+        a.command(alias,'mode');require(state()['mode']==mode,lane.name+': /'+alias+' enters '+mode)
+    before=state('MoneyB')['mode'];a.command('gmc MoneyB','permission');require(state('MoneyB')['mode']==before,lane.name+': fixed alias target requires others permission')
+    lane.perm('MoneyA','allium.gamemode.others',True);a.command('allium:gmc MoneyB','gamemode');require(state('MoneyB')['mode']=='CREATIVE',lane.name+': namespaced fixed alias applies to authorized target')
+    lane.perm('MoneyA','allium.gamemode',False);before=state()['mode'];a.cmd('gms');window(.4);require(state()['mode']==before,lane.name+': alias cannot bypass command family permission');lane.perm('MoneyA','allium.gamemode',True)
+    # Reload cannot silently promote an existing private write preference to public.
+    a.command('channel join staff-chat write','Channel preference saved:');config(lambda c:c['chat']['channels'].update({'enabled':False}))
+    before=ids('MoneyB');say('S23-disabled-private');require(ids('MoneyB')==before,lane.name+': disabled channels retain privacy until explicit selection')
+    a.command('g','Channel preference saved:');config(lambda c:c['chat']['channels'].update({'enabled':True}))
+    config(lambda c:c.update({'enable-chat-formatting':False}));say('S23-plain-template');require('S23-plain-template' in hist('MoneyB')[-1]['json'],lane.name+': formatting disabled retains channel and deletion ownership');config(lambda c:c.update({'enable-chat-formatting':True}))
+    config(lambda c:c.update({'disabled-commands':['gamemode']}));before=state()['mode'];a.cmd('creative');window(.4);require(state()['mode']==before,lane.name+': disabling gamemode blocks aliases');config(lambda c:c.update({'disabled-commands':[]}))
+    config(lambda c:c['modules'].update({'chat':False}));before=ids('MoneyB');mark=len(b.lines);say('S23-native-module-off');wait(lambda:any(line.startswith('BASEG-RAWCHAT ') and 'S23-native-module-off' in line for line in b.lines[mark:]),'native Paper player-chat wire payload') if lane.kind=='paper' else b.chat(mark,'S23-native-module-off');require(ids('MoneyB')==before and state()['display']=='MoneyA',lane.name+': disabled chat module restores native ownership and display name');config(lambda c:c['modules'].update({'chat':True}))
+    if A.chat_papi_fixture:
+        lane.fixture('chat MoneyA palette &cA&9B');window(1.5)
+        require('\u00a7x' in state()['gradient'] and 'MoneyA'==re.sub(r'\u00a7.', '',state()['gradient']),lane.name+': PAPI ABI palette colors cached gradient display name')
+        lane.fixture('chat MoneyA palette &fMoneyA');window(1.5);require(state()['gradient']=='MoneyA',lane.name+': white GradientPlus palette falls back without white override')
+    else:require(state()['gradient']=='MoneyA',lane.name+': absent PAPI and GradientPlus fall back safely')
+    a.command('nick Persistent','Nickname saved.');a.command('channel join staff-chat write','Channel preference saved:');run_id=hist('MoneyA')[-1]['id'].split(':')[0]
+    lane.stop();lane.boot()
+    for name in ['MoneyA','MoneyB','MoneyObs']:lane.bot(name);wait(lambda n=name:state(n)['ready'],name+' restarted chat profile')
+    a=lane.bots['MoneyA'];lane.perm('MoneyA','allium.nick',True);lane.perm('MoneyA','allium.channel',True);lane.perm('MoneyA','allium.staffchat',True)
+    require('Persistent' in state()['display'] and state()['write']=='staff-chat',lane.name+': restart restores nickname and private write channel before input')
+    before=ids('MoneyB');say('S23-private-after-restart');require(ids('MoneyB')==before,lane.name+': restarted private preference never falls back to global')
+    a.command('nick off','Nickname reset.');a.command('g S23-new-run','S23-new-run');require(hist('MoneyB')[-1]['id'].split(':')[0]!=run_id,lane.name+': restart creates fresh opaque message identity namespace')
+
+
 try:
     build();lane=Lane(A.suite+'-economy',A.suite,25800 if A.suite=='spigot' else 25801)
-    if A.signs:
-        case(lane.name+': S21 setup',lambda:paid_setup(lane))
+    if A.chat:
+        case(lane.name+': S23 setup',lambda:chat_setup(lane))
+        case(lane.name+': S23 chat',lambda:chat_gate(lane))
+    elif A.signs:
+        case(lane.name+': S21 setup',lambda:(paid_setup(lane),signs_safe_observers(lane)))
         case(lane.name+': S21 signs',lambda:signs_piston(lane) if A.signs_piston_only else signs_gate(lane))
     elif A.paid_workflows:
         case(lane.name+': E5 setup',lambda:paid_setup(lane))
@@ -1078,7 +1198,7 @@ finally:
     try:final_log_scan()
     except Exception as error:require(False,'final log scan',str(error))
     performance=[v for k,v in observations.items() if k.endswith('-shared')]
-    manifest=dict(releaseDecision='UNAPPROVED',workload='paid-workflows' if A.paid_workflows else 'realistic' if A.latency_only else 'stress' if A.stress_only else 'stress-and-correctness',machine=machine_info(),suite=A.suite,run=str(RUN),alliumJar=str(JAR),alliumSha256=A.sha256,sourceHashes=SOURCE_HASHES,helperHashes=HELPER_HASHES,
+    manifest=dict(releaseDecision='UNAPPROVED',workload='chat-papi-abi' if A.chat_papi_fixture else 'chat' if A.chat else 'signs' if A.signs else 'paid-workflows' if A.paid_workflows else 'realistic' if A.latency_only else 'stress' if A.stress_only else 'stress-and-correctness',machine=machine_info(),suite=A.suite,run=str(RUN),alliumJar=str(JAR),alliumSha256=A.sha256,sourceHashes=SOURCE_HASHES,helperHashes=HELPER_HASHES,
                   passed=not failures,passedCount=sum(c['passed'] for c in checks),failedCount=len(failures),failures=failures,checks=checks,scopes=scopes,
                   processes=processes,integrityChecks=integrity,observations=observations,stress2msReferenceMet=bool(performance) and all(r['stress2msReferenceMet'] for r in performance),
                   limitations=['Phase1 SQLite FULL only; no MySQL economy lane.','VaultAPI1.7.1 hosted by a test plugin; actual Allium provider and service calls exercised.','No separate economy database in current lanes; historical prototype is not adopted. SF host run and user budget approval remain required.'])

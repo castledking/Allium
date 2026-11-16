@@ -4,9 +4,20 @@ main: codes.castled.allium.PluginStart
 api-version: '1.20'
 description: A modern essentials suite
 authors: [castledking]
-softdepend: [Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, GriefPrevention, GriefPrevention3D]
+softdepend: [Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, GriefPrevention, GriefPrevention3D]
 
 commands:
+  nick:
+    description: Change a persistent nickname
+    aliases: [nickname]
+    permission: allium.nick
+  channel:
+    description: Chat channel selection and messages
+    aliases: [g, global, l, local, a, staffchat]
+    permission: allium.channel
+  delmsg:
+    description: Delete a retained logical chat message
+    aliases: [deletemsg]
   repair:
     description: Self-service repair
     permission: allium.repair
@@ -737,4 +748,41 @@ permissions:
   allium.signs.break.mail:
     default: false
   allium.signs.break.info:
+    default: false
+
+  allium.nick:
+    default: op
+  allium.nick.others:
+    default: op
+  allium.nick.color:
+    default: op
+  allium.nick.hex:
+    default: op
+  allium.nick.gradient:
+    default: op
+  allium.channel:
+    default: true
+  allium.staffchat:
+    default: op
+  allium.delmsg:
+    default: op
+  allium.deletemsg:
+    default: op
+  allium.gradientname:
+    default: false
+  allium.chat.color:
+    default: false
+  allium.chat.hex:
+    default: false
+  allium.chat.gradient:
+    default: false
+  allium.channel.join.default.read:
+    default: true
+  allium.channel.join.default.write:
+    default: true
+  allium.channel.join.local.write:
+    default: true
+  allium.channel.autojoin.staff-chat.read:
+    default: op
+  allium.nick.impersonate:
     default: false

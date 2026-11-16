@@ -9,7 +9,7 @@ p.add_argument('--allium-jar',required=True,type=Path)
 p.add_argument('--sha256',required=True)
 p.add_argument('--run-prefix',required=True)
 a,rest=p.parse_known_args()
-if any(v in rest for v in ['--suite','--run-name','--signs','--paid-workflows','--signs-piston-only']):
+if any(v in rest for v in ['--suite','--run-name','--signs','--paid-workflows','--signs-piston-only','--chat','--chat-papi-fixture','--latency-only','--stress-only','--paired-reads','--followup-gates','--check']):
     p.error('suite/run-name/mode are owned by the regression wrapper')
 harness=Path(__file__).resolve().parents[1]/'tests/live/economy/run.py'
 for lane in ['spigot','paper']:

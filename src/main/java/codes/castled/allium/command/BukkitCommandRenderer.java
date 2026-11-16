@@ -97,6 +97,19 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             return List.of();
         }
 
+        if((spec.canonicalName().equals("channel")||spec.canonicalName().equals("nick"))&&plugin.getModuleManager()!=null){
+            if(!sender.hasPermission(spec.basePermission()))return List.of();
+            if(spec.canonicalName().equals("channel")&&sender instanceof Player p&&alias.substring(alias.lastIndexOf(':')+1).equals("channel")
+                &&plugin.getModuleManager().getModule("chat") instanceof codes.castled.allium.module.ChatModule module&&module.isEnabled()){
+                if(args.length<=1)return java.util.stream.Stream.of("join","leave").filter(v->args.length==0||v.startsWith(args[0])).toList();
+                if(args.length==2)return module.chat().complete(p,args[1]);
+                if(args.length==3)return java.util.stream.Stream.of("read","write").filter(v->v.startsWith(args[2])).toList();
+                return List.of();
+            }
+            if(spec.canonicalName().equals("nick")&&args.length==1&&sender.hasPermission("allium.nick.others")){
+                var names=plugin.getPlayerNames();return names==null?List.of():names.complete(sender,args[0],64);
+            }
+        }
         CommandCompletionContext completionContext = new CommandCompletionContext() {
             @Override
             public List<String> travelNames(boolean warps, String prefix) {

@@ -471,6 +471,21 @@ economy:
     pitch: 0.8
 
 chat:
+  delete:
+    success:
+      text: "{prefix} &aMensaje eliminado."
+      sound: minecraft:item.book.page_turn
+      volume: 0.4
+      pitch: 1.0
+    multiple:
+      text: "{prefix} &aMensajes eliminados."
+      sound: minecraft:item.book.page_turn
+      volume: 0.4
+      pitch: 1.0
+    not-found: "{prefix} &cMensaje no encontrado."
+    amount: "{prefix} &cLa cantidad debe estar entre 1 y 200."
+    usage: "{prefix} &cUso: &f/delmsg <id> &co &f/delmsg <player> <amount>"
+  player-not-found: "{prefix} &cJugador no encontrado."
   msg-format: "&7[&f{sender} &7-> &f{receiver}&7] &f{message}"
   no-reply:
     text: "{prefix} &cNo hay nadie a quien responder."
@@ -902,6 +917,13 @@ player:
     pitch: 1.0
 
 utility:
+  gc:
+    runtime: "{prefix} &7Tiempo activo: &f{uptime}&7, TPS: &f{tps}"
+    memory: "{prefix} &7Memoria: &f{used} MB &7usados / &f{allocated} MB &7asignados / &f{max} MB &7máximos{disk}"
+    disk: "&7, Disco libre: &f{disk}"
+    players: "{prefix} &7Jugadores: &f{online}/{max}&7, Mundos (&f{worlds}&7):"
+    world: "&7  - &f{world}&7: &f{chunks} &7chunks, &f{entities} &7entidades{paused}"
+    paused: " &e[TIEMPO PAUSADO]"
   time-set:
     text: "{prefix} &aTiempo establecido a &f{time} &aen &f{world}&a."
     sound: minecraft:block.note_block.bell

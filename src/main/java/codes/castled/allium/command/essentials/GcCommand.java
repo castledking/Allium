@@ -1,6 +1,7 @@
 package codes.castled.allium.command.essentials;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.message.Messages;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
@@ -60,17 +61,16 @@ public final class GcCommand implements SpecCommandHandler {
             }
         }
 
-        context.sender().sendMessage("[Allium] Runtime uptime: " + formatDuration(uptimeMillis) + ", TPS: " + tps);
-        context.sender().sendMessage("[Allium] Memory: " + usedMb + " MB used / " + allocMb + " MB allocated / " + maxMb + " MB max"
-                + (disk.isEmpty() ? "" : ", Disk free: " + disk));
-        context.sender().sendMessage("[Allium] Players: " + visiblePlayers + "/" + maxPlayers
-                + ", Worlds (" + worlds.size() + "):");
+        var messages=plugin.getMessageManager();
+        messages.send(context.sender(),Messages.GC_RUNTIME,"{uptime}",formatDuration(uptimeMillis),"{tps}",tps);
+        String diskText=disk.isEmpty()?"":messages.resolve(Messages.GC_DISK,"{disk}",disk);
+        messages.send(context.sender(),Messages.GC_MEMORY,"{used}",Long.toString(usedMb),"{allocated}",Long.toString(allocMb),"{max}",Long.toString(maxMb),"{disk}",diskText);
+        messages.send(context.sender(),Messages.GC_PLAYERS,"{online}",Long.toString(visiblePlayers),"{max}",Integer.toString(maxPlayers),"{worlds}",Integer.toString(worlds.size()));
         for (World world : worlds) {
             int chunks = world.getLoadedChunks() == null ? 0 : world.getLoadedChunks().length;
             int entities = world.getEntities() == null ? 0 : world.getEntities().size();
             boolean paused = pauseCoordinator != null && pauseCoordinator.isPaused(world);
-            context.sender().sendMessage("  - " + world.getName() + ": " + chunks + " chunks, "
-                    + entities + " entities" + (paused ? " [TIME PAUSED]" : ""));
+            messages.send(context.sender(),Messages.GC_WORLD,"{world}",world.getName(),"{chunks}",Integer.toString(chunks),"{entities}",Integer.toString(entities),"{paused}",paused?messages.resolve(Messages.GC_PAUSED):"");
         }
     }
 

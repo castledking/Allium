@@ -12,6 +12,20 @@ public enum Messages {
     RELOAD_FAILED("core.reload-failed", "{prefix} &cReload failed. Check console for details."),
     PLUGIN_VERSION("core.version", "{prefix} &fRunning Allium &dv{version}&f."),
 
+    // -- Diagnostic and deletion feedback --
+    GC_RUNTIME("utility.gc.runtime", "{prefix} &7Runtime uptime: &f{uptime}&7, TPS: &f{tps}"),
+    GC_MEMORY("utility.gc.memory", "{prefix} &7Memory: &f{used} MB &7used / &f{allocated} MB &7allocated / &f{max} MB &7max{disk}"),
+    GC_DISK("utility.gc.disk", "&7, Disk free: &f{disk}"),
+    GC_PLAYERS("utility.gc.players", "{prefix} &7Players: &f{online}/{max}&7, Worlds (&f{worlds}&7):"),
+    GC_WORLD("utility.gc.world", "&7  - &f{world}&7: &f{chunks} &7chunks, &f{entities} &7entities{paused}"),
+    GC_PAUSED("utility.gc.paused", " &e[TIME PAUSED]"),
+    CHAT_DELETE_SUCCESS("chat.delete.success", "{prefix} &aMessage deleted."),
+    CHAT_DELETE_MULTIPLE("chat.delete.multiple", "{prefix} &aMessages deleted."),
+    CHAT_DELETE_NOT_FOUND("chat.delete.not-found", "{prefix} &cMessage not found."),
+    CHAT_DELETE_AMOUNT("chat.delete.amount", "{prefix} &cAmount must be 1..200."),
+    CHAT_DELETE_USAGE("chat.delete.usage", "{prefix} &cUsage: &f/delmsg <id> &cor &f/delmsg <player> <amount>"),
+    CHAT_PLAYER_NOT_FOUND("chat.player-not-found", "{prefix} &cPlayer not found."),
+
     // -- Errors --
     NO_PERMISSION("error.no-permission", "{prefix} &cYou don't have permission to do that."),
     PLAYER_ONLY("error.player-only", "{prefix} &cThis command can only be used by players."),

@@ -1,6 +1,7 @@
 package codes.castled.allium.chat;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.message.Messages;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.messaging.UntrustedText;
 import codes.castled.allium.module.*;
@@ -273,11 +274,12 @@ public final class ChatService implements Listener,AutoCloseable {
     }
     public List<String> complete(Player p,String prefix){return settings.channels().values().stream().filter(c->canRead(p,c)&&c.id().startsWith(prefix.toLowerCase(Locale.ROOT))).map(ChatSettings.Channel::id).sorted().limit(64).toList();}
     private void delete(CommandSender sender,String[] args){
-        if(!(sender.hasPermission("allium.delmsg")||sender.hasPermission("allium.deletemsg")||sender.hasPermission("allium.staff"))){tell(sender,"You do not have permission.");return;}
-        if(args.length==1){if(history.find(args[0]).isEmpty())throw new IllegalArgumentException("Message not found.");auditDeletion(sender,List.of(args[0]));deleteIds(List.of(args[0]));tell(sender,"Message deleted.");return;}
-        if(args.length==2){int amount=Integer.parseInt(args[1]);if(amount<1||amount>200)throw new IllegalArgumentException("Amount must be 1..200.");
-            plugin.getPlayerNames().resolve(args[0]).whenComplete((found,error)->plugin.getScheduler().runOnServer(()->{if(error!=null||found.isEmpty()){tell(sender,"Player not found.");return;}var ids=history.recentBySender(found.get().uuid(),amount).stream().map(ChatHistory.Message::id).toList();auditDeletion(sender,ids);deleteIds(ids);tell(sender,"Messages deleted.");}));return;}
-        throw new IllegalArgumentException("Usage: /delmsg <id> or /delmsg <player> <amount>");
+        if(!(sender.hasPermission("allium.delmsg")||sender.hasPermission("allium.deletemsg")||sender.hasPermission("allium.staff"))){tell(sender,Messages.NO_PERMISSION);return;}
+        if(args.length==1){if(history.find(args[0]).isEmpty()){tell(sender,Messages.CHAT_DELETE_NOT_FOUND);return;}auditDeletion(sender,List.of(args[0]));deleteIds(List.of(args[0]));tell(sender,Messages.CHAT_DELETE_SUCCESS);return;}
+        if(args.length==2){final int amount;try{amount=Integer.parseInt(args[1]);}catch(NumberFormatException invalid){tell(sender,Messages.CHAT_DELETE_AMOUNT);return;}
+            if(amount<1||amount>200){tell(sender,Messages.CHAT_DELETE_AMOUNT);return;}
+            plugin.getPlayerNames().resolve(args[0]).whenComplete((found,error)->plugin.getScheduler().runOnServer(()->{if(error!=null||found.isEmpty()){tell(sender,Messages.CHAT_PLAYER_NOT_FOUND);return;}var ids=history.recentBySender(found.get().uuid(),amount).stream().map(ChatHistory.Message::id).toList();auditDeletion(sender,ids);deleteIds(ids);tell(sender,Messages.CHAT_DELETE_MULTIPLE);}));return;}
+        tell(sender,Messages.CHAT_DELETE_USAGE);
     }
     public boolean deletedIdentity(String id){return history.find(id).map(m->m.deleted().get()).orElse(true);}
     @SuppressWarnings("unchecked") private void installInteractiveGuard(){
@@ -296,6 +298,7 @@ public final class ChatService implements Listener,AutoCloseable {
         }catch(ReflectiveOperationException error){plugin.logger().warning("InteractiveChat delayed-deletion guard unavailable.");}
     }
     private void auditDeletion(CommandSender sender,List<String> ids){plugin.logger().info("Chat deletion actor="+(sender instanceof Player p?p.getUniqueId():"CONSOLE")+" messages="+String.join(",",ids));}
+    private void tell(CommandSender sender,Messages message){if(!closed&&(!(sender instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(sender,message,new String[0]);}
     private void tell(CommandSender sender,String text){if(!closed&&(!(sender instanceof Player p)||p.isOnline()))sender.sendMessage("[Allium] "+text);}
     @FunctionalInterface private interface Query<T>{T run()throws Exception;}
     private <T> void work(Query<T> query,java.util.function.Consumer<T> done,java.util.function.Consumer<Throwable> failed){

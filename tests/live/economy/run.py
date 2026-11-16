@@ -1116,7 +1116,8 @@ def chat_gate(lane):
     o.command('vanish MoneyA','vanish');before=ids('MoneyB');say('S23-vanished-must-not-appear');require(ids('MoneyB')==before,lane.name+': vanished public input has no delivery');o.command('vanish MoneyA','vanish')
     # Exact-id deletion keeps duplicate bodies; no staff history leaks into replay.
     say('S23-duplicate');first=hist('MoneyB')[-1];say('S23-duplicate');second=hist('MoneyB')[-1]
-    mark=len(b.lines);o.command('delmsg '+first['id'],'Message deleted.')
+    mark=len(b.lines);deleted_feedback=o.command('delmsg '+first['id'],'Message deleted.')
+    require('#ff55ff' in deleted_feedback.get('colors',[]) and '#55ff55' in deleted_feedback.get('colors',[]),lane.name+': delete confirmation uses colored language prefix and success text',deleted_feedback)
     say('S23-arrived-during-replay');o.command('delmsg '+one['id'],'Message deleted.');window(5)
     visible=ids('MoneyB');packets=b.chats(mark)
     require(first['id'] not in visible and second['id'] in visible and one['id'] not in visible,lane.name+': overlapping id deletes preserve duplicate survivor')

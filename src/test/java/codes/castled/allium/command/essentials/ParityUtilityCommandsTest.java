@@ -58,6 +58,7 @@ class ParityUtilityCommandsTest {
     private ConsoleCommandSender console;
     private ModuleManager modules;
     private World world;
+    private LanguageManager langManager;
 
     private static String containsPlain(String needle) {
         return argThat((String s) -> s != null && s.replaceAll("§.", "").contains(needle));
@@ -84,7 +85,7 @@ class ParityUtilityCommandsTest {
         when(plugin.getDescription()).thenReturn(
                 new PluginDescriptionFile("Allium", "1.0.0-SNAPSHOT", "codes.castled.allium.PluginStart"));
 
-        LanguageManager langManager = mock(LanguageManager.class);
+        langManager = mock(LanguageManager.class);
         for (Messages m : Messages.values()) {
             when(langManager.get(m)).thenReturn(m.getDefault());
         }
@@ -319,7 +320,15 @@ class ParityUtilityCommandsTest {
         new BukkitCommandRenderer(plugin, policy, new GcCommand(plugin, new TimePauseCoordinator(plugin)))
                 .onCommand(console, command, "gc", new String[0]);
         verify(console).sendMessage(contains("Runtime uptime:"));
-        verify(console).sendMessage(contains("world: 3 chunks"));
+        verify(console).sendMessage(containsPlain("world: 3 chunks"));
+    }
+
+    @Test
+    void gcHonorsConfiguredLanguageTextAndPrefix() {
+        when(console.hasPermission("allium.gc")).thenReturn(true);
+        for(var m:Messages.values())if(m.getKey().equals("utility.gc.runtime"))when(langManager.get(m)).thenReturn("{prefix} &aConfigured uptime {uptime}");
+        new BukkitCommandRenderer(plugin,policy,new GcCommand(plugin,new TimePauseCoordinator(plugin))).onCommand(console,command,"gc",new String[0]);
+        verify(console).sendMessage(contains("Configured uptime"));
     }
 
     @Test

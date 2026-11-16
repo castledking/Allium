@@ -30,7 +30,7 @@ class ChatServiceTest {
     final Map<Player,List<String>> received=new HashMap<>();
     ChatRelay relay;BooleanSupplier tick;
     @BeforeEach void setup()throws Exception{
-        plugin=mock(PluginStart.class);config=new YamlConfiguration();config.set("chat.deletion_resend.clear_lines",100);config.set("chat.replay-packets-per-tick",64);when(plugin.getConfig()).thenReturn(config);
+        plugin=mock(PluginStart.class);when(plugin.getMessageManager()).thenReturn(mock(codes.castled.allium.message.MessageManager.class));config=new YamlConfiguration();config.set("chat.deletion_resend.clear_lines",100);config.set("chat.replay-packets-per-tick",64);when(plugin.getConfig()).thenReturn(config);
         when(plugin.logger()).thenReturn(mock(codes.castled.allium.util.AlliumLogger.class));
         var server=mock(Server.class);when(plugin.getServer()).thenReturn(server);when(server.getConsoleSender()).thenReturn(mock(ConsoleCommandSender.class));when(server.getPluginManager()).thenReturn(mock(PluginManager.class));
         var names=mock(PlayerNameService.class);when(plugin.getPlayerNames()).thenReturn(names);when(names.resolve(anyString())).thenReturn(CompletableFuture.completedFuture(Optional.empty()));
@@ -52,6 +52,11 @@ class ChatServiceTest {
     void command(Player p,String action,String label,String...args){var context=mock(BukkitCommandContext.class);when(context.sender()).thenReturn(p);when(context.label()).thenReturn(label);when(context.args()).thenReturn(args);when(context.spec()).thenReturn(CoreCommandSpecs.CHAT_SPECS.stream().filter(s->s.canonicalName().equals(action)).findFirst().orElseThrow());service.dispatch(context);}
     List<ChatHistory.Message> history(Player p){return service.history().visible(p.getUniqueId(),System.currentTimeMillis());}
     void say(Player p,String body){service.send(p,null,body,null);}
+    @Test void deletionFeedbackUsesLanguagePipeline(){
+        var messages=mock(codes.castled.allium.message.MessageManager.class);when(plugin.getMessageManager()).thenReturn(messages);
+        say(alice,"remove me");grants.get(alice).add("allium.delmsg");command(alice,"delmsg","delmsg",history(bob).get(0).id());
+        verify(messages).send(eq(alice),argThat((codes.castled.allium.message.Messages m)->m.getKey().equals("chat.delete.success")),any(String[].class));
+    }
     @Test void permissionLossBeforeServerDeliveryBlocksStaffShortcut(){grants.get(alice).add("allium.staffchat");var event=new AsyncPlayerChatEvent(true,alice,"#secret",new HashSet<>(Set.of(alice,bob)));service.legacyChat(event);grants.get(alice).remove("allium.staffchat");flush();assertTrue(event.isCancelled());assertTrue(history(bob).isEmpty());verifyNoInteractions(relay);}
     @Test void mutedAfterNativeAdmissionDoesNotBroadcastOrRelay(){var event=new AsyncPlayerChatEvent(true,alice,"blocked",new HashSet<>(Set.of(alice,bob)));service.legacyChat(event);when(moderation.isMuted(alice.getUniqueId())).thenReturn(true);flush();assertTrue(history(bob).isEmpty());verifyNoInteractions(relay);}
     @Test void nativeAudienceRestrictionSurvivesFormatting(){var event=new AsyncPlayerChatEvent(true,alice,"only bob",new HashSet<>(Set.of(bob)));service.legacyChat(event);flush();assertTrue(history(alice).isEmpty());assertEquals(1,history(bob).size());}

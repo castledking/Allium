@@ -1,0 +1,81 @@
+# Command visibility and permission resolution
+
+`hide.yml` ports the legacy command-path rules. The module loads by default;
+`settings.enabled` defaults **false** so an upgrade does not apply an unconfigured
+command whitelist. Configure groups, then `/allium hide enabled true` (alias
+`/core hide`). `allium.hide.admin` and `allium.hide.bypass` default to operators.
+
+Membership uses Vault's global group provider when available, or `group.<name>`
+permissions. A configured `default` group applies if none match. Vault is optional.
+Explicit `inherits.commands` and `inherits.tabcompletes` are independent. Loaded
+LuckPerms parent groups are inherited when configured locally and their Vault
+chat weight is no greater than the child's; absent weights are zero. Inheritance
+cycles and missing explicit parents refuse the replacement configuration.
+
+`commands` controls execution; `tabcompletes` controls suggestions. A root covers
+its descendants; `party invite` covers `party invite Alice`, not `party invited`
+or `party kick`. Completion whitelists include the ancestors needed to reach a
+listed path. `^` in tabcompletes follows resolved command rules; `*` matches all,
+and `plugin:*` matches that owner's qualified commands, including registered bare
+aliases. Blacklist denials win over whitelist matches. Execution bypass adds a
+wildcard whitelist but still respects member blacklists, as legacy did.
+Completion bypass skips group/unsafe filtering. Namespace visibility is separate:
+non-bypass viewers see only namespaced roots explicitly allowed in
+`allow-namespaced-suggestions`. The two historical `*-for-ops` settings apply to
+bypass holders. Unlike legacy's unused execution flag, the port actually enforces
+`block-namespaced-commands-for-ops` when enabled.
+
+Native permissions always apply after execution rules. The resolver inspects
+Paper BasicCommand predicates, public NightCore-style root/child APIs, explicit
+Bukkit permissions, and Brigadier requirements using the real native sender
+source. It then considers specific owner/module/action permission candidates in
+LuckPerms, registered permissions and effective attachments. A denied broad
+wildcard alone does not identify a command's required permission. Framework
+executors never run during inspection. Unknown metadata delegates to native
+command dispatch; it grants no permission. Missing command labels are refused.
+
+`/allium hide resolve <online-player> <command...>` reports the resolution source,
+node and result without executing the command. `/allium hide fix <command>
+<permission>` and `unfix <command>` manage explicit mappings used **only** when
+metadata is unknown. Overrides are rows (`command`, `permission`) so dotted nodes
+survive YAML. The player lookup/completion respects vanish visibility.
+
+Administration also provides:
+
+- `status`, `reload`, `enabled true|false`.
+- `group <name> create whitelist|blacklist`.
+- `group <name> whitelist true|false`.
+- `group <name> inherit commands|tabcompletes <parent,parent>`.
+- `group <name> add|remove|check [-c|-t|-tc] <path,path>`; default scope is both.
+
+Edits use a bounded worker and atomic file replacement, preserving
+`hide.yml.before-edit`. Actor/action requests and successful applications are
+logged. A bad reload keeps the active policy. An invalid initial file blocks
+non-bypass access until repaired. File parsing and hint-pack writes run outside
+command/packet listeners. Execution resolves current permissions; immutable client
+snapshots refresh within two seconds, with command-tree updates batched per tick.
+
+With PacketEvents, outgoing command graphs are copied, filtered and compacted;
+hidden detached nodes are removed and indices remapped. Scoped branches and
+redirecting subtrees use server suggestions instead of cached literals. Suggestion
+responses are filtered against the full original input and server replacement
+offset. Correlation is bounded per player; reused pending request IDs are poisoned
+until expiry. Bare-slash and unknown responses can be withheld. Packet listeners
+use immutable snapshots and perform no provider, permission or disk calls.
+Without PacketEvents, affected scoped roots are withheld completely from the
+client tree. Manually typed commands still obey execution rules. Native command
+permissions remain the final authority in either mode.
+
+The completion help line overrides Minecraft's `command.unknown.command` in a
+small deterministic translation pack for 142 locale IDs. Colors use Allium's
+existing formatter; hex maps to the nearest standard color and literal percent
+signs are escaped. The client appends its own error-position suffix.
+`Allium_unknown_command_resource_pack.zip` is exported before plugins enable into
+ResourcePackManager's `mixer` directory, or `plugins/Allium/generated` for manual
+merging. After changes, reload your mixer/delivery owner. It never replaces the
+core item pack or offers a second standalone pack. Empty help text/disabled hide
+removes only Allium-marked helper files; unrelated packs are preserved.
+
+Compatibility evidence distinguishes native server/PacketEvents checks from
+resolver API-shape tests; it does not certify every version of LuckPerms,
+NightCore, or another command framework. See `tests/live/hide/RESULTS.md`.

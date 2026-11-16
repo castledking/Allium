@@ -47,6 +47,7 @@ modules:
   warps: true
   kits: true
   chat: true
+  hide: true
   spawn: true
   moderation: true
   info: true

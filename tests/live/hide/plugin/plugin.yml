@@ -1,0 +1,18 @@
+name: HideGate
+version: '1'
+main: gate.HideGate
+api-version: '1.20'
+depend: [Allium]
+commands:
+  hgparty:
+    aliases: [party]
+    permission: hidegate.party
+  hideghost: {}
+  hgmapped: {}
+  hgguarded:
+    permission: hidegate.guarded
+permissions:
+  hidegate.party:
+    default: true
+  hidegate.guarded:
+    default: false

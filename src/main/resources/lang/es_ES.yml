@@ -1061,3 +1061,23 @@ messaging:
     disabled:
       - "{prefix} &cLas preferencias de sonido de mensajes estan desactivadas en este servidor."
       - "[sound] entity.villager.no 0.9"
+
+hide:
+  unknown:
+    - "{prefix} &cComando desconocido. Escribe &f/help &cpara obtener ayuda."
+  reloaded:
+    - "{prefix} &aConfiguración de comandos ocultos recargada."
+  updated:
+    - "{prefix} &aConfiguración de comandos ocultos actualizada."
+  busy:
+    - "{prefix} &eHay una actualización pendiente. Inténtalo de nuevo en breve."
+  failed:
+    - "{prefix} &cSe rechazó la configuración. Consulta la consola."
+  info:
+    - "{prefix} &7{message}"
+  permission:
+    - "{prefix} &f{player}&7: &f{command} &7mediante &f{source}&7, permiso=&f{permission}&7, permitido=&f{allowed}"
+  usage:
+    - "{prefix} &cUso: &f/allium hide <status|reload|enabled true/false|resolve player command|fix command permission|unfix command|group name create/whitelist/inherit/add/remove/check>"
+  hint-failed:
+    - "{prefix} &eLas reglas están activas, pero no se pudo exportar el paquete de ayuda. Consulta la consola."

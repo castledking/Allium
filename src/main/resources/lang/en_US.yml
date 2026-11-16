@@ -1061,3 +1061,23 @@ messaging:
     disabled:
       - "{prefix} &cMessage sound preferences are disabled on this server."
       - "[sound] entity.villager.no 0.9"
+
+hide:
+  unknown:
+    - "{prefix} &cUnknown command. Type &f/help &cfor help."
+  reloaded:
+    - "{prefix} &aHide configuration reloaded."
+  updated:
+    - "{prefix} &aHide configuration updated."
+  busy:
+    - "{prefix} &eA hide update is already pending. Try again shortly."
+  failed:
+    - "{prefix} &cHide configuration was refused. Check console for details."
+  info:
+    - "{prefix} &7{message}"
+  permission:
+    - "{prefix} &f{player}&7: &f{command} &7via &f{source}&7, permission=&f{permission}&7, allowed=&f{allowed}"
+  usage:
+    - "{prefix} &cUsage: &f/allium hide <status|reload|enabled true/false|resolve player command|fix command permission|unfix command|group name create/whitelist/inherit/add/remove/check>"
+  hint-failed:
+    - "{prefix} &eHide rules are active, but the command hint pack could not be exported. Check console."

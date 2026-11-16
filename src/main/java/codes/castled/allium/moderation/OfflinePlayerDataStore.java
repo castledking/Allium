@@ -61,6 +61,26 @@ public final class OfflinePlayerDataStore {
         }
     }
 
+    public static final class DataVersionRewriteException extends IOException {
+        private final int expectedVersion;
+        private final int rewrittenVersion;
+
+        public DataVersionRewriteException(int expectedVersion, int rewrittenVersion) {
+            super("Refusing offline player data save: would rewrite DataVersion from "
+                    + expectedVersion + " to " + rewrittenVersion);
+            this.expectedVersion = expectedVersion;
+            this.rewrittenVersion = rewrittenVersion;
+        }
+
+        public int expectedVersion() {
+            return expectedVersion;
+        }
+
+        public int rewrittenVersion() {
+            return rewrittenVersion;
+        }
+    }
+
     private static final class LockState {
         boolean online;
         boolean loginFenced;
@@ -80,6 +100,14 @@ public final class OfflinePlayerDataStore {
 
     public Path playerDataDir() {
         return playerDataDir;
+    }
+
+    public int currentDataVersion() {
+        return codec.currentDataVersion();
+    }
+
+    public void runCodecSelfTest() throws IOException {
+        codec.selfTest();
     }
 
     /**
@@ -278,6 +306,11 @@ public final class OfflinePlayerDataStore {
         try {
             // 1. Pre-write CAS + source validation
             verifyTargetMatchesCas(target, expectedHash);
+            int expectedDataVersion = PlayerDataReceiptProof.inspect(baseRawBytes).dataVersion();
+            int currentVersion = codec.currentDataVersion();
+            if (expectedDataVersion > currentVersion) {
+                throw new PlayerDataCodec.DataVersionTooNewException(expectedDataVersion, currentVersion);
+            }
 
             // 2. Encode updated NBT from exact CAS-verified baseline bytes
             byte[] updatedBytes = codec.write(baseRawBytes, type, editedSlots);
@@ -285,7 +318,7 @@ public final class OfflinePlayerDataStore {
                 throw new IOException("Updated player data exceeds compressed size bound");
             }
             PlayerDataReceiptProof.Snapshot memProof = PlayerDataReceiptProof.inspect(updatedBytes);
-            verifyPreservedMetadata(memProof, expectedBukkitValues, codec.currentDataVersion(), "memory output");
+            verifyPreservedMetadata(memProof, expectedBukkitValues, expectedDataVersion, currentVersion, "memory output");
 
             // 3. Write temp file and fsync
             try (FileChannel channel = FileChannel.open(temp,
@@ -300,7 +333,7 @@ public final class OfflinePlayerDataStore {
             // 4. Pre-move read-back verification from disk
             byte[] tempReadBack = readBoundedFile(temp);
             PlayerDataReceiptProof.Snapshot tempProof = PlayerDataReceiptProof.inspect(tempReadBack);
-            verifyPreservedMetadata(tempProof, expectedBukkitValues, codec.currentDataVersion(), "temp read-back");
+            verifyPreservedMetadata(tempProof, expectedBukkitValues, expectedDataVersion, currentVersion, "temp read-back");
             codec.read(tempReadBack, type);
 
             // 5. Commit point synchronized with login fence
@@ -316,7 +349,7 @@ public final class OfflinePlayerDataStore {
                 }
                 // 6. Post-move verification
                 PlayerDataReceiptProof.Snapshot postMove = PlayerDataReceiptProof.inspect(target);
-                verifyPreservedMetadata(postMove, expectedBukkitValues, codec.currentDataVersion(), "post-move");
+                verifyPreservedMetadata(postMove, expectedBukkitValues, expectedDataVersion, currentVersion, "post-move");
             }
 
             return new SavedSnapshot(updatedBytes, sha256(updatedBytes));
@@ -351,11 +384,15 @@ public final class OfflinePlayerDataStore {
     private static void verifyPreservedMetadata(
             PlayerDataReceiptProof.Snapshot proof,
             Map<String, String> expectedBukkitValues,
+            int expectedDataVersion,
             int currentDataVersion,
             String stage
     ) throws IOException {
         if (proof.dataVersion() > currentDataVersion) {
             throw new IOException("Invalid DataVersion after " + stage + ": " + proof.dataVersion());
+        }
+        if (proof.dataVersion() != expectedDataVersion) {
+            throw new DataVersionRewriteException(expectedDataVersion, proof.dataVersion());
         }
         if (!expectedBukkitValues.equals(proof.bukkitValues())) {
             throw new IOException("BukkitValues mismatch during " + stage + " verification");

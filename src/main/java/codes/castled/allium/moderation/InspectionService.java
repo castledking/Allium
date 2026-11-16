@@ -189,6 +189,7 @@ public final class InspectionService implements Listener {
     private final Executor io;
     private final BiPredicate<CommandSender, UUID> canModeratePolicy;
     private final Predicate<Player> busyPolicy;
+    private final Predicate<UUID> offlineHoldPolicy;
     private final Supplier<PlayerNameService> nameService;
 
     private final Map<SessionKey, InspectionSession> activeMutableSessions = new ConcurrentHashMap<>();
@@ -199,6 +200,7 @@ public final class InspectionService implements Listener {
 
     private TaskHandle refreshHandle;
     private volatile boolean closed = true;
+    private volatile boolean offlineEditingEnabled = false;
 
     public InspectionService(
             PluginStart plugin,
@@ -209,13 +211,11 @@ public final class InspectionService implements Listener {
         this(
                 plugin,
                 repository,
-                new OfflinePlayerDataStore(
-                        PlayerDataFiles.directory(plugin.getServer()),
-                        new CraftBukkitPlayerDataCodec(plugin.getServer())
-                ),
+                createOfflineStore(plugin),
                 io,
                 discipline != null ? discipline::canModerate : ((sender, id) -> sender.hasPermission(PERMISSION_BYPASS)),
                 defaultBusyPolicy(plugin),
+                defaultOfflineHoldPolicy(plugin, repository),
                 plugin::getPlayerNames
         );
     }
@@ -229,13 +229,59 @@ public final class InspectionService implements Listener {
             Predicate<Player> busyPolicy,
             Supplier<PlayerNameService> nameService
     ) {
+        this(
+                plugin,
+                repository,
+                offlineStore,
+                io,
+                canModeratePolicy,
+                busyPolicy,
+                defaultOfflineHoldPolicy(plugin, repository),
+                nameService
+        );
+    }
+
+    InspectionService(
+            PluginStart plugin,
+            ModerationRepository repository,
+            @Nullable OfflinePlayerDataStore offlineStore,
+            Executor io,
+            BiPredicate<CommandSender, UUID> canModeratePolicy,
+            Predicate<Player> busyPolicy,
+            Predicate<UUID> offlineHoldPolicy,
+            Supplier<PlayerNameService> nameService
+    ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.repository = Objects.requireNonNull(repository, "repository");
-        this.offlineStore = Objects.requireNonNull(offlineStore, "offlineStore");
+        this.offlineStore = offlineStore;
         this.io = Objects.requireNonNull(io, "io");
         this.canModeratePolicy = Objects.requireNonNull(canModeratePolicy, "canModeratePolicy");
         this.busyPolicy = Objects.requireNonNull(busyPolicy, "busyPolicy");
+        this.offlineHoldPolicy = Objects.requireNonNull(offlineHoldPolicy, "offlineHoldPolicy");
         this.nameService = Objects.requireNonNull(nameService, "nameService");
+    }
+
+    private static @Nullable OfflinePlayerDataStore createOfflineStore(PluginStart plugin) {
+        try {
+            return new OfflinePlayerDataStore(
+                    PlayerDataFiles.directory(plugin.getServer()),
+                    new CraftBukkitPlayerDataCodec(plugin.getServer())
+            );
+        } catch (RuntimeException | LinkageError err) {
+            plugin.logger().severe("Offline playerdata codec initialization FAILED; offline /invsee and /enderchest editing is DISABLED: " + err.getMessage());
+            return null;
+        }
+    }
+
+    private static Predicate<UUID> defaultOfflineHoldPolicy(PluginStart plugin, ModerationRepository repository) {
+        return targetUuid -> {
+            try {
+                return repository.hasPendingWorkflowHold(targetUuid);
+            } catch (SQLException err) {
+                plugin.logger().warning("Refusing offline edit for " + targetUuid + ": could not check pending holds: " + err.getMessage());
+                return true;
+            }
+        };
     }
 
     private static Predicate<Player> defaultBusyPolicy(PluginStart plugin) {
@@ -252,11 +298,26 @@ public final class InspectionService implements Listener {
         };
     }
 
+    public boolean isOfflineEditingEnabled() {
+        return offlineEditingEnabled;
+    }
+
     public void enable() {
         closed = false;
+        if (offlineStore == null) {
+            offlineEditingEnabled = false;
+        } else {
+            try {
+                offlineStore.runCodecSelfTest();
+                offlineEditingEnabled = true;
+            } catch (IOException | RuntimeException | LinkageError err) {
+                offlineEditingEnabled = false;
+                plugin.logger().severe("Offline playerdata codec startup self-test FAILED; disabling offline /invsee and /enderchest editing: " + err.getMessage());
+            }
+        }
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         for (Player online : plugin.getServer().getOnlinePlayers()) {
-            if (online != null && online.isOnline()) {
+            if (online != null && online.isOnline() && offlineStore != null) {
                 offlineStore.markOnline(online.getUniqueId());
             }
         }
@@ -469,11 +530,19 @@ public final class InspectionService implements Listener {
             if (!handleOfflineOrHiddenDenial(viewer, targetName, type)) {
                 return;
             }
+            if (offlineStore == null) {
+                send(viewer, Messages.INSPECT_UNAVAILABLE);
+                return;
+            }
             if (actuallyOnline || offlineStore.isOnlineOrFenced(targetId)) {
                 send(viewer, Messages.INSPECT_OFFLINE_UNAVAILABLE, "{player}", targetName);
                 return;
             }
             boolean editable = viewer.hasPermission(editPermission(type));
+            if (editable && !offlineEditingEnabled) {
+                send(viewer, Messages.INSPECT_OFFLINE_EDIT_DISABLED);
+                return;
+            }
             openOfflineSession(viewer, targetId, targetName, type, editable);
             return;
         }
@@ -549,6 +618,14 @@ public final class InspectionService implements Listener {
             InspectionLayout.InspectionType type,
             boolean editable
     ) {
+        if (offlineStore == null) {
+            send(viewer, Messages.INSPECT_UNAVAILABLE);
+            return;
+        }
+        if (editable && !offlineEditingEnabled) {
+            send(viewer, Messages.INSPECT_OFFLINE_EDIT_DISABLED);
+            return;
+        }
         InspectionSession session = new InspectionSession(
                 viewer,
                 targetUuid,
@@ -569,6 +646,15 @@ public final class InspectionService implements Listener {
                         activeMutableSessions.remove(session.key(), session);
                         if (viewer.isOnline()) {
                             send(viewer, Messages.INSPECT_OFFLINE_UNAVAILABLE, "{player}", targetName);
+                        }
+                    });
+                    return;
+                }
+                if (editable && offlineHoldPolicy.test(targetUuid)) {
+                    runOnServer(() -> {
+                        activeMutableSessions.remove(session.key(), session);
+                        if (viewer.isOnline()) {
+                            send(viewer, Messages.INSPECT_OFFLINE_HOLD, "{player}", targetName);
                         }
                     });
                     return;
@@ -603,14 +689,29 @@ public final class InspectionService implements Listener {
                     });
                     return;
                 }
+                int serverDataVersion = offlineStore.currentDataVersion();
+                if (editable && loaded.dataVersion() != serverDataVersion) {
+                    plugin.logger().warning("Refused offline " + type + " edit for " + targetName + " (" + targetUuid
+                            + "): DataVersion " + loaded.dataVersion() + " != server DataVersion " + serverDataVersion);
+                    runOnServer(() -> {
+                        activeMutableSessions.remove(session.key(), session);
+                        if (viewer.isOnline()) {
+                            send(viewer, Messages.INSPECT_OFFLINE_VERSION_REWRITE, "{player}", targetName);
+                        }
+                    });
+                    return;
+                }
 
                 runOnServer(() -> {
                     Player onlineNow = plugin.getServer().getPlayer(targetUuid);
                     if (closed || !viewer.isOnline() || !hasOfflineOpenPermission(viewer, type, editable)
+                            || (editable && !offlineEditingEnabled)
                             || (onlineNow != null && onlineNow.isOnline()) || offlineStore.isOnlineOrFenced(targetUuid)) {
                         activeMutableSessions.remove(session.key(), session);
                         if (viewer.isOnline() && ((onlineNow != null && onlineNow.isOnline()) || offlineStore.isOnlineOrFenced(targetUuid))) {
                             send(viewer, Messages.INSPECT_OFFLINE_UNAVAILABLE, "{player}", targetName);
+                        } else if (viewer.isOnline() && editable && !offlineEditingEnabled) {
+                            send(viewer, Messages.INSPECT_OFFLINE_EDIT_DISABLED);
                         }
                         return;
                     }
@@ -798,6 +899,10 @@ public final class InspectionService implements Listener {
         }
 
         // OFFLINE editable session
+        if (!offlineEditingEnabled || offlineStore == null) {
+            abortSession(session, "offline-edit-disabled", Messages.INSPECT_OFFLINE_EDIT_DISABLED, null);
+            return false;
+        }
         if (offlineStore.isOnlineOrFenced(session.targetUuid) || plugin.getServer().getPlayer(session.targetUuid) != null) {
             abortSession(session, "target-login", Messages.INSPECT_TARGET_ONLINE, session.targetName);
             return false;
@@ -876,6 +981,11 @@ public final class InspectionService implements Listener {
             completeLoginFlush(session);
             return;
         }
+        if (!offlineEditingEnabled || offlineStore == null) {
+            completeLoginFlush(session);
+            abortSession(session, "offline-edit-disabled", Messages.INSPECT_OFFLINE_EDIT_DISABLED, null);
+            return;
+        }
         if (session.writeInFlight) {
             return;
         }
@@ -899,6 +1009,15 @@ public final class InspectionService implements Listener {
         try {
             io.execute(() -> {
                 try {
+                    if (offlineHoldPolicy.test(session.targetUuid)) {
+                        runOnServer(() -> {
+                            session.writeInFlight = false;
+                            session.lastSyncedSlots = baselineOnFailure;
+                            completeLoginFlush(session);
+                            abortSession(session, "pending-hold", Messages.INSPECT_OFFLINE_HOLD, session.targetName);
+                        });
+                        return;
+                    }
                     OfflinePlayerDataStore.SavedSnapshot saved = offlineStore.save(
                             session.targetUuid,
                             session.type,
@@ -918,6 +1037,14 @@ public final class InspectionService implements Listener {
                         if (session.active && !session.aborted && !closed && session.flushScheduled) {
                             flushOfflineSession(session);
                         }
+                    });
+                } catch (OfflinePlayerDataStore.DataVersionRewriteException rewriteErr) {
+                    plugin.logger().warning("Refused offline " + session.type + " edit for " + session.targetName + ": " + rewriteErr.getMessage());
+                    runOnServer(() -> {
+                        session.writeInFlight = false;
+                        session.lastSyncedSlots = baselineOnFailure;
+                        completeLoginFlush(session);
+                        abortSession(session, "dataversion-rewrite", Messages.INSPECT_OFFLINE_VERSION_REWRITE, session.targetName);
                     });
                 } catch (OfflinePlayerDataStore.CasConflictException conflict) {
                     plugin.logger().warning("Offline " + session.type + " CAS conflict for " + session.targetName + ": " + conflict.getMessage());
@@ -1002,7 +1129,7 @@ public final class InspectionService implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPreLogin(AsyncPlayerPreLoginEvent event) {
-        if (closed || event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED) {
+        if (closed || event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED || offlineStore == null) {
             return;
         }
         UUID uuid = event.getUniqueId();
@@ -1025,7 +1152,7 @@ public final class InspectionService implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPreLoginMonitor(AsyncPlayerPreLoginEvent event) {
-        if (event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED) {
+        if (event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED && offlineStore != null) {
             offlineStore.clearLoginFence(event.getUniqueId());
         }
     }
@@ -1077,7 +1204,9 @@ public final class InspectionService implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
         UUID targetUuid = event.getPlayer().getUniqueId();
-        offlineStore.markOnline(targetUuid);
+        if (offlineStore != null) {
+            offlineStore.markOnline(targetUuid);
+        }
         CopyOnWriteArrayList<InspectionSession> list = sessionsByTarget.get(targetUuid);
         if (list != null) {
             for (InspectionSession session : List.copyOf(list)) {
@@ -1124,7 +1253,9 @@ public final class InspectionService implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuitComplete(PlayerQuitEvent event) {
-        offlineStore.markOffline(event.getPlayer().getUniqueId());
+        if (offlineStore != null) {
+            offlineStore.markOffline(event.getPlayer().getUniqueId());
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)

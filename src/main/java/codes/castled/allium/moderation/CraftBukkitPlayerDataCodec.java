@@ -1,11 +1,14 @@
 package codes.castled.allium.moderation;
 
+import codes.castled.allium.mail.PlayerDataReceiptProof;
+import org.bukkit.Material;
 import org.bukkit.Server;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -16,6 +19,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Reflective CraftBukkit/NMS {@link PlayerDataCodec} supporting both:
@@ -59,6 +63,87 @@ public final class CraftBukkitPlayerDataCodec implements PlayerDataCodec {
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(playerSlots, "playerSlots");
         return backend.write(baseCompressedNbt, type, playerSlots, currentDataVersion());
+    }
+
+    @Override
+    public void selfTest() throws IOException {
+        int currentVersion = currentDataVersion();
+        if (currentVersion <= 0) {
+            throw new IOException("Invalid server DataVersion during codec self-test: " + currentVersion);
+        }
+        byte[] seed = buildSyntheticPlayerDat(currentVersion, "allium:codec_selftest", "roundtrip-v1");
+
+        ItemStack[] inv = new ItemStack[InspectionLayout.INVSEE_PLAYER_SLOT_COUNT];
+        inv[0] = new ItemStack(Material.DIAMOND, 3);
+        inv[39] = new ItemStack(Material.IRON_HELMET, 1);
+        inv[40] = new ItemStack(Material.SHIELD, 1);
+
+        byte[] afterInv = write(seed, InspectionLayout.InspectionType.INVSEE, inv);
+        PlayerDataReceiptProof.Snapshot invProof = PlayerDataReceiptProof.inspect(afterInv);
+        if (invProof.dataVersion() != currentVersion
+                || !"roundtrip-v1".equals(invProof.bukkitValues().get("allium:codec_selftest"))) {
+            throw new IOException("Codec self-test failed to preserve DataVersion/BukkitValues after INVSEE write");
+        }
+        LoadedData invRead = read(afterInv, InspectionLayout.InspectionType.INVSEE);
+        if (!matchesStack(invRead.slots(), 0, Material.DIAMOND, 3)
+                || !matchesStack(invRead.slots(), 39, Material.IRON_HELMET, 1)
+                || !matchesStack(invRead.slots(), 40, Material.SHIELD, 1)
+                || !isEmptyStack(invRead.slots(), 1)) {
+            throw new IOException("Codec self-test INVSEE round-trip mismatch");
+        }
+
+        ItemStack[] ec = new ItemStack[InspectionLayout.ENDERCHEST_GUI_SIZE];
+        ec[0] = new ItemStack(Material.EMERALD, 5);
+        byte[] afterEc = write(afterInv, InspectionLayout.InspectionType.ENDERCHEST, ec);
+        PlayerDataReceiptProof.Snapshot ecProof = PlayerDataReceiptProof.inspect(afterEc);
+        if (ecProof.dataVersion() != currentVersion
+                || !"roundtrip-v1".equals(ecProof.bukkitValues().get("allium:codec_selftest"))) {
+            throw new IOException("Codec self-test failed to preserve DataVersion/BukkitValues after ENDERCHEST write");
+        }
+        LoadedData ecRead = read(afterEc, InspectionLayout.InspectionType.ENDERCHEST);
+        if (!matchesStack(ecRead.slots(), 0, Material.EMERALD, 5) || !isEmptyStack(ecRead.slots(), 1)) {
+            throw new IOException("Codec self-test ENDERCHEST round-trip mismatch");
+        }
+        LoadedData invStillIntact = read(afterEc, InspectionLayout.InspectionType.INVSEE);
+        if (!matchesStack(invStillIntact.slots(), 0, Material.DIAMOND, 3)) {
+            throw new IOException("Codec self-test ENDERCHEST write clobbered Inventory slots");
+        }
+    }
+
+    private static boolean matchesStack(ItemStack[] slots, int index, Material material, int amount) {
+        if (slots == null || index < 0 || index >= slots.length) {
+            return false;
+        }
+        ItemStack stack = slots[index];
+        return stack != null && stack.getType() == material && stack.getAmount() == amount;
+    }
+
+    private static boolean isEmptyStack(ItemStack[] slots, int index) {
+        if (slots == null || index < 0 || index >= slots.length) {
+            return false;
+        }
+        ItemStack stack = slots[index];
+        return stack == null || stack.getType().isAir() || stack.getAmount() <= 0;
+    }
+
+    private static byte[] buildSyntheticPlayerDat(int dataVersion, String bukkitKey, String bukkitValue) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzip = new GZIPOutputStream(baos);
+             DataOutputStream out = new DataOutputStream(gzip)) {
+            out.writeByte(10); // TAG_Compound
+            out.writeUTF("");  // root name
+            out.writeByte(3);  // TAG_Int
+            out.writeUTF("DataVersion");
+            out.writeInt(dataVersion);
+            out.writeByte(10); // TAG_Compound
+            out.writeUTF("BukkitValues");
+            out.writeByte(8);  // TAG_String
+            out.writeUTF(bukkitKey);
+            out.writeUTF(bukkitValue);
+            out.writeByte(0);  // END BukkitValues
+            out.writeByte(0);  // END root
+        }
+        return baos.toByteArray();
     }
 
     private static Backend resolveBackend(Server server) {

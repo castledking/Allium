@@ -151,10 +151,16 @@ public final class InspectGate extends JavaPlugin implements Listener {
                 }
                 case "seedreceipts" -> {
                     Player target = requireOnline(args[1]);
+                    UUID id = target.getUniqueId();
                     PersistentDataContainer pdc = target.getPersistentDataContainer();
-                    pdc.set(NamespacedKey.fromString(PlayerDataReceiptProof.MAIL_RECEIPTS), PersistentDataType.STRING, "mail-proof-s24");
-                    pdc.set(NamespacedKey.fromString(PlayerDataReceiptProof.KIT_RECEIPTS), PersistentDataType.STRING, "kit-proof-s24");
+                    String mailReceipt = "S/" + id + ";C/" + id + "/" + id + "/1,2;FUTURE/mail-s24";
+                    String kitReceipt = "K/" + id + "/" + id + "/starter;FUTURE/kit-s24";
+                    pdc.set(NamespacedKey.fromString(PlayerDataReceiptProof.MAIL_RECEIPTS), PersistentDataType.STRING, mailReceipt);
+                    pdc.set(NamespacedKey.fromString(PlayerDataReceiptProof.KIT_RECEIPTS), PersistentDataType.STRING, kitReceipt);
+                    pdc.set(new NamespacedKey("unknownmod", "custom_marker"), PersistentDataType.STRING, "opaque-unknown-s24");
                     out.put("seededReceipts", true);
+                    out.put("mailReceipt", mailReceipt);
+                    out.put("kitReceipt", kitReceipt);
                 }
                 case "setslot" -> {
                     Player target = requireOnline(args[1]);
@@ -267,6 +273,27 @@ public final class InspectGate extends JavaPlugin implements Listener {
                     Files.write(dat, baos.toByteArray());
                     out.put("newerDataVersion", 9_999_999);
                 }
+                case "olderdat" -> {
+                    UUID id = resolveUuid(args[1]);
+                    Path dat = playerDat(id);
+                    byte[] existing = Files.readAllBytes(dat);
+                    datBackups.put(id, existing);
+                    int oldVersion = PlayerDataReceiptProof.inspect(existing).dataVersion() - 1;
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    try (GZIPOutputStream gz = new GZIPOutputStream(baos);
+                         DataOutputStream dos = new DataOutputStream(gz)) {
+                        dos.writeByte(10); // TAG_Compound
+                        dos.writeUTF("");
+                        dos.writeByte(3); // TAG_Int
+                        dos.writeUTF("DataVersion");
+                        dos.writeInt(oldVersion);
+                        dos.writeByte(0); // TAG_End
+                    }
+                    byte[] older = baos.toByteArray();
+                    Files.write(dat, older);
+                    out.put("olderDataVersion", oldVersion);
+                    out.put("sha256", HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(older)));
+                }
                 case "restoredat" -> {
                     UUID id = resolveUuid(args[1]);
                     byte[] backup = datBackups.remove(id);
@@ -276,6 +303,26 @@ public final class InspectGate extends JavaPlugin implements Listener {
                     Path dat = playerDat(id);
                     Files.write(dat, backup);
                     out.put("restored", true);
+                }
+                case "sethold" -> {
+                    UUID id = resolveUuid(args[1]);
+                    boolean held = Boolean.parseBoolean(args[2]);
+                    try (var conn = allium.getDatabaseManager().connectionSource().connection()) {
+                        if (held) {
+                            try (var ps = conn.prepareStatement(
+                                    "INSERT OR REPLACE INTO allium_mail (id, recipient, sender, sender_name, kind, body, items, item_count, state, origin, unread, created_at, expires_at, source, source_ref, version) "
+                                            + "VALUES ('s24-gate-hold', ?, ?, 'Gate', 'GIFT', NULL, NULL, 1, 'PENDING', 'gate', 1, 0, 0, 'gate', NULL, 1)")) {
+                                ps.setString(1, id.toString());
+                                ps.setString(2, id.toString());
+                                ps.executeUpdate();
+                            }
+                        } else {
+                            try (var ps = conn.prepareStatement("DELETE FROM allium_mail WHERE id = 's24-gate-hold'")) {
+                                ps.executeUpdate();
+                            }
+                        }
+                    }
+                    out.put("pendingHold", modModule().repository().hasPendingWorkflowHold(id));
                 }
                 case "mailbusylock" -> {
                     Player target = requireOnline(args[1]);
@@ -333,7 +380,8 @@ public final class InspectGate extends JavaPlugin implements Listener {
                     UUID id = resolveUuid(args[1]);
                     out.put("invseeActive", inspection().hasActiveMutableSession(id, InspectionLayout.InspectionType.INVSEE));
                     out.put("enderchestActive", inspection().hasActiveMutableSession(id, InspectionLayout.InspectionType.ENDERCHEST));
-                    out.put("fenced", inspection().offlineStore().isOnlineOrFenced(id));
+                    out.put("fenced", inspection().offlineStore() != null && inspection().offlineStore().isOnlineOrFenced(id));
+                    out.put("offlineEditingEnabled", inspection().isOfflineEditingEnabled());
                 }
                 case "db" -> {
                     var repo = modModule().repository();

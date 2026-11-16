@@ -699,6 +699,59 @@ public final class ModerationRepository {
         return out;
     }
 
+    /**
+     * Checks whether the player has an unresolved workflow hold that forbids mutating their offline
+     * {@code <uuid>.dat} file (held economy reservations, pending/claiming mail, or in-flight kit
+     * deliveries). Checks table existence so isolated/minimal module deployments work cleanly.
+     */
+    public boolean hasPendingWorkflowHold(UUID playerUuid) throws SQLException {
+        Objects.requireNonNull(playerUuid, "playerUuid");
+        String uuidText = playerUuid.toString();
+        try (Connection c = source.connection()) {
+            if (tableExists(c, "allium_economy_reservations") && rowExists(
+                    c,
+                    "SELECT 1 FROM allium_economy_reservations WHERE account_uuid = ? AND state = 'HELD' LIMIT 1",
+                    uuidText
+            )) {
+                return true;
+            }
+            if (tableExists(c, "allium_mail") && rowExists(
+                    c,
+                    "SELECT 1 FROM allium_mail WHERE (sender = ? AND state = 'PENDING') OR (recipient = ? AND state = 'CLAIMING') LIMIT 1",
+                    uuidText,
+                    uuidText
+            )) {
+                return true;
+            }
+            if (tableExists(c, "allium_kit_deliveries") && rowExists(
+                    c,
+                    "SELECT 1 FROM allium_kit_deliveries WHERE player_uuid = ? LIMIT 1",
+                    uuidText
+            )) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    private boolean tableExists(Connection c, String tableName) throws SQLException {
+        String sql = dialect == SqlDialect.SQLITE
+                ? "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1"
+                : "SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1";
+        return rowExists(c, sql, tableName);
+    }
+
+    private static boolean rowExists(Connection c, String sql, String... params) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            for (int i = 0; i < params.length; i++) {
+                ps.setString(i + 1, params[i]);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     private static MuteRecord readMute(ResultSet rs) throws SQLException {
         UUID playerUuid = UUID.fromString(rs.getString(1));
         String playerName = rs.getString(2);

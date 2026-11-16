@@ -93,9 +93,11 @@ class InspectionServiceTest {
     private Server server;
     private TaskScheduler scheduler;
     private MessageManager messages;
+    private ConnectionSource connSource;
     private ModerationRepository repository;
     private PlayerNameService names;
     private OfflinePlayerDataStore offlineStore;
+    private Executor ioExecutor;
     private FakeCodec codec;
     private InspectionService service;
 
@@ -117,6 +119,7 @@ class InspectionServiceTest {
     private static final class FakeCodec implements PlayerDataCodec {
         final Map<UUID, ItemStack[]> storedInv = new HashMap<>();
         final Map<UUID, ItemStack[]> storedEc = new HashMap<>();
+        boolean failSelfTest = false;
         boolean stallWrite = false;
         CountDownLatch insideWrite = new CountDownLatch(1);
         CountDownLatch releaseWrite = new CountDownLatch(1);
@@ -124,6 +127,13 @@ class InspectionServiceTest {
         @Override
         public int currentDataVersion() {
             return DATA_VERSION;
+        }
+
+        @Override
+        public void selfTest() throws IOException {
+            if (failSelfTest) {
+                throw new IOException("simulated codec self-test failure");
+            }
         }
 
         @Override
@@ -178,7 +188,7 @@ class InspectionServiceTest {
         names = mock(PlayerNameService.class);
 
         String dbUrl = "jdbc:sqlite:" + tempDir.resolve("moderation.db").toAbsolutePath();
-        ConnectionSource connSource = () -> {
+        connSource = () -> {
             Connection c = DriverManager.getConnection(dbUrl);
             try (Statement st = c.createStatement()) {
                 st.execute("PRAGMA busy_timeout = 5000");
@@ -229,7 +239,7 @@ class InspectionServiceTest {
         codec = new FakeCodec();
         offlineStore = new OfflinePlayerDataStore(playerDataDir, codec);
 
-        Executor ioExecutor = cmd -> {
+        ioExecutor = cmd -> {
             if (immediateIo) {
                 cmd.run();
             } else {
@@ -708,4 +718,153 @@ class InspectionServiceTest {
         }
         return baos.toByteArray();
     }
+
+    @Test
+    void startupSelfTestFailureDisablesOfflineEditingAndLogsLoudly() throws Exception {
+        FakeCodec failingCodec = new FakeCodec();
+        failingCodec.failSelfTest = true;
+        OfflinePlayerDataStore failingStore = new OfflinePlayerDataStore(tempDir.resolve("playerdata-fail"), failingCodec);
+        Files.createDirectories(tempDir.resolve("playerdata-fail"));
+
+        InspectionService guardedService = new InspectionService(
+                plugin,
+                repository,
+                failingStore,
+                ioExecutor,
+                (sender, id) -> true,
+                p -> false,
+                () -> names
+        );
+        guardedService.enable();
+        try {
+            assertFalse(guardedService.isOfflineEditingEnabled(), "Failed codec self-test must disable offline editing");
+            verify(plugin.logger(), atLeastOnce()).severe(contains("startup self-test FAILED"));
+
+            UUID offlineUuid = UUID.randomUUID();
+            directory.put("offlineguy", new NameCache.Entry(offlineUuid, "OfflineGuy", 1L));
+            byte[] initialBytes = buildPlayerDat(DATA_VERSION, Map.of("test:uuid", offlineUuid.toString()));
+            Files.write(failingStore.resolvePlayerFile(offlineUuid), initialBytes);
+
+            Player admin = createPlayer("Admin",
+                    InspectionService.PERMISSION_INVSEE,
+                    InspectionService.PERMISSION_INVSEE_EDIT,
+                    InspectionService.PERMISSION_INVSEE_OFFLINE,
+                    InspectionService.PERMISSION_BYPASS);
+            guardedService.dispatchInvsee(admin, new String[]{"OfflineGuy"});
+            drainQueues();
+
+            verify(messages).send(admin, Messages.INSPECT_OFFLINE_EDIT_DISABLED);
+            verify(admin, never()).openInventory(any(Inventory.class));
+
+            // Online inspection must still work even when offline editing is disabled
+            Player onlineTarget = createPlayer("OnlineGuy");
+            guardedService.dispatchInvsee(admin, new String[]{"OnlineGuy"});
+            drainQueues();
+            assertNotNull(admin.getOpenInventory());
+        } finally {
+            guardedService.disable();
+        }
+    }
+
+    @Test
+    void offlineEditPreservesKSAndUnknownReceiptsAndRefusesPendingHoldAndDataVersionRewrite() throws Exception {
+        UUID offlineUuid = UUID.randomUUID();
+        UUID mailSender = UUID.randomUUID();
+        String name = "ReceiptHolder";
+        directory.put("receiptholder", new NameCache.Entry(offlineUuid, name, 1L));
+        ItemStack[] initialInv = new ItemStack[InspectionLayout.slotCount(InspectionLayout.InspectionType.INVSEE)];
+        initialInv[0] = item(Material.DIAMOND, 3);
+        codec.storedInv.put(offlineUuid, initialInv);
+
+        // Real K/S/C/UNKNOWN tokens in mail_receipts, kit_receipts, and an unknown future marker
+        String complexMailReceipt = "S/" + mailSender + ";C/" + mailSender + "/" + offlineUuid + "/1,2;FUTURE/mail-token";
+        String complexKitReceipt = "K/" + offlineUuid + "/" + mailSender + "/starter;FUTURE/kit-token";
+        Map<String, String> bukkit = new LinkedHashMap<>();
+        bukkit.put("test:uuid", offlineUuid.toString());
+        bukkit.put(PlayerDataReceiptProof.MAIL_RECEIPTS, complexMailReceipt);
+        bukkit.put(PlayerDataReceiptProof.KIT_RECEIPTS, complexKitReceipt);
+        bukkit.put("unknownmod:custom_marker", "v9:opaque-marker");
+
+        Path datFile = offlineStore.resolvePlayerFile(offlineUuid);
+        Files.write(datFile, buildPlayerDat(DATA_VERSION, bukkit));
+        byte[] beforeHoldBytes = Files.readAllBytes(datFile);
+
+        // Create real workflow hold tables in SQLite and insert active HELD reservation
+        try (Connection c = connSource.connection(); Statement st = c.createStatement()) {
+            st.execute("CREATE TABLE IF NOT EXISTS allium_economy_reservations (id TEXT PRIMARY KEY, account_uuid TEXT NOT NULL, state TEXT NOT NULL)");
+            st.execute("CREATE TABLE IF NOT EXISTS allium_mail (id INTEGER PRIMARY KEY, sender TEXT NOT NULL, recipient TEXT NOT NULL, state TEXT NOT NULL)");
+            st.execute("CREATE TABLE IF NOT EXISTS allium_kit_deliveries (player_uuid TEXT NOT NULL)");
+            st.execute("INSERT INTO allium_economy_reservations (id, account_uuid, state) VALUES ('res-1', '" + offlineUuid + "', 'HELD')");
+        }
+
+        // Editable offline open must be refused while a hold is pending, preserving receipt & file verbatim
+        Player editor = createPlayer("Editor",
+                InspectionService.PERMISSION_INVSEE,
+                InspectionService.PERMISSION_INVSEE_EDIT,
+                InspectionService.PERMISSION_INVSEE_OFFLINE,
+                InspectionService.PERMISSION_BYPASS);
+        service.dispatchInvsee(editor, new String[]{name});
+        drainQueues();
+        verify(messages).send(editor, Messages.INSPECT_OFFLINE_HOLD, "{player}", name);
+        verify(editor, never()).openInventory(any(Inventory.class));
+        assertArrayEquals(beforeHoldBytes, Files.readAllBytes(datFile));
+
+        // Read-Only offline inspection MUST still succeed while hold is pending
+        Player reader = createPlayer("Reader",
+                InspectionService.PERMISSION_INVSEE,
+                InspectionService.PERMISSION_INVSEE_OFFLINE,
+                InspectionService.PERMISSION_BYPASS);
+        service.dispatchInvsee(reader, new String[]{name});
+        drainQueues();
+        assertNotNull(reader.getOpenInventory());
+        reader.closeInventory();
+        drainQueues();
+
+        // Transition reservation out of HELD and verify mail PENDING & kit delivery holds too
+        try (Connection c = connSource.connection(); Statement st = c.createStatement()) {
+            st.execute("UPDATE allium_economy_reservations SET state = 'COMMITTED' WHERE id = 'res-1'");
+            st.execute("INSERT INTO allium_mail (sender, recipient, state) VALUES ('" + offlineUuid + "', '" + mailSender + "', 'PENDING')");
+        }
+        assertTrue(repository.hasPendingWorkflowHold(offlineUuid));
+        try (Connection c = connSource.connection(); Statement st = c.createStatement()) {
+            st.execute("DELETE FROM allium_mail");
+            st.execute("INSERT INTO allium_kit_deliveries (player_uuid) VALUES ('" + offlineUuid + "')");
+        }
+        assertTrue(repository.hasPendingWorkflowHold(offlineUuid));
+        try (Connection c = connSource.connection(); Statement st = c.createStatement()) {
+            st.execute("DELETE FROM allium_kit_deliveries");
+        }
+        assertFalse(repository.hasPendingWorkflowHold(offlineUuid));
+
+        // Now offline edit succeeds and preserves K/S/C/FUTURE receipts + unknown marker verbatim
+        service.dispatchInvsee(editor, new String[]{name});
+        drainQueues();
+        Inventory gui = editor.getOpenInventory().getTopInventory();
+        InventoryClickEvent editClick = click(editor, gui, 28, InventoryAction.PLACE_ALL, ClickType.LEFT);
+        service.onInventoryClick(editClick);
+        gui.setItem(28, item(Material.EMERALD, 6));
+        drainQueues();
+
+        assertEquals(Material.EMERALD, codec.storedInv.get(offlineUuid)[1].getType());
+        assertEquals(bukkit, PlayerDataReceiptProof.inspect(Files.readAllBytes(datFile)).bukkitValues());
+        editor.closeInventory();
+        drainQueues();
+
+        // Older DataVersion file cannot be rewritten by offline edit -> Read-Only opens, .edit refused, file untouched
+        byte[] oldVersionBytes = buildPlayerDat(DATA_VERSION - 1, bukkit);
+        Files.write(datFile, oldVersionBytes);
+
+        service.dispatchInvsee(reader, new String[]{name});
+        drainQueues();
+        assertNotNull(reader.getOpenInventory());
+        reader.closeInventory();
+        drainQueues();
+
+        service.dispatchInvsee(editor, new String[]{name});
+        drainQueues();
+        verify(messages).send(editor, Messages.INSPECT_OFFLINE_VERSION_REWRITE, "{player}", name);
+        verify(editor, times(1)).openInventory(any(Inventory.class));
+        assertArrayEquals(oldVersionBytes, Files.readAllBytes(datFile));
+    }
 }
+

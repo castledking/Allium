@@ -28,5 +28,7 @@ public enum SuggestionSource {
     /** All loaded kit names for administrative commands such as {@code /delkit}. */
     ALL_KIT_NAMES,
     /** Loaded jail names for staff commands; never performs storage I/O. */
-    JAIL_NAMES
+    JAIL_NAMES,
+    /** Known players when the sender holds the configured offline permission, else visible online players. */
+    KNOWN_OR_ONLINE_PLAYERS
 }

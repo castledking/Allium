@@ -475,8 +475,36 @@ public final class CoreCommandSpecs {
                 null, arguments, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
     }
 
+    public static final CommandSpec INVSEE = new CommandSpec(
+            "invsee", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of(),
+            "Inspect (and optionally edit) another player's inventory",
+            "/invsee <player>",
+            "/invsee <player>",
+            "allium.invsee", null,
+            List.of(
+                    CommandArgSpec.required("player", null,
+                            SuggestionSpec.knownOrOnlinePlayers(null, "allium.invsee.offline", "allium.moderation.bypass"))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec ENDERCHEST = new CommandSpec(
+            "enderchest", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of("echest", "ec"),
+            "Open your own or inspect another player's ender chest",
+            "/enderchest [player]",
+            "/enderchest <player>",
+            "allium.enderchest", "allium.enderchest.others",
+            List.of(
+                    CommandArgSpec.optional("player", "allium.enderchest.others",
+                            SuggestionSpec.knownOrOnlinePlayers("allium.enderchest.others", "allium.enderchest.offline", "allium.moderation.bypass"))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final List<CommandSpec> MODERATION_SPECS = java.util.stream.Stream.concat(
-            java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES), DISCIPLINE_SPECS.stream()).toList();
+            java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES, INVSEE, ENDERCHEST), DISCIPLINE_SPECS.stream()).toList();
 
     public static final List<CommandSpec> CHAT_SPECS = java.util.stream.Stream.of("nick","channel","delmsg")
         .map(name->new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"chat",

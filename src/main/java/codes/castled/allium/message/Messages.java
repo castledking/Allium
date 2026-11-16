@@ -156,6 +156,19 @@ public enum Messages {
     DISCIPLINE_LIST_ENTRY("moderation.discipline.list-entry", "&7- {player} by {actor}: {message}"),
     DISCIPLINE_LIST_EMPTY("moderation.discipline.list-empty", "{prefix} &7No moderation records found."),
 
+    // -- Inventory & Ender Chest Inspection (S24) --
+    INSPECT_SELF("moderation.inspect.self", "{prefix} &cYou cannot use /invsee on yourself."),
+    INSPECT_BUSY("moderation.inspect.busy", "{prefix} &cThat inventory is busy right now. Try again shortly."),
+    INSPECT_OFFLINE_REQUIRED("moderation.inspect.offline-required", "{prefix} &cOffline inspection requires &f{permission}&c."),
+    INSPECT_OFFLINE_UNAVAILABLE("moderation.inspect.offline-unavailable", "{prefix} &cOffline data for &f{player} &cis unavailable right now."),
+    INSPECT_OFFLINE_CORRUPT("moderation.inspect.offline-corrupt", "{prefix} &cOffline data for &f{player} &ccould not be read safely; nothing was modified."),
+    INSPECT_OFFLINE_NEWER_VERSION("moderation.inspect.offline-newer-version", "{prefix} &cOffline data for &f{player} &cwas saved by a newer Minecraft version; nothing was modified."),
+    INSPECT_CONFLICT("moderation.inspect.conflict", "{prefix} &cOffline data for &f{player} &cchanged externally; inspection closed without saving."),
+    INSPECT_TARGET_ONLINE("moderation.inspect.target-online", "{prefix} &e{player} &ejoined the server; offline inspection closed."),
+    INSPECT_TARGET_OFFLINE("moderation.inspect.target-offline", "{prefix} &e{player} &ewent offline; live inspection closed."),
+    INSPECT_TARGET_DIED("moderation.inspect.target-died", "{prefix} &e{player} &edied; live inventory inspection closed."),
+    INSPECT_UNAVAILABLE("moderation.inspect.unavailable", "{prefix} &cInspection is unavailable right now. Try again shortly."),
+
     // -- Player info utilities (S18) --
     INFO_LIST_EMPTY("info.list.empty", "{prefix} &7There are &f0&7/&f{max} &7players online."),
     INFO_LIST_HEADER("info.list.header", "{prefix} &fOnline players &7({online}/{max}):"),

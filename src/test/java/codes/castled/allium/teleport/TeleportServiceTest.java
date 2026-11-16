@@ -313,6 +313,57 @@ class TeleportServiceTest {
         order.verify(repository).loadCooldowns(reconnect.getUniqueId());
     }
 
+    private UUID offlineFixture()throws Exception{
+        UUID id=UUID.randomUUID();var names=mock(codes.castled.allium.naming.PlayerNameService.class);when(plugin.getPlayerNames()).thenReturn(names);
+        when(names.resolve("Departed")).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(Optional.of(new codes.castled.allium.naming.NameCache.Entry(id,"Departed",1))));
+        SavedLocation point=snapshot(destination());when(repository.load(id,"logout")).thenReturn(Optional.of(point));return id;
+    }
+    @Test void offlineReadsOnWorkerAndUsesHistoryWithDedicatedAcknowledgement()throws Exception{
+        enable();UUID id=offlineFixture();clearInvocations(repository);service.offline(mover,"Departed");
+        verify(repository,never()).load(id,"logout");drainWorker();
+        verify(mover).teleport(argThat((Location p)->p.getX()==100&&p.getZ()==-30),eq(PlayerTeleportEvent.TeleportCause.PLUGIN));
+        verify(repository).saveHistory(eq(mover.getUniqueId()),any(),argThat(v->v.containsKey("tpoffline")));
+        verify(plugin.getMessageManager()).send(mover,codes.castled.allium.message.Messages.TELEPORT_OFFLINE_SUCCESS,"{target}","Departed");
+    }
+    @Test void offlineMissingAndUnloadedWorldNeverMoveOrWriteHistory()throws Exception{
+        enable();UUID id=offlineFixture();when(repository.load(id,"logout")).thenReturn(Optional.empty());service.offline(mover,"Departed");drainWorker();
+        when(repository.load(id,"logout")).thenReturn(Optional.of(new SavedLocation(UUID.randomUUID(),"missing",1,2,3,0,0)));service.offline(mover,"Departed");drainWorker();
+        verify(mover,never()).teleport(any(Location.class),any(PlayerTeleportEvent.TeleportCause.class));verify(repository,never()).saveHistory(any(),any(),any());
+    }
+    @Test void offlineTargetJoiningThenLeavingDuringReadInvalidatesSnapshot()throws Exception{
+        enable();UUID id=offlineFixture();service.offline(mover,"Departed");Player live=player("Departed",id);join(live);online.remove(id);drainWorker();
+        verify(mover,never()).teleport(any(Location.class),any(PlayerTeleportEvent.TeleportCause.class));
+    }
+    @Test void offlineWarmupRechecksPermissionAndTargetIncarnation()throws Exception{
+        warmup();enable();UUID id=offlineFixture();service.offline(mover,"Departed");drainWorker();assertTrue(service.warming(mover.getUniqueId()));
+        Player live=player("Departed",id);join(live);online.remove(id);tickAfterWarmup();drainWorker();assertFalse(service.warming(mover.getUniqueId()));
+        service.offline(mover,"Departed");drainWorker();when(mover.hasPermission("allium.tp.offline")).thenReturn(false);tickAfterWarmup();drainWorker();
+        verify(mover,never()).teleport(any(Location.class),any(PlayerTeleportEvent.TeleportCause.class));
+    }
+    @Test void cancelAndReconnectFenceLateOfflineReplies()throws Exception{
+        enable();offlineFixture();service.offline(mover,"Departed");service.cancel(mover);drainWorker();
+        service.offline(mover,"Departed");Player reconnect=player("Mover",mover.getUniqueId());join(reconnect);drainWorker();
+        verify(mover,never()).teleport(any(Location.class),any(PlayerTeleportEvent.TeleportCause.class));verify(reconnect,never()).teleport(any(Location.class),any(PlayerTeleportEvent.TeleportCause.class));
+    }
+    @Test void offlineQueueRejectionAndStorageFailureLeaveNoStuckBusyState()throws Exception{
+        enable();UUID id=offlineFixture();rejecting=true;service.offline(mover,"Departed");rejecting=false;
+        when(repository.load(id,"logout")).thenThrow(new java.sql.SQLException("test"));service.offline(mover,"Departed");drainWorker();
+        SavedLocation point=snapshot(destination());doReturn(Optional.of(point)).when(repository).load(id,"logout");service.offline(mover,"Departed");drainWorker();verify(mover).teleport(any(Location.class),eq(PlayerTeleportEvent.TeleportCause.PLUGIN));
+    }
+    @Test void offlinePermissionAndModuleAreCheckedAtServiceAdmission()throws Exception{
+        enable();var names=mock(codes.castled.allium.naming.PlayerNameService.class);when(plugin.getPlayerNames()).thenReturn(names);
+        when(mover.hasPermission("allium.tp.offline")).thenReturn(false);service.offline(mover,"Departed");verifyNoInteractions(names);
+        when(mover.hasPermission("allium.tp.offline")).thenReturn(true);config.set("modules.teleport",false);service.offline(mover,"Departed");verifyNoInteractions(names);
+    }
+    @Test void offlinePendingReadRefusesDuplicateAndOtherTeleport()throws Exception{
+        enable();offlineFixture();service.offline(mover,"Departed");service.offline(mover,"Departed");assertFalse(service.teleport(mover,destination(),"home"));drainWorker();
+        verify(plugin.getPlayerNames(),times(1)).resolve("Departed");verify(mover,times(1)).teleport(any(Location.class),eq(PlayerTeleportEvent.TeleportCause.PLUGIN));
+    }
+    @Test void quitSnapshotsLogoutBeforeAsyncSaveAndCleanShutdownSavesOnlinePlayers()throws Exception{
+        enable();clearInvocations(repository);var event=mock(PlayerQuitEvent.class);when(event.getPlayer()).thenReturn(target);service.quit(event);
+        verify(repository,never()).save(eq(target.getUniqueId()),eq("logout"),any());drainWorker();verify(repository).save(eq(target.getUniqueId()),eq("logout"),argThat(p->p.x()==1&&p.y()==64));
+        service.disable();disabled=true;verify(repository).save(eq(mover.getUniqueId()),eq("logout"),any());
+    }
     private Player player(String name, UUID id) {
         Player player = mock(Player.class);
         when(player.getName()).thenReturn(name);

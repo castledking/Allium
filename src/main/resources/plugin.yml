@@ -180,6 +180,11 @@ commands:
     usage: /<command> <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
     permission: allium.give
 
+  tpoffline:
+    description: Teleport to a known player's last saved logout location
+    aliases: [otp, offlinetp]
+    usage: /<command> <player>
+    permission: allium.tp.offline
   tpa:
     description: Allium safe teleport command
     permission: allium.tpa
@@ -1009,4 +1014,8 @@ permissions:
     default: op
   allium.hide.bypass:
     description: Bypass hide whitelist and completion restrictions (blacklists still apply to execution)
+    default: op
+
+  allium.tp.offline:
+    description: Teleport to known offline players' saved logout positions
     default: op

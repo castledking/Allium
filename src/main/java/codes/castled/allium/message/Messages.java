@@ -49,6 +49,8 @@ public enum Messages {
     MODULE_DISABLED("error.module-disabled", "{prefix} &cThis feature is currently disabled."),
 
     // -- Teleportation --
+    TELEPORT_OFFLINE_SUCCESS("teleport.offline-success", "{prefix} &aTeleported to &f{target}&a's last saved logout location."),
+    TELEPORT_OFFLINE_UNAVAILABLE("teleport.offline-unavailable", "{prefix} &cNo saved offline location is available for that player."),
     TELEPORT_SUCCESS("teleport.success", "{prefix} &aTeleported to &f{target}&a."),
     TELEPORT_REQUEST_SENT("teleport.request-sent", "{prefix} &aTeleport request sent to &f{player}&a."),
     TELEPORT_REQUEST_RECEIVED("teleport.request-received", "{prefix} &f{player} &awants to teleport to you. &f/tpaccept &aor &f/tpdeny"),

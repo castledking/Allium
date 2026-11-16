@@ -56,3 +56,6 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
   see playerinfo/AFK-AUTO.md.
 - Legacy hide policy, permissions and hint pack: **+42**, 835 → 877. Native hide
   18/18 on both lanes, with and without PacketEvents; see hide/RESULTS.md.
+- Offline teleport aliases and saved logout positions: **+10**, 877 → 887. Native
+  full teleport 16/16 cases, 156/156 checks on Spigot 1.20.1 and Paper 26.3;
+  see teleport/OFFLINE.md. Hide harness whitespace cleanup only: delta 0.

@@ -146,13 +146,15 @@ Read-only by default, hierarchy- and vanish-aware inspection for online and offl
 ## Offline player data (`.dat`), CAS, and login fence
 
 - `OfflinePlayerDataStore` + `CraftBukkitPlayerDataCodec` support both Spigot 1.20.x (`LegacyBackend` via `NBTCompressedStreamTools` + `PlayerInventory` / `InventoryEnderChest`) and Paper 26.3+ (`CodecBackend` via `NbtIo` + `TagValueInput` / `TagValueOutput` + `EntityEquipment`), wrapping NMS inventories in plain `CraftInventory` so `player == null` never touches `getHolder()`.
-- Root NBT fields (`BukkitValues` including `allium:mail_receipts`, `allium:kit_receipts`, and other plugin PDC tags), attributes, health, location, and unrelated inventories stay intact when updating `Inventory`/`equipment` or `EnderItems`.
+- **Startup codec self-test:** During module enable, `InspectionService` runs `CraftBukkitPlayerDataCodec#selfTest()` (a synthetic compressed NBT round trip covering inventory, ender chest, `DataVersion`, and `BukkitValues`). On any reflection or serialization mismatch, offline editing is automatically disabled (`INSPECT_OFFLINE_EDIT_DISABLED`), logged loudly at `SEVERE` (`Offline inspection editing disabled because the reflective playerdata codec self-test failed`), while online inspection stays operational.
+- Root NBT fields (`BukkitValues` including `allium:mail_receipts`, `allium:kit_receipts`, `FUTURE` tokens, and unknown third-party plugin markers), attributes, health, location, and unrelated inventories stay intact verbatim when updating `Inventory`/`equipment` or `EnderItems`.
 - Loads reject corrupt files (`INSPECT_OFFLINE_CORRUPT`) and newer-version files where `DataVersion > currentDataVersion` (`INSPECT_OFFLINE_NEWER_VERSION`) before opening.
+- **Exact `DataVersion` & pending workflow hold guards for `.edit`:** Offline `.edit` sessions refuse writes if opening or saving would rewrite an older/mismatched `DataVersion` (`loaded.dataVersion() != currentDataVersion` or codec output `proof.dataVersion() != expectedDataVersion` -> `INSPECT_OFFLINE_VERSION_REWRITE`), or if `ModerationRepository#hasPendingWorkflowHold` finds an unreleased hold (`allium_economy_reservations` `HELD`, `allium_mail` `PENDING`/`CLAIMING`, or `allium_kit_deliveries`) — failing closed on storage read error (`INSPECT_OFFLINE_HOLD`). Read-only offline inspection remains permitted in both cases without touching `<uuid>.dat`.
 - Saves use SHA-256 Compare-And-Swap (`CasConflictException`) and temp-file + `StandardCopyOption.REPLACE_EXISTING` atomic rename; concurrent writes aborts the session cleanly without clobbering disk changes.
 - `AsyncPlayerPreLoginEvent` fences logins while an offline session aborts and awaits any in-flight async save up to `moderation.preload-wait-millis` before Minecraft reads `<uuid>.dat`.
 
 ## Audit log & verification
 
 - `INVSEE_OPEN`, `INVSEE_EDIT`, `INVSEE_ABORT`, `ENDERCHEST_OPEN`, and `ENDERCHEST_EDIT` write sanitized (`<= 512` chars) slot-delta records to `allium_moderation_audit` via `ModerationRepository`.
-- Verified with **172/172** live checks on Spigot 1.20.1 (`86/86`) and Paper 26.3 (`86/86`) with SQLite and **796 unit tests** (**+15** from S23 baseline 781). See [S24 live results](../tests/live/inspection/RESULTS.md).
+- Verified with **196/196** live checks on Spigot 1.20.1 (`98/98`, `spigot-r14`) and Paper 26.3 (`98/98`, `paper-r2`) with SQLite and **799 unit tests** (`allium-api`: 4, `allium-core`: 278, root: 517; **+18** from S23 baseline 781). See [S24 live results](../tests/live/inspection/RESULTS.md).
 

@@ -17,6 +17,13 @@ public interface PlayerDataCodec {
 
     byte[] write(byte[] baseCompressedNbt, InspectionLayout.InspectionType type, ItemStack[] playerSlots) throws IOException;
 
+    /**
+     * Runs a synthetic in-memory round-trip proving inventory, ender chest, {@code DataVersion},
+     * and {@code BukkitValues} serialization works on the current server runtime.
+     */
+    default void selfTest() throws IOException {
+    }
+
     record LoadedData(int dataVersion, ItemStack[] slots) {
         public LoadedData {
             Objects.requireNonNull(slots, "slots");

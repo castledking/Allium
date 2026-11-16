@@ -43,12 +43,21 @@ class OfflinePlayerDataStoreTest {
         int currentVersion = SERVER_DATA_VERSION;
         boolean dropBukkitValueOnWrite;
         boolean emitTooNewVersionOnWrite;
+        boolean rewriteToCurrentVersionOnWrite;
+        boolean failSelfTest;
         CountDownLatch blockOnWrite;
         CountDownLatch insideWrite;
 
         @Override
         public int currentDataVersion() {
             return currentVersion;
+        }
+
+        @Override
+        public void selfTest() throws IOException {
+            if (failSelfTest) {
+                throw new IOException("simulated codec self-test failure");
+            }
         }
 
         @Override
@@ -79,7 +88,9 @@ class OfflinePlayerDataStoreTest {
             if (dropBukkitValueOnWrite) {
                 values.remove(PlayerDataReceiptProof.MAIL_RECEIPTS);
             }
-            int outVersion = emitTooNewVersionOnWrite ? currentVersion + 10 : base.dataVersion();
+            int outVersion = emitTooNewVersionOnWrite
+                    ? currentVersion + 10
+                    : (rewriteToCurrentVersionOnWrite ? currentVersion : base.dataVersion());
             return buildPlayerDat(outVersion, values);
         }
     }
@@ -89,6 +100,37 @@ class OfflinePlayerDataStoreTest {
         targetUuid = UUID.randomUUID();
         codec = new FakeCodec();
         store = new OfflinePlayerDataStore(tempDir, codec);
+    }
+
+    @Test
+    void saveRefusesWhenCodecRewritesDataVersionWithoutModifyingDiskFile() throws Exception {
+        int olderVersion = SERVER_DATA_VERSION - 120;
+        Map<String, String> bukkit = Map.of(PlayerDataReceiptProof.MAIL_RECEIPTS, "S/keep-me");
+        byte[] initial = buildPlayerDat(olderVersion, bukkit);
+        Path file = store.resolvePlayerFile(targetUuid);
+        Files.write(file, initial);
+
+        OfflinePlayerDataStore.LoadedSnapshot loaded = store.load(targetUuid, InspectionLayout.InspectionType.INVSEE);
+        assertEquals(olderVersion, loaded.dataVersion());
+
+        codec.rewriteToCurrentVersionOnWrite = true;
+        OfflinePlayerDataStore.DataVersionRewriteException err = assertThrows(
+                OfflinePlayerDataStore.DataVersionRewriteException.class,
+                () -> store.save(
+                        targetUuid,
+                        InspectionLayout.InspectionType.INVSEE,
+                        loaded.sha256(),
+                        loaded.rawBytes(),
+                        loaded.bukkitValues(),
+                        new ItemStack[InspectionLayout.INVSEE_PLAYER_SLOT_COUNT]
+                )
+        );
+        assertEquals(olderVersion, err.expectedVersion());
+        assertEquals(SERVER_DATA_VERSION, err.rewrittenVersion());
+        assertArrayEquals(initial, Files.readAllBytes(file));
+
+        codec.failSelfTest = true;
+        assertThrows(IOException.class, () -> store.runCodecSelfTest());
     }
 
     @Test

@@ -738,17 +738,37 @@ def run_suite(kind, port):
     # Scope 3: Offline /invsee & /enderchest, NBT/BukkitValues Preservation, CAS/Corrupt/Newer/Login Fence
     # ------------------------------------------------------------------
     scopes.append(lane.name + ':offline-nbt-cas-loginfence')
+    require(lane.fixture('session InspNorm').get('offlineEditingEnabled') is True,
+            lane.name + ': reflective playerdata codec startup self-test passed (offline editing enabled)')
+
     # Offline gating: requires BOTH .offline AND bypass
     staff.command('invsee InspNorm', 'allium.invsee.offline')
     lane.perm('InspStaff', 'allium.invsee.offline', True)
     staff.command('invsee InspNorm', 'moderation hierarchy')
     lane.perm('InspStaff', 'allium.moderation.bypass', True)
 
-    # Verify offline edit preserves exact allium:mail_receipts & allium:kit_receipts on InspObs (without reconnecting InspObs)
+    # Verify pending workflow hold refuses offline .edit while keeping S/K/unknown receipts & Read-Only working;
+    # once cleared, offline edit preserves S/K/FUTURE receipts + unknown marker verbatim on InspObs
     lane.perm('InspStaff', 'allium.invsee.edit', True)
-    lane.fixture('seedreceipts InspObs')
+    seeded_r = lane.fixture('seedreceipts InspObs')
     obs.disconnect()
     wait(lambda: lane.fixture('datinfo InspObs')['exists'], lane.name + ': InspObs .dat written on quit')
+    dat_obs_before_hold = lane.fixture('datinfo InspObs')
+
+    hold_on = lane.fixture('sethold InspObs true')
+    require(hold_on.get('pendingHold') is True, lane.name + ': workflow hold row seeded for InspObs')
+    staff.command('invsee InspObs', 'pending workflow hold')
+    lane.perm('InspStaff', 'allium.invsee.edit', False)
+    ro_hold = staff.cmd('invsee InspObs')
+    ro_hold_w = staff.open_window(ro_hold)
+    require(ro_hold_w['windowId'] > 0, lane.name + ': offline Read-Only /invsee allowed while workflow hold pending')
+    staff.close_gui()
+    lane.perm('InspStaff', 'allium.invsee.edit', True)
+    require(lane.fixture('datinfo InspObs')['sha256'] == dat_obs_before_hold['sha256'],
+            lane.name + ': offline .dat untouched while workflow hold refused edit')
+    hold_off = lane.fixture('sethold InspObs false')
+    require(hold_off.get('pendingHold') is False, lane.name + ': workflow hold cleared for InspObs')
+
     lane.fixture('setslot InspStaff 0 STICK 4')
     obs_ed = staff.cmd('invsee InspObs')
     obs_w = staff.open_window(obs_ed)
@@ -760,9 +780,10 @@ def run_suite(kind, port):
     wait(lambda: lane.fixture('datinfo InspObs')['inv'].get('0') == '4xSTICK',
          lane.name + ': offline /invsee edit on InspObs flushed to .dat')
     dat_obs = lane.fixture('datinfo InspObs')
-    require(dat_obs['bukkitValues'].get('allium:mail_receipts') == 'mail-proof-s24'
-            and dat_obs['bukkitValues'].get('allium:kit_receipts') == 'kit-proof-s24',
-            lane.name + ': offline /invsee edit preserves allium:mail_receipts and allium:kit_receipts verbatim',
+    require(dat_obs['bukkitValues'].get('allium:mail_receipts') == seeded_r['mailReceipt']
+            and dat_obs['bukkitValues'].get('allium:kit_receipts') == seeded_r['kitReceipt']
+            and dat_obs['bukkitValues'].get('unknownmod:custom_marker') == 'opaque-unknown-s24',
+            lane.name + ': offline /invsee edit preserves S/K/FUTURE receipts and unknown marker verbatim',
             {'bukkitValues': dat_obs['bukkitValues']})
 
     # Offline Read-Only confinement
@@ -834,13 +855,25 @@ def run_suite(kind, port):
             and dat_off_ec['bukkitValues'].get('inspgate:marker') == 'keep-me-s24',
             lane.name + ': offline /enderchest updates EnderItems and preserves BukkitValues PDC')
 
-    # Corrupt .dat & newer DataVersion refusal
+    # Corrupt .dat, newer DataVersion refusal, and older DataVersion rewrite refusal
     lane.fixture('corruptdat InspNorm')
     staff.command('invsee InspNorm', 'could not be read safely')
     lane.fixture('restoredat InspNorm')
 
     lane.fixture('newerdat InspNorm')
     staff.command('invsee InspNorm', 'newer Minecraft version')
+    lane.fixture('restoredat InspNorm')
+
+    older_info = lane.fixture('olderdat InspNorm')
+    lane.perm('InspStaff', 'allium.invsee.edit', False)
+    old_ro = staff.cmd('invsee InspNorm')
+    old_ro_w = staff.open_window(old_ro)
+    require(old_ro_w['windowId'] > 0, lane.name + ': offline Read-Only /invsee allowed on older DataVersion .dat')
+    staff.close_gui()
+    lane.perm('InspStaff', 'allium.invsee.edit', True)
+    staff.command('invsee InspNorm', 'different Minecraft DataVersion')
+    require(lane.fixture('datinfo InspNorm')['sha256'] == older_info['sha256'],
+            lane.name + ': older DataVersion .dat untouched after offline .edit refusal')
     lane.fixture('restoredat InspNorm')
 
     # CAS conflict detection when external writer touches <uuid>.dat while offline session open
@@ -876,6 +909,24 @@ def run_suite(kind, port):
             and live_after_login['pdc'].get('inspgate:marker') == 'keep-me-s24',
             lane.name + ': target login after offline edits observes all updated inv/enderchest slots and preserved PDC',
             {'live': live_after_login})
+
+    # Login racing an active offline edit write: click immediately followed by norm.connect() with zero pause
+    norm.disconnect()
+    wait(lambda: not lane.fixture('session InspNorm')['fenced'], lane.name + ': InspNorm fenced cleared after quit')
+    lane.fixture('setslot InspStaff 0 LAPIS_BLOCK 1')
+    race_open = staff.cmd('invsee InspNorm')
+    race_w = staff.open_window(race_open)
+    staff.wait_content(race_open, race_w['windowId'])
+    race_start = len(staff.lines)
+    staff.click(72, 0, 0)
+    staff.click(30, 0, 0)
+    norm.connect()
+    staff.chat(race_start, 'joined the server; offline inspection closed')
+    staff.wait_close(race_start)
+    live_race = lane.fixture('inv InspNorm')
+    require(live_race['slots']['allInv'].get('3') == '1xLAPIS_BLOCK',
+            lane.name + ': target login racing active offline edit waits for flush and sees edited item on join',
+            {'live': live_race})
 
     # Prepare one more offline edit (put 2xGOLD_BLOCK in InspNorm offhand) and verify across FULL SERVER RESTART
     norm.disconnect()

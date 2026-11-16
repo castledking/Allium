@@ -1,33 +1,145 @@
 package codes.castled.allium.command.essentials;
 
 import codes.castled.allium.PluginStart;
-import codes.castled.allium.command.*;
+import codes.castled.allium.command.BukkitCommandContext;
+import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
-import codes.castled.allium.module.*;
+import codes.castled.allium.message.Messages;
+import codes.castled.allium.naming.PlayerNameVisibility;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 
+import java.util.Locale;
+
 /** Shared command/sign entry point for self-service inventory utilities. */
-public record UtilityCommand(PluginStart plugin,CommandSpec spec) implements SpecCommandHandler {
-    @Override public void execute(BukkitCommandContext context){
-        if(!(context.sender() instanceof Player player)||context.args().length!=0)return;
-        if(plugin.getModuleManager().getModule("kits") instanceof KitsModule kits&&kits.isEnabled()&&kits.kits().busy(player)
-            ||plugin.getModuleManager().getModule("mail") instanceof MailModule mail&&mail.isEnabled()&&mail.mail().busy(player)){
-            player.sendMessage("[Allium] Your inventory is busy with receipt recovery.");return;
+public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements SpecCommandHandler {
+
+    public static final class DisposalHolder implements InventoryHolder {
+        private Inventory inventory;
+
+        void setInventory(Inventory inventory) {
+            this.inventory = inventory;
         }
-        switch(spec.canonicalName()){
-            case "repair"->{
-                var item=player.getInventory().getItemInMainHand();var meta=item.getItemMeta();
-                if(meta instanceof Damageable damageable&&damageable.hasDamage()){damageable.setDamage(0);item.setItemMeta(meta);player.sendMessage("[Allium] Repaired the held item.");}
-                else player.sendMessage("[Allium] Hold a damaged item to repair.");
+
+        @Override
+        public Inventory getInventory() {
+            return inventory;
+        }
+    }
+
+    public static final class DisposalListener implements Listener {
+        @EventHandler(priority = EventPriority.MONITOR)
+        public void onClose(InventoryCloseEvent event) {
+            if (event.getInventory().getHolder() instanceof DisposalHolder) {
+                event.getInventory().clear();
             }
-            case "disposal"->player.openInventory(Bukkit.createInventory(null,27,"Disposal"));
-            case "workbench"->player.openWorkbench(null,true);
-            case "anvil"->player.openInventory(Bukkit.createInventory(null,InventoryType.ANVIL,"Anvil"));
-            case "info"->player.sendMessage("[Allium] "+plugin.getServer().getName()+" — "+plugin.getServer().getOnlinePlayers().stream().filter(target->codes.castled.allium.naming.PlayerNameVisibility.canSee(player,target)).count()+" player(s) online.");
-            default->throw new IllegalArgumentException("unknown utility");
         }
+    }
+
+    @Override
+    public void execute(BukkitCommandContext context) {
+        if ("info".equals(spec.canonicalName())) {
+            if (context.args().length != 0) {
+                context.sendInvalidArgs(spec.selfUsage());
+                return;
+            }
+            long count = plugin.getServer().getOnlinePlayers().stream()
+                    .filter(target -> !(context.sender() instanceof Player viewer) || PlayerNameVisibility.canSee(viewer, target))
+                    .count();
+            context.sender().sendMessage("[Allium] " + plugin.getServer().getName() + " \u2014 " + count + " player(s) online.");
+            return;
+        }
+
+        if (!(context.sender() instanceof Player player)) {
+            UtilitySupport.send(plugin, context.sender(), Messages.PLAYER_ONLY);
+            return;
+        }
+
+        if ("repair".equals(spec.canonicalName())) {
+            if (context.args().length > 1) {
+                context.sendInvalidArgs(spec.selfUsage());
+                return;
+            }
+            String mode = context.args().length == 0 ? "hand" : context.args()[0].toLowerCase(Locale.ROOT);
+            if (!"hand".equals(mode) && !"all".equals(mode)) {
+                context.sendInvalidArgs(spec.selfUsage());
+                return;
+            }
+            if ("all".equals(mode) && !player.hasPermission("allium.repair.all")) {
+                UtilitySupport.send(plugin, player, Messages.NO_PERMISSION, "{cmd}", "repair all");
+                return;
+            }
+            if (UtilitySupport.isInventoryBusy(plugin, player)) {
+                player.sendMessage("[Allium] Your inventory is busy with receipt recovery.");
+                return;
+            }
+            if ("hand".equals(mode)) {
+                var item = player.getInventory().getItemInMainHand();
+                var meta = item == null ? null : item.getItemMeta();
+                if (meta instanceof Damageable damageable && damageable.hasDamage()) {
+                    damageable.setDamage(0);
+                    item.setItemMeta(meta);
+                    player.sendMessage("[Allium] Repaired the held item.");
+                } else {
+                    player.sendMessage("[Allium] Hold a damaged item to repair.");
+                }
+                return;
+            }
+            int repaired = repairAll(player);
+            if (repaired > 0) {
+                UtilitySupport.send(plugin, player, Messages.UTILITY_REPAIR_ALL, "{count}", Integer.toString(repaired));
+                UtilitySupport.audit(plugin, player, "repair_all", "repaired=" + repaired);
+            } else {
+                UtilitySupport.send(plugin, player, Messages.UTILITY_REPAIR_NONE);
+            }
+            return;
+        }
+
+        if (context.args().length != 0) {
+            context.sendInvalidArgs(spec.selfUsage());
+            return;
+        }
+        if (UtilitySupport.isInventoryBusy(plugin, player)) {
+            player.sendMessage("[Allium] Your inventory is busy with receipt recovery.");
+            return;
+        }
+
+        switch (spec.canonicalName()) {
+            case "disposal" -> {
+                DisposalHolder holder = new DisposalHolder();
+                Inventory disposal = plugin.getServer().createInventory(holder, 27, "Disposal");
+                holder.setInventory(disposal);
+                player.openInventory(disposal);
+            }
+            case "workbench" -> player.openWorkbench(null, true);
+            case "anvil" -> player.openInventory(plugin.getServer().createInventory(null, InventoryType.ANVIL, "Anvil"));
+            default -> throw new IllegalArgumentException("unknown utility");
+        }
+    }
+
+    private static int repairAll(Player player) {
+        int repaired = 0;
+        ItemStack[] contents = player.getInventory().getContents();
+        for (ItemStack item : contents) {
+            if (UtilitySupport.isAir(item)) {
+                continue;
+            }
+            var meta = item.getItemMeta();
+            if (meta instanceof Damageable damageable && damageable.hasDamage()) {
+                damageable.setDamage(0);
+                item.setItemMeta(meta);
+                repaired++;
+            }
+        }
+        return repaired;
     }
 }

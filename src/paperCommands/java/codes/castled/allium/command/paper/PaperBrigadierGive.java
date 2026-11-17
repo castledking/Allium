@@ -53,6 +53,7 @@ public final class PaperBrigadierGive {
                     .requires(source -> source.getSender().hasPermission(permission))
                     .then(Commands.argument("targets", ArgumentTypes.players())
                             .then(Commands.argument("item", StringArgumentType.greedyString())
+                                    .suggests((context,builder)->{GiveCommand current=CURRENT.get();if(current!=null)for(String value:current.completeItems(builder.getRemaining()))builder.suggest(value);return builder.buildFuture();})
                                     .executes(context -> {
                                         GiveCommand current = CURRENT.get();
                                         if (current == null) {

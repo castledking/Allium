@@ -75,7 +75,9 @@ class ParityUtilityCommandsTest {
     @BeforeEach
     void setUp() {
         plugin = mock(PluginStart.class);
+        when(plugin.getConfig()).thenReturn(new org.bukkit.configuration.file.YamlConfiguration());
         server = mock(Server.class);
+        when(plugin.getConfig()).thenReturn(new org.bukkit.configuration.file.YamlConfiguration());
         modules = mock(ModuleManager.class);
         world = mock(World.class);
         when(plugin.getServer()).thenReturn(server);
@@ -387,19 +389,18 @@ class ParityUtilityCommandsTest {
         when(sword.getItemMeta()).thenReturn(meta);
         when(inv.getItemInMainHand()).thenReturn(sword);
 
-        // Above-max blocked without allium.enchant.unsafe
+        // Safe default clamps instead of applying an unsafe level.
         renderer.onCommand(alice, command, "enchant", new String[]{"sharpness", "10", "Bob"});
-        verify(meta, never()).addEnchant(any(), anyInt(), anyBoolean());
-        verify(alice).sendMessage(contains("allium.enchant.unsafe"));
-
-        // Safe level in legacy order <player> <enchant> <level> succeeds
+        verify(meta).addEnchant(same(sharp), eq(5), eq(false));
+        verify(alice).sendMessage(containsPlain("Limiting to 5"));
         renderer.onCommand(alice, command, "enchant", new String[]{"Bob", "sharpness", "5"});
-        verify(meta).addEnchant(same(sharp), eq(5), eq(true));
-
-        // Unsafe allowed when explicit permission granted
+        verify(meta,times(2)).addEnchant(same(sharp),eq(5),eq(false));
         when(alice.hasPermission("allium.enchant.unsafe")).thenReturn(true);
         renderer.onCommand(alice, command, "enchant", new String[]{"sharpness", "10", "Bob"});
-        verify(meta).addEnchant(same(sharp), eq(10), eq(true));
+        verify(meta,times(3)).addEnchant(same(sharp),eq(5),eq(false));
+        plugin.getConfig().set("allow-unsafe-enchants",true);
+        renderer.onCommand(alice, command, "enchant", new String[]{"sharpness", "10", "Bob"});
+        verify(meta).addEnchant(same(sharp),eq(10),eq(true));
 
         // Level 0 removes
         renderer.onCommand(alice, command, "enchant", new String[]{"sharpness", "0", "Bob"});

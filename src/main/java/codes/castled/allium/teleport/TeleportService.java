@@ -217,6 +217,10 @@ public final class TeleportService implements Listener {
             catch(SQLException e){onServer(()->send(player,Messages.TELEPORT_STORAGE_FAILED));}
         },()->send(player,Messages.TELEPORT_STORAGE_FAILED));
     }
+    public void forceLocation(CommandSender actor,Player mover,Location destination,String command){
+        if(!actor.hasPermission(permission(command))||!visible(actor,mover)){send(actor,Messages.NO_PERMISSION);return;}
+        Location snapshot=destination.clone();begin(mover,actor,command,()->snapshot.clone(),null,null,false,()->visible(actor,mover)&&(actor==mover||!(actor instanceof Player p)||allowed(p,mover,actor,true,false)&&allowed(mover,p,actor,true,false)));
+    }
     public void force(CommandSender actor,Player mover,Player target,String command) {
         boolean allowed=actor.hasPermission("allium."+command)&&(!(actor instanceof Player)||command.equals("tphere")||mover==actor||actor.hasPermission("allium.tp.others"))&&visible(actor,mover)&&visible(actor,target)
                 &&allowed(mover,target,actor,true,false)&&allowed(target,mover,actor,true,false);
@@ -254,7 +258,7 @@ public final class TeleportService implements Listener {
     private boolean offlineEnabled(){return plugin.getConfig().getBoolean("modules.teleport",true)&&(plugin.getCommandManager()==null||!plugin.getCommandManager().getFamilyPolicy().isDisabled("tpoffline"));}
     private boolean offlineCurrent(Player p,OfflineLookup query){return !closed&&offlineLookups.get(p.getUniqueId())==query&&same(query.session);}
     private void offlineFailed(Player p,OfflineLookup query,Messages key){if(offlineLookups.remove(p.getUniqueId(),query))send(p,key);}
-    private static String permission(String command){return command.equals("tpoffline")?"allium.tp.offline":"allium."+command;}
+    private static String permission(String command){return command.equals("tpoffline")?"allium.tp.offline":command.equals("there")?"allium.tpthere":"allium."+command;}
     private void saveLogout(Player player){
         UUID id=player.getUniqueId();SavedLocation point=saved(player.getLocation());
         submit(()->{try{checkWrite();repository.save(id,"logout",point);}catch(SQLException|RuntimeException error){plugin.logger().warning("Logout teleport location could not be saved for "+id+"; the previous last-known position is retained.");}},()->plugin.logger().warning("Logout teleport queue full for "+id+"; the previous last-known position is retained."));

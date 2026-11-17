@@ -110,24 +110,15 @@ public final class EnchantCommand implements SpecCommandHandler {
             return;
         }
 
-        boolean incompatible = !(meta instanceof EnchantmentStorageMeta) && !enchantment.canEnchantItem(held);
-        boolean aboveMax = parsed.level() > enchantment.getMaxLevel();
-        boolean unsafe = incompatible || aboveMax;
-        if (unsafe && !context.sender().hasPermission("allium.enchant.unsafe")) {
-            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_ENCHANT_UNSAFE_DENIED);
-            return;
-        }
-
-        if (meta instanceof EnchantmentStorageMeta book) {
-            book.addStoredEnchant(enchantment, parsed.level(), true);
-        } else {
-            meta.addEnchant(enchantment, parsed.level(), true);
-        }
+        boolean unsafe=plugin.getConfig().getBoolean("allow-unsafe-enchants",false)&&context.sender().hasPermission("allium.enchant.unsafe");
+        try{String notice=EnchantmentAdapter.apply(held,meta,enchantment,""+parsed.level(),unsafe);if(notice!=null)codes.castled.allium.item.library.EnchantFeedback.send(plugin,context.sender(),notice);}
+        catch(codes.castled.allium.item.library.ItemBuildException invalid){if(!codes.castled.allium.item.library.EnchantFeedback.send(plugin,context.sender(),invalid.getMessage()))UtilitySupport.send(plugin,context.sender(),Messages.UTILITY_ENCHANT_UNKNOWN,"{enchant}",parsed.enchantmentToken());return;}
+        int applied=unsafe?parsed.level():Math.min(parsed.level(),enchantment.getMaxLevel());
         held.setItemMeta(meta);
 
         UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_ENCHANT_APPLIED,
                 "{enchant}", enchantName,
-                "{level}", Integer.toString(parsed.level()),
+                "{level}", Integer.toString(applied),
                 "{player}", target.getName(),
                 "{item}", itemName);
         if (unsafe || target != context.sender()) {

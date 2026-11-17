@@ -66,6 +66,8 @@ error:
     - "{prefix} &cThis feature is currently disabled."
     - "[sound] entity.villager.no 0.9"
 teleport:
+  selection:
+    - "{prefix} &e{message}"
   offline-success:
     - "{prefix} &aTeleported to &f{target}&a's last saved logout location."
     - "[sound] entity.enderman.teleport 1.2"
@@ -1105,3 +1107,11 @@ help:
     - "&e« Previous"
   next:
     - "&eNext »"
+
+give:
+  unsafe-level:
+    - "{prefix} &eEnchantment &f{enchant} &eexceeds maximum level. Limiting to &f{maxLevel}&e."
+  unsafe-enchant:
+    - "{prefix} &cEnchantment &f{enchant} &ccan't be applied to &f{item}&c!"
+  conflicting-enchants:
+    - "{prefix} &cEnchantment &f{enchant} &ccannot be combined with &f{enchant2} &con &f{item}&c!"

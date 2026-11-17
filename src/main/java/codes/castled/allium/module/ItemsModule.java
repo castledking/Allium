@@ -20,6 +20,13 @@ import org.bukkit.configuration.ConfigurationSection;
  */
 public final class ItemsModule extends AbstractModule {
 
+    private codes.castled.allium.item.library.LegacyItemDatabase database;
+    public java.util.List<String> complete(String prefix){
+        if(database==null)return java.util.List.of();int semicolon=prefix.lastIndexOf(';');
+        if(semicolon>=0){String base=prefix.substring(0,prefix.indexOf(';'));String alias=database.lookup(base);if(alias!=null)base=alias.split(";",2)[0];var material=org.bukkit.Material.matchMaterial(base);if(material==null||!material.isItem())return java.util.List.of();var used=new java.util.ArrayList<org.bukkit.enchantments.Enchantment>();for(String part:prefix.substring(0,semicolon).split(";")){int colon=part.lastIndexOf(':');if(colon>0)codes.castled.allium.item.library.EnchantmentAdapter.find(part.substring(0,colon)).ifPresent(used::add);}String head=prefix.substring(0,semicolon+1);return codes.castled.allium.item.library.EnchantCompletions.names(new org.bukkit.inventory.ItemStack(material),prefix.substring(semicolon+1).toLowerCase(java.util.Locale.ROOT),used).stream().map(key->head+key+":").toList();}
+        return database.complete(prefix.toLowerCase(java.util.Locale.ROOT),plugin.getItemService().completionIds());
+    }
+    public void reloadDatabase(){try{var next=codes.castled.allium.item.library.LegacyItemDatabase.load(plugin);database=next;if(library!=null)library.database(next);}catch(Exception failure){plugin.logger().warning("Item database reload refused; kept previous aliases: "+failure.getClass().getSimpleName());}}
     private SkullProfiles skulls;
     private ItemLibrary library;
     private ItemDeliveryService delivery;
@@ -61,6 +68,8 @@ public final class ItemsModule extends AbstractModule {
                 plugin.getScheduler().boundedPool(SkullProfiles.POOL_NAME, SkullProfiles.POOL_THREADS, SkullProfiles.POOL_QUEUE));
         ServerVersion version = ServerVersion.parse(Bukkit.getBukkitVersion());
         library = new ItemLibrary(plugin.getItemService(), new ComponentAdapter(version, Bukkit.getItemFactory()), skulls);
+        try{database=codes.castled.allium.item.library.LegacyItemDatabase.load(plugin);library.database(database);}catch(java.io.IOException|org.bukkit.configuration.InvalidConfigurationException invalid){throw new IllegalStateException("Item database unavailable",invalid);}
+        reloadDatabase();
         delivery = new ItemDeliveryService(
                 plugin.getScheduler().serverExecutor(), plugin.getScheduler()::isServerThread, Bukkit::getPlayer,
                 Bukkit.getPluginManager(), () -> skullFallback);

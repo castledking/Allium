@@ -63,3 +63,9 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
 - Hide-aware help, legacy refusal keys, resolver delegation and block-list YAML
   formatting: **+9**, 887 → 896. Full check/shadowJar; native Spigot 1.20.1 and
   Paper 26.3 SQLite hide/help gates 24/24 each. See hide/HELP.md.
+
+- Legacy item database/variants, live registry enchant completions and safe policy,
+  teleport aliases/selectors and companion selection: **+23**, 896 → 919. Full
+  check/shadowJar passes. Final native feature gates Spigot 1.20.1/Paper 26.3
+  SQLite 33/33 each; full teleport sweep 16/16 cases on the prior jar with identical
+  teleport sources. Per-artifact hashes/scopes: parity/RESULTS.md and results.json.

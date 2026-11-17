@@ -133,9 +133,10 @@ class ItemLibraryTest {
         ItemBuildException components = assertThrows(ItemBuildException.class,
                 () -> legacy.build(parser.parse("diamond_sword[unbreakable={}]"), false));
         assertTrue(components.getMessage().contains("require Minecraft 1.20.5+"), components.getMessage());
-        legacy.build(parser.parse("diamond_sword{display:{Name:'{\"text\":\"Blade, of Testing; Mk II\"}'},Unbreakable:1b} 2"), false);
+        var rawBuilt=legacy.build(parser.parse("diamond_sword{display:{Name:'{\"text\":\"Blade, of Testing; Mk II\"}'},Unbreakable:1b} 2"), false);
         verify(factory).createItemStack("minecraft:diamond_sword{display:{Name:'{\"text\":\"Blade, of Testing; Mk II\"}'},Unbreakable:1b}");
-        assertEquals(2, sword.getAmount());
+        assertEquals(2,rawBuilt.requested());
+        assertTrue(rawBuilt.items().stream().allMatch(p->p.stack().getAmount()<=Math.max(1,p.stack().getMaxStackSize())));
 
         ItemLibrary modern = library("1.21.8-R0.1-SNAPSHOT");
         ItemBuildException nbt = assertThrows(ItemBuildException.class, () -> modern.build(parser.parse("diamond_sword{Unbreakable:1b}"), false));

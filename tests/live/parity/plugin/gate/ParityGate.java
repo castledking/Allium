@@ -1,0 +1,32 @@
+package gate;
+import org.bukkit.*;
+import org.bukkit.entity.*;
+import org.bukkit.command.*;
+import org.bukkit.event.*;
+import org.bukkit.event.player.*;
+import org.bukkit.inventory.*;
+import org.bukkit.inventory.meta.*;
+import org.bukkit.block.CreatureSpawner;
+import org.bukkit.plugin.java.JavaPlugin;
+import java.util.*;
+/** Owned loopback fixtures; commands and interactions arrive over actual client packets. */
+public final class ParityGate extends JavaPlugin implements Listener {
+ private final Map<String,Entity> entities=new HashMap<>();private final Map<UUID,Integer> moves=new HashMap<>();private boolean blockClicks;
+ public void onEnable(){if(!getServer().getIp().equals("127.0.0.1")||getServer().getPort()<25780||getServer().getPort()>25782)throw new IllegalStateException("owned gate ports only");getServer().getPluginManager().registerEvents(this,this);}
+ private Location point(World world,double x,double z){int y=80;for(int dx=-3;dx<=3;dx++)for(int dz=-3;dz<=3;dz++){world.getBlockAt((int)x+dx,y-1,(int)z+dz).setType(Material.STONE);world.getBlockAt((int)x+dx,y,(int)z+dz).setType(Material.AIR);world.getBlockAt((int)x+dx,y+1,(int)z+dz).setType(Material.AIR);}return new Location(world,x+.5,y,z+.5);}
+ @EventHandler(priority=EventPriority.HIGHEST) public void protect(PlayerInteractEntityEvent event){if(blockClicks)event.setCancelled(true);}
+ @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void moved(org.bukkit.event.entity.EntityTeleportEvent event){moves.merge(event.getEntity().getUniqueId(),1,Integer::sum);}
+ public boolean onCommand(CommandSender sender,Command command,String label,String[] a){if(!(sender instanceof ConsoleCommandSender))return true;try{Map<String,Object> out=new LinkedHashMap<>();Player player=a.length>1?getServer().getPlayerExact(a[1]):null;
+  switch(a[0]){
+   case "place"->{player.teleport(point(player.getWorld(),Double.parseDouble(a[2]),Double.parseDouble(a[3])));out.put("ok",true);}
+   case "look"->{World w=player.getWorld();Location p=point(w,0,0);w.getBlockAt(0,81,6).setType(Material.STONE);w.getBlockAt(0,80,5).setType(Material.STONE);p.setYaw(0);p.setPitch(0);player.teleport(p);out.put("ok",true);}
+   case "spawn"->{World w=getServer().getWorlds().get(0);var type=EntityType.valueOf(a[1]);Entity e=w.spawnEntity(point(w,Double.parseDouble(a[3]),Double.parseDouble(a[4])),type);e.setCustomName(a[2]);e.addScoreboardTag(a[2]);if(e instanceof LivingEntity living){living.setAI(false);living.setInvulnerable(true);}if(e instanceof Tameable t&&a.length>5){t.setTamed(true);t.setOwner(getServer().getPlayerExact(a[5]));}entities.put(a[2],e);out.put("entityId",e.getEntityId());}
+   case "state"->{Entity e=player!=null?player:entities.get(a[1]);out.put("x",e.getLocation().getX());out.put("y",e.getLocation().getY());out.put("z",e.getLocation().getZ());out.put("glowing",e.isGlowing());out.put("moves",moves.getOrDefault(e.getUniqueId(),0));out.put("entityId",e.getEntityId());}
+   case "held"->{player.getInventory().setHeldItemSlot(Integer.parseInt(a[2]));out.put("ok",true);}
+   case "protect"->{blockClicks=Boolean.parseBoolean(a[1]);out.put("blocked",blockClicks);}
+   case "items"->{var rows=new ArrayList<Map<String,Object>>();for(var stack:player.getInventory().getStorageContents()){if(stack==null||stack.getType().isAir())continue;var row=new LinkedHashMap<String,Object>();row.put("type",stack.getType().name());row.put("amount",stack.getAmount());var meta=stack.getItemMeta();row.put("unbreakable",meta.isUnbreakable());row.put("lore",meta.hasLore()?meta.getLore():List.of());var enchants=new LinkedHashMap<String,Integer>();var map=meta instanceof EnchantmentStorageMeta book?book.getStoredEnchants():meta.getEnchants();map.forEach((e,l)->enchants.put(e.getKey().toString(),l));row.put("enchants",enchants);if(meta instanceof PotionMeta potion)row.put("effects",potion.getCustomEffects().stream().map(e->Map.of("type",e.getType().getKey().toString(),"duration",e.getDuration(),"amplifier",e.getAmplifier())).toList());if(meta instanceof BlockStateMeta b&&b.getBlockState() instanceof CreatureSpawner spawner)row.put("spawnedType",spawner.getSpawnedType().name());rows.add(row);}out.put("items",rows);}
+   default->throw new IllegalArgumentException("fixture");
+  }getLogger().info("PARITY-DONE "+String.join(" ",a)+" => "+json(out));
+ }catch(Exception error){getLogger().info("PARITY-FAIL "+String.join(" ",a)+" => "+error);error.printStackTrace();}return true;}
+ private static String json(Object v){if(v==null)return "null";if(v instanceof Map<?,?> m)return "{"+String.join(",",m.entrySet().stream().map(e->json(e.getKey().toString())+":"+json(e.getValue())).toList())+"}";if(v instanceof Collection<?> c)return "["+String.join(",",c.stream().map(ParityGate::json).toList())+"]";if(v instanceof Number||v instanceof Boolean)return v.toString();return "\""+v.toString().replace("\\","\\\\").replace("\"","\\\"").replace("\n","\\n").replace("\r","\\r")+"\"";}
+}

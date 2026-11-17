@@ -53,8 +53,17 @@ public final class ItemSpecParser {
         boolean equip = false;
         Optional<String> overflow = Optional.empty();
 
+        if(ItemSpecLexer.indexOfTopLevel(itemSpec,';')>=0){
+            var variant=ItemSpecLexer.splitTopLevel(itemSpec,';');String base=variant.get(0).toLowerCase(Locale.ROOT);
+            if(Set.of("potion","splash_potion","lingering_potion","tipped_arrow","spawner","minecraft:potion","minecraft:splash_potion","minecraft:lingering_potion","minecraft:tipped_arrow","minecraft:spawner").contains(base)){
+                itemSpec=variant.get(0);
+                if(!base.endsWith("spawner")&&Set.of("splash","lingering").contains(variant.get(1).toLowerCase(Locale.ROOT))){itemSpec=variant.get(1).toLowerCase(Locale.ROOT)+"_potion";tokens.add(new MetaToken("potion","water",false));}
+                else if(base.endsWith("spawner")){if(variant.size()!=2)throw new ItemSpecException("spawner syntax is spawner;entity");tokens.add(new MetaToken("spawner",variant.get(1),false));}
+                else {if(variant.size()<2||variant.size()>6)throw new ItemSpecException("potion syntax is potion;effect;seconds;level;particles;icon");String seconds=variant.size()>2?variant.get(2):"0",level=variant.size()>3?variant.get(3):"1";if(Set.of("water","awkward","mundane","thick").contains(variant.get(1).toLowerCase(Locale.ROOT)))tokens.add(new MetaToken("potion",variant.get(1),false));else tokens.add(new MetaToken("legacy-effect",variant.get(1)+":"+seconds+":"+level+(variant.size()>4?":"+String.join(":",variant.subList(4,variant.size())):""),false));}
+            }
+        }
         if (ItemSpecLexer.indexOfTopLevel(itemSpec, ';') >= 0) {
-            if (!legacySemicolonSyntax) {
+            if (!legacySemicolonSyntax && ItemSpecLexer.splitTopLevel(itemSpec,';').stream().skip(1).anyMatch(p -> !p.contains(":"))) {
                 throw new ItemSpecException("semicolon item syntax (item;meta;amount) is disabled; write "
                         + "<item> [amount] [key:value...] instead");
             }
@@ -135,6 +144,8 @@ public final class ItemSpecParser {
 
     private static MetaToken token(String arg) {
         int colon = ItemSpecLexer.indexOfTopLevel(arg, ':');
+        if(colon>0&&!Set.of("name","lore","effect","potion","owner","color","spawner","legacy-effect").contains(arg.substring(0,colon).toLowerCase(Locale.ROOT))){int last=arg.lastIndexOf(':');if(last>colon&&arg.substring(last+1).matches("[0-9]+"))colon=last;}
+
         String key = (colon < 0 ? arg : arg.substring(0, colon)).toLowerCase(Locale.ROOT);
         if (!TOKEN_KEY.matcher(key).matches()) {
             throw new ItemSpecException("'" + arg + "' is not a key:value token");

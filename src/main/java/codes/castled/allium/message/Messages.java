@@ -45,6 +45,10 @@ public enum Messages {
     HIDE_USAGE("hide.usage", "{prefix} &cUsage: &f/allium hide <status|reload|enabled true/false|resolve player command|fix command permission|unfix command|group name create/whitelist/inherit/add/remove/check>"),
     HIDE_HINT_FAILED("hide.hint-failed", "{prefix} &eHide rules are active, but the command hint pack could not be exported. Check console."),
 
+    ENCHANT_LIMIT("give.unsafe-level", "{prefix} &eEnchantment &f{enchant} &eexceeds maximum level. Limiting to &f{maxLevel}&e."),
+    ENCHANT_INCOMPATIBLE("give.unsafe-enchant", "{prefix} &cEnchantment &f{enchant} &ccan't be applied to &f{item}&c!"),
+    ENCHANT_CONFLICT("give.conflicting-enchants", "{prefix} &cEnchantment &f{enchant} &ccannot be combined with &f{enchant2} &con &f{item}&c!"),
+
     // -- Errors --
     NO_PERMISSION("error.no-permission", "{prefix} &cYou don't have permission to do that."),
     PLAYER_ONLY("error.player-only", "{prefix} &cThis command can only be used by players."),
@@ -57,6 +61,7 @@ public enum Messages {
     MODULE_DISABLED("error.module-disabled", "{prefix} &cThis feature is currently disabled."),
 
     // -- Teleportation --
+    TELEPORT_SELECTION("teleport.selection", "{prefix} &e{message}"),
     TELEPORT_OFFLINE_SUCCESS("teleport.offline-success", "{prefix} &aTeleported to &f{target}&a's last saved logout location."),
     TELEPORT_OFFLINE_UNAVAILABLE("teleport.offline-unavailable", "{prefix} &cNo saved offline location is available for that player."),
     TELEPORT_SUCCESS("teleport.success", "{prefix} &aTeleported to &f{target}&a."),

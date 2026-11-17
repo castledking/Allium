@@ -278,6 +278,7 @@ public final class ItemService {
      * Read-only snapshot of registered definition, alias and preferred-appearance bindings.
      * Startup provider diagnostics use this to inspect deliberately managed items only.
      */
+    public java.util.List<String> completionIds(){return alliumDefinitions.keySet().stream().map(id->"allium:"+id).sorted().toList();}
     public Map<ProviderKey, String> appearanceBindings() {
         return Map.copyOf(appearanceToBehavior);
     }

@@ -50,6 +50,10 @@ public final class GiveCommand implements SpecCommandHandler {
         this.defaultPolicy = defaultPolicy;
     }
 
+    public List<String> completeItems(String prefix){
+        if(plugin.getModuleManager().getModule("items") instanceof codes.castled.allium.module.ItemsModule module)return module.complete(prefix);
+        return List.of();
+    }
     @Override
     public CommandSpec spec() {
         return CoreCommandSpecs.GIVE;
@@ -96,7 +100,7 @@ public final class GiveCommand implements SpecCommandHandler {
         for (Player target : targets) {
             ItemLibrary.Prepared prepared;
             try {
-                prepared = library.build(spec, mayGivePrivileged);
+                prepared = library.build(spec, mayGivePrivileged,plugin.getConfig().getBoolean("allow-unsafe-enchants",false)&&sender.hasPermission("allium.enchant.unsafe"));
             } catch (ItemBuildException.Privileged e) {
                 send(sender, "privileged", "{item}", itemText, "{behavior}", e.behavior(), "{permission}", PERMISSION_PRIVILEGED);
                 return;
@@ -104,6 +108,7 @@ public final class GiveCommand implements SpecCommandHandler {
                 send(sender, "unresolved", "{item}", itemText, "{status}", e.status().name(), "{reason}", e.getMessage());
                 return;
             } catch (ItemBuildException e) {
+                if(codes.castled.allium.item.library.EnchantFeedback.send(plugin,sender,e.getMessage()))return;
                 send(sender, "failed", "{item}", itemText, "{reason}", e.getMessage());
                 return;
             }
@@ -175,6 +180,7 @@ public final class GiveCommand implements SpecCommandHandler {
             case FAILED -> send(sender, "failed", "{item}", item, "{reason}", "delivery failed");
         }
         for (String warning : outcome.warnings()) {
+            if(codes.castled.allium.item.library.EnchantFeedback.send(plugin,sender,warning))continue;
             send(sender, "warning", "{warning}", warning);
         }
     }

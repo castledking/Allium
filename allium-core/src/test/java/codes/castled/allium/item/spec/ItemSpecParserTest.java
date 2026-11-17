@@ -9,6 +9,11 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ItemSpecParserTest {
+    @org.junit.jupiter.api.Test void splashSentinelsAndTurtleDurationsRetainTheirVariantMeaning(){var p=new ItemSpecParser(false);assertEquals("splash_potion",p.parse("POTION;SPLASH;180").items().get(0).key().id());assertEquals("lingering_potion",p.parse("POTION;LINGERING;180").items().get(0).key().id());assertEquals("legacy-effect",p.parse("POTION;TURTLE_MASTER;10").tokens().get(0).key());}
+
+    @org.junit.jupiter.api.Test void legacyPotionAndSpawnerFieldsAreNotAmounts(){var parser=new ItemSpecParser(false);var potion=parser.parse("POTION;SPEED;120;2 3");assertEquals(3,potion.amount().orElseThrow());assertEquals("legacy-effect",potion.tokens().get(0).key());assertEquals("SPEED:120:2",potion.tokens().get(0).value());var spawner=parser.parse("SPAWNER;ZOMBIE");assertTrue(spawner.amount().isEmpty());assertEquals("ZOMBIE",spawner.tokens().get(0).value());}
+    @org.junit.jupiter.api.Test void namespacedSemicolonEnchantTokensKeepFullRegistryKey(){var spec=new ItemSpecParser(false).parse("DIAMOND_SWORD;plugin:keen:4;sharpness:2");assertEquals("plugin:keen",spec.tokens().get(0).key());assertEquals("4",spec.tokens().get(0).value());assertEquals("sharpness",spec.tokens().get(1).key());}
+
 
     private final ItemSpecParser parser = new ItemSpecParser(false);
 

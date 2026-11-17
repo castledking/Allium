@@ -589,6 +589,12 @@ player:
     - "{prefix} &aApodo restablecido."
     - "[sound] block.note_block.hat 1.0"
 utility:
+  repair-held:
+    - "{prefix} &aRepaired the held item."
+    - "[sound] block.anvil.use 1.2"
+  repair-hold-damaged:
+    - "{prefix} &cHold a damaged item to repair."
+    - "[sound] block.note_block.bass 0.8"
   gc:
     runtime:
       - "{prefix} &7Tiempo activo: &f{uptime}&7, TPS: &f{tps}"
@@ -1115,3 +1121,7 @@ give:
     - "{prefix} &cEnchantment &f{enchant} &ccan't be applied to &f{item}&c!"
   conflicting-enchants:
     - "{prefix} &cEnchantment &f{enchant} &ccannot be combined with &f{enchant2} &con &f{item}&c!"
+
+signs:
+  disabled:
+    - "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."

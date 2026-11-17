@@ -30,6 +30,7 @@ client.on('packet', (packet, meta) => {
     console.log('BASEG-CHAT ' + JSON.stringify(Object.assign(flatten(content), extractTranslate(content), {overlay: !!(packet.isActionBar ?? packet.overlay),
       rawComponent: content, interactive: /clickEvent|hoverEvent|click_event|hover_event|"insertion"/.test(String(raw))})));
   }
+  if (meta.name === 'open_sign_entity') console.log('SIGN-EDITOR opened');
   if (meta.name === 'player_chat') {
     const plain = packet.plainMessage || '';
     console.log('BASEG-CHAT ' + JSON.stringify({plain, overlay: false, interactive: false}));

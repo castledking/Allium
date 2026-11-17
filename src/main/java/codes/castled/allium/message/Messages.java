@@ -61,6 +61,9 @@ public enum Messages {
     MODULE_DISABLED("error.module-disabled", "{prefix} &cThis feature is currently disabled."),
 
     // -- Teleportation --
+    SIGN_DISABLED("signs.disabled", "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."),
+    REPAIR_HELD("utility.repair-held", "{prefix} &aRepaired the held item."),
+    REPAIR_HOLD_DAMAGED("utility.repair-hold-damaged", "{prefix} &cHold a damaged item to repair."),
     TELEPORT_SELECTION("teleport.selection", "{prefix} &e{message}"),
     TELEPORT_OFFLINE_SUCCESS("teleport.offline-success", "{prefix} &aTeleported to &f{target}&a's last saved logout location."),
     TELEPORT_OFFLINE_UNAVAILABLE("teleport.offline-unavailable", "{prefix} &cNo saved offline location is available for that player."),

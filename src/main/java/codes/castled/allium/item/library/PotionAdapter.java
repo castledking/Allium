@@ -50,20 +50,22 @@ public final class PotionAdapter {
         if (!(meta instanceof PotionMeta potion)) {
             throw new ItemBuildException("potion: applies to potions and tipped arrows");
         }
-        PotionType type = potionType(raw);
         try {
             Method modern = PotionMeta.class.getMethod("setBasePotionType", PotionType.class);
-            modern.invoke(potion, type);
+            modern.invoke(potion, potionType(raw));
         } catch (NoSuchMethodException e) {
-            legacyBase(potion, type);
+            legacyBase(potion, raw);
         } catch (ReflectiveOperationException e) {
             throw new ItemBuildException("could not set base potion " + raw + ": " + e.getMessage());
         }
     }
 
     @SuppressWarnings("deprecation")
-    private static void legacyBase(PotionMeta potion, PotionType type) {
-        potion.setBasePotionData(new org.bukkit.potion.PotionData(type));
+    private static void legacyBase(PotionMeta potion, String raw) {
+        String id = raw.toLowerCase(Locale.ROOT).replace("minecraft:", "");
+        boolean extended = id.startsWith("long_"), upgraded = id.startsWith("strong_");
+        if (extended || upgraded) id = id.substring(id.indexOf('_') + 1);
+        potion.setBasePotionData(new org.bukkit.potion.PotionData(potionType(id), extended, upgraded));
     }
 
     public static void effect(ItemMeta meta, String raw) {

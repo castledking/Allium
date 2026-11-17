@@ -77,6 +77,7 @@ socket.on('data', chunk => { try {
         ack.writeFloatBE(pos.yaw,24); ack.writeFloatBE(pos.pitch,28);
         game('accept_teleportation', Buffer.concat([vi(tp), ack]));
       }
+      if (id === ids.game_CLIENTBOUND['minecraft:open_sign_editor']) console.log('SIGN-EDITOR opened');
       if (id === ids.game_CLIENTBOUND['minecraft:system_chat']) {
         const [component, o] = readNbt(payload, 0);
         console.log('BASEG-CHAT ' + JSON.stringify(Object.assign(flatten(component), extractTranslate(component), {overlay: payload[o] === 1,

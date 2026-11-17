@@ -22,6 +22,7 @@ def build():
     classes=RUN/'parity-helper/classes';classes.mkdir(parents=True)
     subprocess.run(['/usr/lib/jvm/java-17-openjdk/bin/javac','--release','17','-cp',f'{API}:{JAR}','-d',str(classes),str(HERE/'plugin/gate/ParityGate.java')],check=True)
     shutil.copy2(HERE/'plugin/plugin.yml',classes/'plugin.yml')
+    shutil.copy2(HERE/'plugin/legacy-ids.csv',classes/'legacy-ids.csv')
     subprocess.run(['/usr/lib/jvm/java-17-openjdk/bin/jar','cf',str(RUN/'parity-helper/ParityGate.jar'),'-C',str(classes),'.'],check=True)
 
 def fixture(lane,text):
@@ -41,9 +42,11 @@ def run_suite(lane):
     for name in ['InfoNorm','InfoObs']:
         b=Bot(lane,name);lane.bots[name]=b;b.connect()
     bot=lane.bots['InfoNorm'];other=lane.bots['InfoObs']
-    for perm in ['allium.give','allium.enchant','allium.enchant.unsafe','allium.tp','allium.tp.others','allium.tphere','allium.tpthere','allium.tppet','allium.tpmob','allium.selectors','allium.command.selector.all','allium.command.selector.entities']:
+    for perm in ['allium.give','allium.back','allium.enchant','allium.enchant.unsafe','allium.tp','allium.tp.others','allium.tphere','allium.tpthere','allium.tppet','allium.tpmob','allium.selectors','allium.command.selector.all','allium.command.selector.entities']:
         lane.fixture('perm InfoNorm '+perm+' true')
     require((lane.path/'plugins/Allium/itemdb.yml').is_file(),'compressed item database extracted')
+    if lane.kind=='spigot':
+        legacy=fixture(lane,'legacy')['mapping'];(RUN/'essentials-converted-ids.json').write_text(json.dumps(legacy,indent=2)+'\n')
     def give(text):
         lane.fixture('clearinv InfoNorm');mark=bot.cmd('i '+text);bot.chat(mark,'Gave');return items(lane)
     require(give('dsword')[0]['type']=='DIAMOND_SWORD','simple itemdb alias creates correct item')
@@ -57,6 +60,18 @@ def run_suite(lane):
     turtle=give('potion;turtle_master;10');require(len(turtle[0]['effects'])==2 and all(e['duration']==200 for e in turtle[0]['effects']),'turtle master retains custom duration and both effects')
     require(give('zombie_spawner')[0]['spawnedType']=='ZOMBIE','spawner alias keeps entity type')
     require(give('1:1')[0]['type']=='GRANITE','numeric legacy id maps to material')
+    require(give('1:2')[0]['type']=='POLISHED_GRANITE','numeric legacy data selects exact material')
+    for ref,material in [('1','STONE'),('17:1','SPRUCE_LOG'),('35:14','RED_WOOL'),('383:54','ZOMBIE_SPAWN_EGG'),('31:1','GRASS' if lane.kind=='spigot' else 'SHORT_GRASS')]:
+        require(give(ref)[0]['type']==material,'Essentials numeric '+ref+' resolves '+material)
+    require(give('52:54')[0]['spawnedType']=='ZOMBIE','legacy spawner data resolves the entity, not a guessed alias')
+    require(give('373:8258')[0]['basePotion'] in ['LONG_SPEED','LONG_SWIFTNESS'],'extended numeric potion retains its duration')
+    require(give('373:8226')[0]['basePotion'] in ['STRONG_SPEED','STRONG_SWIFTNESS'],'upgraded numeric potion retains its level')
+    require(give('373:16386')[0]['type']=='SPLASH_POTION','numeric splash potion keeps its carrier')
+    require(give('373:8258')[0]['basePotion'] in ['LONG_SPEED','LONG_SWIFTNESS'],'extended numeric potion retains vanilla base type and duration')
+    require(give('373:8225')[0]['basePotion'] in ['STRONG_REGEN','STRONG_REGENERATION'],'upgraded numeric regeneration retains exact native duration')
+    require(not any(re.fullmatch(r'[0-9]+(?::[0-9]+)?',v) for v in tab(bot,'i 1')),'numeric IDs absent from i completion')
+    require(not any(re.fullmatch(r'[0-9]+(?::[0-9]+)?',v) for v in tab(bot,'give InfoNorm 1')),'numeric IDs absent from give completion')
+
     require('allium:mob_disarmer' in tab(bot,'i allium:mob_'),'Allium definition completes')
     require('dsword' in tab(bot,'i dsw'),'database alias completes')
     ench=tab(bot,'i DIAMOND_SWORD;');require('DIAMOND_SWORD;sharpness:' in ench and not any('protection:' in v for v in ench),'semicolon completion only offers sword enchants')
@@ -78,7 +93,8 @@ def run_suite(lane):
         fixture(lane,'place InfoNorm 0 0');fixture(lane,'place InfoObs 30 0');dest=fixture(lane,'state InfoNorm');bot.cmd(alias+' InfoObs');wait(lambda:close(fixture(lane,'state InfoObs'),dest),alias+' movement');require(True,alias+' moves named player')
     fixture(lane,'place InfoObs 30 0');dest=fixture(lane,'state InfoObs');bot.chat(bot.cmd('tp @s InfoObs'),'Teleported');require(close(fixture(lane,'state InfoNorm'),dest),'tp selector moves actor')
     fixture(lane,'place InfoNorm 0 0');dest=fixture(lane,'state InfoNorm');fixture(lane,'place InfoObs 30 0');bot.cmd('here @a');wait(lambda:close(fixture(lane,'state InfoObs'),dest),'all selector');require(True,'here all-player selector')
-    fixture(lane,'look InfoNorm');bot.chat(bot.cmd('there'),'Teleported');state=fixture(lane,'state InfoNorm');require(abs(state['z']-5.5)<1,'there resolves viewed block face safely')
+    fixture(lane,'look InfoNorm');origin=fixture(lane,'state InfoNorm');bot.chat(bot.cmd('there'),'Teleported');state=fixture(lane,'state InfoNorm');require(abs(state['z']-5.5)<1,'there resolves viewed block face safely')
+    bot.chat(bot.cmd('back'),'Returned');require(close(fixture(lane,'state InfoNorm'),origin),'back returns to the origin of there')
     fixture(lane,'place InfoNorm 0 0');pet=fixture(lane,'spawn WOLF PetOne 1 0 InfoNorm');bot.chat(bot.cmd('tppet'),'selection enabled');bot.write('interact '+str(pet['entityId']));wait(lambda:fixture(lane,'state PetOne')['glowing'],'pet selected');fixture(lane,'place InfoNorm 15 0');wait(lambda:close(fixture(lane,'state PetOne'),fixture(lane,'state InfoNorm')),'pet follows player teleport');require(not fixture(lane,'state PetOne')['glowing'],'pet glow restored after movement')
     fixture(lane,'place InfoNorm 0 0');mob=fixture(lane,'spawn VILLAGER MobOne 2 0 InfoNorm');bot.chat(bot.cmd('tpent'),'selection enabled');fixture(lane,'protect true');bot.write('interact '+str(mob['entityId']));window(.3);require(not fixture(lane,'state MobOne')['glowing'],'protection cancellation prevents selection');fixture(lane,'protect false');bot.write('interact '+str(mob['entityId']));wait(lambda:fixture(lane,'state MobOne')['glowing'],'entity selected')
     # Move the actor only by walking-fixture? selection follows external teleports, so /s pulls at its current point.

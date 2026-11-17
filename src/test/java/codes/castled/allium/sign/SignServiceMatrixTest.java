@@ -27,6 +27,9 @@ import static org.mockito.Mockito.*;
 
 /** Exercises the actual listener, delayed protection fence and command/service routing. */
 class SignServiceMatrixTest {
+    @org.junit.jupiter.api.Test void disabledSignCreationKeepsVanillaTextAndNotifies(){var f=new Fixture(SignIdentity.Type.BALANCE,false);f.config.set("enabledSigns",List.of());when(f.plugin.getMessageManager()).thenReturn(mock(codes.castled.allium.message.MessageManager.class));var event=f.edit();String[] before=event.getLines().clone();new SignService(f.plugin).changing(event);f.drain();assertFalse(event.isCancelled());assertArrayEquals(before,event.getLines());assertTrue(f.data.isEmpty());verify(f.plugin.getMessageManager()).send(eq(f.player),eq(codes.castled.allium.message.Messages.SIGN_DISABLED),any(String[].class));}
+    @org.junit.jupiter.api.Test void activeUnwaxedFaceBlocksOnlyInteractionEditor(){var f=new Fixture(SignIdentity.Type.REPAIR,false);assertTrue(f.service.blocksEditor(f.sign,Side.FRONT,"INTERACT"));assertFalse(f.service.blocksEditor(f.sign,Side.FRONT,"PLUGIN"));assertFalse(f.service.blocksEditor(f.sign,Side.FRONT,"PLACE"));assertFalse(f.service.blocksEditor(f.sign,Side.BACK,"INTERACT"));f.config.set("enabledSigns",List.of());assertFalse(new SignService(f.plugin).blocksEditor(f.sign,Side.FRONT,"INTERACT"));}
+    @org.junit.jupiter.api.Test void disabledHeaderCannotEraseAnExistingSignWithoutBreakPermission(){var f=new Fixture(SignIdentity.Type.REPAIR,false);f.config.set("enabledSigns",List.of());var event=f.edit();f.data.put(new NamespacedKey("allium","sign_front"),new SignIdentity(UUID.randomUUID(),SignIdentity.Type.REPAIR,"",false).encode());when(f.player.hasPermission("allium.signs.break.repair")).thenReturn(false);event.setLine(0,"[balance]");new SignService(f.plugin).changing(event);f.drain();assertTrue(event.isCancelled());assertFalse(f.data.isEmpty());}
     // Baseline Spigot 1.20 lacks this accessor; model the newer platform capability.
     interface WaxedSign extends Sign { boolean isWaxed(); }
     static final class Fixture {
@@ -45,6 +48,7 @@ class SignServiceMatrixTest {
         final SignIdentity.Type type;
         final SignService service;
         Fixture(SignIdentity.Type type,boolean waxed){
+            when(plugin.getMessageManager()).thenReturn(mock(codes.castled.allium.message.MessageManager.class));
             this.type=type;when(plugin.getName()).thenReturn("Allium");when(plugin.getConfig()).thenReturn(config);
             config.set("enabledSigns",Arrays.stream(SignIdentity.Type.values()).map(SignIdentity.Type::key).toList());
             config.set("sign-use-per-second",4);

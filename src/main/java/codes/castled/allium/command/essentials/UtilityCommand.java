@@ -79,7 +79,7 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
                 return;
             }
             if (UtilitySupport.isInventoryBusy(plugin, player)) {
-                player.sendMessage("[Allium] Your inventory is busy with receipt recovery.");
+                UtilitySupport.send(plugin,player,Messages.UTILITY_INVENTORY_BUSY,"{player}",player.getName());
                 return;
             }
             if ("hand".equals(mode)) {
@@ -88,9 +88,9 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
                 if (meta instanceof Damageable damageable && damageable.hasDamage()) {
                     damageable.setDamage(0);
                     item.setItemMeta(meta);
-                    player.sendMessage("[Allium] Repaired the held item.");
+                    UtilitySupport.send(plugin,player,Messages.REPAIR_HELD);
                 } else {
-                    player.sendMessage("[Allium] Hold a damaged item to repair.");
+                    UtilitySupport.send(plugin,player,Messages.REPAIR_HOLD_DAMAGED);
                 }
                 return;
             }
@@ -109,7 +109,7 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
             return;
         }
         if (UtilitySupport.isInventoryBusy(plugin, player)) {
-            player.sendMessage("[Allium] Your inventory is busy with receipt recovery.");
+            UtilitySupport.send(plugin,player,Messages.UTILITY_INVENTORY_BUSY,"{player}",player.getName());
             return;
         }
 

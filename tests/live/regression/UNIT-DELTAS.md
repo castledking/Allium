@@ -69,3 +69,10 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
   check/shadowJar passes. Final native feature gates Spigot 1.20.1/Paper 26.3
   SQLite 33/33 each; full teleport sweep 16/16 cases on the prior jar with identical
   teleport sources. Per-artifact hashes/scopes: parity/RESULTS.md and results.json.
+
+- Essentials numeric-ID correction and sign usability/language fixes: **+10**,
+  919 → 929. Full check/shadowJar, zero failures/errors/skips. Numeric completion
+  exclusion, exact ID/data defaults, backed-up customization-preserving upgrade,
+  native potion flags, disabled-text/break-permission/editor behavior, and config
+  checklist persistence. Native evidence is recorded in parity/LEGACY-IDS.md and
+  signs/USABILITY.md after the immutable-artifact gates finish.

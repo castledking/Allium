@@ -1007,6 +1007,14 @@ def signs_gate(lane):
     def edit(t,side='FRONT'):
         fixture('editor '+side);packet('signedit',json.dumps(dict(location=location,front=side=='FRONT',lines=['['+('colour' if t=='color' else t)+']','signwarp' if t=='warp' else 'paid' if t=='kit' else '', 'public' if t=='warp' else '', '&aLive sign'])))
     def click(hand=0):packet('signuse','320 65 320 '+str(hand))
+    config_path=lane.path/'plugins/Allium/config.yml';baseline=yaml.safe_load(config_path.read_text())
+    disabled=__import__('copy').deepcopy(baseline);disabled['enabledSigns']=[v for v in types if v!='balance']
+    config_path.write_text(yaml.safe_dump(disabled,sort_keys=False));lane.reload_allium()
+    fixture('prepare standing');mark=len(a.lines);edit('balance');state=fixture('state')
+    require(state['FRONTLines']==['[balance]','','','&aLive sign'] and not state['FRONT'],lane.name+': disabled balance retains literal vanilla sign text',state)
+    require(any('signs are disabled' in c['plain'] for c in a.chats(mark)),lane.name+': disabled balance explains refusal in chat')
+    require('  #- balance' in config_path.read_text(),lane.name+': config normalization retains disabled sign checklist')
+    config_path.write_text(yaml.safe_dump(baseline,sort_keys=False));lane.reload_allium()
     for index,t in enumerate(types):
         fixture('prepare '+('hanging' if index%2 else 'standing'))
         for action in ['create','use','break']:lane.perm('MoneyA','allium.signs.'+action+'.'+t,False)
@@ -1018,6 +1026,12 @@ def signs_gate(lane):
         lane.perm('MoneyA','allium.signs.use.'+t,True)
         # Every type gets front/back, waxed use and a hanging or standing sign.
         lane.perm('MoneyA','allium.signs.break.'+t,True);edit(t,'BACK');back=fixture('state')['BACK'];require(bool(back) and fixture('state')['FRONT']==front,lane.name+': '+t+' independent back identity retains front')
+        if t=='repair':
+            fixture('return FRONT');fixture('resetplayer');mark=len(a.lines);click();window(.7);state=fixture('state')
+            require(state['damage']==0 and not any('SIGN-EDITOR opened' in v for v in a.lines[mark:]),lane.name+': unwaxed repair acts without opening vanilla editor',state)
+            require(any('Repaired the held item.' in c['plain'] and any(r.get('color')=='#55ff55' for r in c.get('runs',[])) for c in a.chats(mark)),lane.name+': repair success uses colored language entry')
+            mark=len(a.lines);click();window(.5)
+            require(any('Hold a damaged item' in c['plain'] and any(r.get('color')=='#ff5555' for r in c.get('runs',[])) for c in a.chats(mark)),lane.name+': undamaged repair uses colored language entry')
         fixture('wax true')
         for side in ['FRONT','BACK']:
             fixture('return '+side);fixture('resetplayer');before=paid_state(lane);mark=len(a.lines);click();window(.7)
@@ -1033,6 +1047,7 @@ def signs_gate(lane):
             require(ok,lane.name+': '+t+' '+side+' waxed real click reaches shared service',state)
         fixture('return FRONT');fixture('resetplayer');fixture('protect false true false');mark=len(a.lines);click()
         state=fixture('state');require(state['health']==10 and state['damage']==100 and state['window']=='CREATIVE' and not a.chats(mark),lane.name+': '+t+' protection cancels action')
+        fixture('protect false false false')
         if t!='color':
             config_path=lane.path/'plugins/Allium/config.yml';baseline=yaml.safe_load(config_path.read_text())
             command=t if t!='balance' else 'balance'
@@ -1044,7 +1059,7 @@ def signs_gate(lane):
                 else:settings['enabledSigns']=[v for v in types if v!=t]
                 config_path.write_text(yaml.safe_dump(settings,sort_keys=False));lane.reload_allium();window(.3)
                 fixture('resetplayer');mark=len(a.lines);click();current=fixture('state')
-                require(current['health']==10 and current['damage']==100 and current['window']=='CREATIVE' and not a.chats(mark),lane.name+': '+t+' disabled '+mode+' blocks sign')
+                require(current['health']==10 and current['damage']==100 and current['window']=='CREATIVE' and (any('signs are disabled' in c['plain'] for c in a.chats(mark)) if mode=='type' else not a.chats(mark)),lane.name+': '+t+' disabled '+mode+' blocks sign')
             config_path.write_text(yaml.safe_dump(baseline,sort_keys=False));lane.reload_allium();window(.3)
         fixture('protect false false true');fixture('breakready');packet('signbreak','320 65 320');require(bool(fixture('state').get('FRONT')),lane.name+': '+t+' break protection retained sign')
         fixture('protect false false false');lane.perm('MoneyA','allium.signs.break.'+t,False);fixture('breakready');packet('signbreak','320 65 320');require(bool(fixture('state').get('FRONT')),lane.name+': '+t+' cannot break without permission')

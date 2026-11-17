@@ -71,6 +71,7 @@ class UtilityCommandTest {
         var modules = mock(ModuleManager.class);
         when(plugin.getModuleManager()).thenReturn(modules);
         var p = mock(Player.class);
+        when(p.getName()).thenReturn("TestPlayer");
         var kits = mock(KitsModule.class);
         var service = mock(KitService.class);
         when(modules.getModule("kits")).thenReturn(kits);

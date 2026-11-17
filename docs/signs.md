@@ -54,3 +54,19 @@ A replacement block inherits no authority. Break protection and per-face break
 permissions apply before native destruction; environmental destruction remains
 subject to the server's normal explosion/piston protection events. Sign settings
 never delete economy workflow, journal, marker or recovery evidence.
+
+## Editing and disabled types
+
+The bundled config includes every supported type as a commented `#- type` entry
+under `enabledSigns:`. Remove its `#` to enable it; normalization preserves the
+checklist even when every type is disabled. `colour` normalizes to `color`.
+
+Submitting a recognizable disabled header keeps all four lines as vanilla text,
+creates no action identity, and sends `signs.disabled`. Existing authenticated
+faces still require their break permission to replace. Late protection
+cancellation is respected. Actionable enabled faces suppress the native sign
+editor only for interaction opens, using the runtime's `PlayerSignOpenEvent`;
+placement and explicit plugin editor opens remain available. The interaction
+itself retains the deferred protection check. Repair success/refusal use the
+colored, sound-configurable language keys `utility.repair-held` and
+`utility.repair-hold-damaged`.

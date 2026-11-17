@@ -359,7 +359,7 @@ final class SignsGate implements Listener {
         out.put("px",p.getLocation().getX());out.put("pz",p.getLocation().getZ());out.put("health",p.getHealth());out.put("window",p.getOpenInventory().getType().name());
         var item=p.getInventory().getItemInMainHand();out.put("damage",item.hasItemMeta()&&item.getItemMeta() instanceof org.bukkit.inventory.meta.Damageable d?d.getDamage():0);
         out.put("extensions",extensions);out.put("piston",world.getBlockAt(x-1,y-1,z).getBlockData().getAsString());out.put("powered",world.getBlockAt(x-1,y-1,z).isBlockPowered());out.put("support",world.getBlockAt(x,y-1,z).getType().name());
-        if(block.getState() instanceof Sign sign)for(var side:Side.values())out.put(side.name(),Objects.toString(sign.getPersistentDataContainer().get(new NamespacedKey(allium,"sign_"+side.name().toLowerCase(Locale.ROOT)),PersistentDataType.STRING),""));
+        if(block.getState() instanceof Sign sign)for(var side:Side.values()){out.put(side.name(),Objects.toString(sign.getPersistentDataContainer().get(new NamespacedKey(allium,"sign_"+side.name().toLowerCase(Locale.ROOT)),PersistentDataType.STRING),""));out.put(side.name()+"Lines",java.util.Arrays.asList(sign.getSide(side).getLines()));}
         return out;
     }
 }

@@ -1,22 +1,146 @@
 package codes.castled.allium.item.library;
+
 import codes.castled.allium.PluginStart;
 import org.bukkit.Material;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
-/** Immutable alias index. Existing operator files are never replaced by the bundled database. */
+
+/** Immutable aliases and numeric defaults; upgrades preserve operator customizations. */
 public final class LegacyItemDatabase {
- private final Map<String,String> values;
- private final NavigableSet<String> completions;
- public LegacyItemDatabase(Map<String,String> aliases){values=Map.copyOf(aliases);var names=new TreeSet<String>();for(var e:aliases.entrySet()){var material=Material.matchMaterial(e.getValue().split(";",2)[0]);if(material!=null&&material.isItem()&&!material.isAir())names.add(e.getKey());}for(Material m:Material.values())if(m.isItem()&&!m.isAir())names.add(m.name().toLowerCase(Locale.ROOT));completions=Collections.unmodifiableNavigableSet(names);}
- public static LegacyItemDatabase load(PluginStart plugin)throws IOException,org.bukkit.configuration.InvalidConfigurationException{
-  Path file=plugin.getDataFolder().toPath().resolve("itemdb.yml");
-  if(!Files.exists(file)){byte[] bytes;try(var resource=plugin.getResource("itemdb.yml.gz")){if(resource==null)throw new IOException("Missing itemdb.yml.gz");try(var gzip=new GZIPInputStream(resource)){bytes=gzip.readNBytes(8*1024*1024+1);if(bytes.length>8*1024*1024)throw new IOException("Item database too large");}}Path temp=Files.createTempFile(file.getParent(),".itemdb-",".tmp");try{Files.write(temp,bytes);Files.move(temp,file,StandardCopyOption.ATOMIC_MOVE);}finally{Files.deleteIfExists(temp);}}
-  if(Files.size(file)>8*1024*1024)throw new IOException("Item database too large");var yaml=new YamlConfiguration();yaml.load(file.toFile());var aliases=new HashMap<String,String>();for(String group:List.of("aliases","legacy-ids")){var section=yaml.getConfigurationSection(group);if(section==null)continue;for(String name:section.getKeys(false)){Object value=section.get(name);if(!(value instanceof String text)||text.length()>4096)throw new IOException("Invalid item alias: "+name);aliases.put(name.toLowerCase(Locale.ROOT),text);}}if(aliases.size()>100000)throw new IOException("Too many item aliases");return new LegacyItemDatabase(aliases);
- }
- public String lookup(String reference){String id=reference.toLowerCase(Locale.ROOT);if(id.contains(":")&&!id.matches("[0-9]+:[0-9]+"))return null;Material direct=Material.matchMaterial(reference);return direct!=null?null:values.get(id);}
- public List<String> complete(String prefix,Collection<String> allium){var out=new TreeSet<String>();for(String name:allium)if(name.startsWith(prefix))out.add(name);for(String name:completions.tailSet(prefix,true)){if(!name.startsWith(prefix)||out.size()>=64)break;out.add(name);}return out.stream().limit(64).toList();}
+    private static final int MAX_BYTES = 8 * 1024 * 1024;
+    private final Map<String, String> values;
+    private final NavigableSet<String> completions;
+
+    public LegacyItemDatabase(Map<String, String> aliases) {
+        values = Map.copyOf(aliases);
+        var names = new TreeSet<String>();
+        for (var entry : aliases.entrySet()) {
+            Material material = Material.matchMaterial(entry.getValue().split(";", 2)[0]);
+            if (material != null && material.isItem() && !material.isAir() && !numeric(entry.getKey())) {
+                names.add(entry.getKey());
+            }
+        }
+        for (Material material : Material.values()) {
+            if (material.isItem() && !material.isAir()) names.add(material.name().toLowerCase(Locale.ROOT));
+        }
+        completions = Collections.unmodifiableNavigableSet(names);
+    }
+
+    public static LegacyItemDatabase load(PluginStart plugin) throws IOException, InvalidConfigurationException {
+        Path file = plugin.getDataFolder().toPath().resolve("itemdb.yml");
+        String bundled;
+        try (var resource = plugin.getResource("itemdb.yml.gz")) {
+            if (resource == null) throw new IOException("Missing itemdb.yml.gz");
+            try (var gzip = new GZIPInputStream(resource)) {
+                bundled = new String(bounded(gzip), StandardCharsets.UTF_8);
+            }
+        }
+        if (!Files.exists(file)) {
+            Files.createDirectories(file.getParent());
+            replace(file, bundled);
+        }
+        if (Files.size(file) > MAX_BYTES) throw new IOException("Item database too large");
+        var yaml = new YamlConfiguration();
+        yaml.load(file.toFile());
+        var defaults = new YamlConfiguration();
+        defaults.loadFromString(bundled);
+        var previous = new YamlConfiguration();
+        try (var resource = plugin.getResource("itemdb-legacy-ids-v1.yml")) {
+            if (resource == null) throw new IOException("Missing original numeric defaults");
+            previous.loadFromString(new String(bounded(resource), StandardCharsets.UTF_8));
+        }
+        if (upgradeNumericDefaults(yaml, defaults, previous)) {
+            Path backup = file.resolveSibling("itemdb.yml.before-legacy-id-fix");
+            if (!Files.exists(backup)) Files.copy(file, backup, StandardCopyOption.COPY_ATTRIBUTES);
+            replace(file, yaml.saveToString());
+            plugin.getLogger().info("Updated Essentials legacy item IDs; custom mappings retained, original saved as " + backup.getFileName());
+        }
+        var aliases = new HashMap<String, String>();
+        for (String group : List.of("aliases", "legacy-ids")) aliases.putAll(section(yaml, group));
+        if (aliases.size() > 100000) throw new IOException("Too many item aliases");
+        return new LegacyItemDatabase(aliases);
+    }
+
+    static boolean upgradeNumericDefaults(YamlConfiguration yaml, YamlConfiguration defaults,
+                                          YamlConfiguration previous) throws IOException {
+        Map<String, String> current = section(yaml, "legacy-ids");
+        Map<String, String> correct = section(defaults, "legacy-ids");
+        Map<String, String> old = section(previous, "legacy-ids");
+        boolean changed = false;
+        for (var entry : old.entrySet()) {
+            String key = entry.getKey();
+            if (Objects.equals(current.get(key), entry.getValue()) && !Objects.equals(current.get(key), correct.get(key))) {
+                yaml.set("legacy-ids." + key, correct.get(key));
+                changed = true;
+            }
+        }
+        for (var entry : correct.entrySet()) {
+            if (!yaml.contains("legacy-ids." + entry.getKey())) {
+                yaml.set("legacy-ids." + entry.getKey(), entry.getValue());
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    private static Map<String, String> section(YamlConfiguration yaml, String group) throws IOException {
+        var values = new HashMap<String, String>();
+        var section = yaml.getConfigurationSection(group);
+        if (section == null) return values;
+        for (String name : section.getKeys(false)) {
+            Object value = section.get(name);
+            if (!(value instanceof String text) || text.length() > 4096) throw new IOException("Invalid item alias: " + name);
+            values.put(name.toLowerCase(Locale.ROOT), text);
+        }
+        return values;
+    }
+
+    private static byte[] bounded(InputStream stream) throws IOException {
+        byte[] bytes = stream.readNBytes(MAX_BYTES + 1);
+        if (bytes.length > MAX_BYTES) throw new IOException("Item database too large");
+        return bytes;
+    }
+
+    private static void replace(Path file, String text) throws IOException {
+        Path temp = Files.createTempFile(file.getParent(), ".itemdb-", ".tmp");
+        try {
+            Files.writeString(temp, text);
+            if (Files.exists(file)) {
+                try { Files.setPosixFilePermissions(temp, Files.getPosixFilePermissions(file)); }
+                catch (UnsupportedOperationException ignored) { }
+            }
+            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } finally { Files.deleteIfExists(temp); }
+    }
+
+    private static boolean numeric(String id) { return id.matches("[0-9]+(?::[0-9]+)?"); }
+
+    public String lookup(String reference) {
+        String id = reference.toLowerCase(Locale.ROOT);
+        if (id.contains(":") && !numeric(id)) return null;
+        if (Material.matchMaterial(reference) != null) return null;
+        String value = values.get(id);
+        if (value == null && numeric(id)) {
+            value = id.contains(":") && id.endsWith(":0") ? values.get(id.substring(0, id.length() - 2)) : values.get(id + ":0");
+        }
+        // Bukkit renamed the grass item in 1.20.3; the numeric identity is unchanged.
+        if (numeric(id) && "GRASS".equals(value) && Material.matchMaterial("GRASS") == null
+                && Material.matchMaterial("SHORT_GRASS") != null) return "SHORT_GRASS";
+        return value;
+    }
+
+    public List<String> complete(String prefix, Collection<String> allium) {
+        var out = new TreeSet<String>();
+        for (String name : allium) if (name.startsWith(prefix)) out.add(name);
+        for (String name : completions.tailSet(prefix, true)) {
+            if (!name.startsWith(prefix) || out.size() >= 64) break;
+            out.add(name);
+        }
+        return out.stream().limit(64).toList();
+    }
 }

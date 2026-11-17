@@ -338,7 +338,18 @@ info:
 
 # Opt-in sign types: color, warp, kit, balance, heal, repair, disposal, workbench, anvil, mail, info.
 # Legacy colour is accepted as color. One shared click limit across all types.
-enabledSigns: []
+enabledSigns:
+  #- color
+  #- warp
+  #- kit
+  #- balance
+  #- heal
+  #- repair
+  #- disposal
+  #- workbench
+  #- anvil
+  #- mail
+  #- info
 sign-use-per-second: 4
 
 # Static safe public chat; formatting does not require Vault. Optional peers supply decorations.

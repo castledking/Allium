@@ -1,9 +1,30 @@
 # Legacy items, enchantments and teleport utilities
 
-The bundled `itemdb.yml.gz` is the legacy Allium database: 43,698 aliases and 493
-numeric-ID mappings. The items module extracts it to `plugins/Allium/itemdb.yml`
-only when absent. Existing operator files are retained. `/allium reload` prepares
-an immutable replacement index; a malformed replacement keeps the previous one.
+The bundled `itemdb.yml.gz` retains 43,698 legacy Allium aliases. Its 846 numeric
+ID/data mappings come from Essentials' `Essentials/src/main/resources/items.csv`
+and Bukkit's legacy material conversion on Spigot 1.20.1, with Essentials' entity
+IDs for spawners/eggs and native potion types/extended/upgraded flags. They are
+never inferred from partial modern names: `1:2` is `POLISHED_GRANITE`, and
+`383:54` is `ZOMBIE_SPAWN_EGG`. Bare IDs imply data zero. Block-only IDs without a
+giveable item remain unavailable; the grass item follows the runtime's rename.
+
+The items module extracts the database to `plugins/Allium/itemdb.yml` when absent.
+On existing files it adds missing numeric defaults and corrects values matching
+the original bundled numeric table. Custom aliases and custom numeric values are
+retained. The first upgrade saves the exact original as
+`itemdb.yml.before-legacy-id-fix` and replaces the file atomically. A customized
+value identical to an old default is indistinguishable from that default and is
+corrected. `/allium reload` prepares an immutable replacement index; a malformed
+replacement keeps the previous one. Numeric IDs still execute when typed, but
+are excluded from `/i` and `/give` completion; aliases (including names such as
+`10cd`), canonical names and Allium items continue to complete.
+
+`tests/live/parity/plugin/legacy-ids.csv` records the unique Essentials ID/data
+pairs and source SHA256. The native Spigot fixture emits
+`essentials-converted-ids.json`; `tools/rebuild-legacy-item-ids <export.json>`
+rebuilds the deterministic compressed defaults while retaining the alias section.
+The original 493 defaults in `itemdb-legacy-ids-v1.yml` are used only to identify
+unchanged values during upgrade. Do not regenerate that migration baseline.
 Canonical material names take precedence over aliases, and explicit provider
 namespaces are never silently remapped. Unsupported materials/effects on older
 servers fail clearly rather than producing a different item.

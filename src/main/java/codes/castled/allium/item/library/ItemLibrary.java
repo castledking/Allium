@@ -36,6 +36,8 @@ public final class ItemLibrary {
     /** Signed items are minted one per stack; this caps how many one request may mint. */
     public static final int MAX_SIGNED_STACKS = 36;
 
+    private LegacyItemDatabase database;
+    public void database(LegacyItemDatabase database){this.database=database;}
     private final ItemService items;
     private final ComponentAdapter components;
     private final SkullProfiles skulls;
@@ -78,14 +80,19 @@ public final class ItemLibrary {
      * @param mayGivePrivileged whether the sender may mint privileged behaviors (handcuffs, ...)
      * @throws ItemBuildException when any reference cannot be built; nothing is returned partially
      */
-    public Prepared build(GiveSpec spec, boolean mayGivePrivileged) {
+    public Prepared build(GiveSpec spec,boolean mayGivePrivileged){return build(spec,mayGivePrivileged,false);}
+    public Prepared build(GiveSpec spec, boolean mayGivePrivileged,boolean allowUnsafe) {
         int amount = spec.amount().orElse(1);
         List<PreparedItem> out = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
         for (ItemReference reference : spec.items()) {
+            var localTokens=new ArrayList<MetaToken>();
+            if(database!=null){String raw=reference.text();int open=codes.castled.allium.item.spec.ItemSpecLexer.indexOfOpenGroup(raw);String alias=database.lookup(open<0?raw:raw.substring(0,open));if(alias!=null){if(reference.raw().isPresent()&&alias.contains(";"))throw new ItemBuildException("raw data cannot override a complex item alias");var expanded=new codes.castled.allium.item.spec.ItemSpecParser(true).parse(alias+(reference.raw().isPresent()?reference.raw().get().text():""));reference=expanded.items().get(0);localTokens.addAll(expanded.tokens());}}
+            localTokens.addAll(spec.tokens());
             List<ItemStack> stacks = resolve(reference, amount, mayGivePrivileged);
             for (ItemStack stack : stacks) {
-                CompletableFuture<SkullProfiles.Resolved> skull = applyTokens(stack, spec.tokens(), warnings);
+                if(reference.raw().isPresent())for(String notice:EnchantmentAdapter.validateRaw(stack,allowUnsafe))if(!warnings.contains(notice))warnings.add(notice);
+                CompletableFuture<SkullProfiles.Resolved> skull = applyTokens(stack, localTokens, warnings,allowUnsafe);
                 out.add(new PreparedItem(stack, skull));
             }
         }
@@ -95,7 +102,7 @@ public final class ItemLibrary {
     private List<ItemStack> resolve(ItemReference reference, int amount, boolean mayGivePrivileged) {
         ProviderKey key = reference.key();
         if (reference.raw().isPresent()) {
-            return List.of(components.create(key, reference.raw().get(), amount));
+            ItemStack template=components.create(key,reference.raw().get(),1);var result=new ArrayList<ItemStack>();for(int left=amount;left>0;){var stack=template.clone();int count=Math.min(left,Math.max(1,stack.getMaxStackSize()));stack.setAmount(count);result.add(stack);left-=count;}return result;
         }
         ResolutionResult first = items.create(new ItemRef(key, null, 1, Map.of()));
         ItemStack sample = unwrap(first, reference);
@@ -135,7 +142,7 @@ public final class ItemLibrary {
         return result.itemStack().orElseThrow();
     }
 
-    private CompletableFuture<SkullProfiles.Resolved> applyTokens(ItemStack stack, List<MetaToken> tokens, List<String> warnings) {
+    private CompletableFuture<SkullProfiles.Resolved> applyTokens(ItemStack stack, List<MetaToken> tokens, List<String> warnings,boolean allowUnsafe) {
         if (tokens.isEmpty()) {
             return null;
         }
@@ -149,6 +156,11 @@ public final class ItemLibrary {
             switch (token.key()) {
                 case "name" -> TextTokens.name(meta, required(token), token.quoted());
                 case "lore" -> TextTokens.lore(meta, required(token), token.quoted());
+                case "spawner" -> {
+                    if(!(meta instanceof org.bukkit.inventory.meta.BlockStateMeta block)||!(block.getBlockState() instanceof org.bukkit.block.CreatureSpawner spawner))throw new ItemBuildException("spawner: needs a spawner item");
+                    try{var type=org.bukkit.entity.EntityType.valueOf(required(token).toUpperCase(java.util.Locale.ROOT).replace("MINECRAFT:",""));if(!type.isSpawnable()||!type.isAlive())throw new IllegalArgumentException();spawner.setSpawnedType(type);block.setBlockState(spawner);}catch(IllegalArgumentException invalid){throw new ItemBuildException("unknown or unsupported spawner entity: "+required(token));}
+                }
+                case "legacy-effect" -> PotionAdapter.legacyEffect(meta,required(token),stack.getType());
                 case "potion" -> PotionAdapter.basePotion(meta, required(token));
                 case "effect" -> PotionAdapter.effect(meta, required(token));
                 case "color" -> PotionAdapter.color(meta, required(token));
@@ -168,7 +180,7 @@ public final class ItemLibrary {
                         throw new ItemBuildException("unknown token '" + token.key() + "'; use name, lore, owner, potion, effect, "
                                 + "color, unbreakable or an enchantment such as sharpness:5");
                     }
-                    String warning = EnchantmentAdapter.apply(stack, meta, enchantment.get(), required(token));
+                    String warning = EnchantmentAdapter.apply(stack, meta, enchantment.get(), required(token),allowUnsafe);
                     if (warning != null && !warnings.contains(warning)) {
                         warnings.add(warning);
                     }

@@ -1,0 +1,39 @@
+{
+  "finalJarSha256": "3f4b34f02482f68194e093d050967f27dc6db5ac090fb0909318fe7dd5d401af",
+  "unitsBefore": 896,
+  "unitsAfter": 919,
+  "unitDelta": 23,
+  "featureGates": {
+    "spigot": {
+      "manifest": "/mnt/storage/.allium-validation/20261117/s18-playerinfo/runs/parity-spigot-release/manifest.json",
+      "manifestSha256": "44514eb26c746126bfc1d6a1cca6499f4baaddb9dcd70a68cc44f64ab5df34f6",
+      "jarSha256": "3f4b34f02482f68194e093d050967f27dc6db5ac090fb0909318fe7dd5d401af",
+      "passed": 33,
+      "total": 33
+    },
+    "paper": {
+      "manifest": "/mnt/storage/.allium-validation/20261117/s18-playerinfo/runs/parity-paper-release/manifest.json",
+      "manifestSha256": "8d53447722bfd94aba118b5ca4df3f33769b0c8dfcf8ef270c034555762ca802",
+      "jarSha256": "3f4b34f02482f68194e093d050967f27dc6db5ac090fb0909318fe7dd5d401af",
+      "passed": 33,
+      "total": 33
+    }
+  },
+  "fullTeleportRegressionBeforeRawItemHardening": {
+    "spigot": {
+      "manifest": "/mnt/storage/.allium-validation/20261117/s13-teleport/runs/parity-regression-spigot/manifest.json",
+      "manifestSha256": "eb70efbe919868e4b438e4ced3d64e848103ca3d155051697401ed6769b7db0c",
+      "jarSha256": "2bc50f68a9cca5b94258f6bf27611e38528e977c690e1b51b5dd72de27c2cc1a",
+      "cases": 16,
+      "checks": 156
+    },
+    "paper": {
+      "manifest": "/mnt/storage/.allium-validation/20261117/s13-teleport/runs/parity-regression-paper/manifest.json",
+      "manifestSha256": "88771123be8d203cacdd81667aab968e50725c3324371b493918c4f17d351179",
+      "jarSha256": "2bc50f68a9cca5b94258f6bf27611e38528e977c690e1b51b5dd72de27c2cc1a",
+      "cases": 16,
+      "checks": 156
+    }
+  },
+  "regressionSourceNote": "Teleport production sources are identical between the full teleport regression jar and the final feature-gate jar. The subsequent production changes only add raw enchantment validation to EnchantmentAdapter and ItemLibrary, verified by final units and both 33-check feature gates."
+}

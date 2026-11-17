@@ -31,6 +31,21 @@ public final class PotionAdapter {
     private PotionAdapter() {
     }
 
+    public static void legacyEffect(ItemMeta meta,String raw,org.bukkit.Material carrier){
+        if(!(meta instanceof PotionMeta potion))throw new ItemBuildException("legacy effects need a potion or tipped arrow");
+        String[] parts=raw.split(":");String id=parts[0].toLowerCase(Locale.ROOT);id=switch(id){case "speed"->"speed";case "jump","jump_boost"->"jump_boost";case "instant_heal","heal"->"instant_health";case "instant_damage","harm"->"instant_damage";case "regen"->"regeneration";case "slow"->"slowness";case "increase_damage"->"strength";default->id;};
+        int seconds=number(parts[1],"effect seconds",-1,86400),level=number(parts[2],"effect level",0,255);boolean particles=parts.length<4||bool(parts[3]),icon=parts.length<5||bool(parts[4]);
+        basePotion(meta,"water");
+        if(id.equals("turtle_master")){if(seconds<=0){basePotion(meta,"turtle_master");return;}addLegacy(potion,"slowness",duration(seconds,carrier),3,particles,icon);addLegacy(potion,"resistance",duration(seconds,carrier),2,particles,icon);return;}
+        var type=PotionEffectType.getByKey(NamespacedKey.minecraft(id));if(type==null)throw new ItemBuildException("unsupported potion effect: "+id);
+        int ticks=seconds>0?duration(seconds,carrier):type.isInstant()?1:defaults(id)*20;
+        potion.addCustomEffect(new PotionEffect(type,ticks,Math.max(0,level-1),false,particles,icon),true);
+    }
+    private static void addLegacy(PotionMeta potion,String id,int ticks,int level,boolean particles,boolean icon){var type=PotionEffectType.getByKey(NamespacedKey.minecraft(id));if(type==null)throw new ItemBuildException("Unsupported effect: "+id);potion.addCustomEffect(new PotionEffect(type,ticks,level,false,particles,icon),true);}
+    private static int defaults(String id){return switch(id){case "speed","strength","jump_boost","invisibility","night_vision","fire_resistance","water_breathing"->180;case "slowness","weakness","haste","conduit_power"->90;case "mining_fatigue","resistance","luck","slow_falling"->300;case "regeneration","poison","saturation"->45;case "wither"->7;case "nausea","blindness"->15;case "absorption"->120;case "bad_omen","hero_of_the_village"->60;case "glowing"->30;case "levitation","darkness"->10;default->30;};}
+    private static int duration(int seconds,org.bukkit.Material carrier){return seconds*20*(carrier==org.bukkit.Material.TIPPED_ARROW?8:carrier==org.bukkit.Material.LINGERING_POTION?4:1);}
+    private static boolean bool(String value){return !java.util.Set.of("false","0","off","no").contains(value.toLowerCase(Locale.ROOT));}
+
     public static void basePotion(ItemMeta meta, String raw) {
         if (!(meta instanceof PotionMeta potion)) {
             throw new ItemBuildException("potion: applies to potions and tipped arrows");

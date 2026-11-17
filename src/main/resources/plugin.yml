@@ -7,6 +7,17 @@ authors: [castledking]
 softdepend: [LuckPerms, Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, GriefPrevention, GriefPrevention3D]
 
 commands:
+  there:
+    description: Teleport to the block in sight or move selected targets there
+    aliases: [tpthere]
+    permission: allium.tpthere
+  tppet:
+    description: Toggle owned pet selection for teleporting
+    permission: allium.tppet
+  tpent:
+    description: Toggle non-player entity selection for teleporting
+    aliases: [tpentity, tpmob, teleportmob, tpm, tpe]
+    permission: allium.tpmob
   help:
     description: Browse available commands
     usage: /<command> [page|command|plugin] [page]
@@ -186,7 +197,7 @@ commands:
 
   tpoffline:
     description: Teleport to a known player's last saved logout location
-    aliases: [otp, offlinetp]
+    aliases: [otp, offlinetp, tpoff]
     usage: /<command> <player>
     permission: allium.tp.offline
   tpa:
@@ -220,6 +231,7 @@ commands:
     description: Allium safe teleport command
     permission: allium.tp
   tphere:
+    aliases: [here, s]
     description: Allium safe teleport command
     permission: allium.tphere
 
@@ -1027,3 +1039,87 @@ permissions:
   allium.help:
     description: Browse commands available to you
     default: true
+
+  allium.tpthere:
+    default: op
+
+  allium.tppet:
+    default: op
+
+  allium.tppet.others:
+    default: op
+
+  allium.tpmob:
+    default: op
+
+  allium.tpmob.others:
+    default: op
+
+  allium.selectors:
+    default: op
+
+  allium.command.selector.all:
+    default: op
+
+  allium.command.selector.entities:
+    default: op
+
+  allium.tppet.1:
+    default: false
+
+  allium.tppet.2:
+    default: false
+
+  allium.tppet.3:
+    default: false
+
+  allium.tppet.4:
+    default: false
+
+  allium.tppet.5:
+    default: false
+
+  allium.tppet.6:
+    default: false
+
+  allium.tppet.7:
+    default: false
+
+  allium.tppet.8:
+    default: false
+
+  allium.tppet.9:
+    default: false
+
+  allium.tppet.10:
+    default: false
+
+  allium.tpmob.1:
+    default: false
+
+  allium.tpmob.2:
+    default: false
+
+  allium.tpmob.3:
+    default: false
+
+  allium.tpmob.4:
+    default: false
+
+  allium.tpmob.5:
+    default: false
+
+  allium.tpmob.6:
+    default: false
+
+  allium.tpmob.7:
+    default: false
+
+  allium.tpmob.8:
+    default: false
+
+  allium.tpmob.9:
+    default: false
+
+  allium.tpmob.10:
+    default: false

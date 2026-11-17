@@ -97,6 +97,10 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             return List.of();
         }
 
+        if((spec.canonicalName().equals("give")&&args.length==2||spec.canonicalName().equals("i")&&args.length==1)&&sender.hasPermission("allium.give")&&plugin.getModuleManager().getModule("items") instanceof codes.castled.allium.module.ItemsModule items&&items.isEnabled())return items.complete(args[args.length-1]);
+        if(java.util.Set.of("tp","tphere","there").contains(spec.canonicalName())&&args.length>0&&args[args.length-1].startsWith("@")){
+            if(!sender.hasPermission(spec.basePermission())||!codes.castled.allium.teleport.TeleportTargets.selectors(sender))return List.of();String prefix=args[args.length-1];return java.util.stream.Stream.of("@p","@r","@a","@s","@e").filter(v->v.startsWith(prefix)).filter(v->!v.equals("@a")||sender.hasPermission("allium.admin")||sender.hasPermission("allium.command.selector.all")).filter(v->!v.equals("@e")||sender.hasPermission("allium.admin")||sender.hasPermission("allium.command.selector.entities")).toList();
+        }
         if(spec.canonicalName().equals("help")&&handler instanceof HelpCommand help)return help.complete(sender,args);
         if(spec.canonicalName().equals("allium")&&args.length>=2&&args[0].equalsIgnoreCase("hide")){
             if(plugin.getModuleManager().getModule("hide") instanceof codes.castled.allium.module.HideModule hide&&hide.isEnabled())
@@ -116,18 +120,12 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
                 var names=plugin.getPlayerNames();return names==null?List.of():names.complete(sender,args[0],64);
             }
         }
-        if (spec.canonicalName().equals("enchant") && args.length == 1 && sender.hasPermission("allium.enchant")) {
-            String prefix = args[0].toLowerCase(java.util.Locale.ROOT);
-            List<String> enchants = new ArrayList<>();
-            for (var ench : org.bukkit.Registry.ENCHANTMENT) {
-                String key = ench.getKey().getKey();
-                if (key.startsWith(prefix)) {
-                    enchants.add(key);
-                }
-            }
-            enchants.sort(String::compareTo);
-            return enchants;
+        if(spec.canonicalName().equals("enchant")&&sender.hasPermission("allium.enchant")){
+            Player target=sender instanceof Player p?p:null;String prefix=args.length==0?"":args[args.length-1];boolean nameArg=args.length<=1;
+            if(args.length==2&&sender.hasPermission("allium.enchant.others")){Player named=plugin.getServer().getPlayerExact(args[0]);if(named!=null&&codes.castled.allium.naming.PlayerNameVisibility.canSee(sender,named)){target=named;nameArg=true;}}
+            if(nameArg){var item=target==null?null:target.getInventory().getItemInMainHand();var existing=item==null||item.getItemMeta()==null?java.util.Set.<org.bukkit.enchantments.Enchantment>of():item.getItemMeta() instanceof org.bukkit.inventory.meta.EnchantmentStorageMeta book?book.getStoredEnchants().keySet():item.getItemMeta().getEnchants().keySet();return codes.castled.allium.item.library.EnchantCompletions.names(item,prefix,existing);}
         }
+        if(java.util.Set.of("tp","tphere","there").contains(spec.canonicalName())&&sender.hasPermission(spec.basePermission())&&codes.castled.allium.teleport.TeleportTargets.selectors(sender)&&args.length>0&&args[args.length-1].startsWith("@"))return java.util.stream.Stream.of("@p","@r","@s","@a","@e").filter(v->v.startsWith(args[args.length-1])).filter(v->!v.equals("@a")||sender.hasPermission("allium.command.selector.all")||sender.hasPermission("allium.admin")).filter(v->!v.equals("@e")||sender.hasPermission("allium.command.selector.entities")||sender.hasPermission("allium.admin")).toList();
         CommandCompletionContext completionContext = new CommandCompletionContext() {
             @Override
             public List<String> travelNames(boolean warps, String prefix) {

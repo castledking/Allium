@@ -380,3 +380,6 @@ nickname:
   gradientplus-enabled: true
   animate-tab: false
   updates-per-tick: 16
+
+# Unsafe enchantments require this switch and allium.enchant.unsafe.
+allow-unsafe-enchants: false

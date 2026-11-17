@@ -11,6 +11,26 @@ import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 
 class ResourceSyncManagerTest {
+    @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir;
+    @Test void startupNormalizesFlowListsEvenWithoutMissingKeys()throws Exception{
+        var plugin=mock(PluginStart.class,RETURNS_DEEP_STUBS);org.mockito.Mockito.when(plugin.getDataFolder()).thenReturn(dir.toFile());
+        org.mockito.Mockito.when(plugin.getResource("sample.yml")).thenAnswer(c->new java.io.ByteArrayInputStream("items: [one, two]\n".getBytes()));
+        var file=dir.resolve("sample.yml");java.nio.file.Files.writeString(file,"items: [one, two]\n");
+        new ResourceSyncManager(plugin).syncResource("sample.yml");
+        String saved=java.nio.file.Files.readString(file);assertTrue(saved.contains("- one\n"));assertTrue(saved.contains("- two\n"));
+    }
+    @Test void syncingLegacyLocaleInsertsRootKeysAndPreservesCustomText()throws Exception{
+        var plugin=mock(PluginStart.class,RETURNS_DEEP_STUBS);org.mockito.Mockito.when(plugin.getDataFolder()).thenReturn(dir.toFile());
+        org.mockito.Mockito.when(plugin.getResource("en_US.yml")).thenAnswer(c->getClass().getClassLoader().getResourceAsStream("lang/en_US.yml"));
+        var file=dir.resolve("en_US.yml");java.nio.file.Files.writeString(file,"no-permission: customized\n");new ResourceSyncManager(plugin).syncResource("en_US.yml");
+        var saved=YamlConfiguration.loadConfiguration(file.toFile());assertEquals("customized",saved.getString("no-permission"));assertTrue(saved.isList("unknown-command"));assertTrue(saved.isList("unknown-command-suggestion"));
+    }
+    @Test void malformedYamlIsNotOverwrittenAndFormattingBackupIsStable()throws Exception{
+        var file=dir.resolve("config.yml");java.nio.file.Files.writeString(file,"values: [one, two]\n");var c=yaml("values: [one, two]\n");YamlFiles.normalize(file,c);String original=java.nio.file.Files.readString(dir.resolve("config.yml.before-format"));YamlFiles.normalize(file,c);assertEquals("values: [one, two]\n",original);assertEquals(original,java.nio.file.Files.readString(dir.resolve("config.yml.before-format")));
+        var plugin=mock(PluginStart.class,RETURNS_DEEP_STUBS);org.mockito.Mockito.when(plugin.getDataFolder()).thenReturn(dir.toFile());org.mockito.Mockito.when(plugin.getResource("config.yml")).thenAnswer(x->new java.io.ByteArrayInputStream("items: []\n".getBytes()));java.nio.file.Files.writeString(file,"broken: [\n");new ResourceSyncManager(plugin).syncResource("config.yml");assertEquals("broken: [\n",java.nio.file.Files.readString(file));
+    }
+    @Test void bundledUnknownMessageHasLegacyRootKey()throws Exception{try(var in=getClass().getClassLoader().getResourceAsStream("lang/en_US.yml")){var c=YamlConfiguration.loadConfiguration(new java.io.InputStreamReader(in));assertTrue(c.contains("unknown-command"));assertTrue(c.contains("unknown-command-suggestion"));assertTrue(c.contains("no-permission"));}}
+
 
     private static YamlConfiguration yaml(String text) throws Exception {
         YamlConfiguration yaml = new YamlConfiguration();

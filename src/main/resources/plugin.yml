@@ -7,6 +7,10 @@ authors: [castledking]
 softdepend: [LuckPerms, Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, GriefPrevention, GriefPrevention3D]
 
 commands:
+  help:
+    description: Browse available commands
+    usage: /<command> [page|command|plugin] [page]
+    permission: allium.help
   nick:
     description: Change a persistent nickname
     aliases: [nickname]
@@ -1019,3 +1023,7 @@ permissions:
   allium.tp.offline:
     description: Teleport to known offline players' saved logout positions
     default: op
+
+  allium.help:
+    description: Browse commands available to you
+    default: true

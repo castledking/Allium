@@ -1,0 +1,20 @@
+{
+  "jarSha256": "98dd099da19c107e8377a2b34b72b3727742f512a8f8a2533340cbb29b756deb",
+  "unitsBefore": 887,
+  "unitsAfter": 896,
+  "unitDelta": 9,
+  "lanes": {
+    "spigot": {
+      "manifest": "/mnt/storage/.allium-validation/20261116/s18-playerinfo/runs/help-spigot-r2/manifest.json",
+      "sha256": "7f7d46d2cd01171da1feee817510aad0d9c768e64d3b999456e6bca45f9cf2c6",
+      "checksPassed": 24,
+      "checksTotal": 24
+    },
+    "paper": {
+      "manifest": "/mnt/storage/.allium-validation/20261116/s18-playerinfo/runs/help-paper-r2/manifest.json",
+      "sha256": "aeb517e0b40919dedaf830e82ab9a422e6a0ead939833f3942a7cf737d8b9956",
+      "checksPassed": 24,
+      "checksTotal": 24
+    }
+  }
+}

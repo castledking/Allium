@@ -231,7 +231,8 @@ public final class CoreCommandSpecs {
             ))
     );
 
-    public static final List<CommandSpec> CORE_SPECS = List.of(ALLIUM);
+    public static final CommandSpec HELP = new CommandSpec("help",CommandSpec.DEFAULT_NAMESPACE,"core",List.of(),"Browse commands available to you","/help [page|command|plugin] [page]","/help [page|command|plugin] [page]","allium.help",null,List.of(),List.of(),CommandMessageKeys.ofOutcomes(Map.of()));
+    public static final List<CommandSpec> CORE_SPECS = List.of(ALLIUM,HELP);
 
     /** {@code /msg} with Essentials' aliases. */
     public static final CommandSpec MSG = new CommandSpec(

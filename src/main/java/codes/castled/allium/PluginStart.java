@@ -133,6 +133,7 @@ public final class PluginStart extends JavaPlugin {
         moduleManager.loadModules();
 
         commandManager.register(new codes.castled.allium.command.AlliumCommand(this));
+        commandManager.register(new codes.castled.allium.command.HelpCommand(this));
         commandManager.registerAll();
         listenerManager.registerAll();
         new ProviderStartupDiagnostics(itemService, getServer().getPluginManager(), logger::warning).install(scheduler);

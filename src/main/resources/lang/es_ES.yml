@@ -1087,3 +1087,21 @@ hide:
     - "{prefix} &cUso: &f/allium hide <status|reload|enabled true/false|resolve player command|fix command permission|unfix command|group name create/whitelist/inherit/add/remove/check>"
   hint-failed:
     - "{prefix} &eLas reglas están activas, pero no se pudo exportar el paquete de ayuda. Consulta la consola."
+
+unknown-command:
+  - "{prefix} &cComando desconocido: /{cmd}. Escribe &f/help &cpara obtener ayuda."
+unknown-command-suggestion:
+  - "{prefix} &cComando desconocido: /{cmd}. ¿Querías decir &f/{suggestion}&c?"
+no-permission:
+  - "{prefix} &cNo tienes permiso para usar &f/{cmd}&c."
+help:
+  header:
+    - "{prefix} &6&lMenú de ayuda &7- Página &e{page}/{pages}"
+  entry:
+    - "&6 • &e/{command} &7- {description}"
+  empty:
+    - "{prefix} &7No hay comandos disponibles."
+  previous:
+    - "&e« Anterior"
+  next:
+    - "&eSiguiente »"

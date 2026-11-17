@@ -5,13 +5,13 @@ import org.bukkit.configuration.ConfigurationSection;
 import java.util.*;
 
 /** A validated replacement is prepared before it becomes visible to listeners. */
-public record HideSettings(boolean enabled,boolean blockNamespacedForBypass,boolean hideNamespacedForBypass,
+public record HideSettings(boolean enabled,boolean useResolver,boolean blockNamespacedForBypass,boolean hideNamespacedForBypass,
         boolean removeUnsafe,Set<String> unsafe,boolean filterSuggestions,boolean cancelBareSlash,boolean cancelUnknown,
         Set<String> namespacedAllow,List<String> suggestionPrefixes,String hint,HidePolicy policy,
         Map<String,String> permissionOverrides) {
     public static HideSettings read(YamlConfiguration c,Map<String,Set<String>> implicitParents){
         for(String section:List.of("settings","groups"))if(c.contains(section)&&!c.isConfigurationSection(section))throw new IllegalArgumentException("hide "+section+" must be a section");
-        for(String flag:List.of("enabled","block-namespaced-commands-for-ops","hide-namespaced-commands-for-ops","remove-unsafe-commands","filter-command-suggestions","cancel-bare-slash-request","cancel-unknown-suggestion-responses"))if(c.contains("settings."+flag)&&!(c.get("settings."+flag) instanceof Boolean))throw new IllegalArgumentException("hide flag must be boolean: "+flag);
+        for(String flag:List.of("enabled","use-allium-permission-resolver","block-namespaced-commands-for-ops","hide-namespaced-commands-for-ops","remove-unsafe-commands","filter-command-suggestions","cancel-bare-slash-request","cancel-unknown-suggestion-responses"))if(c.contains("settings."+flag)&&!(c.get("settings."+flag) instanceof Boolean))throw new IllegalArgumentException("hide flag must be boolean: "+flag);
         if(c.contains("permission-overrides")&&!(c.get("permission-overrides") instanceof List<?>))throw new IllegalArgumentException("permission-overrides must be a list");
         if(c.contains("settings.unknown-command-completion-help-message")&&(!(c.get("settings.unknown-command-completion-help-message") instanceof String text)||text.length()>4096))throw new IllegalArgumentException("invalid command hint");
         var definitions=new ArrayList<HidePolicy.Definition>();var groups=c.getConfigurationSection("groups");
@@ -26,7 +26,7 @@ public record HideSettings(boolean enabled,boolean blockNamespacedForBypass,bool
             if(!command.matches("[a-z0-9_:?.-]{1,128}")||!permission.matches("[A-Za-z0-9_.*:-]{1,256}"))throw new IllegalArgumentException("invalid hide permission override");
             if(overrides.put(command,permission)!=null)throw new IllegalArgumentException("duplicate hide permission override");
         }
-        return new HideSettings(c.getBoolean("settings.enabled",false),c.getBoolean("settings.block-namespaced-commands-for-ops",false),c.getBoolean("settings.hide-namespaced-commands-for-ops",false),
+        return new HideSettings(c.getBoolean("settings.enabled",false),c.getBoolean("settings.use-allium-permission-resolver",true),c.getBoolean("settings.block-namespaced-commands-for-ops",false),c.getBoolean("settings.hide-namespaced-commands-for-ops",false),
             c.getBoolean("settings.remove-unsafe-commands",true),normalized(c,"settings.unsafe-commands-list"),c.getBoolean("settings.filter-command-suggestions",true),c.getBoolean("settings.cancel-bare-slash-request",true),c.getBoolean("settings.cancel-unknown-suggestion-responses",true),
             normalized(c,"settings.allow-namespaced-suggestions"),List.copyOf(normalized(c,"settings.command-suggestion-filters")),c.getString("settings.unknown-command-completion-help-message",""),new HidePolicy(definitions),Map.copyOf(overrides));
     }

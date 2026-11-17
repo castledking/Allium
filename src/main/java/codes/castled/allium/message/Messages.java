@@ -27,7 +27,15 @@ public enum Messages {
     CHAT_PLAYER_NOT_FOUND("chat.player-not-found", "{prefix} &cPlayer not found."),
 
     // -- Command visibility --
-    HIDE_UNKNOWN("hide.unknown", "{prefix} &cUnknown command. Type &f/help &cfor help."),
+    HIDE_UNKNOWN_LEGACY("hide.unknown", "{prefix} &cUnknown command. Type &f/help &cfor help."),
+    HIDE_UNKNOWN("unknown-command", "{prefix} &cUnknown command: /{cmd}. Type &f/help &cfor help."),
+    HIDE_SUGGESTION("unknown-command-suggestion", "{prefix} &cUnknown command: /{cmd}. Did you mean &f/{suggestion}&c?"),
+    HIDE_NO_PERMISSION("no-permission", "{prefix} &cYou don't have permission to use &f/{cmd}&c."),
+    HELP_HEADER("help.header", "{prefix} &6&lHelp Menu &7- Page &e{page}/{pages}"),
+    HELP_ENTRY("help.entry", "&6 • &e/{command} &7- {description}"),
+    HELP_EMPTY("help.empty", "{prefix} &7No commands available."),
+    HELP_PREVIOUS("help.previous", "&e« Previous"),
+    HELP_NEXT("help.next", "&eNext »"),
     HIDE_RELOADED("hide.reloaded", "{prefix} &aHide configuration reloaded."),
     HIDE_UPDATED("hide.updated", "{prefix} &aHide configuration updated."),
     HIDE_BUSY("hide.busy", "{prefix} &eA hide update is already pending. Try again shortly."),

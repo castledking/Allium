@@ -38,23 +38,39 @@ def run_suite(lane):
     assert hashlib.sha256(pe.read_bytes()).hexdigest()=='060087c58ec268eae7dd0eb1f17ac3bea1eaadda1693414141ff64e506091bd7'
     shutil.copy2(pe,lane.path/'plugins/PacketEvents.jar')
     cfg={'settings':{'enabled':True,'unknown-command-completion-help-message':'&c&lHIDE 100% &7Try /help'},'groups':{
-        'default':{'whitelist':True,'commands':['hgparty invite','party invite','hgmapped','hgguarded','near'],'tabcompletes':['hgparty invite','party invite','hgmapped','hgguarded','near']},
+        'default':{'whitelist':True,'commands':['hgparty invite','party invite','hgmapped','hgguarded','near','help'],'tabcompletes':['hgparty invite','party invite','hgmapped','hgguarded','near','help']},
         'alt':{'whitelist':False,'commands':['party invite','hgparty invite'],'tabcompletes':['party invite','hgparty invite']},
         'vip':{'whitelist':True,'commands':['hideghost'],'tabcompletes':['^']}}}
-    (lane.path/'plugins/Allium/hide.yml').write_text(yaml.safe_dump(cfg,sort_keys=False))
+    (lane.path/'plugins/Allium/hide.yml').write_text(yaml.safe_dump(cfg,sort_keys=False,default_flow_style=True))
     lane.boot();lane.console_cmd('allium hide status','packet-filter=true')
     bot=Bot(lane,'InfoNorm');lane.bots[bot.name]=bot;bot.connect();window(1)
     trees=[json.loads(s.split(' ',1)[1]) for s in bot.lines if s.startswith('HIDE-TREE ')]
     require(bool(trees) and 'hideghost' not in json.dumps(trees[-1]) and 'hiddenbranch' not in json.dumps(trees[-1]),'wire tree excludes hidden root and scoped cached children')
+    installed=lane.path/'plugins/Allium/lang/en_US.yml'
+    lang=yaml.safe_load(installed.read_text())
+    require(all(k in lang for k in ['unknown-command','unknown-command-suggestion','no-permission']),'legacy root language keys generated')
+    require('\n- ' in (lane.path/'plugins/Allium/hide.yml').read_text() or '\n    - ' in (lane.path/'plugins/Allium/hide.yml').read_text(),'startup expands flow lists to block sequences')
+    help_start=bot.cmd('help');bot.chat(help_start,'Help Menu');window(.3)
+    help_lines=[c['plain'] for c in bot.chats(help_start)]
+    require(any('/party invite' in s for s in help_lines) and not any('/hgguarded' in s or '/hideghost' in s or '/party kick' in s for s in help_lines),'help shows allowed paths and hides denied permissions/siblings')
+    bot.chat(bot.cmd('hel'),'Did you mean');require(True,'unknown typo suggests visible executable command')
     bot.chat(bot.cmd('party invite'),'HIDE-ACTION hgparty invite');require(True,'allowed alias executes')
     bot.chat(bot.cmd('party kick'),'Unknown command');require(True,'sibling execution refused')
     require(tab(bot,'party ')==['invite'],'full path suggestions filtered')
     require(tab(bot,'')==[],'bare slash response withheld')
     require(not any(':' in s for s in tab(bot,'h')),'namespaced root suggestions absent')
     bot.chat(bot.cmd('hgguarded'),'permission');require(True,'native permission denies whitelisted command')
+    lang['no-permission']=['{prefix} &cRESOLVER-DENIED /{cmd}'];installed.write_text(yaml.safe_dump(lang,sort_keys=False))
+    lane.console_cmd('allium reload','Configuration reloaded.')
+    bot.chat(bot.cmd('hgguarded'),'RESOLVER-DENIED /hgguarded');require(True,'allowed path resolver denial uses root no-permission')
+    policy_path=lane.path/'plugins/Allium/hide.yml';policy=yaml.safe_load(policy_path.read_text());policy['settings']['use-allium-permission-resolver']=False;policy_path.write_text(yaml.safe_dump(policy,sort_keys=False))
+    lane.console_cmd('core hide reload','Hide configuration reloaded')
+    start=bot.cmd('hgguarded');bot.chat(start,'command.unknown.command');window(.3)
+    require(not any('RESOLVER-DENIED' in c['plain'] for c in bot.chats(start)),'resolver off delegates refusal to native command')
+    policy['settings']['use-allium-permission-resolver']=True;policy_path.write_text(yaml.safe_dump(policy,sort_keys=False));lane.console_cmd('core hide reload','Hide configuration reloaded')
     lane.fixture('perm InfoNorm hidegate.guarded true');bot.chat(bot.cmd('hgguarded'),'HIDE-ACTION hgguarded');require(True,'live permission grant takes effect')
     lane.console_cmd('core hide fix hgmapped hidegate.manual','Hide configuration updated')
-    bot.chat(bot.cmd('hgmapped'),'permission');lane.fixture('perm InfoNorm hidegate.manual true');bot.chat(bot.cmd('hgmapped'),'HIDE-ACTION hgmapped')
+    bot.chat(bot.cmd('hgmapped'),'RESOLVER-DENIED');lane.fixture('perm InfoNorm hidegate.manual true');bot.chat(bot.cmd('hgmapped'),'HIDE-ACTION hgmapped')
     lane.console_cmd('core hide resolve InfoNorm hgmapped','via OVERRIDE');require(True,'unknown-only override enforces dotted permission')
     lane.fixture('perm InfoNorm group.vip true');window(2.3);bot.chat(bot.cmd('hideghost'),'HIDE-ACTION hideghost')
     require('hideghost' in tab(bot,'hideg'),'membership refresh updates completion')

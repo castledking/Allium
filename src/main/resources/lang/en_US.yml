@@ -1087,3 +1087,21 @@ hide:
     - "{prefix} &cUsage: &f/allium hide <status|reload|enabled true/false|resolve player command|fix command permission|unfix command|group name create/whitelist/inherit/add/remove/check>"
   hint-failed:
     - "{prefix} &eHide rules are active, but the command hint pack could not be exported. Check console."
+
+unknown-command:
+  - "{prefix} &cUnknown command: /{cmd}. Type &f/help &cfor help."
+unknown-command-suggestion:
+  - "{prefix} &cUnknown command: /{cmd}. Did you mean &f/{suggestion}&c?"
+no-permission:
+  - "{prefix} &cYou don't have permission to use &f/{cmd}&c."
+help:
+  header:
+    - "{prefix} &6&lHelp Menu &7- Page &e{page}/{pages}"
+  entry:
+    - "&6 • &e/{command} &7- {description}"
+  empty:
+    - "{prefix} &7No commands available."
+  previous:
+    - "&e« Previous"
+  next:
+    - "&eNext »"

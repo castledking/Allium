@@ -59,3 +59,7 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
 - Offline teleport aliases and saved logout positions: **+10**, 877 → 887. Native
   full teleport 16/16 cases, 156/156 checks on Spigot 1.20.1 and Paper 26.3;
   see teleport/OFFLINE.md. Hide harness whitespace cleanup only: delta 0.
+
+- Hide-aware help, legacy refusal keys, resolver delegation and block-list YAML
+  formatting: **+9**, 887 → 896. Full check/shadowJar; native Spigot 1.20.1 and
+  Paper 26.3 SQLite hide/help gates 24/24 each. See hide/HELP.md.

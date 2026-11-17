@@ -79,3 +79,31 @@ removes only Allium-marked helper files; unrelated packs are preserved.
 Compatibility evidence distinguishes native server/PacketEvents checks from
 resolver API-shape tests; it does not certify every version of LuckPerms,
 NightCore, or another command framework. See `tests/live/hide/RESULTS.md`.
+
+## Help and localized refusals
+
+`/help [page|command|plugin] [page]` supplies eight entries per page with clickable
+command suggestions and page navigation. Plugin searches/completions require
+`allium.admin`. Every page and completion resolves a fresh view: with hiding on,
+only paths allowed in **both** commands and tabcompletes appear, then permission
+resolution applies. Scoped rules list admitted subcommands rather than exposing
+an unrestricted parent. With hiding off, help uses native command permissions.
+`allium.help` defaults true; disabling the help command family also disables its
+completion renderer.
+
+`settings.use-allium-permission-resolver: true` in hide.yml controls Allium's
+permission inspection during hide execution/help/root filtering. False retains
+hide execution and suggestion rules but delegates actual permission refusal to
+the command's owning plugin. Native permissions remain authoritative either way.
+A path admitted by commands that fails Allium's resolver uses root lang key
+`no-permission` (`{cmd}`). A hidden/missing path uses `unknown-command` or
+`unknown-command-suggestion` (`{cmd}`, `{suggestion}`); suggestions use only visible,
+executable roots. The former `hide.unknown` entry remains for compatibility but
+is no longer the active refusal key. The client-side resource-pack error line
+remains a separate hide.yml setting.
+
+Both `[one, two]` and block lists are valid YAML and already parse identically.
+Startup/resource sync now serializes config/lang/hide lists as block sequences,
+even if no keys were added. It keeps a one-time `.before-format` original and
+atomically replaces changed files. Resource-sync normalization skips invalid files. New bundled
+language keys are merged into existing locales without replacing custom text.

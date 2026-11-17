@@ -39,7 +39,7 @@ public final class HideService implements Listener,AutoCloseable {
     public HideService(PluginStart plugin){this.plugin=plugin;groups=new HideGroups(plugin);permissions=new HidePermissionResolver(plugin);io=plugin.getScheduler().boundedPool("Allium-Hide-Config",1,32);file=plugin.getDataFolder().toPath().resolve("hide.yml");}
     public void enable(){
         if(!Files.exists(file))plugin.saveResource("hide.yml",false);
-        try{config=read();settings=prepare(config);}catch(Exception invalid){
+        try{config=read();settings=prepare(config);normalize();}catch(Exception invalid){
             plugin.logger().warning("Invalid hide.yml; non-bypass command access is blocked until a valid reload.");
             config=new YamlConfiguration();config.set("settings.enabled",true);config.set("groups.default.whitelist",true);settings=HideSettings.read(config,Map.of());
         }
@@ -50,6 +50,7 @@ public final class HideService implements Listener,AutoCloseable {
         timer=plugin.getScheduler().repeatOnServer(()->{if(closed)return false;tick();return true;},50,50);
         logCapability();
     }
+    private void normalize()throws IOException{if(!config.contains("settings.use-allium-permission-resolver"))config.set("settings.use-allium-permission-resolver",true);codes.castled.allium.config.YamlFiles.normalize(file,config);}
     public HideSettings settings(){return settings;}
     public Viewer viewer(UUID id){return viewers.get(id);}
     private HideSettings prepare(YamlConfiguration c){
@@ -117,17 +118,49 @@ public final class HideService implements Listener,AutoCloseable {
             if(v.settings().filterSuggestions()&&v.settings().suggestionPrefixes().stream().anyMatch(root::startsWith))return false;
             if(!groupAllows(v,path,true))return false;
         }
-        return commands.isEmpty()||permissions.resolve(p,path,commands,v.settings().permissionOverrides()).allowed();
+        return !v.settings().useResolver()||commands.isEmpty()||permissions.resolve(p,path,commands,v.settings().permissionOverrides()).allowed();
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void command(PlayerCommandPreprocessEvent event){
         if(closed||!settings.enabled())return;Player p=event.getPlayer();String line=HidePolicy.normalize(event.getMessage());Viewer v=refresh(p,false);
         if(v.bypass()&&v.settings().blockNamespacedForBypass()&&HidePolicy.root(line).contains(":" )||!groupAllows(v,line,false)){
-            event.setCancelled(true);plugin.getMessageManager().send(p,Messages.HIDE_UNKNOWN);return;
+            event.setCancelled(true);unknown(p,line);return;
         }
+        if(!v.settings().useResolver())return;
         var decision=permissions.resolve(p,line,commands,v.settings().permissionOverrides());
         if(!decision.allowed()){
-            event.setCancelled(true);plugin.getMessageManager().send(p,decision.source()==HidePermissionResolver.Source.UNKNOWN?Messages.HIDE_UNKNOWN:Messages.NO_PERMISSION);
+            event.setCancelled(true);if(!commands.containsKey(HidePolicy.root(line)))unknown(p,line);else plugin.getMessageManager().send(p,Messages.HIDE_NO_PERMISSION,"{cmd}",HidePolicy.root(line));
         }
+    }
+    public record HelpEntry(String path,String owner,String description) {}
+    public List<HelpEntry> helpEntries(CommandSender sender){
+        Viewer v=sender instanceof Player p?refresh(p,false):null;
+        var out=new TreeMap<String,HelpEntry>();
+        for(var entry:commands.entrySet()){
+            String root=entry.getKey();if(root.contains(":"))continue;Command command=entry.getValue();
+            String owner=command instanceof PluginIdentifiableCommand pc?pc.getPlugin().getName():"Minecraft";
+            var candidates=new LinkedHashSet<String>();candidates.add(root);
+            if(v!=null&&v.settings().enabled())for(var group:v.groups())for(String rule:group.completions()){
+                if(rule.contains(" ")&&!rule.contains("*")&&variants(root).stream().anyMatch(label->HidePolicy.root(rule).equals(label)||HidePolicy.root(rule).equals(root)))candidates.add(root+rule.substring(rule.indexOf(' ')));
+            }
+            for(String path:candidates){
+                if(v!=null&&v.settings().enabled()&&(!packetVisible(v,path)||!groupAllows(v,path,false)))continue;
+                boolean allowed=v!=null&&v.settings().enabled()?(!v.settings().useResolver()||permissions.resolve((Player)sender,path,commands,v.settings().permissionOverrides()).allowed()):command.testPermissionSilent(sender);
+                if(allowed)out.put(path,new HelpEntry(path,owner,command.getDescription()));
+            }
+        }
+        return List.copyOf(out.values());
+    }
+    private void unknown(Player player,String line){
+        String root=HidePolicy.root(line);String suggestion=root.contains(":")?null:closest(root,helpEntries(player).stream().map(HelpEntry::path).toList());
+        plugin.getMessageManager().send(player,suggestion==null?Messages.HIDE_UNKNOWN:Messages.HIDE_SUGGESTION,"{cmd}",root,"{suggestion}",Objects.toString(suggestion,""));
+    }
+    static String closest(String input,List<String> allowed){
+        if(input.isEmpty()||input.length()>64)return null;String best=null;int score=3;
+        for(String candidate:allowed){if(candidate.contains(" ")||candidate.equals(input)||Math.abs(candidate.length()-input.length())>2)continue;
+            int[] prev=new int[candidate.length()+1];for(int j=0;j<prev.length;j++)prev[j]=j;
+            for(int i=1;i<=input.length();i++){int[] next=new int[prev.length];next[0]=i;for(int j=1;j<next.length;j++)next[j]=Math.min(Math.min(next[j-1]+1,prev[j]+1),prev[j-1]+(input.charAt(i-1)==candidate.charAt(j-1)?0:1));prev=next;}
+            int distance=prev[candidate.length()];if(distance<score){score=distance;best=candidate;}
+        }return best;
     }
     @EventHandler(priority=EventPriority.HIGHEST) public void roots(PlayerCommandSendEvent event){
         if(closed)return;refreshLabels();Viewer v=refresh(event.getPlayer(),false);if(!settings.enabled())return;Set<String> scoped=scopedRoots(v);

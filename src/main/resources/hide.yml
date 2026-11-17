@@ -2,6 +2,7 @@
 # Opt in after configuring groups for your server; native permissions always apply.
 settings:
   enabled: false
+  use-allium-permission-resolver: true
   block-namespaced-commands-for-ops: false
   hide-namespaced-commands-for-ops: false
   unknown-command-completion-help-message: "&c&lERROR &8» &7Unknown command. Type &c/help &7for a list of commands."

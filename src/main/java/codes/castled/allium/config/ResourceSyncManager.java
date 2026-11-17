@@ -38,17 +38,17 @@ public final class ResourceSyncManager {
             return 0;
         }
 
-        FileConfiguration installed = YamlConfiguration.loadConfiguration(installedFile);
+        YamlConfiguration installed = new YamlConfiguration();
+        try { installed.load(installedFile); }
+        catch (IOException | org.bukkit.configuration.InvalidConfigurationException invalid) {
+            plugin.logger().warning("Kept invalid YAML untouched: " + resourcePath);return 0;
+        }
         int added = mergeDefaults(defaults, installed, "");
 
-        if (added > 0) {
-            try {
-                installed.save(installedFile);
-                plugin.logger().info("Synced " + added + " missing key(s) into " + resourcePath);
-            } catch (IOException e) {
-                plugin.logger().severe("Failed to save synced file: " + resourcePath);
-            }
-        }
+        try {
+            YamlFiles.normalize(installedFile.toPath(),installed);
+            if(added>0)plugin.logger().info("Synced " + added + " missing key(s) into " + resourcePath);
+        }catch(IOException error){plugin.logger().warning("YAML normalization failed: "+resourcePath);}
 
         return added;
     }

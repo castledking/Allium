@@ -97,6 +97,7 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             return List.of();
         }
 
+        if(spec.canonicalName().equals("help")&&handler instanceof HelpCommand help)return help.complete(sender,args);
         if(spec.canonicalName().equals("allium")&&args.length>=2&&args[0].equalsIgnoreCase("hide")){
             if(plugin.getModuleManager().getModule("hide") instanceof codes.castled.allium.module.HideModule hide&&hide.isEnabled())
                 return hide.hide().complete(sender,java.util.Arrays.copyOfRange(args,1,args.length));

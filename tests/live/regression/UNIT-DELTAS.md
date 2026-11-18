@@ -86,3 +86,9 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
   Full check/shadowJar passes, zero failures/errors/skips. Tests cover persisted
   slowfall preference, current permission on flight restoration, three-block
   safe-login gap and water/ground exclusions. Native results: flight/RESULTS.md.
+
+- Complete standalone language-color audit and feedback migration: **+4**,
+  936 → 940. Balance verifies async use of the configured language and available
+  funds; all standalone defaults require formatting; stock-color upgrade keeps
+  custom text/sounds and is idempotent. Full check/shadowJar passes with zero
+  failures/errors/skips. Live RGB/custom-template evidence: parity/LANG-COLORS.md.

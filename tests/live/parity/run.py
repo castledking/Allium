@@ -38,6 +38,10 @@ def run_suite(lane):
     scopes.append(lane.name)
     shutil.copy2(RUN/'parity-helper/ParityGate.jar',lane.path/'plugins/ParityGate.jar')
     path=lane.path/'plugins/Allium/config.yml';cfg=yaml.safe_load(path.read_text());cfg['teleport']['warmup-seconds']=0;path.write_text(yaml.safe_dump(cfg,sort_keys=False))
+    with zipfile.ZipFile(JAR) as artifact:language=yaml.safe_load(artifact.read('lang/en_US.yml'))
+    language['economy']['balance']=['{prefix} &fBalance: &a{amount} &dConfiguredAudit']
+    language['info']['afk']['kick']=['You were kicked for being AFK.']
+    lang_path=lane.path/'plugins/Allium/lang/en_US.yml';lang_path.parent.mkdir(exist_ok=True);lang_path.write_text(yaml.safe_dump(language,sort_keys=False))
     lane.boot()
     for name in ['InfoNorm','InfoObs']:
         b=Bot(lane,name);lane.bots[name]=b;b.connect()
@@ -47,9 +51,16 @@ def run_suite(lane):
     require((lane.path/'plugins/Allium/itemdb.yml').is_file(),'compressed item database extracted')
     if lane.kind=='spigot':
         legacy=fixture(lane,'legacy')['mapping'];(RUN/'essentials-converted-ids.json').write_text(json.dumps(legacy,indent=2)+'\n')
+    for perm in ['allium.balance','allium.pay','allium.nick','allium.info','allium.itemdb']:lane.fixture('perm InfoNorm '+perm+' true')
+    response=bot.chat(bot.cmd('bal'),'ConfiguredAudit');require('#55ff55' in response['colors'] and '#ff55ff' in response['colors'],'bal uses configured language and balance/prefix colors')
+    response=bot.chat(bot.cmd('pay'),'Invalid arguments or amount');require('#ff5555' in response['colors'],'economy errors use colored language feedback')
+    response=bot.chat(bot.cmd('nick'),'Usage: /nick');require('#ff5555' in response['colors'],'chat validation errors use colored language feedback')
+    response=bot.chat(bot.cmd('allium:info'),'player(s) online');require('#ff55ff' in response['colors'],'info diagnostics use the configured prefix')
+    require(lang_path.with_name('en_US.yml.before-color-fix').is_file() and yaml.safe_load(lang_path.read_text())['info']['afk']['kick'][0].startswith('&c'),'stock plain notices upgrade with an original-file backup')
     def give(text):
         lane.fixture('clearinv InfoNorm');mark=bot.cmd('i '+text);bot.chat(mark,'Gave');return items(lane)
     require(give('dsword')[0]['type']=='DIAMOND_SWORD','simple itemdb alias creates correct item')
+    fixture(lane,'held InfoNorm 0');response=bot.chat(bot.cmd('itemdb'),'Item:');require('#ffff55' in response['colors'],'itemdb metadata uses colored language feedback')
     pot=give('acid2pot 2');require(sum(p['amount'] for p in pot)==2 and pot[0]['effects'][0]['duration']==2400,'potion alias duration is not an amount')
     pot=give('potion;speed;60;2');require(pot[0]['effects'][0]['duration']==1200 and pot[0]['effects'][0]['amplifier']==1,'explicit potion duration and level syntax')
     pot=give('tipped_arrow;poison;15;2');require(pot[0]['effects'][0]['duration']==2400,'legacy arrow duration compensation')

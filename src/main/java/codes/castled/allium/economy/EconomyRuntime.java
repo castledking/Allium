@@ -1,6 +1,7 @@
 package codes.castled.allium.economy;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.message.Messages;
 import codes.castled.allium.economy.EconomyResult.*;
 import codes.castled.allium.module.*;
 import codes.castled.allium.naming.PlayerNameVisibility;
@@ -45,6 +46,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         var preferences=preferences();if(preferences!=null)preferences.repository().coordinateWritesWith(engine.coordinator());
         var messaging=messaging();if(messaging!=null)messaging.ignores().repository().coordinateWritesWith(engine.coordinator());
     }
+    EconomyRuntime(PluginStart plugin,EconomyEngine engine,Executor worker){this.plugin=plugin;this.engine=engine;this.worker=worker;}
     public EconomyEngine engine(){return engine;}
     public EconomyReservations reservations(){return engine.reservations(this::synchronousWorkflow);}
     private Mutation synchronousWorkflow(EconomyRequest request,EconomyEngine.WorkflowTransition transition){
@@ -87,15 +89,15 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     });}
     private boolean admit(){synchronized(admission){if(closed||reloading)return false;accepted.register();return true;}}
     private boolean submit(CommandSender sender,Runnable task){
-        if(!admit()){if(sender!=null)tell(sender,"Economy is unavailable.");return false;}
+        if(!admit()){if(sender!=null)tell(sender,Messages.ECO_UNAVAILABLE);return false;}
         try{worker.execute(()->{try{task.run();}finally{accepted.arriveAndDeregister();}});return true;}
-        catch(RejectedExecutionException error){accepted.arriveAndDeregister();if(sender!=null)tell(sender,"Economy is busy; try again.");return false;}
+        catch(RejectedExecutionException error){accepted.arriveAndDeregister();if(sender!=null)tell(sender,Messages.ECO_BUSY);return false;}
     }
-    private void tell(CommandSender sender,String text){plugin.getScheduler().runOnServer(()->{if(!closed&&(!(sender instanceof Player p)||p.isOnline()))sender.sendMessage("[Allium] "+text);});}
-    private static String refusal(){return "That player can't receive payments right now.";}
+    private void tell(CommandSender sender,Messages message,String... args){plugin.getScheduler().runOnServer(()->{if(!closed&&(!(sender instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(sender,message,args);});}
+    private static Messages refusal(){return Messages.ECO_REFUSED;}
     public void dispatch(CommandSender sender,String action,String[] args){
-        if(closed||reloading){tell(sender,"Economy is unavailable.");return;}
-        if(!sender.hasPermission("allium."+action)&&!(action.equals("eco")&&(!(sender instanceof Player)||sender.hasPermission("allium.eco.admin")))){tell(sender,"You do not have permission.");return;}
+        if(closed||reloading){tell(sender,Messages.ECO_UNAVAILABLE);return;}
+        if(!sender.hasPermission("allium."+action)&&!(action.equals("eco")&&(!(sender instanceof Player)||sender.hasPermission("allium.eco.admin")))){tell(sender,Messages.NO_PERMISSION);return;}
         try{
             switch(action){
                 case "pay" -> pay(sender,args);
@@ -105,7 +107,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
                 case "baltop" -> top(sender,args);
                 default -> throw new IllegalArgumentException("unknown economy command");
             }
-        }catch(IllegalArgumentException|ArithmeticException error){tell(sender,"Invalid arguments or amount. Use plain decimal amounts with at most two nonzero decimal places.");}
+        }catch(IllegalArgumentException|ArithmeticException error){tell(sender,Messages.ECO_INVALID);}
     }
     private void resolve(CommandSender sender,String name,java.util.function.Consumer<UUID> continuation){
         if(name==null||!name.matches("[A-Za-z0-9_]{1,16}")){tell(sender,refusal());return;}
@@ -119,7 +121,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     private void pay(CommandSender sender,String[] args){
         if(!(sender instanceof Player actor)||args.length!=2)throw new IllegalArgumentException("/pay <player> <amount>");
         Money amount=Money.parse(args[1],false).positive();UUID source=actor.getUniqueId();String actorName=actor.getName();
-        if(amount.compareTo(engine.settings().minimumPay())<0){tell(sender,"Amount is below the minimum payment.");return;}
+        if(amount.compareTo(engine.settings().minimumPay())<0){tell(sender,Messages.ECO_MINIMUM);return;}
         if(plugin.getModuleManager().getModule("moderation") instanceof ModerationModule moderation && moderation.isEnabled()
                 && (moderation.moderation().isMuted(source)||!moderation.moderation().isMuteStateReady(source))){tell(sender,refusal());return;}
         resolve(sender,args[0],recipient->{
@@ -134,25 +136,25 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
                     &&messaging.ignores().ignores(recipient,source)!=codes.castled.allium.messaging.MessagePolicy.Ignore.NO){tell(sender,refusal());return;}
             var request=engine.request(UUID.randomUUID(),"PAY",UUID.randomUUID().toString(),EconomyRequest.Kind.PAY,source.toString(),source,recipient,amount);
             submit(sender,()->{Mutation result=engine.execute(request);
-                if(result instanceof Committed){tell(sender,"Paid "+amount+" to "+args[0]+". Operation "+request.id());if(target!=null)tell(target,"Received "+amount+" from "+actorName+".");}
+                if(result instanceof Committed){tell(sender,Messages.ECO_PAYMENT_SENT,"{amount}",amount.toString(),"{player}",args[0],"{operation}",request.id().toString());if(target!=null)tell(target,Messages.ECO_PAYMENT_RECEIVED,"{amount}",amount.toString(),"{player}",actorName);}
                 else receipt(sender,result,true);
             });
         });
     }
     private void receipt(CommandSender sender,Mutation result,boolean generic){
-        if(result instanceof Committed done)tell(sender,"Economy operation committed: "+done.operationId());
-        else if(result instanceof Unknown unknown)tell(sender,"OUTCOME_UNKNOWN:"+unknown.operationId());
-        else if(result instanceof Rejected rejected)tell(sender,generic&&rejected.reason().equals("REFUSED")?refusal():"Economy refused: "+rejected.reason());
-        else tell(sender,"Economy storage is unavailable.");
+        if(result instanceof Committed done)tell(sender,Messages.ECO_COMMITTED,"{operation}",done.operationId().toString());
+        else if(result instanceof Unknown unknown)tell(sender,Messages.ECO_UNKNOWN,"{operation}",unknown.operationId().toString());
+        else if(result instanceof Rejected rejected)tell(sender,generic&&rejected.reason().equals("REFUSED")?refusal():Messages.ECO_OPERATION_REFUSED,"{reason}",rejected.reason());
+        else tell(sender,Messages.ECO_STORAGE);
     }
     private void balance(CommandSender sender,String[] args){
         if(args.length>1)throw new IllegalArgumentException("balance");
         if(args.length==0){if(!(sender instanceof Player p))throw new IllegalArgumentException("player required");show(sender,p.getUniqueId());}
-        else{if(!sender.hasPermission("allium.balance.others")){tell(sender,"You do not have permission.");return;}resolve(sender,args[0],id->show(sender,id));}
+        else{if(!sender.hasPermission("allium.balance.others")){tell(sender,Messages.NO_PERMISSION);return;}resolve(sender,args[0],id->show(sender,id));}
     }
     private void show(CommandSender sender,UUID id){submit(sender,()->{
         Balance result=engine.balance(id);
-        if(result instanceof Found found)tell(sender,"Balance: "+found.available());else tell(sender,result instanceof Missing?"No economy account exists.":"Economy storage is unavailable.");
+        if(result instanceof Found found)tell(sender,Messages.BALANCE,"{amount}",found.available().toString());else tell(sender,result instanceof Missing?Messages.ECO_MISSING:Messages.ECO_STORAGE);
     });}
     private void toggle(CommandSender sender,String[] args){
         if(args.length>2)throw new IllegalArgumentException("paytoggle");
@@ -161,14 +163,14 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         if(args.length==2&&parsed==null)throw new IllegalArgumentException("on/off");
         final Boolean next=parsed;
         java.util.function.Consumer<UUID> change=id->{
-            var prefs=preferences();if(prefs==null){tell(sender,"Payment preferences are unavailable.");return;}
-            var effective=prefs.effective(id);if(next==null&&effective.isEmpty()){tell(sender,"Payment preferences are unavailable.");return;}
+            var prefs=preferences();if(prefs==null){tell(sender,Messages.ECO_PREFS_UNAVAILABLE);return;}
+            var effective=prefs.effective(id);if(next==null&&effective.isEmpty()){tell(sender,Messages.ECO_PREFS_UNAVAILABLE);return;}
             boolean accept=next!=null?next:!effective.orElseThrow().acceptPayments();
             prefs.sessions().change(id,PreferenceChange.set(PreferenceKey.ACCEPT_PAYMENTS,accept)).whenComplete((stored,error)->{
-                if(error!=null)tell(sender,"Payment preference could not be saved.");else tell(sender,accept?"Payments enabled.":"Payments disabled.");
+                if(error!=null)tell(sender,Messages.ECO_PREFS_FAILED);else tell(sender,accept?Messages.ECO_PAY_ON:Messages.ECO_PAY_OFF);
             });
         };
-        if(targetName!=null){if(!sender.hasPermission("allium.paytoggle.others")){tell(sender,"You do not have permission.");return;}resolve(sender,targetName,change);}
+        if(targetName!=null){if(!sender.hasPermission("allium.paytoggle.others")){tell(sender,Messages.NO_PERMISSION);return;}resolve(sender,targetName,change);}
         else{if(!(sender instanceof Player p))throw new IllegalArgumentException("target required");change.accept(p.getUniqueId());}
     }
     private void admin(CommandSender sender,String[] args){
@@ -184,29 +186,29 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         resolve(sender,args[1],id->{var request=engine.request(UUID.randomUUID(),"ADMIN",UUID.randomUUID().toString(),kind,actor,id,null,amount);submit(sender,()->receipt(sender,engine.execute(request),false));});
     }
     private void reservationAdmin(CommandSender sender,String[] args){
-        if(sender instanceof Player&&!sender.hasPermission("allium.eco.admin")){tell(sender,"You do not have permission.");return;}
+        if(sender instanceof Player&&!sender.hasPermission("allium.eco.admin")){tell(sender,Messages.NO_PERMISSION);return;}
         if(args[0].equalsIgnoreCase("reservations")){
             if(args.length>2)throw new IllegalArgumentException("reservations [player]");
             java.util.function.Consumer<UUID> list=id->submit(sender,()->{try{
-                var rows=reservations().list(id);if(rows.isEmpty())tell(sender,"No reservations.");
-                for(var row:rows)tell(sender,row.kind()+" "+row.id()+" payer="+row.account()+" amount="+row.amount()+" state="+row.state());
-            }catch(SQLException error){tell(sender,"Reservation storage unavailable.");}});
+                var rows=reservations().list(id);if(rows.isEmpty())tell(sender,Messages.ECO_RES_NONE);
+                for(var row:rows)tell(sender,Messages.ECO_RES_ROW,"{kind}",row.kind().toString(),"{id}",row.id().toString(),"{payer}",row.account().toString(),"{amount}",row.amount().toString(),"{state}",row.state().toString());
+            }catch(SQLException error){tell(sender,Messages.ECO_RES_STORAGE);}});
             if(args.length==2)resolve(sender,args[1],list);else list.accept(null);return;
         }
         if(args.length<5)throw new IllegalArgumentException("resolve <KIT|MAIL> <workflow UUID> <capture|release> <reason>");
         var kind=EconomyReservations.Kind.valueOf(args[1].toUpperCase(Locale.ROOT));var id=UUID.fromString(args[2]);
         boolean capture=args[3].equalsIgnoreCase("capture");if(!capture&&!args[3].equalsIgnoreCase("release"))throw new IllegalArgumentException("capture or release required");
         String reason=String.join(" ",Arrays.copyOfRange(args,4,args.length));String actor=sender instanceof Player p?p.getUniqueId().toString():"CONSOLE";
-        try{var row=reservations().find(kind,id);if(row.isPresent()&&plugin.getServer().getPlayer(row.get().account())!=null){tell(sender,"Disconnect the payer before resolving a reservation; preserve their saved inventory first.");return;}}
-        catch(SQLException error){tell(sender,"Reservation storage unavailable.");return;}
-        submit(sender,()->{try{receipt(sender,reservations().resolve(kind,id,capture,actor,reason),false);tell(sender,"Native marker and workflow retained; inventory reconciliation remains an operator task.");}
-            catch(SQLException error){tell(sender,"Reservation resolution unavailable.");}});
+        try{var row=reservations().find(kind,id);if(row.isPresent()&&plugin.getServer().getPlayer(row.get().account())!=null){tell(sender,Messages.ECO_RES_DISCONNECT);return;}}
+        catch(SQLException error){tell(sender,Messages.ECO_RES_STORAGE);return;}
+        submit(sender,()->{try{receipt(sender,reservations().resolve(kind,id,capture,actor,reason),false);tell(sender,Messages.ECO_RES_RETAINED);}
+            catch(SQLException error){tell(sender,Messages.ECO_RES_FAILED);}});
     }
     private void top(CommandSender sender,String[] args){
         if(args.length!=0)throw new IllegalArgumentException("baltop");
         submit(sender,()->{try(var c=plugin.getDatabaseManager().getConnection();var s=c.createStatement();var r=s.executeQuery("SELECT account_uuid,balance_minor FROM allium_economy_accounts ORDER BY balance_minor DESC,account_uuid LIMIT 10")){
-            var lines=new ArrayList<String>();while(r.next())lines.add(r.getString(1)+": "+new Money(r.getLong(2)));tell(sender,"Top balances: "+String.join(", ",lines));
-        }catch(SQLException error){tell(sender,"Economy storage is unavailable.");}});
+            var lines=new ArrayList<String>();while(r.next())lines.add(r.getString(1)+": "+new Money(r.getLong(2)));tell(sender,Messages.ECO_TOP,"{balances}",String.join(", ",lines));
+        }catch(SQLException error){tell(sender,Messages.ECO_STORAGE);}});
     }
     public boolean reload(){
         EconomySettings next;

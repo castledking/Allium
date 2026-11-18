@@ -1,0 +1,16 @@
+[
+  {
+    "lane": "spigot",
+    "passed": 61,
+    "total": 61,
+    "sha256": "25a838f06b6b36d8185833f7576b5345cb1d12a8889e76ee7d30b57e0efce33d",
+    "manifest": "/mnt/storage/.allium-validation/20261117/s18-playerinfo/runs/message-audit-release-spigot/manifest.json"
+  },
+  {
+    "lane": "paper",
+    "passed": 61,
+    "total": 61,
+    "sha256": "25a838f06b6b36d8185833f7576b5345cb1d12a8889e76ee7d30b57e0efce33d",
+    "manifest": "/mnt/storage/.allium-validation/20261117/s18-playerinfo/runs/message-audit-release-paper/manifest.json"
+  }
+]

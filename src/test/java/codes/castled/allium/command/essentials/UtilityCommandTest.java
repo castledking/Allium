@@ -62,7 +62,7 @@ class UtilityCommandTest {
         new UtilityCommand(plugin, CoreCommandSpecs.UTILITY_SPECS.stream()
                 .filter(spec -> spec.canonicalName().equals("info")).findFirst().orElseThrow()).execute(context);
 
-        verify(p).sendMessage("[Allium] TestServer \u2014 1 player(s) online.");
+        verify(p).sendMessage("§7[§dAllium§7] §fTestServer §7— §f1 §7player(s) online.");
     }
 
     @Test

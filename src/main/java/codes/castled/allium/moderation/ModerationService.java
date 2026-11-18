@@ -1515,8 +1515,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         }
         visible.sort(Comparator.comparing(s -> s.toLowerCase(Locale.ROOT)));
         int maxPlayers = plugin.getServer().getMaxPlayers();
-        viewer.sendMessage("There are " + visible.size() + " of a max of " + maxPlayers + " players online: "
-                + String.join(", ", visible));
+        plugin.getMessageManager().send(viewer,Messages.MOD_FILTERED_LIST,"{online}",Integer.toString(visible.size()),"{max}",Integer.toString(maxPlayers),"{players}",String.join(", ",visible));
     }
 
     private boolean isAudibleLiddedContainer(Material type, BlockState state) {

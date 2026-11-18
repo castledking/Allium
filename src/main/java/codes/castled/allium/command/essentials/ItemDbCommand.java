@@ -46,17 +46,15 @@ public final class ItemDbCommand implements SpecCommandHandler {
 
         String name = UtilitySupport.formatMaterialName(held.getType());
         String key = held.getType().getKey().toString();
-        context.sender().sendMessage("[Allium] Item: " + name + " (" + key + "), amount "
-                + held.getAmount() + "/" + held.getMaxStackSize()
-                + (target == context.sender() ? "" : " (held by " + target.getName() + ")"));
+        UtilitySupport.send(plugin,context.sender(),target==context.sender()?Messages.ITEMDB_SELF:Messages.ITEMDB_OTHER,
+                "{item}",name,"{key}",key,"{amount}",Integer.toString(held.getAmount()),"{max}",Integer.toString(held.getMaxStackSize()),"{player}",target.getName());
 
         short maxDurability = held.getType().getMaxDurability();
         var meta = held.getItemMeta();
         if (maxDurability > 0 && meta instanceof Damageable damageable) {
             int used = damageable.getDamage();
             int remaining = Math.max(0, maxDurability - used);
-            context.sender().sendMessage("[Allium] Durability: " + remaining + "/" + maxDurability
-                    + " (" + used + " damage)");
+            UtilitySupport.send(plugin,context.sender(),Messages.ITEMDB_DURABILITY,"{remaining}",Integer.toString(remaining),"{max}",Short.toString(maxDurability),"{damage}",Integer.toString(used));
         }
 
         Map<Enchantment, Integer> enchants = meta instanceof EnchantmentStorageMeta stored
@@ -67,7 +65,7 @@ public final class ItemDbCommand implements SpecCommandHandler {
             for (var entry : enchants.entrySet()) {
                 joiner.add(entry.getKey().getKey().getKey() + ":" + entry.getValue());
             }
-            context.sender().sendMessage("[Allium] Enchantments: " + joiner);
+            UtilitySupport.send(plugin,context.sender(),Messages.ITEMDB_ENCHANTS,"{enchantments}",joiner.toString());
         }
 
         if (plugin.getItemService() != null) {
@@ -75,10 +73,7 @@ public final class ItemDbCommand implements SpecCommandHandler {
             if (identified.isPresent()) {
                 var ref = identified.get();
                 if (!ref.appearance().isVanilla() || ref.behaviorId().isPresent()) {
-                    String behaviorSuffix = ref.behaviorId()
-                            .map(behavior -> " (behavior=" + behavior + ")")
-                            .orElse("");
-                    context.sender().sendMessage("[Allium] Allium ID: " + ref.appearance().asString() + behaviorSuffix);
+                    UtilitySupport.send(plugin,context.sender(),ref.behaviorId().isPresent()?Messages.ITEMDB_BEHAVIOR:Messages.ITEMDB_ID,"{id}",ref.appearance().asString(),"{behavior}",ref.behaviorId().orElse(""));
                 }
             }
         }

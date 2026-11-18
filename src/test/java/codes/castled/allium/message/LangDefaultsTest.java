@@ -111,6 +111,12 @@ class LangDefaultsTest {
         assertTrue(VALID_SOUND_IDS.contains(key.toString()), "Unknown Bukkit sound " + soundId + " at " + messageKey);
     }
 
+    @Test void everyVisibleMessageHasColorExceptTheInlineConsoleLabel()throws Exception{
+        for(String locale:List.of("en_US","es_ES")){var yaml=loadLang("lang/"+locale+".yml");for(Messages message:Messages.values()){
+            if(message.getKey().equals("messaging.console-name"))continue;
+            String text=readText(yaml,message.getKey());assertTrue(LEGACY_COLOR_PATTERN.matcher(text).find()||text.contains("{prefix}"),locale+": "+message.getKey());
+        }}
+    }
     @Test
     void bothBundledLangFilesContainAllMessagesWithExactColorsValidSoundsAndParity() throws Exception {
         YamlConfiguration en = loadLang("lang/en_US.yml");

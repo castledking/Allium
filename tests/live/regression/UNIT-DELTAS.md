@@ -81,3 +81,8 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
   and colored channel-save acknowledgement: **+3**, 929 → 932; full check/shadowJar.
   Clear-air flying, hazard/border/chunk refusal, explicit unsafe admission and
   post-commit channel feedback are covered.
+
+- Flight restoration and `/toggleslowfall` (`/tsf`): **+4**, 932 → 936.
+  Full check/shadowJar passes, zero failures/errors/skips. Tests cover persisted
+  slowfall preference, current permission on flight restoration, three-block
+  safe-login gap and water/ground exclusions. Native results: flight/RESULTS.md.

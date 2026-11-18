@@ -99,6 +99,13 @@ def run_suite(lane):
     bot.chat(bot.cmd('there'),'Teleported');fixture(lane,'flight InfoNorm false');bot.chat(bot.cmd('back'),'No safe destination')
     lane.fixture('perm InfoNorm allium.teleport.unsafe true');bot.chat(bot.cmd('back'),'Returned');require(close(fixture(lane,'state InfoNorm'),air),'unsafe permission explicitly admits the midair origin without flight')
     lane.fixture('perm InfoNorm allium.teleport.unsafe false');fixture(lane,'flight InfoNorm true')
+    lane.fixture('perm InfoNorm allium.fly true');bot.chat(bot.cmd('tsf off'),'disabled');require(fixture(lane,'flightstate InfoNorm')['slowOff']==1,'tsf persists the disabled preference in native playerdata')
+    require('status' in tab(bot,'toggleslowfall st'),'slowfall status completes on the command route')
+    fixture(lane,'air InfoNorm');fixture(lane,'flightprobe InfoNorm');bot.disconnect();window(1)
+    bot=Bot(lane,'InfoNorm');lane.bots['InfoNorm']=bot;bot.connect();window(1)
+    flight=fixture(lane,'flightstate InfoNorm');require(flight['allowed'] and flight['flying'],'safe-login permission starts flight on a real midair reconnect');require(flight['slowOff']==1,'slowfall preference survives disconnect and reconnect')
+    bot.chat(bot.cmd('tsf on'),'enabled');require(fixture(lane,'flightstate InfoNorm')['slowOff']==0,'tsf on re-enables protection')
+    for perm in ['allium.tppet','allium.tpmob','allium.tphere','allium.tpthere','allium.command.selector.entities','allium.selectors']:lane.fixture('perm InfoNorm '+perm+' true')
     fixture(lane,'place InfoNorm 0 0');pet=fixture(lane,'spawn WOLF PetOne 1 0 InfoNorm');bot.chat(bot.cmd('tppet'),'selection enabled');bot.write('interact '+str(pet['entityId']));wait(lambda:fixture(lane,'state PetOne')['glowing'],'pet selected');fixture(lane,'place InfoNorm 15 0');wait(lambda:close(fixture(lane,'state PetOne'),fixture(lane,'state InfoNorm')),'pet follows player teleport');require(not fixture(lane,'state PetOne')['glowing'],'pet glow restored after movement')
     fixture(lane,'place InfoNorm 0 0');mob=fixture(lane,'spawn VILLAGER MobOne 2 0 InfoNorm');bot.chat(bot.cmd('tpent'),'selection enabled');fixture(lane,'protect true');bot.write('interact '+str(mob['entityId']));window(.3);require(not fixture(lane,'state MobOne')['glowing'],'protection cancellation prevents selection');fixture(lane,'protect false');bot.write('interact '+str(mob['entityId']));wait(lambda:fixture(lane,'state MobOne')['glowing'],'entity selected')
     # Move the actor only by walking-fixture? selection follows external teleports, so /s pulls at its current point.

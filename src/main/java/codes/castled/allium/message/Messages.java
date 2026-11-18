@@ -19,6 +19,7 @@ public enum Messages {
     GC_PLAYERS("utility.gc.players", "{prefix} &7Players: &f{online}/{max}&7, Worlds (&f{worlds}&7):"),
     GC_WORLD("utility.gc.world", "&7  - &f{world}&7: &f{chunks} &7chunks, &f{entities} &7entities{paused}"),
     GC_PAUSED("utility.gc.paused", " &e[TIME PAUSED]"),
+    SLOWFALL_TOGGLE("player.slowfall-toggle", "{prefix} &aSlow fall protection {state}&a."),
     CHAT_CHANNEL_SAVED("chat.channel-saved", "{prefix} &aChannel preference saved: &f{channel}&a."),
     CHAT_CHANNEL_SAVE_FAILED("chat.channel-save-failed", "{prefix} &cChannel preference could not be saved."),
     CHAT_DELETE_SUCCESS("chat.delete.success", "{prefix} &aMessage deleted."),

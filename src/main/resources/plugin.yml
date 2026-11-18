@@ -142,6 +142,11 @@ commands:
     description: Toggle flight mode
     usage: /<command> [player]
     permission: allium.fly
+  toggleslowfall:
+    description: Toggle slow falling on flight loss
+    usage: /<command> [on|off|status]
+    aliases: [tsf, slowfalltoggle, toggleslowfalling]
+    permission: allium.fly
   god:
     description: Toggle god mode
     usage: /<command> [player]
@@ -611,6 +616,9 @@ permissions:
   allium.fly:
     description: Allows use of /fly
     default: op
+  allium.fly.safelogin:
+    description: Enable flight when joining in midair outside water
+    default: false
   allium.fly.others:
     description: Allows toggling flight for other players
     default: op

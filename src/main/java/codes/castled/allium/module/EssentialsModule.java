@@ -31,6 +31,8 @@ import org.bukkit.event.HandlerList;
 
 public final class EssentialsModule extends AbstractModule {
 
+    private codes.castled.allium.player.FlightRestoration flights;
+    public codes.castled.allium.player.FlightRestoration flights(){return flights;}
     private TimePauseCoordinator timePauseCoordinator;
     private UtilityCommand.DisposalListener disposalListener;
     private SkullProfiles fallbackSkulls;
@@ -46,6 +48,8 @@ public final class EssentialsModule extends AbstractModule {
 
     @Override
     public void onEnable() {
+        flights=new codes.castled.allium.player.FlightRestoration(plugin);flights.enable();
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ToggleSlowFallCommand(flights));
         timePauseCoordinator = new TimePauseCoordinator(plugin);
         disposalListener = new UtilityCommand.DisposalListener();
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
@@ -110,6 +114,7 @@ public final class EssentialsModule extends AbstractModule {
 
     @Override
     public void onDisable() {
+        if(flights!=null){flights.close();flights=null;}
         if (disposalListener != null) {
             HandlerList.unregisterAll(disposalListener);
             disposalListener = null;

@@ -225,3 +225,8 @@ Addon schemas proposed above need explicit ADRs and fixture-backed migrations
 before final names are committed; no existing storage may be rewritten in
 anticipation. Any necessary change adds a versioned reader/migration retaining
 old fixtures, not a destructive cleanup before importers can read them.
+
+Flight restoration adds version-1 native playerdata PDC byte keys
+`allium:slowfall_disabled_v1`, `allium:flight_allowed_v1`, and
+`allium:flight_flying_v1`. Preserve their names and boolean meanings; a future
+legacy importer must map the corresponding stored preferences explicitly.

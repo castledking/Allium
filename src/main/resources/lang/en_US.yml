@@ -551,6 +551,8 @@ info:
     - "{prefix} &cPlayer info could not be loaded right now; try again shortly."
     - "[sound] block.note_block.bass 0.7"
 player:
+  slowfall-toggle:
+    - "{prefix} &aSlow fall protection {state}&a."
   gamemode-self:
     - "{prefix} &aGamemode set to &f{mode}&a."
     - "[sound] ui.button.click 1.35"

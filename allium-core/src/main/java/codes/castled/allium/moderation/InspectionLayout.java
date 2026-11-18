@@ -27,6 +27,8 @@ public final class InspectionLayout {
     public static final int INVSEE_PLAYER_SLOT_COUNT = 41;
     public static final int INVSEE_LOCKED_START = 41;
     public static final int INVSEE_LOCKED_END = 44;
+    /** The main-hand cell: the held hotbar item, shown beside the offhand when the held slot is known. */
+    public static final int MAIN_HAND_GUI_SLOT = 41;
     public static final int ENDERCHEST_GUI_SIZE = 27;
     public static final int MAX_GUI_TITLE_LENGTH = 32;
     public static final int MAX_AUDIT_DETAIL_LENGTH = 512;
@@ -145,6 +147,37 @@ public final class InspectionLayout {
             case 40 -> 40; // Offhand
             default -> -1;
         };
+    }
+
+    /**
+     * {@link #toGuiSlot(InspectionType, int)} with the main hand moved to its own cell: when
+     * {@code held} (the selected hotbar slot, 0-8) is known, that hotbar item is shown in
+     * {@link #MAIN_HAND_GUI_SLOT} and its hotbar cell becomes a locked marker, so the item appears
+     * in exactly one cell. With {@code held} unknown (-1) the plain mapping applies.
+     */
+    public static int toGuiSlot(InspectionType type, int playerSlot, int held) {
+        if (type == InspectionType.INVSEE && validHeld(held) && playerSlot == held) {
+            return MAIN_HAND_GUI_SLOT;
+        }
+        return toGuiSlot(type, playerSlot);
+    }
+
+    /** The hotbar cell that marks the held slot (its item is in the main-hand cell), or -1. */
+    public static int heldMarkerGuiSlot(InspectionType type, int held) {
+        return type == InspectionType.INVSEE && validHeld(held) ? toGuiSlot(type, held) : -1;
+    }
+
+    /** True for cells nobody may click: the locked panes, and the held marker; the main-hand cell is editable once held is known. */
+    public static boolean isLockedUiSlot(InspectionType type, int guiSlot, int held) {
+        if (type == InspectionType.INVSEE && validHeld(held)) {
+            if (guiSlot == MAIN_HAND_GUI_SLOT) return false;
+            if (guiSlot == heldMarkerGuiSlot(type, held)) return true;
+        }
+        return isLockedUiSlot(type, guiSlot);
+    }
+
+    public static boolean validHeld(int held) {
+        return held >= 0 && held <= 8;
     }
 
     public static String slotLabel(InspectionType type, int playerSlot) {

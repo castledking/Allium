@@ -162,8 +162,14 @@ Read-only by default, hierarchy- and vanish-aware inspection for online and offl
 
 - **Slot icons.** An empty armor or offhand slot in `/invsee` (and in `/restore` panels) shows its
   empty-slot icon: a light gray glass pane carrying the core pack's `gui_slot` model (helmet,
-  chestplate, leggings, boots, shield). The first locked slot shows a sword marking the target's
-  held hotbar slot; the other locked slots are a textured pane. Icons are marked items: they are
+  chestplate, leggings, boots, shield). The other locked slots are a textured pane.
+- **Main hand.** The cell beside the offhand is the main hand: the item in the target's selected
+  hotbar slot, editable like any other cell (taking it empties that hotbar slot; placing an item
+  on the empty sword icon puts it in their hand). That hotbar cell shows a locked "Selected slot"
+  marker, so the item appears once. Online it follows the player's hotbar choice; offline it comes
+  from the player file's `SelectedItemSlot` (the main hand is not stored separately in Minecraft's
+  data: it is the hotbar item at that index). If the selected slot is unknown, the plain layout is
+  used and the main-hand cell is locked. Icons are marked items: they are
   never saved into the target, picked up, dropped or dragged, and placing a cursor item on an icon
   equips it (left click places the stack, right click one item). Without the pack, players see
   named light gray panes.

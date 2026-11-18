@@ -457,6 +457,41 @@ def completions(lane):
     require('PlayerBot' in bal or bal == [], lane.name + ': /balance completion follows allium.balance.others', bal)
 
 
+def help_menu(lane):
+    staff = lane.bots['StaffBot']
+    # A registered "<owner>.command.<x>" node (no module) crashed /help on a live server whose hide
+    # settings use Allium's permission resolver: it then inspects commands without a plain node.
+    require(lane.fixture('addperm allium.command.reload')['registered'], lane.name + ': an allium.command.reload node is registered')
+    lane.perm('StaffBot', 'allium.help')
+    hide = lane.path / 'plugins/Allium/hide.yml'
+    original = hide.read_text()
+    settings = yaml.safe_load(original)
+    settings.setdefault('settings', {}).update({'enabled': True, 'use-allium-permission-resolver': True})
+    # Commands with no plain permission node are the ones the resolver inspects.
+    settings['groups']['default']['commands'] = list(settings['groups']['default'].get('commands', [])) + ['homes', 'delmsg']
+    hide.write_text(yaml.safe_dump(settings, sort_keys=False))
+    start = len(lane.logs)
+    lane.console('allium reload')
+    lane.log_since(start, 'reload', 20)
+    window(1)
+    try:
+        start = len(lane.logs)
+        m = staff.cmd('help')
+        staff.chat(m, 'Help Menu')
+        window(1)
+        require(not any('Exception' in v for v in lane.logs[start:]),
+                lane.name + ': with the resolver on, /help lists commands without an exception',
+                [v for v in lane.logs[start:] if 'Exception' in v][:3])
+        lines = [c['plain'] for c in staff.chats(m)]
+        require(not any('Allium safe teleport command' in v for v in lines), lane.name + ': /help descriptions are the rewritten ones', lines[:12])
+    finally:
+        hide.write_text(original)
+        start = len(lane.logs)
+        lane.console('allium reload')
+        lane.log_since(start, 'reload', 20)
+        window(1)
+
+
 def staff_chat(lane):
     staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
     staff.command('channel join staff-chat write', 'staff-chat')
@@ -583,17 +618,20 @@ def invsee(lane):
     staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
     lane.fixture('clear PlayerBot')
     lane.fixture('give PlayerBot 9 COBBLESTONE 3')
+    lane.fixture('give PlayerBot 2 GOLDEN_APPLE 3')
     lane.fixture('held PlayerBot 2')
-    # Icons: armor and offhand are empty.
+    # Icons: armor and offhand are empty; the held item (hotbar slot 3) is in the main-hand cell.
     m = staff.cmd('invsee PlayerBot')
     staff.opened(m)
     top = wait(lambda: (lambda i: i['top'] if i['topSize'] == 45 else None)(lane.fixture('inv StaffBot')), 'invsee open')
     icons = {k: v for k, v in top.items() if v['type'] == 'LIGHT_GRAY_STAINED_GLASS_PANE'}
     require(all(str(s) in icons for s in [36, 37, 38, 39, 40]), lane.name + ': empty armor and offhand slots show slot icons', top)
-    require(icons.get('36', {}).get('cmd') == 2577101 and icons.get('40', {}).get('cmd') == 2577105 and icons.get('41', {}).get('cmd') == 2577106
-            and icons.get('42', {}).get('cmd') == 2577100, lane.name + ': icons carry the gui_slot model data (helmet, shield, sword, pane)', icons)
-    require('Hotbar slot' in json.dumps(icons.get('41')) and '3' in json.dumps(icons.get('41', {}).get('lore')),
-            lane.name + ': the sword icon names the held hotbar slot', icons.get('41'))
+    require(icons.get('36', {}).get('cmd') == 2577101 and icons.get('40', {}).get('cmd') == 2577105
+            and icons.get('42', {}).get('cmd') == 2577100, lane.name + ': icons carry the gui_slot model data (helmet, shield, pane)', icons)
+    require(top.get('41', {}).get('type') == 'GOLDEN_APPLE' and top['41']['amount'] == 3,
+            lane.name + ': the main-hand cell shows the held hotbar item', top.get('41'))
+    require(icons.get('29', {}).get('cmd') == 2577100 and 'Selected slot 3' in icons.get('29', {}).get('name', ''),
+            lane.name + ': the held hotbar cell is a marker, so the item shows once', icons.get('29'))
     # Put a helmet on PlayerBot through the helmet icon.
     lane.fixture('give StaffBot 0 IRON_HELMET 1')
     staff.click(72)
@@ -604,6 +642,22 @@ def invsee(lane):
     require(slot(target, 39) and slot(target, 39)['type'] == 'IRON_HELMET', lane.name + ': placing an item on the helmet icon equips it', target['slots'])
     require(not any(v['type'] == 'LIGHT_GRAY_STAINED_GLASS_PANE' for v in mine['slots'].values()) and mine['cursor'] is None,
             lane.name + ': no icon ever reaches the viewer', mine['slots'])
+    # Take the main-hand item, then put it back through the empty main-hand (sword) cell.
+    staff.click(41)
+    staff.click(72)
+    window(.6)
+    target, top = lane.fixture('inv PlayerBot'), lane.fixture('inv StaffBot')
+    require(slot(target, 2) is None and slot(top, 0) and slot(top, 0)['type'] == 'GOLDEN_APPLE'
+            and top['top'].get('41', {}).get('cmd') == 2577106 and 'hotbar slot' in json.dumps(top['top'].get('41', {}).get('lore')),
+            lane.name + ': taking the main-hand item empties the held hotbar slot; the sword shows the empty hand',
+            dict(target=target['slots'], cell=top['top'].get('41')))
+    staff.click(72)
+    staff.click(41)
+    window(.6)
+    target, mine = lane.fixture('inv PlayerBot'), lane.fixture('inv StaffBot')
+    require(slot(target, 2) and slot(target, 2)['type'] == 'GOLDEN_APPLE' and slot(target, 2)['amount'] == 3 and not mine['slots']
+            and mine['cursor'] is None, lane.name + ': placing on the main-hand cell puts the item in the held hotbar slot',
+            dict(target=target['slots'], mine=mine['slots']))
     staff.close()
     # Dead target.
     lane.fixture('kill PlayerBot')
@@ -615,6 +669,8 @@ def invsee(lane):
     # Offline edit messages.
     lane.fixture('clear PlayerBot')
     lane.fixture('give PlayerBot 9 COBBLESTONE 3')
+    lane.fixture('give PlayerBot 2 BREAD 4')
+    lane.fixture('held PlayerBot 2')
     lane.fixture('save PlayerBot')
     player.disconnect()
     lane.fixture('clear StaffBot')
@@ -623,7 +679,10 @@ def invsee(lane):
     require(any('editable' in c['plain'] for c in staff.chats(m)), lane.name + ': offline /invsee announces it is editable')
     staff.opened(m)
     window(.5)
-    staff.click(0)
+    top = lane.fixture('inv StaffBot')['top']
+    require(top.get('41', {}).get('type') == 'BREAD' and top.get('29', {}).get('cmd') == 2577100,
+            lane.name + ': offline, the main hand comes from the player file\'s selected slot', dict(hand=top.get('41'), marker=top.get('29')))
+    staff.click(41)
     staff.click(72)
     window(.5)
     m = staff.close()
@@ -631,9 +690,11 @@ def invsee(lane):
     require(True, lane.name + ': closing an edited offline inventory reports the saved changes')
     player = lane.bot('PlayerBot')
     inv = lane.fixture('inv PlayerBot')
-    require(slot(inv, 9) is None, lane.name + ': the offline edit reached the player data', inv['slots'])
+    require(slot(inv, 2) is None and slot(inv, 9) and slot(inv, 9)['type'] == 'COBBLESTONE',
+            lane.name + ': the offline main-hand edit reached the player data, nothing else changed', inv['slots'])
     mine = lane.fixture('inv StaffBot')
-    require(slot(mine, 0) and slot(mine, 0)['type'] == 'COBBLESTONE', lane.name + ': the viewer holds the taken stack', mine['slots'])
+    require(slot(mine, 0) and slot(mine, 0)['type'] == 'BREAD' and slot(mine, 0)['amount'] == 4,
+            lane.name + ': the viewer holds the taken main-hand stack', mine['slots'])
 
 
 def mail_numbers(lane):
@@ -723,6 +784,7 @@ def restore(lane):
     lane.fixture('clear PlayerBot')
     lane.fixture('give PlayerBot 0 DIAMOND 5')
     lane.fixture('give PlayerBot 38 IRON_CHESTPLATE 1')
+    lane.fixture('give PlayerBot 3 GOLDEN_APPLE 2')
     lane.fixture('held PlayerBot 3')
     lane.fixture('snapshot PlayerBot MANUAL')
     wait(lambda: any(r['reason'] == 'MANUAL' for r in lane.fixture('snapcount PlayerBot')['newest']), 'manual snapshot stored')
@@ -742,9 +804,9 @@ def restore(lane):
     require(top.get('27', {}).get('type') == 'DIAMOND' and top.get('37', {}).get('type') == 'IRON_CHESTPLATE',
             lane.name + ': the panel shows the snapshot (hotbar and armor)', top)
     require(top.get('36', {}).get('cmd') == 2577101 and top.get('40', {}).get('cmd') == 2577105, lane.name + ': empty armor and offhand show icons', top)
-    hand = top.get('41', {})
-    require(hand.get('cmd') == 2577106 and 'Main hand' in hand.get('name', '') and 'Hotbar slot' in json.dumps(hand.get('lore'))
-            and '4' in json.dumps(hand.get('lore')), lane.name + ': the sword marks the main hand as the snapshot\'s hotbar slot 4', hand)
+    require(top.get('41', {}).get('type') == 'GOLDEN_APPLE' and top.get('30', {}).get('cmd') == 2577100
+            and 'Selected slot 4' in top.get('30', {}).get('name', ''),
+            lane.name + ': the main-hand cell holds the snapshot\'s held item (hotbar slot 4 is the marker)', dict(hand=top.get('41'), marker=top.get('30')))
     require(top.get('52', {}).get('type') == 'PAPER' and 'MANUAL' in top.get('52', {}).get('name', ''),
             lane.name + ': the snapshot info sits in the bottom row', top.get('52'))
     mp = player.mark()
@@ -754,6 +816,19 @@ def restore(lane):
     require(slot(inv, 0) and slot(inv, 0)['type'] == 'DIAMOND' and slot(inv, 38) and slot(inv, 38)['type'] == 'IRON_CHESTPLATE',
             lane.name + ': "Restore everything" replaces the online owner\'s inventory', inv['slots'])
     require(inv['held'] == 3, lane.name + ': and selects the main hand the snapshot had', inv['held'])
+    # The main hand is editable: shift it out, then put it back on the empty main-hand (sword) cell.
+    lane.fixture('clear StaffBot')
+    staff.click(41, 0, 1)
+    window(.4)
+    mine = lane.fixture('inv StaffBot')
+    require(slot(mine, 0) and slot(mine, 0)['type'] == 'GOLDEN_APPLE' and mine['top'].get('41', {}).get('cmd') == 2577106,
+            lane.name + ': shift-click takes the main-hand stack out; the sword shows the empty hand', dict(mine=mine['slots'], hand=mine['top'].get('41')))
+    staff.click(81)
+    staff.click(41)
+    window(.4)
+    mine = lane.fixture('inv StaffBot')
+    require(not mine['slots'] and mine['cursor'] is None and mine['top'].get('41', {}).get('type') == 'GOLDEN_APPLE',
+            lane.name + ': placing on the empty main-hand cell puts it back', dict(mine=mine['slots'], hand=mine['top'].get('41')))
     # Edit with shift-click: a whole stack out of the panel, then back into a storage cell.
     lane.fixture('clear StaffBot')
     staff.click(27, 0, 1)
@@ -771,8 +846,8 @@ def restore(lane):
     staff.click(47)
     inv = wait(lambda: (lambda i: i if slot(i, 0) is None else None)(lane.fixture('inv PlayerBot')), 'inventory-only restore')
     require(slot(inv, 0) is None and slot(inv, 9) and slot(inv, 9)['type'] == 'DIAMOND' and slot(inv, 38)
-            and slot(inv, 38)['type'] == 'IRON_CHESTPLATE',
-            lane.name + ': "inventory only" uses the edited panel and leaves armor alone', inv['slots'])
+            and slot(inv, 38)['type'] == 'IRON_CHESTPLATE' and slot(inv, 3) and slot(inv, 3)['type'] == 'GOLDEN_APPLE',
+            lane.name + ': "inventory only" uses the edited panel (main hand included) and leaves armor alone', inv['slots'])
     before = lane.fixture('snapcount PlayerBot')['snapshots'][0]['n']
     m = staff.mark()
     staff.click(46)
@@ -915,6 +990,7 @@ def main():
                 and any('/restore enabled' in s for s in lane.logs), lane.name + ': creative, alts and restore modules enabled')
         setup(lane)
         case('completions', lambda: completions(lane))
+        case('help', lambda: help_menu(lane))
         case('staff-chat', lambda: staff_chat(lane))
         case('gamemode-permissions', lambda: gamemode_perms(lane))
         case('creative-inventories', lambda: creative_inventories(lane))

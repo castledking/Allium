@@ -287,6 +287,8 @@ class InspectionServiceTest {
         return inv;
     }
 
+    private final Map<UUID, int[]> heldSlots = new HashMap<>();
+
     private Player createPlayer(String name, String... permissions) {
         UUID id = UUID.randomUUID();
         Player p = mock(Player.class);
@@ -296,6 +298,10 @@ class InspectionServiceTest {
         ItemStack[] storage = new ItemStack[36];
         ItemStack[] extra = new ItemStack[5]; // 0=boots(36),1=leggings(37),2=chest(38),3=helmet(39),4=offhand(40)
         PlayerInventory pInv = mock(PlayerInventory.class);
+        // Held slot 8 by default, so the plain-layout cases below never touch the main-hand cell.
+        int[] held = {8};
+        heldSlots.put(id, held);
+        when(pInv.getHeldItemSlot()).thenAnswer(i -> held[0]);
         when(pInv.getItem(anyInt())).thenAnswer(i -> {
             int s = i.getArgument(0);
             if (s < 36) return storage[s];
@@ -500,6 +506,35 @@ class InspectionServiceTest {
         InventoryDragEvent drag = new InventoryDragEvent(viewer.getOpenInventory(), null, item(Material.STONE, 1), false, Map.of(27, item(Material.STONE, 1)));
         service.onInventoryDrag(drag);
         assertTrue(drag.isCancelled());
+    }
+
+    @Test
+    void theMainHandCellShowsAndEditsTheHeldHotbarSlot() {
+        Player viewer = createPlayer("HandMod", InspectionService.PERMISSION_INVSEE, InspectionService.PERMISSION_INVSEE_EDIT);
+        Player target = createPlayer("Holder");
+        heldSlots.get(target.getUniqueId())[0] = 2;
+        target.getInventory().setItem(2, item(Material.GOLDEN_APPLE, 3));
+        target.getInventory().setItem(0, item(Material.DIAMOND, 1));
+
+        service.dispatchInvsee(viewer, new String[]{"Holder"});
+        drainQueues();
+        Inventory gui = viewer.getOpenInventory().getTopInventory();
+        assertEquals(Material.GOLDEN_APPLE, gui.getItem(InspectionLayout.MAIN_HAND_GUI_SLOT).getType(), "the held item is in the main-hand cell");
+        assertEquals(Material.LIGHT_GRAY_STAINED_GLASS_PANE, gui.getItem(29).getType(), "its hotbar cell is a marker");
+        assertEquals(Material.DIAMOND, gui.getItem(27).getType(), "other hotbar cells are unchanged");
+
+        InventoryClickEvent marker = click(viewer, gui, 29, InventoryAction.PICKUP_ALL, ClickType.LEFT);
+        service.onInventoryClick(marker);
+        assertTrue(marker.isCancelled(), "the marker cannot be clicked");
+
+        InventoryClickEvent hand = click(viewer, gui, InspectionLayout.MAIN_HAND_GUI_SLOT, InventoryAction.PICKUP_ALL, ClickType.LEFT);
+        service.onInventoryClick(hand);
+        assertFalse(hand.isCancelled(), "the main hand is editable");
+        gui.setItem(InspectionLayout.MAIN_HAND_GUI_SLOT, item(Material.EMERALD, 7));
+        drainQueues();
+        assertEquals(Material.EMERALD, target.getInventory().getItem(2).getType(), "editing the main hand edits the held hotbar slot");
+        assertEquals(7, target.getInventory().getItem(2).getAmount());
+        assertEquals(Material.DIAMOND, target.getInventory().getItem(0).getType());
     }
 
     @Test

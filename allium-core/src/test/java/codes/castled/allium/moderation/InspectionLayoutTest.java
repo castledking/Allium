@@ -162,4 +162,28 @@ class InspectionLayoutTest {
             }
         };
     }
+
+    @org.junit.jupiter.api.Test
+    void theHeldHotbarItemMovesToTheMainHandCellAndItsCellIsLocked() {
+        var invsee = InspectionLayout.InspectionType.INVSEE;
+        // Held slot 2: hotbar slot 2 (normally GUI 29) is shown in the main-hand cell.
+        org.junit.jupiter.api.Assertions.assertEquals(InspectionLayout.MAIN_HAND_GUI_SLOT, InspectionLayout.toGuiSlot(invsee, 2, 2));
+        org.junit.jupiter.api.Assertions.assertEquals(29, InspectionLayout.heldMarkerGuiSlot(invsee, 2));
+        org.junit.jupiter.api.Assertions.assertEquals(28, InspectionLayout.toGuiSlot(invsee, 1, 2), "other hotbar slots stay");
+        org.junit.jupiter.api.Assertions.assertTrue(InspectionLayout.isLockedUiSlot(invsee, 29, 2), "the marker is locked");
+        org.junit.jupiter.api.Assertions.assertFalse(InspectionLayout.isLockedUiSlot(invsee, 41, 2), "the main hand is editable");
+        org.junit.jupiter.api.Assertions.assertTrue(InspectionLayout.isLockedUiSlot(invsee, 42, 2));
+        // Every player slot still has exactly one cell, and no two share one.
+        java.util.Set<Integer> cells = new java.util.HashSet<>();
+        for (int slot = 0; slot < InspectionLayout.INVSEE_PLAYER_SLOT_COUNT; slot++) {
+            org.junit.jupiter.api.Assertions.assertTrue(cells.add(InspectionLayout.toGuiSlot(invsee, slot, 2)), "slot " + slot);
+        }
+        org.junit.jupiter.api.Assertions.assertFalse(cells.contains(29), "the marker shows no item");
+        // Unknown held slot: the plain layout, the main-hand cell locked.
+        org.junit.jupiter.api.Assertions.assertEquals(29, InspectionLayout.toGuiSlot(invsee, 2, -1));
+        org.junit.jupiter.api.Assertions.assertEquals(-1, InspectionLayout.heldMarkerGuiSlot(invsee, -1));
+        org.junit.jupiter.api.Assertions.assertTrue(InspectionLayout.isLockedUiSlot(invsee, 41, -1));
+        // Ender chests are never remapped.
+        org.junit.jupiter.api.Assertions.assertEquals(2, InspectionLayout.toGuiSlot(InspectionLayout.InspectionType.ENDERCHEST, 2, 2));
+    }
 }

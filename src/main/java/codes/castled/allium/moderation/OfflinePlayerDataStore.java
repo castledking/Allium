@@ -39,7 +39,8 @@ public final class OfflinePlayerDataStore {
             byte[] rawBytes,
             byte[] sha256,
             Map<String, String> bukkitValues,
-            ItemStack[] slots
+            ItemStack[] slots,
+            int selectedItemSlot
     ) {
     }
 
@@ -252,7 +253,8 @@ public final class OfflinePlayerDataStore {
             }
             PlayerDataCodec.LoadedData decoded = codec.read(rawBytes, type);
             byte[] hash = sha256(rawBytes);
-            return new LoadedSnapshot(uuid, proof.dataVersion(), rawBytes, hash, proof.bukkitValues(), decoded.slots());
+            return new LoadedSnapshot(uuid, proof.dataVersion(), rawBytes, hash, proof.bukkitValues(), decoded.slots(),
+                    proof.selectedItemSlot());
         } finally {
             synchronized (state) {
                 state.ioActive = false;

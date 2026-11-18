@@ -20,8 +20,9 @@ the creative manager swaps inventories) and `autosave` (`autosave-minutes`). Sto
 
 The history is paged (45 per page, newest first). A snapshot opens a **restore panel** laid out
 like `/invsee`: storage in the top four rows, then helmet, chestplate, leggings, boots and offhand
-(empty ones show their slot icons) and a sword marking the main hand (the snapshot's selected
-hotbar slot). With `allium.restore.edit` the panel is an editable working copy: items move between
+(empty ones show their slot icons) and the main hand: the item in the snapshot's selected hotbar
+slot, editable like in `/invsee`, with that hotbar cell shown as a locked marker (older snapshots
+without a recorded slot show the plain hotbar and a locked sword). With `allium.restore.edit` the panel is an editable working copy: items move between
 the panel and your inventory (shift-click moves a whole stack: out of the panel into your
 inventory, or from your inventory into the panel's first free storage cell, never into armor or
 the buttons), and every restore button uses what the panel holds now. Nothing is written to

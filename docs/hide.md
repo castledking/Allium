@@ -60,8 +60,17 @@ hidden detached nodes are removed and indices remapped. Scoped branches and
 redirecting subtrees use server suggestions instead of cached literals. Suggestion
 responses are filtered against the full original input and server replacement
 offset. Correlation is bounded per player; reused pending request IDs are poisoned
-until expiry. Bare-slash and unknown responses can be withheld. Packet listeners
+until expiry. Spigot and Paper never answer a request whose completion is empty, so
+pending entries pile up while a player types; at 32 pending the oldest is retired
+(its late answer is dropped and a reuse of its ID stays poisoned) rather than refusing
+the new request, which used to leave the player without suggestions until old entries
+expired. Only a flood past 256 retired IDs within ten seconds is refused. Bare-slash
+and unknown responses can be withheld. Packet listeners
 use immutable snapshots and perform no provider, permission or disk calls.
+The server-side completion filter resolves each command's permission once per batch
+when the answer cannot depend on the arguments (a plain Bukkit permission), so `/i`
+offering 64 item names costs one check, and caches per command class which
+reflective trees (Paper basic, framework, Brigadier) exist instead of probing each time.
 Without PacketEvents, affected scoped roots are withheld completely from the
 client tree. Manually typed commands still obey execution rules. Native command
 permissions remain the final authority in either mode.

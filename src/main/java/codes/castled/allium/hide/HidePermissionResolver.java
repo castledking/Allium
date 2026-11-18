@@ -16,6 +16,37 @@ public final class HidePermissionResolver {
     private Set<String> registeredCache=Set.of();
     private long registeredAt;
     public HidePermissionResolver(PluginStart plugin){this.plugin=plugin;}
+    /**
+     * What a command class exposes, found once per class: tab completion asks for every suggestion,
+     * and repeated reflection (and the exceptions of absent methods) made each keystroke expensive.
+     */
+    private record Shape(boolean paperBasic,boolean framework,boolean brigadier){}
+    private static final ClassValue<Shape> SHAPES=new ClassValue<>(){
+        @Override protected Shape computeValue(Class<?> type){
+            boolean basic=false,brig=false;
+            try{
+                Class<?> api=Class.forName("io.papermc.paper.command.brigadier.BasicCommand",false,type.getClassLoader());
+                for(Class<?> t=type;t!=null;t=t.getSuperclass())for(Field f:t.getDeclaredFields())if(!Modifier.isStatic(f.getModifiers())&&api.isAssignableFrom(f.getType()))basic=true;
+            }catch(ClassNotFoundException|LinkageError|RuntimeException absent){}
+            for(Class<?> t=type;t!=null;t=t.getSuperclass())for(Field f:t.getDeclaredFields())if(!Modifier.isStatic(f.getModifiers())&&hasSuper(f.getType(),"com.mojang.brigadier.tree.CommandNode"))brig=true;
+            boolean framework;try{type.getMethod("getRoot");framework=true;}catch(NoSuchMethodException|LinkageError|RuntimeException absent){framework=false;}
+            return new Shape(basic,framework,brig);
+        }
+    };
+    /**
+     * The part of {@code path} that {@link #resolve} can depend on, so one completion batch resolves
+     * each distinct key once. A plain Bukkit permission depends on nothing past the root; owner
+     * candidates use the first argument; Paper, framework and Brigadier trees walk every argument.
+     */
+    public String decisionKey(Command command,String path){
+        String normalized=HidePolicy.normalize(path),root=HidePolicy.root(normalized);
+        if(command==null)return root;Shape shape=SHAPES.get(command.getClass());
+        if(shape.paperBasic())return root;
+        if(shape.framework())return normalized;
+        String permission=command.getPermission();if(permission!=null&&!permission.isBlank())return root;
+        if(shape.brigadier())return normalized;
+        String[] tokens=normalized.split(" ",3);return tokens.length>1?root+" "+tokens[1]:root;
+    }
     public Decision resolve(Player player,String line,Map<String,Command> commands,Map<String,String> overrides){
         String path=HidePolicy.normalize(line),label=HidePolicy.root(path);Command command=commands.get(label);
         if(command==null)return new Decision(false,Source.UNKNOWN,null,label);
@@ -42,6 +73,7 @@ public final class HidePermissionResolver {
         return new Decision(true,Source.UNKNOWN,null,label);
     }
     private Decision paperBasic(Player p,Command command,String label){
+        if(!SHAPES.get(command.getClass()).paperBasic())return null;
         try{
             Class<?> api=Class.forName("io.papermc.paper.command.brigadier.BasicCommand",false,command.getClass().getClassLoader());
             for(Class<?> type=command.getClass();type!=null;type=type.getSuperclass())for(Field f:type.getDeclaredFields()){
@@ -52,6 +84,7 @@ public final class HidePermissionResolver {
         }catch(ReflectiveOperationException|LinkageError|RuntimeException unavailable){}return null;
     }
     private Decision framework(Player p,Command command,String label,List<String> args){
+        if(!SHAPES.get(command.getClass()).framework())return null;
         try{
             // NightCore exposes a public root/node API. Do not run executors or parse arbitrary arguments.
 
@@ -74,6 +107,7 @@ public final class HidePermissionResolver {
         }catch(ReflectiveOperationException|LinkageError|RuntimeException unavailable){return null;}
     }
     @SuppressWarnings("unchecked") private Decision brigadier(Player p,Command command,String label,List<String> args){
+        if(!SHAPES.get(command.getClass()).brigadier())return null;
         try{
             Object node=null,source=null;
             for(Class<?> type=command.getClass();type!=null;type=type.getSuperclass()){

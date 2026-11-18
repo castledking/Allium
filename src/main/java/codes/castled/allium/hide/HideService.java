@@ -110,7 +110,9 @@ public final class HideService implements Listener,AutoCloseable {
         for(var g:v.groups())if(!g.whitelist())for(String variant:variants)if(!g.allows(variant,true))return false;
         return v.groups().stream().noneMatch(HidePolicy.Group::whitelist)||variants.stream().anyMatch(variant->v.groups().stream().anyMatch(g->g.whitelist()&&g.allows(variant,true)));
     }
-    private boolean visible(Player p,Viewer v,String path){
+    private boolean visible(Player p,Viewer v,String path){return visible(p,v,path,null);}
+    /** {@code memo} (per completion batch) reuses one resolver decision for arguments that cannot change it. */
+    private boolean visible(Player p,Viewer v,String path,Map<String,Boolean> memo){
         if(!v.settings().enabled())return true;
         if(!v.settings().namespacedVisible(path,v.bypass()))return false;
         if(!v.bypass()){
@@ -118,7 +120,11 @@ public final class HideService implements Listener,AutoCloseable {
             if(v.settings().filterSuggestions()&&v.settings().suggestionPrefixes().stream().anyMatch(root::startsWith))return false;
             if(!groupAllows(v,path,true))return false;
         }
-        return !v.settings().useResolver()||commands.isEmpty()||permissions.resolve(p,path,commands,v.settings().permissionOverrides()).allowed();
+        if(!v.settings().useResolver()||commands.isEmpty())return true;
+        if(memo==null)return permissions.resolve(p,path,commands,v.settings().permissionOverrides()).allowed();
+        String key=permissions.decisionKey(commands.get(HidePolicy.root(path)),path);
+        Boolean known=memo.get(key);if(known!=null)return known;
+        boolean allowed=permissions.resolve(p,path,commands,v.settings().permissionOverrides()).allowed();memo.put(key,allowed);return allowed;
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void command(PlayerCommandPreprocessEvent event){
         if(closed||!settings.enabled())return;Player p=event.getPlayer();String line=HidePolicy.normalize(event.getMessage());Viewer v=refresh(p,false);
@@ -169,7 +175,8 @@ public final class HideService implements Listener,AutoCloseable {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void completions(TabCompleteEvent event){
         if(closed||!settings.enabled()||!(event.getSender() instanceof Player p)||!event.getBuffer().startsWith("/"))return;
         Viewer v=event.isAsynchronous()?viewers.get(p.getUniqueId()):refresh(p,false);String buffer=event.getBuffer();
-        event.setCompletions(event.getCompletions().stream().filter(value->{String path=HidePolicy.suggestionPath(buffer,value,-1);return event.isAsynchronous()?packetVisible(v,path):visible(p,v,path);}).toList());
+        var memo=new HashMap<String,Boolean>();
+        event.setCompletions(event.getCompletions().stream().filter(value->{String path=HidePolicy.suggestionPath(buffer,value,-1);return event.isAsynchronous()?packetVisible(v,path):visible(p,v,path,memo);}).toList());
     }
     @EventHandler public void joined(PlayerJoinEvent event){poll.add(event.getPlayer());refresh(event.getPlayer(),true);}
     @EventHandler public void quit(PlayerQuitEvent event){UUID id=event.getPlayer().getUniqueId();viewers.remove(id);poll.remove(event.getPlayer());refresh.remove(event.getPlayer());refreshQueued.remove(id);if(packets!=null)packets.forget(id);}

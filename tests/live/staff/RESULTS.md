@@ -1,8 +1,8 @@
 # Staff tooling live gate
 
-**PASS on 2026-11-17: 158 live checks, 0 failures.** Spigot 1.20.1 (`spigot-r5`, 79 checks) and
-Paper 26.3 (`paper-r5`, 79 checks), SQLite, both on Allium.jar
-`be62473a769f17f6719ce07c385ce964f2aad65f1449dde561e0ce3d7afc04e0`. Every case below ran on
+**PASS on 2026-11-18: 166 live checks, 0 failures.** Spigot 1.20.1 (`spigot-r6-full`, 83 checks) and
+Paper 26.3 (`paper-r6-full`, 83 checks), SQLite, both on Allium.jar
+`ebb6249b73dc05d480d54f9446a452a7ec887e7d40bbd0ae213625b95e3cbf15`. Every case below ran on
 both lanes. The [manifest](evidence/staff-manifest.json) lists every check; runs are kept in
 `/mnt/storage/.allium-validation/20261117/staff/runs/`.
 
@@ -24,17 +24,18 @@ both lanes. The [manifest](evidence/staff-manifest.json) lists every check; runs
 | invsee | empty armor/offhand slots show icons with the `gui_slot` model data, the sword names the held hotbar slot, a helmet placed on the helmet icon equips it, no icon reaches the viewer; `/invsee` on a dead player says so; an offline session announces itself and reports one saved slot change, which reaches the player data |
 | mail-numbers | text mail reads `[1] [2] [3]`; deleting 2 frees it for the next mail; gifts are numbered apart (1, 2); claiming 1 frees it for the next gift |
 | whois-alts | joins record the IP; a rejoining alt triggers a staff alert naming the older account (no permissions plugin, so the "cannot add group" path, logged once per server run); `/seen` shows alts and IP to staff only; `/altexempt` add/check/remove and a quiet exempt rejoin; `/whois` shows every extra line and the action links, with LiteBans running `/history PlayerBot`; the basic view without the node |
-| restore | snapshots exist; history and panel (contents, icons); restore everything to an online owner; an edited panel used by "inventory only" (armor kept); a MANUAL save is the only storage write; a queued restore for an offline owner is applied on join and its row and receipt cleared; a read-only panel hands out nothing |
+| restore | snapshots exist; history and panel (contents, icons, the sword marking the snapshot's main hand, the info paper in the bottom row); restore everything to an online owner, which also selects the recorded main hand; shift-click moving a whole stack out of the panel and back into the first free storage cell (never armor or controls); an edited panel used by "inventory only" (armor kept); a MANUAL save is the only storage write; a queued restore for an offline owner is applied on join and its row and receipt cleared; a read-only panel hands out nothing, by click or shift-click |
 | paid-repair | a `$1.25` repair sign repairs the held sword and captures exactly 125 with nothing held, then drops the receipt; an undamaged item is not charged; with `$1.00` nothing is repaired, held or charged |
 | repair-halt-after-reserve | the JVM halts (exit 77) after the hold; at restart the hold is released, the balance is whole and the sword still damaged |
 | repair-halt-after-save | the JVM halts after the repair and receipt are saved; at restart the hold is captured once and the repaired sword kept; the receipt is cleared on join |
 
 Server logs: no exceptions or SEVERE lines on either lane.
 
-**Regressions on the same jar:** the S24 inspection gate passed 98/98 on each lane
+**Regressions:** on jar `be62473a…` (r5) the S24 inspection gate passed 98/98 on each lane
 (`r5-spigot`, `r5-paper`), and the economy sign gate 384/384 on each lane
 (`signs-repair-spigot-r5`, `signs-repair-paper-r5`), including a priced repair sign created through
-the real sign editor.
+the real sign editor. The r6 jar only changes `/restore` (panel layout, shift-click, the recorded
+main hand) and its storage; those older gates were not rerun on it.
 
 ## What the gate found and fixed
 

@@ -723,11 +723,13 @@ def restore(lane):
     lane.fixture('clear PlayerBot')
     lane.fixture('give PlayerBot 0 DIAMOND 5')
     lane.fixture('give PlayerBot 38 IRON_CHESTPLATE 1')
+    lane.fixture('held PlayerBot 3')
     lane.fixture('snapshot PlayerBot MANUAL')
     wait(lambda: any(r['reason'] == 'MANUAL' for r in lane.fixture('snapcount PlayerBot')['newest']), 'manual snapshot stored')
     count = lane.fixture('snapcount PlayerBot')['snapshots'][0]['n']
     require(count >= 2, lane.name + ': snapshots were taken on login/logout/gamemode change and manually', count)
     lane.fixture('clear PlayerBot')
+    lane.fixture('held PlayerBot 0')
     m = staff.cmd('restore PlayerBot')
     win = staff.opened(m)
     require('Restore: PlayerBot' in win['title'], lane.name + ': /restore opens the history', win)
@@ -740,22 +742,36 @@ def restore(lane):
     require(top.get('27', {}).get('type') == 'DIAMOND' and top.get('37', {}).get('type') == 'IRON_CHESTPLATE',
             lane.name + ': the panel shows the snapshot (hotbar and armor)', top)
     require(top.get('36', {}).get('cmd') == 2577101 and top.get('40', {}).get('cmd') == 2577105, lane.name + ': empty armor and offhand show icons', top)
+    hand = top.get('41', {})
+    require(hand.get('cmd') == 2577106 and 'Main hand' in hand.get('name', '') and 'Hotbar slot' in json.dumps(hand.get('lore'))
+            and '4' in json.dumps(hand.get('lore')), lane.name + ': the sword marks the main hand as the snapshot\'s hotbar slot 4', hand)
+    require(top.get('52', {}).get('type') == 'PAPER' and 'MANUAL' in top.get('52', {}).get('name', ''),
+            lane.name + ': the snapshot info sits in the bottom row', top.get('52'))
     mp = player.mark()
-    staff.click(52)
+    staff.click(45)
     player.chat(mp, 'restored from the MANUAL snapshot')
     inv = lane.fixture('inv PlayerBot')
     require(slot(inv, 0) and slot(inv, 0)['type'] == 'DIAMOND' and slot(inv, 38) and slot(inv, 38)['type'] == 'IRON_CHESTPLATE',
             lane.name + ': "Restore everything" replaces the online owner\'s inventory', inv['slots'])
-    # Edit: take the diamonds out of the panel, then restore the inventory only.
+    require(inv['held'] == 3, lane.name + ': and selects the main hand the snapshot had', inv['held'])
+    # Edit with shift-click: a whole stack out of the panel, then back into a storage cell.
     lane.fixture('clear StaffBot')
-    staff.click(27)
-    staff.click(81)
+    staff.click(27, 0, 1)
+    window(.4)
+    mine, top = lane.fixture('inv StaffBot'), lane.fixture('inv StaffBot')['top']
+    require(slot(mine, 0) and slot(mine, 0)['type'] == 'DIAMOND' and slot(mine, 0)['amount'] == 5 and '27' not in top,
+            lane.name + ': shift-click takes a whole stack out of the panel', dict(mine=mine['slots'], top27=top.get('27')))
+    staff.click(81, 0, 1)
     window(.4)
     mine = lane.fixture('inv StaffBot')
-    require(slot(mine, 0) and slot(mine, 0)['type'] == 'DIAMOND', lane.name + ': an editor can take items out of the panel', mine['slots'])
+    require(not mine['slots'] and mine['top'].get('0', {}).get('type') == 'DIAMOND' and mine['top']['0']['amount'] == 5
+            and mine['top'].get('45', {}).get('type') == 'PLAYER_HEAD' and mine['top'].get('36', {}).get('cmd') == 2577101,
+            lane.name + ': shift-click puts a whole stack into the first free storage cell, never armor or controls',
+            dict(mine=mine['slots'], top=mine['top']))
     staff.click(47)
     inv = wait(lambda: (lambda i: i if slot(i, 0) is None else None)(lane.fixture('inv PlayerBot')), 'inventory-only restore')
-    require(slot(inv, 0) is None and slot(inv, 38) and slot(inv, 38)['type'] == 'IRON_CHESTPLATE',
+    require(slot(inv, 0) is None and slot(inv, 9) and slot(inv, 9)['type'] == 'DIAMOND' and slot(inv, 38)
+            and slot(inv, 38)['type'] == 'IRON_CHESTPLATE',
             lane.name + ': "inventory only" uses the edited panel and leaves armor alone', inv['slots'])
     before = lane.fixture('snapcount PlayerBot')['snapshots'][0]['n']
     m = staff.mark()
@@ -780,7 +796,7 @@ def restore(lane):
     staff.opened(m)
     window(.4)
     m = staff.mark()
-    staff.click(52)
+    staff.click(45)
     staff.chat(m, 'PlayerBot is offline')
     wait(lambda: lane.fixture('snapcount PlayerBot')['pending'][0]['n'] == 1, 'queued restore stored')
     staff.close()
@@ -795,6 +811,8 @@ def restore(lane):
     # Without .edit the panel is read-only.
     lane.perm('StaffBot', 'allium.restore.edit', False)
     lane.fixture('clear StaffBot')
+    rows = lane.fixture('snapcount PlayerBot')['newest']
+    index = next(i for i, r in enumerate(rows) if r['reason'] == 'MANUAL')
     m = staff.cmd('restore PlayerBot')
     staff.opened(m)
     window(.5)
@@ -804,8 +822,11 @@ def restore(lane):
     require(win['title'].lower().startswith('view'), lane.name + ': without allium.restore.edit the panel opens read-only', win)
     staff.click(27)
     staff.click(81)
+    staff.click(0, 0, 1)
+    window(.3)
     mine = lane.fixture('inv StaffBot')
-    require(not mine['slots'] and mine['cursor'] is None, lane.name + ': a read-only panel hands out nothing', mine)
+    require(not mine['slots'] and mine['cursor'] is None and mine['top'].get('0', {}).get('type') == 'DIAMOND',
+            lane.name + ': a read-only panel hands out nothing, by click or shift-click', mine)
     staff.close()
     lane.perm('StaffBot', 'allium.restore.edit', True)
 

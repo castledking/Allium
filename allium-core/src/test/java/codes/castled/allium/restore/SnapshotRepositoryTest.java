@@ -23,14 +23,14 @@ class SnapshotRepositoryTest {
         String file = dir.resolve("restore-" + System.nanoTime() + ".db").toString();
         SnapshotRepository repo = new SnapshotRepository(() -> DriverManager.getConnection("jdbc:sqlite:" + file), SqlDialect.SQLITE,
                 System::currentTimeMillis);
-        assertEquals(1, repo.migrate());
-        assertEquals(1, repo.migrate());
+        assertEquals(2, repo.migrate());
+        assertEquals(2, repo.migrate());
         return repo;
     }
 
     private static SnapshotRepository.Snapshot snap(UUID player, long at, String reason) {
         return new SnapshotRepository.Snapshot(UUID.randomUUID(), player, at, reason, "world", 1.5, 64, -2.5, 90f, 10f, 30, 0.5f,
-                "inventory-payload", "ender-payload", "Allium");
+                "inventory-payload", "ender-payload", "Allium", 4);
     }
 
     @Test
@@ -48,6 +48,7 @@ class SnapshotRepositoryTest {
         assertEquals("inventory-payload", found.inventory());
         assertEquals(30, found.level());
         assertEquals(0.5f, found.progress());
+        assertEquals(4, found.held(), "the selected hotbar slot is kept");
         assertEquals(1, repo.purge(501), "the age limit removes Bob's old snapshot");
         assertEquals(0, repo.count(BOB));
     }
@@ -64,9 +65,19 @@ class SnapshotRepositoryTest {
         assertFalse(pending.get(0).armor());
         assertTrue(pending.get(0).experience());
         assertEquals("inventory-payload", pending.get(0).snapshot().inventory());
+        assertEquals(4, pending.get(0).snapshot().held());
         assertTrue(repo.pending(ALICE).isEmpty());
         assertTrue(repo.finish(id));
         assertFalse(repo.finish(id), "finishing twice changes nothing");
         assertTrue(repo.pending(BOB).isEmpty());
+    }
+
+    @Test
+    void snapshotsFromBeforeVersionTwoHaveNoHeldSlot() throws Exception {
+        SnapshotRepository repo = repository();
+        SnapshotRepository.Snapshot unknown = new SnapshotRepository.Snapshot(UUID.randomUUID(), ALICE, 1, "LOGIN", "world", 0, 0, 0,
+                0f, 0f, 0, 0f, null, null, "Allium", -1);
+        repo.save(unknown, 5);
+        assertEquals(-1, repo.find(unknown.id()).orElseThrow().held());
     }
 }

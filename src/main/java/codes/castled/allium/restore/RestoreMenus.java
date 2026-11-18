@@ -43,9 +43,12 @@ import java.util.UUID;
 public final class RestoreMenus implements Listener {
 
     static final int PAGE_SIZE = 45;
-    private static final int INFO_SLOT = 41;
-    private static final int SELF = 45, SAVE = 46, INVENTORY_ONLY = 47, ARMOR_ONLY = 48, XP_ONLY = 49, TELEPORT = 50,
-            ENDER = 51, OWNER = 52, BACK = 53;
+    /** The sword marking the main hand, as in /invsee. */
+    private static final int MAIN_HAND = 41;
+    /** Panel cells that hold the 36 storage slots (main inventory and hotbar). */
+    private static final int STORAGE_CELLS = 36;
+    private static final int EVERYTHING = 45, SAVE = 46, INVENTORY_ONLY = 47, ARMOR_ONLY = 48, XP_ONLY = 49, TELEPORT = 50,
+            ENDER = 51, INFO = 52, BACK = 53;
     private static final int ENDER_TO_OWNER = 27, ENDER_TO_SELF = 28, ENDER_BACK = 35;
 
     private final PluginStart plugin;
@@ -104,6 +107,7 @@ public final class RestoreMenus implements Listener {
         ItemStack[] ender;
         int level;
         float progress;
+        int held;
         Inventory inventory;
         boolean switching;
 
@@ -187,6 +191,7 @@ public final class RestoreMenus implements Listener {
         session.ender = contents.enderChest();
         session.level = contents.level();
         session.progress = contents.progress();
+        session.held = contents.held();
         Inventory inventory = plugin.getServer().createInventory(session, 54,
                 title((editable ? "Edit " : "View ") + snapshot.reason().toLowerCase(Locale.ROOT) + ": " + list.targetName));
         session.inventory = inventory;
@@ -194,24 +199,25 @@ public final class RestoreMenus implements Listener {
             inventory.setItem(InspectionLayout.toGuiSlot(InspectionLayout.InspectionType.INVSEE, pSlot), contents.inventory()[pSlot]);
         }
         for (int slot = 41; slot <= 44; slot++) inventory.setItem(slot, GuiIcons.icon(GuiIcons.Icon.FILLER, " ", List.of()));
-        inventory.setItem(INFO_SLOT, named(Material.PAPER, "§e" + snapshot.reason(), List.of(
-                "§7Taken: §f" + RestoreService.formatTime(snapshot.createdAt()),
-                "§7World: §f" + snapshot.world() + " §7(" + (int) snapshot.x() + ", " + (int) snapshot.y() + ", " + (int) snapshot.z() + ")",
-                "§7Level: §f" + snapshot.level(),
-                "§7By: §f" + snapshot.createdBy(),
-                editable ? "§aEditable: changes stay in this panel" : "§8Read-only (allium.restore.edit to edit)")));
+        inventory.setItem(MAIN_HAND, GuiIcons.icon(GuiIcons.Icon.SWORD, "§7Main hand", contents.held() >= 0
+                ? List.of("§7Hotbar slot §f" + (contents.held() + 1) + "§7 (bottom row)", "§8Restoring the inventory selects it again")
+                : List.of("§8Not recorded for this snapshot")));
         paintIcons(inventory);
         boolean own = snapshot.player().equals(viewer.getUniqueId());
         List<String> uses = List.of("§7Uses what this panel holds now", "§8Nothing is saved unless you save a MANUAL copy");
-        inventory.setItem(SELF, named(Material.CHEST, "§aRestore everything to yourself",
-                join(List.of("§7Replaces your inventory, armor, offhand,", "§7experience and ender chest"), uses)));
+        inventory.setItem(EVERYTHING, own
+                ? named(Material.CHEST, "§aRestore everything to yourself",
+                        join(List.of("§7Replaces your inventory, armor, offhand,", "§7main hand, experience and ender chest"), uses))
+                : named(Material.PLAYER_HEAD, "§aRestore everything to " + list.targetName,
+                        join(List.of("§7Inventory, armor, offhand, main hand,", "§7experience and ender chest",
+                                plugin.getServer().getPlayer(snapshot.player()) == null ? "§eOffline: applied when they next join" : "§7Online now"), uses)));
         inventory.setItem(SAVE, editable
                 ? named(Material.WRITABLE_BOOK, "§eSave as manual snapshot", List.of("§7Saves this panel as a new MANUAL",
                 "§7snapshot for §f" + list.targetName, "§7The original snapshot stays unchanged"))
                 : GuiIcons.icon(GuiIcons.Icon.FILLER, " ", List.of()));
         String owner = own ? "yourself" : list.targetName;
         inventory.setItem(INVENTORY_ONLY, named(Material.CHEST_MINECART, "§bRestore inventory only",
-                join(List.of("§7To §f" + owner + "§7: the 36 storage slots"), uses)));
+                join(List.of("§7To §f" + owner + "§7: the 36 storage slots", "§7and the main hand"), uses)));
         inventory.setItem(ARMOR_ONLY, named(Material.IRON_CHESTPLATE, "§bRestore armor and offhand only",
                 join(List.of("§7To §f" + owner), uses)));
         inventory.setItem(XP_ONLY, named(Material.EXPERIENCE_BOTTLE, "§eRestore experience only",
@@ -220,10 +226,14 @@ public final class RestoreMenus implements Listener {
                 List.of("§7" + snapshot.world() + " " + (int) snapshot.x() + ", " + (int) snapshot.y() + ", " + (int) snapshot.z())));
         inventory.setItem(ENDER, named(Material.ENDER_CHEST, "§bEnder chest", List.of("§7View" + (editable ? ", edit" : "")
                 + " and restore this snapshot's ender chest")));
-        inventory.setItem(OWNER, own ? GuiIcons.icon(GuiIcons.Icon.FILLER, " ", List.of())
-                : named(Material.PLAYER_HEAD, "§aRestore everything to " + list.targetName,
-                join(List.of("§7Inventory, armor, offhand, experience", "§7and ender chest",
-                        plugin.getServer().getPlayer(snapshot.player()) == null ? "§eOffline: applied when they next join" : "§7Online now"), uses)));
+        List<String> info = new ArrayList<>(List.of(
+                "§7Taken: §f" + RestoreService.formatTime(snapshot.createdAt()),
+                "§7World: §f" + snapshot.world() + " §7(" + (int) snapshot.x() + ", " + (int) snapshot.y() + ", " + (int) snapshot.z() + ")",
+                "§7Level: §f" + snapshot.level(),
+                "§7By: §f" + snapshot.createdBy(),
+                editable ? "§aEditable: changes stay in this panel" : "§8Read-only (allium.restore.edit to edit)"));
+        if (editable) info.add("§8Shift-click moves a whole stack in or out");
+        inventory.setItem(INFO, named(Material.PAPER, "§e" + snapshot.reason(), info));
         inventory.setItem(BACK, named(Material.ARROW, "§cBack", List.of("§7Return to the history", "§8Discards panel edits")));
         viewer.openInventory(inventory);
     }
@@ -268,7 +278,7 @@ public final class RestoreMenus implements Listener {
                 if (raw >= 45) control(viewer, session, raw);
                 return;
             }
-            contentClick(event, viewer, session.editable, inTop, raw, event.getView().getTopInventory());
+            contentClick(event, viewer, session.editable, inTop, raw, event.getView().getTopInventory(), STORAGE_CELLS);
             if (inTop) plugin.getScheduler().runOnServer(() -> paintIcons(session.inventory));
             return;
         }
@@ -278,12 +288,17 @@ public final class RestoreMenus implements Listener {
                 enderControl(viewer, ender, raw);
                 return;
             }
-            contentClick(event, viewer, ender.session.editable, inTop, raw, event.getView().getTopInventory());
+            contentClick(event, viewer, ender.session.editable, inTop, raw, event.getView().getTopInventory(), 27);
         }
     }
 
-    /** Content cells: vanilla moves for editors, never into controls and never picking up an icon. */
-    private void contentClick(InventoryClickEvent event, Player viewer, boolean editable, boolean inTop, int raw, Inventory top) {
+    /**
+     * Content cells: vanilla moves for editors, never into controls and never picking up an icon.
+     * Shift-click moves a whole stack: out of the panel into the viewer's inventory, or from the
+     * viewer's inventory into the panel's first {@code storageCells} cells (never armor or controls).
+     */
+    private void contentClick(InventoryClickEvent event, Player viewer, boolean editable, boolean inTop, int raw, Inventory top,
+                              int storageCells) {
         InventoryAction action = event.getAction();
         if (!editable) {
             if (inTop || action == InventoryAction.MOVE_TO_OTHER_INVENTORY || action == InventoryAction.COLLECT_TO_CURSOR) {
@@ -291,9 +306,30 @@ public final class RestoreMenus implements Listener {
             }
             return;
         }
-        if (action == InventoryAction.COLLECT_TO_CURSOR || !inTop && action == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
-            // These can reach control cells; editors move items one slot at a time instead.
+        if (action == InventoryAction.COLLECT_TO_CURSOR) {
+            // Collecting could pull from control cells.
             event.setCancelled(true);
+            return;
+        }
+        if (action == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
+            event.setCancelled(true);
+            Inventory from = inTop ? top : event.getClickedInventory();
+            int slot = inTop ? raw : event.getSlot();
+            ItemStack stack = from == null ? null : from.getItem(slot);
+            if (stack == null || stack.getType().isAir() || GuiIcons.isIcon(stack)) {
+                return;
+            }
+            int remaining = inTop
+                    ? viewer.getInventory().addItem(stack.clone()).values().stream().mapToInt(ItemStack::getAmount).sum()
+                    : moveInto(top, storageCells, stack.clone());
+            if (remaining <= 0) {
+                from.setItem(slot, null);
+            } else {
+                ItemStack rest = stack.clone();
+                rest.setAmount(remaining);
+                from.setItem(slot, rest);
+            }
+            plugin.getScheduler().runOnServer(viewer::updateInventory);
             return;
         }
         if (inTop && GuiIcons.isIcon(top.getItem(raw))) {
@@ -337,15 +373,8 @@ public final class RestoreMenus implements Listener {
 
     private void control(Player viewer, SessionMenu session, int slot) {
         SnapshotRepository.Snapshot snapshot = session.snapshot;
-        boolean own = snapshot.player().equals(viewer.getUniqueId());
         switch (slot) {
-            case SELF -> {
-                if (!own && !viewer.hasPermission(RestoreService.PERMISSION_EDIT)) {
-                    plugin.getMessageManager().send(viewer, Messages.NO_PERMISSION, "{cmd}", "restore to yourself");
-                    return;
-                }
-                restoreTo(viewer, viewer.getUniqueId(), viewer.getName(), session, EnumSet.allOf(RestoreService.Part.class));
-            }
+            case EVERYTHING -> restoreToOwner(viewer, session, EnumSet.allOf(RestoreService.Part.class));
             case SAVE -> {
                 if (!session.editable) return;
                 RestoreService.Contents edited = contents(session);
@@ -367,9 +396,6 @@ public final class RestoreMenus implements Listener {
                 plugin.getMessageManager().send(viewer, Messages.RESTORE_TELEPORTED);
             }
             case ENDER -> openEnder(viewer, session);
-            case OWNER -> {
-                if (!own) restoreToOwner(viewer, session, EnumSet.allOf(RestoreService.Part.class));
-            }
             case BACK -> open(viewer, session.back.target, session.back.targetName, session.back.page);
             default -> {
             }
@@ -451,7 +477,32 @@ public final class RestoreMenus implements Listener {
         }
         ItemStack[] ender = new ItemStack[27];
         for (int i = 0; i < 27; i++) ender[i] = session.ender[i] == null ? null : session.ender[i].clone();
-        return new RestoreService.Contents(inventory, ender, session.level, session.progress);
+        return new RestoreService.Contents(inventory, ender, session.level, session.progress, session.held);
+    }
+
+    /** Adds {@code stack} to the first {@code cells} cells of {@code panel}, filling similar stacks first; returns what did not fit. */
+    private static int moveInto(Inventory panel, int cells, ItemStack stack) {
+        int remaining = stack.getAmount();
+        int max = Math.min(stack.getMaxStackSize(), panel.getMaxStackSize());
+        for (int pass = 0; pass < 2 && remaining > 0; pass++) {
+            for (int cell = 0; cell < cells && remaining > 0; cell++) {
+                ItemStack existing = panel.getItem(cell);
+                if (pass == 0 && existing != null && !GuiIcons.isIcon(existing) && existing.isSimilar(stack) && existing.getAmount() < max) {
+                    int moved = Math.min(remaining, max - existing.getAmount());
+                    ItemStack merged = existing.clone();
+                    merged.setAmount(existing.getAmount() + moved);
+                    panel.setItem(cell, merged);
+                    remaining -= moved;
+                } else if (pass == 1 && (existing == null || existing.getType().isAir())) {
+                    int moved = Math.min(remaining, max);
+                    ItemStack placed = stack.clone();
+                    placed.setAmount(moved);
+                    panel.setItem(cell, placed);
+                    remaining -= moved;
+                }
+            }
+        }
+        return remaining;
     }
 
     private static ItemStack[] capture(Inventory inventory, int size) {

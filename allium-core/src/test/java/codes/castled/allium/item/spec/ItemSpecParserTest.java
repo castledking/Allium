@@ -101,6 +101,40 @@ class ItemSpecParserTest {
         assertMessage("stone,", "empty item reference");
     }
 
+    @Test
+    void batchEntriesCarryTheirOwnAmounts() {
+        GiveSpec plain = parser.parse("stick,gshovel 1");
+        assertEquals(List.of("stick", "gshovel"), plain.items().stream().map(ItemReference::text).toList());
+        assertEquals(1, plain.amount().orElseThrow());
+        assertTrue(plain.items().stream().allMatch(i -> i.amount().isEmpty()));
+
+        GiveSpec counted = parser.parse("stick:1,diamond:2,minecraft:dirt:3,oraxen:12");
+        assertEquals(List.of(ProviderKey.minecraft("stick"), ProviderKey.minecraft("diamond"), ProviderKey.minecraft("dirt"),
+                ProviderKey.of("oraxen", "12")), counted.items().stream().map(ItemReference::key).toList());
+        assertEquals(List.of(1, 2, 3), counted.items().stream().limit(3).map(i -> i.amount().getAsInt()).toList());
+        assertTrue(counted.items().get(3).amount().isEmpty(), "oraxen:12 names an item, it is not 12 oraxen");
+        assertEquals("stick", counted.items().get(0).text(), "the alias lookup sees the name without its amount");
+
+        // An entry's own amount wins; the batch amount covers the rest.
+        GiveSpec mixed = parser.parse("stick:5,diamond 2");
+        assertEquals(5, mixed.items().get(0).amount().getAsInt());
+        assertTrue(mixed.items().get(1).amount().isEmpty());
+        assertEquals(2, mixed.amount().getAsInt());
+
+        assertEquals(4, parser.parse("diamond:4").items().get(0).amount().getAsInt());
+        GiveSpec legacyIds = parser.parse("1:1,1:1:5,35");
+        assertEquals(List.of("1:1", "1:1", "35"), legacyIds.items().stream().map(ItemReference::text).toList(),
+                "numeric legacy ids keep their data value");
+        assertTrue(legacyIds.items().get(0).amount().isEmpty());
+        assertEquals(5, legacyIds.items().get(1).amount().getAsInt());
+        assertMessage("diamond:4 2", "given twice");
+        assertMessage("stick:0,dirt", "between 1 and");
+        assertMessage("stick;sharpness:5,dirt", "comma batch");
+        GiveSpec legacy = new ItemSpecParser(true).parse("dirt;1,grass_block;2");
+        assertEquals(List.of(1, 2), legacy.items().stream().map(i -> i.amount().getAsInt()).toList());
+        assertMessage("dirt;1,grass_block;2", "comma batch");
+    }
+
     private void assertMessage(String input, String fragment) {
         ItemSpecException e = assertThrows(ItemSpecException.class, () -> parser.parse(input), input);
         assertTrue(e.getMessage().contains(fragment), input + " -> " + e.getMessage());

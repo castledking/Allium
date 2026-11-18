@@ -19,6 +19,8 @@ IP that an older account already used is an alt (legacy Allium's rule).
 
 ## `/seen`
 
+`/alts <player>` is an alias of `/seen <player>`.
+
 Holders of `allium.seen.alts` also see every account that shares any IP in the player's history
 (so a shared IP keeps showing after either account moves); `allium.seen.ip` shows the last IP.
 

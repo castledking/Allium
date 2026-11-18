@@ -35,6 +35,8 @@ Examples:
 /i dsword
 /i acid2pot 2
 /i potion;speed;60;2
+/i stick,gshovel 1
+/i stick:1,diamond:2
 /i zombie_spawner
 /i spawner;zombie
 /i 1:1
@@ -46,6 +48,13 @@ Potion fields are `material;effect;seconds;level[;particles;icon]`, not item cou
 A separate trailing amount applies to the resulting stacks. Legacy splash and
 lingering carrier aliases, neutral base potions, Turtle Master's two effects,
 legacy effect names, and arrow/lingering duration compensation are handled.
+When the effect, level and duration match a vanilla potion, the item is that potion:
+`/i potion;poison` is a Potion of Poison, `/i splash_potion;speed;0;2` a Splash Potion of
+Swiftness (strong), `/i potion;speed;480` a long Potion of Swiftness, and tipped arrows and
+lingering potions likewise. Other values keep the custom effect on a water base and are
+named after the vanilla potion (Potion of Poison, Arrow of Leaping), in the reader's
+language: through the potion name field on 1.21.2+ and a translated, non-italic item name
+before that. Effects no potion carries (haste, wither, ...) keep the Water Bottle name.
 Spawner aliases retain their entity type. The numeric semicolon amount form
 remains governed by `items.give.legacy-semicolon-syntax`; prefer a separate amount.
 

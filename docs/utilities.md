@@ -24,7 +24,7 @@ startup without registering listeners or intercepting dispatch.
 | `/burn <player> [seconds]` | — | `allium.burn` | `op` (in `allium.*`) | Sets target fire ticks (`1..300` seconds, default `10s`) |
 | `/smite <player>` | `/lightning`, `/strike` | `allium.smite` | `op` (in `allium.*`) | Strikes visual-only lightning (`strikeLightningEffect`) at target location |
 | `/nv [on\|off] [player]` | `/nightvision` | `allium.nv`, `allium.nv.others` | `op` (in `allium.*`) | Toggles or sets infinite-duration Night Vision effect |
-| `/clearinventory [player] [material] [maxCount]` | `/clear`, `/ci` | `allium.clearinventory`, `allium.clearinventory.others` | `op` (in `allium.*`) | Clears full inventory or filtered `material` up to `maxCount` items |
+| `/clearinventory [player\|*\|**] [item] [maxCount]` | `/clear`, `/ci` | `allium.clearinventory`, `.others`, `.all` | `op` (in `allium.*`) | Clears an inventory or filters by item up to `maxCount` per target |
 | `/more [amount] [player]` | — | `allium.more`, `allium.more.others` | `op` (in `allium.*`) | Refills held item to `maxStackSize` or explicit amount (`<= maxStackSize`) |
 | `/hat` | — | `allium.hat` | `op` (in `allium.*`) | Atomically swaps main-hand item into helmet slot and restores prior helmet to main hand |
 | `/skull [owner] [player]` | `/head`, `/playerhead` | `allium.skull`, `allium.skull.others` | `op` (in `allium.*`) | Resolves player head asynchronously via `SkullProfiles` and delivers `PLAYER_HEAD` |
@@ -34,6 +34,17 @@ startup without registering listeners or intercepting dispatch.
 | `/day [world\|*]` / `/night [world\|*]` | — | `allium.time.set` | `op` (in `allium.*`) | Fixed shortcuts setting world time to `1000` (`/day`) or `13000` (`/night`) |
 | `/weather <clear\|sun\|rain\|storm\|thunder> [duration] [world\|*]` | — | `allium.weather` | `op` (in `allium.*`) | Sets weather state and optional duration in seconds (`1..1,000,000`) |
 | `/enchant <enchantment> <level> [player]` | — | `allium.enchant`, `allium.enchant.others`, **`allium.enchant.unsafe`** | `allium.enchant.unsafe` is **`false` and NOT in `allium.*`** | Applies (`level >= 1`) or removes (`level == 0`) enchantments; accepts legacy `<player> <enchant> [level]` order |
+
+For `/clear`, a named online player requires `allium.clearinventory.others`.
+Both `*` (visible online players) and `**` (saved offline inventories) require
+`allium.clearinventory.all`. Item filters accept aliases and share completions
+with `/i`. Repeat the same command within 30 seconds to confirm.
+`/clearinventoryconfirmtoggle` changes your personal confirmation setting and
+requires `allium.clearinventoryconfirmtoggle`.
+
+Offline clears require a working moderation inspection module. They skip
+inventories in use, pending transactions, and files the installed codec cannot
+safely edit.
 
 ## Guarantees & safety rules
 

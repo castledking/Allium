@@ -77,6 +77,9 @@ teleport:
   success:
     - "{prefix} &aTeletransportado a &f{target}&a."
     - "[sound] entity.enderman.teleport 1.15"
+  position-success:
+    - "{prefix} &aTeletransportado a &f{x}, {y}, {z}&a en &f{world}&a."
+    - "[sound] entity.enderman.teleport 1.15"
   request-sent:
     - "{prefix} &aSolicitud de teletransporte enviada a &f{player}&a."
     - "[sound] block.note_block.pling 1.35"
@@ -721,6 +724,12 @@ player:
   feed-other:
     - "{prefix} &aAlimentaste a &f{player}&a."
     - "[sound] entity.generic.eat 1.05"
+  scale-set:
+    - "{prefix} &aEscala de &f{target}&a ajustada a &f{scale}&a."
+  scale-mobs:
+    - "{prefix} &aEscala de &f{count}&a criaturas seleccionadas ajustada a &f{scale}&a."
+  scale-unavailable:
+    - "{prefix} &cEl atributo de escala no esta disponible para este objetivo o version del servidor."
   speed-set:
     - "{prefix} &aVelocidad de {type} establecida a &f{speed}&a."
     - "[sound] block.note_block.bit 1.4"
@@ -824,6 +833,14 @@ utility:
   nv-toggle:
     - "{prefix} &fVision nocturna {state} &fpara &d{player}&f."
     - "[sound] entity.generic.drink 1.2"
+  clear-confirm:
+    - "{prefix} &eRepite el mismo comando en 30 segundos para confirmar."
+  clear-confirm-on:
+    - "{prefix} &aConfirmacion de vaciado de inventario activada."
+  clear-confirm-off:
+    - "{prefix} &eConfirmacion de vaciado de inventario desactivada."
+  clear-offline:
+    - "{prefix} &aEliminados &f{count} &aobjetos de &f{players} &ainventarios sin conexion. Omitidos &f{skipped}&a."
   clear-self:
     - "{prefix} &aSe limpiaron &f{count} &aobjeto(s) de tu inventario."
     - "[sound] block.grindstone.use 1.15"
@@ -974,13 +991,13 @@ tool:
 item:
   give:
     delivered:
-      - "{prefix} &aEntregado &f{amount}x {item} &aa &f{player}&a."
+      - "{prefix} &aEntregado &f{amount} {item} &aa &f{player}&a."
       - "[sound] entity.item.pickup 1.25"
     dropped:
       - "{prefix} &aEntregados &f{given}&a de &f{amount}x {item} &aa &f{player}&a; &f{dropped} &ano cupieron y cayeron a sus pies."
       - "[sound] entity.item.pickup 1.0"
     degraded:
-      - "{prefix} &eEntregado &f{amount}x {item} &ea &f{player}&e, pero la cabeza se entrego sin su skin."
+      - "{prefix} &eEntregado &f{amount} {item} &ea &f{player}&e, pero la cabeza se entrego sin su skin."
       - "[sound] block.note_block.hat 0.9"
     refused-unresolved:
       - "{prefix} &cNo se pudo resolver la skin de {item}, asi que no se entrego nada a {player}."
@@ -1019,7 +1036,7 @@ item:
       - "{prefix} &eAdvertencia: {warning}"
       - "[sound] block.note_block.bell 0.95"
     received:
-      - "{prefix} &aRecibiste &f{amount}x {item}&a."
+      - "{prefix} &aRecibiste &f{amount} {item}&a."
       - "[sound] entity.item.pickup 1.35"
 mail:
   sent:

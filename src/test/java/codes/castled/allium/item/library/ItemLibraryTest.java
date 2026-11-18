@@ -80,6 +80,23 @@ class ItemLibraryTest {
     }
 
     @Test
+    void giveUsesEachResolvedStackLimitWhenAmountIsOmitted() {
+        ItemService vanilla = new ItemService(material -> {
+            ItemStack stack = MockItemStacks.create(material);
+            when(stack.getMaxStackSize()).thenReturn(material.getMaxStackSize());
+            return stack;
+        }, ItemHmacSigner.randomEphemeral(), msg -> { });
+        ItemLibrary library = new ItemLibrary(vanilla, new ComponentAdapter(ServerVersion.parse("1.20.1"), factory), skulls);
+        library.database(new LegacyItemDatabase(Map.of("gshovel", "golden_shovel")));
+
+        assertEquals(List.of(1, 64), library.buildForGive(parser.parse("gshovel,stick"), false, false)
+                .items().stream().map(item -> item.stack().getAmount()).toList());
+        assertEquals(List.of(1, 1), library.buildForGive(parser.parse("gshovel,stick 1"), false, false)
+                .items().stream().map(item -> item.stack().getAmount()).toList());
+        assertEquals(1, library.build(parser.parse("stick"), false).requested());
+    }
+
+    @Test
     void providerKeyResolutionOutcomesSurfaceAsTypedFailuresAndNothingIsBuiltPartially() {
         ItemLibrary library = library("1.21.8-R0.1-SNAPSHOT");
         assertStatus(library, "nexo:unknown", ResolutionStatus.UNKNOWN_ID);

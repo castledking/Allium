@@ -63,7 +63,7 @@ public final class TeleportService implements Listener {
     }
     private record Operation(Session session,CommandSender actor,String command,Supplier<Location> destination,
                              @Nullable Player anchor,@Nullable RequestTracker.Request request,boolean force,
-                             Location origin,long due,TeleportSettings rules,BooleanSupplier policy) {}
+                             Location origin,long due,TeleportSettings rules,BooleanSupplier policy,boolean mayMove) {}
     private record HistoryWrite(UUID owner,Session session,SavedLocation origin,String command,long until,
                                 Map<String,Long> cooldowns,Runnable success) {}
 
@@ -286,14 +286,15 @@ public final class TeleportService implements Listener {
         if(operations.containsKey(mover.getUniqueId())||offlineLookups.containsKey(mover.getUniqueId())&&offlineLookups.get(mover.getUniqueId()).loading){send(actor,Messages.TELEPORT_BUSY);return false;}
         Session session=sessions.get(mover.getUniqueId());
         long now=System.currentTimeMillis();
-        if(!actor.hasPermission("allium.teleport.bypass.cooldown")&&session.cooldowns.getOrDefault(command,0L)>now){
+        if(!cooldownBypass(actor,command)&&session.cooldowns.getOrDefault(command,0L)>now){
             send(actor,Messages.COOLDOWN_ACTIVE,"{time}",Long.toString((session.cooldowns.get(command)-now+999)/1000)+"s");return false;
         }
         TeleportSettings rules=settings;
         var checked=safety.resolve(destination.get(),safetyRules(mover,actor,rules));
         if(checked.isEmpty()){send(actor,Messages.TELEPORT_UNSAFE);return false;}
-        long warmup=actor.hasPermission("allium.teleport.bypass.warmup")?0:rules.warmupMillis();
-        var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),now+warmup,rules,policy);
+        long warmup=actor.hasPermission("allium.teleport.bypass.warmup")||typed(actor,"timer.bypass",command)?0:rules.warmupMillis();
+        var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),now+warmup,rules,policy,
+                typed(mover,"timer.move",command));
         operations.put(mover.getUniqueId(),operation);
         if(warmup==0)complete(operation);
         else send(mover,Messages.TELEPORT_WARMUP,"{time}",Double.toString(warmup/1000.0));
@@ -306,7 +307,7 @@ public final class TeleportService implements Listener {
         if(!operation.policy().getAsBoolean()){interrupt(operation,"destination is no longer available");return;}
         if(operation.actor() instanceof Player actor&&!samePlayer(actor)){interrupt(operation,"issuing player went offline");return;}
         if(!operation.actor().hasPermission(permission(operation.command()))) { interrupt(operation,"permission changed");return; }
-        if(!operation.actor().hasPermission("allium.teleport.bypass.cooldown")
+        if(!cooldownBypass(operation.actor(),operation.command())
                 &&operation.session().cooldowns.getOrDefault(operation.command(),0L)>System.currentTimeMillis()) { interrupt(operation,"cooldown changed");return; }
         if(!same(operation.session())||operation.anchor()!=null&&!samePlayer(operation.anchor())){interrupt(operation,"player went offline");return;}
         if(operation.request()!=null) {
@@ -330,11 +331,31 @@ public final class TeleportService implements Listener {
                 +" target="+operation.anchor().getUniqueId()+" command="+operation.command()+" result=completed reason=bukkit-teleport-success world="+mover.getWorld().getUID());
         if(offline!=null)plugin.logger().info("Offline teleport audit actor="+mover.getUniqueId()+" target="+offline.target+" result=completed world="+mover.getWorld().getUID());
         Session session=operation.session();session.back=saved(origin);
-        long until=System.currentTimeMillis()+(operation.actor().hasPermission("allium.teleport.bypass.cooldown")?0:operation.rules().cooldown(operation.command()));
+        long until=System.currentTimeMillis()+(cooldownBypass(operation.actor(),operation.command())?0:operation.rules().cooldown(operation.command()));
         session.cooldowns.put(operation.command(),until);
+        Location landed=mover.getLocation();
+        boolean position=operation.anchor()==null&&(operation.command().equals("tp")||operation.command().equals("tppos"));
         saveHistory(session,session.back,operation.command(),until,0,()->{
+            if(position){send(mover,Messages.TELEPORT_POSITION,"{x}",coordinate(landed.getX()),"{y}",coordinate(landed.getY()),"{z}",coordinate(landed.getZ()),"{world}",landed.getWorld()==null?"?":landed.getWorld().getName());return;}
             send(mover,switch(operation.command()){case "back"->Messages.TELEPORT_BACK;case "spawn"->Messages.SPAWN_TELEPORT;case "tpoffline"->Messages.TELEPORT_OFFLINE_SUCCESS;default->Messages.TELEPORT_SUCCESS;},"{target}",offline!=null?offline.name:operation.anchor()==null?operation.command():operation.anchor().getName());
         });
+    }
+    private static String coordinate(double value){return String.format(Locale.ROOT,"%.1f",value);}
+    /**
+     * The names a teleport type answers to in per-type nodes: its command ({@code home},
+     * {@code tpa}, {@code tppos}, ...) and its group ({@code homes}, {@code warps}, {@code requests}).
+     */
+    static List<String> typeNames(String command){
+        String group=switch(command){case "home"->"homes";case "warp"->"warps";case "tpa","tpahere"->"requests";default->null;};
+        return group==null?List.of(command):List.of(command,group);
+    }
+    /** {@code allium.teleport.<kind>.<type>} for this teleport's type or group, e.g. {@code allium.teleport.timer.move.homes}. */
+    private static boolean typed(CommandSender who,String kind,String command){
+        for(String type:typeNames(command))if(who.hasPermission("allium.teleport."+kind+"."+type))return true;
+        return false;
+    }
+    private static boolean cooldownBypass(CommandSender actor,String command){
+        return actor.hasPermission("allium.teleport.bypass.cooldown")||typed(actor,"cooldown.bypass",command);
     }
     private static TeleportSettings safetyRules(Player mover,CommandSender actor,TeleportSettings rules) {
         boolean flight=mover.getAllowFlight()||mover.getGameMode()==org.bukkit.GameMode.CREATIVE||mover.getGameMode()==org.bukkit.GameMode.SPECTATOR;
@@ -489,7 +510,7 @@ public final class TeleportService implements Listener {
     }
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void move(PlayerMoveEvent e){
         var op=operations.get(e.getPlayer().getUniqueId());Location to=e.getTo();
-        if(op!=null&&to!=null&&(op.origin().getWorld()!=to.getWorld()||op.origin().distanceSquared(to)>op.rules().movementTolerance()*op.rules().movementTolerance()))interrupt(op,"movement");
+        if(op!=null&&!op.mayMove()&&to!=null&&(op.origin().getWorld()!=to.getWorld()||op.origin().distanceSquared(to)>op.rules().movementTolerance()*op.rules().movementTolerance()))interrupt(op,"movement");
     }
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void damage(EntityDamageEvent e){
         if(e.getEntity() instanceof Player p&&e.getFinalDamage()>0){var op=operations.get(p.getUniqueId());if(op!=null)interrupt(op,"damage");}

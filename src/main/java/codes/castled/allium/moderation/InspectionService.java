@@ -210,6 +210,7 @@ public final class InspectionService implements Listener {
 
     private TaskHandle refreshHandle;
     private volatile boolean closed = true;
+    private final java.util.concurrent.atomic.AtomicBoolean offlineClearRunning = new java.util.concurrent.atomic.AtomicBoolean();
     private volatile boolean offlineEditingEnabled = false;
 
     public InspectionService(
@@ -788,12 +789,6 @@ public final class InspectionService implements Listener {
         return GuiIcons.icon(GuiIcons.Icon.SWORD, "\u00a77Main hand", lore);
     }
 
-    /** The held hotbar cell: its item is shown in the main-hand cell instead. */
-    private static ItemStack heldMarker(int held) {
-        return GuiIcons.icon(GuiIcons.Icon.FILLER, "\u00a77Selected slot " + (held + 1),
-                List.of("\u00a78Its item is in the main hand (sword) slot"));
-    }
-
     // ---------------------------------------------------------------------------------------------
     // Inventory GUI click / drag / close handlers
     // ---------------------------------------------------------------------------------------------
@@ -863,6 +858,25 @@ public final class InspectionService implements Listener {
 
         if (!prepareEditableTopInteraction(session)) {
             event.setCancelled(true);
+            return;
+        }
+        int marker = InspectionLayout.heldMarkerGuiSlot(session.type, session.held);
+        if (shiftFromBottom && marker >= 0) {
+            // Vanilla would fill the empty, locked held-slot cell; move into the item cells instead.
+            event.setCancelled(true);
+            ItemStack stack = event.getCurrentItem();
+            if (stack == null || stack.getType().isAir() || event.getClickedInventory() == null) {
+                return;
+            }
+            int remaining = codes.castled.allium.gui.PanelMoves.moveInto(session.gui, InspectionLayout.STORAGE_GUI_CELLS, marker, stack.clone());
+            if (remaining <= 0) {
+                event.getClickedInventory().setItem(event.getSlot(), null);
+            } else if (remaining != stack.getAmount()) {
+                ItemStack rest = stack.clone();
+                rest.setAmount(remaining);
+                event.getClickedInventory().setItem(event.getSlot(), rest);
+            }
+            scheduleOnServer(clicker::updateInventory);
         }
     }
 
@@ -1608,9 +1622,10 @@ public final class InspectionService implements Listener {
                 gui.setItem(guiSlot, stack);
             }
         }
+        // The held hotbar cell stays empty (its item is in the main-hand cell) and locked.
         int marker = InspectionLayout.heldMarkerGuiSlot(type, held);
         if (marker >= 0) {
-            gui.setItem(marker, heldMarker(held));
+            gui.setItem(marker, null);
         }
         paintEquipmentIcons(type, gui, held);
     }
@@ -1791,6 +1806,110 @@ public final class InspectionService implements Listener {
 
     public boolean hasActiveMutableSession(UUID targetUuid, InspectionLayout.InspectionType type) {
         return activeMutableSessions.containsKey(new SessionKey(targetUuid, type));
+    }
+
+    /** Clears saved inventories using the same login fence, version and CAS checks as offline inspection. */
+    public void clearOfflineInventories(CommandSender sender, Set<UUID> onlineAtStart,
+                                        java.util.function.ToIntFunction<ItemStack[]> clear) {
+        if (!offlineClearRunning.compareAndSet(false, true)) {
+            send(sender, Messages.INSPECT_UNAVAILABLE);
+            return;
+        }
+        String actor = sender.getName();
+        try {
+            io.execute(() -> {
+                try {
+                    clearOfflineBatch(sender, actor, onlineAtStart, clear);
+                } finally {
+                    offlineClearRunning.set(false);
+                }
+            });
+        } catch (RejectedExecutionException rejected) {
+            offlineClearRunning.set(false);
+            send(sender, Messages.INSPECT_UNAVAILABLE);
+        }
+    }
+
+    private void clearOfflineBatch(CommandSender sender, String actor, Set<UUID> onlineAtStart,
+                                   java.util.function.ToIntFunction<ItemStack[]> clear) {
+        long removed = 0;
+        int changed = 0;
+        int skipped = 0;
+        var type = InspectionLayout.InspectionType.INVSEE;
+        try (var files = java.nio.file.Files.newDirectoryStream(offlineStore.playerDataDir(), "*.dat")) {
+            for (var path : files) {
+                if (closed || !offlineEditingEnabled) break;
+                String file = path.getFileName().toString();
+                UUID id;
+                try {
+                    id = UUID.fromString(file.substring(0, file.length() - 4));
+                } catch (IllegalArgumentException invalid) {
+                    continue;
+                }
+                if (onlineAtStart.contains(id) || offlineStore.isOnlineOrFenced(id)) continue;
+                if (hasActiveMutableSession(id, type) || offlineHoldPolicy.test(id)) {
+                    skipped++;
+                    continue;
+                }
+                try {
+                    var snapshot = offlineStore.load(id, type);
+                    if (snapshot.dataVersion() != offlineStore.currentDataVersion()) {
+                        skipped++;
+                        continue;
+                    }
+                    var edit = new CompletableFuture<Integer>();
+                    runOnServer(() -> {
+                        try {
+                            if (closed || !sender.hasPermission("allium.clearinventory")
+                                    || !sender.hasPermission("allium.clearinventory.all")
+                                    || sender instanceof Player player && !player.isOnline()
+                                    || hasActiveMutableSession(id, type) || offlineStore.isOnlineOrFenced(id)) {
+                                edit.complete(-1);
+                            } else {
+                                edit.complete(clear.applyAsInt(snapshot.slots()));
+                            }
+                        } catch (RuntimeException failure) {
+                            edit.completeExceptionally(failure);
+                        }
+                    });
+                    int count = edit.get(3, TimeUnit.SECONDS);
+                    if (count < 0) {
+                        skipped++;
+                    } else if (count > 0) {
+                        if (closed || !offlineEditingEnabled || hasActiveMutableSession(id, type)
+                                || offlineHoldPolicy.test(id)) {
+                            skipped++;
+                            continue;
+                        }
+                        offlineStore.save(id, type, snapshot.sha256(), snapshot.rawBytes(),
+                                snapshot.bukkitValues(), snapshot.slots());
+                        removed += count;
+                        changed++;
+                        String detail = "offline=true removed=" + count;
+                        plugin.logger().info("[Inspect/clearinventory] actor=" + actor + " target=" + id + " " + detail);
+                        try {
+                            repository.recordAudit("clearinventory", actor, id, id.toString(), detail);
+                        } catch (SQLException failed) {
+                            plugin.logger().warning("Could not audit offline clear for " + id + ": " + failed.getMessage());
+                        }
+                    }
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (IOException | TimeoutException | java.util.concurrent.ExecutionException | RuntimeException failed) {
+                    skipped++;
+                    plugin.logger().warning("Offline clear skipped " + id + ": " + failed.getMessage());
+                }
+            }
+        } catch (IOException | java.nio.file.DirectoryIteratorException failed) {
+            plugin.logger().warning("Offline clear could not enumerate player data: " + failed.getMessage());
+            runOnServer(() -> send(sender, Messages.INSPECT_UNAVAILABLE));
+        }
+        String items = Long.toString(removed);
+        String players = Integer.toString(changed);
+        String failures = Integer.toString(skipped);
+        runOnServer(() -> send(sender, Messages.UTILITY_CLEAR_OFFLINE,
+                "{count}", items, "{players}", players, "{skipped}", failures));
     }
 
     public OfflinePlayerDataStore offlineStore() {

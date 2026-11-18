@@ -16,7 +16,7 @@ migration in `PlayerNameRepository`), plus `/i` and `/item` self-use aliases for
     `Players`.
   - Appends `[AFK]` and (only for `allium.vanish.see` viewers / console) `[Vanished]`.
   - Permission: `allium.list` (default `true`).
-- `/seen <player>`:
+- `/seen <player>` (alias `/alts`):
   - Shows online duration + `First joined` for visible online players, or offline `last_seen`
     (relative duration + UTC timestamp) + `First joined` for offline or hidden vanished players.
   - Permission: `allium.seen` (default `true` — public by default).

@@ -19,14 +19,32 @@ This slice handles local server worlds, not proxy travel or Folia regions.
 | `/spawn`, `/setspawn` | Travel to or persist the server spawn | `allium.spawn`, `allium.setspawn` |
 | `/tp <player>` | Staff travel to a player | `allium.tp` |
 | `/tp <mover> <destination>` | Staff move an online player to another | Also `allium.tp.others` |
+| `/tp <x> <y> <z> [yaw] [pitch] [world]` | Staff travel to coordinates | Also `allium.tp.position` |
+| `/tppos <x> <y> <z> [yaw] [pitch] [world]` | The same, as its own command | `allium.tppos` |
 | `/tphere <player>` | Staff bring a player to you | `allium.tphere` |
 
 Console uses `/tp <mover> <destination>` or an explicit toggle target. Base travel
 commands default to players; staff permissions default to operators. Completion uses
-the shared command renderer and current visibility. Coordinate and selector syntax
-remain outside this slice.
+the shared command renderer and current visibility.
 
-`allium.teleport.bypass.warmup` and `.cooldown` are separate explicit grants.
+Coordinates read like vanilla `/tp`: `~` and `~<offset>` are relative to you, and a
+whole-number x or z is the block's center (`100` lands at `100.5`). Yaw and pitch
+default to your current facing and the world to your current world. The destination
+still goes through the safety search, warmup and cooldown of the `tp` (or `tppos`)
+type; the success message names the landing coordinates and world.
+
+`allium.teleport.bypass.warmup` and `.cooldown` are separate explicit grants for every
+teleport. Per-type grants, all default false:
+
+| Node | Effect |
+| --- | --- |
+| `allium.teleport.cooldown.bypass.<type>` | No cooldown for that type (checked on the issuer) |
+| `allium.teleport.timer.bypass.<type>` | No warmup timer for that type (checked on the issuer) |
+| `allium.teleport.timer.move.<type>` | Moving during the warmup does not cancel it (checked on the player who moves); damage still does |
+
+`<type>` is the teleport's command, as in `teleport.cooldowns`: `home`, `warp`, `tpa`,
+`tpahere`, `back`, `spawn`, `tp`, `tphere`, `there`, `tpoffline` and `tppos`; or a group:
+`homes`, `warps` and `requests` (`tpa` and `tpahere`). Each family also has a `.*` node.
 Neither operator status nor a force command implicitly bypasses recipient privacy:
 `.bypass.toggle` and `.bypass.ignore` are explicit, default-false permissions.
 Staff authorization/refusal and completed force moves are logged with participants,

@@ -153,8 +153,8 @@ Command arguments follow a strict positional layout so there is never ambiguity 
 - **`/i` (`/item`):** `/i <item-spec> [amount] [tokens | flags...]`
 
 1. **`<target>`** (`/give` only): Player name or player selector (`@p`, `@a`, `@r`, `@s`, `@e[type=player,...]`).
-2. **`<item-spec>`**: Single item reference or comma-separated batch of item references (`diamond_helmet,diamond_chestplate`), each optionally carrying inline vanilla component brackets `[...]` or legacy NBT `{...}` (on pre-1.20.5).
-3. **`[amount]`**: Optional positive integer if the next argument is a pure integer. If omitted, defaults to 1 (or configured default stack size).
+2. **`<item-spec>`**: Single item reference or comma-separated batch of item references (`diamond_helmet,diamond_chestplate`), each optionally carrying inline vanilla component brackets `[...]` or legacy NBT `{...}` (on pre-1.20.5). Each entry may end in its own amount, `stick:1,diamond:2`, which wins over the batch amount (`/i stick,gshovel 1` gives one of each; `/i stick:5,dirt 2` gives five sticks and two dirt). Provider names (`oraxen:12`) and numeric legacy ids (`1:1` is granite; `1:1:5` is five granite) are never read as amounts. With legacy semicolon syntax on, `dirt;1,grass_block;2` also works. Completion offers names for the entry after the last comma.
+3. **`[amount]`**: Optional positive integer if the next argument is a pure integer. For Allium’s `/i` and `/give`, omission gives one full stack of each item. Signed items are minted one per stack. An explicit amount applies to each item unless that entry supplies its own amount.
 4. **`[tokens | flags...]`**: Remaining space-separated arguments are parsed as `key:value` human metadata tokens (e.g., `sharpness:5`, `name:&bExcalibur`, `lore:Line_1|Line_2`, `owner:Notch`, `color:#FF5500`, `unbreakable`) or command flags (`-e`, `-equip`).
 
 ### Bracket-, Brace-, and Quote-Aware Lexer

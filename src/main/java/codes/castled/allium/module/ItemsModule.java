@@ -12,6 +12,14 @@ import codes.castled.allium.item.library.ServerVersion;
 import codes.castled.allium.item.library.SkullProfiles;
 import codes.castled.allium.item.spec.ItemSpecParser;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.entity.EntityType;
+import org.bukkit.potion.PotionEffectType;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Stream;
 import org.bukkit.configuration.ConfigurationSection;
 
 /**
@@ -22,10 +30,47 @@ public final class ItemsModule extends AbstractModule {
 
     private codes.castled.allium.item.library.LegacyItemDatabase database;
     public java.util.List<String> complete(String prefix){
-        if(database==null)return java.util.List.of();int semicolon=prefix.lastIndexOf(';');
+        if(database==null)return java.util.List.of();
+        // A comma batch completes its last entry: "stick,gsh" offers "stick,gshovel".
+        int comma=prefix.lastIndexOf(',');
+        if(comma>=0){
+            String head=prefix.substring(0,comma+1),tail=prefix.substring(comma+1);
+            // Nothing to offer while the entry's own amount ("diamond:2") is being typed.
+            if(tail.contains(";")||tail.matches(".+:[0-9]+"))return java.util.List.of();
+            return database.complete(tail.toLowerCase(java.util.Locale.ROOT),plugin.getItemService().completionIds()).stream().map(v->head+v).toList();
+        }
+        int semicolon=prefix.lastIndexOf(';');
+        if (semicolon >= 0) {
+            int firstSemicolon = prefix.indexOf(';');
+            Material carrier = Material.matchMaterial(prefix.substring(0, firstSemicolon));
+            if (carrier != null && switch (carrier) {
+                case POTION, SPLASH_POTION, LINGERING_POTION, TIPPED_ARROW, SPAWNER -> true;
+                default -> false;
+            }) {
+                if (semicolon != firstSemicolon) return List.of();
+                String head = prefix.substring(0, semicolon + 1);
+                String suffix = prefix.substring(semicolon + 1).toLowerCase(Locale.ROOT);
+                return variants(carrier).filter(name -> name.startsWith(suffix))
+                        .distinct().sorted().map(name -> head + name).toList();
+            }
+        }
         if(semicolon>=0){String base=prefix.substring(0,prefix.indexOf(';'));String alias=database.lookup(base);if(alias!=null)base=alias.split(";",2)[0];var material=org.bukkit.Material.matchMaterial(base);if(material==null||!material.isItem())return java.util.List.of();var used=new java.util.ArrayList<org.bukkit.enchantments.Enchantment>();for(String part:prefix.substring(0,semicolon).split(";")){int colon=part.lastIndexOf(':');if(colon>0)codes.castled.allium.item.library.EnchantmentAdapter.find(part.substring(0,colon)).ifPresent(used::add);}String head=prefix.substring(0,semicolon+1);return codes.castled.allium.item.library.EnchantCompletions.names(new org.bukkit.inventory.ItemStack(material),prefix.substring(semicolon+1).toLowerCase(java.util.Locale.ROOT),used).stream().map(key->head+key+":").toList();}
         return database.complete(prefix.toLowerCase(java.util.Locale.ROOT),plugin.getItemService().completionIds());
     }
+    private static Stream<String> variants(Material carrier) {
+        if (carrier == Material.SPAWNER) {
+            return Arrays.stream(EntityType.values())
+                    .filter(type -> type.isSpawnable() && type.isAlive())
+                    .map(type -> type.name().toLowerCase(Locale.ROOT));
+        }
+        return Stream.concat(Arrays.stream(PotionEffectType.values())
+                        .map(type -> type.getKey().getKey()), Stream.of("turtle_master"));
+    }
+
+    public String itemAlias(String reference) {
+        return database == null ? null : database.lookup(reference);
+    }
+
     public void reloadDatabase(){try{var next=codes.castled.allium.item.library.LegacyItemDatabase.load(plugin);database=next;if(library!=null)library.database(next);}catch(Exception failure){plugin.logger().warning("Item database reload refused; kept previous aliases: "+failure.getClass().getSimpleName());}}
     private SkullProfiles skulls;
     private ItemLibrary library;

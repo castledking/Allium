@@ -97,11 +97,23 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             return List.of();
         }
 
+        if (spec == CoreCommandSpecs.CLEARINVENTORY
+                && handler instanceof codes.castled.allium.command.essentials.ClearInventoryCommand clear) {
+            return clear.complete(sender, args);
+        }
         if((spec.canonicalName().equals("give")&&args.length==2||spec.canonicalName().equals("i")&&args.length==1)&&sender.hasPermission("allium.give")&&plugin.getModuleManager().getModule("items") instanceof codes.castled.allium.module.ItemsModule items&&items.isEnabled())return items.complete(args[args.length-1]);
         if(java.util.Set.of("tp","tphere","there").contains(spec.canonicalName())&&args.length>0&&args[args.length-1].startsWith("@")){
             if(!sender.hasPermission(spec.basePermission())||!codes.castled.allium.teleport.TeleportTargets.selectors(sender))return List.of();String prefix=args[args.length-1];return java.util.stream.Stream.of("@p","@r","@a","@s","@e").filter(v->v.startsWith(prefix)).filter(v->!v.equals("@a")||sender.hasPermission("allium.admin")||sender.hasPermission("allium.command.selector.all")).filter(v->!v.equals("@e")||sender.hasPermission("allium.admin")||sender.hasPermission("allium.command.selector.entities")).toList();
         }
         if(spec.canonicalName().equals("help")&&handler instanceof HelpCommand help)return help.complete(sender,args);
+        boolean tpPosition=spec.canonicalName().equals("tp")&&args.length>=2&&codes.castled.allium.teleport.CoordinateArgs.isCoordinate(args[0]);
+        if(tpPosition||spec.canonicalName().equals("tppos")){
+            if(!sender.hasPermission(tpPosition?"allium.tp.position":"allium.tppos"))return List.of();
+            int index=args.length-1;String prefix=args.length==0?"":args[index];
+            if(index<5)return "~".startsWith(prefix)?List.of("~"):List.of();
+            if(index==5)return plugin.getServer().getWorlds().stream().map(org.bukkit.World::getName).filter(n->codes.castled.allium.teleport.CoordinateArgs.startsWithIgnoreCase(n,prefix)).sorted().limit(50).toList();
+            return List.of();
+        }
         if(spec.canonicalName().equals("allium")&&args.length>=2&&args[0].equalsIgnoreCase("hide")){
             if(plugin.getModuleManager().getModule("hide") instanceof codes.castled.allium.module.HideModule hide&&hide.isEnabled())
                 return hide.hide().complete(sender,java.util.Arrays.copyOfRange(args,1,args.length));
@@ -184,7 +196,11 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         };
 
         String fixedMode=spec.canonicalName().equals("gamemode")?CoreCommandSpecs.gamemodeAlias(alias):null;
-        return spec.complete(completionContext,fixedMode==null?args:withMode(fixedMode,args));
+        List<String> out=spec.complete(completionContext,fixedMode==null?args:withMode(fixedMode,args));
+        if(spec.canonicalName().equals("tp")&&args.length==1&&"~".startsWith(args[0])&&sender.hasPermission("allium.tp.position")){
+            out=new ArrayList<>(out);out.add("~");
+        }
+        return out;
     }
 
     public static List<String> collectVisibleOnlinePlayers(Server server, CommandSender sender) {

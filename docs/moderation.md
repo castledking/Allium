@@ -165,8 +165,9 @@ Read-only by default, hierarchy- and vanish-aware inspection for online and offl
   chestplate, leggings, boots, shield). The other locked slots are a textured pane.
 - **Main hand.** The cell beside the offhand is the main hand: the item in the target's selected
   hotbar slot, editable like any other cell (taking it empties that hotbar slot; placing an item
-  on the empty sword icon puts it in their hand). That hotbar cell shows a locked "Selected slot"
-  marker, so the item appears once. Online it follows the player's hotbar choice; offline it comes
+  on the empty sword icon puts it in their hand). That hotbar cell is left empty and locked, so
+  the item appears once: clicks, drags and shift-clicks never put anything there (shift-clicks
+  fill the other storage and hotbar cells). Online it follows the player's hotbar choice; offline it comes
   from the player file's `SelectedItemSlot` (the main hand is not stored separately in Minecraft's
   data: it is the hotbar item at that index). If the selected slot is unknown, the plain layout is
   used and the main-hand cell is locked. Icons are marked items: they are

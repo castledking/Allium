@@ -291,6 +291,7 @@ class Lane:
         config.setdefault('restore', {})['autosave-minutes'] = 600
         # Every gate client connects from 127.0.0.1; let alt detection see them.
         config.setdefault('alts', {})['ignore-local-addresses'] = False
+        config.setdefault('teleport', {}).setdefault('cooldowns', {})['tppos'] = 30
         (self.path / 'plugins/Allium/config.yml').write_text(yaml.safe_dump(config, sort_keys=False))
         if kind == 'paper':
             for d in ['libraries', 'versions']:
@@ -630,8 +631,7 @@ def invsee(lane):
             and icons.get('42', {}).get('cmd') == 2577100, lane.name + ': icons carry the gui_slot model data (helmet, shield, pane)', icons)
     require(top.get('41', {}).get('type') == 'GOLDEN_APPLE' and top['41']['amount'] == 3,
             lane.name + ': the main-hand cell shows the held hotbar item', top.get('41'))
-    require(icons.get('29', {}).get('cmd') == 2577100 and 'Selected slot 3' in icons.get('29', {}).get('name', ''),
-            lane.name + ': the held hotbar cell is a marker, so the item shows once', icons.get('29'))
+    require('29' not in top, lane.name + ': the held hotbar cell is empty (no marker glass), so the item shows once', top.get('29'))
     # Put a helmet on PlayerBot through the helmet icon.
     lane.fixture('give StaffBot 0 IRON_HELMET 1')
     staff.click(72)
@@ -658,6 +658,33 @@ def invsee(lane):
     require(slot(target, 2) and slot(target, 2)['type'] == 'GOLDEN_APPLE' and slot(target, 2)['amount'] == 3 and not mine['slots']
             and mine['cursor'] is None, lane.name + ': placing on the main-hand cell puts the item in the held hotbar slot',
             dict(target=target['slots'], mine=mine['slots']))
+    # The empty held hotbar cell is locked: a click there and a shift-click never fill it.
+    lane.fixture('give StaffBot 0 DIRT 5')
+    staff.click(72)
+    staff.click(29)
+    window(.5)
+    target, mine = lane.fixture('inv PlayerBot'), lane.fixture('inv StaffBot')
+    require(slot(target, 2) and slot(target, 2)['type'] == 'GOLDEN_APPLE' and '29' not in mine['top']
+            and (mine['cursor'] or {}).get('type') == 'DIRT', lane.name + ': placing an item on the empty held hotbar cell is refused',
+            dict(target=target['slots'], cell=mine['top'].get('29'), cursor=mine['cursor']))
+    staff.click(72)
+    window(.4)
+    lane.fixture('give StaffBot 1 COBBLESTONE 2')
+    staff.click(73, 0, 1)
+    window(.6)
+    target, mine = lane.fixture('inv PlayerBot'), lane.fixture('inv StaffBot')
+    require(slot(target, 9) and slot(target, 9)['amount'] == 5 and slot(mine, 1) is None,
+            lane.name + ': a shift-click from the viewer merges into the target\'s matching stack', dict(target=target['slots'], mine=mine['slots']))
+    lane.fixture('fill PlayerBot 9 35 STONE')
+    lane.fixture('fill PlayerBot 0 1 STONE')
+    window(.8)
+    staff.click(72, 0, 1)
+    window(.6)
+    target, mine = lane.fixture('inv PlayerBot'), lane.fixture('inv StaffBot')
+    require(slot(target, 2) and slot(target, 2)['type'] == 'GOLDEN_APPLE' and slot(target, 3) and slot(target, 3)['type'] == 'DIRT'
+            and slot(target, 3)['amount'] == 5 and '29' not in mine['top'] and slot(mine, 0) is None,
+            lane.name + ': with storage full, a shift-click skips the held hotbar cell and lands in the next free one',
+            dict(held=slot(target, 2), next=slot(target, 3), cell=mine['top'].get('29'), mine=mine['slots']))
     staff.close()
     # Dead target.
     lane.fixture('kill PlayerBot')
@@ -680,8 +707,8 @@ def invsee(lane):
     staff.opened(m)
     window(.5)
     top = lane.fixture('inv StaffBot')['top']
-    require(top.get('41', {}).get('type') == 'BREAD' and top.get('29', {}).get('cmd') == 2577100,
-            lane.name + ': offline, the main hand comes from the player file\'s selected slot', dict(hand=top.get('41'), marker=top.get('29')))
+    require(top.get('41', {}).get('type') == 'BREAD' and '29' not in top,
+            lane.name + ': offline, the main hand comes from the player file\'s selected slot', dict(hand=top.get('41'), cell=top.get('29')))
     staff.click(41)
     staff.click(72)
     window(.5)
@@ -751,6 +778,9 @@ def whois_and_alts(lane):
     staff.chat(m, 'Alt accounts: StaffBot')
     staff.chat(m, 'IP: 127.0.0.1')
     require(True, lane.name + ': /seen lists alt accounts and the IP for staff')
+    m = staff.cmd('alts PlayerBot')
+    staff.chat(m, 'Alt accounts: StaffBot')
+    require(True, lane.name + ': /alts is an alias of /seen')
     m = player.cmd('seen StaffBot')
     window(1.5)
     require(not any('Alt accounts' in c['plain'] or 'IP:' in c['plain'] for c in player.chats(m)), lane.name + ': players without the nodes see neither')
@@ -804,9 +834,8 @@ def restore(lane):
     require(top.get('27', {}).get('type') == 'DIAMOND' and top.get('37', {}).get('type') == 'IRON_CHESTPLATE',
             lane.name + ': the panel shows the snapshot (hotbar and armor)', top)
     require(top.get('36', {}).get('cmd') == 2577101 and top.get('40', {}).get('cmd') == 2577105, lane.name + ': empty armor and offhand show icons', top)
-    require(top.get('41', {}).get('type') == 'GOLDEN_APPLE' and top.get('30', {}).get('cmd') == 2577100
-            and 'Selected slot 4' in top.get('30', {}).get('name', ''),
-            lane.name + ': the main-hand cell holds the snapshot\'s held item (hotbar slot 4 is the marker)', dict(hand=top.get('41'), marker=top.get('30')))
+    require(top.get('41', {}).get('type') == 'GOLDEN_APPLE' and '30' not in top,
+            lane.name + ': the main-hand cell holds the snapshot\'s held item (hotbar slot 4 is empty, no marker glass)', dict(hand=top.get('41'), cell=top.get('30')))
     require(top.get('52', {}).get('type') == 'PAPER' and 'MANUAL' in top.get('52', {}).get('name', ''),
             lane.name + ': the snapshot info sits in the bottom row', top.get('52'))
     mp = player.mark()
@@ -829,6 +858,15 @@ def restore(lane):
     mine = lane.fixture('inv StaffBot')
     require(not mine['slots'] and mine['cursor'] is None and mine['top'].get('41', {}).get('type') == 'GOLDEN_APPLE',
             lane.name + ': placing on the empty main-hand cell puts it back', dict(mine=mine['slots'], hand=mine['top'].get('41')))
+    lane.fixture('give StaffBot 0 DIRT 5')
+    staff.click(81)
+    staff.click(30)
+    window(.4)
+    mine = lane.fixture('inv StaffBot')
+    require('30' not in mine['top'] and (mine['cursor'] or {}).get('type') == 'DIRT',
+            lane.name + ': the empty held hotbar cell of the panel refuses items', dict(cell=mine['top'].get('30'), cursor=mine['cursor']))
+    staff.click(81)
+    window(.3)
     # Edit with shift-click: a whole stack out of the panel, then back into a storage cell.
     lane.fixture('clear StaffBot')
     staff.click(27, 0, 1)
@@ -907,6 +945,311 @@ def restore(lane):
 
 
 SIGN = [8, 0, 8]
+
+
+def items_batch(lane):
+    staff = lane.bots['StaffBot']
+    lane.perm('StaffBot', 'allium.give')
+    for command in ('i dpick', 'give StaffBot dpick'):
+        lane.fixture('clear StaffBot')
+        staff.command(command, 'Gave 1 Diamond Pickaxe to StaffBot.')
+        require(True, lane.name + ': /' + command + ' shows the resolved item name in chat')
+    for command in ('i gshovel,stick', 'give StaffBot gshovel,stick', 'give StaffBot gshovel,stick 1'):
+        lane.fixture('clear StaffBot')
+        staff.command(command, 'Gave')
+        inv = lane.fixture('inv StaffBot')
+        kinds = sorted((v['type'], v['amount']) for v in inv['slots'].values())
+        expected_sticks = 1 if command.endswith(' 1') else 64
+        require(kinds == [('GOLDEN_SHOVEL', 1), ('STICK', expected_sticks)],
+                lane.name + ': /' + command + ' honors individual stack limits and explicit amounts', inv['slots'])
+    lane.fixture('clear StaffBot')
+    staff.command('i stick,gshovel 1', 'Gave')
+    inv = lane.fixture('inv StaffBot')
+    kinds = sorted((v['type'], v['amount']) for v in inv['slots'].values())
+    require(kinds == [('GOLDEN_SHOVEL', 1), ('STICK', 1)], lane.name + ': /i stick,gshovel 1 gives one of each (legacy alias in a batch)', inv['slots'])
+    lane.fixture('clear StaffBot')
+    staff.command('i stick:1,diamond:2', 'Gave')
+    inv = lane.fixture('inv StaffBot')
+    kinds = sorted((v['type'], v['amount']) for v in inv['slots'].values())
+    require(kinds == [('DIAMOND', 2), ('STICK', 1)], lane.name + ': /i stick:1,diamond:2 gives each entry its own amount', inv['slots'])
+    lane.fixture('clear StaffBot')
+    staff.command('i stick:5,dirt 2', 'Gave')
+    inv = lane.fixture('inv StaffBot')
+    kinds = sorted((v['type'], v['amount']) for v in inv['slots'].values())
+    require(kinds == [('DIRT', 2), ('STICK', 5)], lane.name + ': an entry\'s own amount wins; the batch amount covers the rest', inv['slots'])
+    lane.fixture('clear StaffBot')
+    staff.command('give StaffBot diamond:3,stick', 'Gave')
+    inv = lane.fixture('inv StaffBot')
+    kinds = sorted((v['type'], v['amount']) for v in inv['slots'].values())
+    require(kinds == [('DIAMOND', 3), ('STICK', 64)], lane.name + ': /give preserves per-item amounts and fills the other stack', inv['slots'])
+    lane.fixture('clear StaffBot')
+    staff.command('i 1:1', 'Gave')
+    inv = lane.fixture('inv StaffBot')
+    require([v['type'] for v in inv['slots'].values()] == ['GRANITE'], lane.name + ': a numeric legacy id (1:1) is still granite, not one stone', inv['slots'])
+    lane.fixture('clear StaffBot')
+    after = staff.tab('i stick,gsh')
+    require('stick,gshovel' in after, lane.name + ': completion offers names for the entry after the comma', after)
+    first = staff.tab('i diamond_sw')
+    require('diamond_sword' in first, lane.name + ': completion still offers the first entry', first)
+
+
+def variant_completion(lane):
+    staff = lane.bots['StaffBot']
+    lane.perm('StaffBot', 'allium.give')
+    for carrier in ('potion', 'tipped_arrow', 'lingering_potion', 'splash_potion'):
+        matches = staff.tab(f'i {carrier};')
+        require(f'{carrier};haste' in matches and f'{carrier};poison' in matches,
+                lane.name + f': /i {carrier}; offers potion effects', matches)
+    matches = staff.tab('i minecraft:potion;ha')
+    require('minecraft:potion;haste' in matches and 'minecraft:potion;poison' not in matches,
+            lane.name + ': potion completion filters by effect prefix and preserves the item namespace', matches)
+    matches = staff.tab('i spawner;')
+    require('spawner;zombie' in matches and 'spawner;skeleton' in matches and 'spawner;player' not in matches,
+            lane.name + ': /i spawner; offers spawnable mobs', matches)
+    matches = staff.tab('i spawner;zo')
+    require('spawner;zombie' in matches and 'spawner;skeleton' not in matches,
+            lane.name + ': /i spawner;zo filters by mob prefix', matches)
+
+
+POTION_NAMES = {
+    'spigot': dict(poison='POISON', strong_swift='SPEED+strong', long_swift='SPEED+long', strong_poison='POISON+strong', water='WATER'),
+    'paper': dict(poison='POISON', strong_swift='STRONG_SWIFTNESS', long_swift='LONG_SWIFTNESS', strong_poison='STRONG_POISON', water='WATER'),
+}
+
+
+def potions(lane):
+    staff = lane.bots['StaffBot']
+    names = POTION_NAMES[lane.kind]
+    observed = {}
+
+    def give(spec):
+        lane.fixture('clear StaffBot')
+        staff.command('i ' + spec, 'Gave')
+        data = lane.fixture('potion StaffBot 0')
+        observed[spec] = data
+        return data
+
+    p = give('potion;poison')
+    require(p['type'] == 'POTION' and p['base'] == names['poison'] and p['custom'] == [] and p['displayName'] is None,
+            lane.name + ': /i potion;poison is a vanilla Potion of Poison (base type, no custom effect, no rename)', p)
+    p = give('splash_potion;speed;0;2')
+    require(p['type'] == 'SPLASH_POTION' and p['base'] == names['strong_swift'] and p['custom'] == [],
+            lane.name + ': /i splash_potion;speed;0;2 is the strong Splash Potion of Swiftness', p)
+    p = give('lingering_potion;speed;120;1')
+    require(p['type'] == 'LINGERING_POTION' and p['base'] == names['long_swift'] and p['custom'] == [],
+            lane.name + ': a lingering potion lasting 120s on the target is the long Lingering Potion of Swiftness', p)
+    p = give('tipped_arrow;poison;0;2')
+    require(p['type'] == 'TIPPED_ARROW' and p['base'] == names['strong_poison'] and p['custom'] == [],
+            lane.name + ': /i tipped_arrow;poison;0;2 is the vanilla Arrow of Poison (strong)', p)
+    p = give('potion;poison;60;1')
+    if lane.kind == 'paper':
+        named = p['customPotionName'] == 'poison' and p['displayName'] is None
+    else:
+        named = (p.get('displayNameJson') or '').replace(' ', '') == '{"translate":"item.minecraft.potion.effect.poison","italic":false}'
+    require(p['base'] == names['water'] and p['custom'] == ['poison:0:1200'] and named,
+            lane.name + ': a custom poison duration keeps its effect and is named after the Potion of Poison', p)
+    for spec, label, ticks in (
+        ('potion;haste', 'Potion of Haste', 1800),
+        ('splash_potion;haste;60;1', 'Splash Potion of Haste', 1200),
+        ('potion effect:haste:2:60', 'Potion of Haste', 1200),
+        ('potion;haste;60;1 name:Quick', 'Quick', 1200),
+    ):
+        p = give(spec)
+        amplifier = 1 if 'effect:haste:2' in spec else 0
+        require(p['custom'] == [f'haste:{amplifier}:{ticks}'] and p['displayName'] == label,
+                lane.name + ': /i ' + spec + ' names the item and keeps its haste effect', p)
+    lane.fixture('clear StaffBot')
+    emit('POTIONS ' + lane.name + ' ' + json.dumps(observed))
+
+
+
+
+def inventory_clear(lane):
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    lane.perm('StaffBot', 'allium.clearinventory')
+    lane.perm('StaffBot', 'allium.clearinventory.others', False)
+    lane.perm('StaffBot', 'allium.clearinventory.all', False)
+    lane.fixture('give PlayerBot 0 DIAMOND_PICKAXE 1')
+    staff.command('clear PlayerBot dpick', 'permission')
+    require(slot(lane.fixture('inv PlayerBot'), 0)['type'] == 'DIAMOND_PICKAXE',
+            lane.name + ': named clears require others permission')
+    staff.command('clear * dpick', 'permission')
+    staff.command('clear ** dpick', 'permission')
+    require('**' not in staff.tab('clear *'), lane.name + ': wildcard completion respects all permission')
+
+    lane.perm('StaffBot', 'allium.clearinventory.others')
+    matches = staff.tab('clear PlayerBot dpi')
+    require('dpick' in matches, lane.name + ': named clears complete item aliases', matches)
+    matches = staff.tab('clear PlayerBot potion;ha')
+    require('potion;haste' in matches, lane.name + ': clear shares potion completions with /i', matches)
+    staff.command('clear PlayerBot dpick', 'again within 30 seconds')
+    require(slot(lane.fixture('inv PlayerBot'), 0)['type'] == 'DIAMOND_PICKAXE',
+            lane.name + ': first named clear leaves the inventory intact')
+    staff.command('clear PlayerBot stone', 'again within 30 seconds')
+    staff.command('clear PlayerBot dpick', 'again within 30 seconds')
+    staff.command('clear PlayerBot dpick', 'Cleared 1 item(s) from PlayerBot')
+    require(slot(lane.fixture('inv PlayerBot'), 0) is None, lane.name + ': same command confirms and clears the alias')
+
+    lane.perm('StaffBot', 'allium.clearinventory.others', False)
+    lane.perm('StaffBot', 'allium.clearinventory.all')
+    matches = staff.tab('clear ')
+    require('*' in matches and '**' in matches, lane.name + ': both wildcard targets complete with all permission', matches)
+    lane.fixture('give StaffBot 0 STICK 4')
+    lane.fixture('give PlayerBot 0 STICK 3')
+    staff.command('clear * stick', 'again within 30 seconds')
+    staff.command('clear * stick', 'Cleared 3 item(s) from PlayerBot')
+    require(slot(lane.fixture('inv StaffBot'), 0) is None and slot(lane.fixture('inv PlayerBot'), 0) is None,
+            lane.name + ': the online wildcard clears both inventories')
+
+    lane.fixture('give StaffBot 0 DIAMOND_PICKAXE 1')
+    lane.fixture('give PlayerBot 0 DIAMOND_PICKAXE 1')
+    lane.fixture('give PlayerBot 1 STONE 4')
+    player.disconnect()
+    staff.command('clear ** dpick', 'again within 30 seconds')
+    staff.command('clear ** dpick', 'Cleared 1 item(s) from 1 offline inventories')
+    lane.bot('PlayerBot')
+    inv = lane.fixture('inv PlayerBot')
+    require(slot(inv, 0) is None and slot(inv, 1)['amount'] == 4
+            and slot(lane.fixture('inv StaffBot'), 0)['type'] == 'DIAMOND_PICKAXE',
+            lane.name + ': the offline wildcard persists only the matching offline inventory change')
+    staff.command('clearinventoryconfirmtoggle', 'confirmation disabled')
+    staff.command('clear dpick', 'Cleared 1 item(s) from your inventory')
+    staff.command('clearinventoryconfirmtoggle', 'confirmation enabled')
+
+
+def scaling(lane):
+    staff = lane.bots['StaffBot']
+    lane.perm('StaffBot', 'allium.scale')
+    lane.perm('StaffBot', 'allium.scale.others', False)
+
+    def value(target):
+        return lane.fixture('scale-value ' + target)['scale']
+
+    if lane.kind == 'spigot':
+        staff.command('scale 2', 'scale attribute is unavailable')
+        require(value('StaffBot') is None, lane.name + ': scale reports unavailable on versions without the attribute')
+        return
+
+    staff.command('scale 0', 'scale to 0.1')
+    require(value('StaffBot') == 0.1, lane.name + ': zero maps to 0.1')
+    staff.command('scale 17', 'Usage')
+    staff.command('scale NaN', 'Usage')
+    require(value('StaffBot') == 0.1, lane.name + ': invalid scales do not change the attribute')
+
+    staff.command('scale 16 PlayerBot', 'permission')
+    require(value('PlayerBot') == 1, lane.name + ': scaling a named player requires allium.scale.others')
+    lane.perm('StaffBot', 'allium.scale.others')
+    staff.command('scale 16 PlayerBot', 'scale to 16')
+    require(value('PlayerBot') == 16 and value('StaffBot') == 0.1, lane.name + ': a named player can be scaled up to 16')
+
+    lane.perm('StaffBot', 'allium.tpmob')
+    staff.command('tpe', 'selection enabled')
+    selected = lane.fixture('scale-spawn StaffBot')['id']
+    untouched = lane.fixture('scale-spawn StaffBot')['id']
+    mark = len(staff.lines)
+    lane.fixture('scale-select StaffBot ' + selected)
+    staff.chat(mark, 'Selected COW')
+    staff.command('scale 2.5', 'selected mob(s) to 2.5')
+    require(value(selected) == 2.5 and value(untouched) == 1 and value('StaffBot') == 0.1,
+            lane.name + ': only the selected mob is scaled')
+    staff.command('scale 1', 'selected mob(s) to 1')
+    require(value(selected) == 1, lane.name + ': scaling keeps the selection active')
+    staff.command('tpe', 'selection disabled')
+    staff.command('scale 1', 'scale to 1')
+    require(value('StaffBot') == 1, lane.name + ': without selected mobs, scale applies to the sender')
+    # Scale is saved with the player: a 16x PlayerBot's eyes are out of reach of the repair sign later.
+    staff.command('scale 1 PlayerBot', 'scale to 1')
+    require(value('PlayerBot') == 1, lane.name + ': a named player is scaled back to 1')
+
+
+def tp_position(lane):
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    lane.perm('StaffBot', 'allium.tp')
+    lane.perm('StaffBot', 'allium.teleport.timer.bypass.tp')
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    before = lane.fixture('where StaffBot')
+    staff.command('tp ~2 ~ ~2', "You don't have permission")
+    require(lane.fixture('where StaffBot')['x'] == before['x'], lane.name + ': /tp <x> <y> <z> needs allium.tp.position')
+    lane.perm('StaffBot', 'allium.tp.position')
+    staff.command('tp 5 ~ 7 90 10', 'Teleported to 5.5, ')
+    at = lane.fixture('where StaffBot')
+    require(at['x'] == 5.5 and at['z'] == 7.5 and round(at['yaw']) == 90 and round(at['pitch']) == 10 and at['world'] == 'world',
+            lane.name + ': /tp x y z yaw pitch lands on the block centers with the given facing', at)
+    staff.command('tp ~-2 ~ ~1.25', 'Teleported to 3.5, ')
+    at = lane.fixture('where StaffBot')
+    require(at['x'] == 3.5 and at['z'] == 8.75, lane.name + ': ~ offsets are relative to the player', at)
+    before = lane.fixture('where StaffBot')
+    lane.perm('StaffBot', 'allium.tppos', False)
+    denied = staff.cmd('tppos ~4 ~ ~')
+    wait(lambda: staff.saw(denied, 'permission') or staff.saw(denied, '{command.unknown.command}'),
+         lane.name + ': denied /tppos')
+    require(lane.fixture('where StaffBot') == before, lane.name + ': denied /tppos leaves position unchanged')
+    lane.perm('StaffBot', 'allium.tppos')
+    lane.perm('StaffBot', 'allium.teleport.timer.bypass.tppos')
+    lane.perm('StaffBot', 'allium.teleport.cooldown.bypass.tppos')
+    staff.command('tppos ~2 ~ ~ 0 0 nowhere', 'No world is named nowhere')
+    require(lane.fixture('where StaffBot') == before, lane.name + ': unknown world leaves position unchanged')
+    staff.command('tppos 1 2', 'Usage')
+    staff.command('tppos 1 ~ 1 -90 0 world', 'Teleported to 1.5, ')
+    at = lane.fixture('where StaffBot')
+    require(at['x'] == 1.5 and at['z'] == 1.5 and round(at['yaw']) == -90, lane.name + ': /tppos teleports with yaw and an explicit world', at)
+    require(staff.tab('tppos ') == ['~'], lane.name + ': /tppos completes ~ for coordinates', staff.tab('tppos '))
+    worlds = staff.tab('tppos 1 2 3 0 0 ')
+    require('world' in worlds, lane.name + ': /tppos completes world names', worlds)
+    first = staff.tab('tp ')
+    require('~' in first and 'PlayerBot' in first, lane.name + ': /tp offers players and ~ with allium.tp.position', first)
+    lane.perm('PlayerBot', 'allium.tp')
+    m = player.cmd('tp ~1 ~ ~1')
+    window(1.5)
+    require(not player.saw(m, 'Teleported to'), lane.name + ': without allium.tp.position nobody moves by coordinates')
+    lane.perm('PlayerBot', 'allium.tp', False)
+
+
+def teleport_types(lane):
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    for node in ['allium.teleport.timer.bypass.tppos', 'allium.teleport.timer.bypass.tp', 'allium.teleport.cooldown.bypass.tppos']:
+        lane.perm('StaffBot', node, False)
+    lane.perm('StaffBot', 'allium.tppos')
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    window(.5)
+    m = staff.cmd('tppos ~4 ~ ~')
+    staff.chat(m, 'Teleporting in 3.0s')
+    window(.4)
+    staff.write('move 2 0')
+    staff.chat(m, 'Teleport cancelled: movement')
+    require(True, lane.name + ': without a timer node, moving during the warmup cancels it')
+    lane.perm('StaffBot', 'allium.teleport.timer.move.tppos')
+    window(.5)
+    before = lane.fixture('where StaffBot')
+    m = staff.cmd('tppos ~4 ~ ~')
+    staff.chat(m, 'Teleporting in 3.0s')
+    window(.4)
+    staff.write('move 1 0')
+    staff.chat(m, 'Teleported to', 8)
+    require(not staff.saw(m, 'Teleport cancelled'), lane.name + ': allium.teleport.timer.move.tppos keeps the warmup going while moving')
+    at = lane.fixture('where StaffBot')
+    require(abs(at['x'] - (before['x'] + 4)) < .01, lane.name + ': and lands where the command pointed', dict(before=before, at=at))
+    m = staff.cmd('tppos ~1 ~ ~')
+    staff.chat(m, 'Please wait')
+    require(True, lane.name + ': the tppos cooldown applies without a cooldown node')
+    lane.perm('StaffBot', 'allium.teleport.cooldown.bypass.tppos')
+    m = staff.cmd('tppos ~1 ~ ~')
+    staff.chat(m, 'Teleporting in 3.0s')
+    staff.chat(m, 'Teleported to', 8)
+    require(True, lane.name + ': allium.teleport.cooldown.bypass.tppos skips the cooldown (the warmup still runs)')
+    lane.perm('StaffBot', 'allium.teleport.timer.bypass.tppos')
+    m = staff.cmd('tppos ~1 ~ ~')
+    staff.chat(m, 'Teleported to', 4)
+    require(not staff.saw(m, 'Teleporting in'), lane.name + ': allium.teleport.timer.bypass.tppos teleports at once')
+    # Groups: "requests" covers /tpa and /tpahere.
+    lane.perm('StaffBot', 'allium.teleport.timer.bypass.requests')
+    lane.fixture('tp PlayerBot 8.5 -61 0.5 0 0')
+    window(.5)
+    staff.command('tpa PlayerBot', 'Teleport request sent')
+    m = staff.mark()
+    player.cmd('tpaccept')
+    staff.chat(m, 'Teleported to PlayerBot', 4)
+    require(not staff.saw(m, 'Teleporting in'), lane.name + ': allium.teleport.timer.bypass.requests skips the warmup of an accepted /tpa')
 
 
 def repair_setup(lane, balance):
@@ -998,6 +1341,13 @@ def main():
         case('creative-restart', lambda: creative_restart(lane))
         case('creative-audit', lambda: creative_audit(lane))
         case('invsee', lambda: invsee(lane))
+        case('items-batch', lambda: items_batch(lane))
+        case('potions', lambda: potions(lane))
+        case('variant-completion', lambda: variant_completion(lane))
+        case('clear', lambda: inventory_clear(lane))
+        case('scale', lambda: scaling(lane))
+        case('tp-position', lambda: tp_position(lane))
+        case('teleport-types', lambda: teleport_types(lane))
         case('mail-numbers', lambda: mail_numbers(lane))
         case('whois-alts', lambda: whois_and_alts(lane))
         case('restore', lambda: restore(lane))

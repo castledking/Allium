@@ -636,7 +636,7 @@ def run_suite(lane):
 
     lane.fixture('perm InfoNorm allium.give true')
     i_ok_s = norm.cmd('i diamond 3 name:"&aGem Blade"')
-    norm.chat(i_ok_s, 'Gave 3x')
+    norm.chat(i_ok_s, 'Gave 3 ')
     inv_after = lane.fixture('inv InfoNorm')['items']
     require(any(it['type'] == 'DIAMOND' and it['amount'] == 3 and 'Gem Blade' in it.get('displayName', '')
                 for it in inv_after),
@@ -652,7 +652,7 @@ def run_suite(lane):
             lane.name + ': /item enforces allium.give.privileged and --overflow=refuse cleanly')
 
     st_handcuff_s = staff.cmd('item allium:handcuffs 1')
-    staff.chat(st_handcuff_s, 'Gave 1x')
+    staff.chat(st_handcuff_s, 'Gave 1 ')
     st_inv = lane.fixture('inv InfoStaff')['items']
     require(len(st_inv) >= 1, lane.name + ': /item succeeds for staff with allium.give.privileged')
 

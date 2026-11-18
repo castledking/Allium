@@ -1,5 +1,17 @@
 # Hide port gate
 
+## 2026-11-18: suggestion ledger and resolver follow-up
+
+Spigot 1.20.1 and Paper 26.3 passed **29/29 each** on jar `81af1a08…` (r8; runs `hide-spigot-r8`,
+`hide-paper-r8` under `/mnt/storage/.allium-validation/20261118/s18-playerinfo/runs`). New checks:
+40 completion requests the server never answers (Spigot and Paper send nothing for an empty
+completion) are followed by a normal request that is still answered; `/i` item names pass the
+permission resolver only with `allium.give`; `/i` completes the entry after a comma. The previous
+jar (`23823e09…`, r7) fails those checks on both lanes (25/29, `hide-*-r7-repro`): after the burst,
+the next requests got no answer, which is the "suggestions only come back after typing and
+deleting" report.
+
+
 Unit delta **+42**, 835 → **877**. Full `check shadowJar` passes with zero
 failures/errors/skips. Tests cover policy paths, aliases, namespace boundaries,
 blacklist priority, independent inheritance, malformed config, packet snapshots,

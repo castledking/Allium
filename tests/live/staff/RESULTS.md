@@ -1,5 +1,39 @@
 # Staff tooling live gate
 
+## November 18 follow-up (r9)
+
+**PASS: 311 live checks, 0 failures, 22 cases on each lane.** Spigot 1.20.1 (`spigot-r9-full`,
+152 checks) and Paper 26.3 (`paper-r9-full-b`, 159 checks; Spigot has no scale attribute, so its
+`scale` case only checks the "unavailable" reply), SQLite, both on Allium.jar
+`18e325378e11546ae9fc5eed65488dd0717faf49251ec9fcc2dde3962c1cdf5e`. `./gradlew check shadowJar`:
+982 unit tests, 0 failures. No exceptions or SEVERE lines in either server log.
+
+New cases on both lanes:
+
+| Case | What ran |
+| --- | --- |
+| items-batch | `/i stick,gshovel 1` (a legacy alias inside a batch), `/i stick:1,diamond:2`, `/i stick:5,dirt 2`, `/give <player> diamond:3,stick`, `/i 1:1` still granite; completion after a comma |
+| potions | `potion;poison`, strong splash swiftness, long lingering swiftness and a strong tipped arrow are the vanilla potions (base type, no custom effect); a custom duration keeps its effect and is named after the vanilla potion (Paper: the potion name field; Spigot: a translated item name); haste keeps the plain name |
+| variant-completion, clear, scale | `/i` variant completion; `/clear` others, `*` and `**` with confirmation and item filters; `/scale` for self, others and selected mobs |
+| tp-position | `/tp x y z` needs `allium.tp.position`; block centers, yaw/pitch, `~` offsets; `/tppos` with an explicit world, a missing world reported, usage errors; completions |
+| teleport-types | moving cancels a warmup without a node and not with `allium.teleport.timer.move.tppos`; the `tppos` cooldown and its bypass node; `allium.teleport.timer.bypass.tppos` teleports at once; the `requests` group skips an accepted `/tpa`'s warmup |
+| invsee, restore (updated) | the held hotbar cell is empty; placing on it is refused; a shift-click merges into the target's stack and, with storage full, skips the held cell |
+| whois-alts (updated) | `/alts` is `/seen` |
+
+The first Paper r9 run failed `paid-repair`: the new `scale` case left PlayerBot at scale 16 (scale
+is saved with the player), so its eyes were out of reach of the repair sign. The case now scales
+PlayerBot back to 1; it is a harness fix, not a plugin change. That first run is kept as
+`paper-r9-full`. An earlier follow-up pass on jar `74dfe544…` (127 checks per lane,
+`*-resume-final`) found that a missing explicit `/tppos` world fell back to the current world;
+that was fixed before r9.
+
+Regressions on r9: S24 inspection 98/98 on each lane; S25 utilities 143/143 on Spigot, and on Paper
+142/143 twice, both times only the log check: Paper's own `/skull Notch` profile lookup got
+HTTP 429 from Mojang's session server. The hide gate passed 29/29 on each lane on r8
+(`hide-*-r8`); r8 to r9 changed no hide code.
+
+Runs: `/mnt/storage/.allium-validation/20261118/staff/runs/`.
+
 **PASS on 2026-11-18: 184 live checks, 0 failures.** Spigot 1.20.1 (`spigot-r7-full`, 92 checks) and
 Paper 26.3 (`paper-r7-full`, 92 checks), SQLite, both on Allium.jar
 `23823e09a089649d82ea84993b941d85d07291f7fc78103cf6e8a4a0e2174002`. Every case below ran on

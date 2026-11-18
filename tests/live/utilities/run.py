@@ -676,6 +676,7 @@ def run_suite(kind, base_port):
     scopes.append(lane.name + ':clear-more-hat-skull-itemdb')
     lane.fixture('seedstack UtilNorm')
 
+    staff.command('ci UtilNorm dirt 4', 'again within 30 seconds')
     staff.command('ci UtilNorm dirt 4', 'Cleared 4 item(s) from UtilNorm')
     st_ci = lane.fixture('state UtilNorm')
     require(st_ci['dirtCount'] == 6 and st_ci['stoneCount'] == 5 and st_ci['heldType'] == 'GOLDEN_APPLE',

@@ -54,7 +54,12 @@ public final class ModuleManager {
                 try {
                     module.enable();
                 } catch (Exception e) {
-                    plugin.logger().severe("Failed to enable module [" + module.getName() + "]: " + e.getMessage());
+                    // The cause says what to fix ("economy unavailable" alone did not).
+                    StringBuilder reason = new StringBuilder(String.valueOf(e.getMessage()));
+                    for (Throwable cause = e.getCause(); cause != null && cause != cause.getCause(); cause = cause.getCause()) {
+                        reason.append(": ").append(cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage());
+                    }
+                    plugin.logger().severe("Failed to enable module [" + module.getName() + "]: " + reason);
                 }
             }
         }

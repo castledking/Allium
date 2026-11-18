@@ -13,7 +13,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/** Bounded server-thread search. Unloaded neighboring chunks are never loaded by the search. */
+/**
+ * Bounded server-thread search. The destination's chunk and the few neighbors the search reaches
+ * are loaded from disk when they exist; terrain that was never generated is only generated when
+ * {@code teleport.safety.load-destination-chunk} is true.
+ */
 public final class DestinationSafety {
     private static final double HALF_WIDTH = 0.3;
     private static final double HEIGHT = 1.8;
@@ -25,14 +29,16 @@ public final class DestinationSafety {
         World world = requested.getWorld();
         int chunkX = requested.getBlockX() >> 4;
         int chunkZ = requested.getBlockZ() >> 4;
-        if (!world.isChunkLoaded(chunkX, chunkZ)) {
-            if (!rules.loadChunk()) return Optional.empty();
-            try {
-                world.getChunkAt(chunkX, chunkZ);
-            } catch (RuntimeException loadFailure) {
-                return Optional.empty();
+        // Homes and warps are almost always in unloaded chunks: load the destination's chunk, and
+        // the neighbors the search reaches, from disk (as vanilla /tp does). New terrain is only
+        // generated when load-destination-chunk allows it.
+        int reach = (rules.safety() && rules.adjust() ? rules.radius() : 0) + 1;
+        for (int cx = (requested.getBlockX() - reach) >> 4; cx <= (requested.getBlockX() + reach) >> 4; cx++) {
+            for (int cz = (requested.getBlockZ() - reach) >> 4; cz <= (requested.getBlockZ() + reach) >> 4; cz++) {
+                // Only the destination's own chunk may be generated; neighbors are loaded only if they exist.
+                boolean destination = cx == chunkX && cz == chunkZ;
+                if (!available(world, cx, cz, destination && rules.loadChunk()) && destination) return Optional.empty();
             }
-            if (!world.isChunkLoaded(chunkX, chunkZ)) return Optional.empty();
         }
         if (safe(requested, rules)) return Optional.of(requested.clone());
         if (!rules.safety() || !rules.adjust()) return Optional.empty();
@@ -55,6 +61,29 @@ public final class DestinationSafety {
             if (safe(candidate, rules)) return Optional.of(candidate);
         }
         return Optional.empty();
+    }
+
+    /** True when the chunk is loaded, or was loaded now: from disk if generated, generated only when {@code generate}. */
+    private static boolean available(World world, int cx, int cz, boolean generate) {
+        if (world.isChunkLoaded(cx, cz)) return true;
+        if (!generate && !world.isChunkGenerated(cx, cz)) return false;
+        try {
+            world.getChunkAt(cx, cz);
+        } catch (RuntimeException loadFailure) {
+            return false;
+        }
+        return world.isChunkLoaded(cx, cz);
+    }
+
+    /**
+     * True when {@code requested} lies in terrain that was never generated and the rules do not
+     * allow generating it, so the refusal can say that instead of "no safe destination".
+     */
+    public boolean ungenerated(Location requested, TeleportSettings rules) {
+        World world = requested == null ? null : requested.getWorld();
+        if (world == null || rules.loadChunk()) return false;
+        int cx = requested.getBlockX() >> 4, cz = requested.getBlockZ() >> 4;
+        return !world.isChunkLoaded(cx, cz) && !world.isChunkGenerated(cx, cz);
     }
 
     boolean safe(Location point, TeleportSettings rules) {

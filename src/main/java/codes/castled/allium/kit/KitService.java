@@ -352,7 +352,8 @@ public final class KitService implements Listener {
         }
         String name;
         try {
-            name = KitNames.validate(rawName);
+            // Kit names are stored lowercase; "/kit Starter" means the kit "starter".
+            name = KitNames.validate(rawName == null ? null : rawName.toLowerCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             send(actor, Messages.KIT_NOT_FOUND, "{name}", rawName);
             return;

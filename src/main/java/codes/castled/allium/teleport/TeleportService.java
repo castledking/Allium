@@ -290,7 +290,9 @@ public final class TeleportService implements Listener {
             send(actor,Messages.COOLDOWN_ACTIVE,"{time}",Long.toString((session.cooldowns.get(command)-now+999)/1000)+"s");return false;
         }
         TeleportSettings rules=settings;
-        var checked=safety.resolve(destination.get(),safetyRules(mover,actor,rules));
+        Location wanted=destination.get();
+        if(safety.ungenerated(wanted,rules)){send(actor,Messages.TELEPORT_UNGENERATED);return false;}
+        var checked=safety.resolve(wanted,safetyRules(mover,actor,rules));
         if(checked.isEmpty()){send(actor,Messages.TELEPORT_UNSAFE);return false;}
         long warmup=actor.hasPermission("allium.teleport.bypass.warmup")||typed(actor,"timer.bypass",command)?0:rules.warmupMillis();
         var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),now+warmup,rules,policy,

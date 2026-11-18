@@ -572,6 +572,8 @@ def unsafe_worlds():
         saved=lane.place(a,x);say(a,'sethome '+name,'homeSet',name=name)
         lane.place(c,x);say(c,'setwarp '+name,'warpSet',name=name);lane.perm(a,'allium.warps.'+name)
         origin=lane.place(a,0);lane.fixture(f'terrain world {x} 0 {hazard}')
+        # Players who can fly skip landing checks by design; the hazard rules apply to one who cannot.
+        lane.fixture(f'fly {a.name} false');window(.4)
         for command in ['home '+name,'warp '+name]:refused(a,command,'unsafe')
         say(a,'delhome '+name,'homeDeleted',name=name);say(c,'delwarp '+name,'warpDeleted',name=name)
     lane.fixture('world gate_deleted');saved=lane.place(a,30,world='gate_deleted');say(a,'sethome lost','homeSet',name='lost')

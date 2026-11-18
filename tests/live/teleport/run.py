@@ -390,6 +390,8 @@ def unsafe():
     a,b,_=lane.bots.values()
     for hazard in ['lava','void','headspace','fall']:
         origin=lane.place(a,0);dest=lane.place(b,120 if hazard in ['lava','void'] else 160,0,terrain=hazard);clear(a,b)
+        # Players who can fly skip landing checks by design; the hazard rules apply to one who cannot.
+        lane.fixture(f'fly {a.name} false');window(.4);origin=a.state()
         reply_mark=len(a.lines);request(a,b);b.cmd('tpaccept '+a.name,chat=False);window(1.6);after=a.state()
         refused=near(after,origin) and not physical(a)
         adjusted=(after['worldUUID']==dest['worldUUID'] and abs(after['x']-dest['x'])<=3.6 and abs(after['z']-dest['z'])<=3.6

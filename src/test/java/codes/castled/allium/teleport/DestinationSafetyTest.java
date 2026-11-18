@@ -183,6 +183,40 @@ class DestinationSafetyTest {
     }
 
     @Test
+    void existingChunksAreLoadedFromDiskForTheDestinationAndTheSearch() {
+        // Homes and warps are usually in unloaded chunks; refusing them made /home fail everywhere.
+        Terrain terrain = new Terrain();
+        terrain.groundY = 63;
+        terrain.unloaded.add(new ChunkPos(5, 5));
+        terrain.onDisk.add(new ChunkPos(5, 5));
+        Location home = terrain.at(5 * 16 + 8.5, 64, 5 * 16 + 8.5);
+        assertTrue(safety.resolve(home, rules(true, 2, 2, true, true, false)).isPresent());
+        verify(terrain.world, times(1)).getChunkAt(5, 5);
+        assertFalse(safety.ungenerated(home, rules(true, 2, 2, true, true, false)));
+        // A neighbor on disk is loaded for the search; one that was never generated is not created.
+        Terrain edge = new Terrain();
+        edge.unloaded.add(new ChunkPos(1, 0));
+        edge.onDisk.add(new ChunkPos(1, 0));
+        edge.unloaded.add(new ChunkPos(1, -1));
+        edge.put(16, 63, 0, Material.STONE);
+        assertEquals(16.5, safety.resolve(edge.at(15.5, 64, 0.5), rules(true, 1, 1, true, true, false)).orElseThrow().getX());
+        verify(edge.world, times(1)).getChunkAt(1, 0);
+        verify(edge.world, never()).getChunkAt(1, -1);
+    }
+
+    @Test
+    void neverGeneratedTerrainIsRefusedWithItsOwnReason() {
+        Terrain terrain = new Terrain();
+        terrain.groundY = 63;
+        terrain.unloaded.add(new ChunkPos(9, 9));
+        Location far = terrain.at(9 * 16 + 4.5, 64, 9 * 16 + 4.5);
+        assertTrue(safety.ungenerated(far, rules(true, 2, 2, true, true, false)));
+        assertTrue(safety.resolve(far, rules(true, 2, 2, true, true, false)).isEmpty());
+        verify(terrain.world, never()).getChunkAt(anyInt(), anyInt());
+        assertFalse(safety.ungenerated(far, rules(true, 2, 2, true, true, true)), "load-destination-chunk allows generating it");
+    }
+
+    @Test
     void searchAndBodyChecksNeverReadOrLoadAnUnloadedNeighbor() {
         Terrain terrain = new Terrain();
         terrain.groundY = 63;
@@ -279,6 +313,8 @@ class DestinationSafetyTest {
         final WorldBorder border = mock(WorldBorder.class);
         final Map<Pos, Material> blocks = new HashMap<>();
         final Set<ChunkPos> unloaded = new HashSet<>();
+        /** Unloaded chunks that exist on disk, so a teleport may load them. */
+        final Set<ChunkPos> onDisk = new HashSet<>();
         final List<Pos> reads = new ArrayList<>();
         int groundY = -1000;
         double borderRadius = 30_000_000;
@@ -296,6 +332,10 @@ class DestinationSafetyTest {
             });
             when(world.isChunkLoaded(anyInt(), anyInt())).thenAnswer(call ->
                     !unloaded.contains(new ChunkPos(call.getArgument(0), call.getArgument(1))));
+            when(world.isChunkGenerated(anyInt(), anyInt())).thenAnswer(call -> {
+                ChunkPos chunk = new ChunkPos(call.getArgument(0), call.getArgument(1));
+                return !unloaded.contains(chunk) || onDisk.contains(chunk);
+            });
             when(world.getChunkAt(anyInt(), anyInt())).thenAnswer(call -> {
                 if (loadSucceeds) unloaded.remove(new ChunkPos(call.getArgument(0), call.getArgument(1)));
                 return null;

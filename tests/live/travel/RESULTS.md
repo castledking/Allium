@@ -1,5 +1,18 @@
 # S15 homes and warps live results
 
+## 2026-11-18 rerun (i6)
+
+406/406 on Spigot 1.20.1 and on Paper 26.3 on jar `abefd3ae…` (runs `i6-spigot`, `i6-paper` under
+`/mnt/storage/.allium-validation/20261113/s15-travel/runs`). `/home` and `/warp` used to refuse
+every destination in an unloaded chunk unless `teleport.safety.load-destination-chunk` was true;
+this gate sets it true, so it never saw that. The default path is now covered by the legacy
+import gate (an imported home in an unloaded on-disk chunk, and one in never-generated terrain).
+The gate's fixture gives every bot flight so it never falls between steps. Since `3010c05`
+(Nov 17) players who can fly skip the fall and void checks on purpose, so the hazard cases (and,
+before this rerun, their failures) no longer tested the landing rules. The hazard cases now turn
+flight off for the moving bot. The same failures appear on jar `6f63c283…`, before the chunk change.
+
+
 **PASS**.
 
 - Spigot 1.20.1 / Java 17: 12/12 cases and 406/406 checks passed; 0 unrun; all 9 server/client processes exited zero. Original manifest: `/mnt/storage/.allium-validation/20261113/s15-travel/runs/final-spigot-02/manifest.json` (SHA-256 `fbdfac7a715964ef8d77dd10869f12db93ea36a9fa0a517be941f86dd3a8075d`).

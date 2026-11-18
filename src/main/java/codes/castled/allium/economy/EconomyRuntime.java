@@ -107,12 +107,26 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
 
     public static EconomySettings readSettings(PluginStart plugin){
         var c=plugin.getConfig();
-        return new EconomySettings(decimal(c.get("economy.starting-balance","100.00")),decimal(c.get("economy.min-money","0.00")),
-                decimal(c.get("economy.max-money","10000000000000.00")),decimal(c.get("economy.minimum-pay-amount","0.01")),
+        return new EconomySettings(decimal(plugin,"economy.starting-balance","100.00"),decimal(plugin,"economy.min-money","0.00"),
+                decimal(plugin,"economy.max-money","10000000000000.00"),decimal(plugin,"economy.minimum-pay-amount","0.01"),
                 c.getBoolean("economy.offline-pay-enabled",true),c.getBoolean("economy.pay-excludes-ignore-list",true),
                 c.getBoolean("preferences.defaults.accept-payments",true));
     }
-    private static Money decimal(Object value){if(!(value instanceof String text))throw new IllegalArgumentException("economy amounts must be quoted decimal text");return Money.parse(text,true);}
+    /**
+     * Amounts are decimal text ({@code '100.00'}). A plain YAML number (legacy configs wrote
+     * {@code starting-balance: 100.0}) is read by its written digits instead of disabling the whole
+     * economy, with a warning to quote it.
+     */
+    private static Money decimal(PluginStart plugin,String path,String fallback){
+        Object value=plugin.getConfig().get(path,fallback);
+        if(value instanceof String text)return Money.parse(text.trim(),true);
+        if(value instanceof Integer||value instanceof Long||value instanceof Double||value instanceof Float||value instanceof java.math.BigDecimal){
+            String text=new java.math.BigDecimal(value.toString()).toPlainString();
+            plugin.logger().warning(path+" is a number ("+value+"); read as "+text+". Quote it ('"+text+"') so it stays exact.");
+            return Money.parse(text,true);
+        }
+        throw new IllegalArgumentException(path+" must be a decimal amount such as '100.00'");
+    }
     private PreferencesModule preferences(){return plugin.getModuleManager().getModule("preferences") instanceof PreferencesModule p&&p.isEnabled()?p:null;}
     private MessagingModule messaging(){return plugin.getModuleManager().getModule("messaging") instanceof MessagingModule m&&m.isEnabled()?m:null;}
     private boolean permits(Connection c,UUID sender,UUID recipient)throws SQLException {

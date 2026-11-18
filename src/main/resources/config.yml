@@ -71,7 +71,8 @@ economy:
   currency-symbol-suffix: false
   # Opt-in only after host validation; commands and paid workflows do not need Vault.
   vault-provider-enabled: false
-  # Phase 1 single-server SQLite money. Amounts must remain quoted decimal text.
+  # Phase 1 single-server SQLite money. Quote amounts ('100.00') so they stay exact; a plain
+  # number is read by its digits with a warning.
   starting-balance: '100.00'
   min-money: '0.00'
   max-money: '10000000000000.00'
@@ -265,7 +266,8 @@ teleport:
     avoid-void: true
     avoid-suffocation: true
     avoid-falls: true
-    # False avoids blocking chunk generation; only loaded neighboring chunks are searched.
+    # Existing chunks are always loaded from disk for a teleport. True also generates terrain
+    # that was never generated (on the server thread); false refuses such destinations.
     load-destination-chunk: false
 
 # Homes use the highest permission grant or staff-assigned minimum, never the sum.

@@ -180,7 +180,7 @@ class DisciplineServiceTest {
         ArgumentCaptor<BanRecord> saved = ArgumentCaptor.forClass(BanRecord.class);
         verify(repository).saveBan(saved.capture());
         assertEquals("&c<rainbow>badreason", saved.getValue().reason());
-        verify(p).kickPlayer("You are banned: &c<rainbow>badreason");
+        verify(p).kickPlayer("§cYou are banned: &c<rainbow>badreason");
         verify(messages).send(console, Messages.DISCIPLINE_SUCCESS, "{action}", "ban", "{player}", "Target");
     }
 

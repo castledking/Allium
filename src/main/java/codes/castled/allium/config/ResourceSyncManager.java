@@ -43,6 +43,12 @@ public final class ResourceSyncManager {
         catch (IOException | org.bukkit.configuration.InvalidConfigurationException invalid) {
             plugin.logger().warning("Kept invalid YAML untouched: " + resourcePath);return 0;
         }
+        int recolored=resourcePath.startsWith("lang/")?LanguageColors.upgrade(installed):0;
+        if(recolored>0){
+            var backup=installedFile.toPath().resolveSibling(installedFile.getName()+".before-color-fix");
+            try{if(!java.nio.file.Files.exists(backup))java.nio.file.Files.copy(installedFile.toPath(),backup,java.nio.file.StandardCopyOption.COPY_ATTRIBUTES);}
+            catch(IOException error){plugin.logger().warning("Kept language unchanged: color-upgrade backup failed for "+resourcePath);return 0;}
+        }
         int added = mergeDefaults(defaults, installed, "");
 
         try {

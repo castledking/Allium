@@ -55,7 +55,7 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
             long count = plugin.getServer().getOnlinePlayers().stream()
                     .filter(target -> !(context.sender() instanceof Player viewer) || PlayerNameVisibility.canSee(viewer, target))
                     .count();
-            context.sender().sendMessage("[Allium] " + plugin.getServer().getName() + " \u2014 " + count + " player(s) online.");
+            UtilitySupport.send(plugin,context.sender(),Messages.UTILITY_SERVER_INFO,"{server}",plugin.getServer().getName(),"{count}",Long.toString(count));
             return;
         }
 

@@ -272,6 +272,52 @@ kit:
     - "{prefix} &cCannot create kit: slot &f{slot} &ccontains unsupported item data (&f{reason}&c). Remove or replace the item so the kit is not degraded."
     - "[sound] block.note_block.bass 0.75"
 economy:
+  operation-refused:
+    - "{prefix} &cEconomy refused: &f{reason}"
+  top:
+    - "{prefix} &fTop balances: &a{balances}"
+  reservation-entry:
+    - "{prefix} &f{kind} {id} &7payer=&f{payer} &7amount=&a{amount} &7state=&e{state}"
+  outcome-unknown:
+    - "{prefix} &eOUTCOME_UNKNOWN:&f{operation}"
+  operation-committed:
+    - "{prefix} &aEconomy operation committed: &f{operation}"
+  payment-received:
+    - "{prefix} &aReceived &f{amount} &afrom &f{player}&a."
+  payment-sent:
+    - "{prefix} &aPaid &f{amount} &ato &f{player}&a. &7Operation {operation}"
+  payment-refused:
+    - "{prefix} &cThat player can't receive payments right now."
+  resolve-unavailable:
+    - "{prefix} &cReservation resolution unavailable."
+  resolve-retained:
+    - "{prefix} &eNative marker and workflow retained; inventory reconciliation remains an operator task."
+  resolve-disconnect:
+    - "{prefix} &cDisconnect the payer before resolving a reservation; preserve their saved inventory first."
+  reservations-unavailable:
+    - "{prefix} &cReservation storage unavailable."
+  reservations-empty:
+    - "{prefix} &7No reservations."
+  payments-disabled:
+    - "{prefix} &7Payments disabled."
+  payments-enabled:
+    - "{prefix} &aPayments enabled."
+  preferences-save-failed:
+    - "{prefix} &cPayment preference could not be saved."
+  preferences-unavailable:
+    - "{prefix} &cPayment preferences are unavailable."
+  account-missing:
+    - "{prefix} &cNo economy account exists."
+  storage-unavailable:
+    - "{prefix} &cEconomy storage is unavailable."
+  below-minimum:
+    - "{prefix} &cAmount is below the minimum payment."
+  invalid-arguments:
+    - "{prefix} &cInvalid arguments or amount. Use plain decimal amounts with at most two nonzero decimal places."
+  busy:
+    - "{prefix} &cEconomy is busy; try again."
+  unavailable:
+    - "{prefix} &cEconomy is unavailable."
   balance:
     - "{prefix} &fBalance: &a{amount}"
     - "[sound] ui.button.click 1.3"
@@ -291,6 +337,60 @@ economy:
     - "{prefix} &cAmount must be greater than zero."
     - "[sound] block.note_block.bass 0.8"
 chat:
+  argument-error:
+    - "{prefix} &c{message}"
+  channels-list:
+    - "{prefix} &fChannels: &d{channels}"
+  channel-join-denied:
+    - "{prefix} &cYou cannot join that channel."
+  channel-action-invalid:
+    - "{prefix} &cChoose join or leave."
+  channel-direction-invalid:
+    - "{prefix} &cChoose read or write."
+  channel-unknown:
+    - "{prefix} &cUnknown channel."
+  channel-usage:
+    - "{prefix} &cUsage: /channel <join|leave> <channel> [read|write]"
+  channels-disabled-use-global:
+    - "{prefix} &cChat channels are disabled; use /g to select global explicitly."
+  channel-player-only:
+    - "{prefix} &cChannels require a player."
+  nick-console-target:
+    - "{prefix} &cConsole must specify a player."
+  nick-invalid:
+    - "{prefix} &cInvalid nickname or formatting permission."
+  nick-control-text:
+    - "{prefix} &cNickname contains forbidden control text."
+  nick-usage:
+    - "{prefix} &cUsage: /nick <name|off> or /nick <player> <name|off>"
+  nick-save-failed:
+    - "{prefix} &cNickname could not be saved."
+  profile-busy:
+    - "{prefix} &cChat profile is busy."
+  nick-unavailable:
+    - "{prefix} &cThat nickname is unavailable."
+  nick-lookup-unavailable:
+    - "{prefix} &cNickname identity check unavailable."
+  player-lookup-failed:
+    - "{prefix} &cPlayer not found."
+  module-disabled:
+    - "{prefix} &cChat module is disabled."
+  message-length-invalid:
+    - "{prefix} &cInvalid chat message length."
+  channel-write-denied:
+    - "{prefix} &cYou cannot write to that channel."
+  channels-disabled-select-global:
+    - "{prefix} &cChannels are disabled; explicitly select global before speaking."
+  vanished-public:
+    - "{prefix} &cPublic chat is disabled while vanished."
+  muted-or-loading:
+    - "{prefix} &cYou cannot chat while muted or moderation is loading."
+  profile-not-ready:
+    - "{prefix} &cChat profile is not ready."
+  profile-load-failed:
+    - "{prefix} &cChat profile could not load; reconnect to retry."
+  write-channel-removed:
+    - "{prefix} &cYour write channel was removed; choose a channel before speaking."
   channel-saved:
     - "{prefix} &aChannel preference saved: &f{channel}&a."
     - "[sound] block.note_block.hat 1.0"
@@ -352,11 +452,11 @@ moderation:
       - "{prefix} &cThe jail or return location is unavailable or unsafe."
       - "[sound] item.shield.break 0.95"
     ban-denied:
-      - "You are banned: {message}"
+      - "&cYou are banned: {message}"
     login-unavailable:
-      - "Moderation data is unavailable. Please try again shortly."
+      - "&cModeration data is unavailable. Please try again shortly."
     kick-notice:
-      - "You were kicked: {message}"
+      - "&cYou were kicked: {message}"
     warning-notice:
       - "{prefix} &eWarning: {message}"
       - "[sound] block.note_block.bell 0.9"
@@ -483,6 +583,8 @@ moderation:
     - "{prefix} &cYour moderation status is still loading; chat and messaging are temporarily unavailable. Try again shortly."
     - "[sound] block.note_block.hat 0.85"
 info:
+  filtered-list:
+    - "{prefix} &7There are &f{online} &7of a max of &f{max} &7players online: &f{players}"
   list:
     empty:
       - "{prefix} &7There are &f0&7/&f{max} &7players online."
@@ -544,7 +646,7 @@ info:
       - "{prefix} &7You are no longer AFK."
       - "[sound] ui.button.click 1.2"
     kick:
-      - "You were kicked for being AFK."
+      - "&cYou were kicked for being AFK."
   player-only:
     - "{prefix} &cOnly players can use /{cmd}."
   storage-failed:
@@ -596,6 +698,20 @@ player:
     - "{prefix} &aNickname reset."
     - "[sound] block.note_block.hat 1.0"
 utility:
+  itemdb-behavior:
+    - "{prefix} &fAllium ID: &d{id} &7(behavior=&f{behavior}&7)"
+  itemdb-id:
+    - "{prefix} &fAllium ID: &d{id}"
+  itemdb-enchantments:
+    - "{prefix} &fEnchantments: &d{enchantments}"
+  itemdb-durability:
+    - "{prefix} &fDurability: &a{remaining}/{max} &7(&f{damage} &7damage)"
+  itemdb-item-other:
+    - "{prefix} &fItem: &e{item} &7(&f{key}&7), amount &f{amount}/{max} &7(held by &f{player}&7)"
+  itemdb-item:
+    - "{prefix} &fItem: &e{item} &7(&f{key}&7), amount &f{amount}/{max}"
+  server-info:
+    - "{prefix} &f{server} &7\u2014 &f{count} &7player(s) online."
   repair-held:
     - "{prefix} &aRepaired the held item."
     - "[sound] block.anvil.use 1.2"

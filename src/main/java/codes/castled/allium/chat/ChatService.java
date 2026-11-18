@@ -63,7 +63,7 @@ public final class ChatService implements Listener,AutoCloseable {
     public ChatHistory history(){return history;}
     public ChatSettings settings(){return settings;}
     public boolean ownsChat(){return !closed&&settings.enabled();}
-    public void reload(){ChatSettings replacement=ChatSettings.read(plugin.getConfig());settings=replacement;for(Session s:sessions.values()){s.decorationsAt=0;if(!replacement.channels().containsKey(s.write))tell(s.player,"Your write channel was removed; choose a channel before speaking.");}}
+    public void reload(){ChatSettings replacement=ChatSettings.read(plugin.getConfig());settings=replacement;for(Session s:sessions.values()){s.decorationsAt=0;if(!replacement.channels().containsKey(s.write))tell(s.player,Messages.CHAT_WRITE_CHANNEL_REMOVED);}}
     @EventHandler public void joined(PlayerJoinEvent e){join(e.getPlayer());}
     private void join(Player p){
         var session=new Session(p);sessions.put(p.getUniqueId(),session);refresh.add(p);
@@ -78,7 +78,7 @@ public final class ChatService implements Listener,AutoCloseable {
             session.reads=Set.copyOf(reads);session.ready=true;update(session);
         },error->{if(same(session)){
             if(attempt<5)plugin.getScheduler().runOnServerLater(()->{if(same(session))load(session,attempt+1);},Math.min(10_000,500L<<attempt));
-            else {tell(p,"Chat profile could not load; reconnect to retry.");plugin.logger().warning("Chat profile load failed for "+p.getUniqueId());}
+            else {tell(p,Messages.CHAT_PROFILE_LOAD_FAILED);plugin.logger().warning("Chat profile load failed for "+p.getUniqueId());}
         }});
     }
     @EventHandler public void quit(PlayerQuitEvent e){Session s=sessions.remove(e.getPlayer().getUniqueId());refresh.remove(e.getPlayer());replays.remove(e.getPlayer().getUniqueId());history.forget(e.getPlayer().getUniqueId());if(s!=null&&s.lastTab!=null&&e.getPlayer().isOnline())e.getPlayer().setPlayerListName(null);}
@@ -141,10 +141,10 @@ public final class ChatService implements Listener,AutoCloseable {
         static String plain(Object component){return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize((net.kyori.adventure.text.Component)component);}
     }
     private boolean allowed(Player p){
-        var s=sessions.get(p.getUniqueId());if(s==null||!s.ready){tell(p,"Chat profile is not ready.");return false;}
+        var s=sessions.get(p.getUniqueId());if(s==null||!s.ready){tell(p,Messages.CHAT_PROFILE_NOT_READY);return false;}
         if(plugin.getModuleManager().getModule("moderation") instanceof ModerationModule m&&m.isEnabled()){
-            if(!m.moderation().isMuteStateReady(p.getUniqueId())||m.moderation().isMuted(p.getUniqueId())){tell(p,"You cannot chat while muted or moderation is loading.");return false;}
-            if(m.moderation().isVanished(p)&&!plugin.getConfig().getBoolean("moderation.vanish.allow-public-chat",false)){tell(p,"Public chat is disabled while vanished.");return false;}
+            if(!m.moderation().isMuteStateReady(p.getUniqueId())||m.moderation().isMuted(p.getUniqueId())){tell(p,Messages.CHAT_MUTED_OR_LOADING);return false;}
+            if(m.moderation().isVanished(p)&&!plugin.getConfig().getBoolean("moderation.vanish.allow-public-chat",false)){tell(p,Messages.CHAT_VANISHED_PUBLIC);return false;}
         }return true;
     }
     public boolean canRead(Player p,ChatSettings.Channel channel){return channel.local()||p.hasPermission("allium.channel.join."+channel.id()+".read")||p.hasPermission("allium.channel.join."+channel.id()+".write")||channel.id().equals(settings.staffChannel())&&p.hasPermission("allium.staffchat");}
@@ -153,11 +153,11 @@ public final class ChatService implements Listener,AutoCloseable {
     public void send(Player p,String explicit,String raw,Set<UUID> originalAudience){
         if(!ownsChat()||!p.isOnline()||!allowed(p))return;
         Session s=sessions.get(p.getUniqueId());
-        if(!settings.channelsEnabled()&&explicit==null&&(!s.write.equals(settings.defaultChannel())||raw.startsWith("#"))){tell(p,"Channels are disabled; explicitly select global before speaking.");return;}
+        if(!settings.channelsEnabled()&&explicit==null&&(!s.write.equals(settings.defaultChannel())||raw.startsWith("#"))){tell(p,Messages.CHAT_CHANNELS_DISABLED_SELECT_GLOBAL);return;}
         String target=!settings.channelsEnabled()?settings.defaultChannel():explicit==null?s.write:explicit;
         if(settings.channelsEnabled()&&explicit==null&&raw.startsWith("#")&&!raw.matches("^#[0-9a-fA-F]{6}.*")){target=settings.staffChannel();raw=raw.substring(1);}
-        var c=settings.resolve(target);if(c==null||!canWrite(p,c)){tell(p,"You cannot write to that channel.");return;}
-        if(raw.isBlank()||raw.length()>settings.maxBody()){tell(p,"Invalid chat message length.");return;}
+        var c=settings.resolve(target);if(c==null||!canWrite(p,c)){tell(p,Messages.CHAT_CHANNEL_WRITE_DENIED);return;}
+        if(raw.isBlank()||raw.length()>settings.maxBody()){tell(p,Messages.CHAT_MESSAGE_LENGTH_INVALID);return;}
         FormattedText body=UntrustedText.parse(raw,new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient")));
         String id=history.nextId();var render=new LinkedHashMap<UUID,String>();
         String format=c.id().equals(settings.defaultChannel())?settings.groups().getOrDefault(s.decor.group(),c.format()):c.format();
@@ -211,65 +211,65 @@ public final class ChatService implements Listener,AutoCloseable {
         }
     }
     public void dispatch(BukkitCommandContext context){
-        if(!settings.enabled()){tell(context.sender(),"Chat module is disabled.");return;}
+        if(!settings.enabled()){tell(context.sender(),Messages.CHAT_MODULE_DISABLED);return;}
         CommandSender sender=context.sender();String action=context.spec().canonicalName();String[] args=context.args();
         try{switch(action){case "nick"->nick(sender,args);case "channel"->channel(sender,context.label(),args);case "delmsg"->delete(sender,args);default->throw new IllegalArgumentException();}}
-        catch(IllegalArgumentException error){tell(sender,error.getMessage()==null?"Invalid chat arguments.":error.getMessage());}
+        catch(IllegalArgumentException error){tell(sender,error instanceof ChatFailure failure?failure.message:Messages.CHAT_ARGUMENT_ERROR,"{message}",Objects.toString(error.getMessage(),"Invalid chat arguments."));}
     }
     private void nick(CommandSender sender,String[] args){
-        if(args.length<1||args.length>2)throw new IllegalArgumentException("Usage: /nick <name|off> or /nick <player> <name|off>");
+        if(args.length<1||args.length>2)throw new ChatFailure(Messages.CHAT_NICK_USAGE);
         String raw=args[args.length-1];boolean reset=Set.of("off","reset").contains(raw.toLowerCase(Locale.ROOT));
         if(!reset){
-            if(!raw.equals(UntrustedText.clean(raw)))throw new IllegalArgumentException("Nickname contains forbidden control text.");
+            if(!raw.equals(UntrustedText.clean(raw)))throw new ChatFailure(Messages.CHAT_NICK_CONTROL_TEXT);
             var allow=new UntrustedText.Allow(sender.hasPermission("allium.nick.color"),sender.hasPermission("allium.nick.hex"),sender.hasPermission("allium.nick.gradient"));
             String plain=UntrustedText.parse(raw,allow).toPlainText();
-            if(plain.codePointCount(0,plain.length())>settings.nicknameLength()||!plain.matches("[\\p{L}\\p{N}_ .-]+")||plain.isBlank())throw new IllegalArgumentException("Invalid nickname or formatting permission.");
+            if(plain.codePointCount(0,plain.length())>settings.nicknameLength()||!plain.matches("[\\p{L}\\p{N}_ .-]+")||plain.isBlank())throw new ChatFailure(Messages.CHAT_NICK_INVALID);
         }
-        if(args.length==1){if(!(sender instanceof Player p))throw new IllegalArgumentException("Console must specify a player.");saveNick(sender,p.getUniqueId(),reset?null:raw);return;}
-        if(!sender.hasPermission("allium.nick.others")){tell(sender,"You do not have permission.");return;}
-        Player online=plugin.getServer().getPlayerExact(args[0]);if(online!=null&&!PlayerNameVisibility.canSee(sender,online)){tell(sender,"Player not found.");return;}
-        plugin.getPlayerNames().resolve(args[0]).whenComplete((found,error)->plugin.getScheduler().runOnServer(()->{if(error!=null||found.isEmpty())tell(sender,"Player not found.");else saveNick(sender,found.get().uuid(),reset?null:raw);}));
+        if(args.length==1){if(!(sender instanceof Player p))throw new ChatFailure(Messages.CHAT_NICK_CONSOLE_TARGET);saveNick(sender,p.getUniqueId(),reset?null:raw);return;}
+        if(!sender.hasPermission("allium.nick.others")){tell(sender,Messages.NO_PERMISSION);return;}
+        Player online=plugin.getServer().getPlayerExact(args[0]);if(online!=null&&!PlayerNameVisibility.canSee(sender,online)){tell(sender,Messages.CHAT_PLAYER_LOOKUP_FAILED);return;}
+        plugin.getPlayerNames().resolve(args[0]).whenComplete((found,error)->plugin.getScheduler().runOnServer(()->{if(error!=null||found.isEmpty())tell(sender,Messages.CHAT_PLAYER_LOOKUP_FAILED);else saveNick(sender,found.get().uuid(),reset?null:raw);}));
     }
     private void saveNick(CommandSender sender,UUID id,String raw){
         String plain=raw==null?"":TextFormatter.parse(raw).toPlainText();
         if(raw!=null&&plain.matches("[A-Za-z0-9_]{1,16}")&&!sender.hasPermission("allium.nick.impersonate")){
             plugin.getPlayerNames().resolve(plain).whenComplete((found,error)->plugin.getScheduler().runOnServer(()->{
-                if(closed)return;if(error!=null){tell(sender,"Nickname identity check unavailable.");return;}
-                if(found.isPresent()&&!found.get().uuid().equals(id)){tell(sender,"That nickname is unavailable.");return;}
+                if(closed)return;if(error!=null){tell(sender,Messages.CHAT_NICK_LOOKUP_UNAVAILABLE);return;}
+                if(found.isPresent()&&!found.get().uuid().equals(id)){tell(sender,Messages.CHAT_NICK_UNAVAILABLE);return;}
                 persistNick(sender,id,raw);
             }));return;
         }
         persistNick(sender,id,raw);
     }
     private void persistNick(CommandSender sender,UUID id,String raw){
-        Session session=sessions.get(id);if(session!=null&&session.busy){tell(sender,"Chat profile is busy.");return;}
+        Session session=sessions.get(id);if(session!=null&&session.busy){tell(sender,Messages.CHAT_PROFILE_BUSY);return;}
         if(session!=null)session.busy=true;
         work(()->{repository.nickname(id,raw);return repository.load(id);},stored->{
             Session current=sessions.get(id);if(current!=null){current.nickname=stored.nickname();current.busy=false;if(current.ready)update(current);}if(raw==null)tell(sender,Messages.NICK_RESET);else tell(sender,Messages.NICK_SET,"{nick}",stored.nickname());
-        },error->{if(session!=null)session.busy=false;tell(sender,"Nickname could not be saved.");});
+        },error->{if(session!=null)session.busy=false;tell(sender,Messages.CHAT_NICK_SAVE_FAILED);});
     }
     private void channel(CommandSender sender,String label,String[] args){
-        if(!(sender instanceof Player p))throw new IllegalArgumentException("Channels require a player.");Session s=sessions.get(p.getUniqueId());if(s==null||!s.ready)throw new IllegalArgumentException("Chat profile is not ready.");
+        if(!(sender instanceof Player p))throw new ChatFailure(Messages.CHAT_CHANNEL_PLAYER_ONLY);Session s=sessions.get(p.getUniqueId());if(s==null||!s.ready)throw new ChatFailure(Messages.CHAT_PROFILE_NOT_READY);
         String alias=label.substring(label.lastIndexOf(':')+1);var shortcut=settings.resolve(alias);
         if(!settings.channelsEnabled()){
             if(Set.of("g","global").contains(alias)){if(args.length==0)choose(s,settings.defaultChannel(),true);else send(p,settings.defaultChannel(),String.join(" ",args),null);return;}
-            throw new IllegalArgumentException("Chat channels are disabled; use /g to select global explicitly.");
+            throw new ChatFailure(Messages.CHAT_CHANNELS_DISABLED_USE_GLOBAL);
         }
         if(!alias.equals("channel")&&shortcut!=null){
             if(args.length>0){send(p,shortcut.id(),String.join(" ",args),null);return;}
             choose(s,s.write.equals(shortcut.id())?settings.defaultChannel():shortcut.id(),true);return;
         }
-        if(args.length==0){tell(p,"Channels: "+String.join(", ",complete(p,"")));return;}
-        if(args.length<2||args.length>3)throw new IllegalArgumentException("Usage: /channel <join|leave> <channel> [read|write]");
-        var target=settings.resolve(args[1]);if(target==null)throw new IllegalArgumentException("Unknown channel.");
-        if(args[0].equalsIgnoreCase("join")){if(args.length==3&&!Set.of("read","write").contains(args[2]))throw new IllegalArgumentException("Choose read or write.");choose(s,target.id(),args.length<3||!args[2].equals("read"));}
+        if(args.length==0){tell(p,Messages.CHAT_CHANNELS_LIST,"{channels}",String.join(", ",complete(p,"")));return;}
+        if(args.length<2||args.length>3)throw new ChatFailure(Messages.CHAT_CHANNEL_USAGE);
+        var target=settings.resolve(args[1]);if(target==null)throw new ChatFailure(Messages.CHAT_CHANNEL_UNKNOWN);
+        if(args[0].equalsIgnoreCase("join")){if(args.length==3&&!Set.of("read","write").contains(args[2]))throw new ChatFailure(Messages.CHAT_CHANNEL_DIRECTION_INVALID);choose(s,target.id(),args.length<3||!args[2].equals("read"));}
         else if(args[0].equalsIgnoreCase("leave")){
             var reads=new LinkedHashSet<>(s.reads);reads.remove(target.id());String write=s.write.equals(target.id())?settings.defaultChannel():s.write;saveChannels(s,write,reads);
-        }else throw new IllegalArgumentException("Choose join or leave.");
+        }else throw new ChatFailure(Messages.CHAT_CHANNEL_ACTION_INVALID);
     }
-    private void choose(Session s,String id,boolean write){var c=settings.channels().get(id);if(c==null||!(write?canWrite(s.player,c):canRead(s.player,c)))throw new IllegalArgumentException("You cannot join that channel.");var reads=new LinkedHashSet<>(s.reads);reads.add(id);saveChannels(s,write?id:s.write,reads);}
+    private void choose(Session s,String id,boolean write){var c=settings.channels().get(id);if(c==null||!(write?canWrite(s.player,c):canRead(s.player,c)))throw new ChatFailure(Messages.CHAT_CHANNEL_JOIN_DENIED);var reads=new LinkedHashSet<>(s.reads);reads.add(id);saveChannels(s,write?id:s.write,reads);}
     private void saveChannels(Session s,String write,Set<String> reads){
-        if(s.busy)throw new IllegalArgumentException("Chat profile is busy.");s.busy=true;
+        if(s.busy)throw new ChatFailure(Messages.CHAT_PROFILE_BUSY);s.busy=true;
         work(()->{repository.channels(s.player.getUniqueId(),write,reads);return Boolean.TRUE;},saved->{if(same(s)){s.write=write;s.reads=Set.copyOf(reads);s.busy=false;tell(s.player,Messages.CHAT_CHANNEL_SAVED,"{channel}",write);}},error->{s.busy=false;tell(s.player,Messages.CHAT_CHANNEL_SAVE_FAILED);});
     }
     public List<String> complete(Player p,String prefix){return settings.channels().values().stream().filter(c->canRead(p,c)&&c.id().startsWith(prefix.toLowerCase(Locale.ROOT))).map(ChatSettings.Channel::id).sorted().limit(64).toList();}
@@ -299,7 +299,7 @@ public final class ChatService implements Listener,AutoCloseable {
     }
     private void auditDeletion(CommandSender sender,List<String> ids){plugin.logger().info("Chat deletion actor="+(sender instanceof Player p?p.getUniqueId():"CONSOLE")+" messages="+String.join(",",ids));}
     private void tell(CommandSender sender,Messages message,String... args){if(!closed&&(!(sender instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(sender,message,args);}
-    private void tell(CommandSender sender,String text){if(!closed&&(!(sender instanceof Player p)||p.isOnline()))sender.sendMessage("[Allium] "+text);}
+    private static final class ChatFailure extends IllegalArgumentException {final Messages message;ChatFailure(Messages message){super(message.getDefault());this.message=message;}}
     @FunctionalInterface private interface Query<T>{T run()throws Exception;}
     private <T> void work(Query<T> query,java.util.function.Consumer<T> done,java.util.function.Consumer<Throwable> failed){
         try{io.execute(()->{try{T result=query.run();plugin.getScheduler().runOnServer(()->{if(!closed)done.accept(result);});}catch(Exception error){plugin.getScheduler().runOnServer(()->{if(!closed)failed.accept(error);});}});}

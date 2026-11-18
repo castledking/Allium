@@ -314,7 +314,7 @@ class ParityUtilityCommandsTest {
         itemDb.onCommand(alice, command, "itemdb", new String[0]);
         verify(alice).sendMessage(contains("Diamond Pickaxe"));
         verify(alice).sendMessage(contains("Durability:"));
-        verify(alice).sendMessage(contains("Allium ID: allium:ruby_pickaxe"));
+        verify(alice).sendMessage(contains("Allium ID: §dallium:ruby_pickaxe"));
 
         when(console.hasPermission("allium.gc")).thenReturn(true);
         when(world.getLoadedChunks()).thenReturn(new Chunk[3]);

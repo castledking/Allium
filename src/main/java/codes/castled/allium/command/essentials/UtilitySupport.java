@@ -90,11 +90,11 @@ public final class UtilitySupport {
             plugin.getMessageManager().send(recipient, message, replacements);
             return;
         }
-        String text = message.getDefault().replace("{prefix}", "[Allium]");
+        String text = message.getDefault().replace("{prefix}", Messages.PREFIX.getDefault());
         for (int i = 0; i + 1 < replacements.length; i += 2) {
             text = text.replace(replacements[i], replacements[i + 1]);
         }
-        recipient.sendMessage(text);
+        recipient.sendMessage(codes.castled.allium.message.MessageManager.colorize(text));
     }
 
     public static void audit(PluginStart plugin, CommandSender actor, String action, String detail) {

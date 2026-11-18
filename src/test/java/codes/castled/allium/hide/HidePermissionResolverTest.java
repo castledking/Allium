@@ -31,4 +31,16 @@ class HidePermissionResolverTest {
   assertTrue(out.contains("allium.help.command.open"),out.toString());
   assertTrue(out.contains("allium.command.help"),out.toString());
  }
+ @Test void decisionKeysShareOneResolveOnlyWhereArgumentsCannotMatter(){
+  // A completion batch resolves each key once: /i offers up to 64 item names per keystroke.
+  var f=fixture();
+  var plain=mock(Command.class);when(plain.getPermission()).thenReturn("allium.give");
+  assertEquals("i",f.resolver.decisionKey(plain,"/i diamond_sword"));
+  assertEquals("i",f.resolver.decisionKey(plain,"i stick"));
+  var bare=mock(Command.class);
+  assertEquals("shop open",f.resolver.decisionKey(bare,"shop open extra"));
+  assertEquals("shop",f.resolver.decisionKey(bare,"shop"));
+  var framework=new FrameworkCommand(new PublicNode(null));
+  assertEquals("shop admin reset",f.resolver.decisionKey(framework,"/shop  admin reset"));
+ }
 }

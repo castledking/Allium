@@ -1,8 +1,8 @@
 {
-  "spigot-r5": {
+  "spigot-r6-full": {
     "suite": "spigot",
     "passed": true,
-    "checks": 79,
+    "checks": 83,
     "failures": [],
     "cases": [
       {
@@ -62,16 +62,16 @@
         "passed": true
       }
     ],
-    "alliumSha256": "be62473a769f17f6719ce07c385ce964f2aad65f1449dde561e0ce3d7afc04e0",
+    "alliumSha256": "ebb6249b73dc05d480d54f9446a452a7ec887e7d40bbd0ae213625b95e3cbf15",
     "sources": {
-      "tests/live/staff/run.py": "9418d1b39a6c50b118c61d45c9fac07a8bbedb4b64ba99d371f521a2c569d4bb",
-      "tests/live/staff/plugin/gate/StaffGate.java": "eae0f4af337def28a1e26932baeeb6da53368939d329627606079e397bc85734",
+      "tests/live/staff/run.py": "f552eb025c3ed9dd6839e260a5d802f9f0739912811a5ff7d8ae74b6411ea3cf",
+      "tests/live/staff/plugin/gate/StaffGate.java": "52ba1421dc27abb67d3e0ad72a0c6e957d3363720938afa3dc3515b29552aed5",
       "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
       "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
       "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
       "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
     },
-    "seconds": 119.7,
+    "seconds": 119.9,
     "labels": [
       "spigot: creative, alts and restore modules enabled",
       "spigot: /eco completes its actions",
@@ -129,14 +129,18 @@
       "spigot: the newest (MANUAL) snapshot opens its restore panel",
       "spigot: the panel shows the snapshot (hotbar and armor)",
       "spigot: empty armor and offhand show icons",
+      "spigot: the sword marks the main hand as the snapshot's hotbar slot 4",
+      "spigot: the snapshot info sits in the bottom row",
       "spigot: \"Restore everything\" replaces the online owner's inventory",
-      "spigot: an editor can take items out of the panel",
+      "spigot: and selects the main hand the snapshot had",
+      "spigot: shift-click takes a whole stack out of the panel",
+      "spigot: shift-click puts a whole stack into the first free storage cell, never armor or controls",
       "spigot: \"inventory only\" uses the edited panel and leaves armor alone",
       "spigot: only \"Save as manual snapshot\" writes to storage",
       "spigot: the queued restore is applied on join",
       "spigot: the queue row and the applied receipt are cleared after the save",
       "spigot: without allium.restore.edit the panel opens read-only",
-      "spigot: a read-only panel hands out nothing",
+      "spigot: a read-only panel hands out nothing, by click or shift-click",
       "spigot: the paid repair repairs the held item",
       "spigot: exactly $1.25 is captured and nothing stays held",
       "spigot: the repair receipt is dropped once captured",
@@ -154,10 +158,10 @@
       "spigot: no exceptions or SEVERE lines in the server log"
     ]
   },
-  "paper-r5": {
+  "paper-r6-full": {
     "suite": "paper",
     "passed": true,
-    "checks": 79,
+    "checks": 83,
     "failures": [],
     "cases": [
       {
@@ -217,16 +221,16 @@
         "passed": true
       }
     ],
-    "alliumSha256": "be62473a769f17f6719ce07c385ce964f2aad65f1449dde561e0ce3d7afc04e0",
+    "alliumSha256": "ebb6249b73dc05d480d54f9446a452a7ec887e7d40bbd0ae213625b95e3cbf15",
     "sources": {
-      "tests/live/staff/run.py": "9418d1b39a6c50b118c61d45c9fac07a8bbedb4b64ba99d371f521a2c569d4bb",
-      "tests/live/staff/plugin/gate/StaffGate.java": "eae0f4af337def28a1e26932baeeb6da53368939d329627606079e397bc85734",
+      "tests/live/staff/run.py": "f552eb025c3ed9dd6839e260a5d802f9f0739912811a5ff7d8ae74b6411ea3cf",
+      "tests/live/staff/plugin/gate/StaffGate.java": "52ba1421dc27abb67d3e0ad72a0c6e957d3363720938afa3dc3515b29552aed5",
       "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
       "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
       "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
       "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
     },
-    "seconds": 106.5,
+    "seconds": 107.9,
     "labels": [
       "paper: creative, alts and restore modules enabled",
       "paper: /eco completes its actions",
@@ -284,14 +288,18 @@
       "paper: the newest (MANUAL) snapshot opens its restore panel",
       "paper: the panel shows the snapshot (hotbar and armor)",
       "paper: empty armor and offhand show icons",
+      "paper: the sword marks the main hand as the snapshot's hotbar slot 4",
+      "paper: the snapshot info sits in the bottom row",
       "paper: \"Restore everything\" replaces the online owner's inventory",
-      "paper: an editor can take items out of the panel",
+      "paper: and selects the main hand the snapshot had",
+      "paper: shift-click takes a whole stack out of the panel",
+      "paper: shift-click puts a whole stack into the first free storage cell, never armor or controls",
       "paper: \"inventory only\" uses the edited panel and leaves armor alone",
       "paper: only \"Save as manual snapshot\" writes to storage",
       "paper: the queued restore is applied on join",
       "paper: the queue row and the applied receipt are cleared after the save",
       "paper: without allium.restore.edit the panel opens read-only",
-      "paper: a read-only panel hands out nothing",
+      "paper: a read-only panel hands out nothing, by click or shift-click",
       "paper: the paid repair repairs the held item",
       "paper: exactly $1.25 is captured and nothing stays held",
       "paper: the repair receipt is dropped once captured",
@@ -318,6 +326,7 @@
     "economy_signs": {
       "spigot": "384/384 (signs-repair-spigot-r5)",
       "paper": "384/384 (signs-repair-paper-r5)"
-    }
+    },
+    "note": "S24 inspection and the economy sign gate ran on jar be62473a (r5); r6 changes only /restore (panel layout, shift-click, held slot) and its storage."
   }
 }

@@ -163,6 +163,7 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                     out.put("ender", slots(p.getEnderChest(), 27));
                     out.put("cursor", describe(p.getItemOnCursor()));
                     out.put("level", p.getLevel());
+                    out.put("held", p.getInventory().getHeldItemSlot());
                     Map<String, Object> pdc = new LinkedHashMap<>();
                     for (NamespacedKey k : p.getPersistentDataContainer().getKeys()) {
                         String v = p.getPersistentDataContainer().has(k, PersistentDataType.STRING)

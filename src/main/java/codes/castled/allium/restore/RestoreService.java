@@ -74,8 +74,11 @@ public final class RestoreService implements Listener {
         }
     }
 
-    /** A decoded snapshot: slots 0-40 (storage, armor, offhand) and the 27 ender chest slots. */
-    public record Contents(ItemStack[] inventory, ItemStack[] enderChest, int level, float progress) {
+    /**
+     * A decoded snapshot: slots 0-40 (storage, armor, offhand), the 27 ender chest slots, and the
+     * selected hotbar slot (-1 when the snapshot predates recording it).
+     */
+    public record Contents(ItemStack[] inventory, ItemStack[] enderChest, int level, float progress, int held) {
     }
 
     record Settings(Set<String> triggers, long autosaveMillis, long retentionMillis, int maxPerPlayer) {
@@ -197,20 +200,21 @@ public final class RestoreService implements Listener {
         Location at = player.getLocation();
         return new SnapshotRepository.Snapshot(UUID.randomUUID(), player.getUniqueId(), System.currentTimeMillis(), reason,
                 at.getWorld() == null ? "unknown" : at.getWorld().getName(), at.getX(), at.getY(), at.getZ(), at.getYaw(), at.getPitch(),
-                player.getLevel(), player.getExp(), slots.encode(contents), slots.encode(player.getEnderChest().getContents()), createdBy);
+                player.getLevel(), player.getExp(), slots.encode(contents), slots.encode(player.getEnderChest().getContents()), createdBy,
+                inventory.getHeldItemSlot());
     }
 
     /** A snapshot built from edited contents (a MANUAL save of a restore panel). */
     public SnapshotRepository.Snapshot manual(SnapshotRepository.Snapshot source, Contents edited, String createdBy) {
         return new SnapshotRepository.Snapshot(UUID.randomUUID(), source.player(), System.currentTimeMillis(), "MANUAL", source.world(),
                 source.x(), source.y(), source.z(), source.yaw(), source.pitch(), edited.level(), edited.progress(),
-                slots.encode(edited.inventory()), slots.encode(edited.enderChest()), createdBy);
+                slots.encode(edited.inventory()), slots.encode(edited.enderChest()), createdBy, edited.held());
     }
 
     /** Decodes {@code snapshot}; server thread. Throws for a newer data version or damaged data. */
     public Contents decode(SnapshotRepository.Snapshot snapshot) throws IOException {
         return new Contents(slots.decode(snapshot.inventory(), 41), slots.decode(snapshot.enderChest(), 27), snapshot.level(),
-                snapshot.progress());
+                snapshot.progress(), snapshot.held());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -267,6 +271,8 @@ public final class RestoreService implements Listener {
         PlayerInventory inventory = target.getInventory();
         if (parts.contains(Part.INVENTORY)) {
             for (int slot = 0; slot < 36; slot++) inventory.setItem(slot, cloneOrNull(contents.inventory()[slot]));
+            // The main hand comes back too: the hotbar slot that was selected.
+            if (contents.held() >= 0 && contents.held() <= 8) inventory.setHeldItemSlot(contents.held());
         }
         if (parts.contains(Part.ARMOR)) {
             for (int slot = 36; slot <= 40; slot++) inventory.setItem(slot, cloneOrNull(contents.inventory()[slot]));

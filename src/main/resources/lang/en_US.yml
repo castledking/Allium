@@ -523,6 +523,18 @@ moderation:
     unavailable:
       - "{prefix} &cInspection is unavailable right now. Try again shortly."
       - "[sound] block.note_block.bass 0.75"
+    target-dead:
+      - "{prefix} &e{player} &eis dead (on the respawn screen); live inventory inspection closed."
+      - "[sound] block.chest.close 0.8"
+    target-dead-open:
+      - "{prefix} &e{player} &eis dead (on the respawn screen). Try again after they respawn."
+      - "[sound] block.note_block.bass 0.75"
+    offline-opened:
+      - "{prefix} &eOpened &f{player}&e's saved {inventory} &e(offline, {access}&e)."
+      - "[sound] block.chest.open 1.0"
+    offline-saved:
+      - "{prefix} &aSaved &f{changes} &aslot change(s) to &f{player}&a's offline {inventory}&a."
+      - "[sound] entity.experience_orb.pickup 1.2"
   ban:
     - "{prefix} &f{player} &chas been banned. Reason: &f{reason}"
     - "[sound] block.anvil.use 0.85"
@@ -628,6 +640,18 @@ info:
       - "&7Location: &f{world} &7(&f{x}&7, &f{y}&7, &f{z}&7)"
     names:
       - "&7Known names: &f{names}"
+    state:
+      - "&7Gamemode: &f{gamemode} &8| &7Fly: {fly} &8| &7Flying: {flying} &8| &7God: {god} &8| &7Vanished: {vanished} &8| &7AFK: {afk}"
+    vitals:
+      - "&7Health: &f{health}&7/&f{max_health} &8| &7Food: &f{food} &8| &7Level: &f{level} &8| &7Ping: &f{ping}ms &8| &7Walk speed: &f{speed}"
+    flags:
+      - "&7Op: {op} &8| &7Muted: {muted} &8| &7Banned: {banned} &8| &7Whitelisted: {whitelisted} &8| &7Frozen: {frozen} &8| &7Jailed: {jailed}"
+    ip:
+      - "&7IP: &f{ip}"
+    alts:
+      - "&7Alt accounts: &f{accounts}"
+    actions:
+      - "&7Actions &8(click):"
   near:
     list:
       - "{prefix} &fNearby players &7(within &f{radius}m&7, {count}): &f{players}"
@@ -664,6 +688,12 @@ info:
   storage-failed:
     - "{prefix} &cPlayer info could not be loaded right now; try again shortly."
     - "[sound] block.note_block.bass 0.7"
+  answer-yes:
+    - "&ayes"
+  answer-no:
+    - "&cno"
+  none:
+    - "&7none"
 player:
   slowfall-toggle:
     - "{prefix} &aSlow fall protection {state}&a."
@@ -709,6 +739,9 @@ player:
   nick-reset:
     - "{prefix} &aNickname reset."
     - "[sound] block.note_block.hat 1.0"
+  gamemode-mode-denied:
+    - "{prefix} &cYou don't have permission to use &f{mode} &cmode."
+    - "[sound] entity.villager.no 0.9"
 utility:
   itemdb-behavior:
     - "{prefix} &fAllium ID: &d{id} &7(behavior=&f{behavior}&7)"
@@ -1264,3 +1297,40 @@ signs:
     - "{prefix} &cLine {line} on the sign is invalid. {options}"
   disabled:
     - "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."
+creative:
+  restricted:
+    - "{prefix} &cYou are not allowed to {action} in creative mode."
+    - "[sound] block.fire.extinguish 1.2"
+  blacklisted:
+    - "{prefix} &f{target} &cis not allowed in creative mode."
+    - "[sound] block.fire.extinguish 1.2"
+  inventory-swapped:
+    - "{prefix} &7Loaded your &f{group} &7inventory."
+  inventory-failed:
+    - "{prefix} &cYour {group} inventory could not be loaded; your gamemode was not changed."
+    - "[sound] block.note_block.bass 0.75"
+  audit:
+    - "{prefix} &e{player} &c{cause} &7({from} &7-> &f{to}&7) without &fallium.gamemode.{to}&7."
+    - "[sound] block.note_block.bell 0.8"
+  spectator-teleport-denied:
+    - "{prefix} &cYou are not allowed to teleport from the spectator menu."
+    - "[sound] entity.villager.no 0.9"
+alts:
+  detected:
+    - "{prefix} &e{player} &cis an alt account &7(shares an IP with &f{accounts}&7); parent group &f{group}&7."
+    - "[sound] block.note_block.bell 0.8"
+  exempt-added:
+    - "{prefix} &aExempted &f{player} &afrom alt detection; the &f{group} &agroup was removed."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  exempt-removed:
+    - "{prefix} &aRemoved &f{player}&a's alt exemption. It applies again on their next join."
+    - "[sound] ui.button.click 1.25"
+  exempt-none:
+    - "{prefix} &f{player} &cis not exempt from alt detection."
+    - "[sound] block.note_block.bass 0.75"
+  exempt-status:
+    - "{prefix} &f{player} &ais exempt from alt detection &7(by &f{actor}&7: {reason})."
+    - "[sound] ui.button.click 1.35"
+  unavailable:
+    - "{prefix} &cAlt account storage is unavailable right now. Try again shortly."
+    - "[sound] block.note_block.bass 0.75"

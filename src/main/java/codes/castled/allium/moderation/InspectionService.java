@@ -152,6 +152,9 @@ public final class InspectionService implements Listener {
         volatile boolean guardActive;
         volatile boolean writeInFlight;
         volatile boolean aborted;
+        /** Offline sessions: slot changes saved so far, and whether the close summary still waits on a write. */
+        int savedChanges;
+        boolean summaryPending;
 
         ItemStack[] lastSyncedSlots;
         byte[] currentRawBytes;
@@ -551,6 +554,10 @@ public final class InspectionService implements Listener {
             send(viewer, Messages.DISCIPLINE_EXEMPT);
             return;
         }
+        if (type == InspectionLayout.InspectionType.INVSEE && online.isDead()) {
+            send(viewer, Messages.INSPECT_TARGET_DEAD_OPEN, "{player}", MessagingService.safeName(online.getName()));
+            return;
+        }
         boolean editable = viewer.hasPermission(editPermission(type));
         if (editable && busyPolicy.test(online)) {
             send(viewer, Messages.INSPECT_BUSY);
@@ -724,6 +731,8 @@ public final class InspectionService implements Listener {
                     session.active = true;
                     registerSession(session);
                     viewer.openInventory(gui);
+                    send(viewer, Messages.INSPECT_OFFLINE_OPENED, "{player}", targetName, "{inventory}", inventoryLabel(type),
+                            "{access}", editable ? "&aeditable" : "&7read-only");
 
                     String detail = InspectionLayout.formatAuditDetail(
                             type, InspectionLayout.InspectionMode.OFFLINE, editable,
@@ -874,8 +883,9 @@ public final class InspectionService implements Listener {
         }
         if (session.mode == InspectionLayout.InspectionMode.ONLINE) {
             Player target = plugin.getServer().getPlayer(session.targetUuid);
-            if (target == null || !target.isOnline() || target.isDead()) {
-                abortSession(session, "target-unavailable", Messages.INSPECT_TARGET_OFFLINE, session.targetName);
+            Messages unavailable = liveTargetUnavailable(session, target);
+            if (unavailable != null) {
+                abortSession(session, "target-unavailable", unavailable, session.targetName);
                 return false;
             }
             if (busyPolicy.test(target)) {
@@ -944,6 +954,13 @@ public final class InspectionService implements Listener {
             } else if (session.mode == InspectionLayout.InspectionMode.OFFLINE && session.flushScheduled && !session.writeInFlight) {
                 flushOfflineSession(session);
             }
+            if (session.mode == InspectionLayout.InspectionMode.OFFLINE) {
+                if (session.writeInFlight) {
+                    session.summaryPending = true;
+                } else {
+                    sendOfflineSummary(session);
+                }
+            }
         }
         closeAndUnregisterSession(session, false, "viewer-close");
     }
@@ -960,8 +977,9 @@ public final class InspectionService implements Listener {
             return;
         }
         Player target = plugin.getServer().getPlayer(session.targetUuid);
-        if (target == null || !target.isOnline() || target.isDead()) {
-            abortSession(session, "target-unavailable", Messages.INSPECT_TARGET_OFFLINE, session.targetName);
+        Messages unavailable = liveTargetUnavailable(session, target);
+        if (unavailable != null) {
+            abortSession(session, "target-unavailable", unavailable, session.targetName);
             return;
         }
         ItemStack[] newSlots = captureGuiSlots(session.type, session.gui);
@@ -1033,9 +1051,15 @@ public final class InspectionService implements Listener {
                         session.writeInFlight = false;
                         session.currentRawBytes = saved.rawBytes();
                         session.currentHash = saved.sha256();
+                        session.savedChanges += deltas.size();
                         completeLoginFlush(session);
-                        if (session.active && !session.aborted && !closed && session.flushScheduled) {
+                        // A click made while this write was in flight is still flushed after the viewer
+                        // closed the window: its items live only in the GUI until they are saved.
+                        if (!session.aborted && !closed && session.flushScheduled) {
                             flushOfflineSession(session);
+                        }
+                        if (session.summaryPending && !session.writeInFlight) {
+                            sendOfflineSummary(session);
                         }
                     });
                 } catch (OfflinePlayerDataStore.DataVersionRewriteException rewriteErr) {
@@ -1103,8 +1127,10 @@ public final class InspectionService implements Listener {
                 continue;
             }
             Player target = plugin.getServer().getPlayer(session.targetUuid);
-            if (target == null || !target.isOnline() || target.isDead()) {
-                abortSession(session, "target-offline", Messages.INSPECT_TARGET_OFFLINE, session.targetName);
+            Messages unavailable = liveTargetUnavailable(session, target);
+            if (unavailable != null) {
+                abortSession(session, unavailable == Messages.INSPECT_TARGET_DEAD ? "target-dead" : "target-offline",
+                        unavailable, session.targetName);
                 continue;
             }
             if (!session.viewer.hasPermission(PERMISSION_BYPASS) && !canModeratePolicy.test(session.viewer, session.targetUuid)) {
@@ -1436,6 +1462,34 @@ public final class InspectionService implements Listener {
         }
         String detail = InspectionLayout.formatAuditDetail(session.type, session.mode, session.editable, reason, List.of());
         logInspection(abortAction(session.type), session.viewerName, session.targetUuid, session.targetName, detail);
+    }
+
+    /**
+     * Why a live session can no longer show its target, or null when it can. A player on the respawn
+     * screen is online but dead: their inventory is already dropped (or kept), so a live inventory
+     * view closes with its own message rather than claiming they went offline. Ender chests survive
+     * death, so they stay open.
+     */
+    private static @Nullable Messages liveTargetUnavailable(InspectionSession session, @Nullable Player target) {
+        if (target == null || !target.isOnline()) {
+            return Messages.INSPECT_TARGET_OFFLINE;
+        }
+        if (target.isDead() && session.type == InspectionLayout.InspectionType.INVSEE) {
+            return Messages.INSPECT_TARGET_DEAD;
+        }
+        return null;
+    }
+
+    private static String inventoryLabel(InspectionLayout.InspectionType type) {
+        return type == InspectionLayout.InspectionType.ENDERCHEST ? "ender chest" : "inventory";
+    }
+
+    private void sendOfflineSummary(InspectionSession session) {
+        session.summaryPending = false;
+        if (session.savedChanges > 0 && session.viewer.isOnline()) {
+            send(session.viewer, Messages.INSPECT_OFFLINE_SAVED, "{changes}", Integer.toString(session.savedChanges),
+                    "{player}", session.targetName, "{inventory}", inventoryLabel(session.type));
+        }
     }
 
     private void closeAndUnregisterSession(InspectionSession session, boolean closeWindow, String reason) {

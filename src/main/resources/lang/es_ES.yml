@@ -523,6 +523,18 @@ moderation:
     unavailable:
       - "{prefix} &cLa inspeccion no esta disponible ahora mismo. Intentalo de nuevo en un momento."
       - "[sound] block.note_block.bass 0.75"
+    target-dead:
+      - "{prefix} &e{player} &eesta muerto (en la pantalla de reaparicion); inspeccion de inventario en vivo cerrada."
+      - "[sound] block.chest.close 0.8"
+    target-dead-open:
+      - "{prefix} &e{player} &eesta muerto (en la pantalla de reaparicion). Intentalo de nuevo cuando reaparezca."
+      - "[sound] block.note_block.bass 0.75"
+    offline-opened:
+      - "{prefix} &eAbierto el {inventory} &eguardado de &f{player} &e(desconectado, {access}&e)."
+      - "[sound] block.chest.open 1.0"
+    offline-saved:
+      - "{prefix} &aGuardados &f{changes} &acambio(s) de casilla en el {inventory} &adesconectado de &f{player}&a."
+      - "[sound] entity.experience_orb.pickup 1.2"
   ban:
     - "{prefix} &f{player} &cha sido baneado. Razon: &f{reason}"
     - "[sound] block.anvil.use 0.85"
@@ -628,6 +640,18 @@ info:
       - "&7Ubicacion: &f{world} &7(&f{x}&7, &f{y}&7, &f{z}&7)"
     names:
       - "&7Nombres conocidos: &f{names}"
+    state:
+      - "&7Modo: &f{gamemode} &8| &7Vuelo: {fly} &8| &7Volando: {flying} &8| &7Dios: {god} &8| &7Invisible: {vanished} &8| &7AFK: {afk}"
+    vitals:
+      - "&7Vida: &f{health}&7/&f{max_health} &8| &7Comida: &f{food} &8| &7Nivel: &f{level} &8| &7Ping: &f{ping}ms &8| &7Velocidad: &f{speed}"
+    flags:
+      - "&7Op: {op} &8| &7Silenciado: {muted} &8| &7Baneado: {banned} &8| &7En lista blanca: {whitelisted} &8| &7Congelado: {frozen} &8| &7Encarcelado: {jailed}"
+    ip:
+      - "&7IP: &f{ip}"
+    alts:
+      - "&7Cuentas alternativas: &f{accounts}"
+    actions:
+      - "&7Acciones &8(haz clic):"
   near:
     list:
       - "{prefix} &fJugadores cercanos &7(en &f{radius}m&7, {count}): &f{players}"
@@ -664,6 +688,12 @@ info:
   storage-failed:
     - "{prefix} &cNo se pudo cargar la informacion del jugador ahora mismo; intentalo de nuevo en un momento."
     - "[sound] block.note_block.bass 0.7"
+  answer-yes:
+    - "&asi"
+  answer-no:
+    - "&cno"
+  none:
+    - "&7ninguna"
 player:
   slowfall-toggle:
     - "{prefix} &aSlow fall protection {state}&a."
@@ -709,6 +739,9 @@ player:
   nick-reset:
     - "{prefix} &aApodo restablecido."
     - "[sound] block.note_block.hat 1.0"
+  gamemode-mode-denied:
+    - "{prefix} &cNo tienes permiso para usar el modo &f{mode}&c."
+    - "[sound] entity.villager.no 0.9"
 utility:
   itemdb-behavior:
     - "{prefix} &fAllium ID: &d{id} &7(behavior=&f{behavior}&7)"
@@ -1264,3 +1297,40 @@ signs:
     - "{prefix} &cLa línea {line} del cartel no es válida. {options}"
   disabled:
     - "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."
+creative:
+  restricted:
+    - "{prefix} &cNo puedes {action} en modo creativo."
+    - "[sound] block.fire.extinguish 1.2"
+  blacklisted:
+    - "{prefix} &f{target} &cno esta permitido en modo creativo."
+    - "[sound] block.fire.extinguish 1.2"
+  inventory-swapped:
+    - "{prefix} &7Cargado tu inventario de &f{group}&7."
+  inventory-failed:
+    - "{prefix} &cTu inventario de {group} no se pudo cargar; tu modo de juego no cambio."
+    - "[sound] block.note_block.bass 0.75"
+  audit:
+    - "{prefix} &e{player} &c{cause} &7({from} &7-> &f{to}&7) sin &fallium.gamemode.{to}&7."
+    - "[sound] block.note_block.bell 0.8"
+  spectator-teleport-denied:
+    - "{prefix} &cNo puedes teletransportarte desde el menu de espectador."
+    - "[sound] entity.villager.no 0.9"
+alts:
+  detected:
+    - "{prefix} &e{player} &ces una cuenta alternativa &7(comparte IP con &f{accounts}&7); grupo padre &f{group}&7."
+    - "[sound] block.note_block.bell 0.8"
+  exempt-added:
+    - "{prefix} &aExento &f{player} &ade la deteccion de cuentas alternativas; se quito el grupo &f{group}&a."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  exempt-removed:
+    - "{prefix} &aSe quito la exencion de &f{player}&a. Se aplica de nuevo en su proxima entrada."
+    - "[sound] ui.button.click 1.25"
+  exempt-none:
+    - "{prefix} &f{player} &cno esta exento de la deteccion de cuentas alternativas."
+    - "[sound] block.note_block.bass 0.75"
+  exempt-status:
+    - "{prefix} &f{player} &aesta exento de la deteccion de cuentas alternativas &7(por &f{actor}&7: {reason})."
+    - "[sound] ui.button.click 1.35"
+  unavailable:
+    - "{prefix} &cEl almacenamiento de cuentas alternativas no esta disponible. Intentalo de nuevo en un momento."
+    - "[sound] block.note_block.bass 0.75"

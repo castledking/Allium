@@ -152,7 +152,10 @@ public record CommandSpec(
 
             List<String> rawSuggestions = switch (suggestion.source()) {
                 case NONE -> List.of();
-                case GAMEMODES, LITERAL_LIST -> suggestion.literals();
+                // Only the modes the sender may switch to (allium.gamemode.<mode>).
+                case GAMEMODES -> suggestion.literals().stream()
+                        .filter(mode -> context.hasPermission("allium.gamemode." + mode)).toList();
+                case LITERAL_LIST -> suggestion.literals();
                 case ONLINE_PLAYERS -> context.visibleOnlinePlayers();
                 case KNOWN_PLAYERS -> context.knownPlayers(prefix);
                 case KNOWN_OR_ONLINE_PLAYERS -> {

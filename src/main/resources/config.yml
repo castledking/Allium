@@ -52,6 +52,10 @@ modules:
   moderation: true
   info: true
   tools: true
+  # Creative manager: creative restrictions and separate creative/survival inventories.
+  creative: true
+  # Alt detection: IP history, the alt parent group, /altexempt, alt lists in /seen and /whois.
+  alts: true
 
 # Log committed command and sign transactions to trade.log.
 economy-log-enabled: false
@@ -323,6 +327,26 @@ moderation:
 
 # Player info utilities (S18): /list, /seen, /whois, /near, /afk.
 info:
+  whois:
+    # Clickable lines at the end of /whois for holders of allium.whois.extra. {player} and {uuid}
+    # are replaced. click: run-command, suggest-command, copy-to-clipboard or open-url.
+    # permission (optional) hides an action from staff without it. Remove an entry to drop it.
+    actions:
+      coreprotect:
+        text: "&e[CoreProtect] &fLook up diamond ore mined in the last 4 weeks"
+        hover: "&7Click to run a CoreProtect lookup of {player}'s mined diamond ore."
+        click: run-command
+        value: "/co l u:{player} b:diamond_ore t:4w r:#global"
+      litebans:
+        text: "&e[LiteBans] &fView punishment history for {player}"
+        hover: "&7Click to view {player}'s punishment history."
+        click: run-command
+        value: "/history {player}"
+      chatsentry:
+        text: "&e[ChatSentry] &fLook up chat violations"
+        hover: "&7Click to look up {player}'s chat violations (ChatSentry)."
+        click: run-command
+        value: "/kcs lookup player:{player}"
   list:
     # Group visible online players by permission group (allium.list.group.<name> or Vault primary group).
     group-by-permission: true
@@ -403,3 +427,35 @@ nickname:
 
 # Unsafe enchantments require this switch and allium.enchant.unsafe.
 allow-unsafe-enchants: false
+
+# Creative manager (modules.creative). In creative mode, each action needs
+# allium.gamemode.creative.<place|break|interact|use|drop|pickup|container|spawn> (op by default).
+creative-manager:
+  # Keep creative and survival/adventure inventories apart. The inventory not in use is stored in
+  # the player's own data file. Holders of allium.gamemode.creative.inventory keep one shared
+  # inventory.
+  separate-inventories: true
+  # Put staff back into creative or spectator on join when the server reset their gamemode
+  # (force-gamemode), if they still hold allium.gamemode.<mode>.
+  restore-gamemode-on-join: true
+  # Tell holders of allium.alerts when someone is in creative or spectator without that mode's node.
+  audit: true
+  # Seconds between two "not allowed" messages to one player.
+  message-cooldown-seconds: 10
+  # Blocks and entities (spawn eggs, armor stands, paintings...) refused in creative mode unless the
+  # player holds allium.gamemode.creative.blacklist. Names as in Bukkit, e.g. TNT, WITHER.
+  blacklist:
+    blocks: []
+    entities: []
+
+# Alt detection (modules.alts). Every join records the player's IP. An account that first joined
+# from an IP an older account already used is an alt.
+alts:
+  # Add the group below as a parent of each alt (through LuckPerms' command when LuckPerms is
+  # installed, else Vault). /altexempt add removes it and keeps the account out.
+  assign-group: true
+  group: alt
+  # Tell holders of allium.alerts when an alt joins.
+  notify-staff: true
+  # How many linked accounts /seen and /whois list.
+  max-listed: 10

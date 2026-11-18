@@ -16,11 +16,15 @@ import java.util.UUID;
  * @param expiresAt  0 for never
  * @param source     {@code allium}, or an importer's name ({@code legacy-allium}, {@code essentials})
  * @param sourceRef  the importer's idempotency key; {@code null} for Allium's own mail
+ * @param number     the mail's number in its recipient's mailbox, per kind (gift 1, 2, 3...; text 1, 2...):
+ *                   the smallest free number when it was stored, so numbers are reused once mail is
+ *                   claimed or deleted. 0 before the row is stored.
  */
 public record MailRecord(UUID id, UUID recipient, @Nullable UUID sender, String senderName, MailKind kind,
                          @Nullable String body, @Nullable String items, int itemCount, MailState state,
                          @Nullable UUID claimToken, @Nullable String claimOwner, String origin, boolean unread,
-                         long createdAt, long expiresAt, String source, @Nullable String sourceRef, long version) {
+                         long createdAt, long expiresAt, String source, @Nullable String sourceRef, long version,
+                         int number) {
 
     public static final String SOURCE_ALLIUM = "allium";
 
@@ -43,19 +47,24 @@ public record MailRecord(UUID id, UUID recipient, @Nullable UUID sender, String 
     public static MailRecord text(UUID id, UUID recipient, @Nullable UUID sender, String senderName, String body,
                                   String origin, long now, long expiresAt) {
         return new MailRecord(id, recipient, sender, senderName, MailKind.TEXT, body, null, 0, MailState.READY,
-                null, null, origin, true, now, expiresAt, SOURCE_ALLIUM, null, 0L);
+                null, null, origin, true, now, expiresAt, SOURCE_ALLIUM, null, 0L, 0);
     }
 
     /** A gift starts PENDING: its items have not durably left the sender yet. */
     public static MailRecord pendingGift(UUID id, UUID recipient, UUID sender, String senderName, @Nullable String note,
                                          String items, int itemCount, String origin, long now) {
         return new MailRecord(id, recipient, sender, senderName, MailKind.GIFT, note, items, itemCount, MailState.PENDING,
-                null, null, origin, true, now, 0L, SOURCE_ALLIUM, null, 0L);
+                null, null, origin, true, now, 0L, SOURCE_ALLIUM, null, 0L, 0);
     }
 
-    /** The first 8 hex digits of the ID, which players type ({@code /mail claim 3f2a91c0}). */
+    /** The first 8 hex digits of the ID; still accepted by {@code /mail claim} and {@code /mail delete}. */
     public String shortId() {
         return id.toString().substring(0, 8);
+    }
+
+    /** What players see and type: the mailbox number ({@code /mail claim 1}), or the short ID before one exists. */
+    public String label() {
+        return number > 0 ? Integer.toString(number) : shortId();
     }
 
     public boolean expired(long now) {

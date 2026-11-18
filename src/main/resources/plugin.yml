@@ -8,63 +8,63 @@ softdepend: [LuckPerms, Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, Resour
 
 commands:
   there:
-    description: Teleport to the block in sight or move selected targets there
+    description: Teleport to the block you are looking at, or send selected entities there
     aliases: [tpthere]
     permission: allium.tpthere
   tppet:
-    description: Toggle owned pet selection for teleporting
+    description: Toggle selecting your own pets for /tp
     permission: allium.tppet
   tpent:
-    description: Toggle non-player entity selection for teleporting
+    description: Toggle selecting mobs and other entities for /tp
     aliases: [tpentity, tpmob, teleportmob, tpm, tpe]
     permission: allium.tpmob
   help:
-    description: Browse available commands
+    description: List the commands you can use
     usage: /<command> [page|command|plugin] [page]
     permission: allium.help
   nick:
-    description: Change a persistent nickname
+    description: Set or clear your nickname (or another player's)
     aliases: [nickname]
     permission: allium.nick
   channel:
-    description: Chat channel selection and messages
+    description: Join, leave or write to a chat channel
     aliases: [g, global, l, local, a, staffchat]
     permission: allium.channel
   delmsg:
-    description: Delete a retained logical chat message
+    description: Delete a chat message for everyone
     aliases: [deletemsg]
   repair:
-    description: Self-service or inventory-wide repair
+    description: Repair the held item, or your whole inventory
     usage: /<command> [hand|all]
     permission: allium.repair
   disposal:
-    description: Self-service disposal
+    description: Open a trash bin that deletes what you put in
     usage: /<command>
     aliases: [trash, dispose]
     permission: allium.disposal
   workbench:
-    description: Self-service workbench
+    description: Open a crafting table anywhere
     usage: /<command>
     aliases: [craft]
     permission: allium.workbench
   anvil:
-    description: Self-service anvil
+    description: Open an anvil anywhere
     usage: /<command>
     permission: allium.anvil
   info:
-    description: Self-service info
+    description: Show server information and the online count
     usage: /<command>
     permission: allium.info
   speed:
-    description: Change walk or fly speed
+    description: Set your walk or fly speed
     usage: /<command> [walk|fly] <0..10|reset> [player]
     permission: allium.speed
   ping:
-    description: Check ping
+    description: Show your (or a player's) connection latency
     usage: /<command> [player]
     permission: allium.ping
   ext:
-    description: Extinguish fire on a player
+    description: Put out a burning player
     usage: /<command> [player]
     aliases: [extinguish]
     permission: allium.ext
@@ -73,7 +73,7 @@ commands:
     usage: /<command> <player> [seconds]
     permission: allium.burn
   smite:
-    description: Strike a player with visual lightning
+    description: Strike a player with harmless lightning
     usage: /<command> <player>
     aliases: [lightning, strike]
     permission: allium.smite
@@ -83,12 +83,12 @@ commands:
     aliases: [nightvision]
     permission: allium.nv
   clearinventory:
-    description: Clear inventory items
+    description: Clear your (or a player's) inventory
     usage: /<command> [player] [material] [maxCount]
     aliases: [clear, ci]
     permission: allium.clearinventory
   more:
-    description: Refill held item stack
+    description: Fill the held stack to its maximum
     usage: /<command> [amount] [player]
     permission: allium.more
   hat:
@@ -96,63 +96,63 @@ commands:
     usage: /<command>
     permission: allium.hat
   skull:
-    description: Give a player skull
+    description: Get a player's head
     usage: /<command> [owner] [player]
     aliases: [head, playerhead]
     permission: allium.skull
   itemdb:
-    description: Inspect held item metadata
+    description: Show the held item's ID and metadata
     usage: /<command> [player]
     aliases: [iteminfo]
     permission: allium.itemdb
   gc:
-    description: Show runtime memory, disk, TPS, and world counts
+    description: Show TPS, memory, uptime and loaded worlds
     usage: /<command>
     aliases: [uptime, lag, tps]
     permission: allium.gc
   time:
-    description: View, set, add, or pause world time
+    description: View, set, add to or pause world time
     usage: /<command> [set|add|pause] [value] [world|*]
     permission: allium.time
   day:
-    description: Set world time to day
+    description: Set the time to day
     usage: /<command> [world|*]
     permission: allium.time.set
   night:
-    description: Set world time to night
+    description: Set the time to night
     usage: /<command> [world|*]
     permission: allium.time.set
   weather:
-    description: Change world weather
+    description: Set the weather to clear, rain or thunder
     usage: /<command> <clear|sun|rain|storm|thunder> [duration] [world|*]
     permission: allium.weather
   enchant:
-    description: Apply or remove enchantments
+    description: Add or remove enchantments on the held item
     usage: /<command> <enchantment> <level> [player]
     permission: allium.enchant
   heal:
-    description: Heal yourself or another player
+    description: Restore health, hunger and remove effects
     usage: /<command> [player]
     permission: allium.heal
   feed:
-    description: Feed yourself or another player
+    description: Fill hunger and saturation
     usage: /<command> [player]
     permission: allium.feed
   fly:
-    description: Toggle flight mode
+    description: Toggle flight
     usage: /<command> [player]
     permission: allium.fly
   toggleslowfall:
-    description: Toggle slow falling on flight loss
+    description: Toggle slow falling when you lose flight
     usage: /<command> [on|off|status]
     aliases: [tsf, slowfalltoggle, toggleslowfalling]
     permission: allium.fly
   god:
-    description: Toggle god mode
+    description: Toggle invulnerability
     usage: /<command> [player]
     permission: allium.god
   gamemode:
-    description: Change your gamemode
+    description: Change gamemode (per-mode permission)
     usage: /<command> <mode> [player]
     aliases: [gm, gmc, gma, gms, gmsp, creative, survival, spectator, adventure]
     permission: allium.gamemode
@@ -167,7 +167,7 @@ commands:
     aliases: [r]
     permission: allium.reply
   ignore:
-    description: Ignore a player's private messages, or list who you ignore
+    description: Ignore a player, or list who you ignore
     usage: /<command> [player]
     permission: allium.ignore
   unignore:
@@ -175,255 +175,259 @@ commands:
     usage: /<command> <player>
     permission: allium.ignore
   msgtoggle:
-    description: Turn receiving private messages on or off
+    description: Turn incoming private messages on or off
     usage: /<command> [on|off] [player]
     permission: allium.msgtoggle
   mail:
-    description: Send and read mail, and gifts of items
+    description: Read and send mail, and send or claim item gifts
     usage: /<command> <read|send|gift|claim|delete|clear>
     permission: allium.mail
   socialspy:
-    description: Observe delivered private messages between other players
+    description: See private messages between other players
     usage: /<command> [on|off]
     permission: allium.socialspy
   messagesounds:
-    description: Your private-message sound volume
+    description: Set the volume of private-message sounds
     usage: /<command> [volume <0-1>|toggle|reset]
     aliases: [msounds, mfx]
     permission: allium.messagesounds
   allium:
     aliases: [core]
-    description: Allium administration
+    description: "Allium administration: reload, version, imports"
     usage: /<command> <reload|version|import lang [apply]|adopt-window [<duration>|off]|hide>
   give:
-    description: Give items (M1 item-library harness)
+    description: Give vanilla, provider or Allium items
     usage: /<command> <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
     permission: allium.give
 
   tpoffline:
-    description: Teleport to a known player's last saved logout location
+    description: Teleport to where an offline player logged out
     aliases: [otp, offlinetp, tpoff]
     usage: /<command> <player>
     permission: allium.tp.offline
   tpa:
-    description: Allium safe teleport command
+    description: Ask to teleport to a player
     permission: allium.tpa
   tpahere:
-    description: Allium safe teleport command
+    description: Ask a player to teleport to you
     permission: allium.tpahere
   tpaccept:
-    description: Allium safe teleport command
+    description: Accept a teleport request
     permission: allium.tpaccept
   tpdeny:
-    description: Allium safe teleport command
+    description: Deny a teleport request
     permission: allium.tpdeny
   tpacancel:
-    description: Allium safe teleport command
+    description: Cancel your outgoing teleport request
     permission: allium.tpacancel
   tptoggle:
-    description: Allium safe teleport command
+    description: Allow or block teleport requests to you
     permission: allium.tptoggle
   back:
-    description: Allium safe teleport command
+    description: Return to your previous location
     permission: allium.back
   spawn:
-    description: Allium safe teleport command
+    description: Teleport to spawn
     permission: allium.spawn
   setspawn:
-    description: Allium safe teleport command
+    description: Set the spawn point here
     permission: allium.setspawn
   tp:
-    description: Allium safe teleport command
+    description: Teleport to a player or coordinates, or move a player
     permission: allium.tp
   tphere:
     aliases: [here, s]
-    description: Allium safe teleport command
+    description: Teleport a player to you
     permission: allium.tphere
 
   sethome:
-    description: Allium sethome
+    description: Set a home here
     usage: /sethome
 
   home:
-    description: Allium home
+    description: Teleport to one of your homes
     usage: /home
 
   delhome:
-    description: Allium delhome
+    description: Delete one of your homes
     usage: /delhome
 
   homes:
-    description: Allium homes
+    description: List your homes
     usage: /homes
 
   setwarp:
-    description: Allium setwarp
+    description: Create or move a warp here
     usage: /setwarp
 
   warp:
-    description: Allium warp
+    description: Teleport to a warp
     usage: /warp
 
   delwarp:
-    description: Allium delwarp
+    description: Delete a warp
     usage: /delwarp
 
   warps:
-    description: Allium warps
+    description: List the warps you can use
     usage: /warps
 
   kit:
-    description: Claim a kit or list available kits
+    description: Claim a kit, or give one to a player
     usage: /<command> [name] [player]
     permission: allium.kit
   kits:
-    description: List available kits
+    description: List the kits you can claim
     usage: /<command>
     permission: allium.kits
   createkit:
-    description: Create a kit from your inventory
+    description: Save your inventory as a kit
     usage: /<command> <name> [cooldown] [once]
     permission: allium.createkit
   delkit:
-    description: Delete a kit definition
+    description: Delete a kit
     usage: /<command> <name>
     permission: allium.delkit
 
   vanish:
-    description: Toggle vanish mode for yourself or another player
+    description: Toggle vanish for yourself or another player
     usage: /<command> [on|off] [player]
     aliases: [v]
     permission: allium.vanish
   mute:
-    description: Mute a player with an optional duration and reason
+    description: Mute a player, optionally for a time
     usage: /<command> <player> [duration] [reason]
     permission: allium.mute
   unmute:
-    description: Unmute a muted player
+    description: Unmute a player
     usage: /<command> <player> [reason]
     permission: allium.unmute
   mutes:
-    description: List currently active mutes
+    description: List active mutes
     usage: /<command>
     aliases: [mutelist]
     permission: allium.mute
 
   i:
-    description: Give items to yourself
+    description: Give yourself an item
     usage: /<command> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
     aliases: [item]
     permission: allium.give
   list:
-    description: List online players
+    description: List online players by group
     usage: /<command>
     aliases: [online]
     permission: allium.list
   seen:
-    description: Show when a player was last seen and first joined
+    description: Show when a player was last online
     usage: /<command> <player>
     permission: allium.seen
   whois:
-    description: Inspect player UUID, name history, and staff-only location
+    description: Show a player's UUID, names, status and staff details
     usage: /<command> <player>
     permission: allium.whois
+  altexempt:
+    description: Exempt an account from alt detection, or check it
+    usage: /<command> <add|remove|check> <player> [reason]
+    permission: allium.altexempt
   near:
-    description: List nearby visible players
+    description: List players near you
     usage: /<command> [radius]
     permission: allium.near
   afk:
-    description: Toggle AFK status with an optional message
+    description: Toggle AFK, with an optional message
     usage: /<command> [message]
     aliases: [away]
     permission: allium.afk
 
   kick:
-    description: Allium audited kick
+    description: Kick a player with a reason
     usage: /<command> <player> [reason]
     permission: allium.kick
 
   ban:
-    description: Allium audited ban
+    description: Ban a player permanently
     usage: /<command> <player> [reason]
     permission: allium.ban
 
   tempban:
-    description: Allium audited tempban
+    description: Ban a player for a set time
     usage: /<command> <player> <duration> [reason]
     permission: allium.tempban
 
   unban:
-    description: Allium audited unban
+    description: Lift a player's ban
     usage: /<command> <player>
     permission: allium.unban
     aliases: [pardon]
 
   banlist:
-    description: Allium audited banlist
+    description: List active bans
     usage: /<command>
     permission: allium.banlist
 
   ipban:
-    description: Allium audited ipban
+    description: Ban a player's IP address
     usage: /<command> <player> [reason]
     permission: allium.ipban
 
   freeze:
-    description: Allium audited freeze
+    description: Freeze or unfreeze a player in place
     usage: /<command> <player> [on|off] [reason]
     permission: allium.freeze
 
   setjail:
-    description: Allium audited setjail
+    description: Create or move a jail here
     usage: /<command> <name>
     permission: allium.setjail
 
   jail:
-    description: Allium audited jail
+    description: Send a player to a jail
     usage: /<command> <player> <jail> [reason]
     permission: allium.jail
 
   unjail:
-    description: Allium audited unjail
+    description: Release a player from jail
     usage: /<command> <player>
     permission: allium.unjail
 
   warn:
-    description: Allium audited warn
+    description: Warn a player and record it
     usage: /<command> <player> [reason]
     permission: allium.warn
 
   notes:
-    description: Allium audited notes
+    description: Read or add staff notes on a player
     usage: /<command> <player> [add <note>]
     permission: allium.notes
 
   invsee:
-    description: Inspect (and optionally edit) another player's inventory
+    description: View or edit a player's inventory, online or offline
     usage: /<command> <player>
     permission: allium.invsee
 
   enderchest:
-    description: Open your own or inspect another player's ender chest
+    description: Open your ender chest, or view another player's
     usage: /<command> [player]
     aliases: [echest, ec]
     permission: allium.enderchest
 
   balance:
-    description: Read an economy balance
+    description: Show your (or a player's) balance
     aliases: [bal]
     permission: allium.balance
   pay:
-    description: Transfer exact money
+    description: Pay money to a player
     permission: allium.pay
   paytoggle:
-    description: Toggle accepting payments
+    description: Allow or refuse incoming payments
     permission: allium.paytoggle
   eco:
     aliases: [money]
-    description: Administer economy accounts
+    description: Give, take or set player balances
     permission: allium.eco
   baltop:
-    description: Show ten largest account balances
+    description: Show the richest accounts
     permission: allium.baltop
 
 permissions:
@@ -441,6 +445,22 @@ permissions:
       allium.god.others: true
       allium.gamemode: true
       allium.gamemode.others: true
+      allium.gamemode.survival: true
+      allium.gamemode.creative: true
+      allium.gamemode.adventure: true
+      allium.gamemode.spectator: true
+      allium.gamemode.creative.place: true
+      allium.gamemode.creative.break: true
+      allium.gamemode.creative.interact: true
+      allium.gamemode.creative.use: true
+      allium.gamemode.creative.drop: true
+      allium.gamemode.creative.pickup: true
+      allium.gamemode.creative.container: true
+      allium.gamemode.creative.spawn: true
+      allium.gamemode.creative.blacklist: true
+      allium.gamemode.creative.inventory: true
+      allium.gamemode.spectator.teleport: true
+      allium.alerts: true
       allium.economy.*: true
       allium.mobdisarmer.use: true
       allium.mobdisarmer.bypass: true
@@ -483,6 +503,11 @@ permissions:
       allium.seen: true
       allium.whois: true
       allium.whois.location: true
+      allium.whois.extra: true
+      allium.whois.ip: true
+      allium.seen.alts: true
+      allium.seen.ip: true
+      allium.altexempt: true
       allium.near: true
       allium.near.bypass-max: true
       allium.afk: true
@@ -635,6 +660,54 @@ permissions:
   allium.gamemode.others:
     description: Allows changing others gamemodes
     default: op
+  allium.gamemode.survival:
+    description: Switch to survival mode with /gamemode
+    default: op
+  allium.gamemode.creative:
+    description: Switch to creative mode with /gamemode
+    default: op
+  allium.gamemode.adventure:
+    description: Switch to adventure mode with /gamemode
+    default: op
+  allium.gamemode.spectator:
+    description: Switch to spectator mode with /gamemode
+    default: op
+  allium.gamemode.creative.place:
+    description: Place blocks in creative mode
+    default: op
+  allium.gamemode.creative.break:
+    description: Break blocks in creative mode
+    default: op
+  allium.gamemode.creative.interact:
+    description: Use doors, beds, containers by click, item frames, armor stands, food, potions and projectiles in creative mode
+    default: op
+  allium.gamemode.creative.use:
+    description: Take items from the creative inventory menu
+    default: op
+  allium.gamemode.creative.drop:
+    description: Drop items in creative mode
+    default: op
+  allium.gamemode.creative.pickup:
+    description: Pick up items in creative mode
+    default: op
+  allium.gamemode.creative.container:
+    description: Open containers (chests, ender chests, furnaces, crafting) in creative mode
+    default: op
+  allium.gamemode.creative.spawn:
+    description: Use spawn eggs in creative mode
+    default: op
+  allium.gamemode.creative.blacklist:
+    description: Bypass creative-manager.blacklist
+    default: op
+  allium.gamemode.creative.inventory:
+    description: Keep one shared inventory across gamemodes (no separate creative inventory)
+    default: op
+  allium.gamemode.spectator.teleport:
+    description: Teleport to players from the spectator menu
+    default: op
+  allium.alerts:
+    description: Receive security alerts (gamemode audits, alt-account notices)
+    default: op
   allium.give:
     description: Allows /give (M1 item-library harness)
     default: op
@@ -756,6 +829,21 @@ permissions:
     default: op
   allium.whois.location:
     description: Shows online player coordinates in /whois (staff only)
+    default: op
+  allium.whois.extra:
+    description: Shows gamemode, fly, god, vitals, op/mute/ban state, alt accounts and the action links in /whois
+    default: op
+  allium.whois.ip:
+    description: Shows the player's IP in /whois (with allium.whois.extra)
+    default: op
+  allium.seen.alts:
+    description: Lists accounts sharing an IP with the player in /seen
+    default: op
+  allium.seen.ip:
+    description: Shows the player's last IP in /seen
+    default: op
+  allium.altexempt:
+    description: Manage alt-detection exemptions with /altexempt
     default: op
   allium.near:
     description: Allows /near

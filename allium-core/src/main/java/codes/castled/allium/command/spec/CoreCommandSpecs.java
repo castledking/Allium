@@ -8,6 +8,57 @@ import java.util.Map;
  */
 public final class CoreCommandSpecs {
 
+    /** One-line /help descriptions for the generated command families (matching plugin.yml). */
+    private static final Map<String, String> DESCRIPTIONS = Map.ofEntries(
+            Map.entry("tpa", "Ask to teleport to a player"),
+            Map.entry("tpahere", "Ask a player to teleport to you"),
+            Map.entry("tpaccept", "Accept a teleport request"),
+            Map.entry("tpdeny", "Deny a teleport request"),
+            Map.entry("tpacancel", "Cancel your outgoing teleport request"),
+            Map.entry("tptoggle", "Allow or block teleport requests to you"),
+            Map.entry("back", "Return to your previous location"),
+            Map.entry("spawn", "Teleport to spawn"),
+            Map.entry("setspawn", "Set the spawn point here"),
+            Map.entry("tp", "Teleport to a player or coordinates, or move a player"),
+            Map.entry("tphere", "Teleport a player to you"),
+            Map.entry("tpoffline", "Teleport to where an offline player logged out"),
+            Map.entry("there", "Teleport to the block you are looking at, or send selected entities there"),
+            Map.entry("tppet", "Toggle selecting your own pets for /tp"),
+            Map.entry("tpent", "Toggle selecting mobs and other entities for /tp"),
+            Map.entry("sethome", "Set a home here"),
+            Map.entry("home", "Teleport to one of your homes"),
+            Map.entry("delhome", "Delete one of your homes"),
+            Map.entry("homes", "List your homes"),
+            Map.entry("setwarp", "Create or move a warp here"),
+            Map.entry("warp", "Teleport to a warp"),
+            Map.entry("delwarp", "Delete a warp"),
+            Map.entry("warps", "List the warps you can use"),
+            Map.entry("kick", "Kick a player with a reason"),
+            Map.entry("ban", "Ban a player permanently"),
+            Map.entry("tempban", "Ban a player for a set time"),
+            Map.entry("unban", "Lift a player's ban"),
+            Map.entry("banlist", "List active bans"),
+            Map.entry("ipban", "Ban a player's IP address"),
+            Map.entry("freeze", "Freeze or unfreeze a player in place"),
+            Map.entry("setjail", "Create or move a jail here"),
+            Map.entry("jail", "Send a player to a jail"),
+            Map.entry("unjail", "Release a player from jail"),
+            Map.entry("warn", "Warn a player and record it"),
+            Map.entry("notes", "Read or add staff notes on a player"),
+            Map.entry("balance", "Show your (or a player's) balance"),
+            Map.entry("pay", "Pay money to a player"),
+            Map.entry("paytoggle", "Allow or refuse incoming payments"),
+            Map.entry("eco", "Give, take or set player balances"),
+            Map.entry("baltop", "Show the richest accounts"),
+            Map.entry("nick", "Set or clear your nickname (or another player's)"),
+            Map.entry("channel", "Join, leave or write to a chat channel"),
+            Map.entry("delmsg", "Delete a chat message for everyone"));
+
+    private static String describe(String command, String fallback) {
+        return DESCRIPTIONS.getOrDefault(command, fallback);
+    }
+
+
     public static final CommandSpec HEAL = new CommandSpec(
             "heal",
             CommandSpec.DEFAULT_NAMESPACE,
@@ -475,7 +526,7 @@ public final class CoreCommandSpecs {
         }
         return new CommandSpec(name, CommandSpec.DEFAULT_NAMESPACE, "moderation",
                 name.equals("unban") ? List.of("pardon") : List.of(),
-                "Persisted, audited moderation: " + name, usage, usage, "allium." + name,
+                describe(name, "Persisted, audited moderation: " + name), usage, usage, "allium." + name,
                 null, arguments, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
     }
 
@@ -513,15 +564,53 @@ public final class CoreCommandSpecs {
     public static final List<CommandSpec> CHAT_SPECS = java.util.stream.Stream.of("nick","channel","delmsg")
         .map(name->new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"chat",
             name.equals("nick")?List.of("nickname"):name.equals("delmsg")?List.of("deletemsg"):List.of("g","global","l","local","a","staffchat"),
-            "Allium chat: "+name,"/"+name,"/"+name,name.equals("delmsg")?null:"allium."+name,null,
+            describe(name,"Allium chat: "+name),"/"+name,"/"+name,name.equals("delmsg")?null:"allium."+name,null,
             List.of(CommandArgSpec.optional("arguments",null,null)),List.of(),CommandMessageKeys.ofOutcomes(Map.of()))).toList();
 
-    public static final List<CommandSpec> ECONOMY_SPECS = java.util.stream.Stream.of("balance","pay","paytoggle","eco","baltop")
-            .map(name -> new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"economy",
-                    name.equals("balance")?List.of("bal"):name.equals("eco")?List.of("money"):List.of(),"Allium economy: "+name,
-                    "/"+name,"/"+name,"allium."+name,name.equals("paytoggle")?"allium.paytoggle.others":null,
-                    List.of(CommandArgSpec.optional("arguments",null,null)),List.of(),CommandMessageKeys.ofOutcomes(Map.of())))
-            .toList();
+    private static final List<String> MONEY_AMOUNTS = List.of("1", "10", "100", "1000");
+
+    private static CommandSpec economySpec(String name, List<String> aliases, String usage, String othersPermission,
+                                           List<CommandArgSpec> arguments, List<CommandNodeSpec> children) {
+        return new CommandSpec(name, CommandSpec.DEFAULT_NAMESPACE, "economy", aliases, describe(name, "Allium economy: " + name),
+                usage, usage, "allium." + name, othersPermission, arguments, children, CommandMessageKeys.ofOutcomes(Map.of()));
+    }
+
+    private static CommandNodeSpec ecoNode(String name, boolean amount) {
+        var args = new java.util.ArrayList<CommandArgSpec>();
+        args.add(CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)));
+        if (amount) {
+            args.add(CommandArgSpec.required("amount", null, SuggestionSpec.literals(MONEY_AMOUNTS, null)));
+        }
+        return new CommandNodeSpec(name, List.of(), "allium.eco", "/eco " + name + " <player>" + (amount ? " <amount>" : ""),
+                args, List.of());
+    }
+
+    /** Economy commands. Player arguments complete from the cached name index, never from storage. */
+    public static final List<CommandSpec> ECONOMY_SPECS = List.of(
+            economySpec("balance", List.of("bal"), "/balance [player]", null,
+                    List.of(CommandArgSpec.optional("player", "allium.balance.others",
+                            SuggestionSpec.knownPlayers("allium.balance.others"))), List.of()),
+            economySpec("pay", List.of(), "/pay <player> <amount>", null,
+                    List.of(CommandArgSpec.required("player", null,
+                                    SuggestionSpec.knownOrOnlinePlayers(null, "allium.pay.offline")),
+                            CommandArgSpec.required("amount", null, SuggestionSpec.literals(MONEY_AMOUNTS, null))), List.of()),
+            economySpec("paytoggle", List.of(), "/paytoggle [on|off] [player]", "allium.paytoggle.others",
+                    List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
+                            CommandArgSpec.optional("player", "allium.paytoggle.others",
+                                    SuggestionSpec.knownPlayers("allium.paytoggle.others"))), List.of()),
+            economySpec("eco", List.of("money"), "/eco <give|take|set|open|reservations|resolve> ...", null,
+                    List.of(),
+                    List.of(ecoNode("give", true), ecoNode("take", true), ecoNode("set", true), ecoNode("open", false),
+                            new CommandNodeSpec("reservations", List.of(), "allium.eco.admin", "/eco reservations [player]",
+                                    List.of(CommandArgSpec.optional("player", null, SuggestionSpec.knownPlayers(null))), List.of()),
+                            new CommandNodeSpec("resolve", List.of(), "allium.eco.admin",
+                                    "/eco resolve <KIT|MAIL> <workflow> <capture|release> <reason>",
+                                    List.of(CommandArgSpec.required("kind", null, SuggestionSpec.literals(List.of("KIT", "MAIL"), null)),
+                                            CommandArgSpec.required("workflow", null, SuggestionSpec.none()),
+                                            CommandArgSpec.required("decision", null,
+                                                    SuggestionSpec.literals(List.of("capture", "release"), null)),
+                                            CommandArgSpec.required("reason", null, SuggestionSpec.none())), List.of()))),
+            economySpec("baltop", List.of(), "/baltop", null, List.of(), List.of()));
 
     public static final List<CommandSpec> TRAVEL_SPECS = java.util.stream.Stream.of("sethome","home","delhome","homes","setwarp","warp","delwarp","warps")
             .map(CoreCommandSpecs::travelSpec).toList();
@@ -532,7 +621,7 @@ public final class CoreCommandSpecs {
         if(!list){var suggestion=new SuggestionSpec(warp?SuggestionSource.WARP_NAMES:SuggestionSource.HOME_NAMES,List.of(),null);
             args.add(warp?CommandArgSpec.required("name",null,suggestion):CommandArgSpec.optional("name",null,suggestion));
             if(set)args.add(CommandArgSpec.optional("confirm",null,SuggestionSpec.literals(List.of("confirm"),null)));}
-        return new CommandSpec(command,CommandSpec.DEFAULT_NAMESPACE,"travel",List.of(),"Allium homes and warps: "+command,
+        return new CommandSpec(command,CommandSpec.DEFAULT_NAMESPACE,"travel",List.of(),describe(command,"Allium homes and warps: "+command),
                 usage,usage,"allium."+command,null,args,List.of(),CommandMessageKeys.ofOutcomes(Map.of()));
     }
 
@@ -563,7 +652,7 @@ public final class CoreCommandSpecs {
             case "tptoggle" -> " [on|off] [player]";
             default -> "";
         };
-        return new CommandSpec(command, CommandSpec.DEFAULT_NAMESPACE, "teleport", command.equals("tpoffline")?List.of("otp","offlinetp"):command.equals("tphere")?List.of("here","s"):command.equals("there")?List.of("tpthere"):command.equals("tpent")?List.of("tpentity","tpmob","teleportmob","tpm","tpe"):List.of(), "Allium safe teleport: " + command,
+        return new CommandSpec(command, CommandSpec.DEFAULT_NAMESPACE, "teleport", command.equals("tpoffline")?List.of("otp","offlinetp"):command.equals("tphere")?List.of("here","s"):command.equals("there")?List.of("tpthere"):command.equals("tpent")?List.of("tpentity","tpmob","teleportmob","tpm","tpe"):List.of(), describe(command, "Allium safe teleport: " + command),
                 usage, usage, command.equals("tpoffline")?"allium.tp.offline":command.equals("there")?"allium.tpthere":command.equals("tpent")?"allium.tpmob":"allium." + command, null, args, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
     }
 
@@ -909,6 +998,24 @@ public final class CoreCommandSpecs {
     );
 
     public static final List<CommandSpec> INFO_SPECS = List.of(LIST, SEEN, WHOIS, NEAR, AFK);
+
+    public static final CommandSpec ALTEXEMPT = new CommandSpec(
+            "altexempt", CommandSpec.DEFAULT_NAMESPACE, "alts", List.of(),
+            "Exempt an account from alt detection, or check its exemption",
+            "/altexempt <add|remove|check> <player> [reason]",
+            "/altexempt <add|remove|check> <player> [reason]",
+            "allium.altexempt", null,
+            List.of(),
+            List.of("add", "remove", "check").stream().map(action -> new CommandNodeSpec(action, List.of(), "allium.altexempt",
+                    "/altexempt " + action + " <player>" + (action.equals("add") ? " [reason]" : ""),
+                    action.equals("add")
+                            ? List.of(CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)),
+                                    CommandArgSpec.optional("reason", null, SuggestionSpec.none()))
+                            : List.of(CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null))),
+                    List.of())).toList(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> ALTS_SPECS = List.of(ALTEXEMPT);
 
     private CoreCommandSpecs() {
     }

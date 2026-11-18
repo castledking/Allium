@@ -63,8 +63,21 @@ public final class MailRepository {
         List<String> journal = List.of(
                 "CREATE TABLE IF NOT EXISTS allium_mail_activations (id CHAR(36) NOT NULL PRIMARY KEY)",
                 "CREATE TABLE IF NOT EXISTS allium_mail_claim_receipts (token CHAR(36) NOT NULL PRIMARY KEY, mail CHAR(36) NOT NULL)");
+        String index = "CREATE UNIQUE INDEX allium_mail_box_number ON allium_mail (recipient, kind, box_number)";
         return List.of(Migration.of(1, "mail, send log and mailbox locks", v1(SqlDialect.SQLITE), v1(SqlDialect.MYSQL)),
-                Migration.of(2, "durable activation and claim acknowledgements", journal, journal));
+                Migration.of(2, "durable activation and claim acknowledgements", journal, journal),
+                // Existing mail is numbered oldest first, per recipient and kind. Re-running is safe:
+                // the numbering is a pure function of the rows.
+                Migration.of(3, "per-mailbox mail numbers", List.of(
+                        "ALTER TABLE allium_mail ADD COLUMN box_number INT NULL",
+                        "UPDATE allium_mail SET box_number = (SELECT COUNT(*) FROM allium_mail m2 WHERE m2.recipient = allium_mail.recipient "
+                                + "AND m2.kind = allium_mail.kind AND (m2.created_at < allium_mail.created_at "
+                                + "OR (m2.created_at = allium_mail.created_at AND m2.id <= allium_mail.id)))",
+                        index), List.of(
+                        "ALTER TABLE allium_mail ADD COLUMN box_number INT NULL",
+                        "UPDATE allium_mail m JOIN (SELECT id, ROW_NUMBER() OVER (PARTITION BY recipient, kind ORDER BY created_at, id) AS n "
+                                + "FROM allium_mail) r ON r.id = m.id SET m.box_number = r.n",
+                        index)));
     }
 
     private static List<String> v1(SqlDialect dialect) {
@@ -203,7 +216,7 @@ public final class MailRepository {
                     }
                 }
             }
-            insert(c, mail);
+            insert(c, mail, freeNumber(c, mail.recipient(), mail.kind()));
             if (mail.sender() != null) {
                 update(c, "INSERT INTO allium_mail_sends (id, sender, created_at) VALUES (?, ?, ?)",
                         mail.id().toString(), mail.sender().toString(), now);
@@ -222,10 +235,31 @@ public final class MailRepository {
         update(c, "UPDATE allium_mail_boxes SET version = version + 1 WHERE uuid = ?", uuid);
     }
 
-    private void insert(Connection c, MailRecord m) throws SQLException {
+    /**
+     * The smallest number not used by {@code recipient}'s mail of {@code kind}. The caller holds the
+     * recipient's mailbox lock, so no concurrent send (on any server) can take the same number.
+     */
+    private static int freeNumber(Connection c, UUID recipient, MailKind kind) throws SQLException {
+        int next = 1;
+        try (PreparedStatement s = c.prepareStatement("SELECT box_number FROM allium_mail WHERE recipient = ? AND kind = ? "
+                + "AND box_number IS NOT NULL ORDER BY box_number")) {
+            s.setString(1, recipient.toString());
+            s.setString(2, kind.name());
+            try (ResultSet r = s.executeQuery()) {
+                while (r.next()) {
+                    int used = r.getInt(1);
+                    if (used > next) break;
+                    if (used == next) next++;
+                }
+            }
+        }
+        return next;
+    }
+
+    private void insert(Connection c, MailRecord m, int number) throws SQLException {
         try (PreparedStatement s = c.prepareStatement("INSERT INTO allium_mail (id, recipient, sender, sender_name, kind, body, items, "
                 + "item_count, state, claim_token, claim_owner, claim_started, origin, unread, created_at, expires_at, source, source_ref, "
-                + "version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?, ?, 1)")) {
+                + "version, box_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?, ?, 1, ?)")) {
             int i = 1;
             s.setString(i++, m.id().toString());
             s.setString(i++, m.recipient().toString());
@@ -241,7 +275,8 @@ public final class MailRepository {
             s.setLong(i++, m.createdAt());
             s.setLong(i++, m.expiresAt());
             s.setString(i++, m.source());
-            setNullable(s, i, m.sourceRef());
+            setNullable(s, i++, m.sourceRef());
+            s.setInt(i, number);
             s.executeUpdate();
         }
     }
@@ -392,7 +427,7 @@ public final class MailRepository {
                             r.getString("body"), r.getString("items"), r.getInt("item_count"), MailState.valueOf(r.getString("state")),
                             uuid(r.getString("claim_token")), r.getString("claim_owner"), r.getString("origin"), r.getBoolean("unread"),
                             r.getLong("created_at"), r.getLong("expires_at"), r.getString("source"), r.getString("source_ref"),
-                            r.getLong("version")));
+                            r.getLong("version"), r.getInt("box_number")));
                 }
                 return out;
             }

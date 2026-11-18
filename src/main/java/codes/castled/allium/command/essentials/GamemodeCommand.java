@@ -5,6 +5,7 @@ import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
+import codes.castled.allium.message.Messages;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
@@ -38,17 +39,28 @@ public final class GamemodeCommand implements SpecCommandHandler {
             return;
         }
 
+        String modeName = mode.name().toLowerCase(Locale.ROOT);
+        // Each mode has its own node (legacy Allium): /gamemode alone grants none of them.
+        if (!context.sender().hasPermission(modePermission(mode))) {
+            plugin.getMessageManager().send(context.sender(), Messages.GAMEMODE_MODE_DENIED, "{mode}", modeName);
+            return;
+        }
+
         Player target = context.resolveSelfOrTarget(1);
         if (target == null) {
             return;
         }
 
         target.setGameMode(mode);
-        String modeName = mode.name().toLowerCase(Locale.ROOT);
         if (target != context.sender()) {
             context.sendOutcome(context.sender(), "other", "{player}", target.getName(), "{mode}", modeName);
         }
         context.sendOutcome(target, "self", "{mode}", modeName);
+    }
+
+    /** {@code allium.gamemode.<mode>}, required to switch anyone (yourself or, with .others, another player) to that mode. */
+    public static String modePermission(GameMode mode) {
+        return "allium.gamemode." + mode.name().toLowerCase(Locale.ROOT);
     }
 
     @Nullable

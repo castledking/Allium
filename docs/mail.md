@@ -2,8 +2,16 @@
 
 `/mail` (or `/mail read`) lists your mailbox. `/mail send <player> <message>` sends text;
 `/mail gift <player> [amount] [note]` sends the held stack, or the specified positive amount.
-Use `/mail claim <id|all>` to collect gifts, `/mail delete <id>` to delete text, and
-`/mail clear` to remove read text. Gifts remain until collected; clear, delete and expiry never
+Use `/mail claim <number|all>` to collect gifts, `/mail delete <number>` to delete text, and
+`/mail clear` to remove read text.
+
+Mail is numbered per mailbox, separately for gifts and for text: gifts 1, 2, 3 and text 1, 2.
+A new mail takes the smallest free number, so once gifts are claimed (or text deleted) their
+numbers are reused, and an emptied mailbox starts again at 1. A partly claimed gift keeps its
+number. `#1` also works, and the older 8-character ID prefix is still accepted. The number is
+assigned while the sender holds the recipient's mailbox lock, so two servers sharing MySQL never
+hand out the same number (a unique index on recipient, kind and number backs this up). Schema
+version 3 numbers existing mail oldest first. Gifts remain until collected; clear, delete and expiry never
 throw away their contents. A full inventory leaves the entire gift; a partial fit leaves an exact
 remnant. Nothing overflows onto the ground.
 

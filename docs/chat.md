@@ -14,6 +14,7 @@ No import code runs at startup. Vault economy remains disabled by default.
 | `/channel leave <id>` | Removes subscription; leaving the write channel selects the configured default |
 | `/g`, `/global`, `/l`, `/local`, `/a`, `/staffchat` | Select/toggle write channel; with text, send once without changing the selection |
 | `#text` in public chat | Send once to configured staff channel; hex color tokens are not staff shortcuts |
+| `>text` while writing to staff chat | Send once to the default (global) channel; the staff selection stays. The global write permission still applies |
 | `/delmsg <id>` (`/deletemsg`) | `allium.delmsg`, `allium.deletemsg` or `allium.staff` |
 | `/delmsg <player> <amount>` | Same, latest 1–200 retained messages for the resolved UUID |
 

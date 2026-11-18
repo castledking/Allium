@@ -171,6 +171,10 @@ class EssentialsCommandsTest {
         when(self.hasPermission("allium.gamemode.others")).thenReturn(true);
         when(console.hasPermission("allium.gamemode")).thenReturn(true);
         when(console.hasPermission("allium.gamemode.others")).thenReturn(true);
+        for (String mode : List.of("survival", "creative", "adventure", "spectator")) {
+            when(self.hasPermission("allium.gamemode." + mode)).thenReturn(true);
+            when(console.hasPermission("allium.gamemode." + mode)).thenReturn(true);
+        }
 
         gm.onCommand(self, command, "gamemode", new String[]{"creative"});
         verify(self).setGameMode(GameMode.CREATIVE);
@@ -202,6 +206,8 @@ class EssentialsCommandsTest {
         var renderer=new BukkitCommandRenderer(plugin,policy,new GamemodeCommand(plugin));
         renderer.onCommand(self,command,alias,new String[0]);verify(self,never()).setGameMode(any());
         when(self.hasPermission("allium.gamemode")).thenReturn(true);
+        renderer.onCommand(self,command,alias,new String[0]);verify(self,never()).setGameMode(any());
+        when(self.hasPermission("allium.gamemode."+mode.name().toLowerCase(java.util.Locale.ROOT))).thenReturn(true);
         renderer.onCommand(self,command,alias,new String[0]);verify(self).setGameMode(mode);
         renderer.onCommand(self,command,alias,new String[]{"Bob"});verify(other,never()).setGameMode(any());
         when(self.hasPermission("allium.gamemode.others")).thenReturn(true);
@@ -210,4 +216,21 @@ class EssentialsCommandsTest {
         renderer.onCommand(self,command,alias,new String[0]);verify(self,times(1)).setGameMode(mode);
     }
 
+
+    @Test
+    void eachModeNeedsItsOwnNodeAndCompletionOffersOnlyThoseModes() {
+        BukkitCommandRenderer gm = new BukkitCommandRenderer(plugin, policy, new GamemodeCommand(plugin));
+        when(self.hasPermission("allium.gamemode")).thenReturn(true);
+        when(self.hasPermission("allium.gamemode.others")).thenReturn(true);
+        when(self.hasPermission("allium.gamemode.survival")).thenReturn(true);
+        when(self.hasPermission("allium.gamemode.spectator")).thenReturn(true);
+
+        gm.onCommand(self, command, "gamemode", new String[]{"creative"});
+        gm.onCommand(self, command, "gamemode", new String[]{"creative", "Bob"});
+        verify(self, never()).setGameMode(any());
+        verify(other, never()).setGameMode(any());
+        gm.onCommand(self, command, "gamemode", new String[]{"spectator", "Bob"});
+        verify(other).setGameMode(GameMode.SPECTATOR);
+        assertEquals(List.of("survival", "spectator"), gm.onTabComplete(self, command, "gamemode", new String[]{""}));
+    }
 }

@@ -25,10 +25,12 @@ public final class WhoisCommand implements SpecCommandHandler {
 
     private final PluginStart plugin;
     private final PlayerInfoService info;
+    private final codes.castled.allium.info.WhoisExtras extras;
 
     public WhoisCommand(PluginStart plugin, PlayerInfoService info) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.info = Objects.requireNonNull(info, "info");
+        this.extras = new codes.castled.allium.info.WhoisExtras(plugin);
     }
 
     @Override
@@ -121,6 +123,9 @@ public final class WhoisCommand implements SpecCommandHandler {
                 );
             }
             plugin.getMessageManager().send(sender, Messages.INFO_WHOIS_NAMES, "{names}", names);
+            // Staff extras never reveal a vanished player's live state: they get the offline view.
+            extras.sendWhois(sender, record.uuid(), visibleOnline ? liveOnline.getName() : record.lastName(),
+                    visibleOnline ? liveOnline : null);
         }));
     }
 }

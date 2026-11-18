@@ -25,8 +25,8 @@ class MailRepositoryTest {
 
     private static MailRepository repository(MailDatabases.Db db) throws Exception {
         MailRepository repository = new MailRepository(db.source(), db.dialect(), System::currentTimeMillis);
-        assertEquals(2, repository.migrate(), db.name());
-        assertEquals(2, repository.migrate(), db.name() + ": migrating again changes nothing");
+        assertEquals(3, repository.migrate(), db.name());
+        assertEquals(3, repository.migrate(), db.name() + ": migrating again changes nothing");
         return repository;
     }
 
@@ -186,7 +186,7 @@ class MailRepositoryTest {
             try (var c = db.source().connection(); var statement = c.createStatement()) {
                 statement.execute("DELETE FROM allium_schema WHERE component = 'mail'");
             }
-            assertEquals(2, repo.migrate(), "DDL completed but version recording was interrupted");
+            assertEquals(3, repo.migrate(), "DDL completed but version recording was interrupted");
             try (var c = db.source().connection(); var statement = c.createStatement()) {
                 statement.execute("DELETE FROM allium_schema WHERE component = 'mail'");
                 statement.execute(db.dialect() == codes.castled.allium.storage.SqlDialect.MYSQL
@@ -254,6 +254,115 @@ class MailRepositoryTest {
             assertTrue(repo.mailbox(CAROL, later).isEmpty(), db.name() + ": expired text is hidden at once");
             assertEquals(1, repo.purge(later, later - 60_000L), db.name() + ": and purged");
             assertEquals(1, repo.mailbox(BOB, later + 365L * 86_400_000L).size(), db.name() + ": a gift never expires");
+        }
+    }
+
+    private static List<Integer> numbers(MailRepository repo, UUID recipient, MailKind kind, long now) throws Exception {
+        return repo.mailbox(recipient, now).stream().filter(m -> m.kind() == kind).map(MailRecord::number).sorted().toList();
+    }
+
+    @Test
+    void mailIsNumberedPerMailboxAndKindAndFreedNumbersAreReused() throws Exception {
+        MailLimits roomy = new MailLimits(50, 50, 60_000L, 256, 3_600_000L, 64);
+        for (MailDatabases.Db db : MailDatabases.all(dir)) {
+            MailRepository repo = repository(db);
+            long now = System.currentTimeMillis();
+            List<MailRecord> gifts = new ArrayList<>();
+            for (int i = 0; i < 3; i++) {
+                MailRecord g = gift(ALICE, BOB, now + i);
+                assertEquals(MailRepository.SendResult.SAVED, repo.send(g, roomy, false), db.name());
+                assertTrue(repo.activate(g.id()), db.name());
+                gifts.add(g);
+            }
+            repo.send(text(ALICE, BOB, now + 10), roomy, false);
+            repo.send(text(CAROL, BOB, now + 11), roomy, false);
+            repo.send(text(ALICE, CAROL, now + 12), roomy, false);
+            assertEquals(List.of(1, 2, 3), numbers(repo, BOB, MailKind.GIFT, now + 20), db.name() + ": gifts 1, 2, 3");
+            assertEquals(List.of(1, 2), numbers(repo, BOB, MailKind.TEXT, now + 20), db.name() + ": text has its own numbers");
+            assertEquals(List.of(1), numbers(repo, CAROL, MailKind.TEXT, now + 20), db.name() + ": and each mailbox too");
+            assertEquals("1", repo.mailbox(BOB, now + 20).get(0).label(), db.name() + ": players see the number");
+
+            // Claim gift 2 completely: its number is free again, and the next gift takes it.
+            UUID token = UUID.randomUUID();
+            assertTrue(repo.beginClaim(gifts.get(1).id(), BOB, token, "server-a", now + 30), db.name());
+            assertTrue(repo.finishClaim(gifts.get(1).id(), token, null, 0), db.name());
+            assertEquals(List.of(1, 3), numbers(repo, BOB, MailKind.GIFT, now + 40), db.name());
+            MailRecord next = gift(CAROL, BOB, now + 41);
+            repo.send(next, roomy, false);
+            repo.activate(next.id());
+            assertEquals(2, repo.find(next.id()).orElseThrow().number(), db.name() + ": the smallest free number");
+
+            // Claim them all: a new gift starts at 1 again.
+            for (MailRecord m : repo.mailbox(BOB, now + 50)) {
+                if (m.kind() != MailKind.GIFT) continue;
+                UUID t = UUID.randomUUID();
+                assertTrue(repo.beginClaim(m.id(), BOB, t, "server-a", now + 50), db.name());
+                assertTrue(repo.finishClaim(m.id(), t, null, 0), db.name());
+            }
+            MailRecord fresh = gift(ALICE, BOB, now + 60);
+            repo.send(fresh, roomy, false);
+            assertEquals(1, repo.find(fresh.id()).orElseThrow().number(), db.name() + ": an emptied mailbox starts at 1");
+            // A partly claimed gift keeps its number.
+            repo.activate(fresh.id());
+            UUID partial = UUID.randomUUID();
+            assertTrue(repo.beginClaim(fresh.id(), BOB, partial, "server-a", now + 61), db.name());
+            assertTrue(repo.finishClaim(fresh.id(), partial, "items-v1", 1), db.name());
+            assertEquals(1, repo.find(fresh.id()).orElseThrow().number(), db.name());
+        }
+    }
+
+    @Test
+    void concurrentSendsGetDistinctNumbers() throws Exception {
+        MailLimits roomy = new MailLimits(50, 50, 60_000L, 256, 3_600_000L, 64);
+        for (MailDatabases.Db db : MailDatabases.all(dir)) {
+            MailRepository repo = repository(db);
+            long now = System.currentTimeMillis();
+            CountDownLatch start = new CountDownLatch(1);
+            List<Throwable> errors = java.util.Collections.synchronizedList(new ArrayList<>());
+            List<Thread> threads = new ArrayList<>();
+            for (int i = 0; i < 8; i++) {
+                UUID sender = UUID.randomUUID();
+                Thread t = new Thread(() -> {
+                    try {
+                        start.await();
+                        repo.send(text(sender, BOB, now), roomy, false);
+                    } catch (Exception e) {
+                        errors.add(e);
+                    }
+                });
+                threads.add(t);
+                t.start();
+            }
+            start.countDown();
+            for (Thread t : threads) t.join();
+            assertEquals(List.of(), errors, db.name());
+            assertEquals(List.of(1, 2, 3, 4, 5, 6, 7, 8), numbers(repo, BOB, MailKind.TEXT, now + 1), db.name());
+        }
+    }
+
+    @Test
+    void migrationNumbersExistingMailOldestFirst() throws Exception {
+        for (MailDatabases.Db db : MailDatabases.all(dir)) {
+            MailRepository repo = repository(db);
+            long now = System.currentTimeMillis();
+            MailLimits roomy = new MailLimits(50, 50, 60_000L, 256, 3_600_000L, 64);
+            MailRecord older = text(ALICE, BOB, now);
+            MailRecord newer = text(CAROL, BOB, now + 5);
+            MailRecord giftRow = gift(ALICE, BOB, now + 1);
+            repo.send(newer, roomy, false);
+            repo.send(older, roomy, false);
+            repo.send(giftRow, roomy, false);
+            // Rows stored before version 3 had no number: drop them and rerun the migration.
+            try (var c = db.source().connection(); var statement = c.createStatement()) {
+                statement.execute(db.dialect() == codes.castled.allium.storage.SqlDialect.MYSQL
+                        ? "DROP INDEX allium_mail_box_number ON allium_mail" : "DROP INDEX allium_mail_box_number");
+                statement.execute("UPDATE allium_mail SET box_number = NULL");
+                statement.execute("UPDATE allium_schema SET version = 2 WHERE component = 'mail'");
+            }
+            assertEquals(3, repo.migrate(), db.name());
+            assertEquals(1, repo.find(older.id()).orElseThrow().number(), db.name() + ": oldest text is 1");
+            assertEquals(2, repo.find(newer.id()).orElseThrow().number(), db.name());
+            assertEquals(1, repo.find(giftRow.id()).orElseThrow().number(), db.name() + ": gifts are numbered apart");
         }
     }
 }

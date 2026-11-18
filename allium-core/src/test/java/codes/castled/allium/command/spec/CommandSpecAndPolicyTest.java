@@ -79,9 +79,13 @@ class CommandSpecAndPolicyTest {
     void tabCompletionRespectsBaseAndOthersPermissionsAndPrefixFiltering() {
         CommandCompletionContext noPerms = context(Set.of(), List.of("Alice", "Alex", "Bob"));
         CommandCompletionContext selfOnly = context(
-                Set.of("allium.heal", "allium.gamemode"),
+                Set.of("allium.heal", "allium.gamemode", "allium.gamemode.survival", "allium.gamemode.creative",
+                        "allium.gamemode.adventure", "allium.gamemode.spectator"),
                 List.of("Alice", "Alex", "Bob")
         );
+        // Modes need their own node: a sender with only /gamemode and creative sees only creative.
+        assertEquals(List.of("creative"), CoreCommandSpecs.GAMEMODE.complete(
+                context(Set.of("allium.gamemode", "allium.gamemode.creative"), List.of()), new String[]{""}));
         CommandCompletionContext withOthers = context(
                 Set.of("allium.heal", "allium.heal.others", "allium.gamemode", "allium.gamemode.others"),
                 List.of("Alice", "Alex", "Bob")

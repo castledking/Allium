@@ -155,7 +155,8 @@ public final class ChatService implements Listener,AutoCloseable {
         Session s=sessions.get(p.getUniqueId());
         if(!settings.channelsEnabled()&&explicit==null&&(!s.write.equals(settings.defaultChannel())||raw.startsWith("#"))){tell(p,Messages.CHAT_CHANNELS_DISABLED_SELECT_GLOBAL);return;}
         String target=!settings.channelsEnabled()?settings.defaultChannel():explicit==null?s.write:explicit;
-        if(settings.channelsEnabled()&&explicit==null&&raw.startsWith("#")&&!raw.matches("^#[0-9a-fA-F]{6}.*")){target=settings.staffChannel();raw=raw.substring(1);}
+        if(settings.channelsEnabled()&&explicit==null&&target.equals(settings.staffChannel())&&raw.startsWith(">")){target=settings.defaultChannel();raw=raw.substring(1).strip();}
+        else if(settings.channelsEnabled()&&explicit==null&&raw.startsWith("#")&&!raw.matches("^#[0-9a-fA-F]{6}.*")){target=settings.staffChannel();raw=raw.substring(1);}
         var c=settings.resolve(target);if(c==null||!canWrite(p,c)){tell(p,Messages.CHAT_CHANNEL_WRITE_DENIED);return;}
         if(raw.isBlank()||raw.length()>settings.maxBody()){tell(p,Messages.CHAT_MESSAGE_LENGTH_INVALID);return;}
         FormattedText body=UntrustedText.parse(raw,new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient")));

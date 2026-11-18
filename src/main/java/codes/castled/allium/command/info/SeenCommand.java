@@ -82,6 +82,7 @@ public final class SeenCommand implements SpecCommandHandler {
                         "{first_join}", firstJoin
                 );
             }
+            new codes.castled.allium.info.WhoisExtras(plugin).sendSeen(sender, record.uuid());
         }));
     }
 }

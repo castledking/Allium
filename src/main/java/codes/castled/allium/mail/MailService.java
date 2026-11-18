@@ -554,7 +554,7 @@ public final class MailService implements Listener {
         Messages key = mail.kind() == MailKind.TEXT ? Messages.MAIL_ENTRY_TEXT
                 : mail.state() == MailState.CLAIMING ? Messages.MAIL_ENTRY_CLAIMING : Messages.MAIL_ENTRY_GIFT;
         // A mail body is the sender's untrusted text: shown literally, never as formatting.
-        notifications.send(player, new NotificationService.Notification(key, Map.of("{id}", mail.shortId(),
+        notifications.send(player, new NotificationService.Notification(key, Map.of("{id}", mail.label(),
                 "{sender}", MessagingService.safeName(mail.senderName()), "{age}", age,
                 "{count}", Integer.toString(mail.itemCount())),
                 UntrustedText.parse(body, UntrustedText.Allow.of(node -> false)), NotificationService.Sound.NONE));
@@ -562,9 +562,9 @@ public final class MailService implements Listener {
 
     public void delete(Player player, String idPrefix) {
         UUID id = player.getUniqueId();
-        find(player, idPrefix, mail -> {
+        find(player, idPrefix, MailKind.TEXT, mail -> {
             if (mail.kind() == MailKind.GIFT) {
-                send(player, Messages.MAIL_DELETE_GIFT, "{id}", mail.shortId());
+                send(player, Messages.MAIL_DELETE_GIFT, "{id}", mail.label());
                 return;
             }
             io.execute(() -> {
@@ -575,7 +575,7 @@ public final class MailService implements Listener {
                     onServer(() -> send(player, Messages.MAIL_FAILED));
                     return;
                 }
-                onServer(() -> send(player, deleted ? Messages.MAIL_DELETED : Messages.MAIL_NOT_FOUND, "{id}", mail.shortId()));
+                onServer(() -> send(player, deleted ? Messages.MAIL_DELETED : Messages.MAIL_NOT_FOUND, "{id}", mail.label()));
             });
         });
     }
@@ -616,8 +616,8 @@ public final class MailService implements Listener {
                 } catch (SQLException e) { onServer(() -> send(player, Messages.MAIL_FAILED)); }
             });
         } else {
-            find(player, idPrefix, mail -> {
-                if (mail.kind() != MailKind.GIFT) send(player, Messages.MAIL_NOT_A_GIFT, "{id}", mail.shortId());
+            find(player, idPrefix, MailKind.GIFT, mail -> {
+                if (mail.kind() != MailKind.GIFT) send(player, Messages.MAIL_NOT_A_GIFT, "{id}", mail.label());
                 else claim(player, mail, () -> {});
             });
         }
@@ -645,7 +645,7 @@ public final class MailService implements Listener {
                 if (!repository.beginClaim(mail.id(), id, token, serverId, System.currentTimeMillis())) {
                     onServer(() -> {
                         finishSend(player, mail.id());
-                        send(player, Messages.MAIL_CLAIM_TAKEN, "{id}", mail.shortId());
+                        send(player, Messages.MAIL_CLAIM_TAKEN, "{id}", mail.label());
                         if (same(player)) after.run();
                     });
                     return;
@@ -675,7 +675,7 @@ public final class MailService implements Listener {
         try { items = codec.decode(mail.items()); }
         catch (IOException e) {
             plugin.logger().warning("Gift " + mail.id() + " cannot be claimed: " + e.getMessage());
-            send(player, Messages.MAIL_UNREADABLE, "{id}", mail.shortId(), "{reason}", "unsupported or invalid stored item data");
+            send(player, Messages.MAIL_UNREADABLE, "{id}", mail.label(), "{reason}", "unsupported or invalid stored item data");
             release(player, mail, token, after);
             return;
         }
@@ -685,7 +685,7 @@ public final class MailService implements Listener {
             return;
         }
         if (plan.given() == 0) {
-            send(player, Messages.MAIL_CLAIM_FULL, "{id}", mail.shortId());
+            send(player, Messages.MAIL_CLAIM_FULL, "{id}", mail.label());
             release(player, mail, token, () -> {});
             return;
         }
@@ -719,7 +719,7 @@ public final class MailService implements Listener {
                     mailboxCache.remove(player);
                     int kept = plan.remaining().stream().mapToInt(ItemStack::getAmount).sum();
                     send(player, kept > 0 ? Messages.MAIL_CLAIMED_PART : Messages.MAIL_CLAIMED,
-                            "{id}", mail.shortId(), "{given}", Integer.toString(plan.given()), "{kept}", Integer.toString(kept));
+                            "{id}", mail.label(), "{given}", Integer.toString(plan.given()), "{kept}", Integer.toString(kept));
                     after.run();
                 });
             } catch (IOException e) {
@@ -1044,18 +1044,27 @@ public final class MailService implements Listener {
         }
     }
 
-    private void find(Player player, String idPrefix, java.util.function.Consumer<MailRecord> found) {
-        String prefix = idPrefix.toLowerCase(Locale.ROOT);
-        if (!prefix.matches("[0-9a-f-]{4,36}")) {
-            send(player, Messages.MAIL_NOT_FOUND, "{id}", MessagingService.safeName(idPrefix));
+    /**
+     * Finds one mail by its mailbox number ({@code 1} or {@code #1}, among {@code kind}'s numbers) or,
+     * as before numbers existed, by a unique prefix of its ID.
+     */
+    private void find(Player player, String typed, MailKind kind, java.util.function.Consumer<MailRecord> found) {
+        String token = typed.toLowerCase(Locale.ROOT);
+        boolean numbered = token.matches("#?[0-9]{1,4}");
+        if (!numbered && !token.matches("[0-9a-f-]{4,36}")) {
+            send(player, Messages.MAIL_NOT_FOUND, "{id}", MessagingService.safeName(typed));
             return;
         }
+        int number = numbered ? Integer.parseInt(token.startsWith("#") ? token.substring(1) : token) : 0;
+        String prefix = token;
         UUID id = player.getUniqueId();
         long now = System.currentTimeMillis();
         io.execute(() -> {
             List<MailRecord> matches;
             try {
-                matches = repository.mailbox(id, now).stream().filter(m -> m.id().toString().startsWith(prefix)).toList();
+                matches = repository.mailbox(id, now).stream()
+                        .filter(m -> numbered ? m.kind() == kind && m.number() == number : m.id().toString().startsWith(prefix))
+                        .toList();
             } catch (SQLException e) {
                 onServer(() -> send(player, Messages.MAIL_FAILED));
                 return;
@@ -1065,7 +1074,7 @@ public final class MailService implements Listener {
                 if (matches.size() == 1) {
                     found.accept(matches.get(0));
                 } else {
-                    send(player, Messages.MAIL_NOT_FOUND, "{id}", prefix);
+                    send(player, Messages.MAIL_NOT_FOUND, "{id}", MessagingService.safeName(typed));
                 }
             });
         });
@@ -1137,7 +1146,7 @@ public final class MailService implements Listener {
     public List<String> completeMailbox(Player player, boolean claimableOnly) {
         return mailboxCache.getOrDefault(player, List.of()).stream()
                 .filter(m -> claimableOnly ? m.kind() == MailKind.GIFT && m.state() == MailState.READY : m.kind() == MailKind.TEXT)
-                .limit(100).map(MailRecord::shortId).toList();
+                .limit(100).map(MailRecord::label).toList();
     }
 
     private boolean same(Player player) {

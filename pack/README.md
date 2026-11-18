@@ -13,6 +13,7 @@ with other art, such as SF's from `tools/sf_export.py`, instead of the bundled o
 | `tools/draw_textures.py` | Source of the original pixel art; `--check` verifies the committed PNGs |
 | `tools/sf_inventory.py` | Read-only inventory of SF's Nexo items, Nexo pack and RPM mixer; writes [`docs/s06b-sf-inventory.md`](../docs/s06b-sf-inventory.md) |
 | `tools/sf_export.py` | Local recipe that builds the pack with SF's server-only art (Mob Disarmer, Phantom Obliterator, and opt-in `--include-lazy-axe`) into the git-ignored `build/sf-export/`, and validates it against vanilla client jars with `--clients`; never commit its output |
+| `tools/vanilla_slot_icons.py` | Local recipe that builds the pack with Minecraft's own empty-slot icons (from a client jar you have) in the GUI menus, into the git-ignored `build/vanilla-icons/`; Mojang's textures are never committed |
 
 ## Allocation
 
@@ -26,6 +27,7 @@ values exactly. Planned tools reserve their values but generate nothing until th
 | `allium:mob_disarmer` | golden hoe | 2577020–2577029 | full 2577020, two_thirds 2577021, one_third 2577022, empty 2577023, broken 2577024 |
 | `allium:phantom_obliterator` | phantom membrane | 2577030–2577039 | planned |
 | `allium:item_renamer` | name tag | 2577040–2577049 | planned |
+| `gui_slot` (menu icons, not an item) | light gray stained glass pane | 2577100–2577109 | filler 2577100, helmet 2577101, chestplate 2577102, leggings 2577103, boots 2577104, shield 2577105, sword 2577106 |
 
 Allium's built-in item definitions read the carrier, default model data and fallback name from
 the bundled manifest, so the pack and the items cannot drift apart. The disarmer's charge state is

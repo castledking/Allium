@@ -1,6 +1,6 @@
 {
   "sourceHashes": {
-    "tests/live/economy/run.py": "3aa26b76802747ccbbf4fa8061347dd7a48e2bbbeb80243d979e934e82ca0a85",
+    "tests/live/economy/run.py": "0f0d40c1de669051a86651b49b741b04c8847fa808a3eec58658244e34c2c728",
     "tests/live/economy/plugin/gate/EconomyGate.java": "e7034bf5670169ea8d7927db770dae1db866ad159399cb692c7029e42e635df5",
     "tests/live/economy/plugin/plugin.yml": "116546459f71af774c7204c564decb7651a6af3f55af88afb272c9df32fd34e2",
     "tests/live/economy/client-mcp.cjs": "224a9dca76b5de83b2f6c8211e802aaaf58a1d853fe71eeaf3748487d6ecbd28",

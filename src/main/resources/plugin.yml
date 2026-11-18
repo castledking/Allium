@@ -59,6 +59,10 @@ commands:
     description: Set your walk or fly speed
     usage: /<command> [walk|fly] <0..10|reset> [player]
     permission: allium.speed
+  scale:
+    description: Set the scale of a player or selected mobs
+    usage: /<command> <0..16> [player]
+    permission: allium.scale
   ping:
     description: Show your (or a player's) connection latency
     usage: /<command> [player]
@@ -84,9 +88,13 @@ commands:
     permission: allium.nv
   clearinventory:
     description: Clear your (or a player's) inventory
-    usage: /<command> [player] [material] [maxCount]
+    usage: /<command> [player|*|**] [item] [maxCount]
     aliases: [clear, ci]
     permission: allium.clearinventory
+  clearinventoryconfirmtoggle:
+    description: Toggle inventory clear confirmation
+    usage: /<command>
+    permission: allium.clearinventoryconfirmtoggle
   more:
     description: Fill the held stack to its maximum
     usage: /<command> [amount] [player]
@@ -234,7 +242,12 @@ commands:
     permission: allium.setspawn
   tp:
     description: Teleport to a player or coordinates, or move a player
+    usage: /<command> <player> [target] | /<command> <x> <y> <z> [yaw] [pitch] [world]
     permission: allium.tp
+  tppos:
+    description: Teleport to coordinates
+    usage: /<command> <x> <y> <z> [yaw] [pitch] [world]
+    permission: allium.tppos
   tphere:
     aliases: [here, s]
     description: Teleport a player to you
@@ -321,6 +334,7 @@ commands:
   seen:
     description: Show when a player was last online
     usage: /<command> <player>
+    aliases: [alts]
     permission: allium.seen
   whois:
     description: Show a player's UUID, names, status and staff details
@@ -525,6 +539,8 @@ permissions:
       allium.info: true
       allium.speed: true
       allium.speed.others: true
+      allium.scale: true
+      allium.scale.others: true
       allium.ping: true
       allium.ping.others: true
       allium.ext: true
@@ -535,6 +551,8 @@ permissions:
       allium.nv.others: true
       allium.clearinventory: true
       allium.clearinventory.others: true
+      allium.clearinventory.all: true
+      allium.clearinventoryconfirmtoggle: true
       allium.more: true
       allium.more.others: true
       allium.hat: true
@@ -757,6 +775,12 @@ permissions:
     default: op
   allium.tp.others:
     default: op
+  allium.tp.position:
+    description: Use /tp <x> <y> <z> [yaw] [pitch] [world]
+    default: op
+  allium.tppos:
+    description: Use /tppos <x> <y> <z> [yaw] [pitch] [world]
+    default: op
   allium.tptoggle.others:
     default: op
   allium.teleport.unsafe:
@@ -773,6 +797,186 @@ permissions:
     default: false
   allium.teleport.bypass.cooldown:
     description: Explicit teleport cooldown bypass (never granted implicitly to operators)
+    default: false
+  allium.teleport.cooldown.bypass.*:
+    description: Skip the teleport cooldown for every teleport type
+    default: false
+    children:
+      allium.teleport.cooldown.bypass.home: true
+      allium.teleport.cooldown.bypass.warp: true
+      allium.teleport.cooldown.bypass.tpa: true
+      allium.teleport.cooldown.bypass.tpahere: true
+      allium.teleport.cooldown.bypass.back: true
+      allium.teleport.cooldown.bypass.spawn: true
+      allium.teleport.cooldown.bypass.tp: true
+      allium.teleport.cooldown.bypass.tphere: true
+      allium.teleport.cooldown.bypass.there: true
+      allium.teleport.cooldown.bypass.tpoffline: true
+      allium.teleport.cooldown.bypass.tppos: true
+      allium.teleport.cooldown.bypass.homes: true
+      allium.teleport.cooldown.bypass.warps: true
+      allium.teleport.cooldown.bypass.requests: true
+  allium.teleport.cooldown.bypass.home:
+    description: Skip the teleport cooldown for home teleports
+    default: false
+  allium.teleport.cooldown.bypass.warp:
+    description: Skip the teleport cooldown for warp teleports
+    default: false
+  allium.teleport.cooldown.bypass.tpa:
+    description: Skip the teleport cooldown for tpa teleports
+    default: false
+  allium.teleport.cooldown.bypass.tpahere:
+    description: Skip the teleport cooldown for tpahere teleports
+    default: false
+  allium.teleport.cooldown.bypass.back:
+    description: Skip the teleport cooldown for back teleports
+    default: false
+  allium.teleport.cooldown.bypass.spawn:
+    description: Skip the teleport cooldown for spawn teleports
+    default: false
+  allium.teleport.cooldown.bypass.tp:
+    description: Skip the teleport cooldown for tp teleports
+    default: false
+  allium.teleport.cooldown.bypass.tphere:
+    description: Skip the teleport cooldown for tphere teleports
+    default: false
+  allium.teleport.cooldown.bypass.there:
+    description: Skip the teleport cooldown for there teleports
+    default: false
+  allium.teleport.cooldown.bypass.tpoffline:
+    description: Skip the teleport cooldown for tpoffline teleports
+    default: false
+  allium.teleport.cooldown.bypass.tppos:
+    description: Skip the teleport cooldown for tppos teleports
+    default: false
+  allium.teleport.cooldown.bypass.homes:
+    description: Skip the teleport cooldown for homes teleports
+    default: false
+  allium.teleport.cooldown.bypass.warps:
+    description: Skip the teleport cooldown for warps teleports
+    default: false
+  allium.teleport.cooldown.bypass.requests:
+    description: Skip the teleport cooldown for requests teleports
+    default: false
+  allium.teleport.timer.bypass.*:
+    description: Skip the teleport warmup timer for every teleport type
+    default: false
+    children:
+      allium.teleport.timer.bypass.home: true
+      allium.teleport.timer.bypass.warp: true
+      allium.teleport.timer.bypass.tpa: true
+      allium.teleport.timer.bypass.tpahere: true
+      allium.teleport.timer.bypass.back: true
+      allium.teleport.timer.bypass.spawn: true
+      allium.teleport.timer.bypass.tp: true
+      allium.teleport.timer.bypass.tphere: true
+      allium.teleport.timer.bypass.there: true
+      allium.teleport.timer.bypass.tpoffline: true
+      allium.teleport.timer.bypass.tppos: true
+      allium.teleport.timer.bypass.homes: true
+      allium.teleport.timer.bypass.warps: true
+      allium.teleport.timer.bypass.requests: true
+  allium.teleport.timer.bypass.home:
+    description: Skip the teleport warmup timer for home teleports
+    default: false
+  allium.teleport.timer.bypass.warp:
+    description: Skip the teleport warmup timer for warp teleports
+    default: false
+  allium.teleport.timer.bypass.tpa:
+    description: Skip the teleport warmup timer for tpa teleports
+    default: false
+  allium.teleport.timer.bypass.tpahere:
+    description: Skip the teleport warmup timer for tpahere teleports
+    default: false
+  allium.teleport.timer.bypass.back:
+    description: Skip the teleport warmup timer for back teleports
+    default: false
+  allium.teleport.timer.bypass.spawn:
+    description: Skip the teleport warmup timer for spawn teleports
+    default: false
+  allium.teleport.timer.bypass.tp:
+    description: Skip the teleport warmup timer for tp teleports
+    default: false
+  allium.teleport.timer.bypass.tphere:
+    description: Skip the teleport warmup timer for tphere teleports
+    default: false
+  allium.teleport.timer.bypass.there:
+    description: Skip the teleport warmup timer for there teleports
+    default: false
+  allium.teleport.timer.bypass.tpoffline:
+    description: Skip the teleport warmup timer for tpoffline teleports
+    default: false
+  allium.teleport.timer.bypass.tppos:
+    description: Skip the teleport warmup timer for tppos teleports
+    default: false
+  allium.teleport.timer.bypass.homes:
+    description: Skip the teleport warmup timer for homes teleports
+    default: false
+  allium.teleport.timer.bypass.warps:
+    description: Skip the teleport warmup timer for warps teleports
+    default: false
+  allium.teleport.timer.bypass.requests:
+    description: Skip the teleport warmup timer for requests teleports
+    default: false
+  allium.teleport.timer.move.*:
+    description: Move during the teleport warmup without cancelling it for every teleport type
+    default: false
+    children:
+      allium.teleport.timer.move.home: true
+      allium.teleport.timer.move.warp: true
+      allium.teleport.timer.move.tpa: true
+      allium.teleport.timer.move.tpahere: true
+      allium.teleport.timer.move.back: true
+      allium.teleport.timer.move.spawn: true
+      allium.teleport.timer.move.tp: true
+      allium.teleport.timer.move.tphere: true
+      allium.teleport.timer.move.there: true
+      allium.teleport.timer.move.tpoffline: true
+      allium.teleport.timer.move.tppos: true
+      allium.teleport.timer.move.homes: true
+      allium.teleport.timer.move.warps: true
+      allium.teleport.timer.move.requests: true
+  allium.teleport.timer.move.home:
+    description: Move during the teleport warmup without cancelling it for home teleports
+    default: false
+  allium.teleport.timer.move.warp:
+    description: Move during the teleport warmup without cancelling it for warp teleports
+    default: false
+  allium.teleport.timer.move.tpa:
+    description: Move during the teleport warmup without cancelling it for tpa teleports
+    default: false
+  allium.teleport.timer.move.tpahere:
+    description: Move during the teleport warmup without cancelling it for tpahere teleports
+    default: false
+  allium.teleport.timer.move.back:
+    description: Move during the teleport warmup without cancelling it for back teleports
+    default: false
+  allium.teleport.timer.move.spawn:
+    description: Move during the teleport warmup without cancelling it for spawn teleports
+    default: false
+  allium.teleport.timer.move.tp:
+    description: Move during the teleport warmup without cancelling it for tp teleports
+    default: false
+  allium.teleport.timer.move.tphere:
+    description: Move during the teleport warmup without cancelling it for tphere teleports
+    default: false
+  allium.teleport.timer.move.there:
+    description: Move during the teleport warmup without cancelling it for there teleports
+    default: false
+  allium.teleport.timer.move.tpoffline:
+    description: Move during the teleport warmup without cancelling it for tpoffline teleports
+    default: false
+  allium.teleport.timer.move.tppos:
+    description: Move during the teleport warmup without cancelling it for tppos teleports
+    default: false
+  allium.teleport.timer.move.homes:
+    description: Move during the teleport warmup without cancelling it for homes teleports
+    default: false
+  allium.teleport.timer.move.warps:
+    description: Move during the teleport warmup without cancelling it for warps teleports
+    default: false
+  allium.teleport.timer.move.requests:
+    description: Move during the teleport warmup without cancelling it for requests teleports
     default: false
 
   allium.sethome:
@@ -977,6 +1181,10 @@ permissions:
     default: op
   allium.speed.others:
     default: op
+  allium.scale:
+    default: op
+  allium.scale.others:
+    default: op
   allium.ping:
     default: true
   allium.ping.others:
@@ -997,6 +1205,10 @@ permissions:
     default: op
   allium.clearinventory.others:
     default: op
+  allium.clearinventory.all:
+    default: op
+  allium.clearinventoryconfirmtoggle:
+    default: true
   allium.more:
     default: op
   allium.more.others:

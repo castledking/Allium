@@ -19,6 +19,7 @@ import codes.castled.allium.command.essentials.PingCommand;
 import codes.castled.allium.command.essentials.SkullCommand;
 import codes.castled.allium.command.essentials.SmiteCommand;
 import codes.castled.allium.command.essentials.SpeedCommand;
+import codes.castled.allium.command.essentials.ScaleCommand;
 import codes.castled.allium.command.essentials.TimeCommand;
 import codes.castled.allium.command.essentials.TimePauseCoordinator;
 import codes.castled.allium.command.essentials.UtilityCommand;
@@ -66,12 +67,15 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new GamemodeCommand(plugin));
 
         plugin.getCommandManager().register(new SpeedCommand(plugin));
+        plugin.getCommandManager().register(new ScaleCommand(plugin));
         plugin.getCommandManager().register(new PingCommand(plugin));
         plugin.getCommandManager().register(new ExtCommand(plugin));
         plugin.getCommandManager().register(new BurnCommand(plugin));
         plugin.getCommandManager().register(new SmiteCommand(plugin));
         plugin.getCommandManager().register(new NvCommand(plugin));
-        plugin.getCommandManager().register(new ClearInventoryCommand(plugin));
+        var clearInventory = new ClearInventoryCommand(plugin);
+        plugin.getCommandManager().register(clearInventory);
+        plugin.getCommandManager().register(clearInventory.confirmationToggle());
         plugin.getCommandManager().register(new MoreCommand(plugin));
         plugin.getCommandManager().register(new HatCommand(plugin));
         plugin.getCommandManager().register(new SkullCommand(plugin, this::resolveSkullProfiles));

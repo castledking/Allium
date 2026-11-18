@@ -15,6 +15,12 @@ final class LanguageColors {
             color("moderation.discipline.login-unavailable","Moderation data is unavailable. Please try again shortly."),
             color("moderation.discipline.kick-notice","You were kicked: {message}"),
             color("info.afk.kick","You were kicked for being AFK."),
+            new Replacement("item.give.delivered","{prefix} &aGave &f{amount}x {item} &ato &f{player}&a.","{prefix} &aGave &f{amount} {item} &ato &f{player}&a."),
+            new Replacement("item.give.degraded","{prefix} &eGave &f{amount}x {item} &eto &f{player}&e, but a head was given without its skin.","{prefix} &eGave &f{amount} {item} &eto &f{player}&e, but a head was given without its skin."),
+            new Replacement("item.give.received","{prefix} &aYou received &f{amount}x {item}&a.","{prefix} &aYou received &f{amount} {item}&a."),
+            new Replacement("item.give.delivered","{prefix} &aEntregado &f{amount}x {item} &aa &f{player}&a.","{prefix} &aEntregado &f{amount} {item} &aa &f{player}&a."),
+            new Replacement("item.give.degraded","{prefix} &eEntregado &f{amount}x {item} &ea &f{player}&e, pero la cabeza se entrego sin su skin.","{prefix} &eEntregado &f{amount} {item} &ea &f{player}&e, pero la cabeza se entrego sin su skin."),
+            new Replacement("item.give.received","{prefix} &aRecibiste &f{amount}x {item}&a.","{prefix} &aRecibiste &f{amount} {item}&a."),
             new Replacement("utility.repair-held","{prefix} &aRepaired the held item.","{prefix} &aRepaired &f{items}&a."),
             new Replacement("utility.repair-all","{prefix} &aRepaired &f{count} &adamaged item(s).","{prefix} &aRepaired &f{items}&a."),
             new Replacement("utility.repair-all","{prefix} &aReparado(s) &f{count} &aobjeto(s) danado(s).","{prefix} &aReparaste &f{items}&a."));

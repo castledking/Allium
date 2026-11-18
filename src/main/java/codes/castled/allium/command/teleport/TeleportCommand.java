@@ -16,6 +16,7 @@ public final class TeleportCommand implements SpecCommandHandler {
     @Override public CommandSpec spec(){return spec;}
     @Override public void execute(BukkitCommandContext context){
         String[] args=context.args();String command=spec.canonicalName();CommandSender sender=context.sender();
+        if(command.equals("tppos")||command.equals("tp")&&codes.castled.allium.teleport.CoordinateArgs.startsWithPosition(java.util.Arrays.asList(args))){position(context);return;}
         if(java.util.Set.of("tp","tphere","there","tppet","tpent").contains(command)&&!(command.equals("tp")&&java.util.Arrays.stream(args).noneMatch(a->a.startsWith("@")))){extended(context);return;}
         if(command.equals("tptoggle")){
             if(args.length>2||args.length>0&&!args[0].equalsIgnoreCase("on")&&!args[0].equalsIgnoreCase("off")){context.sendInvalidArgs(spec.selfUsage());return;}
@@ -73,6 +74,19 @@ public final class TeleportCommand implements SpecCommandHandler {
             if(targets.isEmpty())throw new IllegalArgumentException("No visible targets found.");
             for(var e:targets.values())if(e instanceof Player p){if(command.equals("tphere"))service.force(actor,p,player,command);else service.forceLocation(actor,p,destination,command);}else {var safe=new codes.castled.allium.teleport.DestinationSafety().resolve(destination,codes.castled.allium.teleport.TeleportSettings.read(plugin.getConfig()));if(safe.isEmpty())throw new IllegalArgumentException("No safe destination.");if(!e.teleport(safe.get()))throw new IllegalArgumentException("Entity teleport cancelled.");}
         }catch(SecurityException denied){plugin.getMessageManager().send(actor,Messages.NO_PERMISSION);}catch(IllegalArgumentException invalid){plugin.getMessageManager().send(actor,Messages.TELEPORT_SELECTION,"{message}",invalid.getMessage());}
+    }
+    /** {@code /tp <x> <y> <z> [yaw] [pitch] [world]} (needs allium.tp.position) and {@code /tppos} with the same arguments. */
+    private void position(BukkitCommandContext context){
+        CommandSender sender=context.sender();String command=spec.canonicalName();String[] args=context.args();
+        if(!(sender instanceof Player player)){plugin.getMessageManager().send(sender,Messages.PLAYER_ONLY);return;}
+        if(command.equals("tp")&&!sender.hasPermission("allium.tp.position")){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
+        if(args.length<3||args.length>6){context.sendInvalidArgs(command.equals("tp")?"/tp <x> <y> <z> [yaw] [pitch] [world]":spec.selfUsage());return;}
+        org.bukkit.Location here=player.getLocation();codes.castled.allium.teleport.CoordinateArgs.Position at;
+        try{at=codes.castled.allium.teleport.CoordinateArgs.parse(java.util.Arrays.asList(args),here.getX(),here.getY(),here.getZ(),here.getYaw(),here.getPitch());}
+        catch(IllegalArgumentException invalid){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}",invalid.getMessage());return;}
+        org.bukkit.World world=at.world().isPresent()?plugin.getServer().getWorld(at.world().get()):here.getWorld();
+        if(world==null){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}","No world is named "+codes.castled.allium.messaging.MessagingService.safeName(at.world().get())+".");return;}
+        service.forceLocation(sender,player,new org.bukkit.Location(world,at.x(),at.y(),at.z(),at.yaw(),at.pitch()),command);
     }
     private Player target(CommandSender viewer,String name){Player p=service.find(viewer,name);if(p==null)plugin.getMessageManager().send(viewer,Messages.PLAYER_NOT_FOUND,"{player}",codes.castled.allium.messaging.MessagingService.safeName(name));return p;}
 }

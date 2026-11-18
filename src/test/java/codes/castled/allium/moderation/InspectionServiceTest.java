@@ -520,12 +520,20 @@ class InspectionServiceTest {
         drainQueues();
         Inventory gui = viewer.getOpenInventory().getTopInventory();
         assertEquals(Material.GOLDEN_APPLE, gui.getItem(InspectionLayout.MAIN_HAND_GUI_SLOT).getType(), "the held item is in the main-hand cell");
-        assertEquals(Material.LIGHT_GRAY_STAINED_GLASS_PANE, gui.getItem(29).getType(), "its hotbar cell is a marker");
+        assertNull(gui.getItem(29), "its hotbar cell is empty: no extra glass");
         assertEquals(Material.DIAMOND, gui.getItem(27).getType(), "other hotbar cells are unchanged");
 
-        InventoryClickEvent marker = click(viewer, gui, 29, InventoryAction.PICKUP_ALL, ClickType.LEFT);
+        InventoryClickEvent marker = click(viewer, gui, 29, InventoryAction.PLACE_ALL, ClickType.LEFT);
         service.onInventoryClick(marker);
-        assertTrue(marker.isCancelled(), "the marker cannot be clicked");
+        assertTrue(marker.isCancelled(), "nothing can be put in the held hotbar cell");
+        InventoryDragEvent drag = new InventoryDragEvent(viewer.getOpenInventory(), null, item(Material.STONE, 2), false,
+                Map.of(28, item(Material.STONE, 1), 29, item(Material.STONE, 1)));
+        service.onInventoryDrag(drag);
+        assertTrue(drag.isCancelled(), "a drag across the held hotbar cell is refused");
+        InventoryClickEvent shift = click(viewer, gui, 60, InventoryAction.MOVE_TO_OTHER_INVENTORY, ClickType.SHIFT_LEFT);
+        service.onInventoryClick(shift);
+        assertTrue(shift.isCancelled(), "shift-clicks are moved by Allium, never into the held hotbar cell");
+        assertNull(gui.getItem(29));
 
         InventoryClickEvent hand = click(viewer, gui, InspectionLayout.MAIN_HAND_GUI_SLOT, InventoryAction.PICKUP_ALL, ClickType.LEFT);
         service.onInventoryClick(hand);

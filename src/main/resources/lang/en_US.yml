@@ -77,6 +77,9 @@ teleport:
   success:
     - "{prefix} &aTeleported to &f{target}&a."
     - "[sound] entity.enderman.teleport 1.15"
+  position-success:
+    - "{prefix} &aTeleported to &f{x}, {y}, {z}&a in &f{world}&a."
+    - "[sound] entity.enderman.teleport 1.15"
   request-sent:
     - "{prefix} &aTeleport request sent to &f{player}&a."
     - "[sound] block.note_block.pling 1.35"
@@ -721,6 +724,12 @@ player:
   feed-other:
     - "{prefix} &aFed &f{player}&a."
     - "[sound] entity.generic.eat 1.05"
+  scale-set:
+    - "{prefix} &aSet &f{target}&a scale to &f{scale}&a."
+  scale-mobs:
+    - "{prefix} &aSet the scale of &f{count}&a selected mob(s) to &f{scale}&a."
+  scale-unavailable:
+    - "{prefix} &cThe scale attribute is unavailable for this target or server version."
   speed-set:
     - "{prefix} &a{type} speed set to &f{speed}&a."
     - "[sound] block.note_block.bit 1.4"
@@ -824,6 +833,14 @@ utility:
   nv-toggle:
     - "{prefix} &fNight vision {state} &ffor &d{player}&f."
     - "[sound] entity.generic.drink 1.2"
+  clear-confirm:
+    - "{prefix} &eRun the same clear command again within 30 seconds to confirm."
+  clear-confirm-on:
+    - "{prefix} &aInventory clear confirmation enabled."
+  clear-confirm-off:
+    - "{prefix} &eInventory clear confirmation disabled."
+  clear-offline:
+    - "{prefix} &aCleared &f{count} &aitem(s) from &f{players} &aoffline inventories. Skipped &f{skipped}&a."
   clear-self:
     - "{prefix} &aCleared &f{count} &aitem(s) from your inventory."
     - "[sound] block.grindstone.use 1.15"
@@ -974,13 +991,13 @@ tool:
 item:
   give:
     delivered:
-      - "{prefix} &aGave &f{amount}x {item} &ato &f{player}&a."
+      - "{prefix} &aGave &f{amount} {item} &ato &f{player}&a."
       - "[sound] entity.item.pickup 1.25"
     dropped:
       - "{prefix} &aGave &f{given}&a of &f{amount}x {item} &ato &f{player}&a; &f{dropped} &adid not fit and dropped at their feet."
       - "[sound] entity.item.pickup 1.0"
     degraded:
-      - "{prefix} &eGave &f{amount}x {item} &eto &f{player}&e, but a head was given without its skin."
+      - "{prefix} &eGave &f{amount} {item} &eto &f{player}&e, but a head was given without its skin."
       - "[sound] block.note_block.hat 0.9"
     refused-unresolved:
       - "{prefix} &cA skin for {item} could not be resolved, so nothing was given to {player}."
@@ -1019,7 +1036,7 @@ item:
       - "{prefix} &eWarning: {warning}"
       - "[sound] block.note_block.bell 0.95"
     received:
-      - "{prefix} &aYou received &f{amount}x {item}&a."
+      - "{prefix} &aYou received &f{amount} {item}&a."
       - "[sound] entity.item.pickup 1.35"
 mail:
   sent:

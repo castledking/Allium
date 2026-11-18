@@ -196,14 +196,10 @@ public final class RestoreMenus implements Listener {
                 title((editable ? "Edit " : "View ") + snapshot.reason().toLowerCase(Locale.ROOT) + ": " + list.targetName));
         session.inventory = inventory;
         for (int slot = 41; slot <= 44; slot++) inventory.setItem(slot, GuiIcons.icon(GuiIcons.Icon.FILLER, " ", List.of()));
-        // The held hotbar item sits in the main-hand cell (as in /invsee); its hotbar cell is a locked marker.
+        // The held hotbar item sits in the main-hand cell (as in /invsee); its hotbar cell stays
+        // empty and locked, so nothing can be put where the item no longer is.
         for (int pSlot = 0; pSlot < 41; pSlot++) {
             inventory.setItem(InspectionLayout.toGuiSlot(InspectionLayout.InspectionType.INVSEE, pSlot, session.held), contents.inventory()[pSlot]);
-        }
-        int marker = InspectionLayout.heldMarkerGuiSlot(InspectionLayout.InspectionType.INVSEE, session.held);
-        if (marker >= 0) {
-            inventory.setItem(marker, GuiIcons.icon(GuiIcons.Icon.FILLER, "§7Selected slot " + (session.held + 1),
-                    List.of("§8Its item is in the main hand (sword) slot")));
         }
         paintIcons(inventory, session.held);
         boolean own = snapshot.player().equals(viewer.getUniqueId());
@@ -282,7 +278,8 @@ public final class RestoreMenus implements Listener {
                 if (raw >= 45) control(viewer, session, raw);
                 return;
             }
-            contentClick(event, viewer, session.editable, inTop, raw, event.getView().getTopInventory(), STORAGE_CELLS);
+            contentClick(event, viewer, session.editable, inTop, raw, event.getView().getTopInventory(), STORAGE_CELLS,
+                    InspectionLayout.heldMarkerGuiSlot(InspectionLayout.InspectionType.INVSEE, session.held));
             if (inTop) plugin.getScheduler().runOnServer(() -> paintIcons(session.inventory, session.held));
             return;
         }
@@ -292,7 +289,7 @@ public final class RestoreMenus implements Listener {
                 enderControl(viewer, ender, raw);
                 return;
             }
-            contentClick(event, viewer, ender.session.editable, inTop, raw, event.getView().getTopInventory(), 27);
+            contentClick(event, viewer, ender.session.editable, inTop, raw, event.getView().getTopInventory(), 27, -1);
         }
     }
 
@@ -302,7 +299,7 @@ public final class RestoreMenus implements Listener {
      * viewer's inventory into the panel's first {@code storageCells} cells (never armor or controls).
      */
     private void contentClick(InventoryClickEvent event, Player viewer, boolean editable, boolean inTop, int raw, Inventory top,
-                              int storageCells) {
+                              int storageCells, int lockedCell) {
         InventoryAction action = event.getAction();
         if (!editable) {
             if (inTop || action == InventoryAction.MOVE_TO_OTHER_INVENTORY || action == InventoryAction.COLLECT_TO_CURSOR) {
@@ -325,7 +322,7 @@ public final class RestoreMenus implements Listener {
             }
             int remaining = inTop
                     ? viewer.getInventory().addItem(stack.clone()).values().stream().mapToInt(ItemStack::getAmount).sum()
-                    : moveInto(top, storageCells, stack.clone());
+                    : codes.castled.allium.gui.PanelMoves.moveInto(top, storageCells, lockedCell, stack.clone());
             if (remaining <= 0) {
                 from.setItem(slot, null);
             } else {
@@ -360,8 +357,9 @@ public final class RestoreMenus implements Listener {
         boolean editable = holder instanceof SessionMenu s ? s.editable : holder instanceof EnderMenu e && e.session.editable;
         int contentEnd = holder instanceof SessionMenu s && InspectionLayout.validHeld(s.held) ? 42
                 : holder instanceof SessionMenu ? 41 : holder instanceof EnderMenu ? 27 : 0;
+        int lockedCell = holder instanceof SessionMenu s ? InspectionLayout.heldMarkerGuiSlot(InspectionLayout.InspectionType.INVSEE, s.held) : -1;
         for (int raw : event.getRawSlots()) {
-            if (raw < top.getSize() && (!editable || raw >= contentEnd || GuiIcons.isIcon(top.getItem(raw)))) {
+            if (raw < top.getSize() && (!editable || raw >= contentEnd || raw == lockedCell || GuiIcons.isIcon(top.getItem(raw)))) {
                 event.setCancelled(true);
                 return;
             }
@@ -483,31 +481,6 @@ public final class RestoreMenus implements Listener {
         ItemStack[] ender = new ItemStack[27];
         for (int i = 0; i < 27; i++) ender[i] = session.ender[i] == null ? null : session.ender[i].clone();
         return new RestoreService.Contents(inventory, ender, session.level, session.progress, session.held);
-    }
-
-    /** Adds {@code stack} to the first {@code cells} cells of {@code panel}, filling similar stacks first; returns what did not fit. */
-    private static int moveInto(Inventory panel, int cells, ItemStack stack) {
-        int remaining = stack.getAmount();
-        int max = Math.min(stack.getMaxStackSize(), panel.getMaxStackSize());
-        for (int pass = 0; pass < 2 && remaining > 0; pass++) {
-            for (int cell = 0; cell < cells && remaining > 0; cell++) {
-                ItemStack existing = panel.getItem(cell);
-                if (pass == 0 && existing != null && !GuiIcons.isIcon(existing) && existing.isSimilar(stack) && existing.getAmount() < max) {
-                    int moved = Math.min(remaining, max - existing.getAmount());
-                    ItemStack merged = existing.clone();
-                    merged.setAmount(existing.getAmount() + moved);
-                    panel.setItem(cell, merged);
-                    remaining -= moved;
-                } else if (pass == 1 && (existing == null || existing.getType().isAir())) {
-                    int moved = Math.min(remaining, max);
-                    ItemStack placed = stack.clone();
-                    placed.setAmount(moved);
-                    panel.setItem(cell, placed);
-                    remaining -= moved;
-                }
-            }
-        }
-        return remaining;
     }
 
     private static ItemStack[] capture(Inventory inventory, int size) {

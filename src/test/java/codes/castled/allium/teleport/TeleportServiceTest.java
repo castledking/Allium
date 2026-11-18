@@ -139,6 +139,61 @@ class TeleportServiceTest {
         staff = player("Staff", UUID.randomUUID());
     }
 
+    private final java.util.Set<String> granted = new java.util.HashSet<>();
+
+    @Test
+    void perTypeCooldownBypassCoversTheTypeOrItsGroup() throws Exception {
+        enable();
+        assertTrue(service.teleport(mover, destination(), "home"));
+        drainWorker();
+        assertFalse(service.teleport(mover, destination(), "home"), "the home cooldown applies");
+        granted.add("allium.teleport.cooldown.bypass.warp");
+        assertFalse(service.teleport(mover, destination(), "home"), "another type's node does not help");
+        granted.add("allium.teleport.cooldown.bypass.homes");
+        assertTrue(service.teleport(mover, destination(), "home"), "the homes group skips the home cooldown");
+    }
+
+    @Test
+    void perTypeTimerBypassSkipsTheWarmupOfThatTypeOnly() throws Exception {
+        warmup();
+        granted.add("allium.teleport.timer.bypass.home");
+        enable();
+        assertTrue(service.teleport(mover, destination(), "spawnless"));
+        assertTrue(service.warming(mover.getUniqueId()), "other types still warm up");
+        tickAfterWarmup();
+        drainWorker();
+        assertTrue(service.teleport(mover, destination(), "home"));
+        assertFalse(service.warming(mover.getUniqueId()), "allium.teleport.timer.bypass.home teleports at once");
+    }
+
+    @Test
+    void perTypeTimerMoveKeepsTheWarmupWhileMoving() throws Exception {
+        warmup();
+        enable();
+        Location far = new Location(world, 30, 64, 2);
+        assertTrue(service.teleport(mover, destination(), "home"));
+        service.move(new org.bukkit.event.player.PlayerMoveEvent(mover, mover.getLocation(), far));
+        assertFalse(service.warming(mover.getUniqueId()), "moving cancels the warmup by default");
+        drainWorker();
+        granted.add("allium.teleport.timer.move.homes");
+        assertTrue(service.teleport(mover, destination(), "home"));
+        service.move(new org.bukkit.event.player.PlayerMoveEvent(mover, mover.getLocation(), far));
+        assertTrue(service.warming(mover.getUniqueId()), "allium.teleport.timer.move.homes keeps it going");
+        tickAfterWarmup();
+        verify(mover).teleport(eq(destination()), eq(PlayerTeleportEvent.TeleportCause.PLUGIN));
+    }
+
+    @Test
+    void perTypeNodesNameTheCommandAndItsGroup() {
+        // allium.teleport.{cooldown.bypass,timer.bypass,timer.move}.<type>
+        assertEquals(java.util.List.of("home", "homes"), TeleportService.typeNames("home"));
+        assertEquals(java.util.List.of("warp", "warps"), TeleportService.typeNames("warp"));
+        assertEquals(java.util.List.of("tpa", "requests"), TeleportService.typeNames("tpa"));
+        assertEquals(java.util.List.of("tpahere", "requests"), TeleportService.typeNames("tpahere"));
+        assertEquals(java.util.List.of("tppos"), TeleportService.typeNames("tppos"));
+        assertEquals(java.util.List.of("spawn"), TeleportService.typeNames("spawn"));
+    }
+
     @Test
     void vanishedRequesterLooksOfflineOnAcceptDenyAndCancelInvisibleRequests() throws Exception {
         enable();
@@ -370,7 +425,8 @@ class TeleportServiceTest {
         when(player.getUniqueId()).thenReturn(id);
         when(player.getWorld()).thenReturn(world);
         when(player.isOnline()).thenReturn(true);
-        when(player.hasPermission(anyString())).thenAnswer(call -> !((String) call.getArgument(0)).contains(".bypass.")
+        when(player.hasPermission(anyString())).thenAnswer(call -> granted.contains(call.<String>getArgument(0))
+                || !((String) call.getArgument(0)).contains(".bypass.") && !((String) call.getArgument(0)).contains(".timer.move.")
                 && !"allium.vanish.see".equals(call.getArgument(0)));
         when(player.canSee(any(Player.class))).thenReturn(true);
         when(player.getMetadata(anyString())).thenReturn(List.of());

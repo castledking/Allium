@@ -24,6 +24,22 @@ public final class CompanionTeleports implements Listener,AutoCloseable {
  }
  private void select(Selection s,Entity e,boolean pets){if(!(pets?s.petMode:s.entityMode)||pets&&!owned(e,s.owner)||plugin.getServer().getPlayer(s.owner.getUniqueId())!=s.owner)return;String permission=pets?"allium.tppet":"allium.tpmob";if(!s.owner.hasPermission(permission))return;Set<UUID> selected=pets?s.pets:s.entities;UUID id=e.getUniqueId();if(selected.remove(id)){if(!s.pets.contains(id)&&!s.entities.contains(id))release(s.owner.getUniqueId(),id);send(s.owner,"Deselected "+e.getType().name()+".");return;}int max=1;for(int i=1;i<=10;i++)if(s.owner.hasPermission(permission+"."+i))max=i;if(selected.size()>=max){send(s.owner,"Selection limit: "+max);return;}selected.add(id);var glow=glows.computeIfAbsent(id,k->new Glow(e,e.isGlowing(),new HashSet<>()));glow.owners().add(s.owner.getUniqueId());e.setGlowing(true);send(s.owner,"Selected "+e.getType().name()+".");}
  private static boolean owned(Entity e,Player p){return e instanceof Tameable t&&t.isTamed()&&t.getOwner()!=null&&p.getUniqueId().equals(t.getOwner().getUniqueId());}
+ /** Snapshot of the player's current /tpe selection, without consuming it. */
+ public List<LivingEntity> selectedMobs(Player player) {
+  Selection selection = selections.get(player.getUniqueId());
+  if (selection == null || selection.owner != player || !selection.entityMode
+          || !player.hasPermission("allium.tpmob")) return List.of();
+
+  List<LivingEntity> mobs = new ArrayList<>();
+  for (UUID id : selection.entities) {
+   Entity entity = plugin.getServer().getEntity(id);
+   if (entity instanceof LivingEntity living && !(living instanceof Player)
+           && living.isValid() && !living.isDead() && living.getWorld() == player.getWorld()) {
+    mobs.add(living);
+   }
+  }
+  return List.copyOf(mobs);
+ }
  public boolean move(Player player,Location destination){var s=selections.get(player.getUniqueId());if(s==null||s.pets.isEmpty()&&s.entities.isEmpty())return false;var safe=safety.resolve(destination,TeleportSettings.read(plugin.getConfig()));if(safe.isEmpty()){send(player,"No safe destination for the selection.");return true;}var ids=new LinkedHashSet<>(s.pets);ids.addAll(s.entities);if(!selections.remove(player.getUniqueId(),s))return true;for(UUID id:ids)release(player.getUniqueId(),id);int moved=0;for(UUID id:ids){Entity e=plugin.getServer().getEntity(id);boolean authorized=e!=null&&e.isValid()&&!(e instanceof Player)&&(s.entities.contains(id)&&player.hasPermission("allium.tpmob")||s.pets.contains(id)&&player.hasPermission("allium.tppet")&&owned(e,player));if(authorized&&e.teleport(safe.get()))moved++;}clear(player.getUniqueId());send(player,"Teleported "+moved+" selected companion(s); selection disabled.");return true;}
  @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void teleport(PlayerTeleportEvent event){var s=selections.get(event.getPlayer().getUniqueId());if(s==null||event.getTo()==null)return;Location destination=event.getTo().clone();s.pending=true;long revision=++s.revision;plugin.getScheduler().runOnServerLater(()->{if(s.revision!=revision)return;s.pending=false;if(!event.isCancelled()&&selections.get(event.getPlayer().getUniqueId())==s&&event.getPlayer().isOnline()&&event.getPlayer().getWorld()==destination.getWorld()&&event.getPlayer().getLocation().distanceSquared(destination)<4)move(event.getPlayer(),destination);},50);}
  @EventHandler public void quit(PlayerQuitEvent event){clear(event.getPlayer().getUniqueId());}

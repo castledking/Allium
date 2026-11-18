@@ -29,6 +29,8 @@ public final class InspectionLayout {
     public static final int INVSEE_LOCKED_END = 44;
     /** The main-hand cell: the held hotbar item, shown beside the offhand when the held slot is known. */
     public static final int MAIN_HAND_GUI_SLOT = 41;
+    /** INVSEE cells 0..35: storage (0..26) and hotbar (27..35), where shift-clicked items go. */
+    public static final int STORAGE_GUI_CELLS = 36;
     public static final int ENDERCHEST_GUI_SIZE = 27;
     public static final int MAX_GUI_TITLE_LENGTH = 32;
     public static final int MAX_AUDIT_DETAIL_LENGTH = 512;

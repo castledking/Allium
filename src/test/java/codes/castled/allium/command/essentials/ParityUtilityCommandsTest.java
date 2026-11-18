@@ -206,6 +206,9 @@ class ParityUtilityCommandsTest {
         when(alice.hasPermission("allium.clearinventory")).thenReturn(true);
         when(alice.hasPermission("allium.clearinventory.others")).thenReturn(true);
 
+        var preferences = codes.castled.allium.item.MockItemStacks.container(new java.util.HashMap<>());
+        when(alice.getPersistentDataContainer()).thenReturn(preferences);
+
         PlayerInventory inv = mock(PlayerInventory.class);
         when(bob.getInventory()).thenReturn(inv);
         ItemStack dirt = mock(ItemStack.class);
@@ -217,7 +220,12 @@ class ParityUtilityCommandsTest {
         when(inv.getContents()).thenReturn(new ItemStack[]{dirt, stone});
 
         ci.onCommand(alice, command, "ci", new String[]{"Bob", "dirt", "4"});
-        verify(dirt).setAmount(6);
+        verify(inv, never()).setContents(any(ItemStack[].class));
+        verify(alice).sendMessage(containsPlain("same clear command again"));
+        ItemStack remainder = mock(ItemStack.class);
+        when(dirt.clone()).thenReturn(remainder);
+        ci.onCommand(alice, command, "ci", new String[]{"Bob", "dirt", "4"});
+        verify(remainder).setAmount(6);
         verify(stone, never()).setAmount(anyInt());
         verify(alice).sendMessage(containsPlain("Cleared 4 item(s) from Bob"));
 
@@ -228,6 +236,7 @@ class ParityUtilityCommandsTest {
         when(kits.kits()).thenReturn(kitService);
         when(kitService.busy(bob)).thenReturn(true);
 
+        ci.onCommand(alice, command, "ci", new String[]{"Bob"});
         ci.onCommand(alice, command, "ci", new String[]{"Bob"});
         verify(alice).sendMessage(containsPlain("busy"));
     }

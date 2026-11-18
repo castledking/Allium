@@ -3,6 +3,7 @@ package codes.castled.allium.command.items;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.item.delivery.DeliveryOutcome;
@@ -14,7 +15,9 @@ import codes.castled.allium.item.spec.GiveSpec;
 import codes.castled.allium.item.spec.ItemReference;
 import codes.castled.allium.item.spec.ItemSpecException;
 import codes.castled.allium.item.spec.ItemSpecParser;
+import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
@@ -100,7 +103,7 @@ public final class GiveCommand implements SpecCommandHandler {
         for (Player target : targets) {
             ItemLibrary.Prepared prepared;
             try {
-                prepared = library.build(spec, mayGivePrivileged,plugin.getConfig().getBoolean("allow-unsafe-enchants",false)&&sender.hasPermission("allium.enchant.unsafe"));
+                prepared = library.buildForGive(spec, mayGivePrivileged,plugin.getConfig().getBoolean("allow-unsafe-enchants",false)&&sender.hasPermission("allium.enchant.unsafe"));
             } catch (ItemBuildException.Privileged e) {
                 send(sender, "privileged", "{item}", itemText, "{behavior}", e.behavior(), "{permission}", PERMISSION_PRIVILEGED);
                 return;
@@ -116,9 +119,13 @@ public final class GiveCommand implements SpecCommandHandler {
                 send(sender, "pending", "{player}", target.getName());
             }
             String targetName = target.getName();
+            String displayNames = prepared.items().stream()
+                    .map(item -> displayName(item.stack()))
+                    .distinct()
+                    .collect(Collectors.joining(", "));
             OverflowPolicy chosen = policy;
             delivery.deliver(sender, target, prepared, spec.equip(), chosen)
-                    .whenComplete((outcome, error) -> report(sender, target, targetName, itemText, chosen, outcome, error));
+                    .whenComplete((outcome, error) -> report(sender, target, targetName, displayNames, chosen, outcome, error));
         }
     }
 
@@ -147,6 +154,15 @@ public final class GiveCommand implements SpecCommandHandler {
         if (key != null) {
             plugin.getMessageManager().sendByKey(recipient, key, replacements);
         }
+    }
+
+    private static String displayName(ItemStack item) {
+        var meta = item.getItemMeta();
+        if (meta != null && meta.hasDisplayName()) {
+            String name = ChatColor.stripColor(meta.getDisplayName()).replaceAll("[\\p{Cntrl}]", " ").trim();
+            if (!name.isEmpty()) return name;
+        }
+        return UtilitySupport.formatMaterialName(item.getType());
     }
 
     private void report(CommandSender sender, Player target, String targetName, String item, OverflowPolicy policy,

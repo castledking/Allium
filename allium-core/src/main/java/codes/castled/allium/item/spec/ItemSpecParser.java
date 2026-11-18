@@ -53,7 +53,10 @@ public final class ItemSpecParser {
         boolean equip = false;
         Optional<String> overflow = Optional.empty();
 
-        if(ItemSpecLexer.indexOfTopLevel(itemSpec,';')>=0){
+        // A comma batch ("stick,gshovel" or "stick:1,diamond:2") gives each item its own amount;
+        // item;meta forms only apply to a single item.
+        boolean batch=ItemSpecLexer.splitTopLevel(itemSpec,',').size()>1;
+        if(!batch&&ItemSpecLexer.indexOfTopLevel(itemSpec,';')>=0){
             var variant=ItemSpecLexer.splitTopLevel(itemSpec,';');String base=variant.get(0).toLowerCase(Locale.ROOT);
             if(Set.of("potion","splash_potion","lingering_potion","tipped_arrow","spawner","minecraft:potion","minecraft:splash_potion","minecraft:lingering_potion","minecraft:tipped_arrow","minecraft:spawner").contains(base)){
                 itemSpec=variant.get(0);
@@ -62,7 +65,7 @@ public final class ItemSpecParser {
                 else {if(variant.size()<2||variant.size()>6)throw new ItemSpecException("potion syntax is potion;effect;seconds;level;particles;icon");String seconds=variant.size()>2?variant.get(2):"0",level=variant.size()>3?variant.get(3):"1";if(Set.of("water","awkward","mundane","thick").contains(variant.get(1).toLowerCase(Locale.ROOT)))tokens.add(new MetaToken("potion",variant.get(1),false));else tokens.add(new MetaToken("legacy-effect",variant.get(1)+":"+seconds+":"+level+(variant.size()>4?":"+String.join(":",variant.subList(4,variant.size())):""),false));}
             }
         }
-        if (ItemSpecLexer.indexOfTopLevel(itemSpec, ';') >= 0) {
+        if (!batch && ItemSpecLexer.indexOfTopLevel(itemSpec, ';') >= 0) {
             if (!legacySemicolonSyntax && ItemSpecLexer.splitTopLevel(itemSpec,';').stream().skip(1).anyMatch(p -> !p.contains(":"))) {
                 throw new ItemSpecException("semicolon item syntax (item;meta;amount) is disabled; write "
                         + "<item> [amount] [key:value...] instead");
@@ -79,11 +82,11 @@ public final class ItemSpecParser {
         }
         List<ItemReference> items = new ArrayList<>();
         for (String reference : ItemSpecLexer.splitTopLevel(itemSpec, ',')) {
-            items.add(parseReference(reference));
+            items.add(parseCounted(reference, batch));
         }
 
         if (next < args.size() && AMOUNT.matcher(args.get(next)).matches()) {
-            if (amount.isPresent()) {
+            if (amount.isPresent() || !batch && items.get(0).amount().isPresent()) {
                 throw new ItemSpecException("the amount is given twice");
             }
             amount = OptionalInt.of(amount(args.get(next)));
@@ -107,6 +110,39 @@ public final class ItemSpecParser {
             }
         }
         return new GiveSpec(items, amount, tokens, equip, overflow);
+    }
+
+    /** Provider namespaces: {@code oraxen:12} names an item, it is not 12 of "oraxen". */
+    private static final Set<String> PROVIDERS = Set.of(ProviderKey.MINECRAFT, ProviderKey.ALLIUM, ProviderKey.NEXO,
+            ProviderKey.ORAXEN, ProviderKey.CRAFTENGINE, "ce");
+
+    /**
+     * One reference with an optional amount of its own: {@code stick:1}, {@code minecraft:stick:1},
+     * {@code 1:1:5} (legacy id 1:1, five of it), or (legacy syntax, in a batch) {@code dirt;1}.
+     */
+    ItemReference parseCounted(String text, boolean batch) {
+        String trimmed = text.trim();
+        OptionalInt own = OptionalInt.empty();
+        if (ItemSpecLexer.indexOfTopLevel(trimmed, ';') >= 0) {
+            int semicolon = trimmed.lastIndexOf(';');
+            String head = trimmed.substring(0, semicolon), tail = trimmed.substring(semicolon + 1);
+            if (!batch || !legacySemicolonSyntax || head.contains(";") || !AMOUNT.matcher(tail).matches()) {
+                throw new ItemSpecException("a comma batch takes item or item:amount entries ('" + trimmed
+                        + "'); give key:value tokens after the batch instead");
+            }
+            trimmed = head;
+            own = OptionalInt.of(amount(tail));
+        } else if (ItemSpecLexer.indexOfOpenGroup(trimmed) < 0) {
+            int colon = trimmed.lastIndexOf(':');
+            // "1:1" is a legacy numeric id (granite), not one stone; "1:1:5" is five granite.
+            String base = colon > 0 ? trimmed.substring(0, colon) : "";
+            if (colon > 0 && AMOUNT.matcher(trimmed.substring(colon + 1)).matches()
+                    && !PROVIDERS.contains(base.toLowerCase(Locale.ROOT)) && !base.chars().allMatch(Character::isDigit)) {
+                own = OptionalInt.of(amount(trimmed.substring(colon + 1)));
+                trimmed = trimmed.substring(0, colon);
+            }
+        }
+        return parseReference(trimmed).withAmount(own);
     }
 
     /** Parses one reference, optionally ending in a single raw {@code [...]} or {@code {...}} group. */

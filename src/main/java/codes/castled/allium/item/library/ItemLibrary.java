@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
@@ -82,14 +83,24 @@ public final class ItemLibrary {
      */
     public Prepared build(GiveSpec spec,boolean mayGivePrivileged){return build(spec,mayGivePrivileged,false);}
     public Prepared build(GiveSpec spec, boolean mayGivePrivileged,boolean allowUnsafe) {
-        int amount = spec.amount().orElse(1);
+        return build(spec, mayGivePrivileged, allowUnsafe, OptionalInt.of(1));
+    }
+
+    public Prepared buildForGive(GiveSpec spec, boolean mayGivePrivileged, boolean allowUnsafe) {
+        return build(spec, mayGivePrivileged, allowUnsafe, OptionalInt.empty());
+    }
+
+    private Prepared build(GiveSpec spec, boolean mayGivePrivileged, boolean allowUnsafe,
+                           OptionalInt defaultAmount) {
+        OptionalInt amount = spec.amount().isPresent() ? spec.amount() : defaultAmount;
         List<PreparedItem> out = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
         for (ItemReference reference : spec.items()) {
             var localTokens=new ArrayList<MetaToken>();
+            OptionalInt count = reference.amount().isPresent() ? reference.amount() : amount;
             if(database!=null){String raw=reference.text();int open=codes.castled.allium.item.spec.ItemSpecLexer.indexOfOpenGroup(raw);String alias=database.lookup(open<0?raw:raw.substring(0,open));if(alias!=null){if(reference.raw().isPresent()&&alias.contains(";"))throw new ItemBuildException("raw data cannot override a complex item alias");var expanded=new codes.castled.allium.item.spec.ItemSpecParser(true).parse(alias+(reference.raw().isPresent()?reference.raw().get().text():""));reference=expanded.items().get(0);localTokens.addAll(expanded.tokens());}}
             localTokens.addAll(spec.tokens());
-            List<ItemStack> stacks = resolve(reference, amount, mayGivePrivileged);
+            List<ItemStack> stacks = resolve(reference, count, mayGivePrivileged);
             for (ItemStack stack : stacks) {
                 if(reference.raw().isPresent())for(String notice:EnchantmentAdapter.validateRaw(stack,allowUnsafe))if(!warnings.contains(notice))warnings.add(notice);
                 CompletableFuture<SkullProfiles.Resolved> skull = applyTokens(stack, localTokens, warnings,allowUnsafe);
@@ -99,10 +110,10 @@ public final class ItemLibrary {
         return new Prepared(out, warnings);
     }
 
-    private List<ItemStack> resolve(ItemReference reference, int amount, boolean mayGivePrivileged) {
+    private List<ItemStack> resolve(ItemReference reference, OptionalInt requested, boolean mayGivePrivileged) {
         ProviderKey key = reference.key();
         if (reference.raw().isPresent()) {
-            ItemStack template=components.create(key,reference.raw().get(),1);var result=new ArrayList<ItemStack>();for(int left=amount;left>0;){var stack=template.clone();int count=Math.min(left,Math.max(1,stack.getMaxStackSize()));stack.setAmount(count);result.add(stack);left-=count;}return result;
+            return split(components.create(key, reference.raw().get(), 1), requested);
         }
         ResolutionResult first = items.create(new ItemRef(key, null, 1, Map.of()));
         ItemStack sample = unwrap(first, reference);
@@ -111,19 +122,9 @@ public final class ItemLibrary {
             throw new ItemBuildException.Privileged(behavior.get(), reference.text());
         }
         if (behavior.isEmpty() || !items.isSignedBehavior(behavior.get())) {
-            sample.setAmount(Math.min(amount, Math.max(1, sample.getMaxStackSize())));
-            List<ItemStack> stacks = new ArrayList<>();
-            int remaining = amount;
-            ItemStack template = sample.clone();
-            while (remaining > 0) {
-                ItemStack stack = template.clone();
-                int size = Math.min(remaining, Math.max(1, template.getMaxStackSize()));
-                stack.setAmount(size);
-                stacks.add(stack);
-                remaining -= size;
-            }
-            return stacks;
+            return split(sample, requested);
         }
+        int amount = requested.orElse(1);
         if (amount > MAX_SIGNED_STACKS) {
             throw new ItemBuildException(reference.text() + " is minted one per stack; give at most " + MAX_SIGNED_STACKS + " at once");
         }
@@ -131,6 +132,20 @@ public final class ItemLibrary {
         stacks.add(sample);
         for (int i = 1; i < amount; i++) {
             stacks.add(unwrap(items.create(new ItemRef(key, null, 1, Map.of())), reference));
+        }
+        return stacks;
+    }
+
+    private static List<ItemStack> split(ItemStack template, OptionalInt requested) {
+        int limit = Math.max(1, template.getMaxStackSize());
+        List<ItemStack> stacks = new ArrayList<>();
+        int remaining = requested.orElse(limit);
+        while (remaining > 0) {
+            int amount = Math.min(remaining, limit);
+            ItemStack stack = template.clone();
+            stack.setAmount(amount);
+            stacks.add(stack);
+            remaining -= amount;
         }
         return stacks;
     }
@@ -187,6 +202,7 @@ public final class ItemLibrary {
                 }
             }
         }
+        if (tokens.stream().anyMatch(t -> t.key().equals("effect"))) PotionAdapter.nameFromEffects(meta, stack.getType());
         stack.setItemMeta(meta);
         return skull;
     }

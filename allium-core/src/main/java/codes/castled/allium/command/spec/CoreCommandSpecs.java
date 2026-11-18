@@ -20,6 +20,7 @@ public final class CoreCommandSpecs {
             Map.entry("spawn", "Teleport to spawn"),
             Map.entry("setspawn", "Set the spawn point here"),
             Map.entry("tp", "Teleport to a player or coordinates, or move a player"),
+            Map.entry("tppos", "Teleport to coordinates"),
             Map.entry("tphere", "Teleport a player to you"),
             Map.entry("tpoffline", "Teleport to where an offline player logged out"),
             Map.entry("there", "Teleport to the block you are looking at, or send selected entities there"),
@@ -640,6 +641,12 @@ public final class CoreCommandSpecs {
             teleportSpec("tppet", List.of(CommandArgSpec.optional("player","allium.tppet.others",SuggestionSpec.onlinePlayers("allium.tppet.others")))),
             teleportSpec("tpent", List.of(CommandArgSpec.optional("player","allium.tpmob.others",SuggestionSpec.onlinePlayers("allium.tpmob.others")))),
             teleportSpec("tpoffline", List.of(CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)))),
+            teleportSpec("tppos", List.of(CommandArgSpec.required("x", null, SuggestionSpec.literals(List.of("~"), null)),
+                    CommandArgSpec.required("y", null, SuggestionSpec.literals(List.of("~"), null)),
+                    CommandArgSpec.required("z", null, SuggestionSpec.literals(List.of("~"), null)),
+                    CommandArgSpec.optional("yaw", null, SuggestionSpec.literals(List.of("~"), null)),
+                    CommandArgSpec.optional("pitch", null, SuggestionSpec.literals(List.of("~"), null)),
+                    CommandArgSpec.optional("world", null, SuggestionSpec.none()))),
             teleportSpec("tphere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))));
 
     private static CommandSpec teleportSpec(String command, List<CommandArgSpec> args) {
@@ -648,7 +655,8 @@ public final class CoreCommandSpecs {
             case "tphere", "there" -> " [players|selectors...]";
             case "tppet", "tpent" -> " [player]";
             case "tpaccept", "tpdeny" -> " [requester]";
-            case "tp" -> " <player> [target]";
+            case "tp" -> " <player> [target] | /tp <x> <y> <z> [yaw] [pitch] [world]";
+            case "tppos" -> " <x> <y> <z> [yaw] [pitch] [world]";
             case "tptoggle" -> " [on|off] [player]";
             default -> "";
         };
@@ -719,6 +727,20 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of("set", "player.speed-set"))
     );
 
+    public static final CommandSpec SCALE = new CommandSpec(
+            "scale", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Set the scale of a player or selected mobs",
+            "/scale <0..16> [player]", "/scale <0..16> <player>",
+            "allium.scale", "allium.scale.others",
+            List.of(
+                    CommandArgSpec.required("scale", null,
+                            SuggestionSpec.literals(List.of("0", "0.1", "0.5", "1", "2", "4", "8", "16"), null)),
+                    CommandArgSpec.optional("player", "allium.scale.others",
+                            SuggestionSpec.onlinePlayers("allium.scale.others"))
+            ),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final CommandSpec PING = new CommandSpec(
             "ping", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
             "Check your ping or another player's ping",
@@ -776,12 +798,20 @@ public final class CoreCommandSpecs {
 
     public static final CommandSpec CLEARINVENTORY = new CommandSpec(
             "clearinventory", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("clear", "ci"),
-            "Clear inventory items for yourself or another player",
-            "/clearinventory [player] [material] [maxCount]", "/clearinventory <player> [material] [maxCount]",
+            "Clear inventory items for yourself, a player, or a group",
+            "/clearinventory [player|*|**] [item] [maxCount]", "/clearinventory <player|*|**> [item] [maxCount]",
             "allium.clearinventory", "allium.clearinventory.others",
             List.of(CommandArgSpec.optional("player", "allium.clearinventory.others",
                     SuggestionSpec.onlinePlayers("allium.clearinventory.others"))),
             List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec CLEAR_CONFIRM_TOGGLE = new CommandSpec(
+            "clearinventoryconfirmtoggle", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Toggle inventory clear confirmation",
+            "/clearinventoryconfirmtoggle", "/clearinventoryconfirmtoggle",
+            "allium.clearinventoryconfirmtoggle", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
     public static final CommandSpec MORE = new CommandSpec(
@@ -901,7 +931,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
-            SPEED, PING, EXT, BURN, SMITE, NV, CLEARINVENTORY, MORE, HAT, SKULL,
+            SPEED, SCALE, PING, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
             ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT
     );
 
@@ -933,7 +963,7 @@ public final class CoreCommandSpecs {
             "seen",
             CommandSpec.DEFAULT_NAMESPACE,
             "info",
-            List.of(),
+            List.of("alts"),
             "Show when a player was last seen and first joined",
             "/seen <player>",
             "/seen <player>",

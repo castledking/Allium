@@ -1,0 +1,266 @@
+{
+ "spigot-import-i3b": {
+  "suite": "spigot",
+  "passed": true,
+  "checks": 28,
+  "failures": [],
+  "alliumSha256": "6f63c28396abfee75339bb5a60bc66e3e13b294efde08a3c185ef531012dfe84",
+  "sources": {
+   "tests/live/staff/run.py": "5756a872481fcc565d34a2861315044408abb4dd4bea9586c21fa152cfbd655b",
+   "tests/live/staff/plugin/gate/StaffGate.java": "e89e4ace632243f7104ab4265ad9d56d95a4cbac5df471edcfc7bf7bf7322e15",
+   "tests/live/legacy-import/run.py": "9ae39da02a50051c0fcf7c488ad7844b622e46ffa07660f1e9986a4b7009f065",
+   "tests/live/legacy-import/LegacyFixture.java": "cdf9460d4dd40f10a00a893eb6726aeb7313f2eeb7c8e1bcec74a126ac1850f6"
+  },
+  "seconds": 30.8,
+  "results": [
+   {
+    "label": "spigot: a driver from a different H2 build is refused with an explanation",
+    "passed": true
+   },
+   {
+    "label": "spigot: dry run plans 3 homes, blocks 2 (a name with a space, an unloaded world), skips 1 superseded row",
+    "passed": true
+   },
+   {
+    "label": "spigot: the newest of two legacy rows for one home wins",
+    "passed": true
+   },
+   {
+    "label": "spigot: legacy names are lowercased (Farm -> farm)",
+    "passed": true
+   },
+   {
+    "label": "spigot: an unloaded world blocks the home, never substituted",
+    "passed": true
+   },
+   {
+    "label": "spigot: warps: spawn planned, shop a conflict with this server's warp, \"bad warp\" blocked",
+    "passed": true
+   },
+   {
+    "label": "spigot: both players' newest logout positions are planned",
+    "passed": true
+   },
+   {
+    "label": "spigot: unnamed homes, older logouts and other location types are counted, not imported",
+    "passed": true
+   },
+   {
+    "label": "spigot: the H2 driver came from legacy-allium-0.2.20a-shaded.jar",
+    "passed": true
+   },
+   {
+    "label": "spigot: the dry run hashed the source and left it unchanged",
+    "passed": true
+   },
+   {
+    "label": "spigot: legacy max homes become a staff-overrides snippet",
+    "passed": true
+   },
+   {
+    "label": "spigot: the summary lists what needs a decision",
+    "passed": true
+   },
+   {
+    "label": "spigot: apply is refused while players are online",
+    "passed": true
+   },
+   {
+    "label": "spigot: apply is refused when the plan changed since the dry run (PlayerBot's logout was saved here)",
+    "passed": true
+   },
+   {
+    "label": "spigot: this server's newer logout position is kept",
+    "passed": true
+   },
+   {
+    "label": "spigot: apply imports the 3 homes",
+    "passed": true
+   },
+   {
+    "label": "spigot: PlayerBot's homes are in the travel table",
+    "passed": true
+   },
+   {
+    "label": "spigot: an offline-only player gets the home and the newest logout position",
+    "passed": true
+   },
+   {
+    "label": "spigot: PlayerBot's logout saved by this server is untouched",
+    "passed": true
+   },
+   {
+    "label": "spigot: spawn is imported; this server's shop is kept",
+    "passed": true
+   },
+   {
+    "label": "spigot: the ledger holds each applied record and the run",
+    "passed": true
+   },
+   {
+    "label": "spigot: the legacy database is unchanged after apply",
+    "passed": true
+   },
+   {
+    "label": "spigot: a run cannot be applied twice",
+    "passed": true
+   },
+   {
+    "label": "spigot: a later dry run sees the ledger: nothing left to import",
+    "passed": true
+   },
+   {
+    "label": "spigot: /homes lists the imported homes",
+    "passed": true
+   },
+   {
+    "label": "spigot: /home base lands on the imported home",
+    "passed": true
+   },
+   {
+    "label": "spigot: /warp spawn lands on the imported warp",
+    "passed": true
+   },
+   {
+    "label": "spigot: no exceptions or SEVERE lines in the server log",
+    "passed": true
+   }
+  ]
+ },
+ "paper-import-i3b": {
+  "suite": "paper",
+  "passed": true,
+  "checks": 28,
+  "failures": [],
+  "alliumSha256": "6f63c28396abfee75339bb5a60bc66e3e13b294efde08a3c185ef531012dfe84",
+  "sources": {
+   "tests/live/staff/run.py": "5756a872481fcc565d34a2861315044408abb4dd4bea9586c21fa152cfbd655b",
+   "tests/live/staff/plugin/gate/StaffGate.java": "e89e4ace632243f7104ab4265ad9d56d95a4cbac5df471edcfc7bf7bf7322e15",
+   "tests/live/legacy-import/run.py": "9ae39da02a50051c0fcf7c488ad7844b622e46ffa07660f1e9986a4b7009f065",
+   "tests/live/legacy-import/LegacyFixture.java": "cdf9460d4dd40f10a00a893eb6726aeb7313f2eeb7c8e1bcec74a126ac1850f6"
+  },
+  "seconds": 27.3,
+  "results": [
+   {
+    "label": "paper: a driver from a different H2 build is refused with an explanation",
+    "passed": true
+   },
+   {
+    "label": "paper: dry run plans 3 homes, blocks 2 (a name with a space, an unloaded world), skips 1 superseded row",
+    "passed": true
+   },
+   {
+    "label": "paper: the newest of two legacy rows for one home wins",
+    "passed": true
+   },
+   {
+    "label": "paper: legacy names are lowercased (Farm -> farm)",
+    "passed": true
+   },
+   {
+    "label": "paper: an unloaded world blocks the home, never substituted",
+    "passed": true
+   },
+   {
+    "label": "paper: warps: spawn planned, shop a conflict with this server's warp, \"bad warp\" blocked",
+    "passed": true
+   },
+   {
+    "label": "paper: both players' newest logout positions are planned",
+    "passed": true
+   },
+   {
+    "label": "paper: unnamed homes, older logouts and other location types are counted, not imported",
+    "passed": true
+   },
+   {
+    "label": "paper: the H2 driver came from h2-2.1.214.jar",
+    "passed": true
+   },
+   {
+    "label": "paper: the dry run hashed the source and left it unchanged",
+    "passed": true
+   },
+   {
+    "label": "paper: legacy max homes become a staff-overrides snippet",
+    "passed": true
+   },
+   {
+    "label": "paper: the summary lists what needs a decision",
+    "passed": true
+   },
+   {
+    "label": "paper: apply is refused while players are online",
+    "passed": true
+   },
+   {
+    "label": "paper: apply is refused when the plan changed since the dry run (PlayerBot's logout was saved here)",
+    "passed": true
+   },
+   {
+    "label": "paper: this server's newer logout position is kept",
+    "passed": true
+   },
+   {
+    "label": "paper: apply imports the 3 homes",
+    "passed": true
+   },
+   {
+    "label": "paper: PlayerBot's homes are in the travel table",
+    "passed": true
+   },
+   {
+    "label": "paper: an offline-only player gets the home and the newest logout position",
+    "passed": true
+   },
+   {
+    "label": "paper: PlayerBot's logout saved by this server is untouched",
+    "passed": true
+   },
+   {
+    "label": "paper: spawn is imported; this server's shop is kept",
+    "passed": true
+   },
+   {
+    "label": "paper: the ledger holds each applied record and the run",
+    "passed": true
+   },
+   {
+    "label": "paper: the legacy database is unchanged after apply",
+    "passed": true
+   },
+   {
+    "label": "paper: a run cannot be applied twice",
+    "passed": true
+   },
+   {
+    "label": "paper: a later dry run sees the ledger: nothing left to import",
+    "passed": true
+   },
+   {
+    "label": "paper: /homes lists the imported homes",
+    "passed": true
+   },
+   {
+    "label": "paper: /home base lands on the imported home",
+    "passed": true
+   },
+   {
+    "label": "paper: /warp spawn lands on the imported warp",
+    "passed": true
+   },
+   {
+    "label": "paper: no exceptions or SEVERE lines in the server log",
+    "passed": true
+   }
+  ]
+ },
+ "inputs": {
+  "h2-2.1.214.jar": "d623cdc0f61d218cf549a8d09f1c391ff91096116b22e2475475fce4fbe72bd0 (Maven Central SHA-1 d5c2005c9e3279201e12d4776c948578b16bf8b2)",
+  "legacy-allium-0.2.20a-shaded.jar": "dcb068063ed0d84fcd44de539f8a73a831fe2e94b0552e290a4f567f7b85115c (the full legacy build, with codes/castled/allium/libs/h2)"
+ },
+ "earlier": {
+  "spigot-import-i1": "dry run failed: the fixture was written by a plain H2 and read by the legacy jar (H2 error 90030); led to the driver-matched fixtures and the explained refusal",
+  "paper-import-i3": "6 failures: Paper 26.3 loads a world named world_nether even with allow-nether=false, so the \"unloaded world\" fixture home imported correctly; the fixture now uses old_skyblock"
+ }
+}

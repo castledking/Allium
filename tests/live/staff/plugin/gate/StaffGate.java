@@ -339,6 +339,14 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                         } catch (NoSuchFieldException next) { /* superclass */ }
                     }
                 }
+                case "travel" -> {
+                    // Read-only view of an owner's imported destinations and the import ledger.
+                    out.put("homes", query("SELECT name, world_name, x, y, z, yaw, pitch FROM allium_travel_homes WHERE owner = ? ORDER BY name", args[1]));
+                    out.put("logout", query("SELECT world_name, x, y, z FROM allium_teleport_locations WHERE owner = ? AND slot = 'logout'", args[1]));
+                    out.put("warps", query("SELECT name, world_name, x, y, z FROM allium_travel_warps ORDER BY name"));
+                    out.put("ledger", query("SELECT domain, COUNT(*) AS n FROM allium_import_records GROUP BY domain ORDER BY domain"));
+                    out.put("runs", query("SELECT run_id, result FROM allium_import_runs ORDER BY run_id"));
+                }
                 case "save" -> {
                     Player p = online(args[1]);
                     p.saveData();

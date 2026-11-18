@@ -270,9 +270,13 @@ public final class CoreCommandSpecs {
                     new CommandNodeSpec("hide", List.of(), "allium.hide.admin", "/allium hide <status|reload|enabled|group|resolve|fix|unfix>", List.of(), List.of()),
                     new CommandNodeSpec("reload", List.of(), "allium.reload", "/allium reload", List.of(), List.of()),
                     new CommandNodeSpec("version", List.of(), null, "/allium version", List.of(), List.of()),
-                    new CommandNodeSpec("import", List.of(), "allium.import", "/allium import lang [apply]", List.of(), List.of(
+                    new CommandNodeSpec("import", List.of(), "allium.import", "/allium import <lang [apply]|legacy [apply <run>]>", List.of(), List.of(
                             new CommandNodeSpec("lang", List.of(), "allium.import", "/allium import lang [apply]",
                                     List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null))),
+                                    List.of()),
+                            new CommandNodeSpec("legacy", List.of(), "allium.import", "/allium import legacy [apply <run>]",
+                                    List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null)),
+                                            CommandArgSpec.optional("run", "allium.import", SuggestionSpec.none())),
                                     List.of()))),
                     new CommandNodeSpec("adopt-window", List.of(), "allium.adoptwindow", "/allium adopt-window [<duration>|off]",
                             List.of(CommandArgSpec.optional("duration", "allium.adoptwindow", SuggestionSpec.literals(List.of("10m", "off"), null))),

@@ -59,7 +59,13 @@ notifications, charge send costs or deliver gifts into inventories.
 ## Legacy Allium H2 and configuration
 
 Primary location: `plugins/Allium/database/sfcore.mv.db` (JDBC base `database/sfcore`,
-H2 MySQL mode); version table `database_version`. Inspect metadata and migrations,
+H2 MySQL mode); version table `database_version`. **Implemented for homes, warps and logout
+positions:** [legacy import](legacy-import.md) (`/allium import legacy`). Found while building it:
+H2 2.x writes its data-type class names into the file, and legacy Allium's shaded H2 is relocated
+to `codes.castled.allium.libs.h2`, so a legacy database opens only with that same H2 (the legacy
+jar itself), not a plain `h2` jar; the importer loads it from the operator's jar in an isolated
+class loader. The ledger below now exists as `allium_import_runs`/`allium_import_records`
+(component `import`). Inspect metadata and migrations,
 not a guessed file extension or an assumed latest column set. Use the matching H2
 reader on a consistent stopped copy/export; never let a newer H2 auto-upgrade the
 only source. Optional columns and externally created tables need explicit detection.

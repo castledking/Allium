@@ -77,6 +77,8 @@ tables are not a cache-coherence or cross-server travel feature.
 
 **Explicit follow-ups:** pet teleport, offline home/restore administration,
 legacy destination import and selector/coordinate syntax. None is claimed by S15.
+Legacy homes, warps and logout positions now import with
+[`/allium import legacy`](legacy-import.md).
 
 **Unit only:** 27 S15 tests pass within the 518-test full build, covering real
 SQLite limits/concurrency/rollback/CAS, name policy and deterministic service

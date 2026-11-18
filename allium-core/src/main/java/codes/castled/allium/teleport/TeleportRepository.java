@@ -156,6 +156,48 @@ public final class TeleportRepository {
         }
     }
 
+    /** Importing a location never replaces one this server saved: that one is newer. */
+    public enum ImportResult { CREATED, PRESENT, NEWER }
+
+    /** Inside the caller's transaction: writes {@code location} only when {@code slot} is empty. */
+    public ImportResult importLocation(Connection connection, UUID owner, String slot, SavedLocation location) throws SQLException {
+        Objects.requireNonNull(owner, "owner");
+        validateSlot(slot);
+        Objects.requireNonNull(location, "location");
+        try (PreparedStatement select = connection.prepareStatement("SELECT world_id, world_name, x, y, z, yaw, pitch FROM "
+                + LOCATIONS_TABLE + " WHERE owner = ? AND slot = ?")) {
+            select.setString(1, owner.toString());
+            select.setString(2, slot);
+            try (ResultSet row = select.executeQuery()) {
+                if (row.next()) {
+                    SavedLocation current = new SavedLocation(UUID.fromString(row.getString(1)), row.getString(2),
+                            row.getDouble(3), row.getDouble(4), row.getDouble(5), row.getFloat(6), row.getFloat(7));
+                    return current.equals(location) ? ImportResult.PRESENT : ImportResult.NEWER;
+                }
+            }
+        }
+        save(connection, owner, slot, location);
+        return ImportResult.CREATED;
+    }
+
+    /** Every owner's location in {@code slot}, for an import plan. */
+    public Map<UUID, SavedLocation> slot(String slot) throws SQLException {
+        validateSlot(slot);
+        Map<UUID, SavedLocation> out = new LinkedHashMap<>();
+        try (Connection connection = connections.connection();
+             PreparedStatement select = connection.prepareStatement("SELECT owner, world_id, world_name, x, y, z, yaw, pitch FROM "
+                     + LOCATIONS_TABLE + " WHERE slot = ?")) {
+            select.setString(1, slot);
+            try (ResultSet row = select.executeQuery()) {
+                while (row.next()) {
+                    out.put(UUID.fromString(row.getString(1)), new SavedLocation(UUID.fromString(row.getString(2)), row.getString(3),
+                            row.getDouble(4), row.getDouble(5), row.getDouble(6), row.getFloat(7), row.getFloat(8)));
+                }
+            }
+        }
+        return out;
+    }
+
     private void save(Connection connection, UUID owner, String slot, SavedLocation location) throws SQLException {
         String update = dialect == SqlDialect.MYSQL
                 ? " ON DUPLICATE KEY UPDATE world_id = VALUES(world_id), world_name = VALUES(world_name), "

@@ -30,6 +30,8 @@ dependencies {
     // JDBC drivers for storage tests only; servers provide their own at runtime.
     testRuntimeOnly("org.xerial:sqlite-jdbc:3.49.1.0")
     testRuntimeOnly("com.mysql:mysql-connector-j:9.2.0")
+    // The H2 that legacy Allium shaded, to build legacy-shaped databases for the importer tests.
+    testRuntimeOnly("com.h2database:h2:2.1.214")
 }
 
 tasks.withType<JavaCompile>().configureEach {

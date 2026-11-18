@@ -76,6 +76,10 @@ class LegacyImportTest {
                 assertEquals(7, LegacyAlliumReader.read(c).homes().size());
                 assertThrows(java.sql.SQLException.class, () -> c.createStatement().execute("DELETE FROM warps"), "the copy is read-only");
             }
+            // H2 keeps the creating user: any other login is refused, with the reason spelled out.
+            var refused = assertThrows(java.sql.SQLException.class, () -> source.openReadOnly(copy.copy(), "", ""));
+            assertEquals(28000, refused.getErrorCode());
+            assertTrue(refused.getMessage().contains("refused user ''") && refused.getMessage().contains("legacy-allium.yml"), refused.getMessage());
         }
         assertEquals(before, LegacyH2Source.sha256(db), "the original file is untouched");
         assertTrue(LegacyH2Source.load(List.of(notH2)).isEmpty());

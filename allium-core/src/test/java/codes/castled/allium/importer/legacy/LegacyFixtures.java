@@ -19,7 +19,8 @@ final class LegacyFixtures {
 
     static Path create(Path dir) throws SQLException {
         Path base = dir.resolve("sfcore");
-        try (Connection c = DriverManager.getConnection("jdbc:h2:" + base.toAbsolutePath() + ";MODE=MySQL");
+        // Legacy Allium created its database as sa with no password; H2 then requires that login.
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + base.toAbsolutePath() + ";MODE=MySQL", "sa", "");
              Statement s = c.createStatement()) {
             s.execute("CREATE TABLE IF NOT EXISTS database_version (version INT PRIMARY KEY, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             s.execute("INSERT INTO database_version (version) VALUES (9)");
@@ -68,7 +69,7 @@ final class LegacyFixtures {
 
     static Connection open(Path mvDb) throws SQLException {
         String file = mvDb.toAbsolutePath().toString();
-        return DriverManager.getConnection("jdbc:h2:" + file.substring(0, file.length() - 6) + ";ACCESS_MODE_DATA=r;IFEXISTS=TRUE;MODE=MySQL");
+        return DriverManager.getConnection("jdbc:h2:" + file.substring(0, file.length() - 6) + ";ACCESS_MODE_DATA=r;IFEXISTS=TRUE;MODE=MySQL", "sa", "");
     }
 
     /** A file-backed SQLite destination. */

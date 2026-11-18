@@ -1,13 +1,14 @@
 # Legacy import live gate
 
-**PASS on 2026-11-18: 56 live checks, 0 failures.** Spigot 1.20.1 (`spigot-import-i3b`, 28 checks) and
-Paper 26.3 (`paper-import-i3b`, 28 checks), SQLite, both on Allium.jar
-`6f63c28396abfee75339bb5a60bc66e3e13b294efde08a3c185ef531012dfe84`. Every check ran on both lanes.
+**PASS on 2026-11-18: 56 live checks, 0 failures.** Spigot 1.20.1 (`spigot-import-i4`, 28 checks) and
+Paper 26.3 (`paper-import-i4`, 28 checks), SQLite, both on Allium.jar
+`7c6696a555ebf20063fbca14a9d985c712535e148adc74bad380569ae15ec6f0`. Every check ran on both lanes.
 The [manifest](evidence/manifest.json) lists them; runs are in
 `/mnt/storage/.allium-validation/20261118/staff/runs/`.
 
 - **Source:** `plugins/Allium/database/sfcore.mv.db` built with legacy Allium's own table
-  definitions (schema 9) and fixture rows only, no production data. On Spigot it is written through
+  definitions (schema 9) and fixture rows only, no production data, and created as user `sa` with
+  no password, as legacy Allium's connection pool did. On Spigot it is written through
   the shaded legacy jar's relocated H2 (`codes.castled.allium.libs.h2`), as a real legacy server
   wrote it; on Paper through a plain `h2-2.1.214.jar`. Each lane reads it with that same driver from
   `plugins/Allium/import/`.
@@ -26,6 +27,13 @@ The [manifest](evidence/manifest.json) lists them; runs are in
 Server logs: no exceptions or SEVERE lines on either lane.
 
 ## What the gate found
+
+- **H2 only opens a database with the login that created it.** Legacy Allium connected as `sa`;
+  the first import connected with no user and a real legacy database refused it (H2 error 28000,
+  reported as "(Message 28000 not found)" by the shaded jar). The earlier fixtures were created
+  without a user, so the gate passed on jar `6f63c283…`; rebuilt as `sa`, that jar fails the same
+  way (`spigot-import-i3-repro`). The import now logs in as `sa` by default, takes `user`/`password`
+  from `legacy-allium.yml`, and explains a refused login.
 
 - **A legacy database opens only with the H2 that wrote it.** H2 2.x writes its data-type class
   names into the file, and legacy Allium's shade step renamed H2's package, so a plain `h2` jar

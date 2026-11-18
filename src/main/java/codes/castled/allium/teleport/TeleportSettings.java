@@ -30,6 +30,14 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
         }
     }
 
+    /** Flight removes landing requirements; an explicit unsafe grant removes hazard checks too. */
+    public TeleportSettings forMover(boolean flight, boolean unsafe) {
+        if (!flight && !unsafe) return this;
+        return new TeleportSettings(warmupMillis, movementTolerance, requestExpiryMillis, deathBack,
+                safety && !unsafe, adjust, radius, vertical, lava, voids && !flight,
+                suffocation, falls && !flight, loadChunk, cooldowns);
+    }
+
     public long cooldown(String command) {
         return cooldowns.getOrDefault(command, 0L);
     }

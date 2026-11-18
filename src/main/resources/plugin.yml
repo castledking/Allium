@@ -671,6 +671,9 @@ permissions:
     default: op
   allium.tptoggle.others:
     default: op
+  allium.teleport.unsafe:
+    description: Bypass teleport landing and hazard checks; world bounds and chunk policy still apply
+    default: false
   allium.teleport.bypass.toggle:
     description: Explicit teleport toggle bypass (never granted implicitly to operators)
     default: false

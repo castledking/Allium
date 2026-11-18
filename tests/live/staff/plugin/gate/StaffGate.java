@@ -192,6 +192,11 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                     p.getInventory().setItem(Integer.parseInt(args[2]), stack);
                     out.put("slot", describe(p.getInventory().getItem(Integer.parseInt(args[2]))));
                 }
+                case "fill" -> {
+                    Player p = online(args[1]);
+                    for (int i = Integer.parseInt(args[2]); i <= Integer.parseInt(args[3]); i++) p.getInventory().setItem(i, new ItemStack(Material.valueOf(args[4]), 64));
+                    out.put("filled", true);
+                }
                 case "clear" -> {
                     Player p = online(args[1]);
                     p.getInventory().clear();
@@ -269,6 +274,70 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                     p.teleport(new Location(world, Double.parseDouble(args[2]), Double.parseDouble(args[3]), Double.parseDouble(args[4]),
                             Float.parseFloat(args[5]), Float.parseFloat(args[6])));
                     out.put("at", p.getLocation().toVector().toString());
+                }
+                case "scale-spawn" -> {
+                    var location = online(args[1]).getLocation().add(2, 0, 0);
+                    var mob = location.getWorld().spawn(location, org.bukkit.entity.Cow.class);
+                    mob.setAI(false);
+                    out.put("id", mob.getUniqueId().toString());
+                }
+                case "scale-select" -> {
+                    var mob = getServer().getEntity(UUID.fromString(args[2]));
+                    getServer().getPluginManager().callEvent(new org.bukkit.event.player.PlayerInteractEntityEvent(
+                            online(args[1]), mob, org.bukkit.inventory.EquipmentSlot.HAND));
+                }
+                case "scale-value" -> {
+                    var target = args[1].length() == 36
+                            ? (org.bukkit.entity.LivingEntity) getServer().getEntity(UUID.fromString(args[1]))
+                            : online(args[1]);
+                    var registry = org.bukkit.Registry.ATTRIBUTE;
+                    var scale = registry.get(org.bukkit.NamespacedKey.minecraft("scale"));
+                    if (scale == null) scale = registry.get(org.bukkit.NamespacedKey.minecraft("generic.scale"));
+                    var instance = scale == null ? null : target.getAttribute(scale);
+                    out.put("scale", instance == null ? null : instance.getBaseValue());
+                }
+                case "where" -> {
+                    Player p = online(args[1]);
+                    Location l = p.getLocation();
+                    out.put("x", l.getX());
+                    out.put("y", l.getY());
+                    out.put("z", l.getZ());
+                    out.put("yaw", l.getYaw());
+                    out.put("pitch", l.getPitch());
+                    out.put("world", l.getWorld().getName());
+                }
+                case "potion" -> {
+                    // Base potion, custom effects and every name field, read reflectively so one
+                    // fixture serves Spigot 1.20.1 and Paper 26.3.
+                    Player p = online(args[1]);
+                    ItemStack stack = p.getInventory().getItem(Integer.parseInt(args[2]));
+                    if (stack == null || !(stack.getItemMeta() instanceof org.bukkit.inventory.meta.PotionMeta meta)) throw new IllegalArgumentException("no potion in slot");
+                    out.put("type", stack.getType().name());
+                    out.put("amount", stack.getAmount());
+                    try {
+                        Object base = meta.getClass().getMethod("getBasePotionType").invoke(meta);
+                        out.put("base", base == null ? null : ((Enum<?>) base).name());
+                    } catch (NoSuchMethodException older) {
+                        @SuppressWarnings("deprecation") var data = meta.getBasePotionData();
+                        out.put("base", data.getType().name() + (data.isExtended() ? "+long" : "") + (data.isUpgraded() ? "+strong" : ""));
+                    }
+                    List<String> effects = new ArrayList<>();
+                    for (var e : meta.getCustomEffects()) effects.add(e.getType().getKey().getKey() + ":" + e.getAmplifier() + ":" + e.getDuration());
+                    out.put("custom", effects);
+                    out.put("displayName", meta.hasDisplayName() ? meta.getDisplayName() : null);
+                    try {
+                        out.put("customPotionName", meta.getClass().getMethod("hasCustomPotionName").invoke(meta).equals(Boolean.TRUE)
+                                ? meta.getClass().getMethod("getCustomPotionName").invoke(meta) : null);
+                    } catch (NoSuchMethodException older) {
+                        out.put("customPotionName", "<unsupported>");
+                    }
+                    for (Class<?> t = meta.getClass(); t != null; t = t.getSuperclass()) {
+                        try {
+                            var f = t.getDeclaredField("displayName");
+                            if (f.getType() == String.class) { f.setAccessible(true); out.put("displayNameJson", f.get(meta)); }
+                            break;
+                        } catch (NoSuchFieldException next) { /* superclass */ }
+                    }
                 }
                 case "save" -> {
                     Player p = online(args[1]);

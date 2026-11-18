@@ -268,7 +268,7 @@ def with_allium():
     minted = addon(f'mint {BOT}')
     start = len(logs)
     console(f'give {BOT} allium:gate_wand')
-    gave = wait(lambda: line_with('Gave 1x allium:gate_wand', start), "Allium's /give of the addon item", 15)
+    gave = wait(lambda: line_with('Gave 1 Gate Wand', start), "Allium's /give of the addon item", 15)
     found = addon(f'identify {BOT}')
     sticks = found['sticks']
     require(minted.get('status') == 'CREATED' and minted.get('given') == BOT, f'the addon created allium:gate_wand through the API: {minted}')

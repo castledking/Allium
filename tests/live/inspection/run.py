@@ -561,7 +561,7 @@ def run_suite(kind, port):
     require(gui_state.get('openTopSize') == 45
             and top.get('0') == '5xEMERALD'
             and top.get('26') == '7xGOLD_INGOT'
-            and top.get('27') == '1xLIGHT_GRAY_STAINED_GLASS_PANE'
+            and '27' not in top
             and top.get('41') == '3xDIAMOND'
             and top.get('36') == '1xDIAMOND_HELMET'
             and top.get('37') == '1xDIAMOND_CHESTPLATE'
@@ -569,7 +569,7 @@ def run_suite(kind, port):
             and top.get('39') == '1xDIAMOND_BOOTS'
             and top.get('40') == '1xSHIELD'
             and all(top.get(str(i)) == '1xLIGHT_GRAY_STAINED_GLASS_PANE' for i in range(42, 45)),
-            lane.name + ': /invsee 45-slot layout (storage 0..26, hotbar 27..35 with the held slot 0 as a marker, armor 36..39, offhand 40, main hand 41, panes 42..44)',
+            lane.name + ': /invsee 45-slot layout (storage 0..26, hotbar 27..35 with the held slot 0 left empty, armor 36..39, offhand 40, main hand 41, panes 42..44)',
             {'top': top})
 
     # Concurrent read-only viewer + live refresh sync
@@ -624,8 +624,8 @@ def run_suite(kind, port):
     staff.drag(42, 43)
     window(.2)
     gui_locked = lane.fixture('inv InspStaff').get('openTopNonEmpty', {})
-    require(all(gui_locked.get(str(i)) == '1xLIGHT_GRAY_STAINED_GLASS_PANE' for i in [27, 42, 43, 44]),
-            lane.name + ': locked panes 42..44 and the held marker preserved under .edit clicks and drags')
+    require(all(gui_locked.get(str(i)) == '1xLIGHT_GRAY_STAINED_GLASS_PANE' for i in [42, 43, 44]) and '27' not in gui_locked,
+            lane.name + ': locked panes 42..44 and the empty held cell preserved under .edit clicks and drags')
 
     # Place 6xIRON_INGOT from InspStaff hotbar[0] (rawSlot 72) into InspNorm hotbar[1] (GUI slot 28)
     staff.click(72, 0, 0)

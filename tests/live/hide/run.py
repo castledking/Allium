@@ -38,7 +38,7 @@ def run_suite(lane):
     assert hashlib.sha256(pe.read_bytes()).hexdigest()=='060087c58ec268eae7dd0eb1f17ac3bea1eaadda1693414141ff64e506091bd7'
     shutil.copy2(pe,lane.path/'plugins/PacketEvents.jar')
     cfg={'settings':{'enabled':True,'unknown-command-completion-help-message':'&c&lHIDE 100% &7Try /help'},'groups':{
-        'default':{'whitelist':True,'commands':['hgparty invite','party invite','hgmapped','hgguarded','near','help'],'tabcompletes':['hgparty invite','party invite','hgmapped','hgguarded','near','help']},
+        'default':{'whitelist':True,'commands':['hgparty invite','party invite','hgmapped','hgguarded','near','help','i'],'tabcompletes':['hgparty invite','party invite','hgmapped','hgguarded','near','help','i']},
         'alt':{'whitelist':False,'commands':['party invite','hgparty invite'],'tabcompletes':['party invite','hgparty invite']},
         'vip':{'whitelist':True,'commands':['hideghost'],'tabcompletes':['^']}}}
     (lane.path/'plugins/Allium/hide.yml').write_text(yaml.safe_dump(cfg,sort_keys=False,default_flow_style=True))
@@ -57,6 +57,20 @@ def run_suite(lane):
     bot.chat(bot.cmd('party invite'),'HIDE-ACTION hgparty invite');require(True,'allowed alias executes')
     bot.chat(bot.cmd('party kick'),'Unknown command');require(True,'sibling execution refused')
     require(tab(bot,'party ')==['invite'],'full path suggestions filtered')
+    # Spigot and Paper never answer a request whose completion is empty. 40 of them used to fill
+    # the 32-entry ledger, after which every new request was dropped until they expired.
+    burst=len(bot.lines)
+    for i in range(40):bot.write(f'tab zzunanswered{i} x')
+    wait(lambda:sum(1 for s in bot.lines[burst:] if s.startswith('MSGG-TABREQ '))>=40,'unanswered burst sent')
+    window(1)
+    require(not any(s.startswith('MSGG-TAB ') for s in bot.lines[burst:]),'requests with nothing to complete get no answer from the server')
+    require(tab(bot,'party ')==['invite'],'suggestions still answer right after 40 unanswered requests')
+    require(tab(bot,'i diamond_s')==[],'/i completes nothing without allium.give')
+    lane.fixture('perm InfoNorm allium.give true')
+    items=tab(bot,'i diamond_s')
+    require('diamond_sword' in items and all(v.startswith('diamond_s') for v in items),'/i item names pass the resolver with allium.give',items)
+    require('stick,gshovel' in tab(bot,'i stick,gsh'),'/i completes the entry after a comma')
+    lane.fixture('perm InfoNorm allium.give false')
     require(tab(bot,'')==[],'bare slash response withheld')
     require(not any(':' in s for s in tab(bot,'h')),'namespaced root suggestions absent')
     bot.chat(bot.cmd('hgguarded'),'permission');require(True,'native permission denies whitelisted command')

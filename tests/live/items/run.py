@@ -314,8 +314,8 @@ def disarmer_cases():
     for label in labels:
         appearance = APPEARANCES[label]
         gg('clear')
-        line, _ = give(f'GateBot {appearance}', ['Gave 1x ' + appearance, 'Could not give', 'Invalid item spec'])
-        require(f'Gave 1x {appearance} to GateBot' in line, f'{label}: Allium handled the give ({line.strip()[-90:]})')
+        line, _ = give(f'GateBot {appearance}', ['Gave 1 ', 'Could not give', 'Invalid item spec'])
+        require(f'Gave 1 ' in line, f'{label}: Allium handled the give ({line.strip()[-90:]})')
         snap = snapshot('disarmer-' + label)
         tools = [s for s in snap['slots'] if s['behavior'] == 'allium:mob_disarmer']
         require(len(tools) == 1, f'{label}: one verified allium:mob_disarmer in the inventory')
@@ -329,7 +329,7 @@ def disarmer_cases():
                 require(tool['customModelData'] == 2577020 and tool['material'] == 'GOLDEN_HOE',
                         f'allium: built-in golden hoe with full-charge model ({tool["customModelData"]})')
     gg('clear')
-    line, _ = give('GateBot allium:mob_disarmer 3', 'Gave 3x allium:mob_disarmer')
+    line, _ = give('GateBot allium:mob_disarmer 3', 'Gave 3 ')
     snap = snapshot('disarmer-three')
     tools = [s for s in snap['slots'] if s['behavior'] == 'allium:mob_disarmer']
     require(len(tools) == 3 and all(t['amount'] == 1 for t in tools) and len({t['instanceUuid'] for t in tools}) == 3,
@@ -340,14 +340,14 @@ def carrier_cases():
     """No vanilla-carrier false matches: a golden hoe, even one dressed as a disarmer (its name and
     exact model data), is never identified as allium:mob_disarmer."""
     gg('clear')
-    line, _ = give('GateBot golden_hoe', ['Gave 1x', 'Could not give'])
-    require('Gave 1x' in line, f'a plain golden hoe was given: {line.strip()[-60:]}')
+    line, _ = give('GateBot golden_hoe', ['Gave 1 ', 'Could not give'])
+    require('Gave 1 ' in line, f'a plain golden hoe was given: {line.strip()[-60:]}')
     if spec['components']:
         dressed = 'golden_hoe[custom_name={text:"Mob Disarmer",color:"gold",italic:false},custom_model_data={floats:[2577020f]}]'
     else:
         dressed = 'golden_hoe{display:{Name:\'{"text":"Mob Disarmer","color":"gold","italic":false}\'},CustomModelData:2577020}'
-    line, _ = give('GateBot ' + dressed, ['Gave 1x', 'Could not give'])
-    require('Gave 1x' in line, f'a golden hoe with the disarmer\'s name and model data was given: {line.strip()[-60:]}')
+    line, _ = give('GateBot ' + dressed, ['Gave 1 ', 'Could not give'])
+    require('Gave 1 ' in line, f'a golden hoe with the disarmer\'s name and model data was given: {line.strip()[-60:]}')
     snap = snapshot('carrier-spoof')
     hoes = slots_of(snap, 'GOLDEN_HOE')
     spoof = [h for h in hoes if h.get('customModelData') == 2577020]
@@ -368,7 +368,7 @@ def overflow_cases():
     line, _ = give('GateBot diamond 100 --overflow=partial', ['did not fit and were not given', 'Gave'])
     snap = snapshot('overflow-partial')
     given = sum(s['amount'] for s in slots_of(snap, 'DIAMOND'))
-    require('Gave 64 of 100x diamond' in line and '36 did not fit and were not given' in line, f'partial reported: {line.strip()[-110:]}')
+    require('Gave 64 of 100x Diamond' in line and '36 did not fit and were not given' in line, f'partial reported: {line.strip()[-110:]}')
     require(given == 64 and not snap['ground'], f'partial gave {given} and dropped nothing')
 
     gg('fill 1')
@@ -377,7 +377,7 @@ def overflow_cases():
     snap = snapshot('overflow-drop')
     given = sum(s['amount'] for s in slots_of(snap, 'DIAMOND'))
     on_ground = sum(g['amount'] for g in snap['ground'] if g['material'] == 'DIAMOND')
-    require('Gave 64 of 100x diamond' in line and '36 did not fit and dropped' in line, f'drop reported: {line.strip()[-110:]}')
+    require('Gave 64 of 100x Diamond' in line and '36 did not fit and dropped' in line, f'drop reported: {line.strip()[-110:]}')
     require(given == 64 and on_ground == 36, f'drop gave {given} and dropped {on_ground} at the feet')
 
     gg('clear')
@@ -389,7 +389,7 @@ def overflow_cases():
 
 def skull_cases():
     gg('clear')
-    line, _ = give('GateBot player_head owner:GateBot', 'Gave 1x player_head')
+    line, _ = give('GateBot player_head owner:GateBot', 'Gave 1 Player Head')
     snap = snapshot('skull-online')
     heads = slots_of(snap, 'PLAYER_HEAD')
     require(len(heads) == 1 and heads[0].get('skullOwner') == 'GateBot', 'an online owner resolves at once')
@@ -404,7 +404,7 @@ def skull_cases():
     console('give GateBot player_head owner:Notch')
     wait(lambda: any('Resolving skull profiles for GateBot' in x for x in logs[start:]), 'pending skull', 10)
     disconnect()
-    line = wait(lambda: next((x for x in logs[start:] if 'left before the items were ready' in x or 'Gave 1x player_head' in x), None),
+    line = wait(lambda: next((x for x in logs[start:] if 'left before the items were ready' in x or 'Gave 1 Player Head' in x), None),
                 'skull outcome after disconnect', 15)
     cases.append({'give': 'GateBot player_head owner:Notch (bot disconnects during a 2 s lookup)', 'reply': line.strip()})
     require('left before the items were ready' in line, f'a target who disconnects during async resolution gets nothing: {line.strip()[-90:]}')
@@ -417,7 +417,7 @@ def skull_cases():
     started = time.monotonic()
     start = len(logs)
     # A name the earlier slow lookup did not cache.
-    line, _ = give('GateBot player_head owner:Dinnerbone', 'Gave 1x player_head', timeout=20)
+    line, _ = give('GateBot player_head owner:Dinnerbone', 'Gave 1 Player Head', timeout=20)
     elapsed = time.monotonic() - started
     warned = wait(lambda: next((x for x in logs[start:] if 'timed out after 3000 ms' in x), None), 'skull timeout warning', 5)
     cases.append({'give': 'warning', 'reply': warned.strip()})
@@ -432,7 +432,7 @@ def raw_cases():
         line, _ = give(f'GateBot diamond_sword[custom_name={{text:"{NAME}",italic:false}},unbreakable={{}}]', ['Gave', 'Could not give'])
         snap = snapshot('raw-components')
         swords = slots_of(snap, 'DIAMOND_SWORD')
-        require('Gave 1x' in line and len(swords) == 1 and swords[0]['unbreakable'] and NAME in str(swords[0]['name']),
+        require('Gave 1 ' in line and len(swords) == 1 and swords[0]['unbreakable'] and NAME in str(swords[0]['name']),
                 f'[...] components apply, commas and semicolons included: {swords[0]["name"] if swords else line.strip()[-80:]}')
         line, _ = give('GateBot diamond_sword{Unbreakable:1b}', ['Could not give', 'Gave'])
         require('uses [...] data components' in line, f'{{...}} NBT is rejected: {line.strip()[-90:]}')
@@ -442,7 +442,7 @@ def raw_cases():
         line, _ = give("GateBot diamond_sword{display:{Name:'{\"text\":\"" + NAME + "\"}'},Unbreakable:1b}", ['Gave', 'Could not give'])
         snap = snapshot('raw-nbt')
         swords = slots_of(snap, 'DIAMOND_SWORD')
-        require('Gave 1x' in line and len(swords) == 1 and swords[0]['unbreakable'] and NAME in str(swords[0]['name']),
+        require('Gave 1 ' in line and len(swords) == 1 and swords[0]['unbreakable'] and NAME in str(swords[0]['name']),
                 f'{{...}} NBT applies on 1.20.1, commas and semicolons included: {swords[0]["name"] if swords else line.strip()[-80:]}')
     line, _ = give('GateBot allium:mob_disarmer[unbreakable={}]', ['Could not give', 'Gave'])
     require('applies only to vanilla items' in line, 'raw data on an Allium item is refused')
@@ -450,8 +450,8 @@ def raw_cases():
 
 def token_cases():
     gg('clear')
-    give('GateBot diamond_sword sharpness:5 name:&6Gate_Blade lore:One|"Two words" unbreakable', 'Gave 1x diamond_sword')
-    give('GateBot potion potion:swiftness effect:speed:2:60', 'Gave 1x potion')
+    give('GateBot diamond_sword sharpness:5 name:&6Gate_Blade lore:One|"Two words" unbreakable', 'Gave 1 ')
+    give('GateBot potion potion:swiftness effect:speed:2:60', 'Gave 1 Potion')
     snap = snapshot('tokens')
     sword = slots_of(snap, 'DIAMOND_SWORD')
     potion = slots_of(snap, 'POTION')
@@ -562,7 +562,7 @@ def compat_cases():
     gg('clear')
     start = len(logs)
     console('minecraft:give GateBot diamond 1')
-    vanilla = wait(lambda: next((x for x in logs[start:] if 'Gave 1 [Diamond] to GateBot' in x or 'Gave 1x diamond' in x), None),
+    vanilla = wait(lambda: next((x for x in logs[start:] if 'Gave 1 [Diamond] to GateBot' in x or 'Gave 1 Diamond' in x), None),
                    'minecraft:give reply', 10)
     one = snapshot('vanilla-give', 'GateBot')
     require('Gave 1 [Diamond] to GateBot' in vanilla and diamonds(one) == 1 and not one['events'],
@@ -632,7 +632,7 @@ def real_skull_cases():
     """One real Mojang lookup (Notch), then the cache, then the 1-per-minute limit."""
     gg('clear')
     started = time.monotonic()
-    line, _ = give('GateBot player_head owner:Notch', ['Gave 1x player_head', 'without its skin', 'Could not give'], timeout=30)
+    line, _ = give('GateBot player_head owner:Notch', ['Gave 1 Player Head', 'without its skin', 'Could not give'], timeout=30)
     first = time.monotonic() - started
     one = snapshot('skull-real', 'GateBot')
     head = [s for s in one['slots'] if s['material'] == 'PLAYER_HEAD']
@@ -643,7 +643,7 @@ def real_skull_cases():
 
     started = time.monotonic()
     start = len(logs)
-    line, _ = give('GateBot player_head owner:Notch', ['Gave 1x player_head', 'without its skin'], timeout=10)
+    line, _ = give('GateBot player_head owner:Notch', ['Gave 1 Player Head', 'without its skin'], timeout=10)
     again = time.monotonic() - started
     pending = any('Resolving skull profiles' in x for x in logs[start:])
     stats = read_stats()
@@ -653,7 +653,7 @@ def real_skull_cases():
         require(stats['remoteLookups'] == 1 and stats['cacheHits'] == 1 and not pending,
                 f'the second owner:Notch was served from the cache with no lookup ({stats})')
 
-    line, _ = give('GateBot player_head owner:jeb_', ['without its skin', 'Gave 1x player_head'], timeout=10)
+    line, _ = give('GateBot player_head owner:jeb_', ['without its skin', 'Gave 1 Player Head'], timeout=10)
     stats = read_stats()
     real_skull['limited'] = {'reply': line.strip(), 'stats': stats}
     emit('REAL-LIMITED ' + json.dumps(real_skull['limited']))

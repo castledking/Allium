@@ -1,5 +1,12 @@
 # S24 Inspection Live Gate Results
 
+## 2026-11-18 rerun (r9)
+
+98/98 on Spigot 1.20.1 and on Paper 26.3 on jar `18e32537…` (runs `r9-spigot`, `r9-paper` under
+`/mnt/storage/.allium-validation/20261118/s24-inspection/runs`). The layout checks now expect the
+held hotbar cell to be empty instead of a marker pane.
+
+
 **PASS: 196/196 live checks** across **Spigot 1.20.1** (Java 17) and **Paper 26.3** (Java 25) on identical frozen `build/libs/Allium.jar` (`SHA-256: bc12cf2a0c0c210b7c5586c45a822b33376e6cf608992ff8ef0a305b32d656c6`), SQLite storage backend with `economy.vault-provider-enabled: false`.
 
 - **Spigot 1.20.1 / Java 17 / SQLite** (`spigot-r14`, superseding `spigot-r10` `86/86` on `ec97af2c`): **98/98 checks passed, 0 failures**

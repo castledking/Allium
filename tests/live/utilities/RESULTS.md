@@ -1,5 +1,13 @@
 # S25 Parity Utilities Live Gate Results
 
+## 2026-11-18 rerun (r9)
+
+On jar `18e32537…`: Spigot 1.20.1 143/143 (`r9-spigot`). Paper 26.3 142/143 on two runs (`r9-paper`,
+`r9-paper-b`); the one failure both times is the log check, because Paper's own profile lookup for
+`/skull Notch` got HTTP 429 from Mojang's session server. `/ci` now asks to repeat the command
+before clearing (confirmation on by default), so the gate sends it twice.
+
+
 **PASS: 232/232 live checks** across **Spigot 1.20.1** (Java 17) and **Paper 26.3** (Java 25) on identical frozen `build/libs/Allium.jar` (`SHA-256: eaae240d3ef404f2b695a52e05c83188c5791edc8cc925c18e554490652e10dc`, `2,897,957` bytes), SQLite storage backend with `economy.vault-provider-enabled: false`.
 
 - **Spigot 1.20.1 / Java 17 / SQLite** (`spigot-r3`, matching identical final harness sources with `paper-r2`): **116/116 checks passed, 0 failures** (`66.91s`)

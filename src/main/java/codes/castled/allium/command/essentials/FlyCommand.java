@@ -30,6 +30,7 @@ public final class FlyCommand implements SpecCommandHandler {
         boolean enabled = !target.getAllowFlight();
         target.setAllowFlight(enabled);
         target.setFlying(enabled);
+        if(plugin.getModuleManager()!=null&&plugin.getModuleManager().getModule("essentials") instanceof codes.castled.allium.module.EssentialsModule module&&module.flights()!=null)module.flights().changed(target);
 
         String state = enabled ? "&aenabled" : "&cdisabled";
         context.sendOutcome(context.sender(), "toggle", "{state}", state, "{player}", target.getName());

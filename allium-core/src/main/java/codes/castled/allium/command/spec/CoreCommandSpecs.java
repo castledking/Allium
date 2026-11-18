@@ -79,6 +79,8 @@ public final class CoreCommandSpecs {
             ))
     );
 
+    public static final CommandSpec TOGGLE_SLOW_FALL = new CommandSpec("toggleslowfall",CommandSpec.DEFAULT_NAMESPACE,"essentials",List.of("tsf","slowfalltoggle","toggleslowfalling"),"Toggle slow falling on flight loss","/toggleslowfall [on|off|status]","/toggleslowfall [on|off|status]","allium.fly",null,List.of(CommandArgSpec.optional("state",null,SuggestionSpec.literals(List.of("on","off","status"),"allium.fly"))),List.of(),CommandMessageKeys.ofOutcomes(Map.of()));
+
     public static final CommandSpec GOD = new CommandSpec(
             "god",
             CommandSpec.DEFAULT_NAMESPACE,
@@ -818,6 +820,7 @@ public final class CoreCommandSpecs {
             HEAL,
             FEED,
             FLY,
+            TOGGLE_SLOW_FALL,
             GOD,
             GAMEMODE
     );

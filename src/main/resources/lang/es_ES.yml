@@ -551,6 +551,8 @@ info:
     - "{prefix} &cNo se pudo cargar la informacion del jugador ahora mismo; intentalo de nuevo en un momento."
     - "[sound] block.note_block.bass 0.7"
 player:
+  slowfall-toggle:
+    - "{prefix} &aSlow fall protection {state}&a."
   gamemode-self:
     - "{prefix} &aModo de juego cambiado a &f{mode}&a."
     - "[sound] ui.button.click 1.35"

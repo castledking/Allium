@@ -16,7 +16,11 @@ public final class LegacyFixture {
     public static void main(String[] args) throws Exception {
         try (URLClassLoader loader = new URLClassLoader(new URL[]{Path.of(args[0]).toUri().toURL()}, ClassLoader.getPlatformClassLoader())) {
             Driver driver = (Driver) Class.forName(args[1], true, loader).getDeclaredConstructor().newInstance();
-            try (Connection c = driver.connect("jdbc:h2:" + args[2] + ";MODE=MySQL", new Properties()); Statement s = c.createStatement()) {
+            // As legacy Allium did: user sa, no password (H2 then requires that login to read it).
+            Properties login = new Properties();
+            login.setProperty("user", "sa");
+            login.setProperty("password", "");
+            try (Connection c = driver.connect("jdbc:h2:" + args[2] + ";MODE=MySQL", login); Statement s = c.createStatement()) {
                 for (String sql : Files.readString(Path.of(args[3])).split(";\n")) {
                     if (!sql.isBlank()) s.execute(sql);
                 }

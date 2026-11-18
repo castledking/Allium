@@ -17,6 +17,9 @@ apply, and a ledger that makes reruns harmless. Permission: `allium.import` (ope
   legacy database**. Use the plain `h2-2.1.214.jar` only for a file a plain H2 wrote. A mismatched
   driver is refused with that explanation (H2 error 90030). With several jars in `import/`, name
   the one to use in `legacy-allium.yml` (`driver: import/<file>.jar`).
+- **The database login.** Legacy Allium created its database as user `sa` with no password, and H2
+  only opens it with the login that created it; that is the default. If yours differs, set `user:`
+  and `password:` in `legacy-allium.yml` (a refused login is H2 error 28000).
 - **The same worlds.** Legacy stored world names. Each resolves to a loaded world of the same name,
   or to the world you map it to in `legacy-allium.yml`:
 

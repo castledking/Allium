@@ -84,12 +84,24 @@ public final class LegacyH2Source implements AutoCloseable {
         return Optional.empty();
     }
 
-    /** Opens {@code copy} (a {@code .mv.db} file) read-only; the caller closes the connection. */
+    /** Legacy Allium opened its database as {@code sa} with no password (Database.java, HikariConfig). */
+    public static final String LEGACY_USER = "sa";
+
     public Connection openReadOnly(Path copy) throws SQLException {
+        return openReadOnly(copy, LEGACY_USER, "");
+    }
+
+    /**
+     * Opens {@code copy} (a {@code .mv.db} file) read-only as {@code user}; the caller closes the
+     * connection. H2 keeps the user that created a database, so the login must match it.
+     */
+    public Connection openReadOnly(Path copy, String user, String password) throws SQLException {
         String file = copy.toAbsolutePath().toString();
         if (!file.endsWith(".mv.db")) throw new SQLException("not an H2 .mv.db file: " + copy.getFileName());
         String base = file.substring(0, file.length() - ".mv.db".length()).replace('\\', '/');
         Properties properties = new Properties();
+        properties.setProperty("user", user == null ? "" : user);
+        properties.setProperty("password", password == null ? "" : password);
         Connection c;
         try {
             c = driver.connect("jdbc:h2:" + base + ";ACCESS_MODE_DATA=r;IFEXISTS=TRUE;MODE=MySQL", properties);
@@ -97,6 +109,11 @@ public final class LegacyH2Source implements AutoCloseable {
             // H2 writes its own class names into the file, and legacy Allium's shaded H2 renamed them
             // (codes.castled.allium.libs.h2), so only the same build reads it. The shaded jar also
             // drops H2's message texts, leaving "(Message 90030 not found)".
+            if (failed.getErrorCode() == 28000) {
+                throw new SQLException("the legacy database refused user '" + user + "' (error 28000). Legacy Allium used 'sa' "
+                        + "with no password; set user and password in import/legacy-allium.yml if yours differs",
+                        failed.getSQLState(), 28000, failed);
+            }
             if (failed.getErrorCode() == 90030) {
                 throw new SQLException("H2 from " + jar.getFileName() + " cannot read this database (error 90030). H2 stores its own "
                         + "class names in the file, so it needs the H2 build that wrote it: for a legacy Allium database, the legacy "

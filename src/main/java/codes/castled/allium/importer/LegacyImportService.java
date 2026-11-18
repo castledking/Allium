@@ -161,7 +161,7 @@ public final class LegacyImportService implements Listener {
         try (LegacyH2Source source = LegacyH2Source.load(jars).orElseThrow(() -> new IOException(
                 "no H2 driver: put the legacy Allium jar (or an h2 jar) in plugins/" + plugin.getDataFolder().getName() + "/import/"))) {
             LegacyAlliumSnapshot data;
-            try (Connection c = source.openReadOnly(snapshot.copy())) {
+            try (Connection c = source.openReadOnly(snapshot.copy(), settings.user(), settings.password())) {
                 data = LegacyAlliumReader.read(c);
             }
             LegacyDestinationPlan.Worlds worlds = name -> {
@@ -267,7 +267,7 @@ public final class LegacyImportService implements Listener {
 
     // -- Settings ------------------------------------------------------------------------------------
 
-    private record Settings(Path source, Path driver, Map<String, String> worlds) {
+    private record Settings(Path source, Path driver, String user, String password, Map<String, String> worlds) {
     }
 
     private Settings settings() throws IOException {
@@ -280,6 +280,9 @@ public final class LegacyImportService implements Listener {
                     source: database/sfcore.mv.db
                     # The jar with the H2 driver: the legacy Allium jar or an h2 jar. Empty: the first such jar in import/.
                     driver: ""
+                    # The database login. Legacy Allium used sa with no password.
+                    user: sa
+                    password: ""
                     # Legacy world name -> world on this server. Unlisted worlds use a loaded world of the same name.
                     worlds: {}
                     """, StandardCharsets.UTF_8);
@@ -292,7 +295,8 @@ public final class LegacyImportService implements Listener {
         Map<String, String> worlds = new LinkedHashMap<>();
         var section = yaml.getConfigurationSection("worlds");
         if (section != null) for (String key : section.getKeys(false)) worlds.put(key, String.valueOf(section.getString(key)));
-        return new Settings(source, driver, Map.copyOf(worlds));
+        return new Settings(source, driver, yaml.getString("user", LegacyH2Source.LEGACY_USER), yaml.getString("password", ""),
+                Map.copyOf(worlds));
     }
 
     private List<Path> importJars() throws IOException {

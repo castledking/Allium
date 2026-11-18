@@ -22,7 +22,7 @@ import static org.mockito.Mockito.*;
 class UtilityCommandTest {
 
     @Test
-    void repairUsesTheExistingMetadataWithoutReplacingIdentity() {
+    void repairPreservesMetadataAndWritesTheRepairedStack() {
         var plugin = mock(PluginStart.class);
         when(plugin.getModuleManager()).thenReturn(mock(ModuleManager.class));
         var p = mock(Player.class);
@@ -31,6 +31,11 @@ class UtilityCommandTest {
         var meta = mock(Damageable.class);
         when(p.getInventory()).thenReturn(inventory);
         when(inventory.getItemInMainHand()).thenReturn(item);
+        when(item.getType()).thenReturn(Material.DIAMOND_PICKAXE);
+        when(item.getAmount()).thenReturn(1);
+        var repaired = mock(ItemStack.class);
+        when(item.clone()).thenReturn(repaired);
+        when(repaired.setItemMeta(meta)).thenReturn(true);
         when(item.getItemMeta()).thenReturn(meta);
         when(meta.hasDamage()).thenReturn(true);
         var context = mock(BukkitCommandContext.class);
@@ -40,8 +45,8 @@ class UtilityCommandTest {
         new UtilityCommand(plugin, CoreCommandSpecs.UTILITY_SPECS.get(0)).execute(context);
 
         verify(meta).setDamage(0);
-        verify(item).setItemMeta(same(meta));
-        verify(inventory, never()).setItemInMainHand(any());
+        verify(repaired).setItemMeta(same(meta));
+        verify(inventory).setItemInMainHand(repaired);
     }
 
     @Test
@@ -106,6 +111,9 @@ class UtilityCommandTest {
         when(damagedA.getType()).thenReturn(Material.DIAMOND_PICKAXE);
         when(damagedA.getAmount()).thenReturn(1);
         var metaA = mock(Damageable.class);
+        var repaired = mock(ItemStack.class);
+        when(damagedA.clone()).thenReturn(repaired);
+        when(repaired.setItemMeta(metaA)).thenReturn(true);
         when(damagedA.getItemMeta()).thenReturn(metaA);
         when(metaA.hasDamage()).thenReturn(true);
 
@@ -116,15 +124,26 @@ class UtilityCommandTest {
         when(intact.getItemMeta()).thenReturn(metaB);
         when(metaB.hasDamage()).thenReturn(false);
 
-        when(inventory.getContents()).thenReturn(new ItemStack[]{damagedA, null, intact});
+        ItemStack damagedB=mock(ItemStack.class);
+        ItemStack repairedB=mock(ItemStack.class);
+        Damageable metaC=mock(Damageable.class);
+        when(damagedB.getType()).thenReturn(Material.NETHERITE_SWORD);
+        when(damagedB.getAmount()).thenReturn(1);
+        when(damagedB.getItemMeta()).thenReturn(metaC);
+        when(metaC.hasDamage()).thenReturn(true);
+        when(damagedB.clone()).thenReturn(repairedB);
+        when(repairedB.setItemMeta(metaC)).thenReturn(true);
+        when(inventory.getContents()).thenReturn(new ItemStack[]{damagedA, damagedB, intact});
         when(p.hasPermission("allium.repair.all")).thenReturn(true);
         new UtilityCommand(plugin, CoreCommandSpecs.REPAIR).execute(deniedCtx);
 
         verify(metaA).setDamage(0);
-        verify(damagedA).setItemMeta(same(metaA));
+        verify(repaired).setItemMeta(same(metaA));
+        verify(inventory).setItem(0,repaired);
+        verify(inventory).setItem(1,repairedB);
         verify(metaB, never()).setDamage(anyInt());
         verify(p).sendMessage(argThat((String msg) ->
-                msg.contains("Repaired") && msg.contains("1") && msg.contains("damaged item(s)")));
+                msg.contains("Repaired") && msg.contains("diamond pickaxe, netherite sword")));
     }
 
     @Test

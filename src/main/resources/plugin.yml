@@ -419,6 +419,7 @@ commands:
     description: Toggle accepting payments
     permission: allium.paytoggle
   eco:
+    aliases: [money]
     description: Administer economy accounts
     permission: allium.eco
   baltop:

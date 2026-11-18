@@ -272,6 +272,18 @@ kit:
     - "{prefix} &cCannot create kit: slot &f{slot} &ccontains unsupported item data (&f{reason}&c). Remove or replace the item so the kit is not degraded."
     - "[sound] block.note_block.bass 0.75"
 economy:
+  admin-give:
+    - "{prefix} &e{amount} &aadded to &f{player}&a. New balance: &e{balance}"
+  admin-take:
+    - "{prefix} &e{amount} &aremoved from &f{player}&a. New balance: &e{balance}"
+  admin-set:
+    - "{prefix} &aBalance for &f{player} &ais now &e{balance}&a."
+  admin-received:
+    - "{prefix} &e{amount} &ahas been added to your account."
+  admin-taken:
+    - "{prefix} &e{amount} &ahas been taken from your account."
+  admin-updated:
+    - "{prefix} &aYour balance is now &e{balance}&a."
   operation-refused:
     - "{prefix} &cEconomy refused: &f{reason}"
   top:
@@ -713,7 +725,7 @@ utility:
   server-info:
     - "{prefix} &f{server} &7\u2014 &f{count} &7player(s) online."
   repair-held:
-    - "{prefix} &aRepaired the held item."
+    - "{prefix} &aRepaired &f{items}&a."
     - "[sound] block.anvil.use 1.2"
   repair-hold-damaged:
     - "{prefix} &cHold a damaged item to repair."
@@ -813,7 +825,7 @@ utility:
     - "{prefix} &cInvalid skull owner &f{owner}&c."
     - "[sound] block.note_block.bass 0.8"
   repair-all:
-    - "{prefix} &aRepaired &f{count} &adamaged item(s)."
+    - "{prefix} &aRepaired &f{items}&a."
     - "[sound] block.anvil.use 1.2"
   repair-none:
     - "{prefix} &7No damaged items found to repair."
@@ -1246,5 +1258,9 @@ give:
     - "{prefix} &cEnchantment &f{enchant} &ccannot be combined with &f{enchant2} &con &f{item}&c!"
 
 signs:
+  paid-repair-disabled:
+    - "{prefix} &cPaid repair is temporarily disabled."
+  invalid-line:
+    - "{prefix} &cLine {line} on the sign is invalid. {options}"
   disabled:
     - "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."

@@ -1,10 +1,10 @@
 {
   "sourceHashes": {
-    "tests/live/economy/run.py": "5d34a0a862ec7d428c8663c1f72df87153a8ffdad135ec0e53c6f9f815b52d5d",
-    "tests/live/economy/plugin/gate/EconomyGate.java": "e76c5492fbb8f02e23358c782ae55c305a2c2640aa6bc05e7cab9868fa7fd425",
+    "tests/live/economy/run.py": "3aa26b76802747ccbbf4fa8061347dd7a48e2bbbeb80243d979e934e82ca0a85",
+    "tests/live/economy/plugin/gate/EconomyGate.java": "e7034bf5670169ea8d7927db770dae1db866ad159399cb692c7029e42e635df5",
     "tests/live/economy/plugin/plugin.yml": "116546459f71af774c7204c564decb7651a6af3f55af88afb272c9df32fd34e2",
-    "tests/live/economy/client-mcp.cjs": "4da4f08ef8fc66c9ff4802bd9f303f54692d603c299d7756c767217f9dee5186",
-    "tests/live/economy/client-raw26.cjs": "bea28f3a7b3ad97845153e56e843ac1a16f929910403fd8518a4b1f3f4bac3bd",
+    "tests/live/economy/client-mcp.cjs": "224a9dca76b5de83b2f6c8211e802aaaf58a1d853fe71eeaf3748487d6ecbd28",
+    "tests/live/economy/client-raw26.cjs": "d1c44fc07abd29e5effaf9c4bab125a1404a5b9617aae21411114aa9cea89ebc",
     "tests/live/economy/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851",
     "tests/live/economy/process_cleanup.py": "ff8f8a5fe69dd7a2c0c23ebfe84f46ceac5ea921d7321a5ba1ab023bcce3e32e",
     "tests/live/economy/plugin/gate/VaultHost.java": "b109a70bddfef98bef45d7fae81208ef114f750f6a47d2af956b70684f67a486",

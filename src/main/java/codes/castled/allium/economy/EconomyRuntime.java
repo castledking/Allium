@@ -25,8 +25,20 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     private final Phaser accepted=new Phaser(1);
     private final Object admission=new Object();
     private volatile boolean closed,reloading;
+    private volatile EconomyDisplay display;
+    private record LogSettings(boolean enabled,boolean uuids,boolean vault){}
+    private volatile LogSettings logging;
+    private void readPresentation(){
+        var config=plugin.getConfig();
+        display=EconomyDisplay.read(config);
+        logging=new LogSettings(config!=null&&config.getBoolean("economy-log-enabled"),
+                config!=null&&config.getBoolean("economy-log-uuids"),
+                config!=null&&config.getBoolean("economy-log-update-enabled"));
+    }
+    EconomyDisplay display(){return display;}
     public EconomyRuntime(PluginStart plugin)throws SQLException {
         this.plugin=plugin;
+        readPresentation();
         engine=new EconomyEngine(plugin.getDatabaseManager().connectionSource(),readSettings(plugin),this::permits,(c,id)->{
             boolean capture=false;
             if(codes.castled.allium.core.FaultInjection.armed("economy.capture.halt-before")>0||codes.castled.allium.core.FaultInjection.armed("economy.capture.halt-after")>0){
@@ -46,17 +58,47 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         var preferences=preferences();if(preferences!=null)preferences.repository().coordinateWritesWith(engine.coordinator());
         var messaging=messaging();if(messaging!=null)messaging.ignores().repository().coordinateWritesWith(engine.coordinator());
     }
-    EconomyRuntime(PluginStart plugin,EconomyEngine engine,Executor worker){this.plugin=plugin;this.engine=engine;this.worker=worker;}
+    EconomyRuntime(PluginStart plugin,EconomyEngine engine,Executor worker){this.plugin=plugin;this.engine=engine;this.worker=worker;readPresentation();}
     public EconomyEngine engine(){return engine;}
     public EconomyReservations reservations(){return engine.reservations(this::synchronousWorkflow);}
     private Mutation synchronousWorkflow(EconomyRequest request,EconomyEngine.WorkflowTransition transition){
         if(!admit())return new Unavailable("economy admission is closed");
-        try{return engine.execute(request,transition);}finally{accepted.arriveAndDeregister();}
+        try{
+            Mutation result=engine.execute(request,transition);
+            if(result instanceof Committed done&&(request.kind()==EconomyRequest.Kind.CAPTURE
+                    ||request.kind()==EconomyRequest.Kind.SPEND))log(request,done,"SYSTEM",null);
+            return result;
+        }finally{accepted.arriveAndDeregister();}
     }
     public boolean ready(){return !closed&&engine.ready();}
     public Mutation synchronous(EconomyRequest request){
         if(!admit())return new Unavailable("economy admission is closed");
         try{return engine.execute(request);}finally{accepted.arriveAndDeregister();}
+    }
+    Mutation vaultMutation(EconomyRequest request){
+        Mutation result=synchronous(request);
+        if(result instanceof Committed done)log(request,done,null,null);
+        return result;
+    }
+    private void log(EconomyRequest request,Committed done,String actorName,String targetName){
+        LogSettings settings=logging;
+        if(done.replay()||!(request.origin().equals("VAULT")?settings.vault():settings.enabled()))return;
+        UUID target=request.recipient()==null?request.source():request.recipient();
+        String actor=actorName!=null&&actorName.equals("SYSTEM")?"SYSTEM":settings.uuids()||actorName==null?request.actor():actorName;
+        String subject=settings.uuids()?target.toString():targetName;
+        if(subject==null&&plugin.getPlayerNames()!=null)
+            subject=plugin.getPlayerNames().cache().byUuid(target).map(entry->entry.name()).orElse(null);
+        if(subject==null)subject=target.toString();
+        String line=java.util.stream.Stream.of(java.time.Instant.now().toString(),request.origin(),
+                request.kind().name(),actor,subject,
+                request.amount().toString(),done.operationId().toString())
+                .map(value -> "\"" + value.replace("\r", " ").replace("\n", " ").replace("\"", "\"\"") + "\"")
+                .collect(java.util.stream.Collectors.joining(","))+System.lineSeparator();
+        if(!submit(null,()->{
+            try{java.nio.file.Files.writeString(plugin.getDataFolder().toPath().resolve("trade.log"),line,
+                    java.nio.file.StandardOpenOption.CREATE,java.nio.file.StandardOpenOption.APPEND);}
+            catch(java.io.IOException error){plugin.logger().warning("Could not append trade.log: "+error.getMessage());}
+        }))plugin.logger().warning("Could not queue trade.log entry for operation "+done.operationId());
     }
     public Balance synchronousBalance(UUID id){
         if(!admit())return new Unavailable("economy admission is closed");
@@ -136,7 +178,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
                     &&messaging.ignores().ignores(recipient,source)!=codes.castled.allium.messaging.MessagePolicy.Ignore.NO){tell(sender,refusal());return;}
             var request=engine.request(UUID.randomUUID(),"PAY",UUID.randomUUID().toString(),EconomyRequest.Kind.PAY,source.toString(),source,recipient,amount);
             submit(sender,()->{Mutation result=engine.execute(request);
-                if(result instanceof Committed){tell(sender,Messages.ECO_PAYMENT_SENT,"{amount}",amount.toString(),"{player}",args[0],"{operation}",request.id().toString());if(target!=null)tell(target,Messages.ECO_PAYMENT_RECEIVED,"{amount}",amount.toString(),"{player}",actorName);}
+                if(result instanceof Committed done){log(request,done,actorName,args[0]);tell(sender,Messages.ECO_PAYMENT_SENT,"{amount}",display.format(amount),"{player}",args[0],"{operation}",request.id().toString());if(target!=null)tell(target,Messages.ECO_PAYMENT_RECEIVED,"{amount}",display.format(amount),"{player}",actorName);}
                 else receipt(sender,result,true);
             });
         });
@@ -154,7 +196,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     }
     private void show(CommandSender sender,UUID id){submit(sender,()->{
         Balance result=engine.balance(id);
-        if(result instanceof Found found)tell(sender,Messages.BALANCE,"{amount}",found.available().toString());else tell(sender,result instanceof Missing?Messages.ECO_MISSING:Messages.ECO_STORAGE);
+        if(result instanceof Found found)tell(sender,Messages.BALANCE,"{amount}",display.format(found.available()));else tell(sender,result instanceof Missing?Messages.ECO_MISSING:Messages.ECO_STORAGE);
     });}
     private void toggle(CommandSender sender,String[] args){
         if(args.length>2)throw new IllegalArgumentException("paytoggle");
@@ -183,7 +225,31 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         Money amount=kind==EconomyRequest.Kind.OPEN?engine.settings().starting():Money.parse(args[2],kind==EconomyRequest.Kind.ADMIN_SET);
         if(kind!=EconomyRequest.Kind.OPEN&&kind!=EconomyRequest.Kind.ADMIN_SET)amount.positive();
         String actor=sender instanceof Player p?p.getUniqueId().toString():"CONSOLE";
-        resolve(sender,args[1],id->{var request=engine.request(UUID.randomUUID(),"ADMIN",UUID.randomUUID().toString(),kind,actor,id,null,amount);submit(sender,()->receipt(sender,engine.execute(request),false));});
+        String actorName=sender.getName();
+        resolve(sender,args[1],id->{
+            if(sender instanceof Player p&&(!p.isOnline()||plugin.getServer().getPlayer(p.getUniqueId())!=p
+                    ||!p.hasPermission("allium.eco")&&!p.hasPermission("allium.eco.admin")))return;
+            Player target=plugin.getServer().getPlayer(id);
+            String targetName=target==null?args[1]:target.getName();
+            var request=engine.request(UUID.randomUUID(),"ADMIN",UUID.randomUUID().toString(),kind,actor,id,null,amount);
+            submit(sender,()->{
+                Mutation result=engine.execute(request);
+                if(!(result instanceof Committed done)){receipt(sender,result,false);return;}
+                log(request,done,actorName,targetName);
+                Messages adminMessage=switch(kind){
+                    case DEPOSIT->Messages.ECO_ADMIN_GIVE;
+                    case WITHDRAW->Messages.ECO_ADMIN_TAKE;
+                    default->Messages.ECO_ADMIN_SET;
+                };
+                tell(sender,adminMessage,"{player}",targetName,"{amount}",display.format(amount),
+                        "{balance}",display.format(done.source().available()),"{operation}",done.operationId().toString());
+                if(target!=null&&target!=sender)tell(target,switch(kind){
+                    case DEPOSIT->Messages.ECO_ADMIN_RECEIVED;
+                    case WITHDRAW->Messages.ECO_ADMIN_TAKEN;
+                    default->Messages.ECO_ADMIN_UPDATED;
+                },"{amount}",display.format(amount),"{balance}",display.format(done.source().available()));
+            });
+        });
     }
     private void reservationAdmin(CommandSender sender,String[] args){
         if(sender instanceof Player&&!sender.hasPermission("allium.eco.admin")){tell(sender,Messages.NO_PERMISSION);return;}
@@ -191,7 +257,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             if(args.length>2)throw new IllegalArgumentException("reservations [player]");
             java.util.function.Consumer<UUID> list=id->submit(sender,()->{try{
                 var rows=reservations().list(id);if(rows.isEmpty())tell(sender,Messages.ECO_RES_NONE);
-                for(var row:rows)tell(sender,Messages.ECO_RES_ROW,"{kind}",row.kind().toString(),"{id}",row.id().toString(),"{payer}",row.account().toString(),"{amount}",row.amount().toString(),"{state}",row.state().toString());
+                for(var row:rows)tell(sender,Messages.ECO_RES_ROW,"{kind}",row.kind().toString(),"{id}",row.id().toString(),"{payer}",row.account().toString(),"{amount}",display.format(row.amount()),"{state}",row.state().toString());
             }catch(SQLException error){tell(sender,Messages.ECO_RES_STORAGE);}});
             if(args.length==2)resolve(sender,args[1],list);else list.accept(null);return;
         }
@@ -207,7 +273,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     private void top(CommandSender sender,String[] args){
         if(args.length!=0)throw new IllegalArgumentException("baltop");
         submit(sender,()->{try(var c=plugin.getDatabaseManager().getConnection();var s=c.createStatement();var r=s.executeQuery("SELECT account_uuid,balance_minor FROM allium_economy_accounts ORDER BY balance_minor DESC,account_uuid LIMIT 10")){
-            var lines=new ArrayList<String>();while(r.next())lines.add(r.getString(1)+": "+new Money(r.getLong(2)));tell(sender,Messages.ECO_TOP,"{balances}",String.join(", ",lines));
+            var lines=new ArrayList<String>();while(r.next())lines.add(r.getString(1)+": "+display.format(new Money(r.getLong(2))));tell(sender,Messages.ECO_TOP,"{balances}",String.join(", ",lines));
         }catch(SQLException error){tell(sender,Messages.ECO_STORAGE);}});
     }
     public boolean reload(){
@@ -218,7 +284,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             // No accepted work is dropped; its commit finishes before the settings installation barrier.
             CompletableFuture<Void> barrier=new CompletableFuture<>();
             worker.execute(()->{try{engine.installSettings(next);barrier.complete(null);}catch(Exception error){barrier.completeExceptionally(error);}});
-            barrier.get(10,TimeUnit.SECONDS);return true;
+            barrier.get(10,TimeUnit.SECONDS);readPresentation();return true;
         }catch(Exception error){plugin.logger().warning("Economy reload refused; prior settings retained: "+error.getMessage());return false;}
         finally{reloading=false;}
     }

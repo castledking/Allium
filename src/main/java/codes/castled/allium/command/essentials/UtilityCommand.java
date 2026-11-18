@@ -74,33 +74,7 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
                 context.sendInvalidArgs(spec.selfUsage());
                 return;
             }
-            if ("all".equals(mode) && !player.hasPermission("allium.repair.all")) {
-                UtilitySupport.send(plugin, player, Messages.NO_PERMISSION, "{cmd}", "repair all");
-                return;
-            }
-            if (UtilitySupport.isInventoryBusy(plugin, player)) {
-                UtilitySupport.send(plugin,player,Messages.UTILITY_INVENTORY_BUSY,"{player}",player.getName());
-                return;
-            }
-            if ("hand".equals(mode)) {
-                var item = player.getInventory().getItemInMainHand();
-                var meta = item == null ? null : item.getItemMeta();
-                if (meta instanceof Damageable damageable && damageable.hasDamage()) {
-                    damageable.setDamage(0);
-                    item.setItemMeta(meta);
-                    UtilitySupport.send(plugin,player,Messages.REPAIR_HELD);
-                } else {
-                    UtilitySupport.send(plugin,player,Messages.REPAIR_HOLD_DAMAGED);
-                }
-                return;
-            }
-            int repaired = repairAll(player);
-            if (repaired > 0) {
-                UtilitySupport.send(plugin, player, Messages.UTILITY_REPAIR_ALL, "{count}", Integer.toString(repaired));
-                UtilitySupport.audit(plugin, player, "repair_all", "repaired=" + repaired);
-            } else {
-                UtilitySupport.send(plugin, player, Messages.UTILITY_REPAIR_NONE);
-            }
+            repair(plugin,player,mode);
             return;
         }
 
@@ -126,20 +100,39 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
         }
     }
 
-    private static int repairAll(Player player) {
-        int repaired = 0;
-        ItemStack[] contents = player.getInventory().getContents();
-        for (ItemStack item : contents) {
-            if (UtilitySupport.isAir(item)) {
-                continue;
-            }
-            var meta = item.getItemMeta();
-            if (meta instanceof Damageable damageable && damageable.hasDamage()) {
-                damageable.setDamage(0);
-                item.setItemMeta(meta);
-                repaired++;
-            }
+    /** Plan changes before charging so refusals and undamaged inventories are free. */
+    private static boolean repair(PluginStart plugin,Player player,String mode) {
+        boolean all="all".equals(mode);
+        if(all&&!player.hasPermission("allium.repair.all")){
+            UtilitySupport.send(plugin,player,Messages.NO_PERMISSION,"{cmd}","repair all");
+            return false;
         }
-        return repaired;
+        if(UtilitySupport.isInventoryBusy(plugin,player)){
+            UtilitySupport.send(plugin,player,Messages.UTILITY_INVENTORY_BUSY,"{player}",player.getName());
+            return false;
+        }
+        var inventory=player.getInventory();
+        ItemStack[] items=all?inventory.getContents():new ItemStack[]{inventory.getItemInMainHand()};
+        var repaired=new java.util.LinkedHashMap<Integer,ItemStack>();
+        var names=new java.util.ArrayList<String>();
+        for(int i=0;i<items.length;i++){
+            ItemStack item=items[i];
+            if(UtilitySupport.isAir(item)||!(item.getItemMeta() instanceof Damageable damage)||!damage.hasDamage())continue;
+            ItemStack replacement=item.clone();
+            damage.setDamage(0);
+            if(!replacement.setItemMeta(damage))continue;
+            repaired.put(i,replacement);
+            names.add(item.getType().name().toLowerCase(Locale.ROOT).replace('_',' '));
+        }
+        if(repaired.isEmpty()){
+            UtilitySupport.send(plugin,player,all?Messages.UTILITY_REPAIR_NONE:Messages.REPAIR_HOLD_DAMAGED);
+            return false;
+        }
+        if(all)repaired.forEach(inventory::setItem);
+        else inventory.setItemInMainHand(repaired.get(0));
+        UtilitySupport.send(plugin,player,all?Messages.UTILITY_REPAIR_ALL:Messages.REPAIR_HELD,
+                "{count}",Integer.toString(repaired.size()),"{items}",String.join(", ",names));
+        if(all)UtilitySupport.audit(plugin,player,"repair_all","repaired="+repaired.size());
+        return true;
     }
 }

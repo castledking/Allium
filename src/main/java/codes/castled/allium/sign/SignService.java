@@ -2,6 +2,8 @@ package codes.castled.allium.sign;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.module.*;
+import codes.castled.allium.economy.*;
+import codes.castled.allium.message.Messages;
 import org.bukkit.*;
 import org.bukkit.block.*;
 import org.bukkit.block.data.Directional;
@@ -54,16 +56,55 @@ public final class SignService implements Listener,AutoCloseable {
         }
         boolean publicWarp=type==SignIdentity.Type.WARP&&"public".equalsIgnoreCase(event.getLine(2));
         if(!permission(event.getPlayer(),"create",type)||publicWarp&&!event.getPlayer().hasPermission("allium.signs.create.warp.public")){event.setCancelled(true);return;}
+        String argument=Objects.toString(event.getLine(1),"").trim();
+        Money price=new Money(0);
+        if(type==SignIdentity.Type.REPAIR){
+            argument=argument.isEmpty()?"hand":argument.toLowerCase(Locale.ROOT);
+            if(!Set.of("hand","all").contains(argument)){
+                invalid(event,type,2,"<hand|all>","Use hand or all.");
+                return;
+            }
+            try{price=EconomyDisplay.read(plugin.getConfig()).parsePrice(Objects.toString(event.getLine(2),""));}
+            catch(IllegalArgumentException|ArithmeticException error){
+                invalid(event,type,3,"<price>","Enter a non-negative amount with up to two decimal places.");
+                return;
+            }
+        }
         SignIdentity created;
-        try{created=new SignIdentity(UUID.randomUUID(),type,Objects.toString(event.getLine(1),"").trim(),publicWarp);}
-        catch(IllegalArgumentException invalid){event.setCancelled(true);return;}
+        try{created=new SignIdentity(UUID.randomUUID(),type,argument,publicWarp,price);}
+        catch(IllegalArgumentException invalid){
+            invalid(event,type,2,"<name>","Enter a name with 1–32 letters, digits, underscores or hyphens.");
+            return;
+        }
         for(int i=0;i<4;i++)event.setLine(i,ChatColor.translateAlternateColorCodes('&',Objects.toString(event.getLine(i),"")));
-        event.setLine(0,ChatColor.DARK_BLUE+"["+type.key()+"]");
+        event.setLine(0,ChatColor.DARK_BLUE+displayHeader(type));
+        if(type==SignIdentity.Type.REPAIR){
+            event.setLine(1,argument.equals("all")?"All":"Hand");
+            if(!Objects.toString(event.getLine(2),"").isBlank())
+                event.setLine(2,EconomyDisplay.read(plugin.getConfig()).format(price));
+        }
         // Bukkit applies text after the event. Re-read then update PDC without overwriting either face.
         plugin.getScheduler().runOnServerLater(()->{
             if(closed||event.isCancelled()||!(event.getBlock().getState() instanceof Sign current))return;
             if(!Arrays.equals(current.getSide(side).getLines(),event.getLines()))return;
             current.getPersistentDataContainer().set(key(side),PersistentDataType.STRING,created.encode());current.update(false,false);
+        },50);
+    }
+    private static String displayHeader(SignIdentity.Type type){
+        String name=type.key();
+        return "["+Character.toUpperCase(name.charAt(0))+name.substring(1)+"]";
+    }
+    private void invalid(SignChangeEvent event,SignIdentity.Type type,int line,String hint,String options){
+        event.setLine(0,ChatColor.RED+displayHeader(type));
+        event.setLine(line-1,ChatColor.RED+hint);
+        plugin.getMessageManager().send(event.getPlayer(),Messages.SIGN_INVALID_LINE,
+                "{line}",Integer.toString(line),"{options}",options);
+        Side side=event.getSide();
+        plugin.getScheduler().runOnServerLater(()->{
+            if(closed||event.isCancelled()||!(event.getBlock().getState() instanceof Sign current))return;
+            if(!Arrays.equals(current.getSide(side).getLines(),event.getLines()))return;
+            current.getPersistentDataContainer().remove(key(side));
+            current.update(false,false);
         },50);
     }
     public boolean blocksEditor(Sign sign,Side side,String cause){return !closed&&"INTERACT".equals(cause)&&identity(sign,side).filter(id->id.type()!=SignIdentity.Type.COLOR&&enabled.contains(id.type())).isPresent();}
@@ -105,7 +146,11 @@ public final class SignService implements Listener,AutoCloseable {
         if(identity.type()==SignIdentity.Type.WARP){((TravelModule)owner).travel().useSign(p,identity.argument(),identity.publicWarp());return;}
         var renderer=plugin.getCommandManager().getRenderedCommands().get(command);var registered=plugin.getCommand(command);
         if(renderer==null||registered==null)return;
-        String[] args=switch(identity.type()){case KIT->new String[]{identity.argument()};case MAIL->new String[]{"read"};default->new String[0];};
+        if(identity.type()==SignIdentity.Type.REPAIR&&identity.price().minor()>0){
+            plugin.getMessageManager().send(p,Messages.SIGN_PAID_REPAIR_DISABLED);
+            return;
+        }
+        String[] args=switch(identity.type()){case KIT,REPAIR->new String[]{identity.argument()};case MAIL->new String[]{"read"};default->new String[0];};
         renderer.onCommand(p,registered,command,args);
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)

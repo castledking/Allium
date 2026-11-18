@@ -518,7 +518,7 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> ECONOMY_SPECS = java.util.stream.Stream.of("balance","pay","paytoggle","eco","baltop")
             .map(name -> new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"economy",
-                    name.equals("balance")?List.of("bal"):List.of(),"Allium economy: "+name,
+                    name.equals("balance")?List.of("bal"):name.equals("eco")?List.of("money"):List.of(),"Allium economy: "+name,
                     "/"+name,"/"+name,"allium."+name,name.equals("paytoggle")?"allium.paytoggle.others":null,
                     List.of(CommandArgSpec.optional("arguments",null,null)),List.of(),CommandMessageKeys.ofOutcomes(Map.of())))
             .toList();

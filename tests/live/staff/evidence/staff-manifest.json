@@ -1,0 +1,323 @@
+{
+  "spigot-r5": {
+    "suite": "spigot",
+    "passed": true,
+    "checks": 79,
+    "failures": [],
+    "cases": [
+      {
+        "name": "completions",
+        "passed": true
+      },
+      {
+        "name": "staff-chat",
+        "passed": true
+      },
+      {
+        "name": "gamemode-permissions",
+        "passed": true
+      },
+      {
+        "name": "creative-inventories",
+        "passed": true
+      },
+      {
+        "name": "creative-restriction",
+        "passed": true
+      },
+      {
+        "name": "creative-restart",
+        "passed": true
+      },
+      {
+        "name": "creative-audit",
+        "passed": true
+      },
+      {
+        "name": "invsee",
+        "passed": true
+      },
+      {
+        "name": "mail-numbers",
+        "passed": true
+      },
+      {
+        "name": "whois-alts",
+        "passed": true
+      },
+      {
+        "name": "restore",
+        "passed": true
+      },
+      {
+        "name": "paid-repair",
+        "passed": true
+      },
+      {
+        "name": "repair-halt-after-reserve",
+        "passed": true
+      },
+      {
+        "name": "repair-halt-after-save",
+        "passed": true
+      }
+    ],
+    "alliumSha256": "be62473a769f17f6719ce07c385ce964f2aad65f1449dde561e0ce3d7afc04e0",
+    "sources": {
+      "tests/live/staff/run.py": "9418d1b39a6c50b118c61d45c9fac07a8bbedb4b64ba99d371f521a2c569d4bb",
+      "tests/live/staff/plugin/gate/StaffGate.java": "eae0f4af337def28a1e26932baeeb6da53368939d329627606079e397bc85734",
+      "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+      "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
+      "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
+      "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+    },
+    "seconds": 119.7,
+    "labels": [
+      "spigot: creative, alts and restore modules enabled",
+      "spigot: /eco completes its actions",
+      "spigot: /eco give completes known players",
+      "spigot: /eco give completes amounts",
+      "spigot: /pay completes visible players",
+      "spigot: /eco completes nothing without allium.eco",
+      "spigot: /balance completion follows allium.balance.others",
+      "spigot: \">\" is stripped from the redirected message",
+      "spigot: after \">\", the staff selection stays (next line is staff only)",
+      "spigot: \"#\" from global still goes to staff only",
+      "spigot: /gamemode creative refused without allium.gamemode.creative",
+      "spigot: /gamemode completes no mode without a mode node",
+      "spigot: /gamemode completes only the permitted mode",
+      "spigot: entering creative loads an empty creative inventory",
+      "spigot: the survival inventory is stored in the player data",
+      "spigot: survival gets its own items back",
+      "spigot: no creative item reaches survival",
+      "spigot: adventure shares the survival inventory",
+      "spigot: creative gets its own items back",
+      "spigot: a crafting table does not open in creative without .container",
+      "spigot: it opens with allium.gamemode.creative.container",
+      "spigot: PlayerBot leaves in creative",
+      "spigot: force-gamemode reset is undone: PlayerBot is restored to creative on join",
+      "spigot: after a restart and a forced reset the creative inventory is intact",
+      "spigot: the survival inventory survived the restart unchanged",
+      "spigot: staff are alerted when a player enters creative without allium.gamemode.creative",
+      "spigot: empty armor and offhand slots show slot icons",
+      "spigot: icons carry the gui_slot model data (helmet, shield, sword, pane)",
+      "spigot: the sword icon names the held hotbar slot",
+      "spigot: placing an item on the helmet icon equips it",
+      "spigot: no icon ever reaches the viewer",
+      "spigot: /invsee on a dead player says so instead of \"went offline\"",
+      "spigot: offline /invsee announces it is editable",
+      "spigot: closing an edited offline inventory reports the saved changes",
+      "spigot: the offline edit reached the player data",
+      "spigot: the viewer holds the taken stack",
+      "spigot: text mail reads as [1] [2] [3]",
+      "spigot: a new mail takes the freed number 2",
+      "spigot: gifts are numbered 1 and 2 apart from text",
+      "spigot: the next gift reuses number 1",
+      "spigot: joins record the IP history",
+      "spigot: the alert names the older account",
+      "spigot: without LuckPerms or Vault the missing group backend is logged",
+      "spigot: and only once per server run",
+      "spigot: /seen lists alt accounts and the IP for staff",
+      "spigot: players without the nodes see neither",
+      "spigot: the exemption is stored with its reason",
+      "spigot: an exempt account rejoins without an alert",
+      "spigot: the LiteBans action carries a click event running /history PlayerBot",
+      "spigot: /whois shows state, vitals, flags, IP, alts and the action links to allium.whois.extra",
+      "spigot: without allium.whois.extra /whois stays basic",
+      "spigot: snapshots were taken on login/logout/gamemode change and manually",
+      "spigot: /restore opens the history",
+      "spigot: the newest (MANUAL) snapshot opens its restore panel",
+      "spigot: the panel shows the snapshot (hotbar and armor)",
+      "spigot: empty armor and offhand show icons",
+      "spigot: \"Restore everything\" replaces the online owner's inventory",
+      "spigot: an editor can take items out of the panel",
+      "spigot: \"inventory only\" uses the edited panel and leaves armor alone",
+      "spigot: only \"Save as manual snapshot\" writes to storage",
+      "spigot: the queued restore is applied on join",
+      "spigot: the queue row and the applied receipt are cleared after the save",
+      "spigot: without allium.restore.edit the panel opens read-only",
+      "spigot: a read-only panel hands out nothing",
+      "spigot: the paid repair repairs the held item",
+      "spigot: exactly $1.25 is captured and nothing stays held",
+      "spigot: the repair receipt is dropped once captured",
+      "spigot: an undamaged item is never charged",
+      "spigot: without funds nothing is repaired, held or charged",
+      "spigot: repair.halt-after-reserve halts the JVM",
+      "spigot: a halt after the hold releases it at restart; no money is lost",
+      "spigot: and the item was not repaired",
+      "spigot: Allium restarted",
+      "spigot: repair.halt-after-save halts the JVM",
+      "spigot: a halt after the save captures the hold at restart; charged once",
+      "spigot: and the saved repair is kept",
+      "spigot: the settled receipt is cleared on join",
+      "spigot: Allium restarted",
+      "spigot: no exceptions or SEVERE lines in the server log"
+    ]
+  },
+  "paper-r5": {
+    "suite": "paper",
+    "passed": true,
+    "checks": 79,
+    "failures": [],
+    "cases": [
+      {
+        "name": "completions",
+        "passed": true
+      },
+      {
+        "name": "staff-chat",
+        "passed": true
+      },
+      {
+        "name": "gamemode-permissions",
+        "passed": true
+      },
+      {
+        "name": "creative-inventories",
+        "passed": true
+      },
+      {
+        "name": "creative-restriction",
+        "passed": true
+      },
+      {
+        "name": "creative-restart",
+        "passed": true
+      },
+      {
+        "name": "creative-audit",
+        "passed": true
+      },
+      {
+        "name": "invsee",
+        "passed": true
+      },
+      {
+        "name": "mail-numbers",
+        "passed": true
+      },
+      {
+        "name": "whois-alts",
+        "passed": true
+      },
+      {
+        "name": "restore",
+        "passed": true
+      },
+      {
+        "name": "paid-repair",
+        "passed": true
+      },
+      {
+        "name": "repair-halt-after-reserve",
+        "passed": true
+      },
+      {
+        "name": "repair-halt-after-save",
+        "passed": true
+      }
+    ],
+    "alliumSha256": "be62473a769f17f6719ce07c385ce964f2aad65f1449dde561e0ce3d7afc04e0",
+    "sources": {
+      "tests/live/staff/run.py": "9418d1b39a6c50b118c61d45c9fac07a8bbedb4b64ba99d371f521a2c569d4bb",
+      "tests/live/staff/plugin/gate/StaffGate.java": "eae0f4af337def28a1e26932baeeb6da53368939d329627606079e397bc85734",
+      "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+      "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
+      "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
+      "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+    },
+    "seconds": 106.5,
+    "labels": [
+      "paper: creative, alts and restore modules enabled",
+      "paper: /eco completes its actions",
+      "paper: /eco give completes known players",
+      "paper: /eco give completes amounts",
+      "paper: /pay completes visible players",
+      "paper: /eco completes nothing without allium.eco",
+      "paper: /balance completion follows allium.balance.others",
+      "paper: \">\" is stripped from the redirected message",
+      "paper: after \">\", the staff selection stays (next line is staff only)",
+      "paper: \"#\" from global still goes to staff only",
+      "paper: /gamemode creative refused without allium.gamemode.creative",
+      "paper: /gamemode completes no mode without a mode node",
+      "paper: /gamemode completes only the permitted mode",
+      "paper: entering creative loads an empty creative inventory",
+      "paper: the survival inventory is stored in the player data",
+      "paper: survival gets its own items back",
+      "paper: no creative item reaches survival",
+      "paper: adventure shares the survival inventory",
+      "paper: creative gets its own items back",
+      "paper: a crafting table does not open in creative without .container",
+      "paper: it opens with allium.gamemode.creative.container",
+      "paper: PlayerBot leaves in creative",
+      "paper: force-gamemode reset is undone: PlayerBot is restored to creative on join",
+      "paper: after a restart and a forced reset the creative inventory is intact",
+      "paper: the survival inventory survived the restart unchanged",
+      "paper: staff are alerted when a player enters creative without allium.gamemode.creative",
+      "paper: empty armor and offhand slots show slot icons",
+      "paper: icons carry the gui_slot model data (helmet, shield, sword, pane)",
+      "paper: the sword icon names the held hotbar slot",
+      "paper: placing an item on the helmet icon equips it",
+      "paper: no icon ever reaches the viewer",
+      "paper: /invsee on a dead player says so instead of \"went offline\"",
+      "paper: offline /invsee announces it is editable",
+      "paper: closing an edited offline inventory reports the saved changes",
+      "paper: the offline edit reached the player data",
+      "paper: the viewer holds the taken stack",
+      "paper: text mail reads as [1] [2] [3]",
+      "paper: a new mail takes the freed number 2",
+      "paper: gifts are numbered 1 and 2 apart from text",
+      "paper: the next gift reuses number 1",
+      "paper: joins record the IP history",
+      "paper: the alert names the older account",
+      "paper: without LuckPerms or Vault the missing group backend is logged",
+      "paper: and only once per server run",
+      "paper: /seen lists alt accounts and the IP for staff",
+      "paper: players without the nodes see neither",
+      "paper: the exemption is stored with its reason",
+      "paper: an exempt account rejoins without an alert",
+      "paper: the LiteBans action carries a click event running /history PlayerBot",
+      "paper: /whois shows state, vitals, flags, IP, alts and the action links to allium.whois.extra",
+      "paper: without allium.whois.extra /whois stays basic",
+      "paper: snapshots were taken on login/logout/gamemode change and manually",
+      "paper: /restore opens the history",
+      "paper: the newest (MANUAL) snapshot opens its restore panel",
+      "paper: the panel shows the snapshot (hotbar and armor)",
+      "paper: empty armor and offhand show icons",
+      "paper: \"Restore everything\" replaces the online owner's inventory",
+      "paper: an editor can take items out of the panel",
+      "paper: \"inventory only\" uses the edited panel and leaves armor alone",
+      "paper: only \"Save as manual snapshot\" writes to storage",
+      "paper: the queued restore is applied on join",
+      "paper: the queue row and the applied receipt are cleared after the save",
+      "paper: without allium.restore.edit the panel opens read-only",
+      "paper: a read-only panel hands out nothing",
+      "paper: the paid repair repairs the held item",
+      "paper: exactly $1.25 is captured and nothing stays held",
+      "paper: the repair receipt is dropped once captured",
+      "paper: an undamaged item is never charged",
+      "paper: without funds nothing is repaired, held or charged",
+      "paper: repair.halt-after-reserve halts the JVM",
+      "paper: a halt after the hold releases it at restart; no money is lost",
+      "paper: and the item was not repaired",
+      "paper: Allium restarted",
+      "paper: repair.halt-after-save halts the JVM",
+      "paper: a halt after the save captures the hold at restart; charged once",
+      "paper: and the saved repair is kept",
+      "paper: the settled receipt is cleared on join",
+      "paper: Allium restarted",
+      "paper: no exceptions or SEVERE lines in the server log"
+    ]
+  },
+  "regressions": {
+    "jar": "be62473a769f17f6719ce07c385ce964f2aad65f1449dde561e0ce3d7afc04e0",
+    "s24_inspection": {
+      "spigot": "98/98 (r5-spigot)",
+      "paper": "98/98 (r5-paper)"
+    },
+    "economy_signs": {
+      "spigot": "384/384 (signs-repair-spigot-r5)",
+      "paper": "384/384 (signs-repair-paper-r5)"
+    }
+  }
+}

@@ -42,6 +42,9 @@ migration in `PlayerNameRepository`), plus `/i` and `/item` self-use aliases for
   - Permissions: `allium.afk` (default `true`), `allium.afk.kick.exempt` (default `false`, explicit
     only — not included in `allium.*`).
 
+Staff extras in `/whois` (state, vitals, flags, IP, alts and configurable click actions) and the
+alt/IP lines in `/seen` are described in [alts and whois](alts-and-whois.md).
+
 ### Self-use give aliases (`/i`, `/item`)
 - `/i <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]` (alias `/item`):
   - Registered on `CoreCommandSpecs.ITEM` and delegated directly to `GiveCommand#give(player,

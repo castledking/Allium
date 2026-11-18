@@ -461,6 +461,9 @@ alts:
   notify-staff: true
   # How many linked accounts /seen and /whois list.
   max-listed: 10
+  # Skip players connecting from a loopback address (127.0.0.1, ::1). Behind a proxy without IP
+  # forwarding every player shares the proxy's address and would otherwise all be "alts".
+  ignore-local-addresses: true
 
 # Inventory snapshots and /restore (modules.restore).
 restore:

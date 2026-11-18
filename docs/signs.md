@@ -72,9 +72,29 @@ colored, sound-configurable language keys `utility.repair-held` and
 `utility.repair-hold-damaged`.
 
 
-Repair signs store mode and price in the sign identity. A nonzero price is still
-displayed, but the sign refuses activation without changing items or money.
-Paid repair remains disabled pending durable receipt recovery and a live halt test.
+Headers and the mode, name and price lines are read without color codes. Re-editing a face keeps
+each line's existing style on Paper, so an Allium header arrives as `§1[repair]`; before this
+was handled, re-editing an Allium sign on Paper silently dropped its identity.
+
+Repair signs store mode and price in the sign identity. A priced repair sign is settled so a
+crash never loses money and never repairs for free:
+
+1. **Reserve.** The player is saved, then the price is held (not yet spent) as a `REPAIR`
+   reservation. Damaged items are planned first, so an undamaged hand or inventory is never
+   charged, and too little money refuses with nothing repaired, held or charged.
+2. **Apply and save.** On the server thread the plan is rechecked (any changed item releases the
+   hold), the items are repaired, the workflow ID is added to the player's
+   `allium:repair_receipts`, and the player is saved: repaired items and receipt reach disk in one
+   file write.
+3. **Capture.** Once the saved file is proven to list the receipt, the hold is captured and the
+   receipt dropped.
+
+A hold whose receipt the saved file lacks is released. That decision is made from the complete,
+validated player file at the player's next join, or at startup for an offline player
+(`EconomyRecovery`). `/eco reservations` and `/eco resolve REPAIR <workflow> <capture|release>
+<reason>` work for repair holds like kit and mail holds. Fault points
+`repair.halt-after-reserve` and `repair.halt-after-save` (with `-Dallium.fault-injection=true`)
+halt the JVM at each boundary for gates.
 Paid kit signs retain their existing receipt recovery. Stock repair messages update automatically. Custom repair messages can include `{items}` for the comma-separated list.
 
 Set `economy.currency-symbol` and `economy.currency-symbol-suffix` to control display

@@ -36,7 +36,7 @@ public final class AltService implements Listener {
     public static final String PERMISSION_EXEMPT = "allium.altexempt";
     public static final String PERMISSION_ALERTS = "allium.alerts";
 
-    public record Settings(boolean assignGroup, String group, boolean notifyStaff, int maxListed) {
+    public record Settings(boolean assignGroup, String group, boolean notifyStaff, int maxListed, boolean ignoreLocal) {
         static Settings read(@Nullable ConfigurationSection c) {
             String group = c == null ? "alt" : c.getString("group", "alt");
             if (group == null || !group.matches("[A-Za-z0-9_.-]{1,64}")) {
@@ -44,7 +44,8 @@ public final class AltService implements Listener {
             }
             return new Settings(c == null || c.getBoolean("assign-group", true), group,
                     c == null || c.getBoolean("notify-staff", true),
-                    Math.max(1, Math.min(50, c == null ? 10 : c.getInt("max-listed", 10))));
+                    Math.max(1, Math.min(50, c == null ? 10 : c.getInt("max-listed", 10))),
+                    c == null || c.getBoolean("ignore-local-addresses", true));
         }
     }
 
@@ -58,6 +59,7 @@ public final class AltService implements Listener {
     private final Executor io;
     private volatile Settings settings;
     private volatile boolean closed;
+    private volatile boolean warnedNoBackend;
 
     public AltService(PluginStart plugin, AltRepository repository, PlayerNameRepository names, Executor io) {
         this.plugin = plugin;
@@ -114,6 +116,13 @@ public final class AltService implements Listener {
         if (ip == null) {
             return;
         }
+        // Behind a proxy without IP forwarding every player shares the proxy's loopback address:
+        // treating that as one household would flag everyone after the first player as an alt.
+        InetSocketAddress address = player.getAddress();
+        if (settings.ignoreLocal() && address != null && address.getAddress() != null
+                && (address.getAddress().isLoopbackAddress() || address.getAddress().isAnyLocalAddress())) {
+            return;
+        }
         UUID uuid = player.getUniqueId();
         long now = System.currentTimeMillis();
         execute(() -> {
@@ -137,12 +146,14 @@ public final class AltService implements Listener {
                     return;
                 }
                 Settings current = settings;
-                boolean added = current.assignGroup() && addGroup(player, current.group());
-                if (added) {
+                Assignment assignment = current.assignGroup() ? addGroup(player, current.group()) : Assignment.UNAVAILABLE;
+                if (assignment == Assignment.ADDED) {
                     plugin.logger().info("Alt detection: " + player.getName() + " shares an IP with "
                             + String.join(", ", linked) + "; added parent group " + current.group() + ".");
                 }
-                if (current.notifyStaff() && (added || !current.assignGroup())) {
+                // Staff hear about a new alt once (when the group is added), or on every join when no
+                // group can be assigned, since nothing else marks the account.
+                if (current.notifyStaff() && assignment != Assignment.ALREADY) {
                     String accounts = linked.isEmpty() ? "?" : String.join(", ", linked);
                     for (Player staff : plugin.getServer().getOnlinePlayers()) {
                         if (staff.hasPermission(PERMISSION_ALERTS) && staff != player) {
@@ -207,37 +218,35 @@ public final class AltService implements Listener {
         return lp != null && lp.isEnabled();
     }
 
-    @Nullable
-    private net.milkbowl.vault.permission.Permission vault() {
-        try {
-            if (plugin.getServer().getPluginManager().getPlugin("Vault") == null) return null;
-            var permission = plugin.getServer().getServicesManager().load(net.milkbowl.vault.permission.Permission.class);
-            return permission != null && permission.hasGroupSupport() ? permission : null;
-        } catch (LinkageError missing) {
-            return null;
-        }
-    }
+    enum Assignment { ADDED, ALREADY, UNAVAILABLE }
 
     /**
      * Adds {@code group} as a parent, globally (no world context). Through LuckPerms' own command
      * when LuckPerms is installed, so the change is logged and never world-scoped; else through
-     * Vault. Server thread only. False when the player already had it or nothing could add it.
+     * Vault. Server thread only.
      */
-    boolean addGroup(Player player, String group) {
+    Assignment addGroup(Player player, String group) {
         if (player.hasPermission("group." + group)) {
-            return false;
+            return Assignment.ALREADY;
         }
         if (luckPerms()) {
             return plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(),
-                    "lp user " + player.getUniqueId() + " parent add " + group);
+                    "lp user " + player.getUniqueId() + " parent add " + group) ? Assignment.ADDED : Assignment.UNAVAILABLE;
         }
-        var vault = vault();
+        VaultGroups vault = VaultGroups.find(plugin.getServer());
         if (vault == null) {
-            plugin.logger().warning("Alt detection: cannot add group " + group + " to " + player.getName()
-                    + " (no LuckPerms and no Vault permission provider with group support).");
-            return false;
+            if (!warnedNoBackend) {
+                warnedNoBackend = true;
+                plugin.logger().warning("Alt detection: cannot add group " + group + " to " + player.getName()
+                        + " (no LuckPerms and no Vault permission provider with group support); staff are alerted instead."
+                        + " This is logged once.");
+            }
+            return Assignment.UNAVAILABLE;
         }
-        return !vault.playerInGroup(null, player, group) && vault.playerAddGroup(null, player, group);
+        if (vault.has(player, group)) {
+            return Assignment.ALREADY;
+        }
+        return vault.add(player, group) ? Assignment.ADDED : Assignment.UNAVAILABLE;
     }
 
     /** Removes {@code group} from {@code target} (online or not). Server thread only. */
@@ -247,9 +256,9 @@ public final class AltService implements Listener {
                     "lp user " + target.getUniqueId() + " parent remove " + group);
             return;
         }
-        var vault = vault();
-        if (vault != null && vault.playerInGroup(null, target, group)) {
-            vault.playerRemoveGroup(null, target, group);
+        VaultGroups vault = VaultGroups.find(plugin.getServer());
+        if (vault != null && vault.has(target, group)) {
+            vault.remove(target, group);
         }
     }
 }

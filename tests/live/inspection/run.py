@@ -567,7 +567,7 @@ def run_suite(kind, port):
             and top.get('38') == '1xDIAMOND_LEGGINGS'
             and top.get('39') == '1xDIAMOND_BOOTS'
             and top.get('40') == '1xSHIELD'
-            and all(top.get(str(i)) == '1xGRAY_STAINED_GLASS_PANE' for i in range(41, 45)),
+            and all(top.get(str(i)) == '1xLIGHT_GRAY_STAINED_GLASS_PANE' for i in range(41, 45)),
             lane.name + ': /invsee 45-slot layout (storage 0..26, hotbar 27..35, armor 36..39, offhand 40, panes 41..44)',
             {'top': top})
 
@@ -622,7 +622,7 @@ def run_suite(kind, port):
     staff.drag(41, 42)
     window(.2)
     gui_locked = lane.fixture('inv InspStaff').get('openTopNonEmpty', {})
-    require(all(gui_locked.get(str(i)) == '1xGRAY_STAINED_GLASS_PANE' for i in range(41, 45)),
+    require(all(gui_locked.get(str(i)) == '1xLIGHT_GRAY_STAINED_GLASS_PANE' for i in range(41, 45)),
             lane.name + ': locked panes 41..44 preserved under .edit clicks and drags')
 
     # Place 6xIRON_INGOT from InspStaff hotbar[0] (rawSlot 72) into InspNorm hotbar[1] (GUI slot 28)

@@ -312,6 +312,11 @@ public final class RestoreService implements Listener {
      * whose ID the player already carries is only removed.
      */
     private void applyPending(Player player) {
+        applyPending(player, 0);
+    }
+
+    /** Join-time work (mail or kit recovery) can hold the inventory briefly: busy restores retry a few times. */
+    private void applyPending(Player player, int attempt) {
         UUID id = player.getUniqueId();
         submit(() -> {
             List<SnapshotRepository.Pending> pending;
@@ -329,6 +334,7 @@ public final class RestoreService implements Listener {
                 if (closed || plugin.getServer().getPlayer(id) != player) return;
                 Set<String> applied = receipts(player);
                 List<UUID> finished = new ArrayList<>();
+                boolean waiting = false;
                 for (SnapshotRepository.Pending row : pending) {
                     if (applied.contains(row.id().toString())) {
                         finished.add(row.id());
@@ -348,7 +354,7 @@ public final class RestoreService implements Listener {
                         continue;
                     }
                     if (busy(player)) {
-                        plugin.logger().warning("Queued restore " + row.id() + " for " + player.getName() + " waits: inventory busy.");
+                        waiting = true;
                         continue;
                     }
                     applied.add(row.id().toString());
@@ -358,6 +364,15 @@ public final class RestoreService implements Listener {
                     plugin.getMessageManager().send(player, Messages.RESTORE_PENDING_APPLIED, "{parts}", Part.describe(parts));
                     plugin.logger().info("[RestoreAudit] applied queued restore " + row.id() + " (" + Part.describe(parts) + ") to "
                             + player.getName() + ", queued by " + row.queuedBy());
+                }
+                if (waiting) {
+                    if (attempt < 20) {
+                        plugin.getScheduler().runOnServerLater(() -> {
+                            if (!closed && plugin.getServer().getPlayer(id) == player) applyPending(player, attempt + 1);
+                        }, 1_000L);
+                    } else {
+                        plugin.logger().warning("Queued restores for " + player.getName() + " wait for their next join: inventory busy.");
+                    }
                 }
                 if (finished.isEmpty()) return;
                 submit(() -> {

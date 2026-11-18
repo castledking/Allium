@@ -38,7 +38,12 @@ public final class SignService implements Listener,AutoCloseable {
     private NamespacedKey key(Side side){return new NamespacedKey(plugin,"sign_"+side.name().toLowerCase(Locale.ROOT));}
     private Optional<SignIdentity> identity(Sign sign,Side side){return SignIdentity.decode(sign.getPersistentDataContainer().get(key(side),PersistentDataType.STRING));}
     private boolean permission(Player p,String action,SignIdentity.Type type){return p.hasPermission("allium.signs."+action+"."+type.key());}
-    private static SignIdentity.Type header(String line){
+    /**
+     * The type named by a header line. Color codes are ignored: re-editing a face keeps each line's
+     * existing style on Paper, so an Allium header arrives as {@code §1[repair]}.
+     */
+    static SignIdentity.Type header(String line){
+        line=plain(line);
         if(line==null||!line.startsWith("[")||!line.endsWith("]"))return null;
         try{return SignIdentity.Type.parse(line.substring(1,line.length()-1));}catch(IllegalArgumentException error){return null;}
     }
@@ -56,9 +61,9 @@ public final class SignService implements Listener,AutoCloseable {
             plugin.getScheduler().runOnServerLater(()->{if(!closed&&!event.isCancelled()&&event.getBlock().getState() instanceof Sign current){current.getPersistentDataContainer().remove(key(side));current.update(false,false);}},50);
             return;
         }
-        boolean publicWarp=type==SignIdentity.Type.WARP&&"public".equalsIgnoreCase(event.getLine(2));
+        boolean publicWarp=type==SignIdentity.Type.WARP&&"public".equalsIgnoreCase(plain(event.getLine(2)));
         if(!permission(event.getPlayer(),"create",type)||publicWarp&&!event.getPlayer().hasPermission("allium.signs.create.warp.public")){event.setCancelled(true);return;}
-        String argument=Objects.toString(event.getLine(1),"").trim();
+        String argument=Objects.toString(plain(event.getLine(1)),"");
         Money price=new Money(0);
         if(type==SignIdentity.Type.REPAIR){
             argument=argument.isEmpty()?"hand":argument.toLowerCase(Locale.ROOT);
@@ -66,7 +71,7 @@ public final class SignService implements Listener,AutoCloseable {
                 invalid(event,type,2,"<hand|all>","Use hand or all.");
                 return;
             }
-            try{price=EconomyDisplay.read(plugin.getConfig()).parsePrice(Objects.toString(event.getLine(2),""));}
+            try{price=EconomyDisplay.read(plugin.getConfig()).parsePrice(Objects.toString(plain(event.getLine(2)),""));}
             catch(IllegalArgumentException|ArithmeticException error){
                 invalid(event,type,3,"<price>","Enter a non-negative amount with up to two decimal places.");
                 return;
@@ -82,7 +87,7 @@ public final class SignService implements Listener,AutoCloseable {
         event.setLine(0,ChatColor.DARK_BLUE+displayHeader(type));
         if(type==SignIdentity.Type.REPAIR){
             event.setLine(1,argument.equals("all")?"All":"Hand");
-            if(!Objects.toString(event.getLine(2),"").isBlank())
+            if(!Objects.toString(plain(event.getLine(2)),"").isBlank())
                 event.setLine(2,EconomyDisplay.read(plugin.getConfig()).format(price));
         }
         // Bukkit applies text after the event. Re-read then update PDC without overwriting either face.
@@ -92,6 +97,8 @@ public final class SignService implements Listener,AutoCloseable {
             current.getPersistentDataContainer().set(key(side),PersistentDataType.STRING,created.encode());current.update(false,false);
         },50);
     }
+    /** A sign line without color codes (null stays null). */
+    static String plain(String line){return line==null?null:ChatColor.stripColor(line).trim();}
     private static String displayHeader(SignIdentity.Type type){
         String name=type.key();
         return "["+Character.toUpperCase(name.charAt(0))+name.substring(1)+"]";

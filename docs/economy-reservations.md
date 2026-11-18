@@ -15,7 +15,7 @@ Kit definitions retain their quoted `cost`. A paid kit is a self claim by the ta
 
 ## One commit per step
 
-Economy schema migration 2 adds reservations keyed by `(KIT|MAIL, workflow UUID)`, with payer, exact amount, framed intent hash, HELD/CAPTURED/RELEASED state, version and original/final journal IDs. Original migration 1 and legacy balances are retained. Full mail/kit intents are hashed with length framing so a changed payload under an existing workflow key conflicts even at the same price.
+Economy schema migration 2 adds reservations keyed by `(KIT|MAIL|REPAIR, workflow UUID)` (paid repair signs use `REPAIR` holds: see [signs](signs.md)), with payer, exact amount, framed intent hash, HELD/CAPTURED/RELEASED state, version and original/final journal IDs. Original migration 1 and legacy balances are retained. Full mail/kit intents are hashed with length framing so a changed payload under an existing workflow key conflicts even at the same price.
 
 - Reserve: under `BEGIN IMMEDIATE`, read the payer account, enforce available funds, increase R, write a zero-book/positive-held entry, insert HELD and insert the PENDING mail/kit delivery intent in the same commit.
 - Capture: require HELD, reduce B and R together, record the sink/held entries, and save workflow completion/acknowledgement in the same commit. Native receipt verification precedes the write transaction while item admission remains locked; HELD state and workflow ownership are rechecked under the write lock.

@@ -158,3 +158,21 @@ Read-only by default, hierarchy- and vanish-aware inspection for online and offl
 - `INVSEE_OPEN`, `INVSEE_EDIT`, `INVSEE_ABORT`, `ENDERCHEST_OPEN`, and `ENDERCHEST_EDIT` write sanitized (`<= 512` chars) slot-delta records to `allium_moderation_audit` via `ModerationRepository`.
 - Verified with **196/196** live checks on Spigot 1.20.1 (`98/98`, `spigot-r14`) and Paper 26.3 (`98/98`, `paper-r2`) with SQLite and **799 unit tests** (`allium-api`: 4, `allium-core`: 278, root: 517; **+18** from S23 baseline 781). See [S24 live results](../tests/live/inspection/RESULTS.md).
 
+## Inventory menu icons and messages
+
+- **Slot icons.** An empty armor or offhand slot in `/invsee` (and in `/restore` panels) shows its
+  empty-slot icon: a light gray glass pane carrying the core pack's `gui_slot` model (helmet,
+  chestplate, leggings, boots, shield). The first locked slot shows a sword marking the target's
+  held hotbar slot; the other locked slots are a textured pane. Icons are marked items: they are
+  never saved into the target, picked up, dropped or dragged, and placing a cursor item on an icon
+  equips it (left click places the stack, right click one item). Without the pack, players see
+  named light gray panes.
+- **Dead target.** `/invsee` on a player who is on the respawn screen says so
+  (`moderation.inspect.target-dead-open`), and a live inventory view of a player who is dead (but
+  still online) closes with `moderation.inspect.target-dead` rather than "went offline". Ender
+  chest views stay open: an ender chest survives death.
+- **Offline sessions** announce themselves (`moderation.inspect.offline-opened`, with editable or
+  read-only) and, when closed, report how many slot changes were saved
+  (`moderation.inspect.offline-saved`). A click made while a write was in flight is still saved
+  after the window closes.
+

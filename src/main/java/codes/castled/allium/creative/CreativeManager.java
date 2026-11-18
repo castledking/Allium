@@ -497,8 +497,9 @@ public final class CreativeManager implements Listener {
      */
     static boolean interactable(Material material) {
         String name = material.name();
+        // Signs are left out, as in legacy Allium: Allium's action signs work for creative staff.
         for (String part : List.of("CHEST", "BARREL", "SHULKER_BOX", "DOOR", "FENCE_GATE", "BUTTON", "_BED", "ANVIL",
-                "SIGN", "CANDLE_CAKE", "POTTED_", "CAULDRON", "COMMAND_BLOCK")) {
+                "CANDLE_CAKE", "POTTED_", "CAULDRON", "COMMAND_BLOCK")) {
             if (name.contains(part)) return true;
         }
         return Set.of("LEVER", "DISPENSER", "DROPPER", "HOPPER", "FURNACE", "BLAST_FURNACE", "SMOKER", "BREWING_STAND",

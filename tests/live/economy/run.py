@@ -440,6 +440,8 @@ class Lane:
         config.setdefault('economy',{})['vault-provider-enabled']=True # disposable measurement copy only
         for m in ['moderation', 'teleport']:
             config.setdefault('modules', {})[m] = True
+        # Sign and economy cases run their bot in creative; the creative manager is gated elsewhere.
+        config.setdefault('modules', {})['creative'] = False
         if A.paid_workflows or A.signs:
             config.setdefault('mail',{}).update({'costs':{'text':'0.25','gift':'1.50'},'mailbox-size':1000,'rate-limit':{'sends':1000,'per-seconds':60}})
             kitdir=self.path/'plugins/Allium/kits';kitdir.mkdir(exist_ok=True)
@@ -1034,10 +1036,11 @@ def signs_gate(lane):
             edit(t,price='$1.25');mark=len(a.lines);click();window(.7);state=fixture('state')
             require(state['FRONTLines'][0].endswith('[Repair]') and state['FRONTLines'][1:3]==['Hand','$1.25'],
                     lane.name+': repair sign renders title, mode and exact price',state)
-            require(state['damage']>0 and paid_state(lane)['book']==balance_before
-                    and '"SIGN","REPAIR"' not in trade_log.read_text()
-                    and any('Paid repair is temporarily disabled' in c['plain'] for c in a.chats(mark)),
-                    lane.name+': priced repair refuses without repairing, debiting or logging a trade',state)
+            wait(lambda:fixture('state')['damage']==0,'paid repair applied',10);state=fixture('state')
+            require(state['damage']==0 and paid_state(lane)['book']==balance_before-125
+                    and any('Repaired ' in c['plain'] and '$1.25' in c['plain'] for c in a.chats(mark)),
+                    lane.name+': priced repair repairs and captures exactly the sign price',dict(state=state,book=paid_state(lane)['book'],before=balance_before))
+            fixture('resetplayer');balance_before=paid_state(lane)['book']
             edit(t);mark=len(a.lines);click();window(.7);state=fixture('state')
             require(state['damage']==0 and not any('SIGN-EDITOR opened' in v for v in a.lines[mark:]),
                     lane.name+': free unwaxed repair acts without opening vanilla editor',state)
@@ -1102,7 +1105,7 @@ def chat_setup(lane):
     setup(lane)
     for name in lane.bots:
         wait(lambda n=name:chat_state(lane,n)['ready'],name+' chat profile ready',30)
-    for node in ['allium.nick','allium.channel','allium.gamemode']:
+    for node in ['allium.nick','allium.channel','allium.gamemode','allium.gamemode.survival','allium.gamemode.creative','allium.gamemode.adventure','allium.gamemode.spectator']:
         lane.perm('MoneyA',node,True)
     lane.perm('MoneyObs','allium.delmsg',True)
     lane.fixture('chat MoneyA mockrelay')

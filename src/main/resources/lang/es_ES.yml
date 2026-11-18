@@ -291,6 +291,11 @@ economy:
     - "{prefix} &cLa cantidad debe ser mayor que cero."
     - "[sound] block.note_block.bass 0.8"
 chat:
+  channel-saved:
+    - "{prefix} &aChannel preference saved: &f{channel}&a."
+    - "[sound] block.note_block.hat 1.0"
+  channel-save-failed:
+    - "{prefix} &cChannel preference could not be saved."
   delete:
     success:
       - "{prefix} &aMensaje eliminado."

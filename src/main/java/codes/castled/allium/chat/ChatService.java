@@ -270,7 +270,7 @@ public final class ChatService implements Listener,AutoCloseable {
     private void choose(Session s,String id,boolean write){var c=settings.channels().get(id);if(c==null||!(write?canWrite(s.player,c):canRead(s.player,c)))throw new IllegalArgumentException("You cannot join that channel.");var reads=new LinkedHashSet<>(s.reads);reads.add(id);saveChannels(s,write?id:s.write,reads);}
     private void saveChannels(Session s,String write,Set<String> reads){
         if(s.busy)throw new IllegalArgumentException("Chat profile is busy.");s.busy=true;
-        work(()->{repository.channels(s.player.getUniqueId(),write,reads);return Boolean.TRUE;},saved->{if(same(s)){s.write=write;s.reads=Set.copyOf(reads);s.busy=false;tell(s.player,"Channel preference saved: "+write);}},error->{s.busy=false;tell(s.player,"Channel preference could not be saved.");});
+        work(()->{repository.channels(s.player.getUniqueId(),write,reads);return Boolean.TRUE;},saved->{if(same(s)){s.write=write;s.reads=Set.copyOf(reads);s.busy=false;tell(s.player,Messages.CHAT_CHANNEL_SAVED,"{channel}",write);}},error->{s.busy=false;tell(s.player,Messages.CHAT_CHANNEL_SAVE_FAILED);});
     }
     public List<String> complete(Player p,String prefix){return settings.channels().values().stream().filter(c->canRead(p,c)&&c.id().startsWith(prefix.toLowerCase(Locale.ROOT))).map(ChatSettings.Channel::id).sorted().limit(64).toList();}
     private void delete(CommandSender sender,String[] args){

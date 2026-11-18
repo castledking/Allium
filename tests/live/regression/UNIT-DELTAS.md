@@ -76,3 +76,8 @@ The first S19 snapshot had 588 tests; live Paper controls exposed the movement c
   native potion flags, disabled-text/break-permission/editor behavior, and config
   checklist persistence. Native evidence is recorded in parity/LEGACY-IDS.md and
   signs/USABILITY.md after the immutable-artifact gates finish.
+
+- Flight-aware teleport destinations, explicit default-false `allium.teleport.unsafe`,
+  and colored channel-save acknowledgement: **+3**, 929 → 932; full check/shadowJar.
+  Clear-air flying, hazard/border/chunk refusal, explicit unsafe admission and
+  post-commit channel feedback are covered.

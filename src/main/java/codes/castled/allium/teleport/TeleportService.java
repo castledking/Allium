@@ -290,7 +290,7 @@ public final class TeleportService implements Listener {
             send(actor,Messages.COOLDOWN_ACTIVE,"{time}",Long.toString((session.cooldowns.get(command)-now+999)/1000)+"s");return false;
         }
         TeleportSettings rules=settings;
-        var checked=safety.resolve(destination.get(),rules);
+        var checked=safety.resolve(destination.get(),safetyRules(mover,actor,rules));
         if(checked.isEmpty()){send(actor,Messages.TELEPORT_UNSAFE);return false;}
         long warmup=actor.hasPermission("allium.teleport.bypass.warmup")?0:rules.warmupMillis();
         var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),now+warmup,rules,policy);
@@ -317,7 +317,7 @@ public final class TeleportService implements Listener {
                 ||!allowed(mover,operation.anchor(),operation.actor(),true,false)||!allowed(operation.anchor(),mover,operation.actor(),true,false))) {
             interrupt(operation,"teleport policy changed");return;
         }
-        var destination=safety.resolve(operation.destination().get(),operation.rules());
+        var destination=safety.resolve(operation.destination().get(),safetyRules(mover,operation.actor(),operation.rules()));
         if(destination.isEmpty()){operations.remove(id);offlineLookups.remove(id);send(operation.actor(),Messages.TELEPORT_UNSAFE);return;}
         OfflineLookup offline=operation.command().equals("tpoffline")?offlineLookups.get(id):null;
         Location origin=mover.getLocation().clone();
@@ -335,6 +335,10 @@ public final class TeleportService implements Listener {
         saveHistory(session,session.back,operation.command(),until,0,()->{
             send(mover,switch(operation.command()){case "back"->Messages.TELEPORT_BACK;case "spawn"->Messages.SPAWN_TELEPORT;case "tpoffline"->Messages.TELEPORT_OFFLINE_SUCCESS;default->Messages.TELEPORT_SUCCESS;},"{target}",offline!=null?offline.name:operation.anchor()==null?operation.command():operation.anchor().getName());
         });
+    }
+    private static TeleportSettings safetyRules(Player mover,CommandSender actor,TeleportSettings rules) {
+        boolean flight=mover.getAllowFlight()||mover.getGameMode()==org.bukkit.GameMode.CREATIVE||mover.getGameMode()==org.bukkit.GameMode.SPECTATOR;
+        return rules.forMover(flight,actor.hasPermission("allium.teleport.unsafe"));
     }
     private boolean allowed(Player requester,Player recipient,CommandSender actor,boolean force,boolean notify) {
         Messages refusal=null;

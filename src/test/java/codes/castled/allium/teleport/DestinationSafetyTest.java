@@ -25,6 +25,17 @@ class DestinationSafetyTest {
 
     private final DestinationSafety safety = new DestinationSafety();
 
+    @Test void enabledFlightAcceptsClearAirButStillRejectsLavaAndSuffocation(){
+        Terrain terrain=new Terrain();Location air=terrain.at(.5,100,.5);var base=rules(false,0,0,true,true,false);
+        assertTrue(safety.resolve(air,base).isEmpty());assertEquals(air,safety.resolve(air,base.forMover(true,false)).orElseThrow());
+        terrain.put(0,100,0,Material.LAVA);assertTrue(safety.resolve(air,base.forMover(true,false)).isEmpty());
+        terrain.put(0,100,0,Material.STONE);assertTrue(safety.resolve(air,base.forMover(true,false)).isEmpty());
+    }
+    @Test void unsafeGrantBypassesHazardsButNeverInvalidCoordinatesBordersOrUnloadedChunks(){
+        Terrain terrain=new Terrain();Location point=terrain.at(.5,100,.5);terrain.put(0,100,0,Material.LAVA);var unsafe=rules(false,0,0,true,true,false).forMover(false,true);
+        assertEquals(point,safety.resolve(point,unsafe).orElseThrow());assertTrue(safety.resolve(terrain.at(Double.NaN,100,.5),unsafe).isEmpty());
+        terrain.borderRadius=1;assertTrue(safety.resolve(terrain.at(2,100,.5),unsafe).isEmpty());terrain.unloaded.add(new ChunkPos(0,0));assertTrue(safety.resolve(point,unsafe).isEmpty());
+    }
     @Test
     void safeDestinationRetainsExactCoordinatesAndAnglesAndReturnsACopy() {
         Terrain terrain = new Terrain();

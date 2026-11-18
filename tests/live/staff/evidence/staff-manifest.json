@@ -1,12 +1,16 @@
 {
-  "spigot-r6-full": {
+  "spigot-r7-full": {
     "suite": "spigot",
     "passed": true,
-    "checks": 83,
+    "checks": 92,
     "failures": [],
     "cases": [
       {
         "name": "completions",
+        "passed": true
+      },
+      {
+        "name": "help",
         "passed": true
       },
       {
@@ -62,16 +66,16 @@
         "passed": true
       }
     ],
-    "alliumSha256": "ebb6249b73dc05d480d54f9446a452a7ec887e7d40bbd0ae213625b95e3cbf15",
+    "alliumSha256": "23823e09a089649d82ea84993b941d85d07291f7fc78103cf6e8a4a0e2174002",
     "sources": {
-      "tests/live/staff/run.py": "f552eb025c3ed9dd6839e260a5d802f9f0739912811a5ff7d8ae74b6411ea3cf",
-      "tests/live/staff/plugin/gate/StaffGate.java": "52ba1421dc27abb67d3e0ad72a0c6e957d3363720938afa3dc3515b29552aed5",
+      "tests/live/staff/run.py": "c80586e708cd481a99abdbaeca2c5bcc3f1de569c2748422eeb7d84e8b32921b",
+      "tests/live/staff/plugin/gate/StaffGate.java": "917949fa55aebf87214197c374d5cac841c9e102d6cb090c674db91edb0b66fd",
       "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
       "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
       "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
       "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
     },
-    "seconds": 119.9,
+    "seconds": 131.3,
     "labels": [
       "spigot: creative, alts and restore modules enabled",
       "spigot: /eco completes its actions",
@@ -80,6 +84,9 @@
       "spigot: /pay completes visible players",
       "spigot: /eco completes nothing without allium.eco",
       "spigot: /balance completion follows allium.balance.others",
+      "spigot: an allium.command.reload node is registered",
+      "spigot: with the resolver on, /help lists commands without an exception",
+      "spigot: /help descriptions are the rewritten ones",
       "spigot: \">\" is stripped from the redirected message",
       "spigot: after \">\", the staff selection stays (next line is staff only)",
       "spigot: \"#\" from global still goes to staff only",
@@ -100,15 +107,19 @@
       "spigot: the survival inventory survived the restart unchanged",
       "spigot: staff are alerted when a player enters creative without allium.gamemode.creative",
       "spigot: empty armor and offhand slots show slot icons",
-      "spigot: icons carry the gui_slot model data (helmet, shield, sword, pane)",
-      "spigot: the sword icon names the held hotbar slot",
+      "spigot: icons carry the gui_slot model data (helmet, shield, pane)",
+      "spigot: the main-hand cell shows the held hotbar item",
+      "spigot: the held hotbar cell is a marker, so the item shows once",
       "spigot: placing an item on the helmet icon equips it",
       "spigot: no icon ever reaches the viewer",
+      "spigot: taking the main-hand item empties the held hotbar slot; the sword shows the empty hand",
+      "spigot: placing on the main-hand cell puts the item in the held hotbar slot",
       "spigot: /invsee on a dead player says so instead of \"went offline\"",
       "spigot: offline /invsee announces it is editable",
+      "spigot: offline, the main hand comes from the player file's selected slot",
       "spigot: closing an edited offline inventory reports the saved changes",
-      "spigot: the offline edit reached the player data",
-      "spigot: the viewer holds the taken stack",
+      "spigot: the offline main-hand edit reached the player data, nothing else changed",
+      "spigot: the viewer holds the taken main-hand stack",
       "spigot: text mail reads as [1] [2] [3]",
       "spigot: a new mail takes the freed number 2",
       "spigot: gifts are numbered 1 and 2 apart from text",
@@ -129,13 +140,15 @@
       "spigot: the newest (MANUAL) snapshot opens its restore panel",
       "spigot: the panel shows the snapshot (hotbar and armor)",
       "spigot: empty armor and offhand show icons",
-      "spigot: the sword marks the main hand as the snapshot's hotbar slot 4",
+      "spigot: the main-hand cell holds the snapshot's held item (hotbar slot 4 is the marker)",
       "spigot: the snapshot info sits in the bottom row",
       "spigot: \"Restore everything\" replaces the online owner's inventory",
       "spigot: and selects the main hand the snapshot had",
+      "spigot: shift-click takes the main-hand stack out; the sword shows the empty hand",
+      "spigot: placing on the empty main-hand cell puts it back",
       "spigot: shift-click takes a whole stack out of the panel",
       "spigot: shift-click puts a whole stack into the first free storage cell, never armor or controls",
-      "spigot: \"inventory only\" uses the edited panel and leaves armor alone",
+      "spigot: \"inventory only\" uses the edited panel (main hand included) and leaves armor alone",
       "spigot: only \"Save as manual snapshot\" writes to storage",
       "spigot: the queued restore is applied on join",
       "spigot: the queue row and the applied receipt are cleared after the save",
@@ -158,14 +171,18 @@
       "spigot: no exceptions or SEVERE lines in the server log"
     ]
   },
-  "paper-r6-full": {
+  "paper-r7-full": {
     "suite": "paper",
     "passed": true,
-    "checks": 83,
+    "checks": 92,
     "failures": [],
     "cases": [
       {
         "name": "completions",
+        "passed": true
+      },
+      {
+        "name": "help",
         "passed": true
       },
       {
@@ -221,16 +238,16 @@
         "passed": true
       }
     ],
-    "alliumSha256": "ebb6249b73dc05d480d54f9446a452a7ec887e7d40bbd0ae213625b95e3cbf15",
+    "alliumSha256": "23823e09a089649d82ea84993b941d85d07291f7fc78103cf6e8a4a0e2174002",
     "sources": {
-      "tests/live/staff/run.py": "f552eb025c3ed9dd6839e260a5d802f9f0739912811a5ff7d8ae74b6411ea3cf",
-      "tests/live/staff/plugin/gate/StaffGate.java": "52ba1421dc27abb67d3e0ad72a0c6e957d3363720938afa3dc3515b29552aed5",
+      "tests/live/staff/run.py": "c80586e708cd481a99abdbaeca2c5bcc3f1de569c2748422eeb7d84e8b32921b",
+      "tests/live/staff/plugin/gate/StaffGate.java": "917949fa55aebf87214197c374d5cac841c9e102d6cb090c674db91edb0b66fd",
       "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
       "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
       "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
       "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
     },
-    "seconds": 107.9,
+    "seconds": 117.0,
     "labels": [
       "paper: creative, alts and restore modules enabled",
       "paper: /eco completes its actions",
@@ -239,6 +256,9 @@
       "paper: /pay completes visible players",
       "paper: /eco completes nothing without allium.eco",
       "paper: /balance completion follows allium.balance.others",
+      "paper: an allium.command.reload node is registered",
+      "paper: with the resolver on, /help lists commands without an exception",
+      "paper: /help descriptions are the rewritten ones",
       "paper: \">\" is stripped from the redirected message",
       "paper: after \">\", the staff selection stays (next line is staff only)",
       "paper: \"#\" from global still goes to staff only",
@@ -259,15 +279,19 @@
       "paper: the survival inventory survived the restart unchanged",
       "paper: staff are alerted when a player enters creative without allium.gamemode.creative",
       "paper: empty armor and offhand slots show slot icons",
-      "paper: icons carry the gui_slot model data (helmet, shield, sword, pane)",
-      "paper: the sword icon names the held hotbar slot",
+      "paper: icons carry the gui_slot model data (helmet, shield, pane)",
+      "paper: the main-hand cell shows the held hotbar item",
+      "paper: the held hotbar cell is a marker, so the item shows once",
       "paper: placing an item on the helmet icon equips it",
       "paper: no icon ever reaches the viewer",
+      "paper: taking the main-hand item empties the held hotbar slot; the sword shows the empty hand",
+      "paper: placing on the main-hand cell puts the item in the held hotbar slot",
       "paper: /invsee on a dead player says so instead of \"went offline\"",
       "paper: offline /invsee announces it is editable",
+      "paper: offline, the main hand comes from the player file's selected slot",
       "paper: closing an edited offline inventory reports the saved changes",
-      "paper: the offline edit reached the player data",
-      "paper: the viewer holds the taken stack",
+      "paper: the offline main-hand edit reached the player data, nothing else changed",
+      "paper: the viewer holds the taken main-hand stack",
       "paper: text mail reads as [1] [2] [3]",
       "paper: a new mail takes the freed number 2",
       "paper: gifts are numbered 1 and 2 apart from text",
@@ -288,13 +312,15 @@
       "paper: the newest (MANUAL) snapshot opens its restore panel",
       "paper: the panel shows the snapshot (hotbar and armor)",
       "paper: empty armor and offhand show icons",
-      "paper: the sword marks the main hand as the snapshot's hotbar slot 4",
+      "paper: the main-hand cell holds the snapshot's held item (hotbar slot 4 is the marker)",
       "paper: the snapshot info sits in the bottom row",
       "paper: \"Restore everything\" replaces the online owner's inventory",
       "paper: and selects the main hand the snapshot had",
+      "paper: shift-click takes the main-hand stack out; the sword shows the empty hand",
+      "paper: placing on the empty main-hand cell puts it back",
       "paper: shift-click takes a whole stack out of the panel",
       "paper: shift-click puts a whole stack into the first free storage cell, never armor or controls",
-      "paper: \"inventory only\" uses the edited panel and leaves armor alone",
+      "paper: \"inventory only\" uses the edited panel (main hand included) and leaves armor alone",
       "paper: only \"Save as manual snapshot\" writes to storage",
       "paper: the queued restore is applied on join",
       "paper: the queue row and the applied receipt are cleared after the save",
@@ -318,15 +344,12 @@
     ]
   },
   "regressions": {
-    "jar": "be62473a769f17f6719ce07c385ce964f2aad65f1449dde561e0ce3d7afc04e0",
+    "jar": "23823e09a089649d82ea84993b941d85d07291f7fc78103cf6e8a4a0e2174002",
     "s24_inspection": {
-      "spigot": "98/98 (r5-spigot)",
-      "paper": "98/98 (r5-paper)"
+      "spigot": "98/98 (r7-spigot-b)",
+      "paper": "98/98 (r7-paper)"
     },
-    "economy_signs": {
-      "spigot": "384/384 (signs-repair-spigot-r5)",
-      "paper": "384/384 (signs-repair-paper-r5)"
-    },
-    "note": "S24 inspection and the economy sign gate ran on jar be62473a (r5); r6 changes only /restore (panel layout, shift-click, held slot) and its storage."
+    "economy_signs": "384/384 per lane on be62473a (r5); not rerun on r7, which does not change signs or economy",
+    "help_repro": "spigot-r6-help-repro3: the help case fails on the pre-fix jar ebb6249b with the reported StringIndexOutOfBoundsException"
   }
 }

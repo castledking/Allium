@@ -22,4 +22,13 @@ class HidePermissionResolverTest {
  @Test void overridesOnlyUnknownAndNeverGrantWithoutTheirPermission(){var f=fixture();var c=mock(Command.class);when(c.getName()).thenReturn("test");var commands=Map.of("test",c);assertFalse(f.resolver.resolve(f.player,"test",commands,Map.of("test","custom.required")).allowed());when(f.player.hasPermission("custom.required")).thenReturn(true);var d=f.resolver.resolve(f.player,"test",commands,Map.of("test","custom.required"));assertTrue(d.allowed());assertEquals(HidePermissionResolver.Source.OVERRIDE,d.source());}
  @Test void moduleCommandCandidatesPreferSpecificActionAndIgnoreDeniedWildcard(){var f=fixture();var owner=mock(org.bukkit.plugin.Plugin.class);when(owner.getName()).thenReturn("Nights");var c=mock(Command.class,withSettings().extraInterfaces(PluginIdentifiableCommand.class));when(((PluginIdentifiableCommand)c).getPlugin()).thenReturn(owner);when(c.getName()).thenReturn("shop");when(c.getAliases()).thenReturn(List.of("store"));when(f.manager.getPermissions()).thenReturn(Set.of(new Permission("nights.shop.command.open"),new Permission("nights.*")));var d=f.resolver.resolve(f.player,"store",Map.of("store",c),Map.of());assertEquals("nights.shop.command.open",d.permission());assertFalse(d.allowed());assertEquals(HidePermissionResolver.Source.REGISTERED,d.source());}
  @Test void broadDefaultFalseWildcardAloneIsNotACommandRequirement(){var f=fixture();var owner=mock(org.bukkit.plugin.Plugin.class);when(owner.getName()).thenReturn("Nights");var c=mock(Command.class,withSettings().extraInterfaces(PluginIdentifiableCommand.class));when(((PluginIdentifiableCommand)c).getPlugin()).thenReturn(owner);when(c.getName()).thenReturn("shop");when(c.getAliases()).thenReturn(List.of());when(f.manager.getPermissions()).thenReturn(Set.of(new Permission("nights.*")));assertEquals(HidePermissionResolver.Source.UNKNOWN,f.resolver.resolve(f.player,"shop",Map.of("shop",c),Map.of()).source());}
+ @Test void ownerLevelCommandNodesWithoutAModuleNeverBreakCandidateDiscovery(){
+  // A permission such as "allium.command.reload" (no module between owner and ".command.") made
+  // /help throw StringIndexOutOfBoundsException while listing commands.
+  var c=mock(Command.class);when(c.getName()).thenReturn("help");when(c.getAliases()).thenReturn(List.of());
+  var registered=Set.of("allium.command.reload","allium.command.","allium.help.command.open","allium.");
+  var out=HidePermissionResolver.candidates("allium",c,"help",List.of(),registered);
+  assertTrue(out.contains("allium.help.command.open"),out.toString());
+  assertTrue(out.contains("allium.command.help"),out.toString());
+ }
 }

@@ -561,14 +561,15 @@ def run_suite(kind, port):
     require(gui_state.get('openTopSize') == 45
             and top.get('0') == '5xEMERALD'
             and top.get('26') == '7xGOLD_INGOT'
-            and top.get('27') == '3xDIAMOND'
+            and top.get('27') == '1xLIGHT_GRAY_STAINED_GLASS_PANE'
+            and top.get('41') == '3xDIAMOND'
             and top.get('36') == '1xDIAMOND_HELMET'
             and top.get('37') == '1xDIAMOND_CHESTPLATE'
             and top.get('38') == '1xDIAMOND_LEGGINGS'
             and top.get('39') == '1xDIAMOND_BOOTS'
             and top.get('40') == '1xSHIELD'
-            and all(top.get(str(i)) == '1xLIGHT_GRAY_STAINED_GLASS_PANE' for i in range(41, 45)),
-            lane.name + ': /invsee 45-slot layout (storage 0..26, hotbar 27..35, armor 36..39, offhand 40, panes 41..44)',
+            and all(top.get(str(i)) == '1xLIGHT_GRAY_STAINED_GLASS_PANE' for i in range(42, 45)),
+            lane.name + ': /invsee 45-slot layout (storage 0..26, hotbar 27..35 with the held slot 0 as a marker, armor 36..39, offhand 40, main hand 41, panes 42..44)',
             {'top': top})
 
     # Concurrent read-only viewer + live refresh sync
@@ -594,7 +595,7 @@ def run_suite(kind, port):
     window(.35)
     refreshed_staff = lane.fixture('inv InspStaff').get('openTopNonEmpty', {})
     refreshed_obs = lane.fixture('inv InspObs').get('openTopNonEmpty', {})
-    require(refreshed_staff.get('27') == '11xDIAMOND' and refreshed_obs.get('27') == '11xDIAMOND',
+    require(refreshed_staff.get('41') == '11xDIAMOND' and refreshed_obs.get('41') == '11xDIAMOND',
             lane.name + ': live online inventory mutation refreshes to concurrent read-only viewers')
     staff.close_gui()
     obs.close_gui()
@@ -616,14 +617,15 @@ def run_suite(kind, port):
     require(obs_w2['windowId'] > 0, lane.name + ': read-only viewer allowed alongside active mutable viewer')
     obs.close_gui()
 
-    # Locked panes 41..44 refused even in .edit (pickup and drag)
-    staff.click(41, 0, 0)
+    # Locked panes 42..44 and the held-slot marker (27) refused even in .edit (pickup and drag)
+    staff.click(42, 0, 0)
     staff.click(44, 0, 0)
-    staff.drag(41, 42)
+    staff.click(27, 0, 0)
+    staff.drag(42, 43)
     window(.2)
     gui_locked = lane.fixture('inv InspStaff').get('openTopNonEmpty', {})
-    require(all(gui_locked.get(str(i)) == '1xLIGHT_GRAY_STAINED_GLASS_PANE' for i in range(41, 45)),
-            lane.name + ': locked panes 41..44 preserved under .edit clicks and drags')
+    require(all(gui_locked.get(str(i)) == '1xLIGHT_GRAY_STAINED_GLASS_PANE' for i in [27, 42, 43, 44]),
+            lane.name + ': locked panes 42..44 and the held marker preserved under .edit clicks and drags')
 
     # Place 6xIRON_INGOT from InspStaff hotbar[0] (rawSlot 72) into InspNorm hotbar[1] (GUI slot 28)
     staff.click(72, 0, 0)
@@ -774,7 +776,7 @@ def run_suite(kind, port):
     obs_w = staff.open_window(obs_ed)
     staff.wait_content(obs_ed, obs_w['windowId'])
     staff.click(72, 0, 0)
-    staff.click(27, 0, 0)
+    staff.click(41, 0, 0)  # hotbar 0 is the selected slot: it is edited through the main-hand cell
     window(.4)
     staff.close_gui()
     wait(lambda: lane.fixture('datinfo InspObs')['inv'].get('0') == '4xSTICK',
@@ -882,7 +884,7 @@ def run_suite(kind, port):
     staff.wait_content(cas_open, cas_w['windowId'])
     lane.fixture('touchdat InspNorm')  # sets ec[25]=9xAPPLE externally on disk
     cas_click_start = len(staff.lines)
-    staff.click(27, 0, 1)  # attempt click on slot 27 (hotbar 0 = 3xDIAMOND) -> triggers save -> CAS conflict
+    staff.click(41, 0, 1)  # shift-click the main hand (hotbar 0 = 3xDIAMOND) -> triggers save -> CAS conflict
     staff.chat(cas_click_start, 'changed externally; inspection closed without saving')
     staff.wait_close(cas_click_start)
     dat_cas = lane.fixture('datinfo InspNorm')

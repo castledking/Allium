@@ -387,6 +387,29 @@ class PlayerDataReceiptProofTest {
         out.writeUTF(value);
     }
 
+    @Test
+    void inspectReadsTheSelectedHotbarSlot() throws IOException {
+        Path selected = nbt(out -> {
+            header(out, 3, "DataVersion");
+            out.writeInt(3465);
+            header(out, 3, "SelectedItemSlot");
+            out.writeInt(5);
+        });
+        org.junit.jupiter.api.Assertions.assertEquals(5, PlayerDataReceiptProof.inspect(selected).selectedItemSlot());
+        Path absent = nbt(out -> {
+            header(out, 3, "DataVersion");
+            out.writeInt(3465);
+        });
+        org.junit.jupiter.api.Assertions.assertEquals(-1, PlayerDataReceiptProof.inspect(absent).selectedItemSlot(), "absent means unknown");
+        Path invalid = nbt(out -> {
+            header(out, 3, "DataVersion");
+            out.writeInt(3465);
+            header(out, 3, "SelectedItemSlot");
+            out.writeInt(12);
+        });
+        org.junit.jupiter.api.Assertions.assertEquals(-1, PlayerDataReceiptProof.inspect(invalid).selectedItemSlot(), "out of range means unknown");
+    }
+
     private static void header(DataOutputStream out, int type, String name) throws IOException {
         out.writeByte(type);
         out.writeUTF(name);

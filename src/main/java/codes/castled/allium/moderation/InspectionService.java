@@ -157,8 +157,11 @@ public final class InspectionService implements Listener {
         /** Offline sessions: slot changes saved so far, and whether the close summary still waits on a write. */
         int savedChanges;
         boolean summaryPending;
-        /** The target's held hotbar slot the main-hand icon shows; -1 before the first paint. */
-        int shownHeldSlot = -1;
+        /**
+         * The held hotbar slot the GUI is laid out for (its item sits in the main-hand cell), or -1
+         * when unknown. Captures always use the layout that was displayed.
+         */
+        int held = -1;
 
         ItemStack[] lastSyncedSlots;
         byte[] currentRawBytes;
@@ -607,6 +610,7 @@ public final class InspectionService implements Listener {
         }
         try {
             ItemStack[] snapshot = readLiveTargetSlots(target, type);
+            session.held = type == InspectionLayout.InspectionType.INVSEE ? target.getInventory().getHeldItemSlot() : -1;
             Inventory gui = buildGui(session, snapshot);
             session.gui = gui;
             session.lastSyncedSlots = cloneSlots(snapshot);
@@ -730,6 +734,8 @@ public final class InspectionService implements Listener {
                     session.currentHash = loaded.sha256();
                     session.bukkitValues = loaded.bukkitValues();
                     session.lastSyncedSlots = cloneSlots(loaded.slots());
+                    // The main hand of an offline player: the hotbar slot their file selects.
+                    session.held = type == InspectionLayout.InspectionType.INVSEE ? loaded.selectedItemSlot() : -1;
                     Inventory gui = buildGui(session, loaded.slots());
                     session.gui = gui;
                     session.active = true;
@@ -760,14 +766,13 @@ public final class InspectionService implements Listener {
         );
         Inventory gui = plugin.getServer().createInventory(session.holder, InspectionLayout.guiSize(session.type), title);
         session.holder.bind(gui);
-        applySlotsToGui(session.type, gui, playerSlots);
         if (session.type == InspectionLayout.InspectionType.INVSEE) {
             ItemStack filler = createLockedPane();
             for (int slot = InspectionLayout.INVSEE_LOCKED_START; slot <= InspectionLayout.INVSEE_LOCKED_END; slot++) {
                 gui.setItem(slot, filler.clone());
             }
-            gui.setItem(InspectionLayout.INVSEE_LOCKED_START, mainHandIcon(session));
         }
+        applySlotsToGui(session.type, gui, playerSlots, session.held);
         return gui;
     }
 
@@ -775,13 +780,18 @@ public final class InspectionService implements Listener {
         return GuiIcons.icon(GuiIcons.Icon.FILLER, " ", List.of());
     }
 
-    /** Which hotbar slot the target holds: the sword icon in the first locked slot. */
-    private ItemStack mainHandIcon(InspectionSession session) {
-        Player target = session.mode == InspectionLayout.InspectionMode.ONLINE ? plugin.getServer().getPlayer(session.targetUuid) : null;
-        List<String> lore = target != null
-                ? List.of("\u00a77Hotbar slot \u00a7f" + (target.getInventory().getHeldItemSlot() + 1) + "\u00a77 (bottom row)")
-                : List.of("\u00a78Not known while offline");
+    /** The main-hand cell when it is empty (or the held slot is unknown): the sword icon. */
+    private static ItemStack mainHandIcon(int held) {
+        List<String> lore = InspectionLayout.validHeld(held)
+                ? List.of("\u00a77Empty: hotbar slot \u00a7f" + (held + 1) + "\u00a77 is selected", "\u00a78Place an item here to put it in their hand")
+                : List.of("\u00a78The selected hotbar slot is not known");
         return GuiIcons.icon(GuiIcons.Icon.SWORD, "\u00a77Main hand", lore);
+    }
+
+    /** The held hotbar cell: its item is shown in the main-hand cell instead. */
+    private static ItemStack heldMarker(int held) {
+        return GuiIcons.icon(GuiIcons.Icon.FILLER, "\u00a77Selected slot " + (held + 1),
+                List.of("\u00a78Its item is in the main hand (sword) slot"));
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -809,7 +819,7 @@ public final class InspectionService implements Listener {
         InventoryAction action = event.getAction();
         ClickType click = event.getClick();
         boolean inTop = rawSlot >= 0 && rawSlot < topSize;
-        boolean lockedSlot = InspectionLayout.isLockedUiSlot(session.type, rawSlot);
+        boolean lockedSlot = InspectionLayout.isLockedUiSlot(session.type, rawSlot, session.held);
         boolean shiftFromBottom = rawSlot >= topSize && action == InventoryAction.MOVE_TO_OTHER_INVENTORY;
         boolean collectToCursor = action == InventoryAction.COLLECT_TO_CURSOR || click == ClickType.DOUBLE_CLICK;
 
@@ -876,7 +886,7 @@ public final class InspectionService implements Listener {
         boolean touchesLocked = false;
         boolean touchesTop = false;
         for (int rawSlot : event.getRawSlots()) {
-            if (InspectionLayout.isLockedUiSlot(session.type, rawSlot) || isIconSlot(session.gui, rawSlot)) {
+            if (InspectionLayout.isLockedUiSlot(session.type, rawSlot, session.held) || isIconSlot(session.gui, rawSlot)) {
                 touchesLocked = true;
             }
             if (rawSlot >= 0 && rawSlot < topSize) {
@@ -919,7 +929,7 @@ public final class InspectionService implements Listener {
             ItemStack[] live = readLiveTargetSlots(target, session.type);
             if (!slotsEqual(live, session.lastSyncedSlots)) {
                 session.lastSyncedSlots = cloneSlots(live);
-                applySlotsToGui(session.type, session.gui, live);
+                applySlotsToGui(session.type, session.gui, live, session.held);
                 return false;
             }
             session.guardActive = true;
@@ -998,12 +1008,12 @@ public final class InspectionService implements Listener {
             abortSession(session, "target-unavailable", unavailable, session.targetName);
             return;
         }
-        ItemStack[] newSlots = captureGuiSlots(session.type, session.gui);
+        ItemStack[] newSlots = captureGuiSlots(session.type, session.gui, session.held);
         List<InspectionLayout.SlotDelta> deltas = computeDeltas(session.lastSyncedSlots, newSlots);
         if (!deltas.isEmpty()) {
             applySlotsToLiveTarget(target, session.type, session.lastSyncedSlots, newSlots, deltas);
             session.lastSyncedSlots = cloneSlots(newSlots);
-            paintEquipmentIcons(session.type, session.gui);
+            paintEquipmentIcons(session.type, session.gui, session.held);
             String detail = InspectionLayout.formatAuditDetail(
                     session.type, InspectionLayout.InspectionMode.ONLINE, true, null, deltas);
             logInspection(editAction(session.type), session.viewerName, session.targetUuid, session.targetName, detail);
@@ -1024,7 +1034,7 @@ public final class InspectionService implements Listener {
         if (session.writeInFlight) {
             return;
         }
-        ItemStack[] newSlots = captureGuiSlots(session.type, session.gui);
+        ItemStack[] newSlots = captureGuiSlots(session.type, session.gui, session.held);
         List<InspectionLayout.SlotDelta> deltas = computeDeltas(session.lastSyncedSlots, newSlots);
         if (deltas.isEmpty()) {
             completeLoginFlush(session);
@@ -1040,7 +1050,7 @@ public final class InspectionService implements Listener {
         session.writeInFlight = true;
         ItemStack[] baselineOnFailure = cloneSlots(session.lastSyncedSlots);
         session.lastSyncedSlots = cloneSlots(newSlots);
-        paintEquipmentIcons(session.type, session.gui);
+        paintEquipmentIcons(session.type, session.gui, session.held);
 
         try {
             io.execute(() -> {
@@ -1152,9 +1162,10 @@ public final class InspectionService implements Listener {
                 continue;
             }
             if (session.type == InspectionLayout.InspectionType.INVSEE
-                    && session.shownHeldSlot != target.getInventory().getHeldItemSlot()) {
-                session.shownHeldSlot = target.getInventory().getHeldItemSlot();
-                session.gui.setItem(InspectionLayout.INVSEE_LOCKED_START, mainHandIcon(session));
+                    && session.held != target.getInventory().getHeldItemSlot()) {
+                // The target picked another hotbar slot: lay the GUI out for it (nothing is pending).
+                session.held = target.getInventory().getHeldItemSlot();
+                applySlotsToGui(session.type, session.gui, session.lastSyncedSlots, session.held);
             }
             if (!session.viewer.hasPermission(PERMISSION_BYPASS) && !canModeratePolicy.test(session.viewer, session.targetUuid)) {
                 abortSession(session, "policy-revoked", Messages.DISCIPLINE_EXEMPT, null);
@@ -1167,7 +1178,7 @@ public final class InspectionService implements Listener {
             ItemStack[] live = readLiveTargetSlots(target, session.type);
             if (!slotsEqual(live, session.lastSyncedSlots)) {
                 session.lastSyncedSlots = cloneSlots(live);
-                applySlotsToGui(session.type, session.gui, live);
+                applySlotsToGui(session.type, session.gui, live, session.held);
             }
         }
     }
@@ -1333,7 +1344,7 @@ public final class InspectionService implements Listener {
         if (session.gui == null || session.lastSyncedSlots == null || drops == null || drops.isEmpty()) {
             return;
         }
-        ItemStack[] newSlots = captureGuiSlots(InspectionLayout.InspectionType.INVSEE, session.gui);
+        ItemStack[] newSlots = captureGuiSlots(InspectionLayout.InspectionType.INVSEE, session.gui, session.held);
         List<InspectionLayout.SlotDelta> deltas = computeDeltas(session.lastSyncedSlots, newSlots);
         for (InspectionLayout.SlotDelta delta : deltas) {
             int pSlot = delta.playerSlot();
@@ -1585,22 +1596,33 @@ public final class InspectionService implements Listener {
         }
     }
 
-    private static void applySlotsToGui(InspectionLayout.InspectionType type, Inventory gui, ItemStack[] playerSlots) {
+    private static void applySlotsToGui(InspectionLayout.InspectionType type, Inventory gui, ItemStack[] playerSlots, int held) {
         int count = InspectionLayout.slotCount(type);
+        if (type == InspectionLayout.InspectionType.INVSEE) {
+            gui.setItem(InspectionLayout.MAIN_HAND_GUI_SLOT, null);
+        }
         for (int pSlot = 0; pSlot < count; pSlot++) {
-            int guiSlot = InspectionLayout.toGuiSlot(type, pSlot);
+            int guiSlot = InspectionLayout.toGuiSlot(type, pSlot, held);
             if (guiSlot >= 0) {
                 ItemStack stack = (playerSlots != null && pSlot < playerSlots.length) ? cloneOrNull(playerSlots[pSlot]) : null;
                 gui.setItem(guiSlot, stack);
             }
         }
-        paintEquipmentIcons(type, gui);
+        int marker = InspectionLayout.heldMarkerGuiSlot(type, held);
+        if (marker >= 0) {
+            gui.setItem(marker, heldMarker(held));
+        }
+        paintEquipmentIcons(type, gui, held);
     }
 
-    /** An empty armor or offhand slot shows its empty-slot icon; icons are never saved as items. */
-    private static void paintEquipmentIcons(InspectionLayout.InspectionType type, Inventory gui) {
+    /** An empty armor, offhand or main-hand slot shows its empty-slot icon; icons are never saved as items. */
+    private static void paintEquipmentIcons(InspectionLayout.InspectionType type, Inventory gui, int held) {
         if (type != InspectionLayout.InspectionType.INVSEE) {
             return;
+        }
+        ItemStack hand = gui.getItem(InspectionLayout.MAIN_HAND_GUI_SLOT);
+        if (hand == null || hand.getType().isAir() || !InspectionLayout.validHeld(held)) {
+            gui.setItem(InspectionLayout.MAIN_HAND_GUI_SLOT, mainHandIcon(held));
         }
         for (int pSlot = 36; pSlot <= 40; pSlot++) {
             int guiSlot = InspectionLayout.toGuiSlot(type, pSlot);
@@ -1617,11 +1639,11 @@ public final class InspectionService implements Listener {
         return rawSlot >= 0 && rawSlot < gui.getSize() && GuiIcons.isIcon(gui.getItem(rawSlot));
     }
 
-    private static ItemStack[] captureGuiSlots(InspectionLayout.InspectionType type, Inventory gui) {
+    private static ItemStack[] captureGuiSlots(InspectionLayout.InspectionType type, Inventory gui, int held) {
         int count = InspectionLayout.slotCount(type);
         ItemStack[] out = new ItemStack[count];
         for (int pSlot = 0; pSlot < count; pSlot++) {
-            int guiSlot = InspectionLayout.toGuiSlot(type, pSlot);
+            int guiSlot = InspectionLayout.toGuiSlot(type, pSlot, held);
             ItemStack stack = guiSlot >= 0 ? gui.getItem(guiSlot) : null;
             out[pSlot] = GuiIcons.isIcon(stack) ? null : cloneOrNull(stack);
         }

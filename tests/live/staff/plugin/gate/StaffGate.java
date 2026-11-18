@@ -151,6 +151,12 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                     target.updateCommands();
                     out.put("permission", target.hasPermission(args[2]));
                 }
+                case "addperm" -> {
+                    if (getServer().getPluginManager().getPermission(args[1]) == null) {
+                        getServer().getPluginManager().addPermission(new org.bukkit.permissions.Permission(args[1]));
+                    }
+                    out.put("registered", getServer().getPluginManager().getPermission(args[1]) != null);
+                }
                 case "sticky" -> {
                     sticky.computeIfAbsent(args[1], k -> new HashMap<>()).put(args[2], Boolean.parseBoolean(args[3]));
                     out.put("sticky", sticky.get(args[1]).size());

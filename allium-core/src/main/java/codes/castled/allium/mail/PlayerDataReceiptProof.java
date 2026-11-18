@@ -18,14 +18,24 @@ public final class PlayerDataReceiptProof {
     private static final int MAX_DEPTH = 64;
     private static final String BUKKIT_VALUES = "BukkitValues";
     private static final String DATA_VERSION = "DataVersion";
+    private static final String SELECTED_ITEM_SLOT = "SelectedItemSlot";
     public static final String MAIL_RECEIPTS = "allium:mail_receipts";
     public static final String KIT_RECEIPTS = "allium:kit_receipts";
     /** Paid repair signs: comma-separated workflow IDs whose repair is saved in this player file. */
     public static final String REPAIR_RECEIPTS = "allium:repair_receipts";
 
-    public record Snapshot(int dataVersion, Map<String, String> bukkitValues) {
+    /**
+     * @param selectedItemSlot the player's selected hotbar slot ({@code SelectedItemSlot}, 0-8): the main
+     *                         hand is the hotbar item at this index. -1 when absent or out of range.
+     */
+    public record Snapshot(int dataVersion, Map<String, String> bukkitValues, int selectedItemSlot) {
         public Snapshot {
             bukkitValues = bukkitValues == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(bukkitValues));
+            selectedItemSlot = selectedItemSlot >= 0 && selectedItemSlot <= 8 ? selectedItemSlot : -1;
+        }
+
+        public Snapshot(int dataVersion, Map<String, String> bukkitValues) {
+            this(dataVersion, bukkitValues, -1);
         }
     }
 
@@ -91,7 +101,7 @@ public final class PlayerDataReceiptProof {
             Reader reader = new Reader(input, limited, null, null);
             reader.captureAllBukkitValues = true;
             reader.verify();
-            return new Snapshot(reader.dataVersion, reader.capturedBukkitValues);
+            return new Snapshot(reader.dataVersion, reader.capturedBukkitValues, reader.selectedItemSlot);
         }
     }
 
@@ -128,6 +138,7 @@ public final class PlayerDataReceiptProof {
         private boolean captureAllBukkitValues;
         private int dataVersion;
         private boolean foundDataVersion;
+        private int selectedItemSlot = -1;
         private final Map<String, String> capturedBukkitValues = new LinkedHashMap<>();
         private String actualReceipt;
         private boolean foundBukkitValues;
@@ -177,6 +188,9 @@ public final class PlayerDataReceiptProof {
                     foundDataVersion = true;
                     limited.requireAvailable(4);
                     dataVersion = input.readInt();
+                } else if (location == Location.ROOT && captureAllBukkitValues && SELECTED_ITEM_SLOT.equals(name) && type == 3) {
+                    limited.requireAvailable(4);
+                    selectedItemSlot = input.readInt();
                 } else if (location == Location.BUKKIT_VALUES && receiptKey != null && receiptKey.equals(name)) {
                     if (foundReceipt || type != 8) {
                         throw new IOException("Invalid or duplicate player data receipt");

@@ -195,14 +195,17 @@ public final class RestoreMenus implements Listener {
         Inventory inventory = plugin.getServer().createInventory(session, 54,
                 title((editable ? "Edit " : "View ") + snapshot.reason().toLowerCase(Locale.ROOT) + ": " + list.targetName));
         session.inventory = inventory;
-        for (int pSlot = 0; pSlot < 41; pSlot++) {
-            inventory.setItem(InspectionLayout.toGuiSlot(InspectionLayout.InspectionType.INVSEE, pSlot), contents.inventory()[pSlot]);
-        }
         for (int slot = 41; slot <= 44; slot++) inventory.setItem(slot, GuiIcons.icon(GuiIcons.Icon.FILLER, " ", List.of()));
-        inventory.setItem(MAIN_HAND, GuiIcons.icon(GuiIcons.Icon.SWORD, "§7Main hand", contents.held() >= 0
-                ? List.of("§7Hotbar slot §f" + (contents.held() + 1) + "§7 (bottom row)", "§8Restoring the inventory selects it again")
-                : List.of("§8Not recorded for this snapshot")));
-        paintIcons(inventory);
+        // The held hotbar item sits in the main-hand cell (as in /invsee); its hotbar cell is a locked marker.
+        for (int pSlot = 0; pSlot < 41; pSlot++) {
+            inventory.setItem(InspectionLayout.toGuiSlot(InspectionLayout.InspectionType.INVSEE, pSlot, session.held), contents.inventory()[pSlot]);
+        }
+        int marker = InspectionLayout.heldMarkerGuiSlot(InspectionLayout.InspectionType.INVSEE, session.held);
+        if (marker >= 0) {
+            inventory.setItem(marker, GuiIcons.icon(GuiIcons.Icon.FILLER, "§7Selected slot " + (session.held + 1),
+                    List.of("§8Its item is in the main hand (sword) slot")));
+        }
+        paintIcons(inventory, session.held);
         boolean own = snapshot.player().equals(viewer.getUniqueId());
         List<String> uses = List.of("§7Uses what this panel holds now", "§8Nothing is saved unless you save a MANUAL copy");
         inventory.setItem(EVERYTHING, own
@@ -273,13 +276,14 @@ public final class RestoreMenus implements Listener {
             return;
         }
         if (holder instanceof SessionMenu session) {
-            if (inTop && raw >= 41) {
+            boolean mainHand = raw == MAIN_HAND && InspectionLayout.validHeld(session.held);
+            if (inTop && (raw >= 41 && !mainHand || raw == InspectionLayout.heldMarkerGuiSlot(InspectionLayout.InspectionType.INVSEE, session.held))) {
                 event.setCancelled(true);
                 if (raw >= 45) control(viewer, session, raw);
                 return;
             }
             contentClick(event, viewer, session.editable, inTop, raw, event.getView().getTopInventory(), STORAGE_CELLS);
-            if (inTop) plugin.getScheduler().runOnServer(() -> paintIcons(session.inventory));
+            if (inTop) plugin.getScheduler().runOnServer(() -> paintIcons(session.inventory, session.held));
             return;
         }
         if (holder instanceof EnderMenu ender) {
@@ -354,7 +358,8 @@ public final class RestoreMenus implements Listener {
         if (!(holder instanceof Menu)) return;
         Inventory top = event.getView().getTopInventory();
         boolean editable = holder instanceof SessionMenu s ? s.editable : holder instanceof EnderMenu e && e.session.editable;
-        int contentEnd = holder instanceof SessionMenu ? 41 : holder instanceof EnderMenu ? 27 : 0;
+        int contentEnd = holder instanceof SessionMenu s && InspectionLayout.validHeld(s.held) ? 42
+                : holder instanceof SessionMenu ? 41 : holder instanceof EnderMenu ? 27 : 0;
         for (int raw : event.getRawSlots()) {
             if (raw < top.getSize() && (!editable || raw >= contentEnd || GuiIcons.isIcon(top.getItem(raw)))) {
                 event.setCancelled(true);
@@ -472,7 +477,7 @@ public final class RestoreMenus implements Listener {
     private RestoreService.Contents contents(SessionMenu session) {
         ItemStack[] inventory = new ItemStack[41];
         for (int pSlot = 0; pSlot < 41; pSlot++) {
-            ItemStack stack = session.inventory.getItem(InspectionLayout.toGuiSlot(InspectionLayout.InspectionType.INVSEE, pSlot));
+            ItemStack stack = session.inventory.getItem(InspectionLayout.toGuiSlot(InspectionLayout.InspectionType.INVSEE, pSlot, session.held));
             inventory[pSlot] = GuiIcons.isIcon(stack) || stack == null || stack.getType().isAir() ? null : stack.clone();
         }
         ItemStack[] ender = new ItemStack[27];
@@ -514,8 +519,14 @@ public final class RestoreMenus implements Listener {
         return out;
     }
 
-    /** Empty armor and offhand cells show their slot icon. */
-    private static void paintIcons(Inventory inventory) {
+    /** Empty armor, offhand and main-hand cells show their slot icon. */
+    private static void paintIcons(Inventory inventory, int held) {
+        ItemStack hand = inventory.getItem(MAIN_HAND);
+        if (hand == null || hand.getType().isAir() || !InspectionLayout.validHeld(held)) {
+            inventory.setItem(MAIN_HAND, GuiIcons.icon(GuiIcons.Icon.SWORD, "§7Main hand", InspectionLayout.validHeld(held)
+                    ? List.of("§7Empty: hotbar slot §f" + (held + 1) + "§7 was selected", "§8Place an item here to put it in the hand")
+                    : List.of("§8Not recorded for this snapshot")));
+        }
         for (int pSlot = 36; pSlot <= 40; pSlot++) {
             int gui = InspectionLayout.toGuiSlot(InspectionLayout.InspectionType.INVSEE, pSlot);
             ItemStack current = inventory.getItem(gui);

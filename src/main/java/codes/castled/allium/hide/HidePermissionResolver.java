@@ -106,7 +106,12 @@ public final class HidePermissionResolver {
     static List<String> candidates(String owner,Command command,String label,List<String> args,Set<String> registered){
         if(owner==null)return List.of();String root=HidePolicy.plain(label);var identities=new LinkedHashSet<>(command.getAliases());identities.add(root);identities.add(command.getName());
         var modules=new TreeSet<String>();String prefix=owner+".";
-        for(String key:registered)if(key.startsWith(prefix)&&key.contains(".command.")){String module=key.substring(prefix.length(),key.indexOf(".command."));if(identities.stream().anyMatch(v->module.equals(v)||module.endsWith("."+v)))modules.add(module);}
+        for(String key:registered){
+            if(!key.startsWith(prefix))continue;
+            // "<owner>.command.<x>" names no module; only "<owner>.<module>.command.<x>" does.
+            int at=key.indexOf(".command.",prefix.length()-1);if(at<prefix.length())continue;
+            String module=key.substring(prefix.length(),at);if(identities.stream().anyMatch(v->module.equals(v)||module.endsWith("."+v)))modules.add(module);
+        }
         var actions=new LinkedHashSet<String>();if(!args.isEmpty())actions.add(args.get(0));else {if(modules.stream().anyMatch(m->registered.contains(prefix+m+".command.open")))actions.add("open");actions.addAll(identities);}
         var out=new LinkedHashSet<String>();for(String action:actions){for(String module:modules)out.add(prefix+module+".command."+action);out.add(prefix+"command."+action);for(String module:modules)out.add(prefix+module+"."+action);out.add(prefix+action);}
         for(String id:identities)out.add(prefix+id);

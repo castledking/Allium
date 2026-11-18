@@ -26,8 +26,10 @@ public final class SignService implements Listener,AutoCloseable {
     private final int limit;
     private boolean closed;
     private SignEditorGuard editorGuard;
-    public SignService(PluginStart plugin){
-        this.plugin=plugin;
+    private final PaidRepairService paidRepairs;
+    public SignService(PluginStart plugin){this(plugin,null);}
+    public SignService(PluginStart plugin,PaidRepairService paidRepairs){
+        this.plugin=plugin;this.paidRepairs=paidRepairs;
         for(String raw:plugin.getConfig().getStringList("enabledSigns"))enabled.add(SignIdentity.Type.parse(raw));
         limit=plugin.getConfig().getInt("sign-use-per-second",4);if(limit<1||limit>100)throw new IllegalArgumentException("sign-use-per-second must be 1..100");
     }
@@ -147,7 +149,9 @@ public final class SignService implements Listener,AutoCloseable {
         var renderer=plugin.getCommandManager().getRenderedCommands().get(command);var registered=plugin.getCommand(command);
         if(renderer==null||registered==null)return;
         if(identity.type()==SignIdentity.Type.REPAIR&&identity.price().minor()>0){
-            plugin.getMessageManager().send(p,Messages.SIGN_PAID_REPAIR_DISABLED);
+            // Reserve, repair and save with a receipt, then capture: see PaidRepairService.
+            if(paidRepairs==null)plugin.getMessageManager().send(p,Messages.SIGN_PAID_REPAIR_DISABLED);
+            else paidRepairs.start(p,identity.argument(),identity.price());
             return;
         }
         String[] args=switch(identity.type()){case KIT,REPAIR->new String[]{identity.argument()};case MAIL->new String[]{"read"};default->new String[0];};

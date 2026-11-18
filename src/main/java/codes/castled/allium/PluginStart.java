@@ -86,6 +86,7 @@ public final class PluginStart extends JavaPlugin {
         try {
             packManifest = CoreItems.loadManifest(getClassLoader());
             CoreItems.definitions(packManifest).forEach(itemService::registerAlliumItem);
+            codes.castled.allium.gui.GuiIcons.init(this, packManifest);
         } catch (IOException | IllegalArgumentException e) {
             logger.severe("Failed to load the core item manifest: " + e.getMessage());
             getServer().getPluginManager().disablePlugin(this);
@@ -280,6 +281,7 @@ public final class PluginStart extends JavaPlugin {
             if(moduleManager.getModule("chat") instanceof codes.castled.allium.module.ChatModule chat && chat.isEnabled())chat.chat().reload();
             if(moduleManager.getModule("hide") instanceof codes.castled.allium.module.HideModule hide && hide.isEnabled())hide.hide().reload();
             if(moduleManager.getModule("creative") instanceof codes.castled.allium.module.CreativeModule creative && creative.isEnabled())creative.reloadSettings();
+            if(moduleManager.getModule("restore") instanceof codes.castled.allium.module.RestoreModule restoreModule && restoreModule.isEnabled())restoreModule.reloadSettings();
             ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
             settings.warnings().forEach(logger::warning);
             if (settings.owner() != startupPackOwner) {

@@ -97,7 +97,7 @@ public final class CreativeManager implements Listener {
             "LECTERN", "CHISELED_BOOKSHELF", "DECORATED_POT", "MERCHANT");
 
     private final PluginStart plugin;
-    private final MailItemCodec codec = new MailItemCodec();
+    private final codes.castled.allium.item.SlotCodec slots = new codes.castled.allium.item.SlotCodec();
     private final NamespacedKey groupKey;
     private final NamespacedKey lastModeKey;
     private final Map<Group, NamespacedKey> stashKeys = new HashMap<>();
@@ -268,61 +268,23 @@ public final class CreativeManager implements Listener {
     }
 
     private byte[] encode(ItemStack[] contents) throws IOException {
-        List<Integer> slots = new ArrayList<>();
-        List<ItemStack> stacks = new ArrayList<>();
-        for (int i = 0; i < contents.length; i++) {
-            ItemStack stack = contents[i];
-            if (stack != null && !stack.getType().isAir() && stack.getAmount() > 0) {
-                slots.add(i);
-                stacks.add(stack);
-            }
-        }
-        StringBuilder text = new StringBuilder("slots:");
-        for (int i = 0; i < slots.size(); i++) {
-            text.append(i == 0 ? "" : ",").append(slots.get(i));
-        }
-        text.append('\n');
-        if (!stacks.isEmpty()) {
-            text.append(codec.encode(stacks));
-        }
+        String text = slots.encode(contents);
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (GZIPOutputStream gzip = new GZIPOutputStream(bytes)) {
-            gzip.write(text.toString().getBytes(StandardCharsets.UTF_8));
+            gzip.write((text == null ? "" : text).getBytes(StandardCharsets.UTF_8));
         }
         return bytes.toByteArray();
     }
 
     private ItemStack[] decode(byte @Nullable [] stored, int size) throws IOException {
-        ItemStack[] out = new ItemStack[size];
         if (stored == null) {
-            return out;
+            return new ItemStack[size];
         }
         String text;
         try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(stored))) {
-            byte[] raw = gzip.readNBytes(MailItemCodec.MAX_CHARS * 4 + 4096);
-            text = new String(raw, StandardCharsets.UTF_8);
+            text = new String(gzip.readNBytes(MailItemCodec.MAX_CHARS * 4 + 4096), StandardCharsets.UTF_8);
         }
-        int newline = text.indexOf('\n');
-        if (!text.startsWith("slots:") || newline < 0) {
-            throw new IOException("stored inventory has no slot list");
-        }
-        String slotList = text.substring("slots:".length(), newline);
-        if (slotList.isEmpty()) {
-            return out;
-        }
-        String[] parts = slotList.split(",");
-        List<ItemStack> stacks = codec.decode(text.substring(newline + 1));
-        if (stacks.size() != parts.length) {
-            throw new IOException("stored inventory slot count does not match its items");
-        }
-        for (int i = 0; i < parts.length; i++) {
-            int slot = Integer.parseInt(parts[i]);
-            if (slot < 0 || slot >= size || out[slot] != null) {
-                throw new IOException("stored inventory has an invalid slot " + slot);
-            }
-            out[slot] = stacks.get(i);
-        }
-        return out;
+        return slots.decode(text, size);
     }
 
     // -- Joining, quitting, audits -----------------------------------------------------------------

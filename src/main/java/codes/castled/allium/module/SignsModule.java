@@ -4,9 +4,16 @@ import codes.castled.allium.core.AbstractModule;
 import codes.castled.allium.sign.SignService;
 public final class SignsModule extends AbstractModule {
     private SignService signs;
+    /** Survives /allium reload so an in-flight paid repair always settles. */
+    private codes.castled.allium.sign.PaidRepairService paidRepairs;
     public SignsModule(PluginStart plugin){super(plugin);}
     @Override public String getName(){return "signs";}
-    @Override public void onEnable(){signs=new SignService(plugin);signs.enable();}
-    public void reloadSettings(){var replacement=new SignService(plugin);if(signs!=null)signs.close();signs=replacement;signs.enable();}
-    @Override public void onDisable(){if(signs!=null)signs.close();}
+    @Override public void onEnable(){
+        try{paidRepairs=new codes.castled.allium.sign.PaidRepairService(plugin);paidRepairs.enable();}
+        catch(IllegalStateException unavailable){paidRepairs=null;plugin.logger().warning("Paid repair signs are unavailable: "+unavailable.getMessage());}
+        signs=new SignService(plugin,paidRepairs);signs.enable();
+    }
+    public void reloadSettings(){var replacement=new SignService(plugin,paidRepairs);if(signs!=null)signs.close();signs=replacement;signs.enable();}
+    @Override public void onDisable(){if(signs!=null)signs.close();if(paidRepairs!=null){paidRepairs.close();paidRepairs=null;}}
+    public codes.castled.allium.sign.PaidRepairService paidRepairs(){return paidRepairs;}
 }

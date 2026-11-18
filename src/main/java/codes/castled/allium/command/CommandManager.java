@@ -30,6 +30,7 @@ public final class CommandManager {
         this.familyPolicy.registerSpecs(CoreCommandSpecs.MODERATION_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.INFO_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.ALTS_SPECS);
+        this.familyPolicy.registerSpecs(CoreCommandSpecs.RESTORE_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.ECONOMY_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.CHAT_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.MAIL_SPECS);

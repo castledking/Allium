@@ -1292,11 +1292,26 @@ give:
 
 signs:
   paid-repair-disabled:
-    - "{prefix} &cLas reparaciones de pago están desactivadas temporalmente."
+    - "{prefix} &cLas reparaciones de pago no estan disponibles ahora (la economia no esta lista)."
   invalid-line:
     - "{prefix} &cLa línea {line} del cartel no es válida. {options}"
   disabled:
     - "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."
+  repair-paid:
+    - "{prefix} &aReparado &f{items} &apor &e{price}&a."
+    - "[sound] block.anvil.use 1.2"
+  repair-funds:
+    - "{prefix} &cNecesitas &e{price} &cpara usar este cartel de reparacion. No se reparo ni se cobro nada."
+    - "[sound] entity.villager.no 0.9"
+  repair-changed:
+    - "{prefix} &eTus objetos cambiaron antes de la reparacion; no se reparo nada y se devolvio la retencion de &e{price}&e."
+    - "[sound] block.note_block.bass 0.75"
+  repair-pending:
+    - "{prefix} &eLa reparacion se aplico; su pago &f{operation} &ese liquida desde tus datos guardados cuando vuelvas a entrar."
+    - "[sound] block.note_block.bass 0.75"
+  repair-recovered:
+    - "{prefix} &7Se liquido una reparacion de pago interrumpida: &f{captured} &7cobradas, &f{released} &7devueltas."
+    - "[sound] ui.button.click 1.25"
 creative:
   restricted:
     - "{prefix} &cNo puedes {action} en modo creativo."
@@ -1334,3 +1349,34 @@ alts:
   unavailable:
     - "{prefix} &cEl almacenamiento de cuentas alternativas no esta disponible. Intentalo de nuevo en un momento."
     - "[sound] block.note_block.bass 0.75"
+restore:
+  empty:
+    - "{prefix} &7No hay instantaneas guardadas de &f{player}&7."
+    - "[sound] block.note_block.bass 0.75"
+  applied:
+    - "{prefix} &aSe restauro tu &f{parts} &adesde la instantanea &f{reason} &adel &f{time}&a."
+    - "[sound] entity.player.levelup 1.0"
+  applied-other:
+    - "{prefix} &aRestaurado &f{parts} &ade &f{player}&a."
+    - "[sound] entity.player.levelup 1.2"
+  queued:
+    - "{prefix} &e{player} &eesta desconectado; la restauracion de su &f{parts} &ese aplica cuando vuelva a entrar."
+    - "[sound] ui.button.click 1.25"
+  pending-applied:
+    - "{prefix} &aEl staff restauro tu &f{parts} &amientras no estabas."
+    - "[sound] entity.player.levelup 1.0"
+  saved:
+    - "{prefix} &aGuardado este panel como nueva instantanea &fMANUAL &apara &f{player}&a."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  failed:
+    - "{prefix} &cNo se pudo cargar o guardar la instantanea. No cambio nada."
+    - "[sound] block.note_block.bass 0.75"
+  unreadable:
+    - "{prefix} &cEsa instantanea no se puede leer en este servidor: {reason}"
+    - "[sound] block.note_block.bass 0.75"
+  busy:
+    - "{prefix} &cEl inventario de {player} esta ocupado ahora (correo, kit, reparacion u otro editor). Intentalo en un momento."
+    - "[sound] entity.villager.no 0.9"
+  teleported:
+    - "{prefix} &aTeletransportado a donde se tomo la instantanea."
+    - "[sound] entity.enderman.teleport 1.0"

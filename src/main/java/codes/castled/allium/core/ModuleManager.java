@@ -46,6 +46,7 @@ public final class ModuleManager {
         registerModule(new codes.castled.allium.module.HideModule(plugin));
         registerModule(new codes.castled.allium.module.CreativeModule(plugin));
         registerModule(new codes.castled.allium.module.AltsModule(plugin));
+        registerModule(new codes.castled.allium.module.RestoreModule(plugin));
         for (AbstractModule module : modules.values()) {
             String key = module.getName().toLowerCase();
             boolean enabled = plugin.getConfig().getBoolean("modules." + key, true);

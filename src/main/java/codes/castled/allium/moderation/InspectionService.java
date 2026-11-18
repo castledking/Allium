@@ -1,5 +1,7 @@
 package codes.castled.allium.moderation;
 
+import codes.castled.allium.gui.GuiIcons;
+
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.mail.PlayerDataFiles;
 import codes.castled.allium.message.Messages;
@@ -155,6 +157,8 @@ public final class InspectionService implements Listener {
         /** Offline sessions: slot changes saved so far, and whether the close summary still waits on a write. */
         int savedChanges;
         boolean summaryPending;
+        /** The target's held hotbar slot the main-hand icon shows; -1 before the first paint. */
+        int shownHeldSlot = -1;
 
         ItemStack[] lastSyncedSlots;
         byte[] currentRawBytes;
@@ -762,22 +766,22 @@ public final class InspectionService implements Listener {
             for (int slot = InspectionLayout.INVSEE_LOCKED_START; slot <= InspectionLayout.INVSEE_LOCKED_END; slot++) {
                 gui.setItem(slot, filler.clone());
             }
+            gui.setItem(InspectionLayout.INVSEE_LOCKED_START, mainHandIcon(session));
         }
         return gui;
     }
 
     private static ItemStack createLockedPane() {
-        ItemStack pane = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        try {
-            ItemMeta meta = pane.getItemMeta();
-            if (meta != null) {
-                meta.setDisplayName(" ");
-                pane.setItemMeta(meta);
-            }
-        } catch (RuntimeException ignored) {
-            // ItemFactory is unavailable in pure Mockito unit tests without Bukkit.setServer
-        }
-        return pane;
+        return GuiIcons.icon(GuiIcons.Icon.FILLER, " ", List.of());
+    }
+
+    /** Which hotbar slot the target holds: the sword icon in the first locked slot. */
+    private ItemStack mainHandIcon(InspectionSession session) {
+        Player target = session.mode == InspectionLayout.InspectionMode.ONLINE ? plugin.getServer().getPlayer(session.targetUuid) : null;
+        List<String> lore = target != null
+                ? List.of("\u00a77Hotbar slot \u00a7f" + (target.getInventory().getHeldItemSlot() + 1) + "\u00a77 (bottom row)")
+                : List.of("\u00a78Not known while offline");
+        return GuiIcons.icon(GuiIcons.Icon.SWORD, "\u00a77Main hand", lore);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -817,6 +821,25 @@ public final class InspectionService implements Listener {
             event.setCancelled(true);
             return;
         }
+        if (inTop && isIconSlot(session.gui, rawSlot)) {
+            // An empty equipment slot's icon: only a cursor item may go there, and the icon is
+            // replaced, never picked up.
+            event.setCancelled(true);
+            ItemStack cursor = event.getCursor();
+            boolean placing = cursor != null && !cursor.getType().isAir()
+                    && (action == InventoryAction.SWAP_WITH_CURSOR || action == InventoryAction.PLACE_ALL || action == InventoryAction.PLACE_ONE
+                    || action == InventoryAction.PLACE_SOME || click == ClickType.LEFT || click == ClickType.RIGHT);
+            if (placing && session.editable && prepareEditableTopInteraction(session)) {
+                int amount = click == ClickType.RIGHT ? 1 : cursor.getAmount();
+                ItemStack placed = cursor.clone();
+                placed.setAmount(amount);
+                session.gui.setItem(rawSlot, placed);
+                ItemStack rest = cursor.clone();
+                rest.setAmount(cursor.getAmount() - amount);
+                clicker.setItemOnCursor(rest.getAmount() <= 0 ? null : rest);
+            }
+            return;
+        }
 
         boolean touchesTop = inTop || shiftFromBottom || collectToCursor;
         if (!touchesTop) {
@@ -853,7 +876,7 @@ public final class InspectionService implements Listener {
         boolean touchesLocked = false;
         boolean touchesTop = false;
         for (int rawSlot : event.getRawSlots()) {
-            if (InspectionLayout.isLockedUiSlot(session.type, rawSlot)) {
+            if (InspectionLayout.isLockedUiSlot(session.type, rawSlot) || isIconSlot(session.gui, rawSlot)) {
                 touchesLocked = true;
             }
             if (rawSlot >= 0 && rawSlot < topSize) {
@@ -929,14 +952,7 @@ public final class InspectionService implements Listener {
     }
 
     private static boolean matchesLockedPane(InventoryClickEvent event, Inventory gui) {
-        ItemStack pane = gui.getItem(InspectionLayout.INVSEE_LOCKED_START);
-        if (pane == null || pane.getType().isAir()) {
-            return false;
-        }
-        ItemStack cursor = event.getCursor();
-        ItemStack current = event.getCurrentItem();
-        return (cursor != null && !cursor.getType().isAir() && pane.isSimilar(cursor))
-                || (current != null && !current.getType().isAir() && pane.isSimilar(current));
+        return GuiIcons.isIcon(event.getCursor()) || GuiIcons.isIcon(event.getCurrentItem());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -987,6 +1003,7 @@ public final class InspectionService implements Listener {
         if (!deltas.isEmpty()) {
             applySlotsToLiveTarget(target, session.type, session.lastSyncedSlots, newSlots, deltas);
             session.lastSyncedSlots = cloneSlots(newSlots);
+            paintEquipmentIcons(session.type, session.gui);
             String detail = InspectionLayout.formatAuditDetail(
                     session.type, InspectionLayout.InspectionMode.ONLINE, true, null, deltas);
             logInspection(editAction(session.type), session.viewerName, session.targetUuid, session.targetName, detail);
@@ -1023,6 +1040,7 @@ public final class InspectionService implements Listener {
         session.writeInFlight = true;
         ItemStack[] baselineOnFailure = cloneSlots(session.lastSyncedSlots);
         session.lastSyncedSlots = cloneSlots(newSlots);
+        paintEquipmentIcons(session.type, session.gui);
 
         try {
             io.execute(() -> {
@@ -1132,6 +1150,11 @@ public final class InspectionService implements Listener {
                 abortSession(session, unavailable == Messages.INSPECT_TARGET_DEAD ? "target-dead" : "target-offline",
                         unavailable, session.targetName);
                 continue;
+            }
+            if (session.type == InspectionLayout.InspectionType.INVSEE
+                    && session.shownHeldSlot != target.getInventory().getHeldItemSlot()) {
+                session.shownHeldSlot = target.getInventory().getHeldItemSlot();
+                session.gui.setItem(InspectionLayout.INVSEE_LOCKED_START, mainHandIcon(session));
             }
             if (!session.viewer.hasPermission(PERMISSION_BYPASS) && !canModeratePolicy.test(session.viewer, session.targetUuid)) {
                 abortSession(session, "policy-revoked", Messages.DISCIPLINE_EXEMPT, null);
@@ -1492,6 +1515,11 @@ public final class InspectionService implements Listener {
         }
     }
 
+    /** True while a staff member has {@code target}'s inventory or ender chest open for editing. */
+    public boolean editing(UUID target) {
+        return activeMutableSessions.keySet().stream().anyMatch(key -> key.targetUuid().equals(target));
+    }
+
     private void closeAndUnregisterSession(InspectionSession session, boolean closeWindow, String reason) {
         unregisterSession(session);
         if (closeWindow && session.viewer.isOnline() && session.gui != null
@@ -1566,6 +1594,27 @@ public final class InspectionService implements Listener {
                 gui.setItem(guiSlot, stack);
             }
         }
+        paintEquipmentIcons(type, gui);
+    }
+
+    /** An empty armor or offhand slot shows its empty-slot icon; icons are never saved as items. */
+    private static void paintEquipmentIcons(InspectionLayout.InspectionType type, Inventory gui) {
+        if (type != InspectionLayout.InspectionType.INVSEE) {
+            return;
+        }
+        for (int pSlot = 36; pSlot <= 40; pSlot++) {
+            int guiSlot = InspectionLayout.toGuiSlot(type, pSlot);
+            ItemStack current = gui.getItem(guiSlot);
+            if (current == null || current.getType().isAir()) {
+                GuiIcons.Icon icon = GuiIcons.equipmentIcon(pSlot);
+                gui.setItem(guiSlot, GuiIcons.icon(icon, "\u00a77Empty " + InspectionLayout.slotLabel(type, pSlot)
+                        .replace("armor[", "").replace("]", ""), List.of("\u00a78Place an item here to equip it")));
+            }
+        }
+    }
+
+    private static boolean isIconSlot(Inventory gui, int rawSlot) {
+        return rawSlot >= 0 && rawSlot < gui.getSize() && GuiIcons.isIcon(gui.getItem(rawSlot));
     }
 
     private static ItemStack[] captureGuiSlots(InspectionLayout.InspectionType type, Inventory gui) {
@@ -1573,7 +1622,8 @@ public final class InspectionService implements Listener {
         ItemStack[] out = new ItemStack[count];
         for (int pSlot = 0; pSlot < count; pSlot++) {
             int guiSlot = InspectionLayout.toGuiSlot(type, pSlot);
-            out[pSlot] = guiSlot >= 0 ? cloneOrNull(gui.getItem(guiSlot)) : null;
+            ItemStack stack = guiSlot >= 0 ? gui.getItem(guiSlot) : null;
+            out[pSlot] = GuiIcons.isIcon(stack) ? null : cloneOrNull(stack);
         }
         return out;
     }

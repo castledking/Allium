@@ -229,21 +229,19 @@ reconciled. Integrations needing safe retries must use the keyed API.
 
 **Operator lookup for `OUTCOME_UNKNOWN:<id>`:** When an unkeyed Vault call returns
 `OUTCOME_UNKNOWN:<id>`, that operation ID (`<id>`) is the **only** way to verify afterwards
-whether the money actually moved. An administrator inspects the operation via
-`/allium economy op <id>` (console or `allium.economy.admin`), or queries the database directly
-after reconciliation:
+whether the money actually moved. An administrator can look up the ID on the SQLite database using a read-only connection, after reconciliation:
 
 ```sql
-SELECT id, kind, state, reason, amount_minor, created_at, updated_at
+SELECT operation_id, kind, state, result_code, amount_minor, created_at, finished_at
 FROM allium_economy_operations
-WHERE id = '<id>';
+WHERE operation_id = '<id>';
 
-SELECT account_uuid, delta_minor, held_delta_minor, balance_before_minor, balance_after_minor, account_version_after
+SELECT account_uuid, book_delta, held_delta, balance_before, balance_after, account_version_after
 FROM allium_economy_entries
 WHERE operation_id = '<id>';
 ```
 
-- If `state = 'COMMITTED'` (with matching `allium_economy_entries` rows), the money moved once and
+- If `state = 'COMMITTED'` (with matching `allium_economy_entries` rows), the recorded ledger effects applied once and
   must not be manually re-applied.
 - If no row exists (or `state = 'REJECTED'`) after startup/coordinator reconciliation has finished,
   the transaction rolled back and no money moved.

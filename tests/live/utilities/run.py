@@ -31,6 +31,7 @@ P.add_argument('--allium-jar', type=Path, required=True)
 P.add_argument('--sha256', required=True, help='parent-confirmed frozen jar hash')
 P.add_argument('--run-name', required=True)
 P.add_argument('--check', action='store_true')
+P.add_argument('--ownership-only', action='store_true', help='run only the permanent utility label probes')
 P.add_argument('--run-root', type=Path, default=Path('/mnt/storage/.allium-validation/20261115/s25-utilities/runs'))
 P.add_argument('--paper-template', type=Path, default=Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3'))
 A = P.parse_args()
@@ -292,6 +293,7 @@ enforce-secure-profile=false
 white-list=false
 enable-query=false
 enable-rcon=false
+enable-command-block=true
 spawn-protection=0
 difficulty=peaceful
 spawn-monsters=false
@@ -421,6 +423,102 @@ def grant_standard_staff(lane, who):
         lane.perm(who, node, True)
 
 
+def command_ownership(lane, norm):
+    scopes.append(lane.name + ':command-ownership')
+    owners = lane.fixture('owners')
+    for label in ('time', 'weather', 'enchant', 'clear', 'speed'):
+        require(owners[label] == 'Allium' and owners['allium:' + label] == 'Allium',
+                lane.name + ': Allium owns bare and allium:' + label, owners)
+        native = owners['minecraft:' + label]
+        require(native == 'absent' if label == 'speed' else native == 'VanillaCommandWrapper',
+                lane.name + ': minecraft:' + label + ' ownership', native)
+
+    def check_effect(send, command, assertion, label):
+        send(command)
+        try:
+            wait(assertion, lane.name + ': ' + label, 5)
+        except RuntimeError as error:
+            require(False, lane.name + ': ' + label, str(error))
+        else:
+            require(True, lane.name + ': ' + label)
+
+    def block(command, assertion, label):
+        check_effect(lambda text: lane.fixture('commandblock UtilNorm ' + text), command, assertion, label)
+        window(1.1)
+
+    def execute(selector, label, args, assertion):
+        # On Spigot the native prefix works from a command block but is missing
+        # from the nested dispatcher. Retain its actual diagnostic before trying bare.
+        start = len(lane.logs)
+        lane.console(f'execute as {selector} run minecraft:{label} {args}')
+        outcome = wait(lambda: 'native effect' if assertion() else next((
+            line.strip() for line in lane.logs[start:]
+            if 'Incorrect argument for command' in line or 'Unknown or incomplete command' in line
+        ), None), lane.name + ': nested minecraft:' + label)
+        observations[lane.name + ': nested minecraft:' + label] = outcome
+        if outcome != 'native effect':
+            check_effect(lane.console, f'execute as {selector} run {label} {args}',
+                         assertion, f'/execute {selector} {label} (bare fallback)')
+        else:
+            require(True, lane.name + f': /execute {selector} minecraft:{label}')
+
+    def online_time():
+        return lane.fixture('state UtilNorm')['worldTime'] % 24000
+
+    block('minecraft:time set 6000', lambda: 6000 <= online_time() <= 6120, 'command block minecraft:time')
+    execute('@a', 'time', 'set 9000', lambda: 9000 <= online_time() <= 9120)
+    block('minecraft:weather rain', lambda: lane.fixture('state UtilNorm')['storm'], 'command block minecraft:weather')
+    execute('@p', 'weather', 'clear', lambda: not lane.fixture('state UtilNorm')['storm'])
+    for name in ('UtilNorm', 'UtilStaff'):
+        lane.fixture('seedsword ' + name)
+    block('minecraft:enchant @a minecraft:sharpness 2',
+          lambda: all(lane.fixture('state ' + name)['heldEnchants'].get('sharpness') == 2
+                      for name in ('UtilNorm', 'UtilStaff')), 'command block minecraft:enchant @a')
+    for name in ('UtilNorm', 'UtilStaff'):
+        lane.fixture('seedsword ' + name)
+    execute('@p', 'enchant', '@a minecraft:sharpness 3',
+            lambda: all(lane.fixture('state ' + name)['heldEnchants'].get('sharpness') == 3
+                        for name in ('UtilNorm', 'UtilStaff')))
+    block('minecraft:clear @p minecraft:diamond_sword',
+          lambda: sum(lane.fixture('state ' + name)['heldType'] == 'AIR'
+                      for name in ('UtilNorm', 'UtilStaff')) == 1, 'command block minecraft:clear @p')
+    execute('@a', 'clear', '@s minecraft:diamond_sword',
+            lambda: all(lane.fixture('state ' + name)['heldType'] == 'AIR'
+                        for name in ('UtilNorm', 'UtilStaff')))
+
+    lane.perm('UtilNorm', 'allium.speed', True)
+    norm.command('speed walk 3', 'Walk speed set to 3')
+    walk_three = 0.2 + 2 * 0.8 / 9
+    require(abs(lane.fixture('state UtilNorm')['walkSpeed'] - walk_three) < 1e-4,
+            lane.name + ': bare /speed with player context changes walk speed')
+    block('speed walk reset UtilNorm',
+          lambda: abs(lane.fixture('state UtilNorm')['walkSpeed'] - 0.2) < 1e-4,
+          'command block /speed with named player')
+    start = len(lane.logs)
+    lane.console('execute as @p run minecraft:speed walk 9 UtilNorm')
+    denied = wait(lambda: next((line.strip() for line in lane.logs[start:]
+                                if 'Incorrect argument for command' in line
+                                or 'Unknown or incomplete command' in line), None),
+                  lane.name + ': nested minecraft:speed absent')
+    require(abs(lane.fixture('state UtilNorm')['walkSpeed'] - 0.2) < 1e-4,
+            lane.name + ': missing minecraft:speed under /execute leaves speed unchanged', denied)
+    lane.perm('UtilNorm', 'allium.speed.others', True)
+    start = len(lane.logs)
+    lane.console('execute as @p run speed walk 3 UtilNorm')
+    found = wait(lambda: 'named target effect' if
+                 abs(lane.fixture('state UtilNorm')['walkSpeed'] - walk_three) < 1e-4 else next((
+                     line.strip() for line in lane.logs[start:]
+                     if 'Incorrect argument for command' in line or 'Unknown or incomplete command' in line
+                 ), None), lane.name + ': nested bare speed')
+    observations[lane.name + ': nested bare speed'] = found
+    require(found == 'named target effect' or abs(lane.fixture('state UtilNorm')['walkSpeed'] - 0.2) < 1e-4,
+            lane.name + ': nested bare speed changes named target or is rejected without an effect', found)
+    norm.command('speed walk reset', 'Walk speed set to 1')
+    lane.perm('UtilNorm', 'allium.speed.others', False)
+    lane.perm('UtilNorm', 'allium.speed', False)
+
+
+
 def run_suite(kind, base_port):
     lane = Lane(kind, kind, base_port)
     lane.boot()
@@ -429,6 +527,12 @@ def run_suite(kind, base_port):
     norm = lane.bot('UtilNorm')
     grant_standard_staff(lane, 'UtilStaff')
 
+    command_ownership(lane, norm)
+    if A.ownership_only:
+        lane.stop()
+        assert_clean_logs(lane, RUN / f'{lane.name}-server.log')
+        return
+
     # ------------------------------------------------------------------
     # Scope 1: Repair (hand + all), Disposal, Workbenches, /info
     # ------------------------------------------------------------------
@@ -436,7 +540,7 @@ def run_suite(kind, base_port):
     lane.perm('UtilNorm', 'allium.repair', True)
     lane.fixture('seedrepair UtilNorm')
 
-    norm.command('repair', 'Repaired the held item')
+    norm.command('repair', 'Repaired diamond pickaxe')
     st_rep = lane.fixture('state UtilNorm')
     require(st_rep['heldDamage'] == 0
             and st_rep['heldDisplayName'] == 'Custom Pick'
@@ -449,7 +553,7 @@ def run_suite(kind, base_port):
 
     norm.command('repair all', 'permission')
     lane.perm('UtilNorm', 'allium.repair.all', True)
-    norm.command('repair all', 'Repaired 1 damaged item(s)')
+    norm.command('repair all', 'Repaired iron sword')
     st_all = lane.fixture('state UtilNorm')
     require(st_all['slot1Damage'] == 0, lane.name + ': /repair all repairs all damaged inventory slots')
     lane.perm('UtilNorm', 'allium.repair.all', False)
@@ -664,6 +768,7 @@ def run_suite(kind, base_port):
     require(st_clr['storm'] is False and st_clr['thundering'] is False, lane.name + ': /weather clear clears storm & thunder')
 
     # /enchant + allium.enchant.unsafe + tab completion
+    lane.fixture('seedsword UtilStaff')
     ench_tabs, _ = staff.tab('enchant ')
     require(any('sharpness' in m for m in ench_tabs), lane.name + ': /enchant tab completes enchantment keys',
             {'sample': ench_tabs[:10]})
@@ -674,14 +779,21 @@ def run_suite(kind, base_port):
     require(lane.fixture('state UtilNorm')['heldEnchants'].get('sharpness') == 5,
             lane.name + ': /enchant safe level applied')
 
-    staff.command('enchant UtilNorm sharpness 10', 'unsafe')
+    staff.command('enchant UtilNorm sharpness 10', 'Limiting to 5')
     require(lane.fixture('state UtilNorm')['heldEnchants'].get('sharpness') == 5,
             lane.name + ': /enchant refuses above-max level without allium.enchant.unsafe')
-    staff.command('enchant UtilNorm fortune 1', 'unsafe')
+    staff.command('enchant UtilNorm fortune 1', "can't be applied")
     require('fortune' not in lane.fixture('state UtilNorm')['heldEnchants'],
             lane.name + ': /enchant refuses incompatible enchantment without allium.enchant.unsafe')
 
     lane.perm('UtilStaff', 'allium.enchant.unsafe', True)
+    config_path = lane.path / 'plugins/Allium/config.yml'
+    config = yaml.safe_load(config_path.read_text())
+    config['allow-unsafe-enchants'] = True
+    config_path.write_text(yaml.safe_dump(config, sort_keys=False))
+    mark = len(lane.logs)
+    lane.console('allium reload')
+    wait(lambda: any('Configuration reloaded.' in line for line in lane.logs[mark:]), 'unsafe config reload')
     staff.command('enchant UtilNorm sharpness 10', 'Applied')
     require(lane.fixture('state UtilNorm')['heldEnchants'].get('sharpness') == 10,
             lane.name + ': allium.enchant.unsafe allows above-max level 10')

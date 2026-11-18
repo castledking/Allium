@@ -272,6 +272,18 @@ kit:
     - "{prefix} &cNo se puede crear el kit: la ranura &f{slot} &ccontiene datos de objeto no soportados (&f{reason}&c). Quita o reemplaza el objeto para no degradar el kit."
     - "[sound] block.note_block.bass 0.75"
 economy:
+  admin-give:
+    - "{prefix} &e{amount} &aañadidos a &f{player}&a. Nuevo saldo: &e{balance}"
+  admin-take:
+    - "{prefix} &e{amount} &aretirados de &f{player}&a. Nuevo saldo: &e{balance}"
+  admin-set:
+    - "{prefix} &aEl saldo de &f{player} &aes ahora &e{balance}&a."
+  admin-received:
+    - "{prefix} &aSe añadieron &e{amount} &aa tu cuenta."
+  admin-taken:
+    - "{prefix} &aSe retiraron &e{amount} &ade tu cuenta."
+  admin-updated:
+    - "{prefix} &aTu saldo es ahora &e{balance}&a."
   operation-refused:
     - "{prefix} &cEconomy refused: &f{reason}"
   top:
@@ -713,7 +725,7 @@ utility:
   server-info:
     - "{prefix} &f{server} &7\u2014 &f{count} &7player(s) online."
   repair-held:
-    - "{prefix} &aRepaired the held item."
+    - "{prefix} &aReparaste &f{items}&a."
     - "[sound] block.anvil.use 1.2"
   repair-hold-damaged:
     - "{prefix} &cHold a damaged item to repair."
@@ -813,7 +825,7 @@ utility:
     - "{prefix} &cPropietario de cabeza invalido &f{owner}&c."
     - "[sound] block.note_block.bass 0.8"
   repair-all:
-    - "{prefix} &aReparado(s) &f{count} &aobjeto(s) danado(s)."
+    - "{prefix} &aReparaste &f{items}&a."
     - "[sound] block.anvil.use 1.2"
   repair-none:
     - "{prefix} &7No se encontraron objetos danados para reparar."
@@ -1246,5 +1258,9 @@ give:
     - "{prefix} &cEnchantment &f{enchant} &ccannot be combined with &f{enchant2} &con &f{item}&c!"
 
 signs:
+  paid-repair-disabled:
+    - "{prefix} &cLas reparaciones de pago están desactivadas temporalmente."
+  invalid-line:
+    - "{prefix} &cLa línea {line} del cartel no es válida. {options}"
   disabled:
     - "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."

@@ -12,7 +12,7 @@ anvil, mail, info**. Buy/sell/trade are excluded. All actions are self-service;
 paid kit signs call the same kit handler and receipt-backed reservation service as
 `/kit`, with the same payer/target identity and inventory admission rules.
 
-Write `[type]` on line one. Warp and kit require the destination/kit name on line
+Write `[type]` on line one. Recognized headers display in title case, such as `[Repair]` and `[Warp]`. Warp and kit require the destination/kit name on line
 two. A warp may explicitly say `public` on line three, but its creator must also
 have `allium.signs.create.warp.public` (default false). This authorizes access
 through that sign without a per-warp permission; ordinary warp signs retain
@@ -34,8 +34,8 @@ service. Color only formats the sign text; it has no executable action. Ampersan
 colors in a newly admitted sign are converted on creation. Balance displays
 **available** funds without opening an account or mutating money. Heal, repair,
 disposal, workbench, anvil and info use the exact handlers registered for their
-commands. Repair changes only held-item damage and retains its existing metadata;
-inventory utilities refuse while mail/kit receipt recovery holds admission.
+commands. Repair accepts `Hand` or `All` on line two and a non-negative price on line three. Blank mode means `Hand` and blank price means free. Invalid lines show an on-sign hint and a numbered chat error. Repair preserves item metadata and lists each repaired item in chat.
+Inventory utilities refuse while mail/kit receipt recovery holds admission.
 Mail opens `/mail read`; info displays server name and visible online count. Other lines
 never execute a command or supply a target player.
 
@@ -70,3 +70,18 @@ placement and explicit plugin editor opens remain available. The interaction
 itself retains the deferred protection check. Repair success/refusal use the
 colored, sound-configurable language keys `utility.repair-held` and
 `utility.repair-hold-damaged`.
+
+
+Repair signs store mode and price in the sign identity. A nonzero price is still
+displayed, but the sign refuses activation without changing items or money.
+Paid repair remains disabled pending durable receipt recovery and a live halt test.
+Paid kit signs retain their existing receipt recovery. Stock repair messages update automatically. Custom repair messages can include `{items}` for the comma-separated list.
+
+Set `economy.currency-symbol` and `economy.currency-symbol-suffix` to control display
+and optional symbol placement on repair prices. Enable `economy-log-enabled` for
+`plugins/Allium/trade.log` entries for successful paid kit and mail
+captures, `/pay`, and `/eco` or `/money` balance changes. Use `economy-log-uuids`
+for UUIDs and `economy-log-update-enabled` to opt into Vault API mutations.
+Each CSV row contains the timestamp, origin, action, actor, account, exact amount,
+and operation ID. The SQLite operation journal remains
+the authoritative transaction record.

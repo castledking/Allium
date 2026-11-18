@@ -53,7 +53,16 @@ modules:
   info: true
   tools: true
 
+# Log committed command and sign transactions to trade.log.
+economy-log-enabled: false
+# Prefer UUIDs over known account names in trade.log.
+economy-log-uuids: false
+# Include Vault API changes. This can fill trade.log quickly.
+economy-log-update-enabled: false
+
 economy:
+  currency-symbol: '$'
+  currency-symbol-suffix: false
   # Opt-in only after host validation; commands and paid workflows do not need Vault.
   vault-provider-enabled: false
   # Phase 1 single-server SQLite money. Amounts must remain quoted decimal text.

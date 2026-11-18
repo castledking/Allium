@@ -49,3 +49,19 @@ startup without registering listeners or intercepting dispatch.
    - `/enchant` requires an explicit grant of `allium.enchant.unsafe` (`default: false`, excluded from `allium.*`) before allowing levels above `Enchantment#getMaxLevel()` or incompatible target materials.
 4. **Structured auditing:**
    - World/player mutations (`repair_all`, `speed`, `burn`, `ext`, `smite`, `nv`, `clearinventory`, `more`, `skull`, `time_set`, `time_add`, `time_pause`, `weather`, `enchant`) log structured `[UtilitiesAudit] actor=... action=...` lines.
+
+## Vanilla command labels
+
+Allium owns the bare and `allium:` forms of `time`, `weather`, `enchant`, `clear` and `speed`
+while their command families are enabled. Its player-target arguments take player
+names and use the command's visibility and permission policy. Use
+`minecraft:time`, `minecraft:weather`, `minecraft:enchant` and `minecraft:clear` for
+the vanilla grammar in automation. Vanilla has no `minecraft:speed`; that utility
+uses Allium's walk or fly speed and named-player syntax. The permanent utilities gate
+checks Bukkit ownership, command blocks, console `/execute` and selector effects.
+
+On Spigot 1.20.1, the nested commands after `execute … run` use bare
+`time`, `weather`, `enchant` and `clear`; the dispatcher rejects their
+`minecraft:` forms there. Paper 26.3 accepts the native namespaced forms.
+Both lanes can run bare `speed` from a command block with an explicit player
+name. Paper also accepts it after `execute … run`; Spigot rejects that syntax.

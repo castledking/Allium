@@ -10,12 +10,14 @@ import static codes.castled.allium.economy.EconomyResult.*;
 /** Optional Vault linkage lives here, after the engine's schema/recovery readiness gate. */
 public final class VaultEconomyProvider implements Economy {
     private final EconomyEngine engine;
+    private java.util.function.Supplier<EconomyDisplay> display=()->EconomyDisplay.DEFAULT;
     private final Function<String,UUID> names;
     private final BooleanSupplier enabled;
     private final Function<UUID,Balance> balances;
     private final Function<EconomyRequest,Mutation> mutate;
     public VaultEconomyProvider(EconomyRuntime runtime,Function<String,UUID> names){
-        this(runtime.engine(),names,runtime::ready,runtime::synchronousBalance,runtime::synchronous);
+        this(runtime.engine(),names,runtime::ready,runtime::synchronousBalance,runtime::vaultMutation);
+        display=runtime::display;
     }
     public VaultEconomyProvider(EconomyEngine engine,Function<String,UUID> names,BooleanSupplier enabled,
                                 Function<UUID,Balance> balances,Function<EconomyRequest,Mutation> mutate){
@@ -70,7 +72,7 @@ public final class VaultEconomyProvider implements Economy {
     @Override public int fractionalDigits(){return 2;}
     @Override public String format(double value){
         if(!Double.isFinite(value))throw new IllegalArgumentException("finite value required");
-        return "$"+java.math.BigDecimal.valueOf(value).setScale(2,java.math.RoundingMode.HALF_EVEN).toPlainString();
+        return display.get().format(java.math.BigDecimal.valueOf(value).setScale(2,java.math.RoundingMode.HALF_EVEN));
     }
     @Override public String currencyNamePlural(){return "dollars";}
     @Override public String currencyNameSingular(){return "dollar";}

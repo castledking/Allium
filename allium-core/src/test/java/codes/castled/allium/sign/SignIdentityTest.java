@@ -6,7 +6,7 @@ class SignIdentityTest {
     @Test void identitiesRoundTripAndColourImportsToColor(){
         assertEquals(SignIdentity.Type.COLOR,SignIdentity.Type.parse("colour"));
         for(var type:SignIdentity.Type.values()){
-            var identity=new SignIdentity(UUID.randomUUID(),type,"spawn",type==SignIdentity.Type.WARP);
+            var identity=new SignIdentity(UUID.randomUUID(),type,type==SignIdentity.Type.REPAIR?"hand":"spawn",type==SignIdentity.Type.WARP);
             assertEquals(identity,SignIdentity.decode(identity.encode()).orElseThrow());
         }
     }

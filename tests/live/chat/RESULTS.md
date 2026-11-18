@@ -74,10 +74,8 @@ Its partial logs are not treated as a pass. `s23-recovered-signs-paper` was
 372/373: a flat-world slime killed idle observer MoneyB during the strict
 anvil no-chat assertion; server state confirmed no anvil action occurred.
 The harness now makes both idle sign observers creative, preserving actor damage
-probes and strict assertions, and both sign lanes were rerun. `s23-final-spigot`
-ran before the storage failure and was not rerun after recovery; the other five
-accepted lanes (`s23-recovered-*`) ran after storage recovery, and failed attempts
-were not relabelled or deleted.
+probes and strict assertions, and both sign lanes were rerun.
+The accepted `s23-final-spigot` run predates the storage failure and was never rerun. The five accepted `s23-recovered-*` lanes ran after recovery. Failed attempts remain in the evidence.
 
 See [operator contract](../../../docs/chat.md) and
 [importer formats](../../../docs/importers-design.md).

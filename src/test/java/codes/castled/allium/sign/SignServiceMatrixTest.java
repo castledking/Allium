@@ -30,6 +30,34 @@ class SignServiceMatrixTest {
     @org.junit.jupiter.api.Test void disabledSignCreationKeepsVanillaTextAndNotifies(){var f=new Fixture(SignIdentity.Type.BALANCE,false);f.config.set("enabledSigns",List.of());when(f.plugin.getMessageManager()).thenReturn(mock(codes.castled.allium.message.MessageManager.class));var event=f.edit();String[] before=event.getLines().clone();new SignService(f.plugin).changing(event);f.drain();assertFalse(event.isCancelled());assertArrayEquals(before,event.getLines());assertTrue(f.data.isEmpty());verify(f.plugin.getMessageManager()).send(eq(f.player),eq(codes.castled.allium.message.Messages.SIGN_DISABLED),any(String[].class));}
     @org.junit.jupiter.api.Test void activeUnwaxedFaceBlocksOnlyInteractionEditor(){var f=new Fixture(SignIdentity.Type.REPAIR,false);assertTrue(f.service.blocksEditor(f.sign,Side.FRONT,"INTERACT"));assertFalse(f.service.blocksEditor(f.sign,Side.FRONT,"PLUGIN"));assertFalse(f.service.blocksEditor(f.sign,Side.FRONT,"PLACE"));assertFalse(f.service.blocksEditor(f.sign,Side.BACK,"INTERACT"));f.config.set("enabledSigns",List.of());assertFalse(new SignService(f.plugin).blocksEditor(f.sign,Side.FRONT,"INTERACT"));}
     @org.junit.jupiter.api.Test void disabledHeaderCannotEraseAnExistingSignWithoutBreakPermission(){var f=new Fixture(SignIdentity.Type.REPAIR,false);f.config.set("enabledSigns",List.of());var event=f.edit();f.data.put(new NamespacedKey("allium","sign_front"),new SignIdentity(UUID.randomUUID(),SignIdentity.Type.REPAIR,"",false).encode());when(f.player.hasPermission("allium.signs.break.repair")).thenReturn(false);event.setLine(0,"[balance]");new SignService(f.plugin).changing(event);f.drain();assertTrue(event.isCancelled());assertFalse(f.data.isEmpty());}
+    @org.junit.jupiter.api.Test void repairSignStoresModeAndExactPrice(){
+        var f=new Fixture(SignIdentity.Type.REPAIR,false);
+        var event=f.edit();
+        event.setLine(1,"aLL");
+        event.setLine(2,"$6,000.25");
+        f.service.changing(event);
+        f.drain();
+        assertEquals("§1[Repair]",event.getLine(0));
+        assertEquals("All",event.getLine(1));
+        var stored=SignIdentity.decode(f.data.values().iterator().next()).orElseThrow();
+        assertEquals("all",stored.argument());
+        assertEquals(600025,stored.price().minor());
+    }
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"wheel,100,2","hand,1.001,3"})
+    void invalidRepairLineIsVisibleAndDoesNotAuthorizeUse(String mode,String price,int line){
+        var f=new Fixture(SignIdentity.Type.REPAIR,false);
+        var event=f.edit();
+        event.setLine(1,mode);
+        event.setLine(2,price);
+        f.service.changing(event);
+        f.drain();
+        assertEquals("§c[Repair]",event.getLine(0));
+        assertTrue(event.getLine(line-1).startsWith("§c<"));
+        assertTrue(f.data.isEmpty());
+        verify(f.plugin.getMessageManager()).send(eq(f.player),eq(codes.castled.allium.message.Messages.SIGN_INVALID_LINE),
+                eq("{line}"),eq(Integer.toString(line)),eq("{options}"),anyString());
+    }
     // Baseline Spigot 1.20 lacks this accessor; model the newer platform capability.
     interface WaxedSign extends Sign { boolean isWaxed(); }
     static final class Fixture {
@@ -61,7 +89,7 @@ class SignServiceMatrixTest {
             when(pdc.get(any(NamespacedKey.class),eq(PersistentDataType.STRING))).thenAnswer(call->data.get(call.getArgument(0)));
             doAnswer(call->{data.put(call.getArgument(0),call.getArgument(2));return null;}).when(pdc).set(any(NamespacedKey.class),eq(PersistentDataType.STRING),anyString());
             doAnswer(call->{data.remove(call.getArgument(0));return null;}).when(pdc).remove(any());
-            data.put(new NamespacedKey("allium","sign_front"),new SignIdentity(UUID.randomUUID(),type,"paid",false).encode());
+            data.put(new NamespacedKey("allium","sign_front"),new SignIdentity(UUID.randomUUID(),type,type==SignIdentity.Type.REPAIR?"hand":"paid",false).encode());
             when(plugin.getCommandManager()).thenReturn(commands);when(commands.getFamilyPolicy()).thenReturn(policy);
             when(commands.getRenderedCommands()).thenReturn(Map.of(command(),renderer));when(plugin.getCommand(command())).thenReturn(mock(PluginCommand.class));
             var modules=mock(ModuleManager.class);when(plugin.getModuleManager()).thenReturn(modules);
@@ -75,13 +103,13 @@ class SignServiceMatrixTest {
         String command(){return type==SignIdentity.Type.COLOR?"color":type.key();}
         String module(){return switch(type){case WARP->"travel";case KIT->"kits";case MAIL->"mail";case BALANCE->"economy";default->"essentials";};}
         PlayerInteractEvent click(){return new PlayerInteractEvent(player,Action.RIGHT_CLICK_BLOCK,null,block,BlockFace.SOUTH,EquipmentSlot.HAND);}
-        SignChangeEvent edit(){data.clear();var event=new SignChangeEvent(block,player,new String[]{"["+type.key()+"]","paid","",""},Side.FRONT);var face=mock(SignSide.class);when(face.getLines()).thenAnswer(call->event.getLines());when(sign.getSide(Side.FRONT)).thenReturn(face);return event;}
+        SignChangeEvent edit(){data.clear();var event=new SignChangeEvent(block,player,new String[]{"["+type.key()+"]",type==SignIdentity.Type.REPAIR?"hand":"paid","",""},Side.FRONT);var face=mock(SignSide.class);when(face.getLines()).thenAnswer(call->event.getLines());when(sign.getSide(Side.FRONT)).thenReturn(face);return event;}
         void drain(){while(!callbacks.isEmpty())callbacks.remove().run();}
         void noAction(){verifyNoInteractions(renderer,travel);}
         void action(){
             if(type==SignIdentity.Type.COLOR){noAction();return;}
             if(type==SignIdentity.Type.WARP)verify(travel).useSign(player,"paid",false);
-            else verify(renderer).onCommand(eq(player),any(),eq(command()),aryEq(type==SignIdentity.Type.KIT?new String[]{"paid"}:type==SignIdentity.Type.MAIL?new String[]{"read"}:new String[0]));
+            else verify(renderer).onCommand(eq(player),any(),eq(command()),aryEq(type==SignIdentity.Type.KIT?new String[]{"paid"}:type==SignIdentity.Type.MAIL?new String[]{"read"}:type==SignIdentity.Type.REPAIR?new String[]{"hand"}:new String[0]));
         }
     }
     @ParameterizedTest @EnumSource(SignIdentity.Type.class)

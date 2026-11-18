@@ -79,6 +79,35 @@ public final class UtilitiesGate extends JavaPlugin implements Listener {
         try {
             Map<String, Object> out = new LinkedHashMap<>();
             switch (args[0]) {
+                case "owners" -> {
+                    var map = codes.castled.allium.command.CommandMapBridge.resolveCommandMapDirect(getServer());
+                    for (String name : List.of("time", "weather", "enchant", "clear", "speed")) {
+                        for (String key : List.of(name, "minecraft:" + name, "allium:" + name)) {
+                            Command entry = map.getCommand(key);
+                            out.put(key, entry == null ? "absent" : entry instanceof org.bukkit.command.PluginCommand owner
+                                    ? owner.getPlugin().getName() : entry.getClass().getSimpleName());
+                        }
+                    }
+                }
+                case "commandblock" -> {
+                    Player target = requireOnline(args[1]);
+                    int x = target.getLocation().getBlockX() + 3;
+                    int z = target.getLocation().getBlockZ();
+                    var world = target.getWorld();
+                    var anchor = world.getBlockAt(x, world.getHighestBlockYAt(x, z) + 1, z);
+                    var power = anchor.getRelative(0, 1, 0);
+                    power.setType(Material.AIR);
+                    anchor.setType(Material.COMMAND_BLOCK);
+                    var commandBlock = (org.bukkit.block.CommandBlock) anchor.getState();
+                    commandBlock.setCommand(String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length)));
+                    commandBlock.update(true);
+                    power.setType(Material.REDSTONE_BLOCK);
+                    getServer().getScheduler().runTaskLater(this, () -> {
+                        power.setType(Material.AIR);
+                        anchor.setType(Material.AIR);
+                    }, 20L);
+                    out.put("powered", true);
+                }
                 case "online" -> out.put("players", getServer().getOnlinePlayers().stream().map(Player::getName).toList());
                 case "perm" -> {
                     Player target = requireOnline(args[1]);

@@ -448,7 +448,7 @@ class Lane:
             config.setdefault('nickname',{}).update({'animate-tab':True,'updates-per-tick':16})
             config.setdefault('chat',{}).setdefault('channels',{}).setdefault('list',{}).setdefault('default',{})['discord-channel-id']='123456789'
             config['chat']['channels']['list'].setdefault('staff-chat',{})['discord-channel-id']='987654321'
-        if A.signs:config.update({'enabledSigns':['color','warp','kit','balance','heal','repair','disposal','workbench','anvil','mail','info'],'sign-use-per-second':4})
+        if A.signs:config.update({'enabledSigns':['color','warp','kit','balance','heal','repair','disposal','workbench','anvil','mail','info'],'sign-use-per-second':4,'economy-log-enabled':True})
         (self.path / 'plugins/Allium/config.yml').write_text(yaml.safe_dump(config, sort_keys=False))
         os.chmod(self.path / 'plugins/Allium/config.yml', 0o600)
 
@@ -614,7 +614,7 @@ def console(lane,text,expected):
 
 
 def set_balance(lane,name,text):
-    console(lane,'eco set '+name+' '+text,'Economy operation committed:')
+    console(lane,'eco set '+name+' '+text,'is now')
     wanted=int(__import__('decimal').Decimal(text)*100)
     wait(lambda:lane.fixture('state '+name).get('available')==wanted,name+' admin balance')
 
@@ -640,7 +640,7 @@ def setup(lane):
 def commands(lane):
     a,b,obs=(lane.bots[n] for n in ['MoneyA','MoneyB','MoneyObs'])
     set_balance(lane,'MoneyA','100.00');set_balance(lane,'MoneyB','100.00')
-    a.command('balance','Balance: 100.00')
+    a.command('balance','Balance: $100')
     mark=len(b.lines);a.command('pay MoneyB 1.23','Paid 1.23 to MoneyB');b.chat(mark,'Received 1.23 from MoneyA')
     require(balance(lane,'MoneyA')==9877 and balance(lane,'MoneyB')==10123,lane.name+': /pay debits and credits exact cents')
     b.command('paytoggle off','Payments disabled.')
@@ -667,7 +667,7 @@ def commands(lane):
     lane.perm('MoneyA','allium.pay.offline',True);a.command('pay MoneyB 0.01','Paid 0.01 to MoneyB')
     require(balance(lane,'MoneyB')==before[1]+1,lane.name+': offline pay with permission credits the frozen UUID')
     b=lane.bot('MoneyB');amount(lane,'MoneyB')
-    b.command('balance','Balance: 101.24')
+    b.command('balance','Balance: $101.24')
     # Hide target through the actual moderation service; offline permission cannot bypass vanish.
     obs.command('vanish on MoneyB','Enabled vanish for MoneyB')
     hidden=a.command('pay MoneyB 0.01',"can't receive payments right now.")
@@ -999,13 +999,16 @@ def signs_gate(lane):
     for cmd in commands:lane.perm('MoneyA','allium.'+cmd,True)
     lane.perm('MoneyA','allium.setwarp',True);a.command('setwarp signwarp','Warp signwarp')
     lane.perm('MoneyA','allium.signs.create.warp.public',True)
+    console(lane,'money give MoneyA 5.00','added to MoneyA')
+    trade_log=lane.path/'plugins/Allium/trade.log'
+    wait(lambda:trade_log.exists() and '"ADMIN","DEPOSIT"' in trade_log.read_text(),'money alias trade.log entry')
     location=dict(x=320,y=65,z=320)
     def fixture(action):return lane.fixture('signs MoneyA '+action)
     def packet(kind,extra=''):
         mark=len(a.lines);a.write(kind+' '+extra)
         wait(lambda:any('SIGN-SENT ' in s for s in a.lines[mark:]),'sign client packet '+kind);window(.3)
-    def edit(t,side='FRONT'):
-        fixture('editor '+side);packet('signedit',json.dumps(dict(location=location,front=side=='FRONT',lines=['['+('colour' if t=='color' else t)+']','signwarp' if t=='warp' else 'paid' if t=='kit' else '', 'public' if t=='warp' else '', '&aLive sign'])))
+    def edit(t,side='FRONT',price=''):
+        fixture('editor '+side);packet('signedit',json.dumps(dict(location=location,front=side=='FRONT',lines=['['+('colour' if t=='color' else t)+']','signwarp' if t=='warp' else 'paid' if t=='kit' else 'hand' if t=='repair' else '', 'public' if t=='warp' else price, '&aLive sign'])))
     def click(hand=0):packet('signuse','320 65 320 '+str(hand))
     config_path=lane.path/'plugins/Allium/config.yml';baseline=yaml.safe_load(config_path.read_text())
     disabled=__import__('copy').deepcopy(baseline);disabled['enabledSigns']=[v for v in types if v!='balance']
@@ -1027,10 +1030,21 @@ def signs_gate(lane):
         # Every type gets front/back, waxed use and a hanging or standing sign.
         lane.perm('MoneyA','allium.signs.break.'+t,True);edit(t,'BACK');back=fixture('state')['BACK'];require(bool(back) and fixture('state')['FRONT']==front,lane.name+': '+t+' independent back identity retains front')
         if t=='repair':
-            fixture('return FRONT');fixture('resetplayer');mark=len(a.lines);click();window(.7);state=fixture('state')
-            require(state['damage']==0 and not any('SIGN-EDITOR opened' in v for v in a.lines[mark:]),lane.name+': unwaxed repair acts without opening vanilla editor',state)
-            require(any('Repaired the held item.' in c['plain'] and any(r.get('color')=='#55ff55' for r in c.get('runs',[])) for c in a.chats(mark)),lane.name+': repair success uses colored language entry')
+            fixture('return FRONT');fixture('resetplayer');balance_before=paid_state(lane)['book']
+            edit(t,price='$1.25');mark=len(a.lines);click();window(.7);state=fixture('state')
+            require(state['FRONTLines'][0].endswith('[Repair]') and state['FRONTLines'][1:3]==['Hand','$1.25'],
+                    lane.name+': repair sign renders title, mode and exact price',state)
+            require(state['damage']>0 and paid_state(lane)['book']==balance_before
+                    and '"SIGN","REPAIR"' not in trade_log.read_text()
+                    and any('Paid repair is temporarily disabled' in c['plain'] for c in a.chats(mark)),
+                    lane.name+': priced repair refuses without repairing, debiting or logging a trade',state)
+            edit(t);mark=len(a.lines);click();window(.7);state=fixture('state')
+            require(state['damage']==0 and not any('SIGN-EDITOR opened' in v for v in a.lines[mark:]),
+                    lane.name+': free unwaxed repair acts without opening vanilla editor',state)
+            require(any('Repaired ' in c['plain'] and any(r.get('color')=='#55ff55' for r in c.get('runs',[])) for c in a.chats(mark)),
+                    lane.name+': repair success uses colored language entry')
             mark=len(a.lines);click();window(.5)
+            require(paid_state(lane)['book']==balance_before,lane.name+': free and undamaged repair leave balance unchanged')
             require(any('Hold a damaged item' in c['plain'] and any(r.get('color')=='#ff5555' for r in c.get('runs',[])) for c in a.chats(mark)),lane.name+': undamaged repair uses colored language entry')
         fixture('wax true')
         for side in ['FRONT','BACK']:

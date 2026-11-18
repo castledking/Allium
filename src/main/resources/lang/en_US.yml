@@ -91,6 +91,9 @@ teleport:
   offline-unavailable:
     - "{prefix} &cNo saved offline location is available for that player."
     - "[sound] block.note_block.bass 0.8"
+  ungenerated:
+    - "{prefix} &cThat destination is in terrain this world never generated."
+    - "[sound] block.note_block.bass 0.8"
   success:
     - "{prefix} &aTeleported to &f{target}&a."
     - "[sound] entity.enderman.teleport 1.15"

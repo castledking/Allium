@@ -57,6 +57,8 @@ def legacy_sql():
     loc(PLAYER, 'HOME', 'base', 'world', 10.5, -61, 10.5, 1000)
     loc(PLAYER, 'HOME', 'base', 'world', 20.5, -61, 20.5, 2000)
     loc(PLAYER, 'HOME', 'Farm', 'world', 30.5, -61, -30.5, 1500)
+    loc(PLAYER, 'HOME', 'far', 'world', 1000.5, -61, 1000.5, 1500)
+    loc(PLAYER, 'HOME', 'void', 'world', 50000.5, -61, 50000.5, 1500)
     loc(PLAYER, 'HOME', 'my home', 'world', 1, -61, 1, 1500)
     loc(PLAYER, 'HOME', 'nether', 'old_skyblock', 5, 40, 5, 1500)
     loc(PLAYER, 'HOME', None, 'world', 0, -61, 0, 900)
@@ -147,8 +149,8 @@ def legacy_import(lane, source, driver):
     use_driver(lane, driver)
     run1, folder1, plan, records = dry_run(lane)
     c = plan['counts']
-    require(c['home']['import'] == 3 and c['home']['blocked'] == 2 and c['home']['skipped'] == 1,
-            lane.name + ': dry run plans 3 homes, blocks 2 (a name with a space, an unloaded world), skips 1 superseded row', c['home'])
+    require(c['home']['import'] == 5 and c['home']['blocked'] == 2 and c['home']['skipped'] == 1,
+            lane.name + ': dry run plans 5 homes, blocks 2 (a name with a space, an unloaded world), skips 1 superseded row', c['home'])
     base = find(records, 'home', PLAYER + '/base')
     require(base and base['status'] == 'import' and base['x'] == 20.5, lane.name + ': the newest of two legacy rows for one home wins', base)
     require(find(records, 'home', PLAYER + '/farm')['status'] == 'import', lane.name + ': legacy names are lowercased (Farm -> farm)')
@@ -180,11 +182,11 @@ def legacy_import(lane, source, driver):
     p_logout = find(records2, 'logout', PLAYER)
     require(p_logout['status'] == 'skipped' and 'newer' in p_logout['reason'], lane.name + ': this server\'s newer logout position is kept', p_logout)
     line = console_wait(lane, 'allium import legacy apply ' + run2, 'Legacy import ' + run2 + ' applied')
-    require('3 imported' in line, lane.name + ': apply imports the 3 homes', line.strip()[-200:])
+    require('5 imported' in line, lane.name + ': apply imports the 5 homes', line.strip()[-200:])
     ghost = lane.fixture('travel ' + GHOST)
     mine = lane.fixture('travel ' + PLAYER)
     homes = {h['name']: h for h in mine['homes']}
-    require(set(homes) == {'base', 'farm'} and homes['base']['x'] == 20.5 and homes['base']['z'] == 20.5
+    require(set(homes) == {'base', 'farm', 'far', 'void'} and homes['base']['x'] == 20.5 and homes['base']['z'] == 20.5
             and abs(homes['base']['yaw'] - 12.5) < 1e-6, lane.name + ': PlayerBot\'s homes are in the travel table', mine['homes'])
     require(ghost['homes'] and ghost['homes'][0]['name'] == 'home' and ghost['logout'] and ghost['logout'][0]['x'] == 41.5,
             lane.name + ': an offline-only player gets the home and the newest logout position', ghost)
@@ -193,14 +195,14 @@ def legacy_import(lane, source, driver):
     require(set(warps) == {'spawn', 'shop'} and warps['spawn']['x'] == 0.5 and warps['shop']['x'] == 60.5,
             lane.name + ': spawn is imported; this server\'s shop is kept', ghost['warps'])
     ledger = {r['domain']: r['n'] for r in ghost['ledger']}
-    require(ledger == {'home': 3, 'logout': 1, 'warp': 1} and [r['run_id'] for r in ghost['runs']] == [run2],
+    require(ledger == {'home': 5, 'logout': 1, 'warp': 1} and [r['run_id'] for r in ghost['runs']] == [run2],
             lane.name + ': the ledger holds each applied record and the run', dict(ledger=ghost['ledger'], runs=ghost['runs']))
     require(hashlib.sha256(source.read_bytes()).hexdigest() == before, lane.name + ': the legacy database is unchanged after apply')
 
     console_wait(lane, 'allium import legacy apply ' + run2, 'was already applied')
     require(True, lane.name + ': a run cannot be applied twice')
     run3, _, plan3, _ = dry_run(lane)
-    require(plan3['counts']['home']['import'] == 0 and plan3['counts']['home']['replayed'] == 3
+    require(plan3['counts']['home']['import'] == 0 and plan3['counts']['home']['replayed'] == 5
             and plan3['counts']['warp']['replayed'] == 1, lane.name + ': a later dry run sees the ledger: nothing left to import', plan3['counts'])
 
     player = lane.bot('PlayerBot')
@@ -214,6 +216,17 @@ def legacy_import(lane, source, driver):
     player.chat(player.cmd('home base'), 'Teleported', 10)
     at = lane.fixture('where PlayerBot')
     require(at['x'] == 20.5 and at['z'] == 20.5, lane.name + ': /home base lands on the imported home', at)
+    # Imported homes are far from players: their chunks are on disk, not loaded.
+    lane.fixture('chunk 62 62')
+    chunk = wait(lambda: (lambda c: c if not c['loaded'] else None)(lane.fixture('chunk 62 62')), 'far chunk unloaded', 60)
+    require(chunk['generated'] and not chunk['loaded'], lane.name + ': the far home\'s chunk exists on disk and is not loaded', chunk)
+    lane.fixture('tp PlayerBot 0.5 -61 0.5 0 0')
+    window(.5)
+    player.chat(player.cmd('home far'), 'Teleported', 12)
+    at = lane.fixture('where PlayerBot')
+    require(at['x'] == 1000.5 and at['z'] == 1000.5, lane.name + ': /home to an unloaded chunk loads it from disk and lands', at)
+    player.chat(player.cmd('home void'), 'terrain this world never generated', 12)
+    require(lane.fixture('where PlayerBot')['x'] == 1000.5, lane.name + ': a home in never-generated terrain is refused with that reason; nobody moves')
     lane.perm('StaffBot', 'allium.warps.spawn')
     lane.fixture('tp StaffBot 8.5 -61 8.5 0 0')
     window(.5)
@@ -222,13 +235,31 @@ def legacy_import(lane, source, driver):
     require(at['x'] == 0.5 and at['z'] == 0.5, lane.name + ': /warp spawn lands on the imported warp', at)
 
 
+def legacy_economy(lane):
+    logs = lane.logs[lane.boot_mark:]
+    require(any('economy.starting-balance is a number' in v for v in logs) and any('Journalled SQLite economy enabled' in v for v in logs)
+            and not any('Failed to enable module [economy]' in v for v in logs),
+            lane.name + ': an unquoted legacy starting balance is read (with a warning) and the economy enables',
+            [v for v in logs if 'economy' in v.lower()][:6])
+    player = lane.bots['PlayerBot']
+    line = player.command('balance', 'Balance:')
+    require('100' in line['plain'], lane.name + ': /balance answers with the starting balance', line['plain'])
+
+
 def import_main():
     build_helper()
     lane = Lane(A.suite, PORT)
     source, driver = build_legacy_db(lane)
+    # A config carried over from legacy Allium: an unquoted starting balance used to disable the
+    # whole economy ("economy unavailable"), so /balance and priced signs did nothing.
+    cfg_path = lane.path / 'plugins/Allium/config.yml'
+    cfg = yaml.safe_load(cfg_path.read_text())
+    cfg['economy']['starting-balance'] = 100.0
+    cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
     try:
         lane.boot()
         setup(lane)
+        case('legacy-config-economy', lambda: legacy_economy(lane))
         case('legacy-import', lambda: legacy_import(lane, source, driver))
     finally:
         try:

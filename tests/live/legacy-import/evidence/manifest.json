@@ -1,24 +1,32 @@
 {
- "spigot-import-i4": {
+ "spigot-import-i6": {
   "suite": "spigot",
   "passed": true,
-  "checks": 28,
+  "checks": 33,
   "failures": [],
-  "alliumSha256": "7c6696a555ebf20063fbca14a9d985c712535e148adc74bad380569ae15ec6f0",
+  "alliumSha256": "abefd3ae30f925e2756113ada9a9f744816017e74a94e8e791dcb28429499f69",
   "sources": {
    "tests/live/staff/run.py": "5756a872481fcc565d34a2861315044408abb4dd4bea9586c21fa152cfbd655b",
-   "tests/live/staff/plugin/gate/StaffGate.java": "e89e4ace632243f7104ab4265ad9d56d95a4cbac5df471edcfc7bf7bf7322e15",
-   "tests/live/legacy-import/run.py": "9ae39da02a50051c0fcf7c488ad7844b622e46ffa07660f1e9986a4b7009f065",
+   "tests/live/staff/plugin/gate/StaffGate.java": "c1713c8c943afaf533430f08e51f2e71d3350c8b6660a21dc16d482acd03dceb",
+   "tests/live/legacy-import/run.py": "eaa095e8c7517919e875a891b59cf59528793bc412cae1ba17f95a7f10654b59",
    "tests/live/legacy-import/LegacyFixture.java": "2a4e850c1530e07a9a9c30697c1d4bb9cd2579066de78fb2b8a6b4ede34e6073"
   },
-  "seconds": 32.5,
+  "seconds": 37.3,
   "results": [
+   {
+    "label": "spigot: an unquoted legacy starting balance is read (with a warning) and the economy enables",
+    "passed": true
+   },
+   {
+    "label": "spigot: /balance answers with the starting balance",
+    "passed": true
+   },
    {
     "label": "spigot: a driver from a different H2 build is refused with an explanation",
     "passed": true
    },
    {
-    "label": "spigot: dry run plans 3 homes, blocks 2 (a name with a space, an unloaded world), skips 1 superseded row",
+    "label": "spigot: dry run plans 5 homes, blocks 2 (a name with a space, an unloaded world), skips 1 superseded row",
     "passed": true
    },
    {
@@ -74,7 +82,7 @@
     "passed": true
    },
    {
-    "label": "spigot: apply imports the 3 homes",
+    "label": "spigot: apply imports the 5 homes",
     "passed": true
    },
    {
@@ -118,6 +126,18 @@
     "passed": true
    },
    {
+    "label": "spigot: the far home's chunk exists on disk and is not loaded",
+    "passed": true
+   },
+   {
+    "label": "spigot: /home to an unloaded chunk loads it from disk and lands",
+    "passed": true
+   },
+   {
+    "label": "spigot: a home in never-generated terrain is refused with that reason; nobody moves",
+    "passed": true
+   },
+   {
     "label": "spigot: /warp spawn lands on the imported warp",
     "passed": true
    },
@@ -127,26 +147,34 @@
    }
   ]
  },
- "paper-import-i4": {
+ "paper-import-i6": {
   "suite": "paper",
   "passed": true,
-  "checks": 28,
+  "checks": 33,
   "failures": [],
-  "alliumSha256": "7c6696a555ebf20063fbca14a9d985c712535e148adc74bad380569ae15ec6f0",
+  "alliumSha256": "abefd3ae30f925e2756113ada9a9f744816017e74a94e8e791dcb28429499f69",
   "sources": {
    "tests/live/staff/run.py": "5756a872481fcc565d34a2861315044408abb4dd4bea9586c21fa152cfbd655b",
-   "tests/live/staff/plugin/gate/StaffGate.java": "e89e4ace632243f7104ab4265ad9d56d95a4cbac5df471edcfc7bf7bf7322e15",
-   "tests/live/legacy-import/run.py": "9ae39da02a50051c0fcf7c488ad7844b622e46ffa07660f1e9986a4b7009f065",
+   "tests/live/staff/plugin/gate/StaffGate.java": "c1713c8c943afaf533430f08e51f2e71d3350c8b6660a21dc16d482acd03dceb",
+   "tests/live/legacy-import/run.py": "eaa095e8c7517919e875a891b59cf59528793bc412cae1ba17f95a7f10654b59",
    "tests/live/legacy-import/LegacyFixture.java": "2a4e850c1530e07a9a9c30697c1d4bb9cd2579066de78fb2b8a6b4ede34e6073"
   },
-  "seconds": 28.2,
+  "seconds": 31.5,
   "results": [
+   {
+    "label": "paper: an unquoted legacy starting balance is read (with a warning) and the economy enables",
+    "passed": true
+   },
+   {
+    "label": "paper: /balance answers with the starting balance",
+    "passed": true
+   },
    {
     "label": "paper: a driver from a different H2 build is refused with an explanation",
     "passed": true
    },
    {
-    "label": "paper: dry run plans 3 homes, blocks 2 (a name with a space, an unloaded world), skips 1 superseded row",
+    "label": "paper: dry run plans 5 homes, blocks 2 (a name with a space, an unloaded world), skips 1 superseded row",
     "passed": true
    },
    {
@@ -202,7 +230,7 @@
     "passed": true
    },
    {
-    "label": "paper: apply imports the 3 homes",
+    "label": "paper: apply imports the 5 homes",
     "passed": true
    },
    {
@@ -246,6 +274,18 @@
     "passed": true
    },
    {
+    "label": "paper: the far home's chunk exists on disk and is not loaded",
+    "passed": true
+   },
+   {
+    "label": "paper: /home to an unloaded chunk loads it from disk and lands",
+    "passed": true
+   },
+   {
+    "label": "paper: a home in never-generated terrain is refused with that reason; nobody moves",
+    "passed": true
+   },
+   {
     "label": "paper: /warp spawn lands on the imported warp",
     "passed": true
    },
@@ -263,6 +303,8 @@
   "spigot-import-i1": "dry run failed: the fixture was written by a plain H2 and read by the legacy jar (H2 error 90030); led to the driver-matched fixtures and the explained refusal",
   "paper-import-i3": "6 failures: Paper 26.3 loads a world named world_nether even with allow-nether=false, so the \"unloaded world\" fixture home imported correctly; the fixture now uses old_skyblock",
   "spigot-import-i3b / paper-import-i3b": "28/28 each on jar 6f63c283..., but with fixtures created without a user",
-  "spigot-import-i3-repro": "jar 6f63c283... on an sa-created fixture: the dry run fails with \"(Message 28000 not found) [28000-214]\", as on the user's server"
+  "spigot-import-i3-repro": "jar 6f63c283... on an sa-created fixture: the dry run fails with \"(Message 28000 not found) [28000-214]\", as on the user's server",
+  "spigot-import-i4 / paper-import-i4": "28/28 each on jar 7c6696a5..., before the unloaded-chunk and legacy-economy checks",
+  "spigot-import-i5 / paper-import-i5": "the far home landed, but the fixture could not unload the freshly generated chunk at once; it now requests the unload and polls"
  }
 }

@@ -24,7 +24,7 @@ items:
 - **Strict kit name validation (`^[a-z0-9_-]{1,32}$`):** `KitNames.validate` enforces lowercase
   ASCII letters, digits, underscores, and hyphens (`1..32` chars) everywhere a kit name becomes a
   filesystem path or a permission node (`createKit`, `deleteKit`, `KitDefinitionLoader#load`,
-  `completeKits`, and `claim`). Traversal attempts (`../x`, `a/b`, `a\b`, absolute paths, `.` / `..`,
+  `completeKits`, and `claim`; `claim` lowercases first, so `/kit Starter` claims `starter`). Traversal attempts (`../x`, `a/b`, `a\b`, absolute paths, `.` / `..`,
   empty names, uppercase, and `> 32` characters) are rejected before any path or permission lookup,
   and `KitDefinitionLoader#safeKitFile` additionally verifies `normalized.getParent().equals(dir)`.
 - **Item specs:** every entry in `items` is parsed at load time through `ItemSpecParser` and

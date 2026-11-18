@@ -81,6 +81,11 @@ economy:
   pay-excludes-ignore-list: true
 ```
 
+Amounts are quoted decimal text. A plain YAML number (legacy Allium configs wrote
+`starting-balance: 100.0`) is read by its written digits, with a warning to quote it; refusing
+it used to disable the whole economy module. More than two decimals is still refused. A module
+that fails to start now logs the cause after its message.
+
 Require `-HARD <= min <= 0 <= max <= HARD`, `min < max`, `min <= starting <= max`, and
 `0.01 <= minimum-pay-amount <= max`. PAY, Vault withdrawal and cost reserve use
 `floor = max(0, min)`: configured debt allows audited admin/import debt, not implicit loans.

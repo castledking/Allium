@@ -1,8 +1,8 @@
 # Legacy import live gate
 
-**PASS on 2026-11-18: 56 live checks, 0 failures.** Spigot 1.20.1 (`spigot-import-i4`, 28 checks) and
-Paper 26.3 (`paper-import-i4`, 28 checks), SQLite, both on Allium.jar
-`7c6696a555ebf20063fbca14a9d985c712535e148adc74bad380569ae15ec6f0`. Every check ran on both lanes.
+**PASS on 2026-11-18: 66 live checks, 0 failures.** Spigot 1.20.1 (`spigot-import-i6`, 33 checks) and
+Paper 26.3 (`paper-import-i6`, 33 checks), SQLite, both on Allium.jar
+`abefd3ae30f925e2756113ada9a9f744816017e74a94e8e791dcb28429499f69`. Every check ran on both lanes.
 The [manifest](evidence/manifest.json) lists them; runs are in
 `/mnt/storage/.allium-validation/20261118/staff/runs/`.
 
@@ -22,11 +22,21 @@ The [manifest](evidence/manifest.json) lists them; runs are in
 | Apply refused | with players online; then after they left, because PlayerBot's quit saved a logout position and the plan changed |
 | Apply | a new dry run keeps this server's newer logout; apply imports the 3 homes, `spawn` and the offline-only player's logout; this server's `shop` and PlayerBot's logout are untouched; the ledger holds 5 records and the run; the legacy file is unchanged |
 | Replay | the same run is refused; a later dry run marks everything `replayed` |
-| Clients | `/homes` lists `base` and `farm`; `/home base` and `/warp spawn` land on the imported coordinates |
+| Clients | `/homes` lists `base` and `farm`; `/home base` and `/warp spawn` land on the imported coordinates; `/home far` loads its unloaded on-disk chunk and lands; `/home void` (terrain never generated) is refused with that reason |
+| Legacy config | the lane starts with legacy's unquoted `economy.starting-balance: 100.0`: it is read with a warning, the economy enables, and `/balance` answers |
 
 Server logs: no exceptions or SEVERE lines on either lane.
 
 ## What the gate found
+
+- **Teleports refused every unloaded chunk.** Imported homes on a real server sit in unloaded
+  chunks, and `/home` said "no safe destination" for all of them unless
+  `teleport.safety.load-destination-chunk` was true (the S13 and S15 gates set it true). Existing
+  chunks are now loaded from disk; never-generated terrain is refused with its own message.
+- **A legacy config disabled the economy.** Legacy wrote `starting-balance: 100.0`; the recode only
+  accepted quoted text, so the economy module failed to start ("economy unavailable", without the
+  cause) and `/bal`, `/money`, Vault and priced signs did nothing. Plain numbers are now read with
+  a warning, and module failures log their cause.
 
 - **H2 only opens a database with the login that created it.** Legacy Allium connected as `sa`;
   the first import connected with no user and a real legacy database refused it (H2 error 28000,

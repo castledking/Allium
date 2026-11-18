@@ -339,6 +339,17 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                         } catch (NoSuchFieldException next) { /* superclass */ }
                     }
                 }
+                case "chunk" -> {
+                    // Generates a chunk, saves it and unloads it: a destination that exists only on disk.
+                    var world = getServer().getWorlds().get(0);
+                    int x = Integer.parseInt(args[1]), z = Integer.parseInt(args[2]);
+                    if (!world.isChunkGenerated(x, z)) world.getChunkAt(x, z);
+                    // A freshly generated chunk keeps a load ticket for a moment: request the unload
+                    // and let the harness poll until the server really unloaded it.
+                    if (world.isChunkLoaded(x, z)) out.put("requested", world.unloadChunkRequest(x, z));
+                    out.put("loaded", world.isChunkLoaded(x, z));
+                    out.put("generated", world.isChunkGenerated(x, z));
+                }
                 case "travel" -> {
                     // Read-only view of an owner's imported destinations and the import ledger.
                     out.put("homes", query("SELECT name, world_name, x, y, z, yaw, pitch FROM allium_travel_homes WHERE owner = ? ORDER BY name", args[1]));

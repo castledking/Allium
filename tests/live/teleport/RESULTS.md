@@ -1,5 +1,15 @@
 # S13 teleport live results
 
+## 2026-11-18 rerun (i6)
+
+156/156 on Spigot 1.20.1 and on Paper 26.3 on jar `abefd3ae…` (runs `i6-spigot`, `i6-paper` under
+`/mnt/storage/.allium-validation/20261118/s13-teleport/runs`), after teleports started loading a
+destination's chunk from disk when it exists. The gate's fixture gives every bot flight so it never falls between steps. Since `3010c05`
+(Nov 17) players who can fly skip the fall and void checks on purpose, so the hazard cases (and,
+before this rerun, their failures) no longer tested the landing rules. The hazard cases now turn
+flight off for the moving bot. The same failures appear on jar `6f63c283…`, before the chunk change.
+
+
 **Effective gate: PASS**, using the original live evidence, an explicit retained-evidence audit, and one focused live supplement. Original manifests are unchanged.
 
 - Spigot 1.20.1 / Java 17: original **PASS**, 15/15 cases, 117/117 checks.

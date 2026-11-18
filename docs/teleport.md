@@ -74,9 +74,11 @@ support. With falls allowed but void avoidance enabled, a landing must be proven
 within a bounded 16-block downward scan. An uncertain landing is refused.
 
 Adjustment searches nearest candidates within `search-radius` and `vertical-search`;
-both have validated upper bounds. Unloaded neighboring chunks are never loaded by
-the search. `load-destination-chunk` defaults false; enabling it permits synchronous
-loading of the requested chunk, which can cost a server tick. Disabling safety still
+both have validated upper bounds. The destination's chunk, and the few neighbors the
+search reaches, are loaded from disk when they are not loaded (homes and warps usually
+are not), as vanilla `/tp` does. Terrain that was never generated is refused with its
+own message ("terrain this world never generated") unless `load-destination-chunk`
+is true, which also allows generating it on the server thread. Disabling safety still
 enforces finite coordinates, build height, border and chunk availability.
 
 ## Persistence and failures

@@ -297,6 +297,9 @@ class KitServiceTest {
         assertTrue(service.completeKits(player, false, "").isEmpty());
         service.claim(player, player, "starter");
         verify(messages).send(player, Messages.KIT_NO_PERMISSION, "{name}", "starter");
+        // Kit names are stored lowercase: "/kit Starter" is the same kit, not "not found".
+        service.claim(player, player, "Starter");
+        verify(messages, times(2)).send(player, Messages.KIT_NO_PERMISSION, "{name}", "starter");
 
         // Grant wildcard parent allium.kits.* -> exposes starter, while paid vip remains denied
         playerGrants.add("allium.kits.*");

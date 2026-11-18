@@ -183,6 +183,10 @@ public final class TravelGate extends JavaPlugin implements Listener {
                                 out.putAll(location(p.getLocation()));
                             }finally {preparing=false;}
                         }
+                        case "fly" -> {
+                            // Flyers skip the fall and void checks on purpose (3010c05); hazard cases need a mover who cannot fly.
+                            boolean fly=Boolean.parseBoolean(a[2]);p.setFlying(false);p.setAllowFlight(fly);if(fly)p.setFlying(true);out.put("allowFlight",p.getAllowFlight());
+                        }
                         case "damage" -> {p.setInvulnerable(false);p.damage(Double.parseDouble(a[2]));out.put("health",p.getHealth());p.setInvulnerable(true);}
                         case "movebytes" -> out.putAll(NativePackets.move(Double.parseDouble(a[2]),Double.parseDouble(a[3]),Double.parseDouble(a[4])));
                         case "respawnbytes" -> out.putAll(NativePackets.respawn());

@@ -474,7 +474,7 @@ class InspectionServiceTest {
         assertEquals(Material.DIAMOND, gui.getItem(27).getType()); // hotbar[0] -> GUI 27
         assertEquals(Material.IRON_HELMET, gui.getItem(36).getType()); // helmet(39) -> GUI 36
         assertEquals(Material.SHIELD, gui.getItem(40).getType()); // offhand(40) -> GUI 40
-        assertEquals(Material.GRAY_STAINED_GLASS_PANE, gui.getItem(41).getType());
+        assertEquals(Material.LIGHT_GRAY_STAINED_GLASS_PANE, gui.getItem(41).getType());
 
         // Top slot click cancelled in read-only
         InventoryClickEvent topClick = click(viewer, gui, 27, InventoryAction.PICKUP_ALL, ClickType.LEFT);

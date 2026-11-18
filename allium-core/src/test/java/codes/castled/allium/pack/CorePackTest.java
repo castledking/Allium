@@ -22,6 +22,8 @@ class CorePackTest {
     private static final Path ROOT = Path.of("..", "pack").toAbsolutePath().normalize();
     private static final String GOLDEN_HOE_MODEL = "{\"parent\":\"minecraft:item/handheld\",\"textures\":{\"layer0\":\"minecraft:item/golden_hoe\"}}";
     private static final String GOLDEN_HOE_ITEM = "{\"model\":{\"type\":\"minecraft:model\",\"model\":\"minecraft:item/golden_hoe\"}}";
+    private static final String PANE_MODEL = "{\"parent\":\"minecraft:item/generated\",\"textures\":{\"layer0\":\"minecraft:block/light_gray_stained_glass\"}}";
+    private static final String PANE_ITEM = "{\"model\":{\"type\":\"minecraft:model\",\"model\":\"minecraft:item/light_gray_stained_glass_pane\"}}";
 
     private static AssetManifest manifest() throws IOException {
         return AssetManifest.parse(Files.readString(ROOT.resolve("manifest.json")));
@@ -35,13 +37,16 @@ class CorePackTest {
     private static VanillaAssets vanilla(boolean itemDefinitions) {
         Map<String, String> files = new HashMap<>();
         files.put("assets/minecraft/models/item/golden_hoe.json", GOLDEN_HOE_MODEL);
+        files.put("assets/minecraft/models/item/light_gray_stained_glass_pane.json", PANE_MODEL);
         if (itemDefinitions) {
             files.put("assets/minecraft/items/golden_hoe.json", GOLDEN_HOE_ITEM);
+            files.put("assets/minecraft/items/light_gray_stained_glass_pane.json", PANE_ITEM);
         }
         return new VanillaAssets("test-vanilla",
-                Set.of("minecraft:item/handheld", "minecraft:item/generated", "minecraft:item/golden_hoe"),
-                Set.of("minecraft:item/golden_hoe"),
-                itemDefinitions ? Set.of("minecraft:golden_hoe") : Set.of(),
+                Set.of("minecraft:item/handheld", "minecraft:item/generated", "minecraft:item/golden_hoe",
+                        "minecraft:item/light_gray_stained_glass_pane"),
+                Set.of("minecraft:item/golden_hoe", "minecraft:block/light_gray_stained_glass"),
+                itemDefinitions ? Set.of("minecraft:golden_hoe", "minecraft:light_gray_stained_glass_pane") : Set.of(),
                 files);
     }
 
@@ -49,7 +54,7 @@ class CorePackTest {
     void manifestAllocatesEveryCoreToolInsideTheBlockWithoutCollisions() throws IOException {
         AssetManifest manifest = manifest();
         assertEquals(List.of(), PackValidator.manifest(manifest));
-        assertEquals(List.of("handcuffs", "mob_disarmer", "phantom_obliterator", "item_renamer", "lazy_axe"),
+        assertEquals(List.of("handcuffs", "mob_disarmer", "phantom_obliterator", "item_renamer", "lazy_axe", "gui_slot"),
                 manifest.tools().stream().map(AssetManifest.Tool::id).toList());
         AssetManifest.Tool disarmer = manifest.tool("mob_disarmer").orElseThrow();
         assertTrue(disarmer.ready());

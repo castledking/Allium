@@ -20,6 +20,8 @@ public final class PlayerDataReceiptProof {
     private static final String DATA_VERSION = "DataVersion";
     public static final String MAIL_RECEIPTS = "allium:mail_receipts";
     public static final String KIT_RECEIPTS = "allium:kit_receipts";
+    /** Paid repair signs: comma-separated workflow IDs whose repair is saved in this player file. */
+    public static final String REPAIR_RECEIPTS = "allium:repair_receipts";
 
     public record Snapshot(int dataVersion, Map<String, String> bukkitValues) {
         public Snapshot {

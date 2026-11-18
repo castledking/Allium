@@ -1292,11 +1292,26 @@ give:
 
 signs:
   paid-repair-disabled:
-    - "{prefix} &cPaid repair is temporarily disabled."
+    - "{prefix} &cPaid repair is unavailable right now (the economy is not ready)."
   invalid-line:
     - "{prefix} &cLine {line} on the sign is invalid. {options}"
   disabled:
     - "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."
+  repair-paid:
+    - "{prefix} &aRepaired &f{items} &afor &e{price}&a."
+    - "[sound] block.anvil.use 1.2"
+  repair-funds:
+    - "{prefix} &cYou need &e{price} &cto use this repair sign. Nothing was repaired or charged."
+    - "[sound] entity.villager.no 0.9"
+  repair-changed:
+    - "{prefix} &eYour items changed before the repair; nothing was repaired and your &e{price} &ehold was returned."
+    - "[sound] block.note_block.bass 0.75"
+  repair-pending:
+    - "{prefix} &eThe repair was applied; its payment &f{operation} &eis settled from your saved data when you next join."
+    - "[sound] block.note_block.bass 0.75"
+  repair-recovered:
+    - "{prefix} &7An interrupted paid repair was settled: &f{captured} &7charged, &f{released} &7refunded."
+    - "[sound] ui.button.click 1.25"
 creative:
   restricted:
     - "{prefix} &cYou are not allowed to {action} in creative mode."
@@ -1334,3 +1349,34 @@ alts:
   unavailable:
     - "{prefix} &cAlt account storage is unavailable right now. Try again shortly."
     - "[sound] block.note_block.bass 0.75"
+restore:
+  empty:
+    - "{prefix} &7There are no saved snapshots for &f{player}&7."
+    - "[sound] block.note_block.bass 0.75"
+  applied:
+    - "{prefix} &aYour &f{parts} &awas restored from the &f{reason} &asnapshot of &f{time}&a."
+    - "[sound] entity.player.levelup 1.0"
+  applied-other:
+    - "{prefix} &aRestored &f{player}&a's &f{parts}&a."
+    - "[sound] entity.player.levelup 1.2"
+  queued:
+    - "{prefix} &e{player} &eis offline; the restore of their &f{parts} &eis applied when they next join."
+    - "[sound] ui.button.click 1.25"
+  pending-applied:
+    - "{prefix} &aStaff restored your &f{parts} &awhile you were away."
+    - "[sound] entity.player.levelup 1.0"
+  saved:
+    - "{prefix} &aSaved this panel as a new &fMANUAL &asnapshot for &f{player}&a."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  failed:
+    - "{prefix} &cThe snapshot could not be loaded or saved. Nothing changed."
+    - "[sound] block.note_block.bass 0.75"
+  unreadable:
+    - "{prefix} &cThat snapshot can't be read on this server: {reason}"
+    - "[sound] block.note_block.bass 0.75"
+  busy:
+    - "{prefix} &c{player}'s inventory is busy right now (mail, kit, repair or another editor). Try again shortly."
+    - "[sound] entity.villager.no 0.9"
+  teleported:
+    - "{prefix} &aTeleported to where the snapshot was taken."
+    - "[sound] entity.enderman.teleport 1.0"

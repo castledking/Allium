@@ -604,8 +604,8 @@ public final class CoreCommandSpecs {
                             new CommandNodeSpec("reservations", List.of(), "allium.eco.admin", "/eco reservations [player]",
                                     List.of(CommandArgSpec.optional("player", null, SuggestionSpec.knownPlayers(null))), List.of()),
                             new CommandNodeSpec("resolve", List.of(), "allium.eco.admin",
-                                    "/eco resolve <KIT|MAIL> <workflow> <capture|release> <reason>",
-                                    List.of(CommandArgSpec.required("kind", null, SuggestionSpec.literals(List.of("KIT", "MAIL"), null)),
+                                    "/eco resolve <KIT|MAIL|REPAIR> <workflow> <capture|release> <reason>",
+                                    List.of(CommandArgSpec.required("kind", null, SuggestionSpec.literals(List.of("KIT", "MAIL", "REPAIR"), null)),
                                             CommandArgSpec.required("workflow", null, SuggestionSpec.none()),
                                             CommandArgSpec.required("decision", null,
                                                     SuggestionSpec.literals(List.of("capture", "release"), null)),
@@ -1016,6 +1016,17 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of()));
 
     public static final List<CommandSpec> ALTS_SPECS = List.of(ALTEXEMPT);
+
+    public static final CommandSpec RESTORE = new CommandSpec(
+            "restore", CommandSpec.DEFAULT_NAMESPACE, "restore", List.of(),
+            "Browse inventory snapshots and restore them",
+            "/restore [player]", "/restore <player>",
+            "allium.restore", "allium.restore.others",
+            List.of(CommandArgSpec.optional("player", "allium.restore.others", SuggestionSpec.knownPlayers("allium.restore.others"))),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> RESTORE_SPECS = List.of(RESTORE);
 
     private CoreCommandSpecs() {
     }

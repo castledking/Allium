@@ -56,6 +56,8 @@ modules:
   creative: true
   # Alt detection: IP history, the alt parent group, /altexempt, alt lists in /seen and /whois.
   alts: true
+  # Inventory snapshots and /restore.
+  restore: true
 
 # Log committed command and sign transactions to trade.log.
 economy-log-enabled: false
@@ -459,3 +461,13 @@ alts:
   notify-staff: true
   # How many linked accounts /seen and /whois list.
   max-listed: 10
+
+# Inventory snapshots and /restore (modules.restore).
+restore:
+  # When to save a snapshot: death, login, logout, world-change, gamemode-change, autosave.
+  snapshot-on: [death, login, logout, world-change, gamemode-change, autosave]
+  autosave-minutes: 10
+  # Snapshots older than this are deleted (0 keeps them until the per-player cap removes them).
+  retention-days: 14
+  # Only the newest snapshots of each player are kept.
+  max-snapshots-per-player: 50

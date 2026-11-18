@@ -34,6 +34,11 @@ public final class EconomyRecovery {
                         if(!receipt.get().token().equals(delivery.claimToken())||!receipt.get().kitName().equals(delivery.kitName()))throw new SQLException("conflicting kit receipt");
                         require(holds.capture(row.kind(),row.id(),c->kits.finishClaim(c,row.id(),delivery.claimToken(),delivery.claimOwner(),System.currentTimeMillis())));
                     }else require(holds.release(row.kind(),row.id(),c->kits.releaseClaim(c,row.id(),delivery.claimToken(),delivery.claimOwner())));
+                }else if(identity.kind()==EconomyReservations.Kind.REPAIR){
+                    // The repair and its receipt were saved together: charge iff the saved file has it.
+                    String raw=PlayerDataReceiptProof.read(file,PlayerDataReceiptProof.REPAIR_RECEIPTS);
+                    if(RepairReceipts.parse(raw).contains(row.id()))require(holds.capture(row.kind(),row.id(),c->true));
+                    else require(holds.release(row.kind(),row.id(),c->true));
                 }else{
                     String raw=PlayerDataReceiptProof.read(file,PlayerDataReceiptProof.MAIL_RECEIPTS);
                     var entries=MailReceipts.parse(raw);

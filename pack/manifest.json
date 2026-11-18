@@ -57,6 +57,20 @@
           "model": "minecraft:item/netherite_axe"
         }
       }
+    },
+    "light_gray_stained_glass_pane": {
+      "vanillaModel": {
+        "parent": "minecraft:item/generated",
+        "textures": {
+          "layer0": "minecraft:block/light_gray_stained_glass"
+        }
+      },
+      "vanillaItem": {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:item/light_gray_stained_glass_pane"
+        }
+      }
     }
   },
   "tools": [
@@ -194,6 +208,62 @@
           "cmd": 2577050
         }
       ]
+    },
+    {
+      "id": "gui_slot",
+      "behavior": "allium:gui_icon",
+      "carrier": "light_gray_stained_glass_pane",
+      "name": "§7 ",
+      "status": "ready",
+      "allocation": {
+        "first": 2577100,
+        "last": 2577109
+      },
+      "modelParent": "minecraft:item/generated",
+      "states": [
+        {
+          "key": "filler",
+          "cmd": 2577100,
+          "texture": "allium:item/gui_slot/filler",
+          "meaning": "a locked slot: a light gray glass pane tile"
+        },
+        {
+          "key": "helmet",
+          "cmd": 2577101,
+          "texture": "allium:item/gui_slot/helmet",
+          "meaning": "an empty helmet slot"
+        },
+        {
+          "key": "chestplate",
+          "cmd": 2577102,
+          "texture": "allium:item/gui_slot/chestplate",
+          "meaning": "an empty chestplate slot"
+        },
+        {
+          "key": "leggings",
+          "cmd": 2577103,
+          "texture": "allium:item/gui_slot/leggings",
+          "meaning": "an empty leggings slot"
+        },
+        {
+          "key": "boots",
+          "cmd": 2577104,
+          "texture": "allium:item/gui_slot/boots",
+          "meaning": "an empty boots slot"
+        },
+        {
+          "key": "shield",
+          "cmd": 2577105,
+          "texture": "allium:item/gui_slot/shield",
+          "meaning": "an empty offhand slot"
+        },
+        {
+          "key": "sword",
+          "cmd": 2577106,
+          "texture": "allium:item/gui_slot/sword",
+          "meaning": "the main hand (selected hotbar slot)"
+        }
+      ]
     }
   ],
   "textures": [
@@ -239,6 +309,69 @@
       "sha256": "3409418f2648e485c6e45ffc0bc6733ce7ef104cecf7697a2b3378ab6e99b660",
       "author": "Allium project",
       "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (DISARMER_BROKEN_HEAD: right jaw snapped, every pip spent)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/gui_slot/filler",
+      "file": "assets/allium/textures/item/gui_slot/filler.png",
+      "sha256": "b63dd65a8efbe4bde94c6c524d26992a7ca0a2d828235bbc8553cf66c6631fc0",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (GUI_FILLER)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/gui_slot/helmet",
+      "file": "assets/allium/textures/item/gui_slot/helmet.png",
+      "sha256": "b35550ef1abedf590c3a9ecc2d0233ac835863638569776604bc3f6c4e50e941",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (GUI_HELMET)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/gui_slot/chestplate",
+      "file": "assets/allium/textures/item/gui_slot/chestplate.png",
+      "sha256": "75e84ad5a7b20469eca28d05488575260c532fdada3921062917e9a8582b5ba8",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (GUI_CHESTPLATE)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/gui_slot/leggings",
+      "file": "assets/allium/textures/item/gui_slot/leggings.png",
+      "sha256": "4ee8b6238c9af7c13f8c84e87adcfd93846d3af44bbc74f5831568438bbabbd7",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (GUI_LEGGINGS)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/gui_slot/boots",
+      "file": "assets/allium/textures/item/gui_slot/boots.png",
+      "sha256": "fea797e663bb56a506eba5961ff9766783f7f39bce79b9f52abd566cebc6ba3b",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (GUI_BOOTS)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/gui_slot/shield",
+      "file": "assets/allium/textures/item/gui_slot/shield.png",
+      "sha256": "0719c18d25e653b48e18a4261ebb4de3f377d6ac5f67625d599dd1821721df55",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (GUI_SHIELD)",
+      "license": "UNASSIGNED",
+      "distributable": true
+    },
+    {
+      "id": "allium:item/gui_slot/sword",
+      "file": "assets/allium/textures/item/gui_slot/sword.png",
+      "sha256": "04289295f7d72358cc61daefaafc8aa5cb31305f0ad8e044c68722ec8f2268ba",
+      "author": "Allium project",
+      "origin": "Original 16x16 pixel art drawn for Allium; source grid in pack/tools/draw_textures.py (GUI_SWORD)",
       "license": "UNASSIGNED",
       "distributable": true
     }

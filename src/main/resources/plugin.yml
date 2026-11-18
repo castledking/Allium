@@ -326,6 +326,10 @@ commands:
     description: Show a player's UUID, names, status and staff details
     usage: /<command> <player>
     permission: allium.whois
+  restore:
+    description: Browse inventory snapshots and restore them
+    usage: /<command> [player]
+    permission: allium.restore
   altexempt:
     description: Exempt an account from alt detection, or check it
     usage: /<command> <add|remove|check> <player> [reason]
@@ -508,6 +512,8 @@ permissions:
       allium.seen.alts: true
       allium.seen.ip: true
       allium.altexempt: true
+      allium.restore: true
+      allium.restore.others: true
       allium.near: true
       allium.near.bypass-max: true
       allium.afk: true
@@ -845,6 +851,15 @@ permissions:
   allium.altexempt:
     description: Manage alt-detection exemptions with /altexempt
     default: op
+  allium.restore:
+    description: Open your inventory snapshots with /restore and restore them to yourself
+    default: op
+  allium.restore.others:
+    description: Open other players' snapshots and restore them to those players (queued when offline)
+    default: op
+  allium.restore.edit:
+    description: Edit restore panels (move items in and out) and save MANUAL snapshots. Items in a panel are copies, so this can create items. Not in allium.*
+    default: false
   allium.near:
     description: Allows /near
     default: true

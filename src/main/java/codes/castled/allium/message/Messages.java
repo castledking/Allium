@@ -128,7 +128,12 @@ public enum Messages {
     MODULE_DISABLED("error.module-disabled", "{prefix} &cThis feature is currently disabled."),
 
     // -- Teleportation --
-    SIGN_PAID_REPAIR_DISABLED("signs.paid-repair-disabled", "{prefix} &cPaid repair is temporarily disabled."),
+    SIGN_PAID_REPAIR_DISABLED("signs.paid-repair-disabled", "{prefix} &cPaid repair is unavailable right now (the economy is not ready)."),
+    SIGN_REPAIR_PAID("signs.repair-paid", "{prefix} &aRepaired &f{items} &afor &e{price}&a."),
+    SIGN_REPAIR_FUNDS("signs.repair-funds", "{prefix} &cYou need &e{price} &cto use this repair sign. Nothing was repaired or charged."),
+    SIGN_REPAIR_CHANGED("signs.repair-changed", "{prefix} &eYour items changed before the repair; nothing was repaired and your &e{price} &ehold was returned."),
+    SIGN_REPAIR_PENDING("signs.repair-pending", "{prefix} &eThe repair was applied; its payment &f{operation} &eis settled from your saved data when you next join."),
+    SIGN_REPAIR_RECOVERED("signs.repair-recovered", "{prefix} &7An interrupted paid repair was settled: &f{captured} &7charged, &f{released} &7refunded."),
     SIGN_INVALID_LINE("signs.invalid-line", "{prefix} &cLine {line} on the sign is invalid. {options}"),
     SIGN_DISABLED("signs.disabled", "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."),
     REPAIR_HELD("utility.repair-held", "{prefix} &aRepaired &f{items}&a."),
@@ -286,6 +291,16 @@ public enum Messages {
     INSPECT_TARGET_DEAD_OPEN("moderation.inspect.target-dead-open", "{prefix} &e{player} &eis dead (on the respawn screen). Try again after they respawn."),
     INSPECT_OFFLINE_OPENED("moderation.inspect.offline-opened", "{prefix} &eOpened &f{player}&e's saved {inventory} &e(offline, {access}&e)."),
     INSPECT_OFFLINE_SAVED("moderation.inspect.offline-saved", "{prefix} &aSaved &f{changes} &aslot change(s) to &f{player}&a's offline {inventory}&a."),
+    RESTORE_EMPTY("restore.empty", "{prefix} &7There are no saved snapshots for &f{player}&7."),
+    RESTORE_APPLIED("restore.applied", "{prefix} &aYour &f{parts} &awas restored from the &f{reason} &asnapshot of &f{time}&a."),
+    RESTORE_APPLIED_OTHER("restore.applied-other", "{prefix} &aRestored &f{player}&a's &f{parts}&a."),
+    RESTORE_QUEUED("restore.queued", "{prefix} &e{player} &eis offline; the restore of their &f{parts} &eis applied when they next join."),
+    RESTORE_PENDING_APPLIED("restore.pending-applied", "{prefix} &aStaff restored your &f{parts} &awhile you were away."),
+    RESTORE_SAVED("restore.saved", "{prefix} &aSaved this panel as a new &fMANUAL &asnapshot for &f{player}&a."),
+    RESTORE_FAILED("restore.failed", "{prefix} &cThe snapshot could not be loaded or saved. Nothing changed."),
+    RESTORE_UNREADABLE("restore.unreadable", "{prefix} &cThat snapshot can't be read on this server: {reason}"),
+    RESTORE_BUSY("restore.busy", "{prefix} &c{player}'s inventory is busy right now (mail, kit, repair or another editor). Try again shortly."),
+    RESTORE_TELEPORTED("restore.teleported", "{prefix} &aTeleported to where the snapshot was taken."),
     INSPECT_UNAVAILABLE("moderation.inspect.unavailable", "{prefix} &cInspection is unavailable right now. Try again shortly."),
 
     // -- Player info utilities (S18) --

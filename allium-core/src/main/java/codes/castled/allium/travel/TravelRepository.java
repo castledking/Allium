@@ -148,6 +148,49 @@ public final class TravelRepository {
         return mutate(WARPS, WARP_NAMES, "name", key, null, key, expectedRevision, null);
     }
 
+    /** {@code LIMIT}: the owner already holds the hard cap of homes. */
+    public enum ImportResult { CREATED, PRESENT, CONFLICT, LIMIT }
+
+    /**
+     * Inside the caller's transaction (an import also writes its ledger row there): creates the
+     * home only when the name is free. The same location already there is {@code PRESENT}; a
+     * different one is a {@code CONFLICT} and is left alone. Legacy homes are not held to the
+     * owner's current rank limit, only to the hard cap.
+     */
+    public ImportResult importHome(Connection c, UUID owner, String name, SavedLocation location) throws SQLException {
+        Objects.requireNonNull(owner, "owner");
+        Objects.requireNonNull(location, "location");
+        String key = TravelNames.normalize(name);
+        long revision = lock(c, OWNERS, "owner", owner.toString());
+        Optional<StoredDestination> current = find(c, HOMES, owner, key);
+        if (current.isPresent()) return current.get().location().equals(location) ? ImportResult.PRESENT : ImportResult.CONFLICT;
+        if (countHomes(c, owner) >= HomePolicy.HARD_CAP) return ImportResult.LIMIT;
+        insert(c, HOMES, owner, key, location, nextRevision(c, OWNERS, "owner", owner.toString(), revision));
+        return ImportResult.CREATED;
+    }
+
+    /** As {@link #importHome}, for a server warp. */
+    public ImportResult importWarp(Connection c, String name, SavedLocation location) throws SQLException {
+        Objects.requireNonNull(location, "location");
+        String key = TravelNames.normalize(name);
+        long revision = lock(c, WARP_NAMES, "name", key);
+        Optional<StoredDestination> current = find(c, WARPS, null, key);
+        if (current.isPresent()) return current.get().location().equals(location) ? ImportResult.PRESENT : ImportResult.CONFLICT;
+        insert(c, WARPS, null, key, location, nextRevision(c, WARP_NAMES, "name", key, revision));
+        return ImportResult.CREATED;
+    }
+
+    /** Every owner's homes, for an import plan. */
+    public Map<UUID, Map<String, SavedLocation>> allHomes() throws SQLException {
+        return plain(c -> {
+            Map<UUID, Map<String, SavedLocation>> out = new LinkedHashMap<>();
+            try (PreparedStatement s = c.prepareStatement("SELECT * FROM " + HOMES + " ORDER BY owner, name"); ResultSet r = s.executeQuery()) {
+                while (r.next()) out.computeIfAbsent(UUID.fromString(r.getString("owner")), k -> new LinkedHashMap<>()).put(r.getString("name"), location(r));
+            }
+            return out;
+        });
+    }
+
     private MutationResult mutate(String table, String locks, String lockColumn, String lockKey, UUID owner,
                                   String name, long expectedRevision, SavedLocation location) throws SQLException {
         String key = TravelNames.normalize(name);

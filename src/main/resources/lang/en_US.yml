@@ -28,6 +28,23 @@ core:
     lang-failed:
       - "{prefix} &cThe lang import failed: &f{reason}"
       - "[sound] block.note_block.bass 0.75"
+    legacy-started:
+      - "{prefix} &7Reading the legacy Allium database for {mode}..."
+      - "[sound] block.note_block.hat 1.15"
+    legacy-dry-run:
+      - "{prefix} &aDry run &f{run}&a. Homes: &f{homes}&a. Warps: &f{warps}&a. Logout positions: &f{logouts}&a. Review &f{summary}&a, then run &f/allium import legacy apply {run}&a."
+      - "[sound] item.book.page_turn 1.0"
+    legacy-applied:
+      - "{prefix} &aImported &f{run}&a. Homes: &f{homes}&a. Warps: &f{warps}&a. Logout positions: &f{logouts}&a. Details are in &f{summary}&a."
+      - "[sound] entity.player.levelup 1.35"
+    legacy-refused:
+      - "{prefix} &cImport refused: &f{reason}"
+      - "[sound] block.note_block.bass 0.8"
+    legacy-failed:
+      - "{prefix} &cThe legacy import failed: &f{reason}"
+      - "[sound] block.note_block.bass 0.75"
+    legacy-fence:
+      - "&cThe server is importing legacy data. Try again in a minute."
   adopt-window:
     opened:
       - "{prefix} &ePre-recode privileged tools are adopted on first use for the next &f{duration}&e. Every adoption is logged. Close it early with &f/allium adopt-window off&e."

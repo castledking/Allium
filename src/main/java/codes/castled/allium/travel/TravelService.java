@@ -232,6 +232,8 @@ public final class TravelService implements Listener {
             catch(SQLException|RuntimeException e){server(()->retry(()->load(s,attempt+1),attempt,"homes "+s.player.getUniqueId()));}});}
         catch(RejectedExecutionException e){retry(()->load(s,attempt+1),attempt,"homes "+s.player.getUniqueId());}
     }
+    /** Reloads warps from storage (after an import wrote them). Server thread. */
+    public void refreshWarps(){loadWarps(0);}
     private void loadWarps(int attempt){
         if(closed)return;
         Map<String,Long> admittedEpochs=Map.copyOf(warpEpochs);

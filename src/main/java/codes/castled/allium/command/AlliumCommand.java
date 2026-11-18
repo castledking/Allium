@@ -20,6 +20,7 @@ import java.util.Locale;
 public final class AlliumCommand implements SpecCommandHandler {
 
     private final PluginStart plugin;
+    private codes.castled.allium.importer.LegacyImportService legacyImport;
 
     public AlliumCommand(PluginStart plugin) {
         this.plugin = plugin;
@@ -50,9 +51,15 @@ public final class AlliumCommand implements SpecCommandHandler {
                     return;
                 }
                 String[] args = context.args();
+                if (args.length >= 2 && args[1].equalsIgnoreCase("legacy")) {
+                    if (args.length == 2) legacyImport().dryRun(sender);
+                    else if (args.length == 4 && args[2].equalsIgnoreCase("apply")) legacyImport().apply(sender, args[3]);
+                    else context.sendInvalidArgs("/allium import legacy [apply <run>]");
+                    return;
+                }
                 boolean apply = args.length == 3 && args[2].equalsIgnoreCase("apply");
                 if (args.length < 2 || !args[1].equalsIgnoreCase("lang") || (args.length == 3 && !apply) || args.length > 3) {
-                    context.sendInvalidArgs("/allium import lang [apply]");
+                    context.sendInvalidArgs("/allium import <lang [apply]|legacy [apply <run>]>");
                     return;
                 }
                 importLang(sender, apply);
@@ -65,6 +72,14 @@ public final class AlliumCommand implements SpecCommandHandler {
             }
             default -> context.sendInvalidArgs(spec().selfUsage());
         }
+    }
+
+    /** One worker for legacy imports, created on first use; the scheduler stops it at shutdown. */
+    private synchronized codes.castled.allium.importer.LegacyImportService legacyImport() {
+        if (legacyImport == null) {
+            legacyImport = new codes.castled.allium.importer.LegacyImportService(plugin, plugin.getScheduler().boundedPool("Allium-Import", 1, 2));
+        }
+        return legacyImport;
     }
 
     /** The longest window: it is meant to be open only briefly, during a migration. */

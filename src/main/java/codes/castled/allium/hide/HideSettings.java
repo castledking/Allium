@@ -30,6 +30,16 @@ public record HideSettings(boolean enabled,boolean useResolver,boolean blockName
             c.getBoolean("settings.remove-unsafe-commands",true),normalized(c,"settings.unsafe-commands-list"),c.getBoolean("settings.filter-command-suggestions",true),c.getBoolean("settings.cancel-bare-slash-request",true),c.getBoolean("settings.cancel-unknown-suggestion-responses",true),
             normalized(c,"settings.allow-namespaced-suggestions"),List.copyOf(normalized(c,"settings.command-suggestion-filters")),c.getString("settings.unknown-command-completion-help-message",""),new HidePolicy(definitions),Map.copyOf(overrides));
     }
+    /**
+     * The same settings without the {@code unsafe-commands-list} labels {@code own} matches: a list
+     * written for legacy Allium names /msg, /r and /me, which are Allium's own commands now.
+     */
+    public HideSettings keepingVisible(java.util.function.Predicate<String> own){
+        var kept=new LinkedHashSet<String>();for(String label:unsafe)if(label.contains(":")||!own.test(label))kept.add(label);
+        if(kept.size()==unsafe.size())return this;
+        return new HideSettings(enabled,useResolver,blockNamespacedForBypass,hideNamespacedForBypass,removeUnsafe,Collections.unmodifiableSet(kept),
+            filterSuggestions,cancelBareSlash,cancelUnknown,namespacedAllow,suggestionPrefixes,hint,policy,permissionOverrides);
+    }
     public boolean namespacedVisible(String label,boolean bypass){
         if(!HidePolicy.root(label).contains(":"))return true;
         if(bypass)return !hideNamespacedForBypass;

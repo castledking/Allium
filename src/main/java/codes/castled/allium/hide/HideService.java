@@ -55,7 +55,16 @@ public final class HideService implements Listener,AutoCloseable {
     public Viewer viewer(UUID id){return viewers.get(id);}
     private HideSettings prepare(YamlConfiguration c){
         var root=c.getConfigurationSection("groups");Set<String> names=root==null?Set.of():root.getKeys(false).stream().map(v->v.toLowerCase(Locale.ROOT)).collect(java.util.stream.Collectors.toSet());
-        return HideSettings.read(c,groups.parents(names));
+        HideSettings read=HideSettings.read(c,groups.parents(names));
+        HideSettings kept=read.keepingVisible(this::ownsLabel);
+        if(kept!=read){var dropped=new ArrayList<>(read.unsafe());dropped.removeAll(kept.unsafe());
+            plugin.logger().info("hide.yml unsafe-commands-list names Allium's own "+dropped+"; those stay in the command list sent to players.");}
+        return kept;
+    }
+    /** Whether a plain label is Allium's command (by name or alias) in the server's command map. */
+    private boolean ownsLabel(String label){
+        try{var command=plugin.getServer().getPluginCommand(label);return command!=null&&command.getPlugin()==plugin;}
+        catch(RuntimeException unavailable){return false;}
     }
     private YamlConfiguration read()throws IOException,org.bukkit.configuration.InvalidConfigurationException{if(Files.size(file)>1_048_576)throw new IOException("hide.yml exceeds 1 MiB");var c=new YamlConfiguration();c.load(file.toFile());return c;}
     private Viewer refresh(Player p,boolean update){

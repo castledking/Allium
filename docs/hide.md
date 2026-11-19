@@ -19,6 +19,12 @@ listed path. `^` in tabcompletes follows resolved command rules; `*` matches all
 and `plugin:*` matches that owner's qualified commands, including registered bare
 aliases. Blacklist denials win over whitelist matches. Execution bypass adds a
 wildcard whitelist but still respects member blacklists, as legacy did.
+`remove-unsafe-commands` drops the `unsafe-commands-list` labels from the command list players
+receive and from completions (default: `plugins`, `pl`, `version` and their `bukkit:` forms). A
+plain label that is one of Allium's own commands or aliases is never dropped, so a list kept
+from legacy Allium (which named `msg`, `tell`, `w`, `r` and `me`) cannot hide Allium's `/msg`,
+`/reply` or `/me`; the load logs which listed labels stay visible. `bukkit:msg` and other
+plugins' labels are still dropped.
 Completion bypass skips group/unsafe filtering. Namespace visibility is separate:
 non-bypass viewers see only namespaced roots explicitly allowed in
 `allow-namespaced-suggestions`. The two historical `*-for-ops` settings apply to

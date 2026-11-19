@@ -4,6 +4,7 @@
 ## section. A line "#vote,voting" starts the section "vote", also reachable as "voting". Sections
 ## longer than 9 lines get pages with clickable arrows. The file is read again whenever it
 ## changes, so edits show without a reload. Players need allium.customtext (everyone by default).
+## /motd and /rules read motd.txt and rules.txt the same way.
 ##
 ## To make a section its own command, add an alias to the server's commands.yml:
 ##   aliases:
@@ -26,14 +27,7 @@
 &6&lWelcome to {server}, {player}!
 &7There are &f{online}&7 of &f{max}&7 players online.
 
-&7Try <click:run_command:/customtext rules><hover:show_text:'&eClick to read the rules'>&e&n/customtext rules</hover></click>&7 or <click:run_command:/customtext vote><hover:show_text:'&eClick to see where to vote'>&e&n/customtext vote</hover></click>&7.
-
-#rules
-&6&lServer rules
-&f1. &7Be kind to other players.
-&f2. &7No griefing or stealing.
-&f3. &7No cheats or unfair mods.
-&7Questions? <click:suggest_command:/msg ><hover:show_text:'&eClick to message a staff member'>&e&nAsk a staff member</hover></click>&7.
+&7Try <click:run_command:/customtext vote><hover:show_text:'&eClick to see where to vote'>&e&n/customtext vote</hover></click>&7 or <click:run_command:/rules><hover:show_text:'&eClick to read the rules'>&e&n/rules</hover></click>&7.
 
 #vote,voting
 &6&lVote for {server}

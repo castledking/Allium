@@ -1,12 +1,37 @@
-# Custom text (`/customtext`)
+# Custom text, `/motd` and `/rules`
 
-`/customtext [section] [page]` shows pages of `plugins/Allium/customtext.txt`. The file is
-written from the bundled example on first start and read again whenever it changes, so edits
-show without `/allium reload`. Players need `allium.customtext` (default true).
+Three commands read text files in `plugins/Allium`, each written from a bundled example on first
+start and read again whenever it changes, so edits show without `/allium reload`:
+
+| Command | File | Permission (default true) |
+| --- | --- | --- |
+| `/customtext [section] [page]` | `customtext.txt` | `allium.customtext` |
+| `/motd [section] [page]` | `motd.txt` | `allium.motd` |
+| `/rules [chapter] [page]` | `rules.txt` | `allium.rules` |
+
+With no section, a command shows the lines before the first section. When a file has none, it
+lists the file's sections instead (`customtext.sections`), each clickable. A missing section is
+`customtext.missing`, `motd.missing` or `rules.missing`; a file with nothing to show is
+`customtext.empty`, and one that cannot be read is `customtext.failed` (`{file}`).
+
+## The join MOTD
+
+Players with `allium.motd` see the first page of `motd.txt`'s index when they join:
+
+```yaml
+motd:
+  show-on-join: true
+  # Ticks to wait after joining (0-200), so the MOTD follows the join messages.
+  join-delay-ticks: 10
+```
+
+Sections of `motd.txt` are for `/motd <section>` only. Disabling the `motd` command family in
+`disabled-commands` also stops the join MOTD.
 
 ## Layout
 
-The layout is Essentials' `custom.txt`, so an existing file can be copied over:
+The layout is Essentials' `custom.txt`, `motd.txt` and `rules.txt`, so existing files can be
+copied over:
 
 - `#vote,voting` starts the section `vote`, also reachable as `voting`. Names are
   case-insensitive and spaces become underscores.

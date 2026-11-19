@@ -24,6 +24,9 @@ final class LanguageColors {
             new Replacement("utility.repair-held","{prefix} &aRepaired the held item.","{prefix} &aRepaired &f{items}&a."),
             new Replacement("utility.repair-all","{prefix} &aRepaired &f{count} &adamaged item(s).","{prefix} &aRepaired &f{items}&a."),
             new Replacement("utility.repair-all","{prefix} &aReparado(s) &f{count} &aobjeto(s) danado(s).","{prefix} &aReparaste &f{items}&a."),
+            // The text-file reader names the file that failed (motd.txt, rules.txt or customtext.txt).
+            new Replacement("customtext.failed","{prefix} &cThe custom text could not be read. Check the console.","{prefix} &f{file} &ccould not be read. Check the console."),
+            new Replacement("customtext.failed","{prefix} &cNo se pudo leer el texto personalizado. Revisa la consola.","{prefix} &f{file} &cno se pudo leer. Revisa la consola."),
             // /whois shows one field per line.
             new Replacement("info.whois.dates","&7First joined: &f{first_join} &8| &7{seen_label}: &f{seen_value}","&7First joined: &f{first_join}\n&7{seen_label}: &f{seen_value}"),
             new Replacement("info.whois.state","&7Gamemode: &f{gamemode} &8| &7Fly: {fly} &8| &7Flying: {flying} &8| &7God: {god} &8| &7Vanished: {vanished} &8| &7AFK: {afk}","&7Gamemode: &f{gamemode}\n&7Fly: {fly}\n&7Flying: {flying}\n&7God: {god}\n&7Vanished: {vanished}\n&7AFK: {afk}"),

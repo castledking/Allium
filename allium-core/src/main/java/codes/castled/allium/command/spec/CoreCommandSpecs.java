@@ -1025,9 +1025,29 @@ public final class CoreCommandSpecs {
             List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    /** {@code /motd [section] [page]}: {@code motd.txt}, also shown on join. */
+    public static final CommandSpec MOTD = new CommandSpec(
+            "motd", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Show the message of the day",
+            "/motd [section] [page]", "/motd [section] [page]",
+            "allium.motd", null,
+            List.of(CommandArgSpec.optional("section", null, SuggestionSpec.none())),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    /** {@code /rules [chapter] [page]}: {@code rules.txt}. */
+    public static final CommandSpec RULES = new CommandSpec(
+            "rules", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Show the server rules",
+            "/rules [chapter] [page]", "/rules [chapter] [page]",
+            "allium.rules", null,
+            List.of(CommandArgSpec.optional("chapter", null, SuggestionSpec.none())),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
-            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT
+            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT, MOTD, RULES
     );
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(

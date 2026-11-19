@@ -25,40 +25,62 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * {@code /customtext [section] [page]}: pages of {@code plugins/Allium/customtext.txt}
- * ({@link CustomTextDocument}), with click and hover events ({@link InteractiveText}) and the
+ * {@code /customtext}, {@code /motd} and {@code /rules}: pages of {@code customtext.txt},
+ * {@code motd.txt} and {@code rules.txt} in {@code plugins/Allium} ({@link CustomTextDocument}, the
+ * layout of Essentials' text files), with click and hover events ({@link InteractiveText}) and the
  * {@code {player}}, {@code {displayname}}, {@code {world}}, {@code {online}}, {@code {max}} and
- * {@code {server}} placeholders (plus PlaceholderAPI's when it is installed). The file is read
- * again whenever it changes on disk, so edits show without a reload. As with Essentials, a
- * {@code commands.yml} alias such as {@code vote: [customtext vote $1-]} turns a section into a command.
+ * {@code {server}} placeholders (plus PlaceholderAPI's when it is installed). With no section the
+ * lines before the first section are shown, or the list of sections when there are none. A file is
+ * read again whenever it changes on disk, so edits show without a reload.
  */
-public final class CustomTextCommand implements SpecCommandHandler {
+public final class TextFileCommand implements SpecCommandHandler {
 
-    public static final String FILE = "customtext.txt";
     private static final Pattern PLACEHOLDER = Pattern.compile("(?i)\\{(player|displayname|world|online|max|maxplayers|server)}");
 
     private final PluginStart plugin;
+    private final CommandSpec spec;
+    private final String fileName;
+    private final Messages missing;
     private CustomTextDocument document;
     private long loadedModified = Long.MIN_VALUE;
     private long loadedSize = -1;
 
-    public CustomTextCommand(PluginStart plugin) {
+    public TextFileCommand(PluginStart plugin, CommandSpec spec, String fileName, Messages missing) {
         this.plugin = plugin;
+        this.spec = spec;
+        this.fileName = fileName;
+        this.missing = missing;
+    }
+
+    public static TextFileCommand customText(PluginStart plugin) {
+        return new TextFileCommand(plugin, CoreCommandSpecs.CUSTOMTEXT, "customtext.txt", Messages.CUSTOMTEXT_MISSING);
+    }
+
+    public static TextFileCommand motd(PluginStart plugin) {
+        return new TextFileCommand(plugin, CoreCommandSpecs.MOTD, "motd.txt", Messages.MOTD_MISSING);
+    }
+
+    public static TextFileCommand rules(PluginStart plugin) {
+        return new TextFileCommand(plugin, CoreCommandSpecs.RULES, "rules.txt", Messages.RULES_MISSING);
     }
 
     @Override
     public CommandSpec spec() {
-        return CoreCommandSpecs.CUSTOMTEXT;
+        return spec;
+    }
+
+    public String fileName() {
+        return fileName;
     }
 
     /** Writes the bundled example when the server has no file yet. */
     public void installDefault() {
-        File file = new File(plugin.getDataFolder(), FILE);
+        File file = new File(plugin.getDataFolder(), fileName);
         if (!file.exists()) {
             try {
-                plugin.saveResource(FILE, false);
-            } catch (IllegalArgumentException missing) {
-                plugin.logger().warning("The bundled " + FILE + " is missing from the jar.");
+                plugin.saveResource(fileName, false);
+            } catch (IllegalArgumentException missingResource) {
+                plugin.logger().warning("The bundled " + fileName + " is missing from the jar.");
             }
         }
     }
@@ -68,12 +90,12 @@ public final class CustomTextCommand implements SpecCommandHandler {
         CommandSender sender = context.sender();
         String[] args = context.args();
         if (args.length > 2) {
-            context.sendInvalidArgs(spec().selfUsage());
+            context.sendInvalidArgs(spec.selfUsage());
             return;
         }
         CustomTextDocument text = document();
         if (text == null) {
-            UtilitySupport.send(plugin, sender, Messages.CUSTOMTEXT_FAILED);
+            UtilitySupport.send(plugin, sender, Messages.CUSTOMTEXT_FAILED, "{file}", fileName);
             return;
         }
         String section = null;
@@ -85,31 +107,50 @@ public final class CustomTextCommand implements SpecCommandHandler {
                 section = args[0];
                 if (args.length == 2) {
                     if (!isPage(args[1])) {
-                        context.sendInvalidArgs(spec().selfUsage());
+                        context.sendInvalidArgs(spec.selfUsage());
                         return;
                     }
                     page = parsePage(args[1]);
                 }
             }
         }
+        if (section == null && text.index().isEmpty() && !text.sectionNames().isEmpty()) {
+            sendSections(sender, text);
+            return;
+        }
         List<String> lines = section == null ? text.index() : text.section(section).orElse(null);
+        if (section == null && lines.isEmpty()) {
+            UtilitySupport.send(plugin, sender, Messages.CUSTOMTEXT_EMPTY, "{file}", fileName);
+            return;
+        }
         if (lines == null || lines.isEmpty()) {
-            UtilitySupport.send(plugin, sender, Messages.CUSTOMTEXT_MISSING, "{section}", section == null ? "index" : section);
+            UtilitySupport.send(plugin, sender, missing, "{section}", section);
             return;
         }
         CustomTextDocument.Page shown = CustomTextDocument.page(lines, page);
-        for (String line : shown.lines()) {
-            send(sender, fill(sender, line));
-        }
+        send(sender, shown.lines());
         if (shown.pages() > 1) {
             String name = section == null ? "" : text.primaryName(section).orElse(section) + " ";
-            HelpCommand.sendFooter(plugin, sender, shown.page(), shown.pages(), "/customtext " + name);
+            HelpCommand.sendFooter(plugin, sender, shown.page(), shown.pages(), "/" + spec.canonicalName() + " " + name);
         }
     }
 
-    /** Section names and aliases for {@code /customtext <tab>}. */
+    /** The first page of the file's index, as {@code /<command>} shows it; nothing when the file has none. */
+    public void sendIndex(Player player) {
+        CustomTextDocument text = document();
+        if (text == null || text.index().isEmpty()) {
+            return;
+        }
+        CustomTextDocument.Page shown = CustomTextDocument.page(text.index(), 1);
+        send(player, shown.lines());
+        if (shown.pages() > 1) {
+            HelpCommand.sendFooter(plugin, player, 1, shown.pages(), "/" + spec.canonicalName() + " ");
+        }
+    }
+
+    /** Section names and aliases for {@code /<command> <tab>}. */
     public List<String> complete(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("allium.customtext") || args.length != 1) {
+        if (spec.basePermission() != null && !sender.hasPermission(spec.basePermission()) || args.length != 1) {
             return List.of();
         }
         CustomTextDocument text = document();
@@ -117,18 +158,41 @@ public final class CustomTextCommand implements SpecCommandHandler {
         return text == null ? List.of() : text.sectionNames().stream().filter(n -> n.startsWith(prefix)).limit(64).toList();
     }
 
-    private static void send(CommandSender sender, String line) {
-        if (sender instanceof Player player) {
-            // An empty line still takes a row, as in the file.
-            player.spigot().sendMessage(line.isEmpty()
-                    ? new net.md_5.bungee.api.chat.BaseComponent[]{new net.md_5.bungee.api.chat.TextComponent(" ")}
-                    : InteractiveText.components(line));
-        } else {
-            var formatted = InteractiveText.formatted(line);
-            if (formatted.isEmpty()) {
-                sender.sendMessage("");
+    /** {@code Sections: rules, griefing}: each name runs {@code /<command> <name>} when clicked. */
+    private void sendSections(CommandSender sender, CustomTextDocument text) {
+        List<String> names = text.sectionNames().stream()
+                .filter(name -> text.primaryName(name).map(name::equals).orElse(false))
+                .toList();
+        String command = "/" + spec.canonicalName() + " ";
+        String links = String.join("&7, ", names.stream()
+                .map(name -> "<click:run_command:" + command + name + "><hover:show_text:'&7Click to show &e" + name
+                        + "'>&e" + name + "</hover></click>")
+                .toList());
+        String line = plugin.getMessageManager().resolve(Messages.CUSTOMTEXT_SECTIONS, "{command}", spec.canonicalName(), "{sections}", links);
+        if (line != null && !line.isEmpty()) {
+            send(sender, List.of(line), false);
+        }
+    }
+
+    private void send(CommandSender sender, List<String> lines) {
+        send(sender, lines, true);
+    }
+
+    private void send(CommandSender sender, List<String> lines, boolean placeholders) {
+        for (String raw : lines) {
+            String line = placeholders ? fill(sender, raw) : raw;
+            if (sender instanceof Player player && player.spigot() != null) {
+                // An empty line still takes a row, as in the file.
+                player.spigot().sendMessage(line.isEmpty()
+                        ? new net.md_5.bungee.api.chat.BaseComponent[]{new net.md_5.bungee.api.chat.TextComponent(" ")}
+                        : InteractiveText.components(line));
             } else {
-                TextSender.send(sender, formatted);
+                var formatted = InteractiveText.formatted(line);
+                if (formatted.isEmpty()) {
+                    sender.sendMessage("");
+                } else {
+                    TextSender.send(sender, formatted);
+                }
             }
         }
     }
@@ -166,7 +230,7 @@ public final class CustomTextCommand implements SpecCommandHandler {
     /** The parsed file, read again when its size or modification time changes; null when it cannot be read. */
     @Nullable
     synchronized CustomTextDocument document() {
-        File file = new File(plugin.getDataFolder(), FILE);
+        File file = new File(plugin.getDataFolder(), fileName);
         if (!file.isFile()) {
             installDefault();
         }
@@ -184,7 +248,7 @@ public final class CustomTextCommand implements SpecCommandHandler {
             loadedSize = size;
             return document;
         } catch (IOException | RuntimeException failed) {
-            plugin.logger().warning("Could not read " + FILE + ": " + failed.getMessage());
+            plugin.logger().warning("Could not read " + fileName + ": " + failed.getMessage());
             return document;
         }
     }

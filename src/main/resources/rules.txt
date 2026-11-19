@@ -1,0 +1,16 @@
+## Allium server rules: shown by /rules. /rules <chapter> shows a #chapter, and when there are no
+## lines before the first chapter, /rules lists the chapters (each one clickable).
+##
+## The layout, formatting, placeholders and click/hover tags are customtext.txt's: see the notes at
+## the top of that file. An Essentials rules.txt can be copied over as it is.
+&6&lServer rules
+&f1. &7Be kind to other players.
+&f2. &7No griefing or stealing. <click:run_command:/rules griefing><hover:show_text:'&eClick for what counts as griefing'>&e&n(details)</hover></click>
+&f3. &7No cheats or unfair mods.
+&7Questions? <click:suggest_command:/msg ><hover:show_text:'&eClick to message a staff member'>&e&nAsk a staff member</hover></click>&7.
+
+#griefing,grief
+&6&lWhat counts as griefing
+&7- Breaking or changing builds that are not yours.
+&7- Taking items from chests that are not yours.
+&7- Leaving floating trees or lava behind.

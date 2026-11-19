@@ -1,0 +1,906 @@
+{
+  "suite": "paper",
+  "run": "motd-paper-2",
+  "alliumSha256": "aaf722c8006ed72f5aba84268bb90fc620f2347893913378295ec6e6a4c80ea0",
+  "sources": {
+    "tests/live/staff/run.py": "d7c3d86f5f77943b9359907e81e49a5f6740c2f4bd6297080cd8244eb59ca5f8",
+    "tests/live/staff/plugin/gate/StaffGate.java": "060523c9025971f966f0fca96dd6a502617f8ae1028672c2b556d088a0b815b7",
+    "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+    "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
+    "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
+    "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+  },
+  "passed": true,
+  "checks": 17,
+  "failures": [],
+  "cases": [
+    {
+      "name": "home-admin",
+      "passed": true
+    },
+    {
+      "name": "motd-rules",
+      "passed": true
+    }
+  ],
+  "seconds": 30.9,
+  "results": [
+    {
+      "label": "paper: creative, alts and restore modules enabled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /home completes an online player's homes",
+      "passed": true,
+      "detail": [
+        "PlayerBot:admin1",
+        "PlayerBot:admin2"
+      ]
+    },
+    {
+      "label": "paper: /home completes visible online players as Name:",
+      "passed": true,
+      "detail": [
+        "PlayerBot:"
+      ]
+    },
+    {
+      "label": "paper: /delhome completes no one else's homes without allium.delhome.others",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "label": "paper: /home PlayerBot: lists the homes",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] PlayerBot's homes: admin1, admin2",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "PlayerBot's homes: ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "admin1, admin2",
+            "color": "#ff55ff"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "color": "gray",
+              "text": "["
+            },
+            {
+              "color": "light_purple",
+              "text": "Allium"
+            },
+            {
+              "color": "gray",
+              "text": "] "
+            },
+            {
+              "color": "white",
+              "text": "PlayerBot's homes: "
+            },
+            {
+              "color": "light_purple",
+              "text": "admin1, admin2"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: the online owner sees the deletion at once",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] Homes: admin2, bed",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Homes: ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "admin2, ",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "bed",
+            "color": "#aaaaaa"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "color": "gray",
+              "text": "["
+            },
+            {
+              "color": "light_purple",
+              "text": "Allium"
+            },
+            {
+              "color": "gray",
+              "text": "] "
+            },
+            {
+              "color": "white",
+              "text": "Homes: "
+            },
+            {
+              "color": "light_purple",
+              "text": "admin2, "
+            },
+            {
+              "color": "gray",
+              "strikethrough": 1,
+              "text": "bed"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: completion follows the deletion",
+      "passed": true,
+      "detail": [
+        "PlayerBot:admin2"
+      ]
+    },
+    {
+      "label": "paper: /home PlayerBot:bed lands at their bed",
+      "passed": true,
+      "detail": {
+        "bed": [
+          -1.5,
+          -61.0,
+          5.5
+        ],
+        "landed": {
+          "x": -1.5,
+          "y": -60.9,
+          "z": 5.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "world": "world"
+        }
+      }
+    },
+    {
+      "label": "paper: an offline player's saved bed is reachable",
+      "passed": true,
+      "detail": {
+        "bed": [
+          -1.5,
+          -61.0,
+          5.5
+        ],
+        "landed": {
+          "x": -2.0,
+          "y": -61.0,
+          "z": 5.0,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "world": "world"
+        }
+      }
+    },
+    {
+      "label": "paper: an offline deletion holds when the owner returns",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] Homes: bed",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Homes: ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "bed",
+            "color": "#ff55ff"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "color": "gray",
+              "text": "["
+            },
+            {
+              "color": "light_purple",
+              "text": "Allium"
+            },
+            {
+              "color": "gray",
+              "text": "] "
+            },
+            {
+              "color": "white",
+              "text": "Homes: "
+            },
+            {
+              "color": "light_purple",
+              "text": "bed"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: the join MOTD fills {displayname}",
+      "passed": true,
+      "detail": {
+        "plain": "Welcome to Paper, PlayerBot!",
+        "colors": [
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffaa00"
+        ],
+        "runs": [
+          {
+            "text": "Welcome to Paper, ",
+            "color": "#ffaa00"
+          },
+          {
+            "text": "PlayerBot",
+            "color": "#ffffff"
+          },
+          {
+            "text": "!",
+            "color": "#ffaa00"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gold",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "Welcome to Paper, "
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "white",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "PlayerBot"
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gold",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "!"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: the join MOTD keeps its click tag",
+      "passed": true,
+      "detail": {
+        "plain": "Read the rules before you build.",
+        "colors": [
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa"
+        ],
+        "runs": [
+          {
+            "text": "Read the ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "rules",
+            "color": "#ffff55"
+          },
+          {
+            "text": " before you build.",
+            "color": "#aaaaaa"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "Read the "
+            },
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/rules",
+                "action": "run_command"
+              },
+              "underlined": 1,
+              "bold": 0,
+              "color": "yellow",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "yellow",
+                  "obfuscated": 0,
+                  "strikethrough": 0,
+                  "text": "Click to read the rules"
+                }
+              },
+              "strikethrough": 0,
+              "text": "rules"
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": " before you build."
+            }
+          ],
+          "text": ""
+        },
+        "interactive": true
+      }
+    },
+    {
+      "label": "paper: no join MOTD without allium.motd",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /rules lines keep their click tags",
+      "passed": true,
+      "detail": {
+        "plain": "2. No griefing or stealing. (details)",
+        "colors": [
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55"
+        ],
+        "runs": [
+          {
+            "text": "2. ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "No griefing or stealing. ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "(details)",
+            "color": "#ffff55"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "white",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "2. "
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "No griefing or stealing. "
+            },
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/rules griefing",
+                "action": "run_command"
+              },
+              "underlined": 1,
+              "bold": 0,
+              "color": "yellow",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "yellow",
+                  "obfuscated": 0,
+                  "strikethrough": 0,
+                  "text": "Click for what counts as griefing"
+                }
+              },
+              "strikethrough": 0,
+              "text": "(details)"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": true
+      }
+    },
+    {
+      "label": "paper: /rules completes chapters and aliases",
+      "passed": true,
+      "detail": [
+        "grief",
+        "griefing"
+      ]
+    },
+    {
+      "label": "paper: the chapter list is clickable",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] Sections of /rules: building, pvp",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] Sections of ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "/rules",
+            "color": "#ffffff"
+          },
+          {
+            "text": ": ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "building",
+            "color": "#ffff55"
+          },
+          {
+            "text": ", ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "pvp",
+            "color": "#ffff55"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "["
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "light_purple",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "Allium"
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "] Sections of "
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "white",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "/rules"
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": ": "
+            },
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/rules building",
+                "action": "run_command"
+              },
+              "underlined": 0,
+              "bold": 0,
+              "color": "yellow",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "gray",
+                  "obfuscated": 0,
+                  "extra": [
+                    {
+                      "italic": 0,
+                      "underlined": 0,
+                      "bold": 0,
+                      "color": "yellow",
+                      "obfuscated": 0,
+                      "strikethrough": 0,
+                      "text": "building"
+                    }
+                  ],
+                  "strikethrough": 0,
+                  "text": "Click to show "
+                }
+              },
+              "strikethrough": 0,
+              "text": "building"
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": ", "
+            },
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/rules pvp",
+                "action": "run_command"
+              },
+              "underlined": 0,
+              "bold": 0,
+              "color": "yellow",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "gray",
+                  "obfuscated": 0,
+                  "extra": [
+                    {
+                      "italic": 0,
+                      "underlined": 0,
+                      "bold": 0,
+                      "color": "yellow",
+                      "obfuscated": 0,
+                      "strikethrough": 0,
+                      "text": "pvp"
+                    }
+                  ],
+                  "strikethrough": 0,
+                  "text": "Click to show "
+                }
+              },
+              "strikethrough": 0,
+              "text": "pvp"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": true
+      }
+    },
+    {
+      "label": "paper: no exceptions or SEVERE lines in the server log",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

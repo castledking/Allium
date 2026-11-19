@@ -597,6 +597,8 @@ chat:
     - "&8[CmdSpy] &f{player}&7: &e{command}"
   spy-header:
     - "&6&lSpy &8─ &e{player}"
+  spy-header-own:
+    - "&6&lSpy &8─ &eeveryone"
   spy-messages:
     - "&6▪ &fMessages (SocialSpy): {state}"
   spy-local:
@@ -1547,7 +1549,7 @@ messaging:
     - "Console"
   ignore:
     added:
-      - "{prefix} &aYou are now ignoring &f{player}&a's private messages."
+      - "{prefix} &aYou are now ignoring &f{player}&a."
       - "[sound] block.wooden_door.open 0.85"
     removed:
       - "{prefix} &aYou are no longer ignoring &f{player}&a."

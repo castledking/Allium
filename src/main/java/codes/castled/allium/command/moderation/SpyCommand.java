@@ -34,6 +34,14 @@ public final class SpyCommand implements SpecCommandHandler {
             return;
         }
         String[] args = context.args();
+        if (args.length == 0) {
+            spy.openOwnPanel(viewer);
+            return;
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("toggle")) {
+            spy.toggleGlobal(viewer, args[1]);
+            return;
+        }
         if (args.length != 1 && !(args.length == 3 && args[1].equalsIgnoreCase("toggle"))) {
             context.sendInvalidArgs(spec().selfUsage());
             return;

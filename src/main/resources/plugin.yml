@@ -725,6 +725,10 @@ permissions:
       allium.chat.ignoreexempt: true
       allium.chat.spy: true
       allium.chat.mention: true
+      allium.chat.receive.local: true
+      allium.chat.receive.shout: true
+      allium.chat.receive.question: true
+      allium.chat.receive.mention: true
       allium.chat.question: true
       allium.chat.url: true
       allium.commandspy: true
@@ -1690,6 +1694,18 @@ permissions:
     default: true
   allium.chat.mention:
     description: Highlights @<player> mentions in chat and plays a mention sound to the target
+    default: true
+  allium.chat.receive.local:
+    description: Receive local chat (without it, local chat from others is not shown)
+    default: true
+  allium.chat.receive.shout:
+    description: Receive shouts, the messages sent with /g <message> or /shout <message>
+    default: true
+  allium.chat.receive.question:
+    description: Receive ?questions asked from local chat
+    default: true
+  allium.chat.receive.mention:
+    description: Be highlighted and pinged when mentioned with @<name>
     default: true
   allium.chat.url:
     description: Allows sending URLs in chat

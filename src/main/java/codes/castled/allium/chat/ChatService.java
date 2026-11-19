@@ -157,6 +157,9 @@ public final class ChatService implements Listener,AutoCloseable {
     public static final String PERM_QUESTION="allium.chat.question";
     public static final String PERM_MENTION="allium.chat.mention";
     public static final String PERM_IGNORE_EXEMPT="allium.chat.ignoreexempt";
+    /** EssentialsChat's receive nodes (default true): without one, that kind of message is not delivered. */
+    public static final String RECEIVE_LOCAL="allium.chat.receive.local",RECEIVE_SHOUT="allium.chat.receive.shout",
+            RECEIVE_QUESTION="allium.chat.receive.question",RECEIVE_MENTION="allium.chat.receive.mention";
     private static final Pattern URL_PATTERN=Pattern.compile(
             "(?i)(?:https?://\\S+|www\\.\\S+|\\b[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.(?:com|net|org|gg|io|me|co|edu|gov|tv|xyz|dev|app|mc|info|biz|uk|ca|de|fr|au|jp|ru|br|es|it|nl|pl|se|no|fi|ch|at|be|dk|cz|eu|us|live|shop|store|site|online|cloud|fun|pro|club|tech|world|games|server|play)(?:/\\S*)?)");
     private static final Pattern MENTION_PATTERN=Pattern.compile("(?<![A-Za-z0-9_])@([A-Za-z0-9_]{1,16})(?![A-Za-z0-9_])");
@@ -185,6 +188,9 @@ public final class ChatService implements Listener,AutoCloseable {
         var allow=new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient"));
         var origin=p.getLocation();
         var recipients=new ArrayList<Session>();
+        // /g and /shout with a message are shouts; a ?question from local chat is a question.
+        boolean shout=!question&&explicit!=null&&c.id().equals(settings.defaultChannel());
+        String receive=question?RECEIVE_QUESTION:shout?RECEIVE_SHOUT:c.local()?RECEIVE_LOCAL:null;
         boolean senderIgnoreExempt=p.hasPermission(PERM_IGNORE_EXEMPT);
         MessagingModule messaging=plugin.getModuleManager()!=null&&plugin.getModuleManager().getModule("messaging") instanceof MessagingModule m&&m.isEnabled()?m:null;
         for(Session viewer:sessions.values()){
@@ -193,6 +199,7 @@ public final class ChatService implements Listener,AutoCloseable {
             boolean own=recipient==p&&canRead(p,c);
             if(!viewer.ready||!same(viewer)||!(own||listening(viewer,c))||originalAudience!=null&&!originalAudience.contains(recipient.getUniqueId()))continue;
             if(c.local()&&(!origin.getWorld().equals(recipient.getWorld())||origin.distanceSquared(recipient.getLocation())>c.radius()*c.radius()))continue;
+            if(!own&&receive!=null&&!recipient.hasPermission(receive))continue;
             if(!own&&!senderIgnoreExempt&&messaging!=null&&messaging.ignores().ignores(recipient.getUniqueId(),p.getUniqueId())==MessagePolicy.Ignore.YES)continue;
             recipients.add(viewer);
         }
@@ -228,7 +235,8 @@ public final class ChatService implements Listener,AutoCloseable {
         Map<String,Player> visibleByName=new HashMap<>();
         for(Session viewer:recipients){
             Player r=viewer.player;
-            if(PlayerNameVisibility.canSee(sender,r)){
+            // Without allium.chat.receive.mention a player is not highlighted or pinged.
+            if(PlayerNameVisibility.canSee(sender,r)&&r.hasPermission(RECEIVE_MENTION)){
                 visibleByName.put(r.getName().toLowerCase(Locale.ROOT),r);
             }
         }

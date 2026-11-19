@@ -57,7 +57,11 @@ public final class StaffSpyService implements Listener {
     /** Opt-in global commandspy: never auto-enabled from permission alone. */
     private final Set<UUID> globalCommandSpy = ConcurrentHashMap.newKeySet();
     /** Opt-in global local-chat spy. */
-    private final Set<UUID> globalLocalSpy = ConcurrentHashMap.newKeySet();
+    /**
+     * Holders of {@code allium.chat.spy} see all local chat out of their range, as in Essentials,
+     * unless they switched that off for this session ({@code /spy}).
+     */
+    private final Set<UUID> localSpyOff = ConcurrentHashMap.newKeySet();
     /** Per-target spy sets: observer UUID -> set of target UUIDs. */
     private final Map<UUID, Set<UUID>> messageTargets = new ConcurrentHashMap<>();
     private final Map<UUID, Set<UUID>> localTargets = new ConcurrentHashMap<>();
@@ -74,7 +78,7 @@ public final class StaffSpyService implements Listener {
     public void disable() {
         HandlerList.unregisterAll(this);
         globalCommandSpy.clear();
-        globalLocalSpy.clear();
+        localSpyOff.clear();
         messageTargets.clear();
         localTargets.clear();
         commandTargets.clear();
@@ -104,7 +108,7 @@ public final class StaffSpyService implements Listener {
 
     /** True when {@code observer} is spying on {@code sender}'s local chat (global or per-target). */
     public boolean isSpyingLocal(UUID observer, UUID sender) {
-        if (globalLocalSpy.contains(observer)) {
+        if (!localSpyOff.contains(observer)) {
             return true;
         }
         Set<UUID> targets = localTargets.get(observer);
@@ -141,8 +145,8 @@ public final class StaffSpyService implements Listener {
                     plugin.getMessageManager().send(viewer, Messages.NO_PERMISSION);
                     return;
                 }
-                if (globalLocalSpy.contains(viewerId)) {
-                    globalLocalSpy.remove(viewerId);
+                if (!localSpyOff.contains(viewerId)) {
+                    localSpyOff.add(viewerId);
                 } else {
                     toggleSet(localTargets, viewerId, targetId);
                 }
@@ -182,7 +186,7 @@ public final class StaffSpyService implements Listener {
 
         sendSpyRow(viewer, target, Messages.SPY_ROW_LOCAL, "local",
                 viewer.hasPermission(PERM_CHAT_SPY),
-                globalLocalSpy.contains(viewerId),
+                !localSpyOff.contains(viewerId),
                 containsTarget(localTargets, viewerId, targetId));
 
         sendSpyRow(viewer, target, Messages.SPY_ROW_COMMANDS, "commands",
@@ -195,6 +199,12 @@ public final class StaffSpyService implements Listener {
 
     private void sendSpyRow(Player viewer, Player target, Messages rowKey, String category,
                             boolean permitted, boolean globalOn, boolean targetOn) {
+        sendSpyRow(viewer, "/spy " + target.getName() + " toggle " + category, "&e" + target.getName(),
+                rowKey, category, permitted, globalOn, targetOn);
+    }
+
+    private void sendSpyRow(Player viewer, String command, String subject, Messages rowKey, String category,
+                            boolean permitted, boolean globalOn, boolean targetOn) {
         MessageManager messages = plugin.getMessageManager();
         Messages stateKey = !permitted ? Messages.SPY_STATE_DENIED
                 : globalOn ? Messages.SPY_STATE_ON_GLOBAL
@@ -206,10 +216,9 @@ public final class StaffSpyService implements Listener {
             TextSender.send(viewer, line);
             return;
         }
-        String command = "/spy " + target.getName() + " toggle " + category;
         String hoverText = (globalOn || targetOn)
-                ? "&7Click to stop spying on &e" + target.getName() + "&7 (" + category + ")"
-                : "&7Click to spy on &e" + target.getName() + "&7 (" + category + ")";
+                ? "&7Click to stop spying on " + subject + "&7 (" + category + ")"
+                : "&7Click to spy on " + subject + "&7 (" + category + ")";
         BaseComponent[] parts = SpigotComponents.of(TextFormatter.parse(line));
         ClickEvent click = new ClickEvent(ClickEvent.Action.RUN_COMMAND, command);
         HoverEvent hover = new HoverEvent(HoverEvent.Action.SHOW_TEXT, SpigotComponents.of(TextFormatter.parse(hoverText)));
@@ -218,6 +227,58 @@ public final class StaffSpyService implements Listener {
             part.setHoverEvent(hover);
         }
         viewer.spigot().sendMessage(parts);
+    }
+
+    /** {@code /spy}: what the viewer spies on everywhere, each row a click to switch it. */
+    public void openOwnPanel(Player viewer) {
+        MessageManager messages = plugin.getMessageManager();
+        UUID viewerId = viewer.getUniqueId();
+        messages.send(viewer, Messages.HELP_BORDER);
+        messages.send(viewer, Messages.SPY_HEADER_OWN);
+        viewer.sendMessage("");
+        sendSpyRow(viewer, "/spy toggle messages", "&eeveryone", Messages.SPY_ROW_MESSAGES, "messages",
+                viewer.hasPermission(PERM_SOCIALSPY), isGlobalSocialSpy(viewerId), false);
+        sendSpyRow(viewer, "/spy toggle local", "&eeveryone", Messages.SPY_ROW_LOCAL, "local",
+                viewer.hasPermission(PERM_CHAT_SPY), !localSpyOff.contains(viewerId), false);
+        sendSpyRow(viewer, "/spy toggle commands", "&eeveryone", Messages.SPY_ROW_COMMANDS, "commands",
+                viewer.hasPermission(PERM_COMMANDSPY), globalCommandSpy.contains(viewerId), false);
+        messages.send(viewer, Messages.HELP_BORDER);
+    }
+
+    /** {@code /spy toggle <messages|local|commands>}: switches spying on everyone for one kind. */
+    public void toggleGlobal(Player viewer, String category) {
+        UUID viewerId = viewer.getUniqueId();
+        switch (category.toLowerCase(Locale.ROOT)) {
+            case "messages", "msg", "socialspy" -> {
+                if (!viewer.hasPermission(PERM_SOCIALSPY)) {
+                    plugin.getMessageManager().send(viewer, Messages.NO_PERMISSION);
+                    return;
+                }
+                toggleGlobalSocialSpy(viewer, !isGlobalSocialSpy(viewerId));
+            }
+            case "local", "chat", "localchat" -> {
+                if (!viewer.hasPermission(PERM_CHAT_SPY)) {
+                    plugin.getMessageManager().send(viewer, Messages.NO_PERMISSION);
+                    return;
+                }
+                if (!localSpyOff.add(viewerId)) {
+                    localSpyOff.remove(viewerId);
+                }
+            }
+            case "commands", "cmd", "commandspy" -> {
+                if (!viewer.hasPermission(PERM_COMMANDSPY)) {
+                    plugin.getMessageManager().send(viewer, Messages.NO_PERMISSION);
+                    return;
+                }
+                if (!globalCommandSpy.add(viewerId)) {
+                    globalCommandSpy.remove(viewerId);
+                }
+            }
+            default -> {
+                return;
+            }
+        }
+        openOwnPanel(viewer);
     }
 
     /** Executes configured {@code spectate-commands} in console for {@code staff} spectating {@code target}. */
@@ -341,7 +402,7 @@ public final class StaffSpyService implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
         globalCommandSpy.remove(id);
-        globalLocalSpy.remove(id);
+        localSpyOff.remove(id);
         messageTargets.remove(id);
         localTargets.remove(id);
         commandTargets.remove(id);

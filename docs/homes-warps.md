@@ -13,8 +13,10 @@ UUID; a different world with the same name is never substituted or created.
 | `/sethome [name] [confirm]` | `allium.sethome` | true |
 | `/home [name]` | `allium.home` | true |
 | `/home bed`, `/bed` | `allium.home.bed` | true |
-| `/home <player>:<home>` | `allium.home` **and** `allium.home.others` | op |
+| `/home <player>:<home>`, `/home <player>:` (list) | `allium.home` **and** `allium.home.others` | op |
+| `/home <player>:bed` | `allium.home` **and** `allium.home.others.bed` | op |
 | `/delhome [name]` | `allium.delhome` | true |
+| `/delhome <player>:<home>` | `allium.delhome` **and** `allium.delhome.others` | op |
 | `/homes` | `allium.homes` | true |
 | `/homes <player>` | `allium.homes` **and** `allium.homes.others` | op |
 | `/setwarp <name> [confirm]` | `allium.setwarp` | op |
@@ -50,11 +52,23 @@ still reached and deleted normally by players without the node. The bed is check
 the warmup ends, and the teleport shares the `home` cooldown and warmup rules. Spigot 1.20.1's
 `getBedSpawnLocation()` and the newer `getRespawnLocation()` are both supported.
 
-Staff with `allium.home.others` use `/home <player>:<home>` (an empty home name means `home`),
-and staff with `allium.homes.others` use `/homes <player>`. The name goes through the shared
-name index, so offline players work too, and the home is read from storage rather than a
-session. Each visit is logged as `Home audit actor=<uuid> owner=<uuid> home=<name>`.
-Deleting another player's home is not supported.
+Staff manage other players' homes as legacy Allium did. The name goes through the shared name
+index, so offline players work too, and homes are read from storage rather than a session:
+
+- `/home <player>:<home>` (`allium.home.others`) teleports to the home; `/home <player>:` lists
+  that player's homes, as `/homes <player>` (`allium.homes.others`) does.
+- `/home <player>:bed` (`allium.home.others.bed`) goes to their bed or charged respawn anchor:
+  checked as theirs would be when they are online, the respawn point saved in their player file
+  when they are not.
+- `/delhome <player>:<home>` (`allium.delhome.others`) deletes the home at the revision it just
+  read, so a home the owner moved in between is reported as changed instead. An online owner's
+  `/homes` and completion follow at once; an offline owner sees it on their next join.
+- Tab completion offers `Name:` for each visible online player, then `Name:<home>` from that
+  player's loaded homes (`Name:bed` too with the bed node). It reads memory only, so offline
+  owners complete nothing; `bed` is only suggested for `/home`.
+
+Each visit or deletion is logged as `Home audit actor=<uuid> owner=<uuid> home=<name>`, with
+`action=delete` for deletions.
 
 ## Limits and confirmation
 

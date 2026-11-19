@@ -250,6 +250,8 @@ public enum Messages {
     HOME_LIST_OTHER("home.list-other", "{prefix} &f{player}'s homes: &d{homes}"),
     HOME_NONE_OTHER("home.none-other", "{prefix} &f{player} &chas no homes set."),
     HOME_NOT_FOUND_OTHER("home.not-found-other", "{prefix} &f{player} &chas no home called &f{name}&c."),
+    HOME_DELETED_OTHER("home.deleted-other", "{prefix} &aDeleted &f{player}&a's home &f{name}&a."),
+    HOME_BED_MISSING_OTHER("home.bed-missing-other", "{prefix} &f{player} &chas no bed or charged respawn anchor, or it is blocked."),
 
     // -- Warps --
     WARP_SET("warp.set", "{prefix} &aWarp &f{name} &aset."),

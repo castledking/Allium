@@ -541,6 +541,100 @@ class TravelServiceTest {
         verify(names, never()).resolve("bad name!");
     }
 
+    private Player onlineOwner(UUID id, Map<String, SavedLocation> homes) throws Exception {
+        Player owner = player(id);
+        when(owner.getName()).thenReturn("Owner");
+        // Like the server's, case-insensitive.
+        when(server.getPlayerExact(anyString())).thenAnswer(call -> "Owner".equalsIgnoreCase(call.getArgument(0)) ? owner : null);
+        when(player.canSee(owner)).thenReturn(true);
+        when(repository.homes(id)).thenReturn(homes);
+        var names = mock(codes.castled.allium.naming.PlayerNameService.class);
+        when(plugin.getPlayerNames()).thenReturn(names);
+        when(names.resolve("Owner")).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(
+                Optional.of(new codes.castled.allium.naming.NameCache.Entry(id, "Owner", 0L))));
+        return owner;
+    }
+
+    @Test
+    void staffDeleteAnotherPlayersHomeAtTheRevisionTheyReadAndTheOnlineOwnersListFollows() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        Player owner = onlineOwner(ownerId, Map.of("base", destination, "farm", destination));
+        when(repository.home(ownerId, "base")).thenReturn(Optional.of(new StoredDestination("base", destination, 7)));
+        when(repository.home(ownerId, "farm")).thenReturn(Optional.of(new StoredDestination("farm", destination, 2)));
+        when(repository.deleteHome(ownerId, "base", 7)).thenReturn(DELETED);
+        when(repository.deleteHome(ownerId, "farm", 2)).thenReturn(STALE);
+        enable();
+        assertEquals(List.of("base", "farm"), service.completeHomes(owner, "", "delhome"));
+
+        service.deleteOther(player, "Owner", "base");
+        verify(messages).send(player, Messages.NO_PERMISSION);
+        verify(repository, never()).deleteHome(eq(ownerId), anyString(), anyLong());
+
+        grants.get(player).add(TravelService.PERMISSION_DELHOME_OTHERS);
+        service.deleteOther(player, "Owner", "base");
+        drain();
+        verify(repository).deleteHome(ownerId, "base", 7);
+        verify(messages).send(player, Messages.HOME_DELETED_OTHER, "{player}", "Owner", "{name}", "base");
+        assertEquals(List.of("farm"), service.completeHomes(owner, "", "delhome"), "the online owner's loaded homes follow");
+
+        service.deleteOther(player, "Owner", "farm");
+        drain();
+        verify(messages).send(player, Messages.TRAVEL_CHANGED);
+        service.deleteOther(player, "Owner", "gone");
+        drain();
+        verify(messages).send(player, Messages.HOME_NOT_FOUND_OTHER, "{player}", "Owner", "{name}", "gone");
+    }
+
+    @Test
+    void anEmptyHomeNameListsTheOwnersHomesAndOwnerBedNeedsItsOwnNode() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        Player owner = onlineOwner(ownerId, Map.of("base", destination));
+        when(server.getOfflinePlayer(ownerId)).thenReturn(owner);
+        grants.get(player).add(TravelService.PERMISSION_HOME_OTHERS);
+        enable();
+
+        service.useOther(player, "Owner", "");
+        drain();
+        verify(messages).send(player, Messages.HOME_LIST_OTHER, "{player}", "Owner", "{homes}", "base");
+
+        service.useOther(player, "Owner", "bed");
+        verify(messages).send(player, Messages.NO_PERMISSION);
+        grants.get(player).add(TravelService.PERMISSION_HOME_OTHERS_BED);
+        service.useOther(player, "Owner", "bed");
+        drain();
+        verify(messages).send(player, Messages.HOME_BED_MISSING_OTHER, "{player}", "Owner");
+        verifyNoInteractions(teleports);
+
+        Location bed = new Location(world, -8, 70, 12);
+        when(owner.getBedSpawnLocation()).thenReturn(bed);
+        service.useOther(player, "Owner", "BED");
+        drain();
+        ArgumentCaptor<Supplier<Location>> where = ArgumentCaptor.forClass((Class) Supplier.class);
+        verify(teleports).teleport(eq(player), where.capture(), eq("home"), any());
+        assertEquals(bed, where.getValue().get());
+    }
+
+    @Test
+    void staffCompletionOffersVisibleOnlineOwnersAndTheirLoadedHomesWithoutStorage() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        onlineOwner(ownerId, Map.of("base", destination, "cave", destination));
+        when(repository.homes(player.getUniqueId())).thenReturn(Map.of("barn", destination));
+        enable();
+        assertEquals(List.of("barn"), service.completeHomes(player, "", "home"));
+        assertEquals(List.of(), service.completeHomes(player, "Owner:", "home"));
+
+        grants.get(player).addAll(List.of(TravelService.PERMISSION_HOME_OTHERS, TravelService.PERMISSION_BED));
+        assertEquals(List.of("barn", "bed", "Owner:"), service.completeHomes(player, "", "home"));
+        assertEquals(List.of("barn"), service.completeHomes(player, "", "sethome"), "bed and owners are /home-only");
+        assertEquals(List.of("Owner:base"), service.completeHomes(player, "owner:b", "home"));
+        grants.get(player).add(TravelService.PERMISSION_HOME_OTHERS_BED);
+        assertEquals(List.of("Owner:base", "Owner:bed"), service.completeHomes(player, "Owner:b", "home"));
+        assertEquals(List.of(), service.completeHomes(player, "Owner:", "delhome"), "/delhome needs allium.delhome.others");
+        int reads = org.mockito.Mockito.mockingDetails(repository).getInvocations().size();
+        service.completeHomes(player, "Owner:", "home");
+        assertEquals(reads, org.mockito.Mockito.mockingDetails(repository).getInvocations().size(), "completion never reads storage");
+    }
+
     private static Map<String, StoredDestination> warpRows(Map<String, SavedLocation> locations) {
         Map<String, StoredDestination> result = new HashMap<>();
         locations.forEach((name, location) -> result.put(name, new StoredDestination(name, location, 1)));

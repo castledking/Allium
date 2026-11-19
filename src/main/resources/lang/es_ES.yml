@@ -223,6 +223,12 @@ home:
   not-found-other:
     - "{prefix} &f{player} &cno tiene un hogar llamado &f{name}&c."
     - "[sound] block.note_block.bass 0.8"
+  deleted-other:
+    - "{prefix} &aEliminaste el hogar &f{name} &ade &f{player}&a."
+    - "[sound] item.book.page_turn 0.9"
+  bed-missing-other:
+    - "{prefix} &f{player} &cno tiene cama ni ancla de reaparicion cargada, o esta bloqueada."
+    - "[sound] block.note_block.bass 0.8"
 customtext:
   missing:
     - "{prefix} &cNo hay texto personalizado llamado &f{section}&c."

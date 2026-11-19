@@ -1,0 +1,1119 @@
+{
+  "suite": "paper",
+  "run": "homes-both-paper-1",
+  "alliumSha256": "0dd3b5a1d0b660236a6a76800128cd4835c059e51f0aeeb271f028c6bc7c95a2",
+  "sources": {
+    "tests/live/staff/run.py": "c23a9ff6802f9a0f448de0651e18e1e6ca1013af23608f4c1c7da3a6a1e99f0a",
+    "tests/live/staff/plugin/gate/StaffGate.java": "060523c9025971f966f0fca96dd6a502617f8ae1028672c2b556d088a0b815b7",
+    "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+    "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
+    "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
+    "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+  },
+  "passed": true,
+  "checks": 26,
+  "failures": [],
+  "cases": [
+    {
+      "name": "usage-items-homes",
+      "passed": true
+    },
+    {
+      "name": "home-admin",
+      "passed": true
+    }
+  ],
+  "seconds": 50.6,
+  "results": [
+    {
+      "label": "paper: creative, alts and restore modules enabled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /nick usage lines suggest the command and colour the arguments",
+      "passed": true,
+      "detail": {
+        "plain": "/nick <nickname> - Changes your nickname to the given text",
+        "colors": [
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ],
+        "runs": [
+          {
+            "text": "/nick ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "<nickname> ",
+            "color": "#ffaa00"
+          },
+          {
+            "text": "- ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Changes your nickname to the given text",
+            "color": "#ffffff"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/nick ",
+                "action": "suggest_command"
+              },
+              "underlined": 0,
+              "bold": 0,
+              "color": "white",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "gray",
+                  "obfuscated": 0,
+                  "extra": [
+                    {
+                      "italic": 0,
+                      "underlined": 0,
+                      "bold": 0,
+                      "color": "yellow",
+                      "obfuscated": 0,
+                      "strikethrough": 0,
+                      "text": "/nick"
+                    }
+                  ],
+                  "strikethrough": 0,
+                  "text": "Click to insert "
+                }
+              },
+              "strikethrough": 0,
+              "text": "/nick "
+            },
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/nick ",
+                "action": "suggest_command"
+              },
+              "underlined": 0,
+              "bold": 0,
+              "color": "gold",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "gray",
+                  "obfuscated": 0,
+                  "extra": [
+                    {
+                      "italic": 0,
+                      "underlined": 0,
+                      "bold": 0,
+                      "color": "yellow",
+                      "obfuscated": 0,
+                      "strikethrough": 0,
+                      "text": "/nick"
+                    }
+                  ],
+                  "strikethrough": 0,
+                  "text": "Click to insert "
+                }
+              },
+              "strikethrough": 0,
+              "text": "<nickname> "
+            },
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/nick ",
+                "action": "suggest_command"
+              },
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "gray",
+                  "obfuscated": 0,
+                  "extra": [
+                    {
+                      "italic": 0,
+                      "underlined": 0,
+                      "bold": 0,
+                      "color": "yellow",
+                      "obfuscated": 0,
+                      "strikethrough": 0,
+                      "text": "/nick"
+                    }
+                  ],
+                  "strikethrough": 0,
+                  "text": "Click to insert "
+                }
+              },
+              "strikethrough": 0,
+              "text": "- "
+            },
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/nick ",
+                "action": "suggest_command"
+              },
+              "underlined": 0,
+              "bold": 0,
+              "color": "white",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "gray",
+                  "obfuscated": 0,
+                  "extra": [
+                    {
+                      "italic": 0,
+                      "underlined": 0,
+                      "bold": 0,
+                      "color": "yellow",
+                      "obfuscated": 0,
+                      "strikethrough": 0,
+                      "text": "/nick"
+                    }
+                  ],
+                  "strikethrough": 0,
+                  "text": "Click to insert "
+                }
+              },
+              "strikethrough": 0,
+              "text": "Changes your nickname to the given text"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": true
+      }
+    },
+    {
+      "label": "paper: forms behind allium.nick.others are hidden without it",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /core hide group narrows the card to the group forms",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /rename and /lore write a coloured name and lore lines",
+      "passed": true,
+      "detail": {
+        "type": "DIAMOND_SWORD",
+        "amount": 1,
+        "damage": 0,
+        "name": "\u00a7aCool Sword",
+        "lore": [
+          "\u00a78Zeroth",
+          "\u00a77First line"
+        ]
+      }
+    },
+    {
+      "label": "paper: /lore paste copies the lore onto another item",
+      "passed": true,
+      "detail": {
+        "0": {
+          "type": "DIAMOND_SWORD",
+          "amount": 1,
+          "damage": 0,
+          "name": "\u00a7aCool Sword",
+          "lore": [
+            "\u00a78Zeroth",
+            "\u00a77First line"
+          ]
+        },
+        "1": {
+          "type": "IRON_SWORD",
+          "amount": 1,
+          "damage": 0,
+          "lore": [
+            "\u00a78Zeroth",
+            "\u00a77First line"
+          ]
+        }
+      }
+    },
+    {
+      "label": "paper: /rename clear removes the name",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /xp give 5L sets level 5",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /xp give needs allium.xp.give",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /whois fields are on separate lines",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /homes strikes the bed through when it is not set",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] Homes: bed",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Homes: ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "bed",
+            "color": "#aaaaaa"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "color": "gray",
+              "text": "["
+            },
+            {
+              "color": "light_purple",
+              "text": "Allium"
+            },
+            {
+              "color": "gray",
+              "text": "] "
+            },
+            {
+              "color": "white",
+              "text": "Homes: "
+            },
+            {
+              "color": "gray",
+              "strikethrough": 1,
+              "text": "bed"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: a set bed is listed plain",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] Homes: base, bed",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Homes: ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "base, bed",
+            "color": "#ff55ff"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "color": "gray",
+              "text": "["
+            },
+            {
+              "color": "light_purple",
+              "text": "Allium"
+            },
+            {
+              "color": "gray",
+              "text": "] "
+            },
+            {
+              "color": "white",
+              "text": "Homes: "
+            },
+            {
+              "color": "light_purple",
+              "text": "base, bed"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: /home bed lands at the respawn point",
+      "passed": true,
+      "detail": {
+        "bed": {
+          "x": 3.5,
+          "y": -61.0,
+          "z": 0.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "world": "world"
+        },
+        "landed": {
+          "x": 9.5,
+          "y": -60.9,
+          "z": 6.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "world": "world"
+        }
+      }
+    },
+    {
+      "label": "paper: /home PlayerBot:base lands at PlayerBot's home",
+      "passed": true,
+      "detail": {
+        "home": {
+          "x": 3.5,
+          "y": -61.0,
+          "z": 0.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "world": "world"
+        },
+        "landed": {
+          "x": 3.5,
+          "y": -61.0,
+          "z": 0.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "world": "world"
+        }
+      }
+    },
+    {
+      "label": "paper: /customtext click tags become click events",
+      "passed": true,
+      "detail": {
+        "plain": "Try /customtext rules or /customtext vote.",
+        "colors": [
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#aaaaaa"
+        ],
+        "runs": [
+          {
+            "text": "Try ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "/customtext rules",
+            "color": "#ffff55"
+          },
+          {
+            "text": " or ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "/customtext vote",
+            "color": "#ffff55"
+          },
+          {
+            "text": ".",
+            "color": "#aaaaaa"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "Try "
+            },
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/customtext rules",
+                "action": "run_command"
+              },
+              "underlined": 1,
+              "bold": 0,
+              "color": "yellow",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "yellow",
+                  "obfuscated": 0,
+                  "strikethrough": 0,
+                  "text": "Click to read the rules"
+                }
+              },
+              "strikethrough": 0,
+              "text": "/customtext rules"
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": " or "
+            },
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/customtext vote",
+                "action": "run_command"
+              },
+              "underlined": 1,
+              "bold": 0,
+              "color": "yellow",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "yellow",
+                  "obfuscated": 0,
+                  "strikethrough": 0,
+                  "text": "Click to see where to vote"
+                }
+              },
+              "strikethrough": 0,
+              "text": "/customtext vote"
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "."
+            }
+          ],
+          "text": ""
+        },
+        "interactive": true
+      }
+    },
+    {
+      "label": "paper: a JSON line in customtext.txt is sent as vanilla text",
+      "passed": true,
+      "detail": {
+        "plain": "- Click here to copy the server address",
+        "colors": [
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa"
+        ],
+        "runs": [
+          {
+            "text": "- Click here to copy the server address",
+            "color": "#aaaaaa"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "click_event": {
+            "action": "copy_to_clipboard",
+            "value": "play.example.com"
+          },
+          "color": "gray",
+          "hover_event": {
+            "action": "show_text",
+            "value": "play.example.com"
+          },
+          "text": "- Click here to copy the server address"
+        },
+        "interactive": true
+      }
+    },
+    {
+      "label": "paper: /home completes an online player's homes",
+      "passed": true,
+      "detail": [
+        "PlayerBot:admin1",
+        "PlayerBot:admin2"
+      ]
+    },
+    {
+      "label": "paper: /home completes visible online players as Name:",
+      "passed": true,
+      "detail": [
+        "PlayerBot:"
+      ]
+    },
+    {
+      "label": "paper: /delhome completes no one else's homes without allium.delhome.others",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "label": "paper: /home PlayerBot: lists the homes",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] PlayerBot's homes: admin1, admin2, base",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "PlayerBot's homes: ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "admin1, admin2, base",
+            "color": "#ff55ff"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "color": "gray",
+              "text": "["
+            },
+            {
+              "color": "light_purple",
+              "text": "Allium"
+            },
+            {
+              "color": "gray",
+              "text": "] "
+            },
+            {
+              "color": "white",
+              "text": "PlayerBot's homes: "
+            },
+            {
+              "color": "light_purple",
+              "text": "admin1, admin2, base"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: the online owner sees the deletion at once",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] Homes: admin2, base, bed",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Homes: ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "admin2, base, bed",
+            "color": "#ff55ff"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "color": "gray",
+              "text": "["
+            },
+            {
+              "color": "light_purple",
+              "text": "Allium"
+            },
+            {
+              "color": "gray",
+              "text": "] "
+            },
+            {
+              "color": "white",
+              "text": "Homes: "
+            },
+            {
+              "color": "light_purple",
+              "text": "admin2, base, bed"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: completion follows the deletion",
+      "passed": true,
+      "detail": [
+        "PlayerBot:admin2"
+      ]
+    },
+    {
+      "label": "paper: /home PlayerBot:bed lands at their bed",
+      "passed": true,
+      "detail": {
+        "bed": [
+          -1.5,
+          -61.0,
+          5.5
+        ],
+        "landed": {
+          "x": -1.5,
+          "y": -60.9,
+          "z": 5.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "world": "world"
+        }
+      }
+    },
+    {
+      "label": "paper: an offline player's saved bed is reachable",
+      "passed": true,
+      "detail": {
+        "bed": [
+          -1.5,
+          -61.0,
+          5.5
+        ],
+        "landed": {
+          "x": -2.0,
+          "y": -61.0,
+          "z": 5.0,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "world": "world"
+        }
+      }
+    },
+    {
+      "label": "paper: an offline deletion holds when the owner returns",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] Homes: base, bed",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Homes: ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "base, bed",
+            "color": "#ff55ff"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "color": "gray",
+              "text": "["
+            },
+            {
+              "color": "light_purple",
+              "text": "Allium"
+            },
+            {
+              "color": "gray",
+              "text": "] "
+            },
+            {
+              "color": "white",
+              "text": "Homes: "
+            },
+            {
+              "color": "light_purple",
+              "text": "base, bed"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: no exceptions or SEVERE lines in the server log",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

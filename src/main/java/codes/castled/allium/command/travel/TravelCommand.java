@@ -24,10 +24,12 @@ public final class TravelCommand implements SpecCommandHandler {
             if(args.length!=0){context.sendInvalidArgs(spec.selfUsage());return;}
             service.list(player,warp);return;
         }
-        // /home <player>:<home>; home names never contain ':'.
-        if(command.equals("home")&&args.length==1&&args[0].indexOf(':')>0){
+        // /home and /delhome <player>:<home>; home names never contain ':'.
+        if((command.equals("home")||command.equals("delhome"))&&args.length==1&&args[0].indexOf(':')>0){
             String[] parts=args[0].split(":",2);
-            service.useOther(player,parts[0],parts[1]);return;
+            if(command.equals("home"))service.useOther(player,parts[0],parts[1]);
+            else service.deleteOther(player,parts[0],parts[1]);
+            return;
         }
         boolean set=command.startsWith("set");
         if(args.length>(set?2:1)||warp&&args.length==0||args.length==2&&!args[1].equalsIgnoreCase("confirm")){

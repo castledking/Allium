@@ -1168,6 +1168,40 @@ public final class MailService implements Listener {
         }
     }
 
+    /** Unread mail and unclaimed gifts per online player, for placeholders; read off the server thread. */
+    public record Counts(int unread, int gifts) {
+        public static final Counts NONE = new Counts(0, 0);
+    }
+
+    private final Map<UUID, Counts> counts = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public Counts counts(UUID player) {
+        return counts.getOrDefault(player, Counts.NONE);
+    }
+
+    /** Recounts the given players' mailboxes on the mail worker, and forgets everyone else. */
+    public void refreshCounts(java.util.Collection<UUID> online) {
+        List<UUID> ids = List.copyOf(online);
+        counts.keySet().retainAll(ids);
+        long now = System.currentTimeMillis();
+        try {
+            io.execute(() -> {
+                for (UUID id : ids) {
+                    try {
+                        List<MailRecord> box = repository.mailbox(id, now);
+                        int unread = (int) box.stream().filter(MailRecord::unread).count();
+                        int gifts = (int) box.stream().filter(m -> m.kind() == MailKind.GIFT && m.state() == MailState.READY).count();
+                        counts.put(id, new Counts(unread, gifts));
+                    } catch (SQLException e) {
+                        return;
+                    }
+                }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException busy) {
+            // the next refresh tries again
+        }
+    }
+
     public List<String> completeMailbox(Player player, boolean claimableOnly) {
         return mailboxCache.getOrDefault(player, List.of()).stream()
                 .filter(m -> claimableOnly ? m.kind() == MailKind.GIFT && m.state() == MailState.READY : m.kind() == MailKind.TEXT)

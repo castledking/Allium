@@ -166,6 +166,11 @@ public final class MessagingService implements Listener {
     }
 
     /** {@code /reply}: to the last partner, re-checking the whole policy now. */
+    /** Who {@code /reply} would answer for this player, if anyone. */
+    public Optional<UUID> replyTarget(UUID participant) {
+        return replies.target(participant);
+    }
+
     public void reply(CommandSender sender, String body) {
         Optional<UUID> target = replies.target(idOf(sender));
         if (target.isEmpty()) {

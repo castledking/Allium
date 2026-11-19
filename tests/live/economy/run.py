@@ -678,14 +678,14 @@ def commands(lane):
     obs.command('mute MoneyA payment mute','MoneyA has been muted')
     a.command('pay MoneyB 0.01',"can't receive payments right now.")
     obs.command('unmute MoneyA','MoneyA has been unmuted')
-    set_balance(lane,'MoneyA','0.01');a.command('pay MoneyB 0.02','INSUFFICIENT_FUNDS')
-    set_balance(lane,'MoneyB','10000000000000.00');a.command('pay MoneyB 0.01','CAP')
+    set_balance(lane,'MoneyA','0.01');a.command('pay MoneyB 0.02',"enough funds")
+    set_balance(lane,'MoneyB','10000000000000.00');a.command('pay MoneyB 0.01',"maximum allowed balance")
     require(balance(lane,'MoneyA')==1,lane.name+': recipient cap rolls back debit')
     set_balance(lane,'MoneyA','1.00');set_balance(lane,'MoneyB','0.00')
     # Real protocol burst sends independent command packets, then observes exact conservation.
     mark=len(a.lines)
     for i in range(8):a.write('cmd pay MoneyB 0.20')
-    wait(lambda:len([c for c in a.chats(mark) if 'Paid 0.20' in c['plain'] or 'INSUFFICIENT_FUNDS' in c['plain']])>=8,'all spam payments settled',30)
+    wait(lambda:len([c for c in a.chats(mark) if 'Paid 0.20' in c['plain'] or 'enough funds' in c['plain']])>=8,'all spam payments settled',30)
     require(balance(lane,'MoneyA')==0 and balance(lane,'MoneyB')==100,lane.name+': concurrent /pay spam cannot overspend and conserves finite balance')
 
 

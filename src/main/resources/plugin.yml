@@ -588,6 +588,13 @@ permissions:
       allium.gamemode.creative.container: true
       allium.gamemode.creative.spawn: true
       allium.gamemode.creative.blacklist: true
+      allium.gamemode.creative.filled-containers: true
+      allium.gamemode.creative.loot: true
+      allium.gamemode.creative.untagged: true
+      allium.gamemode.creative.any-item: true
+      allium.gamemode.creative.keep-effects: true
+      allium.gamemode.creative.own-armor: true
+      allium.gamemode.creative.pickblock: true
       allium.gamemode.creative.inventory: true
       allium.gamemode.spectator.teleport: true
       allium.alerts: true
@@ -905,7 +912,28 @@ permissions:
     description: Use spawn eggs in creative mode
     default: op
   allium.gamemode.creative.blacklist:
-    description: Bypass creative-manager.blacklist
+    description: Bypass creative-manager.blacklist (blocks, entities, items, commands) and protect-tnt
+    default: op
+  allium.gamemode.creative.filled-containers:
+    description: Place chests, shulker boxes and other containers that already hold items in creative mode
+    default: op
+  allium.gamemode.creative.loot:
+    description: Get the normal drops from (or, with survival-break deny, break) blocks placed in creative mode
+    default: op
+  allium.gamemode.creative.untagged:
+    description: Take items from the creative menu without the creative item lore
+    default: op
+  allium.gamemode.creative.any-item:
+    description: Take any item from the creative menu, unsanitized, enchanted or with potion effects
+    default: op
+  allium.gamemode.creative.keep-effects:
+    description: Keep potion effects when entering or leaving creative (clear-effects-on-switch)
+    default: op
+  allium.gamemode.creative.own-armor:
+    description: Keep your own armour in creative instead of the creative armour
+    default: op
+  allium.gamemode.creative.pickblock:
+    description: Use pick block in creative mode (Paper 1.21.4 and later; older servers leave pick block to the client)
     default: op
   allium.gamemode.creative.inventory:
     description: Keep one shared inventory across gamemodes (no separate creative inventory)

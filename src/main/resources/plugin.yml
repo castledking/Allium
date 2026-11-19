@@ -157,6 +157,14 @@ commands:
     description: Show a page of the server's custom text
     usage: /<command> [section] [page]
     permission: allium.customtext
+  motd:
+    description: Show the message of the day
+    usage: /<command> [section] [page]
+    permission: allium.motd
+  rules:
+    description: Show the server rules
+    usage: /<command> [chapter] [page]
+    permission: allium.rules
   heal:
     description: Restore health, hunger and remove effects
     usage: /<command> [player]
@@ -621,6 +629,8 @@ permissions:
       allium.xp.take: true
       allium.xp.set: true
       allium.customtext: true
+      allium.motd: true
+      allium.rules: true
       allium.home.bed: true
       allium.home.others: true
       allium.home.others.bed: true
@@ -1378,6 +1388,12 @@ permissions:
     default: op
   allium.customtext:
     description: Allows /customtext
+    default: true
+  allium.motd:
+    description: Allows /motd, and shows the message of the day on join (motd.show-on-join)
+    default: true
+  allium.rules:
+    description: Allows /rules
     default: true
   allium.enchant.unsafe:
     description: Allows applying unsafe or incompatible enchantments and above-max vanilla levels. Explicit only; not in allium.*

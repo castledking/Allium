@@ -179,7 +179,11 @@ public final class CommandUsages {
                     u("set <player> <amount>[L]", "Sets experience points, or levels with L", "allium.xp.set"),
                     u("reset <player>", "Removes all of a player's experience", "allium.xp.set")),
             e("customtext", u("", "Shows the custom text index"),
-                    u("<section> [page]", "Shows a section of the custom text")));
+                    u("<section> [page]", "Shows a section of the custom text")),
+            e("motd", u("", "Shows the message of the day"),
+                    u("<section> [page]", "Shows a section of the message of the day")),
+            e("rules", u("", "Shows the server rules"),
+                    u("<chapter> [page]", "Shows a chapter of the rules")));
 
     /** The hand-written usage lines for a command family, or none. */
     public static List<CommandUsage> of(String command) {

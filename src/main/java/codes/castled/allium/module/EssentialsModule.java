@@ -37,6 +37,7 @@ public final class EssentialsModule extends AbstractModule {
     private TimePauseCoordinator timePauseCoordinator;
     private UtilityCommand.DisposalListener disposalListener;
     private codes.castled.allium.command.essentials.LoreClipboard loreClipboard;
+    private codes.castled.allium.command.essentials.MotdOnJoin motdOnJoin;
     private SkullProfiles fallbackSkulls;
 
     public EssentialsModule(PluginStart plugin) {
@@ -94,9 +95,16 @@ public final class EssentialsModule extends AbstractModule {
         }
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ItemTextCommand(plugin, CoreCommandSpecs.LORE, loreClipboard));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.XpCommand(plugin));
-        var customText = new codes.castled.allium.command.essentials.CustomTextCommand(plugin);
-        customText.installDefault();
-        plugin.getCommandManager().register(customText);
+        var motd = codes.castled.allium.command.essentials.TextFileCommand.motd(plugin);
+        for (var textFile : java.util.List.of(codes.castled.allium.command.essentials.TextFileCommand.customText(plugin), motd,
+                codes.castled.allium.command.essentials.TextFileCommand.rules(plugin))) {
+            textFile.installDefault();
+            plugin.getCommandManager().register(textFile);
+        }
+        motdOnJoin = new codes.castled.allium.command.essentials.MotdOnJoin(plugin, motd);
+        if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
+            plugin.getServer().getPluginManager().registerEvents(motdOnJoin, plugin);
+        }
     }
 
     private SkullProfiles resolveSkullProfiles() {
@@ -137,6 +145,10 @@ public final class EssentialsModule extends AbstractModule {
         if (loreClipboard != null) {
             HandlerList.unregisterAll(loreClipboard);
             loreClipboard = null;
+        }
+        if (motdOnJoin != null) {
+            HandlerList.unregisterAll(motdOnJoin);
+            motdOnJoin = null;
         }
         if (timePauseCoordinator != null) {
             timePauseCoordinator.close();

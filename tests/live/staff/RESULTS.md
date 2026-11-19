@@ -1,5 +1,19 @@
 # Staff tooling live gate
 
+## November 18 follow-up (r12): /motd, /rules and the join MOTD
+
+**PASS on targeted runs:** the new `motd-rules` case with `home-admin` (`motd-spigot-2`,
+`motd-paper-2`, 17 checks each) and `usage-items-homes` (`usage-spigot-motd-1`,
+`usage-paper-motd-1`, 17 checks each) on Spigot 1.20.1 and Paper 26.3, SQLite, Allium.jar
+`aaf722c8006ed72f5aba84268bb90fc620f2347893913378295ec6e6a4c80ea0`. No exceptions or SEVERE lines. `./gradlew check`: 1041 unit tests, 0 failures. The other
+staff cases did not run on this jar. `home-admin` and `motd-rules` reconnect PlayerBot, which
+drops the fixture's non-sticky grants, so they now run last.
+
+| Case | What ran |
+| --- | --- |
+| motd-rules | on rejoin the MOTD arrives with `{displayname}` filled and its `/rules` click tag, and not with `allium.motd` denied; `/motd`; `/rules` with click tags, `/rules grief` (an alias), a missing chapter, `/rules g` completion; a `rules.txt` with chapters only lists them as clickable links and `/rules build` works without a reload |
+| usage-items-homes (updated) | the bundled `customtext.txt` index now links `/customtext vote` and `/rules` |
+
 ## November 18 follow-up (r11): offline home administration
 
 **PASS on targeted runs:** `usage-items-homes` and the new `home-admin` case ran together with

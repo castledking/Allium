@@ -234,7 +234,21 @@ customtext:
     - "{prefix} &cNo hay texto personalizado llamado &f{section}&c."
     - "[sound] block.note_block.bass 0.8"
   failed:
-    - "{prefix} &cNo se pudo leer el texto personalizado. Revisa la consola."
+    - "{prefix} &f{file} &cno se pudo leer. Revisa la consola."
+    - "[sound] block.note_block.bass 0.8"
+  empty:
+    - "{prefix} &f{file} &7aun no tiene nada que mostrar."
+    - "[sound] block.note_block.hat 0.95"
+  sections:
+    - "{prefix} &7Secciones de &f/{command}&7: {sections}"
+    - "[sound] item.book.page_turn 1.1"
+motd:
+  missing:
+    - "{prefix} &cNo hay una seccion del MOTD llamada &f{section}&c."
+    - "[sound] block.note_block.bass 0.8"
+rules:
+  missing:
+    - "{prefix} &cNo hay un capitulo de reglas llamado &f{section}&c."
     - "[sound] block.note_block.bass 0.8"
 warp:
   set:

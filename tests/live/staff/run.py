@@ -928,8 +928,8 @@ def usage_items_homes(lane):
     # /customtext: the bundled file's index, click and hover tags and a JSON line.
     m = player.cmd('customtext')
     player.chat(m, 'Welcome to')
-    tags = player.chat(m, '/customtext rules')
-    require(tags['interactive'] and 'run_command' in raw(tags) and '/customtext rules' in raw(tags),
+    tags = player.chat(m, '/customtext vote')
+    require(tags['interactive'] and 'run_command' in raw(tags) and '/customtext vote' in raw(tags),
             lane.name + ': /customtext click tags become click events', tags)
     m = player.cmd('customtext vote')
     copy = player.chat(m, 'Click here to copy the server address')
@@ -1002,6 +1002,46 @@ def home_admin(lane):
     lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
     lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
     window(.5)
+
+
+def motd_rules(lane):
+    """/motd and /rules from motd.txt and rules.txt, the join MOTD and the chapter list."""
+    player = lane.bots['PlayerBot']
+    # The join MOTD: shown after the join delay, with its click tag, and not without allium.motd.
+    player.disconnect()
+    start = player.connect()
+    welcome = player.chat(start, 'Welcome to', 15)
+    require('PlayerBot' in welcome['plain'], lane.name + ': the join MOTD fills {displayname}', welcome)
+    tag = player.chat(start, 'Read the rules before you build.')
+    require(tag['interactive'] and 'run_command' in raw(tag) and '/rules' in raw(tag), lane.name + ': the join MOTD keeps its click tag', tag)
+    lane.fixture('sticky PlayerBot allium.motd false')
+    player.disconnect()
+    start = player.connect()
+    window(2.0)
+    require(not player.saw(start, 'Welcome to'), lane.name + ': no join MOTD without allium.motd')
+    lane.fixture('sticky PlayerBot allium.motd true')
+    lane.perm('PlayerBot', 'allium.motd')  # sticky grants apply at login; this one is for the live session
+
+    player.command('motd', 'Welcome to')
+    m = player.cmd('rules')
+    player.chat(m, 'Server rules')
+    details = player.chat(m, 'No griefing or stealing.')
+    require(details['interactive'] and '/rules griefing' in raw(details), lane.name + ': /rules lines keep their click tags', details)
+    player.command('rules grief', 'What counts as griefing')
+    player.command('rules nope', 'There is no rules chapter called nope.')
+    tabs = player.tab('rules g')
+    require({'griefing', 'grief'} <= set(tabs), lane.name + ': /rules completes chapters and aliases', tabs)
+
+    # A rules.txt with chapters only lists them; edits show without a reload.
+    rules = lane.path / 'plugins/Allium/rules.txt'
+    original = rules.read_text()
+    try:
+        rules.write_text('## chapters only\n#building,build\nBuild nicely.\n#pvp\nNo spawn kills.\n')
+        listed = player.command('rules', 'Sections of /rules: building, pvp')
+        require(listed['interactive'] and '/rules building' in raw(listed), lane.name + ': the chapter list is clickable', listed)
+        player.command('rules build', 'Build nicely.')
+    finally:
+        rules.write_text(original)
 
 
 def restore(lane):
@@ -1546,11 +1586,13 @@ def main():
         case('mail-numbers', lambda: mail_numbers(lane))
         case('whois-alts', lambda: whois_and_alts(lane))
         case('usage-items-homes', lambda: usage_items_homes(lane))
-        case('home-admin', lambda: home_admin(lane))
         case('restore', lambda: restore(lane))
         case('paid-repair', lambda: paid_repair(lane))
         case('repair-halt-after-reserve', lambda: repair_halt(lane, 'repair.halt-after-reserve', 'released'))
         case('repair-halt-after-save', lambda: repair_halt(lane, 'repair.halt-after-save', 'captured'))
+        # Both reconnect PlayerBot, which drops its non-sticky grants: keep them last.
+        case('home-admin', lambda: home_admin(lane))
+        case('motd-rules', lambda: motd_rules(lane))
     finally:
         try:
             lane.stop()

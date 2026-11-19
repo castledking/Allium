@@ -22,6 +22,8 @@ public final class CoreCommandSpecs {
             Map.entry("tp", "Teleport to a player or coordinates, or move a player"),
             Map.entry("tppos", "Teleport to coordinates"),
             Map.entry("tphere", "Teleport a player to you"),
+            Map.entry("tpo", "Teleport to or move a player, bypassing /tptoggle"),
+            Map.entry("tpohere", "Teleport a player to you, bypassing /tptoggle"),
             Map.entry("tpoffline", "Teleport to where an offline player logged out"),
             Map.entry("there", "Teleport to the block you are looking at, or send selected entities there"),
             Map.entry("top", "Teleport to the highest block above you"),
@@ -31,9 +33,11 @@ public final class CoreCommandSpecs {
             Map.entry("sethome", "Set a home here"),
             Map.entry("home", "Teleport to one of your homes"),
             Map.entry("delhome", "Delete one of your homes"),
+            Map.entry("renamehome", "Rename one of your homes"),
             Map.entry("homes", "List your homes"),
             Map.entry("setwarp", "Create or move a warp here"),
-            Map.entry("warp", "Teleport to a warp"),
+            Map.entry("warp", "Teleport to a warp, or send a player to a warp"),
+            Map.entry("warpinfo", "Show a warp's location and permission"),
             Map.entry("delwarp", "Delete a warp"),
             Map.entry("warps", "List the warps you can use"),
             Map.entry("kick", "Kick a player with a reason"),
@@ -279,13 +283,19 @@ public final class CoreCommandSpecs {
             "core",
             List.of("core"),
             "Allium administration",
-            "/allium <reload|version|import lang [apply]|adopt-window [<duration>|off]|hide>",
-            "/allium <reload|version|import lang [apply]|adopt-window [<duration>|off]|hide>",
+            "/allium <reload|version|sethomes|import lang [apply]|adopt-window [<duration>|off]|hide>",
+            "/allium <reload|version|sethomes|import lang [apply]|adopt-window [<duration>|off]|hide>",
             null,
             null,
             List.of(),
             List.of(
                     new CommandNodeSpec("hide", List.of(), "allium.hide.admin", "/allium hide <status|reload|enabled|group|resolve|fix|unfix>", List.of(), List.of()),
+                    new CommandNodeSpec("sethomes", List.of(), "allium.sethomes", "/allium sethomes <player> [number|+N|-N|-1]",
+                            List.of(
+                                    CommandArgSpec.required("player", "allium.sethomes", SuggestionSpec.knownPlayers("allium.sethomes")),
+                                    CommandArgSpec.optional("limit", "allium.sethomes", SuggestionSpec.literals(List.of("-1", "+1", "+5", "3", "5", "10"), "allium.sethomes"))
+                            ),
+                            List.of()),
                     new CommandNodeSpec("reload", List.of(), "allium.reload", "/allium reload", List.of(), List.of()),
                     new CommandNodeSpec("version", List.of(), null, "/allium version", List.of(), List.of()),
                     new CommandNodeSpec("import", List.of(), "allium.import", "/allium import <lang [apply]|legacy [apply <run>]>", List.of(), List.of(
@@ -663,18 +673,36 @@ public final class CoreCommandSpecs {
             "Teleport to your bed", "/bed", "/bed", "allium.home.bed", null, List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
 
     public static final List<CommandSpec> TRAVEL_SPECS = java.util.stream.Stream.concat(
-            java.util.stream.Stream.of("sethome","home","delhome","homes","setwarp","warp","delwarp","warps").map(CoreCommandSpecs::travelSpec),
+            java.util.stream.Stream.of("sethome","home","delhome","renamehome","homes","setwarp","warp","warpinfo","delwarp","warps").map(CoreCommandSpecs::travelSpec),
             java.util.stream.Stream.of(BED)).toList();
     private static CommandSpec travelSpec(String command) {
         boolean warp=command.contains("warp"),list=command.equals("homes")||command.equals("warps"),set=command.startsWith("set");
-        String usage="/"+command+(command.equals("homes")?" [player]":list?"":warp?" <name>":" [name]")+(set?" [confirm]":"");
+        String usage=switch(command){
+            case "homes"->"/homes [player]";
+            case "warps"->"/warps";
+            case "warp"->"/warp <name> [player]";
+            case "warpinfo"->"/warpinfo <name>";
+            case "renamehome"->"/renamehome <home> <newhome>";
+            default->"/"+command+(warp?" <name>":" [name]")+(set?" [confirm]":"");
+        };
+        String othersPerm=switch(command){
+            case "homes"->"allium.homes.others";
+            case "home"->"allium.home.others";
+            case "delhome"->"allium.delhome.others";
+            case "renamehome"->"allium.renamehome.others";
+            case "warp"->"allium.warp.others";
+            default->null;
+        };
         java.util.ArrayList<CommandArgSpec> args=new java.util.ArrayList<>();
         if(command.equals("homes"))args.add(CommandArgSpec.optional("player","allium.homes.others",SuggestionSpec.knownPlayers("allium.homes.others")));
         if(!list){var suggestion=new SuggestionSpec(warp?SuggestionSource.WARP_NAMES:SuggestionSource.HOME_NAMES,List.of(),null);
-            args.add(warp?CommandArgSpec.required("name",null,suggestion):CommandArgSpec.optional("name",null,suggestion));
-            if(set)args.add(CommandArgSpec.optional("confirm",null,SuggestionSpec.literals(List.of("confirm"),null)));}
+            args.add(warp||command.equals("renamehome")?CommandArgSpec.required("name",null,suggestion):CommandArgSpec.optional("name",null,suggestion));
+            if(set)args.add(CommandArgSpec.optional("confirm",null,SuggestionSpec.literals(List.of("confirm"),null)));
+            if(command.equals("warp"))args.add(CommandArgSpec.optional("player","allium.warp.others",SuggestionSpec.onlinePlayers("allium.warp.others")));
+            if(command.equals("renamehome"))args.add(CommandArgSpec.required("newhome",null,SuggestionSpec.none()));
+        }
         return new CommandSpec(command,CommandSpec.DEFAULT_NAMESPACE,"travel",List.of(),describe(command,"Allium homes and warps: "+command),
-                usage,usage,"allium."+command,null,args,List.of(),CommandMessageKeys.ofOutcomes(Map.of()));
+                usage,command.equals("warp")?"/warp <name> <player>":usage,"allium."+command,othersPerm,args,List.of(),CommandMessageKeys.ofOutcomes(Map.of()));
     }
 
     public static final List<CommandSpec> TELEPORT_SPECS = List.of(
@@ -688,6 +716,9 @@ public final class CoreCommandSpecs {
             teleportSpec("back", List.of()), teleportSpec("spawn", List.of()), teleportSpec("setspawn", List.of()),
             teleportSpec("tp", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
                     CommandArgSpec.optional("target", "allium.tp.others", SuggestionSpec.onlinePlayers("allium.tp.others")))),
+            teleportSpec("tpo", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
+                    CommandArgSpec.optional("target", "allium.tpo", SuggestionSpec.onlinePlayers("allium.tpo")))),
+            teleportSpec("tpohere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))),
             teleportSpec("there", List.of(CommandArgSpec.optional("targets",null,SuggestionSpec.onlinePlayers(null)))),
             teleportSpec("tppet", List.of(CommandArgSpec.optional("player","allium.tppet.others",SuggestionSpec.onlinePlayers("allium.tppet.others")))),
             teleportSpec("tpent", List.of(CommandArgSpec.optional("player","allium.tpmob.others",SuggestionSpec.onlinePlayers("allium.tpmob.others")))),
@@ -703,7 +734,8 @@ public final class CoreCommandSpecs {
 
     private static CommandSpec teleportSpec(String command, List<CommandArgSpec> args) {
         String usage = "/" + command + switch(command) {
-            case "tpa", "tpahere", "tpoffline" -> " <player>";
+            case "tpa", "tpahere", "tpoffline", "tpohere" -> " <player>";
+            case "tpo" -> " <player> [target]";
             case "tphere", "there" -> " [players|selectors...]";
             case "tppet", "tpent" -> " [player]";
             case "tpaccept", "tpdeny" -> " [requester]";

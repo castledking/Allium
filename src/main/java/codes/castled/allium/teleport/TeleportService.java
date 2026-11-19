@@ -11,12 +11,16 @@ import codes.castled.allium.preference.PreferenceKey;
 import codes.castled.allium.preference.PreferenceSessions;
 import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.event.world.WorldLoadEvent;
+import org.bukkit.permissions.Permission;
+import org.bukkit.permissions.PermissionDefault;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.SQLException;
@@ -31,6 +35,7 @@ import java.util.function.BooleanSupplier;
 public final class TeleportService implements Listener {
     private static final Map<PluginStart,TeleportService> OWNERS=new WeakHashMap<>();
     public static final String FAULT_WRITE_FAIL="teleport.write-fail",FAULT_LOAD_FAIL="teleport.load-fail";
+    public static final String WORLD_PERMISSION_PREFIX="allium.worlds.";
     public static final UUID SERVER=new UUID(0,0);
     private final PluginStart plugin;
     private final TeleportRepository repository;
@@ -83,6 +88,7 @@ public final class TeleportService implements Listener {
             OWNERS.put(plugin,this);
         }
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
+        registerWorldPermissions();
         loadSpawn(0);
         for(Player p:plugin.getServer().getOnlinePlayers())joined(p);
         timer=plugin.getScheduler().repeatOnServer(()->{
@@ -227,15 +233,44 @@ public final class TeleportService implements Listener {
     }
     public void forceLocation(CommandSender actor,Player mover,Location destination,String command){
         if(!actor.hasPermission(permission(command))||!visible(actor,mover)){send(actor,Messages.NO_PERMISSION);return;}
-        Location snapshot=destination.clone();begin(mover,actor,command,()->snapshot.clone(),null,null,false,()->visible(actor,mover)&&(actor==mover||!(actor instanceof Player p)||allowed(p,mover,actor,true,false)&&allowed(mover,p,actor,true,false)));
+        Location snapshot=destination.clone();begin(mover,actor,command,()->snapshot.clone(),null,null,false,()->visible(actor,mover)&&(actor==mover||!(actor instanceof Player p)||allowed(p,mover,actor,true,false,false)&&allowed(mover,p,actor,true,false,false)));
     }
     public void force(CommandSender actor,Player mover,Player target,String command) {
-        boolean allowed=actor.hasPermission("allium."+command)&&(!(actor instanceof Player)||command.equals("tphere")||mover==actor||actor.hasPermission("allium.tp.others"))&&visible(actor,mover)&&visible(actor,target)
-                &&allowed(mover,target,actor,true,false)&&allowed(target,mover,actor,true,false);
+        boolean bypassToggle=overridesToggle(actor,command);
+        boolean multi=command.equals("tphere")||command.equals("tpohere")||mover==actor||actor.hasPermission("allium.tp.others")||command.equals("tpo")&&actor.hasPermission("allium.tpo");
+        boolean allowed=actor.hasPermission("allium."+command)&&(!(actor instanceof Player)||multi)&&visible(actor,mover)&&visible(actor,target)
+                &&allowed(mover,target,actor,true,false,bypassToggle)&&allowed(target,mover,actor,true,false,bypassToggle);
         plugin.logger().info("Teleport audit actor="+actor.getName()+" mover="+mover.getUniqueId()+" target="+target.getUniqueId()
-                +" command="+command+" result="+(allowed?"authorized":"denied")+" reason="+(allowed?"explicit-force-permission":"permission-or-recipient-policy")+" authorized="+allowed+" toggleBypass="+actor.hasPermission("allium.teleport.bypass.toggle"));
+                +" command="+command+" result="+(allowed?"authorized":"denied")+" reason="+(allowed?"explicit-force-permission":"permission-or-recipient-policy")+" authorized="+allowed+" toggleBypass="+bypassToggle);
         if(!allowed){send(actor,Messages.TELEPORT_REFUSED,"{player}",target.getName());return;}
         begin(mover,actor,command,target::getLocation,target,null,true);
+    }
+    private static boolean overridesToggle(CommandSender actor,String command){
+        return actor.hasPermission("allium.teleport.bypass.toggle")
+                || command.equals("tpo")&&actor.hasPermission("allium.tpo")
+                || command.equals("tpohere")&&actor.hasPermission("allium.tpohere");
+    }
+    public void registerWorldPermission(World world){
+        if(world==null||world.getName()==null||plugin.getServer()==null||plugin.getServer().getPluginManager()==null)return;
+        String node=WORLD_PERMISSION_PREFIX+world.getName().toLowerCase(Locale.ROOT);
+        var pm=plugin.getServer().getPluginManager();
+        if(pm.getPermission(node)==null){
+            try{pm.addPermission(new Permission(node,"Allows entering world "+world.getName(),PermissionDefault.TRUE));}
+            catch(IllegalArgumentException ignored){}
+        }
+    }
+    private void registerWorldPermissions(){
+        if(plugin.getServer()==null||plugin.getServer().getWorlds()==null)return;
+        for(World world:plugin.getServer().getWorlds())registerWorldPermission(world);
+    }
+    public boolean canEnterWorld(Player player,@Nullable World world){
+        if(player==null||world==null||world.getName()==null)return true;
+        String node=WORLD_PERMISSION_PREFIX+world.getName().toLowerCase(Locale.ROOT);
+        if(player.hasPermission(node))return true;
+        if(player.isPermissionSet(node))return false;
+        var pm=plugin.getServer()==null?null:plugin.getServer().getPluginManager();
+        Permission registered=pm==null?null:pm.getPermission(node);
+        return registered==null||registered.getDefault()!=PermissionDefault.FALSE;
     }
     /** Last successfully saved logout position; name resolution and SQL run on bounded workers. */
     public void offline(Player mover,String name){
@@ -299,6 +334,11 @@ public final class TeleportService implements Listener {
         }
         TeleportSettings rules=settings;
         Location wanted=destination.get();
+        if(wanted!=null&&wanted.getWorld()!=null&&!canEnterWorld(mover,wanted.getWorld())){
+            send(actor,Messages.WORLD_ACCESS_DENIED,"{world}",wanted.getWorld().getName());
+            if(actor!=mover)send(mover,Messages.WORLD_ACCESS_DENIED,"{world}",wanted.getWorld().getName());
+            return false;
+        }
         if(safety.ungenerated(wanted,rules)){send(actor,Messages.TELEPORT_UNGENERATED);return false;}
         var checked=safety.resolve(wanted,safetyRules(mover,actor,rules));
         if(checked.isEmpty()){send(actor,Messages.TELEPORT_UNSAFE);return false;}
@@ -324,11 +364,21 @@ public final class TeleportService implements Listener {
             var request=operation.request();Player sender=plugin.getServer().getPlayer(request.requester());Player receiver=plugin.getServer().getPlayer(request.recipient());
             if(sender==null||receiver==null||!receiver.hasPermission("allium.tpaccept")||!allowed(sender,receiver,sender,false,false)){interrupt(operation,"request policy changed");return;}
         }
-        if(operation.force()&&((operation.command().equals("tp")&&operation.actor() instanceof Player&&mover!=operation.actor()&&!operation.actor().hasPermission("allium.tp.others"))||!visible(operation.actor(),mover)||!visible(operation.actor(),operation.anchor())
-                ||!allowed(mover,operation.anchor(),operation.actor(),true,false)||!allowed(operation.anchor(),mover,operation.actor(),true,false))) {
-            interrupt(operation,"teleport policy changed");return;
+        if(operation.force()){
+            boolean bypassToggle=overridesToggle(operation.actor(),operation.command());
+            if((operation.command().equals("tp")&&operation.actor() instanceof Player&&mover!=operation.actor()&&!operation.actor().hasPermission("allium.tp.others"))||!visible(operation.actor(),mover)||!visible(operation.actor(),operation.anchor())
+                    ||!allowed(mover,operation.anchor(),operation.actor(),true,false,bypassToggle)||!allowed(operation.anchor(),mover,operation.actor(),true,false,bypassToggle)) {
+                interrupt(operation,"teleport policy changed");return;
+            }
         }
-        var destination=safety.resolve(operation.destination().get(),safetyRules(mover,operation.actor(),operation.rules()));
+        Location targetLoc=operation.destination().get();
+        if(targetLoc!=null&&targetLoc.getWorld()!=null&&!canEnterWorld(mover,targetLoc.getWorld())){
+            operations.remove(id);offlineLookups.remove(id);
+            send(operation.actor(),Messages.WORLD_ACCESS_DENIED,"{world}",targetLoc.getWorld().getName());
+            if(operation.actor()!=mover)send(mover,Messages.WORLD_ACCESS_DENIED,"{world}",targetLoc.getWorld().getName());
+            return;
+        }
+        var destination=safety.resolve(targetLoc,safetyRules(mover,operation.actor(),operation.rules()));
         if(destination.isEmpty()){operations.remove(id);offlineLookups.remove(id);send(operation.actor(),Messages.TELEPORT_UNSAFE);return;}
         OfflineLookup offline=operation.command().equals("tpoffline")?offlineLookups.get(id):null;
         Location origin=mover.getLocation().clone();
@@ -372,6 +422,9 @@ public final class TeleportService implements Listener {
         return rules.forMover(flight,actor.hasPermission("allium.teleport.unsafe"));
     }
     private boolean allowed(Player requester,Player recipient,CommandSender actor,boolean force,boolean notify) {
+        return allowed(requester,recipient,actor,force,notify,false);
+    }
+    private boolean allowed(Player requester,Player recipient,CommandSender actor,boolean force,boolean notify,boolean bypassToggle) {
         Messages refusal=null;
         if(!samePlayer(requester)||!samePlayer(recipient)||!visible(actor,recipient)||!force&&!visible(recipient,requester))refusal=Messages.PLAYER_NOT_FOUND;
         else if(requester==recipient)refusal=Messages.TELEPORT_SELF;
@@ -379,7 +432,7 @@ public final class TeleportService implements Listener {
             PreferencesModule prefs=preferences();
             PreferenceSessions.Acceptance acceptance=prefs==null?PreferenceSessions.Acceptance.UNAVAILABLE:prefs.acceptance(recipient.getUniqueId(),PreferenceKey.ACCEPT_TELEPORT_REQUESTS);
             if(acceptance==PreferenceSessions.Acceptance.UNAVAILABLE)refusal=Messages.PREFERENCES_UNAVAILABLE;
-            else if(acceptance==PreferenceSessions.Acceptance.REFUSES&&!(force&&actor.hasPermission("allium.teleport.bypass.toggle")))refusal=Messages.TELEPORT_REFUSED;
+            else if(acceptance==PreferenceSessions.Acceptance.REFUSES&&!(force&&(bypassToggle||actor.hasPermission("allium.teleport.bypass.toggle"))))refusal=Messages.TELEPORT_REFUSED;
             if(refusal==null&&messaging()==null)refusal=Messages.PREFERENCES_UNAVAILABLE;
             if(refusal==null) {
                 var ignore=messaging().ignores().ignores(recipient.getUniqueId(),requester.getUniqueId());
@@ -525,6 +578,16 @@ public final class TeleportService implements Listener {
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void damage(EntityDamageEvent e){
         if(e.getEntity() instanceof Player p&&e.getFinalDamage()>0){var op=operations.get(p.getUniqueId());if(op!=null)interrupt(op,"damage");}
     }
+    @EventHandler(priority=EventPriority.LOW,ignoreCancelled=true) public void guardWorldAccess(PlayerTeleportEvent e){
+        Location to=e.getTo(),from=e.getFrom();
+        if(to==null||to.getWorld()==null)return;
+        if(from!=null&&to.getWorld().equals(from.getWorld()))return;
+        if(!canEnterWorld(e.getPlayer(),to.getWorld())){
+            e.setCancelled(true);
+            send(e.getPlayer(),Messages.WORLD_ACCESS_DENIED,"{world}",to.getWorld().getName());
+        }
+    }
+    @EventHandler(priority=EventPriority.MONITOR) public void worldLoaded(WorldLoadEvent e){registerWorldPermission(e.getWorld());}
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void externalTeleport(PlayerTeleportEvent e){
         if(!committing.contains(e.getPlayer().getUniqueId())){var op=operations.get(e.getPlayer().getUniqueId());if(op!=null)interrupt(op,"another teleport");}
     }

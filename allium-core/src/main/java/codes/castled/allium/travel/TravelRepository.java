@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.LongSupplier;
@@ -35,6 +36,7 @@ public final class TravelRepository {
     private static final String OWNERS = "allium_travel_home_owners";
     private static final String WARPS = "allium_travel_warps";
     private static final String WARP_NAMES = "allium_travel_warp_names";
+    private static final String LIMITS = "allium_travel_home_limits";
     private static final String LOCATION_COLUMNS = "world_id, world_name, x, y, z, yaw, pitch";
 
     private final ConnectionSource connections;
@@ -59,8 +61,15 @@ public final class TravelRepository {
     }
 
     public int migrate() throws SQLException {
-        return new SchemaMigrator(connections, dialect, clock).migrate(COMPONENT,
-                List.of(Migration.of(1, "homes, warps and durable revision locks", schema(SqlDialect.SQLITE), schema(SqlDialect.MYSQL))));
+        return new SchemaMigrator(connections, dialect, clock).migrate(COMPONENT, List.of(
+                Migration.of(1, "homes, warps and durable revision locks", schema(SqlDialect.SQLITE), schema(SqlDialect.MYSQL)),
+                Migration.of(2, "staff home limit overrides", limitsSchema(SqlDialect.SQLITE), limitsSchema(SqlDialect.MYSQL))));
+    }
+
+    private static List<String> limitsSchema(SqlDialect dialect) {
+        String engine = dialect == SqlDialect.MYSQL ? " ENGINE=InnoDB" : "";
+        return List.of("CREATE TABLE IF NOT EXISTS " + LIMITS
+                + " (owner CHAR(36) NOT NULL PRIMARY KEY, max_homes INT NOT NULL, updated_at BIGINT NOT NULL)" + engine);
     }
 
     private static List<String> schema(SqlDialect dialect) {
@@ -123,6 +132,79 @@ public final class TravelRepository {
     public MutationResult deleteHome(UUID owner, String name, long expectedRevision) throws SQLException {
         Objects.requireNonNull(owner, "owner");
         return mutate(HOMES, OWNERS, "owner", owner.toString(), owner, name, expectedRevision, null);
+    }
+
+    /** Atomically renames an existing home when the destination name is free and revision matches. */
+    public MutationResult renameHome(UUID owner, String oldName, String newName, long expectedRevision) throws SQLException {
+        Objects.requireNonNull(owner, "owner");
+        String oldKey = TravelNames.normalize(oldName);
+        String newKey = TravelNames.normalize(newName);
+        if (expectedRevision < 1) throw new IllegalArgumentException("expectedRevision must be positive");
+        if (oldKey.equals(newKey)) return MutationResult.EXISTS;
+        return transaction(c -> {
+            long revision = lock(c, OWNERS, "owner", owner.toString());
+            Optional<StoredDestination> current = find(c, HOMES, owner, oldKey);
+            if (current.isEmpty()) return MutationResult.MISSING;
+            if (current.get().revision() != expectedRevision) return MutationResult.STALE;
+            if (find(c, HOMES, owner, newKey).isPresent()) return MutationResult.EXISTS;
+            long next = nextRevision(c, OWNERS, "owner", owner.toString(), revision);
+            try (PreparedStatement s = c.prepareStatement("UPDATE " + HOMES
+                    + " SET name = ?, revision = ? WHERE owner = ? AND name = ? AND revision = ?")) {
+                s.setString(1, newKey);
+                s.setLong(2, next);
+                s.setString(3, owner.toString());
+                s.setString(4, oldKey);
+                s.setLong(5, expectedRevision);
+                return s.executeUpdate() == 1 ? MutationResult.UPDATED : MutationResult.STALE;
+            }
+        });
+    }
+
+    /** Staff {@code /core sethomes} override for {@code owner}, or empty when unset. */
+    public OptionalInt homeLimitOverride(UUID owner) throws SQLException {
+        Objects.requireNonNull(owner, "owner");
+        return plain(c -> {
+            try (PreparedStatement s = c.prepareStatement("SELECT max_homes FROM " + LIMITS + " WHERE owner = ?")) {
+                s.setString(1, owner.toString());
+                try (ResultSet r = s.executeQuery()) {
+                    return r.next() ? OptionalInt.of(r.getInt(1)) : OptionalInt.empty();
+                }
+            }
+        });
+    }
+
+    /** Sets or clears ({@code maxHomes < 0}) the staff {@code /core sethomes} override. */
+    public void setHomeLimitOverride(UUID owner, int maxHomes) throws SQLException {
+        Objects.requireNonNull(owner, "owner");
+        if (maxHomes > HomePolicy.HARD_CAP) {
+            throw new IllegalArgumentException("maxHomes exceeds hard cap " + HomePolicy.HARD_CAP);
+        }
+        transaction(c -> {
+            if (maxHomes < 0) {
+                try (PreparedStatement s = c.prepareStatement("DELETE FROM " + LIMITS + " WHERE owner = ?")) {
+                    s.setString(1, owner.toString());
+                    s.executeUpdate();
+                }
+            } else {
+                String sql = dialect == SqlDialect.MYSQL
+                        ? "INSERT INTO " + LIMITS + " (owner, max_homes, updated_at) VALUES (?, ?, ?) "
+                                + "ON DUPLICATE KEY UPDATE max_homes = VALUES(max_homes), updated_at = VALUES(updated_at)"
+                        : "INSERT OR REPLACE INTO " + LIMITS + " (owner, max_homes, updated_at) VALUES (?, ?, ?)";
+                try (PreparedStatement s = c.prepareStatement(sql)) {
+                    s.setString(1, owner.toString());
+                    s.setInt(2, maxHomes);
+                    s.setLong(3, clock.getAsLong());
+                    s.executeUpdate();
+                }
+            }
+            return null;
+        });
+    }
+
+    /** Persisted home count for {@code owner}. */
+    public int homeCount(UUID owner) throws SQLException {
+        Objects.requireNonNull(owner, "owner");
+        return plain(c -> (int) countHomes(c, owner));
     }
 
     public MutationResult createWarp(String name, SavedLocation location) throws SQLException {

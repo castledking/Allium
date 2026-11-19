@@ -139,6 +139,9 @@ teleport:
   refused:
     - "{prefix} &c{player} no puede recibir teletransportes ahora mismo."
     - "[sound] entity.villager.no 1.0"
+  world-denied:
+    - "{prefix} &cNo tienes permiso para entrar al mundo &f{world}&c."
+    - "[sound] entity.villager.no 0.9"
   loading:
     - "{prefix} &cTus datos de teletransporte aun se estan cargando. Intentalo de nuevo en un momento."
     - "[sound] block.note_block.hat 0.9"
@@ -235,6 +238,33 @@ home:
   bed-missing-other:
     - "{prefix} &f{player} &cno tiene cama ni ancla de reaparicion cargada, o esta bloqueada."
     - "[sound] block.note_block.bass 0.8"
+  bed-set:
+    - "{prefix} &aSe actualizo tu hogar de cama."
+    - "[sound] block.note_block.chime 1.3"
+  renamed:
+    - "{prefix} &aRenombraste el hogar &f{old} &aa &f{name}&a."
+    - "[sound] block.note_block.chime 1.25"
+  renamed-other:
+    - "{prefix} &aRenombraste el hogar &f{old} &ade &f{player} &aa &f{name}&a."
+    - "[sound] block.note_block.chime 1.25"
+  exists:
+    - "{prefix} &cYa existe un hogar llamado &f{name}&c."
+    - "[sound] block.note_block.bass 0.8"
+  limit-info:
+    - "{prefix} &6Maximo de hogares para &e{player}&6: &e{effective} &7(permisos: &f{permissions}&7, anulacion: &f{override}&7, establecidos: &f{count}&7)."
+    - "[sound] item.book.page_turn 1.1"
+  limit-set:
+    - "{prefix} &aAnulacion de hogares para &f{player} &afijada en &e{override}&a (efectivo: &e{effective}&a)."
+    - "[sound] block.note_block.pling 1.3"
+  limit-cleared:
+    - "{prefix} &aSe elimino la anulacion de hogares para &f{player}&a (efectivo: &e{effective}&a)."
+    - "[sound] block.note_block.chime 1.2"
+  limit-unlimited-relative:
+    - "{prefix} &c{player} ya tiene hogares ilimitados; usa un numero explicito o -1."
+    - "[sound] block.note_block.bass 0.8"
+  limit-invalid:
+    - "{prefix} &cLimite de hogares invalido. Usa 0-1000, -1 para limpiar, o +N/-N."
+    - "[sound] block.note_block.bass 0.8"
 customtext:
   missing:
     - "{prefix} &cNo hay texto personalizado llamado &f{section}&c."
@@ -286,6 +316,12 @@ warp:
   none:
     - "{prefix} &cNo hay warps disponibles."
     - "[sound] block.note_block.hat 0.9"
+  info:
+    - "{prefix} &6Warp &e{name}&6: &f{world} &7(&f{x}, {y}, {z}&7) &7yaw=&f{yaw} &7pitch=&f{pitch} &7perm=&f{permission}"
+    - "[sound] item.book.page_turn 1.1"
+  other:
+    - "{prefix} &aTeletransportaste a &f{player} &aal warp &e{name}&a."
+    - "[sound] entity.enderman.teleport 1.1"
 spawn:
   set:
     - "{prefix} &aPunto de aparicion establecido."

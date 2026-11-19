@@ -5,10 +5,18 @@ import codes.castled.allium.message.Messages;
 import codes.castled.allium.teleport.SavedLocation;
 import codes.castled.allium.teleport.TeleportService;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 
@@ -31,6 +39,18 @@ public final class TravelService implements Listener {
     public static final String PERMISSION_HOME_OTHERS_BED="allium.home.others.bed";
     /** {@code /delhome <player>:<home>}. */
     public static final String PERMISSION_DELHOME_OTHERS="allium.delhome.others";
+    /** {@code /renamehome <player>:<home> <newhome>}. */
+    public static final String PERMISSION_RENAMEHOME_OTHERS="allium.renamehome.others";
+    /** {@code /warp <warp> <player>}. */
+    public static final String PERMISSION_WARP_OTHERS="allium.warp.others";
+    /** {@code /warpinfo <warp>}. */
+    public static final String PERMISSION_WARPINFO="allium.warpinfo";
+    /** {@code /core sethomes}. */
+    public static final String PERMISSION_SETHOMES="allium.sethomes";
+    /** Daytime right-click bed updates {@code /home bed}. */
+    public static final String PERMISSION_SETHOME_BED="allium.sethome.bed";
+    /** Points compass at first home when {@code homes.compass-towards-home-perm: true}. */
+    public static final String PERMISSION_HOME_COMPASS="allium.home.compass";
     public static final String BED="bed";
     private static final Map<PluginStart,TravelService> OWNERS=new WeakHashMap<>();
     private final PluginStart plugin;
@@ -51,12 +71,13 @@ public final class TravelService implements Listener {
         final Player player;
         Map<String,SavedLocation> homes=Map.of();
         final Map<String,Long> revisions=new HashMap<>();
+        int dbOverride=-1;
         boolean loaded,busy;
         Confirmation confirmation;
         Session(Player player){this.player=player;}
     }
     private record Confirmation(boolean warp,String name,long revision,SavedLocation point,long expires) {}
-    private record Settings(int base,Map<UUID,Integer> overrides,long homeConfirm,long warpConfirm) {
+    private record Settings(int base,Map<UUID,Integer> overrides,long homeConfirm,long warpConfirm,boolean compassTowardsHome) {
         static Settings read(PluginStart p) {
             var c=p.getConfig();Map<UUID,Integer> overrides=new HashMap<>();
             for(String parent:List.of("homes","warps"))if(c.isSet(parent)&&!(c.get(parent) instanceof org.bukkit.configuration.ConfigurationSection))
@@ -66,7 +87,8 @@ public final class TravelService implements Listener {
             if(section!=null)for(String id:section.getKeys(false))overrides.put(UUID.fromString(id),integer(section.get(id),"staff override",0,1000));
             return new Settings(integer(c.get("homes.default-limit",1),"default home limit",0,1000),Map.copyOf(overrides),
                     integer(c.get("homes.overwrite-confirm-seconds",30),"home confirmation",1,300)*1000L,
-                    integer(c.get("warps.overwrite-confirm-seconds",30),"warp confirmation",1,300)*1000L);
+                    integer(c.get("warps.overwrite-confirm-seconds",30),"warp confirmation",1,300)*1000L,
+                    c.getBoolean("homes.compass-towards-home-perm",false));
         }
         private static int integer(Object v,String name,int min,int max) {
             if(!(v instanceof Number n)||!Double.isFinite(n.doubleValue())||n.doubleValue()!=n.intValue()||n.intValue()<min||n.intValue()>max)
@@ -90,14 +112,15 @@ public final class TravelService implements Listener {
         try{if(!io.awaitTermination(3,TimeUnit.SECONDS))plugin.logger().severe("Travel shutdown timed out; outstanding SQL tasks="+io.getQueue().size());}
         catch(InterruptedException e){Thread.currentThread().interrupt();}
     }
-    public boolean reloadSettings(){try{settings=Settings.read(plugin);settingsEpoch++;sessions.values().forEach(s->s.confirmation=null);return true;}
+    public boolean reloadSettings(){try{settings=Settings.read(plugin);settingsEpoch++;sessions.values().forEach(s->{s.confirmation=null;updateCompass(s);});return true;}
         catch(IllegalArgumentException e){plugin.logger().warning("Kept previous travel settings: "+e.getMessage());return false;}}
     public boolean ready(UUID id){Session s=sessions.get(id);return s!=null&&same(s)&&s.loaded;}
     public boolean pending(UUID id){Session s=sessions.get(id);return s!=null&&s.busy;}
     public boolean warpsReady(){return warpsLoaded;}
     /** Server thread: how many homes an online player has, or -1 while they are loading. */
     public int homeCount(UUID id){Session s=sessions.get(id);return s==null||!same(s)||!s.loaded?-1:s.homes.size();}
-    public int limit(Player p) {
+    public int permissionLimit(Player p) {
+        if(p.hasPermission("allium.sethome.unlimited")||p.hasPermission("allium.sethome.*"))return HomePolicy.HARD_CAP;
         List<Integer> grants=new ArrayList<>();
         for(var permission:p.getEffectivePermissions())if(permission.getValue()&&p.hasPermission(permission.getPermission())){
             String node=permission.getPermission().toLowerCase(Locale.ROOT),suffix=null;
@@ -105,8 +128,14 @@ public final class TravelService implements Listener {
             else if(node.startsWith("allium.sethome."))suffix=node.substring("allium.sethome.".length());
             if(suffix!=null&&suffix.matches("[0-9]{1,9}"))try{grants.add(Integer.parseInt(suffix));}catch(NumberFormatException ignored){}
         }
-        if(p.hasPermission("allium.sethome.unlimited"))grants.add(HomePolicy.HARD_CAP);
-        return HomePolicy.maximum(settings.base(),grants,settings.overrides().getOrDefault(p.getUniqueId(),0));
+        return HomePolicy.maximum(settings.base(),grants,0);
+    }
+    public int limit(Player p) {
+        int perm=permissionLimit(p);
+        int cfg=settings.overrides().getOrDefault(p.getUniqueId(),-1);
+        Session s=sessions.get(p.getUniqueId());
+        int db=s!=null&&same(s)?s.dbOverride:-1;
+        return HomePolicy.bounded(Math.max(perm,Math.max(cfg,db)));
     }
     public List<String> completeHomes(Player p){return completeHomes(p,"");}
     public List<String> completeWarps(Player p){return completeWarps(p,"");}
@@ -119,7 +148,7 @@ public final class TravelService implements Listener {
     public List<String> completeHomes(Player p,String prefix,String command){
         Session s=sessions.get(p.getUniqueId());if(!homesEnabled||s==null||!same(s)||!s.loaded)return List.of();
         String lower=prefix.toLowerCase(Locale.ROOT);boolean home=command.equals("home");
-        String others=home?PERMISSION_HOME_OTHERS:command.equals("delhome")?PERMISSION_DELHOME_OTHERS:null;
+        String others=home?PERMISSION_HOME_OTHERS:command.equals("delhome")?PERMISSION_DELHOME_OTHERS:command.equals("renamehome")?PERMISSION_RENAMEHOME_OTHERS:null;
         boolean staff=others!=null&&p.hasPermission(others);
         int colon=lower.indexOf(':');
         if(colon>=0){
@@ -139,7 +168,211 @@ public final class TravelService implements Listener {
                 .map(o->o.getName()+":").sorted().forEach(out::add);
         return out.stream().limit(50).toList();
     }
-    public List<String> completeWarps(Player p,String prefix){return !warpsEnabled||!warpsLoaded||!p.hasPermission("allium.warp")?List.of():warps.keySet().stream().filter(n->access(p,n)&&n.startsWith(prefix.toLowerCase(Locale.ROOT))).sorted().limit(50).toList();}
+    public List<String> completeWarps(Player p,String prefix){
+        if(!warpsEnabled||!warpsLoaded||(!p.hasPermission("allium.warp")&&!p.hasPermission(PERMISSION_WARPINFO)))return List.of();
+        boolean infoOnly=!p.hasPermission("allium.warp")&&p.hasPermission(PERMISSION_WARPINFO);
+        return warps.keySet().stream().filter(n->(infoOnly||access(p,n))&&n.startsWith(prefix.toLowerCase(Locale.ROOT))).sorted().limit(50).toList();
+    }
+    /** {@code /warpinfo <warp>}: shows world, coordinates and permission node. Players or console. */
+    public void warpInfo(CommandSender sender,String raw){
+        if(!warpsEnabled){send(sender,Messages.MODULE_DISABLED);return;}
+        if(!sender.hasPermission(PERMISSION_WARPINFO)){send(sender,Messages.NO_PERMISSION);return;}
+        if(!warpsLoaded){send(sender,Messages.TRAVEL_LOADING);return;}
+        String name;
+        try{name=TravelNames.normalize(raw);}catch(IllegalArgumentException invalid){send(sender,Messages.TRAVEL_NAME_INVALID);return;}
+        SavedLocation point=warps.get(name);
+        if(point==null){send(sender,Messages.WARP_NOT_FOUND,"{name}",name);return;}
+        send(sender,Messages.WARP_INFO,
+                "{name}",name,
+                "{world}",point.worldName(),
+                "{x}",String.format(Locale.ROOT,"%.1f",point.x()),
+                "{y}",String.format(Locale.ROOT,"%.1f",point.y()),
+                "{z}",String.format(Locale.ROOT,"%.1f",point.z()),
+                "{yaw}",String.format(Locale.ROOT,"%.1f",point.yaw()),
+                "{pitch}",String.format(Locale.ROOT,"%.1f",point.pitch()),
+                "{permission}","allium.warps."+name);
+    }
+    /** {@code /warp <warp> <player>}: sends an online player to a warp. Players or console. */
+    public void warpOther(CommandSender actor,String rawWarp,String targetName){
+        if(!warpsEnabled){send(actor,Messages.MODULE_DISABLED);return;}
+        if(!actor.hasPermission("allium.warp")||!actor.hasPermission(PERMISSION_WARP_OTHERS)){send(actor,Messages.NO_PERMISSION);return;}
+        if(!warpsLoaded){send(actor,Messages.TRAVEL_LOADING);return;}
+        String name;
+        try{name=TravelNames.normalize(rawWarp);}catch(IllegalArgumentException invalid){send(actor,Messages.TRAVEL_NAME_INVALID);return;}
+        if(actor instanceof Player p&&!access(p,name)){send(actor,Messages.WARP_NOT_FOUND,"{name}",name);return;}
+        SavedLocation point=warps.get(name);
+        if(point==null){send(actor,Messages.WARP_NOT_FOUND,"{name}",name);return;}
+        Player target=teleports.find(actor,targetName);
+        if(target==null){send(actor,Messages.PLAYER_NOT_FOUND,"{player}",codes.castled.allium.messaging.MessagingService.safeName(targetName));return;}
+        if(target==actor){use(target,name,true);return;}
+        Location destination=location(point);
+        if(destination==null){send(actor,Messages.TELEPORT_UNSAFE);return;}
+        teleports.forceLocation(actor,target,destination,"warp");
+        send(actor,Messages.WARP_OTHER,"{player}",target.getName(),"{name}",name);
+    }
+    /** {@code /renamehome <home> <newhome>}: renames one of the player's own homes. */
+    public void rename(Player p,String rawOld,String rawNew){
+        if(!permission(p,"renamehome"))return;
+        String oldName=name(p,rawOld);if(oldName==null)return;
+        String newName=name(p,rawNew);if(newName==null)return;
+        if(oldName.equals(BED)||newName.equals(BED)){send(p,Messages.HOME_BED_RESERVED);return;}
+        if(oldName.equals(newName)){send(p,Messages.HOME_EXISTS,"{name}",newName);return;}
+        Session s=session(p);if(s==null||!admit(s))return;
+        s.confirmation=null;
+        readEntry(s,oldName,false,found->{
+            if(found.isEmpty()){forget(s,oldName,false);notFound(p,oldName,false);return;}
+            if(!permission(p,"renamehome")||!admit(s))return;
+            long rev=found.get().revision();
+            query(s,()->repository.renameHome(p.getUniqueId(),oldName,newName,rev),result->{
+                switch(result){
+                    case UPDATED->{
+                        if(!admit(s))return;
+                        readEntry(s,newName,false,renamed->{
+                            forget(s,oldName,false);
+                            if(renamed.isPresent()){remember(s,renamed.get(),false);send(p,Messages.HOME_RENAMED,"{old}",oldName,"{name}",newName);}
+                            else send(p,Messages.TRAVEL_CHANGED);
+                        });
+                    }
+                    case EXISTS->send(p,Messages.HOME_EXISTS,"{name}",newName);
+                    case MISSING->{forget(s,oldName,false);notFound(p,oldName,false);}
+                    default->send(p,Messages.TRAVEL_CHANGED);
+                }
+            });
+        });
+    }
+    /** {@code /renamehome <player>:<home> <newhome>}: renames another player's home, online or offline. */
+    public void renameOther(Player p,String owner,String rawOld,String rawNew){
+        if(!permission(p,"renamehome"))return;
+        if(!p.hasPermission(PERMISSION_RENAMEHOME_OTHERS)){send(p,Messages.NO_PERMISSION);return;}
+        String oldName=name(p,rawOld.isEmpty()?"home":rawOld);if(oldName==null)return;
+        String newName=name(p,rawNew);if(newName==null)return;
+        if(oldName.equals(BED)||newName.equals(BED)){send(p,Messages.HOME_BED_RESERVED);return;}
+        if(oldName.equals(newName)){send(p,Messages.HOME_EXISTS,"{name}",newName);return;}
+        resolveOwner(p,owner,(id,ownerName)->{
+            if(id.equals(p.getUniqueId())){rename(p,oldName,newName);return;}
+            Session s=session(p);if(s==null||!admit(s))return;
+            query(s,()->repository.home(id,oldName),found->{
+                if(found.isEmpty()){forgetOwner(id,oldName);send(p,Messages.HOME_NOT_FOUND_OTHER,"{player}",ownerName,"{name}",oldName);return;}
+                if(!p.hasPermission(PERMISSION_RENAMEHOME_OTHERS)||!admit(s))return;
+                long rev=found.get().revision();
+                SavedLocation loc=found.get().location();
+                query(s,()->repository.renameHome(id,oldName,newName,rev),result->{
+                    switch(result){
+                        case UPDATED->{
+                            forgetOwner(id,oldName);
+                            Session onlineOwner=sessions.get(id);
+                            if(onlineOwner!=null&&same(onlineOwner)){
+                                Map<String,SavedLocation> copy=new HashMap<>(onlineOwner.homes);
+                                copy.put(newName,loc);onlineOwner.homes=Map.copyOf(copy);
+                                onlineOwner.revisions.remove(oldName);
+                                updateCompass(onlineOwner);
+                            }
+                            plugin.logger().info("Home audit actor="+p.getUniqueId()+" owner="+id+" old="+oldName+" new="+newName+" action=rename");
+                            send(p,Messages.HOME_RENAMED_OTHER,"{player}",ownerName,"{old}",oldName,"{name}",newName);
+                        }
+                        case EXISTS->send(p,Messages.HOME_EXISTS,"{name}",newName);
+                        case MISSING->{forgetOwner(id,oldName);send(p,Messages.HOME_NOT_FOUND_OTHER,"{player}",ownerName,"{name}",oldName);}
+                        default->send(p,Messages.TRAVEL_CHANGED);
+                    }
+                });
+            });
+        });
+    }
+    /** {@code /core sethomes <player> [number|+N|-N|-1]}: view or override a player's max homes. */
+    public void sethomesAdmin(CommandSender sender,String[] args){
+        if(!homesEnabled){send(sender,Messages.MODULE_DISABLED);return;}
+        if(!sender.hasPermission(PERMISSION_SETHOMES)&&!sender.hasPermission("allium.admin")){send(sender,Messages.NO_PERMISSION);return;}
+        if(args.length<1||args.length>2){
+            plugin.getMessageManager().send(sender,Messages.INVALID_ARGS,"{usage}","/allium sethomes <player> [number|+N|-N|-1]");
+            return;
+        }
+        String rawPlayer=args[0];
+        String rawValue=args.length==2?args[1].trim():null;
+        Player onlineExact=plugin.getServer().getPlayerExact(rawPlayer);
+        if(onlineExact!=null){
+            runSethomesAdmin(sender,onlineExact.getUniqueId(),onlineExact.getName(),rawValue);
+            return;
+        }
+        if(!rawPlayer.matches("[A-Za-z0-9_]{1,16}")){send(sender,Messages.PLAYER_NOT_FOUND,"{player}",rawPlayer);return;}
+        var names=plugin.getPlayerNames();
+        if(names==null){send(sender,Messages.TRAVEL_LOADING);return;}
+        names.resolve(rawPlayer).whenComplete((found,error)->server(()->{
+            if(sender instanceof Player p&&!p.isOnline())return;
+            if(error!=null){send(sender,Messages.TRAVEL_STORAGE_FAILED);return;}
+            if(found==null||found.isEmpty()){send(sender,Messages.PLAYER_NOT_FOUND,"{player}",rawPlayer);return;}
+            runSethomesAdmin(sender,found.get().uuid(),found.get().name(),rawValue);
+        }));
+    }
+    private void runSethomesAdmin(CommandSender sender,UUID targetId,String targetName,String rawValue){
+        try{
+            io.execute(()->{
+                try{
+                    OptionalInt currentDb=repository.homeLimitOverride(targetId);
+                    int count=repository.homeCount(targetId);
+                    server(()->{
+                        if(sender instanceof Player p&&!p.isOnline())return;
+                        Player online=plugin.getServer().getPlayer(targetId);
+                        int cfgOverride=settings.overrides().getOrDefault(targetId,-1);
+                        int dbOverride=currentDb.orElse(-1);
+                        int effectiveOverride=Math.max(cfgOverride,dbOverride);
+                        int perm=online!=null?permissionLimit(online):-1;
+                        int effective=perm>=0?HomePolicy.bounded(Math.max(perm,effectiveOverride)):Math.max(effectiveOverride,settings.base());
+                        if(rawValue==null){
+                            send(sender,Messages.HOME_LIMIT_INFO,
+                                    "{player}",targetName,
+                                    "{effective}",formatHomeLimit(effective),
+                                    "{permissions}",perm<0?"unknown (offline)":formatHomeLimit(perm),
+                                    "{override}",effectiveOverride<0?"none":Integer.toString(effectiveOverride),
+                                    "{count}",Integer.toString(count));
+                            return;
+                        }
+                        int parsed;
+                        if(rawValue.startsWith("+")||(rawValue.startsWith("-")&&rawValue.length()>1&&!rawValue.equals("-1"))){
+                            if(effective>=HomePolicy.HARD_CAP){
+                                send(sender,Messages.HOME_LIMIT_UNLIMITED_RELATIVE,"{player}",targetName);
+                                return;
+                            }
+                            try{
+                                int delta=Integer.parseInt(rawValue.substring(1));
+                                parsed=effective+(rawValue.startsWith("+")?delta:-delta);
+                            }catch(NumberFormatException invalid){send(sender,Messages.HOME_LIMIT_INVALID);return;}
+                        }else{
+                            try{parsed=Integer.parseInt(rawValue);}
+                            catch(NumberFormatException invalid){send(sender,Messages.HOME_LIMIT_INVALID);return;}
+                        }
+                        if(parsed<-1||parsed>HomePolicy.HARD_CAP){send(sender,Messages.HOME_LIMIT_INVALID);return;}
+                        final int toSave=parsed;
+                        io.execute(()->{
+                            try{
+                                repository.setHomeLimitOverride(targetId,toSave);
+                                server(()->{
+                                    Session onlineSession=sessions.get(targetId);
+                                    if(onlineSession!=null&&same(onlineSession))onlineSession.dbOverride=toSave;
+                                    Player nowOnline=plugin.getServer().getPlayer(targetId);
+                                    int newPerm=nowOnline!=null?permissionLimit(nowOnline):-1;
+                                    int newEffOverride=Math.max(settings.overrides().getOrDefault(targetId,-1),toSave);
+                                    int newEffective=newPerm>=0?HomePolicy.bounded(Math.max(newPerm,newEffOverride)):Math.max(newEffOverride,settings.base());
+                                    if(sender instanceof Player p&&!p.isOnline())return;
+                                    if(toSave<0){
+                                        send(sender,Messages.HOME_LIMIT_CLEARED,"{player}",targetName,"{effective}",formatHomeLimit(newEffective));
+                                    }else{
+                                        send(sender,Messages.HOME_LIMIT_SET,"{player}",targetName,"{override}",Integer.toString(toSave),"{effective}",formatHomeLimit(newEffective));
+                                    }
+                                });
+                            }catch(SQLException|RuntimeException e){
+                                plugin.logger().warning("Failed to update home limit override for "+targetId+": "+e.getMessage());
+                                server(()->send(sender,Messages.TRAVEL_STORAGE_FAILED));
+                            }
+                        });
+                    });
+                }catch(SQLException|RuntimeException e){
+                    plugin.logger().warning("Failed to read home limit override for "+targetId+": "+e.getMessage());
+                    server(()->send(sender,Messages.TRAVEL_STORAGE_FAILED));
+                }
+            });
+        }catch(RejectedExecutionException busy){send(sender,Messages.TRAVEL_STORAGE_FAILED);}
+    }
+    private static String formatHomeLimit(int limit){return limit>=HomePolicy.HARD_CAP?"unlimited":Integer.toString(limit);}
     public void list(Player p,boolean warp) {
         if(!permission(p,warp?"warps":"homes"))return;
         if(warp&&!warpsLoaded){send(p,Messages.TRAVEL_LOADING);return;}
@@ -362,11 +595,20 @@ public final class TravelService implements Listener {
     }
     private void remember(Session s,StoredDestination e,boolean warp) {
         if(warp){Map<String,SavedLocation> copy=new HashMap<>(warps);copy.put(e.name(),e.location());ensurePermission(e.name());warps=Map.copyOf(copy);warpRevisions.put(e.name(),e.revision());}
-        else {Map<String,SavedLocation> copy=new HashMap<>(s.homes);copy.put(e.name(),e.location());s.homes=Map.copyOf(copy);s.revisions.put(e.name(),e.revision());}
+        else {Map<String,SavedLocation> copy=new HashMap<>(s.homes);copy.put(e.name(),e.location());s.homes=Map.copyOf(copy);s.revisions.put(e.name(),e.revision());updateCompass(s);}
     }
     private void forget(Session s,String name,boolean warp){
         if(warp){Map<String,SavedLocation> copy=new HashMap<>(warps);copy.remove(name);warps=Map.copyOf(copy);warpRevisions.remove(name);}
-        else {Map<String,SavedLocation> copy=new HashMap<>(s.homes);copy.remove(name);s.homes=Map.copyOf(copy);s.revisions.remove(name);}
+        else {Map<String,SavedLocation> copy=new HashMap<>(s.homes);copy.remove(name);s.homes=Map.copyOf(copy);s.revisions.remove(name);updateCompass(s);}
+    }
+    private void updateCompass(Session s){
+        if(!homesEnabled||!settings.compassTowardsHome()||s==null||!same(s)||!s.loaded||s.homes.isEmpty())return;
+        if(!s.player.hasPermission(PERMISSION_HOME_COMPASS))return;
+        SavedLocation first=s.homes.containsKey("home")?s.homes.get("home"):s.homes.entrySet().stream()
+                .min(Map.Entry.comparingByKey()).map(Map.Entry::getValue).orElse(null);
+        if(first==null)return;
+        Location target=location(first);
+        if(target!=null)s.player.setCompassTarget(target);
     }
     private boolean access(Player p,String name){return warps.containsKey(name)&&!blockedPermissions.contains(name)&&p.hasPermission("allium.warps."+name);}
     private void ensurePermission(String name){
@@ -397,7 +639,8 @@ public final class TravelService implements Listener {
     private void join(Player p){Session s=new Session(p);sessions.put(p.getUniqueId(),s);load(s,0);}
     private void load(Session s,int attempt){
         if(closed||!same(s))return;
-        try{io.execute(()->{try{var homes=repository.homes(s.player.getUniqueId());server(()->{if(same(s)){s.homes=homes;s.loaded=true;}});}
+        try{io.execute(()->{try{var homes=repository.homes(s.player.getUniqueId());var rawOverride=repository.homeLimitOverride(s.player.getUniqueId());int override=rawOverride==null?-1:rawOverride.orElse(-1);
+                server(()->{if(same(s)){s.homes=homes;s.dbOverride=override;s.loaded=true;updateCompass(s);}});}
             catch(SQLException|RuntimeException e){server(()->retry(()->load(s,attempt+1),attempt,"homes "+s.player.getUniqueId()));}});}
         catch(RejectedExecutionException e){retry(()->load(s,attempt+1),attempt,"homes "+s.player.getUniqueId());}
     }
@@ -424,7 +667,28 @@ public final class TravelService implements Listener {
     private boolean same(Session s){return !closed&&sessions.get(s.player.getUniqueId())==s&&s.player.isOnline()&&plugin.getServer().getPlayer(s.player.getUniqueId())==s.player;}
     private SavedLocation saved(Location l){return new SavedLocation(l.getWorld().getUID(),l.getWorld().getName(),l.getX(),l.getY(),l.getZ(),l.getYaw(),l.getPitch());}
     private Location location(SavedLocation l){var world=plugin.getServer().getWorld(l.worldId());return world==null?null:new Location(world,l.x(),l.y(),l.z(),l.yaw(),l.pitch());}
+    private void send(CommandSender sender,Messages key,String... args){
+        if(sender instanceof Player p){send(p,key,args);return;}
+        plugin.getMessageManager().send(sender,key,args);
+    }
     private void send(Player p,Messages key,String... args){if(p.isOnline()&&plugin.getServer().getPlayer(p.getUniqueId())==p)plugin.getMessageManager().send(p,key,args);}
     @EventHandler(priority=EventPriority.MONITOR) public void onJoin(PlayerJoinEvent e){join(e.getPlayer());}
     @EventHandler(priority=EventPriority.MONITOR) public void onQuit(PlayerQuitEvent e){Session s=sessions.get(e.getPlayer().getUniqueId());if(s!=null&&s.player==e.getPlayer())sessions.remove(e.getPlayer().getUniqueId());}
+    @EventHandler(priority=EventPriority.MONITOR) public void onRespawn(PlayerRespawnEvent e){server(()->updateCompass(sessions.get(e.getPlayer().getUniqueId())));}
+    @EventHandler(priority=EventPriority.MONITOR) public void onWorldChange(PlayerChangedWorldEvent e){updateCompass(sessions.get(e.getPlayer().getUniqueId()));}
+    /** {@code allium.sethome.bed}: right-clicking a bed during daytime updates {@code /home bed}. */
+    @EventHandler(priority=EventPriority.NORMAL,ignoreCancelled=true) public void onDaytimeBedClick(PlayerInteractEvent e){
+        if(!homesEnabled||e.getAction()!=Action.RIGHT_CLICK_BLOCK||e.getHand()!=EquipmentSlot.HAND)return;
+        var block=e.getClickedBlock();
+        if(block==null||!isBed(block.getType()))return;
+        Player player=e.getPlayer();
+        if(player.isSneaking()||!player.hasPermission(PERMISSION_SETHOME_BED))return;
+        World world=block.getWorld();
+        if(world.getEnvironment()!=World.Environment.NORMAL||world.getTime()>=12541L||world.isThundering())return;
+        if(RespawnPoints.set(player,block.getLocation())){
+            e.setCancelled(true);
+            send(player,Messages.HOME_BED_SET);
+        }
+    }
+    private static boolean isBed(Material type){return type!=null&&type.name().endsWith("_BED");}
 }

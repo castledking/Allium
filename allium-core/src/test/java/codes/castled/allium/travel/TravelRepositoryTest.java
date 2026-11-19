@@ -42,8 +42,8 @@ class TravelRepositoryTest {
 
     private static TravelRepository repository(TravelDatabases.Db db) throws SQLException {
         TravelRepository repository = reopen(db);
-        assertEquals(1, repository.migrate(), db.name());
-        assertEquals(1, repository.migrate(), db.name() + ": migration is idempotent");
+        assertEquals(2, repository.migrate(), db.name());
+        assertEquals(2, repository.migrate(), db.name() + ": migration is idempotent");
         return repository;
     }
 

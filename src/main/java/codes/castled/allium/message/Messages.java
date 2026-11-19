@@ -217,6 +217,7 @@ public enum Messages {
     TELEPORT_WARMUP("teleport.warmup", "{prefix} &eTeleporting in {time}s. Stay still and avoid damage."),
     TELEPORT_INTERRUPTED("teleport.interrupted", "{prefix} &cTeleport cancelled: {reason}."),
     TELEPORT_REFUSED("teleport.refused", "{prefix} &c{player} can't receive teleports right now."),
+    WORLD_ACCESS_DENIED("teleport.world-denied", "{prefix} &cYou don't have permission to enter world &f{world}&c."),
     TELEPORT_LOADING("teleport.loading", "{prefix} &cYour teleport data is still loading. Try again shortly."),
     TELEPORT_STORAGE_FAILED("teleport.storage-failed", "{prefix} &cTeleport data could not be saved. Try again shortly."),
     TELEPORT_UNSAFE("teleport.unsafe", "{prefix} &cNo safe destination was found. Nothing was teleported."),
@@ -263,6 +264,15 @@ public enum Messages {
     HOME_NOT_FOUND_OTHER("home.not-found-other", "{prefix} &f{player} &chas no home called &f{name}&c."),
     HOME_DELETED_OTHER("home.deleted-other", "{prefix} &aDeleted &f{player}&a's home &f{name}&a."),
     HOME_BED_MISSING_OTHER("home.bed-missing-other", "{prefix} &f{player} &chas no bed or charged respawn anchor, or it is blocked."),
+    HOME_BED_SET("home.bed-set", "{prefix} &aYour bed home has been updated."),
+    HOME_RENAMED("home.renamed", "{prefix} &aRenamed home &f{old} &ato &f{name}&a."),
+    HOME_RENAMED_OTHER("home.renamed-other", "{prefix} &aRenamed &f{player}&a's home &f{old} &ato &f{name}&a."),
+    HOME_EXISTS("home.exists", "{prefix} &cA home called &f{name} &calready exists."),
+    HOME_LIMIT_INFO("home.limit-info", "{prefix} &6Max homes for &e{player}&6: &e{effective} &7(permissions: &f{permissions}&7, override: &f{override}&7, set: &f{count}&7)."),
+    HOME_LIMIT_SET("home.limit-set", "{prefix} &aSet max homes override for &f{player} &ato &e{override}&a (effective: &e{effective}&a)."),
+    HOME_LIMIT_CLEARED("home.limit-cleared", "{prefix} &aCleared max homes override for &f{player}&a (effective: &e{effective}&a)."),
+    HOME_LIMIT_UNLIMITED_RELATIVE("home.limit-unlimited-relative", "{prefix} &c{player} already has unlimited homes; set an explicit number or -1."),
+    HOME_LIMIT_INVALID("home.limit-invalid", "{prefix} &cInvalid home limit. Use 0-1000, -1 to clear, or +N/-N."),
 
     // -- Warps --
     WARP_SET("warp.set", "{prefix} &aWarp &f{name} &aset."),
@@ -270,6 +280,8 @@ public enum Messages {
     WARP_NOT_FOUND("warp.not-found", "{prefix} &cWarp &f{name} &cnot found."),
     WARP_LIST("warp.list", "{prefix} &fWarps: &d{warps}"),
     WARP_NONE("warp.none", "{prefix} &cNo warps available."),
+    WARP_INFO("warp.info", "{prefix} &6Warp &e{name}&6: &f{world} &7(&f{x}, {y}, {z}&7) &7yaw=&f{yaw} &7pitch=&f{pitch} &7perm=&f{permission}"),
+    WARP_OTHER("warp.other", "{prefix} &aWarped &f{player} &ato &e{name}&a."),
 
     // -- Spawn --
     SPAWN_SET("spawn.set", "{prefix} &aSpawn point set."),

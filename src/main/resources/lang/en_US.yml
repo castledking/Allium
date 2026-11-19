@@ -139,6 +139,9 @@ teleport:
   refused:
     - "{prefix} &c{player} can't receive teleports right now."
     - "[sound] entity.villager.no 1.0"
+  world-denied:
+    - "{prefix} &cYou don't have permission to enter world &f{world}&c."
+    - "[sound] entity.villager.no 0.9"
   loading:
     - "{prefix} &cYour teleport data is still loading. Try again shortly."
     - "[sound] block.note_block.hat 0.9"
@@ -235,6 +238,33 @@ home:
   bed-missing-other:
     - "{prefix} &f{player} &chas no bed or charged respawn anchor, or it is blocked."
     - "[sound] block.note_block.bass 0.8"
+  bed-set:
+    - "{prefix} &aYour bed home has been updated."
+    - "[sound] block.note_block.chime 1.3"
+  renamed:
+    - "{prefix} &aRenamed home &f{old} &ato &f{name}&a."
+    - "[sound] block.note_block.chime 1.25"
+  renamed-other:
+    - "{prefix} &aRenamed &f{player}&a's home &f{old} &ato &f{name}&a."
+    - "[sound] block.note_block.chime 1.25"
+  exists:
+    - "{prefix} &cA home called &f{name} &calready exists."
+    - "[sound] block.note_block.bass 0.8"
+  limit-info:
+    - "{prefix} &6Max homes for &e{player}&6: &e{effective} &7(permissions: &f{permissions}&7, override: &f{override}&7, set: &f{count}&7)."
+    - "[sound] item.book.page_turn 1.1"
+  limit-set:
+    - "{prefix} &aSet max homes override for &f{player} &ato &e{override}&a (effective: &e{effective}&a)."
+    - "[sound] block.note_block.pling 1.3"
+  limit-cleared:
+    - "{prefix} &aCleared max homes override for &f{player}&a (effective: &e{effective}&a)."
+    - "[sound] block.note_block.chime 1.2"
+  limit-unlimited-relative:
+    - "{prefix} &c{player} already has unlimited homes; set an explicit number or -1."
+    - "[sound] block.note_block.bass 0.8"
+  limit-invalid:
+    - "{prefix} &cInvalid home limit. Use 0-1000, -1 to clear, or +N/-N."
+    - "[sound] block.note_block.bass 0.8"
 customtext:
   missing:
     - "{prefix} &cThere is no custom text called &f{section}&c."
@@ -286,6 +316,12 @@ warp:
   none:
     - "{prefix} &cNo warps available."
     - "[sound] block.note_block.hat 0.9"
+  info:
+    - "{prefix} &6Warp &e{name}&6: &f{world} &7(&f{x}, {y}, {z}&7) &7yaw=&f{yaw} &7pitch=&f{pitch} &7perm=&f{permission}"
+    - "[sound] item.book.page_turn 1.1"
+  other:
+    - "{prefix} &aWarped &f{player} &ato &e{name}&a."
+    - "[sound] entity.enderman.teleport 1.1"
 spawn:
   set:
     - "{prefix} &aSpawn point set."

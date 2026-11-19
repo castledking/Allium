@@ -209,7 +209,12 @@ public final class CommandUsages {
                     u("send <name>", "Sends one broadcast now"),
                     u("next", "Sends the next broadcast in the rotation now")),
             e("rules", u("", "Shows the server rules"),
-                    u("<chapter> [page]", "Shows a chapter of the rules")));
+                    u("<chapter> [page]", "Shows a chapter of the rules")),
+            e("tpall", u("", "Teleports all online players to you, bypassing /tptoggle"),
+                    u("<player>", "Teleports all online players to another player, bypassing /tptoggle")),
+            e("spawnmob", u("<mob>[:data] [amount]", "Spawns mobs where you are looking"),
+                    u("<mob>[:data],<mount>[:data] [amount]", "Spawns stacked mobs", "allium.spawnmob.stack"),
+                    u("<mob>[:data] <amount> <player>", "Spawns mobs at another player", "allium.spawnmob.others")));
 
     /** The hand-written usage lines for a command family, or none. */
     public static List<CommandUsage> of(String command) {

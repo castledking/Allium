@@ -24,6 +24,7 @@ public final class CoreCommandSpecs {
             Map.entry("tphere", "Teleport a player to you"),
             Map.entry("tpo", "Teleport to or move a player, bypassing /tptoggle"),
             Map.entry("tpohere", "Teleport a player to you, bypassing /tptoggle"),
+            Map.entry("tpall", "Teleport all online players to your location, bypassing /tptoggle"),
             Map.entry("tpoffline", "Teleport to where an offline player logged out"),
             Map.entry("there", "Teleport to the block you are looking at, or send selected entities there"),
             Map.entry("top", "Teleport to the highest block above you"),
@@ -752,6 +753,7 @@ public final class CoreCommandSpecs {
             teleportSpec("tpo", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
                     CommandArgSpec.optional("target", "allium.tpo", SuggestionSpec.onlinePlayers("allium.tpo")))),
             teleportSpec("tpohere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))),
+            teleportSpec("tpall", List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null)))),
             teleportSpec("there", List.of(CommandArgSpec.optional("targets",null,SuggestionSpec.onlinePlayers(null)))),
             teleportSpec("tppet", List.of(CommandArgSpec.optional("player","allium.tppet.others",SuggestionSpec.onlinePlayers("allium.tppet.others")))),
             teleportSpec("tpent", List.of(CommandArgSpec.optional("player","allium.tpmob.others",SuggestionSpec.onlinePlayers("allium.tpmob.others")))),
@@ -770,7 +772,7 @@ public final class CoreCommandSpecs {
             case "tpa", "tpahere", "tpoffline", "tpohere" -> " <player>";
             case "tpo" -> " <player> [target]";
             case "tphere", "there" -> " [players|selectors...]";
-            case "tppet", "tpent" -> " [player]";
+            case "tppet", "tpent", "tpall" -> " [player]";
             case "tpaccept", "tpdeny" -> " [requester]";
             case "tp" -> " <player> [target] | /tp <x> <y> <z> [yaw] [pitch] [world]";
             case "tppos" -> " <x> <y> <z> [yaw] [pitch] [world]";
@@ -1169,9 +1171,24 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    /** {@code /spawnmob <mob>[:data][,<mount>[:data]] [amount] [player]}: Essentials-style mob spawning. */
+    public static final CommandSpec SPAWNMOB = new CommandSpec(
+            "spawnmob", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("mob"),
+            "Spawn one or more mobs at your target block or a player",
+            "/spawnmob <mob>[:data][,<mount>[:data]] [amount] [player]",
+            "/spawnmob <mob>[:data][,<mount>[:data]] <amount> <player>",
+            "allium.spawnmob", "allium.spawnmob.others",
+            List.of(
+                    CommandArgSpec.required("mob", null, SuggestionSpec.none()),
+                    CommandArgSpec.optional("amount", null, SuggestionSpec.literals(List.of("1", "2", "5", "10"), null)),
+                    CommandArgSpec.optional("player", "allium.spawnmob.others", SuggestionSpec.onlinePlayers("allium.spawnmob.others"))
+            ),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, COORDS, COMPASS, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
-            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT, MOTD, RULES, BROADCAST, BROADCASTS
+            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT, MOTD, RULES, BROADCAST, BROADCASTS, SPAWNMOB
     );
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(

@@ -27,7 +27,7 @@ class LangDefaultsTest {
 
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{[a-z0-9_]+}");
     private static final Pattern LEGACY_COLOR_PATTERN = Pattern.compile("&[0-9a-fA-Fk-oK-OrR]");
-    private static final Set<String> SECTION_ALLOWED_FIELDS = Set.of("text", "sound", "volume", "pitch");
+    private static final Set<String> SECTION_ALLOWED_FIELDS = Set.of("text", "actionbar", "sound", "volume", "pitch");
     private static final Set<String> EXPECTED_KEYS;
 
     static {
@@ -59,7 +59,7 @@ class LangDefaultsTest {
             if (section.isConfigurationSection(key)) {
                 ConfigurationSection child = section.getConfigurationSection(key);
                 assertNotNull(child, fullKey);
-                if (child.contains("text") || child.contains("sound")) {
+                if (child.contains("text") || child.contains("actionbar") || child.contains("sound")) {
                     assertTrue(SECTION_ALLOWED_FIELDS.containsAll(child.getKeys(false)),
                             "Unexpected fields under message section " + fullKey + ": " + child.getKeys(false));
                     out.add(fullKey);
@@ -72,8 +72,13 @@ class LangDefaultsTest {
         }
     }
 
-    private static String readText(YamlConfiguration yaml, String key) {
-        var entry=LanguageEntry.read(yaml.get(key));assertNotNull(entry,key);return entry.text();
+    private static String readVisibleText(YamlConfiguration yaml, String key) {
+        var entry = LanguageEntry.read(yaml.get(key));
+        assertNotNull(entry, key);
+        if (entry.actionBar() != null && !entry.actionBar().isEmpty()) {
+            return entry.text().isEmpty() ? entry.actionBar() : entry.text() + "\n" + entry.actionBar();
+        }
+        return entry.text();
     }
 
     private static Set<String> placeholdersOf(String text) {
@@ -114,7 +119,7 @@ class LangDefaultsTest {
     @Test void everyVisibleMessageHasColorExceptTheInlineConsoleLabel()throws Exception{
         for(String locale:List.of("en_US","es_ES")){var yaml=loadLang("lang/"+locale+".yml");for(Messages message:Messages.values()){
             if(message.getKey().equals("messaging.console-name"))continue;
-            String text=readText(yaml,message.getKey());assertTrue(LEGACY_COLOR_PATTERN.matcher(text).find()||text.contains("{prefix}"),locale+": "+message.getKey());
+            String text=readVisibleText(yaml,message.getKey());assertTrue(LEGACY_COLOR_PATTERN.matcher(text).find()||text.contains("{prefix}"),locale+": "+message.getKey());
         }}
     }
     @Test
@@ -138,22 +143,33 @@ class LangDefaultsTest {
         int withSounds = 0;
         for (Messages msg : Messages.values()) {
             String key = msg.getKey();
-            String enText = readText(en, key);
-            String esText = readText(es, key);
-            assertNotNull(enText, "Missing en_US text for " + key);
-            assertNotNull(esText, "Missing es_ES text for " + key);
+            LanguageEntry defEntry = LanguageEntry.read(msg.getDefault());
+            LanguageEntry enEntry = LanguageEntry.read(en.get(key));
+            LanguageEntry esEntry = LanguageEntry.read(es.get(key));
+            assertNotNull(defEntry, "Missing default entry for " + key);
+            assertNotNull(enEntry, "Missing en_US entry for " + key);
+            assertNotNull(esEntry, "Missing es_ES entry for " + key);
+
+            String defVisible = defEntry.actionBar() != null && !defEntry.actionBar().isEmpty()
+                    ? (defEntry.text().isEmpty() ? defEntry.actionBar() : defEntry.text() + "\n" + defEntry.actionBar())
+                    : defEntry.text();
+            String enVisible = readVisibleText(en, key);
+            String esVisible = readVisibleText(es, key);
 
             if (msg == Messages.KIT_PAID_DENIED) {
                 // Keep frozen S16 live-gate string in en_US.yml while ensuring placeholders and colors still match.
-                assertEquals(placeholdersOf(msg.getDefault()), placeholdersOf(enText), key);
-                assertEquals(colorsOf(msg.getDefault()), colorsOf(enText), key);
+                assertEquals(placeholdersOf(defVisible), placeholdersOf(enVisible), key);
+                assertEquals(colorsOf(defVisible), colorsOf(enVisible), key);
             } else {
-                assertEquals(msg.getDefault(), enText, "en_US text mismatch for " + key);
+                assertEquals(defEntry.text(), enEntry.text(), "en_US text mismatch for " + key);
+                assertEquals(defEntry.actionBar(), enEntry.actionBar(), "en_US actionbar mismatch for " + key);
             }
 
-            assertEquals(placeholdersOf(msg.getDefault()), placeholdersOf(esText),
+            assertEquals(defEntry.actionBar() != null, esEntry.actionBar() != null,
+                    "Actionbar presence mismatch in es_ES for " + key);
+            assertEquals(placeholdersOf(defVisible), placeholdersOf(esVisible),
                     "Placeholder mismatch in es_ES for " + key);
-            assertEquals(colorsOf(msg.getDefault()), colorsOf(esText),
+            assertEquals(colorsOf(defVisible), colorsOf(esVisible),
                     "Color scheme mismatch in es_ES for " + key);
 
             assertEquals(en.isList(key),es.isList(key),key);

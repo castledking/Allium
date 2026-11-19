@@ -280,6 +280,20 @@ teleport:
     # Existing chunks are always loaded from disk for a teleport. True also generates terrain
     # that was never generated (on the server thread); false refuses such destinations.
     load-destination-chunk: false
+  entity-limits:
+    # Maximum pets a player can select at once with /tppet (separate from /tpe).
+    tppet-max: 10
+    # Maximum entities a player can select at once with /tpe (/tpent).
+    tpe-max: 50
+    # Maximum entities a single /tphere (/s) or /there command may target (e.g. /s @e).
+    tphere-max: 50
+    # Seconds a mass-entity selector confirmation (e.g. /s @e) remains valid; 0 disables confirmation.
+    confirm-seconds: 15
+
+# Essentials-style /spawnmob settings.
+spawnmob:
+  # Maximum total entities spawned by a single /spawnmob invocation (1-256).
+  limit: 10
 
 # Homes use the highest permission grant or staff-assigned minimum, never the sum.
 homes:

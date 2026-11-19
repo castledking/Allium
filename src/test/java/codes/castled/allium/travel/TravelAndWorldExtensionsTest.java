@@ -378,9 +378,13 @@ class TravelAndWorldExtensionsTest {
 
     private static void waitIdle(ThreadPoolExecutor io) throws Exception {
         long deadline = System.currentTimeMillis() + 5_000L;
-        do {
+        while (true) {
             if (System.currentTimeMillis() > deadline) throw new AssertionError("worker did not drain");
+            long before = io.getTaskCount();
             io.submit(() -> { }).get(5, TimeUnit.SECONDS);
-        } while (io.getActiveCount() > 0 || !io.getQueue().isEmpty());
+            if (io.getTaskCount() == before + 1 && io.getQueue().isEmpty() && io.getActiveCount() == 0) {
+                return;
+            }
+        }
     }
 }

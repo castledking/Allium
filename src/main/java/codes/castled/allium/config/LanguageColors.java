@@ -21,6 +21,19 @@ final class LanguageColors {
             new Replacement("item.give.delivered","{prefix} &aEntregado &f{amount}x {item} &aa &f{player}&a.","{prefix} &aEntregado &f{amount} {item} &aa &f{player}&a."),
             new Replacement("item.give.degraded","{prefix} &eEntregado &f{amount}x {item} &ea &f{player}&e, pero la cabeza se entrego sin su skin.","{prefix} &eEntregado &f{amount} {item} &ea &f{player}&e, pero la cabeza se entrego sin su skin."),
             new Replacement("item.give.received","{prefix} &aRecibiste &f{amount}x {item}&a.","{prefix} &aRecibiste &f{amount} {item}&a."),
+            // Ignoring someone now hides their chat too, not only their private messages.
+            new Replacement("messaging.ignore.added","{prefix} &aYou are now ignoring &f{player}&a's private messages.","{prefix} &aYou are now ignoring &f{player}&a."),
+            new Replacement("messaging.ignore.added","{prefix} &aAhora ignoras los mensajes privados de &f{player}&a.","{prefix} &aAhora ignoras a &f{player}&a."),
+            // The teleport warmup moved to the action bar, where it counts down.
+            new Replacement("teleport.warmup","{prefix} &eTeleporting in {time}s. Stay still and avoid damage.","[actionbar] &eTeleporting in &f{warmup}s&e. Stay still and avoid damage."),
+            new Replacement("teleport.warmup","{prefix} &eTeletransportando en {time}s. Quedate quieto y evita dano.","[actionbar] &eTeletransportando en &f{warmup}s&e. Quedate quieto y evita dano."),
+            // Payment receipts no longer show the operation id or the tax account.
+            new Replacement("economy.payment-sent","{prefix} &aPaid &f{amount} &ato &f{player}&a. &7Operation {operation}","{prefix} &aPaid &f{amount} &ato &f{player}&a."),
+            new Replacement("economy.payment-sent-taxed","{prefix} &aPaid &f{net} &ato &f{player} &7({tax} tax to {account})&a. &7Operation {operation}","{prefix} &aPaid &f{net} &ato &f{player} &7({tax} tax)&a."),
+            new Replacement("economy.payment-sent-taxed","{prefix} &aPagaste &f{net} &aa &f{player} &7({tax} impuesto a {account})&a. &7Operacion {operation}","{prefix} &aPagaste &f{net} &aa &f{player} &7({tax} impuesto)&a."),
+            new Replacement("economy.cheque-created-taxed","{prefix} &aCreated a cheque for &e{amount} &7({tax} tax to {account})&a.","{prefix} &aCreated a cheque for &e{amount} &7({tax} tax)&a."),
+            new Replacement("economy.cheque-created-taxed","{prefix} &aCheque creado por &e{amount} &7({tax} impuesto a {account})&a.","{prefix} &aCheque creado por &e{amount} &7({tax} impuesto)&a."),
+            new Replacement("economy.operation-refused","{prefix} &cEconomy refused: &f{reason}","{prefix} &cThat economy transaction could not be completed (&f{reason}&c)."),
             // tfly-on's first text described the while-flying count, now tfly-on-flying.
             new Replacement("player.tfly-on","{prefix} &aTimed flight on: &f{time} &aleft. It only runs while you fly.","{prefix} &aTimed flight on: &f{time} &aleft."),
             new Replacement("player.tfly-on","{prefix} &aVuelo temporal activado: quedan &f{time}&a. Solo corre mientras vuelas.","{prefix} &aVuelo temporal activado: quedan &f{time}&a."),

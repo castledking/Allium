@@ -108,7 +108,7 @@ public final class PaidSignService implements Listener {
                         if ("INSUFFICIENT_FUNDS".equals(refused.reason()) || "MISSING_ACCOUNT".equals(refused.reason())) {
                             plugin.getMessageManager().send(player, Messages.SIGN_INSUFFICIENT_FUNDS, "{price}", formatted);
                         } else {
-                            plugin.getMessageManager().send(player, Messages.ECO_OPERATION_REFUSED, "{reason}", refused.reason());
+                            codes.castled.allium.economy.EconomyRuntime.sendRefusal(plugin, player, refused.reason());
                         }
                     } else if (result instanceof EconomyResult.Unknown unknown) {
                         plugin.getMessageManager().send(player, Messages.ECO_UNKNOWN, "{operation}", unknown.operationId().toString());

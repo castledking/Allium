@@ -14,6 +14,15 @@ class LanguageColorsTest {
   assertEquals(List.of("{prefix} &aRepaired &f{items}&a.","[sound] block.anvil.use 1.2"),yaml.getList("utility.repair-held"));
   assertEquals("Custom repair for {count} items",yaml.getString("utility.repair-all"));
  }
+ @Test void warmupMovesToTheActionBarAndReceiptsLoseTheOperationId(){
+  var yaml=new YamlConfiguration();
+  yaml.set("teleport.warmup",List.of("{prefix} &eTeleporting in {time}s. Stay still and avoid damage.","[sound] block.note_block.chime 1.0"));
+  yaml.set("economy.payment-sent-taxed",List.of("{prefix} &aPaid &f{net} &ato &f{player} &7({tax} tax to {account})&a. &7Operation {operation}"));
+  assertEquals(2,LanguageColors.upgrade(yaml));
+  assertEquals(List.of("[actionbar] &eTeleporting in &f{warmup}s&e. Stay still and avoid damage.","[sound] block.note_block.chime 1.0"),yaml.getList("teleport.warmup"));
+  assertEquals(List.of("{prefix} &aPaid &f{net} &ato &f{player} &7({tax} tax)&a."),yaml.getList("economy.payment-sent-taxed"));
+  assertEquals(0,LanguageColors.upgrade(yaml));
+ }
  @Test void firstTimedFlightOnTextNoLongerClaimsTheGroundIsFree(){
   var yaml=new YamlConfiguration();
   yaml.set("player.tfly-on",List.of("{prefix} &aTimed flight on: &f{time} &aleft. It only runs while you fly.","[sound] entity.bat.takeoff 1.15"));

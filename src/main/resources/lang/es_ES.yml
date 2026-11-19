@@ -131,7 +131,7 @@ teleport:
     - "{prefix} &cSolicitud de teletransporte cancelada."
     - "[sound] block.note_block.hat 0.8"
   warmup:
-    - "{prefix} &eTeletransportando en {time}s. Quedate quieto y evita dano."
+    - "[actionbar] &eTeletransportando en &f{warmup}s&e. Quedate quieto y evita dano."
     - "[sound] block.note_block.chime 1.0"
   interrupted:
     - "{prefix} &cTeletransporte cancelado: {reason}."
@@ -169,6 +169,49 @@ teleport:
   toggle-off:
     - "{prefix} &c{player} ya no acepta solicitudes de teletransporte. Solicitudes entrantes canceladas."
     - "[sound] block.note_block.bass 0.85"
+  all:
+    - "{prefix} &aTeletransportados &f{count} &ajugador(es) hacia &f{player}&a."
+    - "[sound] entity.enderman.teleport 1.1"
+  all-none:
+    - "{prefix} &7No hay otros jugadores conectados para teletransportar."
+    - "[sound] block.note_block.bass 0.85"
+  entity-limit-exceeded:
+    - "{prefix} &cLa seleccion coincidio con &f{count} &centidades, lo cual supera el limite maximo de &f{limit}&c."
+    - "[sound] block.note_block.bass 0.75"
+  selector-confirm:
+    - "{prefix} &eSeleccionadas &f{count} &e{label}. Ejecuta &f{command} &ede nuevo en &f{seconds}s &epara confirmar el teletransporte."
+    - "[sound] block.note_block.bell 1.0"
+  entities-moved:
+    - "{prefix} &aTeletransportadas &f{count} &a{label}."
+    - "[sound] entity.enderman.teleport 1.05"
+spawnmob:
+  list:
+    - "{prefix} &6Mobs disponibles: &f{mobs}"
+    - "[sound] ui.button.click 1.2"
+  spawned:
+    - "{prefix} &aGenerados &f{count} &a{mob}&a."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  limit:
+    - "{prefix} &eCantidad reducida al limite del servidor (&f{limit}&e)."
+    - "[sound] block.note_block.hat 0.9"
+  invalid-mob:
+    - "{prefix} &cMob desconocido o no generable: &f{mob}&c."
+    - "[sound] block.note_block.bass 0.75"
+  no-perm-mob:
+    - "{prefix} &cNo tienes permiso para generar &f{mob}&c."
+    - "[sound] entity.villager.no 0.9"
+  no-stack:
+    - "{prefix} &cNo tienes permiso para apilar mobs."
+    - "[sound] entity.villager.no 0.9"
+  invalid-amount:
+    - "{prefix} &cLa cantidad debe ser un numero entero positivo."
+    - "[sound] block.note_block.bass 0.75"
+  unable:
+    - "{prefix} &cNo se pudo generar ese mob aqui."
+    - "[sound] block.note_block.bass 0.75"
+  data-list:
+    - "{prefix} &7Datos disponibles para &f{mob}&7: &f{data}"
+    - "[sound] ui.button.click 1.2"
 travel:
   loading:
     - "{prefix} &cLos datos de viaje se estan cargando. Intentalo de nuevo en un momento."
@@ -410,7 +453,30 @@ economy:
   admin-updated:
     - "{prefix} &aTu saldo es ahora &e{balance}&a."
   operation-refused:
-    - "{prefix} &cEconomy refused: &f{reason}"
+    - "{prefix} &cNo se pudo completar esa transaccion economica (&f{reason}&c)."
+    - "[sound] block.note_block.bass 0.75"
+  pay-self:
+    - "{prefix} &cNo puedes pagarte a ti mismo."
+    - "[sound] block.note_block.bass 0.8"
+  refused:
+    insufficient-funds:
+      - "{prefix} &cNo tienes fondos suficientes para eso."
+      - "[sound] entity.villager.no 0.9"
+    balance-cap:
+      - "{prefix} &cEsa transaccion superaria el saldo maximo permitido."
+      - "[sound] block.note_block.bass 0.75"
+    missing-account:
+      - "{prefix} &cNo se encontro esa cuenta economica."
+      - "[sound] block.note_block.bass 0.75"
+    settings-changed:
+      - "{prefix} &cLa configuracion economica cambio durante el proceso. Intentalo de nuevo."
+      - "[sound] block.note_block.hat 0.85"
+    duplicate-request:
+      - "{prefix} &cEsa transaccion entro en conflicto con una solicitud anterior. Intentalo de nuevo."
+      - "[sound] block.note_block.bass 0.75"
+    transaction-busy:
+      - "{prefix} &cNo se pudo completar esa transaccion en este momento. Intentalo de nuevo pronto."
+      - "[sound] block.note_block.hat 0.85"
   top:
     - "{prefix} &fTop de saldos &7[{page}/{pages}]"
   top-total:
@@ -432,13 +498,13 @@ economy:
   payment-received:
     - "{prefix} &aReceived &f{amount} &afrom &f{player}&a."
   payment-sent:
-    - "{prefix} &aPaid &f{amount} &ato &f{player}&a. &7Operation {operation}"
+    - "{prefix} &aPagaste &f{amount} &aa &f{player}&a."
   payment-sent-taxed:
-    - "{prefix} &aPagaste &f{net} &aa &f{player} &7({tax} impuesto a {account})&a. &7Operacion {operation}"
+    - "{prefix} &aPagaste &f{net} &aa &f{player} &7({tax} impuesto)&a."
   cheque-created:
     - "{prefix} &aCheque creado por &e{amount}&a."
   cheque-created-taxed:
-    - "{prefix} &aCheque creado por &e{amount} &7({tax} impuesto a {account})&a."
+    - "{prefix} &aCheque creado por &e{amount} &7({tax} impuesto)&a."
   cheque-given:
     - "{prefix} &aCheque administrativo de &e{amount} &aentregado a &f{player}&a."
   cheque-received:

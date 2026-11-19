@@ -194,7 +194,7 @@ public final class ChequeService implements Listener {
                         if (refused.reason().equals("INSUFFICIENT_FUNDS") || refused.reason().equals("MISSING_ACCOUNT")) {
                             send(player, Messages.ECO_CHEQUE_FUNDS, "{amount}", display.format(gross));
                         } else {
-                            send(player, Messages.ECO_OPERATION_REFUSED, "{reason}", refused.reason());
+                            EconomyRuntime.sendRefusal(plugin, player, refused.reason());
                         }
                     });
                     return;
@@ -499,7 +499,7 @@ public final class ChequeService implements Listener {
                         return;
                     }
                     finishBusy(player, playerId);
-                    send(player, Messages.ECO_OPERATION_REFUSED, "{reason}", refused.reason());
+                    EconomyRuntime.sendRefusal(plugin, player, refused.reason());
                     return;
                 }
                 finishBusy(player, playerId);

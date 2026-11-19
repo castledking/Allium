@@ -15,8 +15,8 @@ public record ChatSettings(boolean enabled,boolean formatting,boolean channelsEn
             Set<String> aliases=new LinkedHashSet<>();for(String alias:c.getStringList("aliases"))aliases.add(ChatRepository.channel(alias));
             channels.put(id,new Channel(id,c.getString("display-name",id),Set.copyOf(aliases),c.getString("format",format),0,c.getString("discord-channel-id",""),c.getString("discord-in-format","&8[Discord] &f{discord_username}: {message}"),c.getString("discord-out-format","{player}: {message}"),c.getBoolean("webhook-delivery",false)));
         }
-        channels.putIfAbsent(def,new Channel(def,"Global",Set.of("g","global"),format,0,"","{discord_username}: {message}","{player}: {message}",false));
-        channels.putIfAbsent(staff,new Channel(staff,"Staff",Set.of("a","staffchat"),"&8[Staff] <display_name>&f: <message>",0,"","{discord_username}: {message}","{player}: {message}",false));
+        channels.putIfAbsent(def,new Channel(def,"Global",Set.of("g","global","shout"),format,0,"","{discord_username}: {message}","{player}: {message}",false));
+        channels.putIfAbsent(staff,new Channel(staff,"Staff",Set.of("a","ac","amsg","staffchat"),"&8[Staff] <display_name>&f: <message>",0,"","{discord_username}: {message}","{player}: {message}",false));
         var local=root==null?null:root.getConfigurationSection("local-channel");double radius=local==null?100:local.getDouble("radius",100);
         if(!Double.isFinite(radius)||radius<=0||radius>10000)throw new IllegalArgumentException("invalid local radius");
         channels.put("local",new Channel("local","Local",Set.of("l","local"),local==null?"&8[Local] <display_name>&f: <message>":local.getString("format","&8[Local] <display_name>&f: <message>"),radius,"","","",false));
@@ -30,7 +30,9 @@ public record ChatSettings(boolean enabled,boolean formatting,boolean channelsEn
         int clear=config.getInt("chat.deletion_resend.clear_lines",500);clear=clear<=0?0:Math.max(100,Math.min(4096,clear));
         return new ChatSettings(config.getBoolean("modules.chat",true),config.getBoolean("enable-chat-formatting",true),config.getBoolean("chat.channels.enabled",true),format,Map.copyOf(groups),Map.copyOf(channels),def,staff,clear,bounded(config,"chat.replay-packets-per-tick",64,1,256),bounded(config,"chat.max-message-length",512,1,4096),bounded(config,"nickname.max-length",32,1,64),config.getBoolean("nickname.animate-tab",false),bounded(config,"nickname.updates-per-tick",16,1,64));
     }
+    /** Fixed command labels of the default and staff channels, whatever their configured aliases. */
+    public static final Set<String> GLOBAL_LABELS=Set.of("g","global","shout"),STAFF_LABELS=Set.of("a","ac","amsg","staffchat");
     private static Set<String> union(Set<String> set,String value){var out=new HashSet<>(set);out.add(value);return out;}
     private static int bounded(ConfigurationSection c,String key,int fallback,int min,int max){int value=c.getInt(key,fallback);if(value<min||value>max)throw new IllegalArgumentException("invalid "+key);return value;}
-    public Channel resolve(String label){String normalized=label.toLowerCase(Locale.ROOT);if(Set.of("g","global").contains(normalized))return channels.get(defaultChannel);if(Set.of("a","staffchat").contains(normalized))return channels.get(staffChannel);if(Set.of("l","local").contains(normalized))return channels.get("local");return channels.values().stream().filter(c->c.id().equals(normalized)||c.aliases().contains(normalized)).findFirst().orElse(null);}
+    public Channel resolve(String label){String normalized=label.toLowerCase(Locale.ROOT);if(GLOBAL_LABELS.contains(normalized))return channels.get(defaultChannel);if(STAFF_LABELS.contains(normalized))return channels.get(staffChannel);if(Set.of("l","local").contains(normalized))return channels.get("local");return channels.values().stream().filter(c->c.id().equals(normalized)||c.aliases().contains(normalized)).findFirst().orElse(null);}
 }

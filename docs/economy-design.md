@@ -521,7 +521,7 @@ E2 adds 13 tests (600 → 613), including independent JDBC owners contending on 
 
 ### E3 command and policy status
 
-Commands `/balance` (`/bal`), `/pay`, `/paytoggle [on|off] [player]`, `/eco <open|give|take|set> <player> [amount]`, and bounded `/baltop` use the journalled engine. Execution resolves names without network access, freezes UUIDs at admission, validates plain decimal amounts, enforces explicit `allium.pay.offline`, and uses the common vanish/mute readiness rules. Recipient acceptance/ignore policy is read on the money transaction connection. Preference and ignore repository writers join the same bounded process coordinator; pending online refusals also block new PAY admission immediately.
+Commands `/balance` (`/bal`), `/pay`, `/paytoggle [on|off] [player]`, `/eco <open|give|take|set> <player> [amount]`, and bounded `/baltop` (`/balancetop`) use the journalled engine. Execution resolves names without network access, freezes UUIDs at admission, validates plain decimal amounts, enforces explicit `allium.pay.offline`, and uses the common vanish/mute readiness rules. Recipient acceptance/ignore policy is read on the money transaction connection. Preference and ignore repository writers join the same bounded process coordinator; pending online refusals also block new PAY admission immediately.
 
 Decision: command PAY has no PREPARED stage. A queued command receives no durable acceptance acknowledgement and success is sent only after the execution commit. A pre-execution crash therefore has no promised accepted payment to replay; an indeterminate commit returns `OUTCOME_UNKNOWN:<id>` and the original keyed intent can reconcile by ID. This differs from a future API promising durable asynchronous acceptance, which would require PREPARED.
 

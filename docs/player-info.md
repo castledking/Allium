@@ -7,7 +7,7 @@ migration in `PlayerNameRepository`), plus `/i` and `/item` self-use aliases for
 ## Commands and permissions
 
 ### Player info utilities
-- `/list` (alias `/online`):
+- `/list` (aliases `/online`, `/who`):
   - Lists visible online players and count (`{online}/{max}`), optionally grouped by configured
     permission group priority (`info.list.groups`, default: `owner`, `admin`, `mod`, `staff`,
     `vip`, then `info.list.default-group` = `Players`).

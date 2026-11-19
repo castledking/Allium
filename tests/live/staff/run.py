@@ -517,6 +517,75 @@ def staff_chat(lane):
     require(not player.saw(m_player, 'to-staff-3'), lane.name + ': "#" from global still goes to staff only')
 
 
+def chat_aliases(lane):
+    """/a, /ac and /amsg to staff chat (also unsubscribed), /shout and /g with allium.chat.shout, /me,
+    /coords, /compass and the command aliases."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    staff.command('channel leave staff-chat', 'default')
+    for label, n in [('a', 1), ('ac', 2), ('amsg', 3)]:
+        m_player, m_staff = player.mark(), staff.mark()
+        staff.cmd(f'{label} alias-staff-{n}')
+        line = staff.chat(m_staff, f'alias-staff-{n}')
+        require('[Staff]' in line['plain'], lane.name + f': /{label} <message> reaches staff chat, echoed to a sender not reading it', line)
+        window(1.0)
+        require(not player.saw(m_player, f'alias-staff-{n}'), lane.name + f': /{label} <message> stays out of global chat')
+    staff.command('channel join staff-chat read', 'default')
+    staff.command('channel join default write', 'default')
+
+    m = staff.mark()
+    player.cmd('shout shout-all-1')
+    staff.chat(m, 'shout-all-1')
+    player.cmd('g g-all-2')
+    staff.chat(m, 'g-all-2')
+    lane.perm('PlayerBot', 'allium.chat.shout', False)
+    player.command('shout shout-denied-3', "You don't have permission to use /shout")
+    player.command('g g-denied-4', "You don't have permission to use /g")
+    window(1.0)
+    require(not staff.saw(m, 'denied'), lane.name + ': without allium.chat.shout nothing is sent')
+    lane.perm('PlayerBot', 'allium.chat.shout')
+
+    m = staff.mark()
+    player.cmd('me waves-at-everyone')
+    action = staff.chat(m, 'waves-at-everyone')
+    require(action['plain'].startswith('* PlayerBot waves-at-everyone'), lane.name + ': /me reaches others as "* name message"', action)
+
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 180 0')
+    m = player.mark()
+    player.cmd('coords')
+    player.chat(m, 'Pitch:')
+    joined = '\n'.join(c['plain'] for c in player.chats(m))
+    require('Your position in world:' in joined and 'X: 3' in joined and 'Y: -61' in joined and 'Z: 0' in joined and 'Yaw: 180' in joined,
+            lane.name + ': /coords shows the world, block position and yaw', joined)
+    player.command('whereami', 'Your position in world:')
+    player.command('getpos', 'Your position in world:')
+    player.command('coords StaffBot', "You don't have permission to do that.")
+    lane.perm('StaffBot', 'allium.getpos.others')
+    m = staff.mark()
+    staff.cmd('coords PlayerBot')
+    staff.chat(m, "PlayerBot's position in world:")
+    player.command('compass', 'You are facing north (0 degrees).')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 -90 0')
+    player.command('compass', 'You are facing east (90 degrees).')
+
+    staff.command('who', 'Online players')
+    lane.perm('StaffBot', 'allium.baltop')
+    staff.command('balancetop', 'Balancetop')
+    lane.perm('StaffBot', 'allium.speed')
+    staff.command('wspeed 3', 'Walk speed set to 3.')
+    staff.command('walkspeed reset', 'Walk speed set to')
+    lane.perm('StaffBot', 'allium.workbench')
+    for label in ['wb', 'wbench']:
+        m = staff.mark()
+        staff.cmd(label)
+        opened = staff.opened(m)
+        require('craft' in json.dumps(opened).lower(), lane.name + f': /{label} opens a crafting table', opened)
+        staff.write('close')
+        window(0.5)
+    for label, mode in [('creativemode', 'Creative'), ('adventuremode', 'Adventure'), ('spectatormode', 'Spectator'), ('survivalmode', 'Survival')]:
+        staff.command(label, f'Gamemode set to {mode}.')
+    require(lane.fixture('inv StaffBot')['gamemode'] == 'SURVIVAL', lane.name + ': the mode aliases switch gamemodes')
+
+
 def gamemode_perms(lane):
     player = lane.bots['PlayerBot']
     lane.perm('PlayerBot', 'allium.gamemode')
@@ -1805,6 +1874,7 @@ def main():
         case('completions', lambda: completions(lane))
         case('help', lambda: help_menu(lane))
         case('staff-chat', lambda: staff_chat(lane))
+        case('chat-aliases', lambda: chat_aliases(lane))
         case('gamemode-permissions', lambda: gamemode_perms(lane))
         case('creative-inventories', lambda: creative_inventories(lane))
         case('creative-restriction', lambda: creative_restriction(lane))

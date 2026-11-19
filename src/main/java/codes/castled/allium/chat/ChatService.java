@@ -164,7 +164,9 @@ public final class ChatService implements Listener,AutoCloseable {
         var values=values(s,body);var origin=p.getLocation();
         for(Session viewer:sessions.values()){
             Player recipient=viewer.player;
-            if(!viewer.ready||!same(viewer)||!listening(viewer,c)||originalAudience!=null&&!originalAudience.contains(recipient.getUniqueId()))continue;
+            // The sender always sees their own message, also in a channel they write to without reading it (/a <message>).
+            boolean own=recipient==p&&canRead(p,c);
+            if(!viewer.ready||!same(viewer)||!(own||listening(viewer,c))||originalAudience!=null&&!originalAudience.contains(recipient.getUniqueId()))continue;
             if(c.local()&&(!origin.getWorld().equals(recipient.getWorld())||origin.distanceSquared(recipient.getLocation())>c.radius()*c.radius()))continue;
             render.put(recipient.getUniqueId(),ChatOutput.render(format,values,recipient,id,p.getName(),s.decor.group(),plugin.getConfig()));
         }
@@ -172,6 +174,21 @@ public final class ChatService implements Listener,AutoCloseable {
         for(var entry:render.entrySet()){Session viewer=sessions.get(entry.getKey());if(viewer!=null&&!replays.containsKey(entry.getKey())&&!message.deleted().get())ChatOutput.send(viewer.player,entry.getValue());}
         if(!c.local()&&!c.discordId().isEmpty())relay.send(message,c,p.getName(),body.toPlainText());
         plugin.getServer().getConsoleSender().sendMessage("["+c.id()+"] "+p.getName()+": "+body.toPlainText()+" ["+id+"]");
+    }
+    /** {@code /me <message>}: {@code chat.action-format} to everyone online, as chat (deletable, never relayed). */
+    private void action(CommandSender sender,String[] args){
+        if(!(sender instanceof Player p))throw new ChatFailure(Messages.CHAT_CHANNEL_PLAYER_ONLY);
+        if(args.length==0)throw new UsageFailure();
+        if(!allowed(p))return;
+        String raw=String.join(" ",args);if(raw.isBlank()||raw.length()>settings.maxBody()){tell(p,Messages.CHAT_MESSAGE_LENGTH_INVALID);return;}
+        Session s=sessions.get(p.getUniqueId());
+        FormattedText body=UntrustedText.parse(raw,new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient")));
+        String format=plugin.getConfig().getString("chat.action-format","&5* <display_name> &5<message>");
+        String id=history.nextId();var render=new LinkedHashMap<UUID,String>();var values=values(s,body);
+        for(Session viewer:sessions.values())if(viewer.ready&&same(viewer))render.put(viewer.player.getUniqueId(),ChatOutput.render(format,values,viewer.player,id,p.getName(),s.decor.group(),plugin.getConfig()));
+        var message=history.add(id,p.getUniqueId(),p.getName(),"action",System.currentTimeMillis(),render);
+        for(var entry:render.entrySet()){Session viewer=sessions.get(entry.getKey());if(viewer!=null&&!replays.containsKey(entry.getKey())&&!message.deleted().get())ChatOutput.send(viewer.player,entry.getValue());}
+        plugin.getServer().getConsoleSender().sendMessage("[action] * "+p.getName()+" "+body.toPlainText()+" ["+id+"]");
     }
     private Map<String,FormattedText> values(Session s,FormattedText body){
         var values=new LinkedHashMap<String,FormattedText>();values.put("prefix",TextFormatter.parse(s.decor.prefix()));values.put("name",name(s,false));values.put("gradient_name",name(s,true));values.put("suffix",TextFormatter.parse(s.decor.suffix()));values.put("player",UntrustedText.parse(s.player.getName(),UntrustedText.Allow.NONE));values.put("message",body);return values;
@@ -212,7 +229,7 @@ public final class ChatService implements Listener,AutoCloseable {
     public void dispatch(BukkitCommandContext context){
         if(!settings.enabled()){tell(context.sender(),Messages.CHAT_MODULE_DISABLED);return;}
         CommandSender sender=context.sender();String action=context.spec().canonicalName();String[] args=context.args();
-        try{switch(action){case "nick"->nick(sender,args);case "channel"->channel(sender,context.label(),args);case "delmsg"->delete(sender,args);default->throw new IllegalArgumentException();}}
+        try{switch(action){case "nick"->nick(sender,args);case "channel"->channel(sender,context.label(),args);case "delmsg"->delete(sender,args);case "action"->action(sender,args);default->throw new IllegalArgumentException();}}
         catch(UsageFailure usage){context.sendInvalidArgs(context.spec().selfUsage());}
         catch(IllegalArgumentException error){tell(sender,error instanceof ChatFailure failure?failure.message:Messages.CHAT_ARGUMENT_ERROR,"{message}",Objects.toString(error.getMessage(),"Invalid chat arguments."));}
     }
@@ -252,11 +269,11 @@ public final class ChatService implements Listener,AutoCloseable {
         if(!(sender instanceof Player p))throw new ChatFailure(Messages.CHAT_CHANNEL_PLAYER_ONLY);Session s=sessions.get(p.getUniqueId());if(s==null||!s.ready)throw new ChatFailure(Messages.CHAT_PROFILE_NOT_READY);
         String alias=label.substring(label.lastIndexOf(':')+1);var shortcut=settings.resolve(alias);
         if(!settings.channelsEnabled()){
-            if(Set.of("g","global").contains(alias)){if(args.length==0)choose(s,settings.defaultChannel(),true);else send(p,settings.defaultChannel(),String.join(" ",args),null);return;}
+            if(ChatSettings.GLOBAL_LABELS.contains(alias)){if(args.length==0)choose(s,settings.defaultChannel(),true);else if(shout(p,alias))send(p,settings.defaultChannel(),String.join(" ",args),null);return;}
             throw new ChatFailure(Messages.CHAT_CHANNELS_DISABLED_USE_GLOBAL);
         }
         if(!alias.equals("channel")&&shortcut!=null){
-            if(args.length>0){send(p,shortcut.id(),String.join(" ",args),null);return;}
+            if(args.length>0){if(!shortcut.id().equals(settings.defaultChannel())||shout(p,alias))send(p,shortcut.id(),String.join(" ",args),null);return;}
             choose(s,s.write.equals(shortcut.id())?settings.defaultChannel():shortcut.id(),true);return;
         }
         if(args.length==0){tell(p,Messages.CHAT_CHANNELS_LIST,"{channels}",String.join(", ",complete(p,"")));return;}
@@ -267,6 +284,9 @@ public final class ChatService implements Listener,AutoCloseable {
             var reads=new LinkedHashSet<>(s.reads);reads.remove(target.id());String write=s.write.equals(target.id())?settings.defaultChannel():s.write;saveChannels(s,write,reads);
         }else throw new ChatFailure(Messages.CHAT_CHANNEL_ACTION_INVALID);
     }
+    /** {@code /g <message>} and {@code /shout <message>}: one message to the default channel needs {@value #SHOUT}. */
+    private boolean shout(Player p,String alias){if(p.hasPermission(SHOUT))return true;tell(p,Messages.HIDE_NO_PERMISSION,"{cmd}",alias);return false;}
+    public static final String SHOUT="allium.chat.shout";
     private void choose(Session s,String id,boolean write){var c=settings.channels().get(id);if(c==null||!(write?canWrite(s.player,c):canRead(s.player,c)))throw new ChatFailure(Messages.CHAT_CHANNEL_JOIN_DENIED);var reads=new LinkedHashSet<>(s.reads);reads.add(id);saveChannels(s,write?id:s.write,reads);}
     private void saveChannels(Session s,String write,Set<String> reads){
         if(s.busy)throw new ChatFailure(Messages.CHAT_PROFILE_BUSY);s.busy=true;

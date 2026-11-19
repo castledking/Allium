@@ -12,7 +12,8 @@ No import code runs at startup. Vault economy remains disabled by default.
 | `/nick <player> <name\|off>` | Also `allium.nick.others`; resolves known account UUIDs, including offline accounts |
 | `/channel join <id> [read\|write]` | `allium.channel` and `allium.channel.join.<id>.read` or `.write` |
 | `/channel leave <id>` | Removes subscription; leaving the write channel selects the configured default |
-| `/g`, `/global`, `/l`, `/local`, `/a`, `/staffchat` | Select/toggle write channel; with text, send once without changing the selection |
+| `/g`, `/global`, `/shout`, `/l`, `/local`, `/a`, `/ac`, `/amsg`, `/staffchat` | Select/toggle write channel; with text, send once without changing the selection. A message sent with `/g` or `/shout` needs `allium.chat.shout` (default true). The sender always sees their own message, also in staff chat when they write to it without reading it |
+| `/me <message>` (`/action`) | `allium.me` (default true); `* name message` in `chat.action-format` to everyone online, after the same mute, vanish and colour checks as chat; deletable with `/delmsg`, never relayed to Discord |
 | `#text` in public chat | Send once to configured staff channel; hex color tokens are not staff shortcuts |
 | `>text` while writing to staff chat | Send once to the default (global) channel; the staff selection stays. The global write permission still applies |
 | `/delmsg <id>` (`/deletemsg`) | `allium.delmsg`, `allium.deletemsg` or `allium.staff` |

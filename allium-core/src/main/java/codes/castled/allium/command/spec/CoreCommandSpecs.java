@@ -57,7 +57,8 @@ public final class CoreCommandSpecs {
             Map.entry("tax", "Inspect, impose, list or refund server taxes"),
             Map.entry("nick", "Set or clear your nickname (or another player's)"),
             Map.entry("channel", "Join, leave or write to a chat channel"),
-            Map.entry("delmsg", "Delete a chat message for everyone"));
+            Map.entry("delmsg", "Delete a chat message for everyone"),
+            Map.entry("action", "Describe what you are doing in chat"));
 
     private static String describe(String command, String fallback) {
         return DESCRIPTIONS.getOrDefault(command, fallback);
@@ -169,14 +170,22 @@ public final class CoreCommandSpecs {
     public static String gamemodeAlias(String label) {
         if(label==null)return null;
         String name=label.substring(label.lastIndexOf(':')+1).toLowerCase(java.util.Locale.ROOT);
-        return switch(name){case "gmc","creative"->"creative";case "gma","adventure"->"adventure";
-            case "gms","survival"->"survival";case "gmsp","spectator"->"spectator";default->null;};
+        return switch(name){case "gmc","creative","creativemode"->"creative";case "gma","adventure","adventuremode"->"adventure";
+            case "gms","survival","survivalmode"->"survival";case "gmsp","spectator","spectatormode"->"spectator";default->null;};
+    }
+
+    /** {@code /wspeed} and {@code /walkspeed} are {@code /speed walk}. */
+    public static String speedAlias(String label) {
+        if(label==null)return null;
+        String name=label.substring(label.lastIndexOf(':')+1).toLowerCase(java.util.Locale.ROOT);
+        return name.equals("wspeed")||name.equals("walkspeed")?"walk":null;
     }
     public static final CommandSpec GAMEMODE = new CommandSpec(
             "gamemode",
             CommandSpec.DEFAULT_NAMESPACE,
             "essentials",
-            List.of("gm","gmc","gma","gms","gmsp","creative","survival","spectator","adventure"),
+            List.of("gm","gmc","gma","gms","gmsp","creative","survival","spectator","adventure",
+                    "creativemode","survivalmode","spectatormode","adventuremode"),
             "Change your gamemode",
             "/gamemode <mode> [player]",
             "/gamemode <mode> <player>",
@@ -575,11 +584,13 @@ public final class CoreCommandSpecs {
     public static final List<CommandSpec> MODERATION_SPECS = java.util.stream.Stream.concat(
             java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES, INVSEE, ENDERCHEST), DISCIPLINE_SPECS.stream()).toList();
 
-    public static final List<CommandSpec> CHAT_SPECS = java.util.stream.Stream.of("nick","channel","delmsg")
+    public static final List<CommandSpec> CHAT_SPECS = java.util.stream.Stream.of("nick","channel","delmsg","action")
         .map(name->new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"chat",
-            name.equals("nick")?List.of("nickname"):name.equals("delmsg")?List.of("deletemsg"):List.of("g","global","l","local","a","staffchat"),
-            describe(name,"Allium chat: "+name),"/"+name,"/"+name,name.equals("delmsg")?null:"allium."+name,null,
-            List.of(CommandArgSpec.optional("arguments",null,null)),List.of(),CommandMessageKeys.ofOutcomes(Map.of()))).toList();
+            switch(name){case "nick"->List.of("nickname");case "delmsg"->List.of("deletemsg");case "action"->List.of("me");
+                default->List.of("g","global","shout","l","local","a","ac","amsg","staffchat");},
+            describe(name,"Allium chat: "+name),name.equals("action")?"/action <message>":"/"+name,name.equals("action")?"/action <message>":"/"+name,
+            switch(name){case "delmsg"->null;case "action"->"allium.me";default->"allium."+name;},null,
+            List.of(CommandArgSpec.optional(name.equals("action")?"message":"arguments",null,null)),List.of(),CommandMessageKeys.ofOutcomes(Map.of()))).toList();
 
     private static final List<String> MONEY_AMOUNTS = List.of("1", "10", "100", "1k", "100k", "1M");
     private static final List<String> TAX_PERCENTS = List.of("5", "10", "25", "50", "100");
@@ -625,7 +636,7 @@ public final class CoreCommandSpecs {
                                             CommandArgSpec.required("decision", null,
                                                     SuggestionSpec.literals(List.of("capture", "release"), null)),
                                             CommandArgSpec.required("reason", null, SuggestionSpec.none())), List.of()))),
-            economySpec("baltop", List.of(), "/baltop [page]", null,
+            economySpec("baltop", List.of("balancetop"), "/baltop [page]", null,
                     List.of(CommandArgSpec.optional("page", null, SuggestionSpec.literals(List.of("1", "2", "3"), null))), List.of()),
             economySpec("cheque", List.of(), "/cheque <amount> [player]", "allium.cheque.others",
                     List.of(CommandArgSpec.required("amount", null, SuggestionSpec.literals(MONEY_AMOUNTS, null)),
@@ -724,7 +735,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec WORKBENCH = new CommandSpec(
-            "workbench", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("craft"),
+            "workbench", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("craft", "wb", "wbench"),
             "Open a virtual crafting table",
             "/workbench", "/workbench",
             "allium.workbench", null,
@@ -752,7 +763,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec SPEED = new CommandSpec(
-            "speed", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "speed", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("wspeed", "walkspeed"),
             "Change walk or fly speed (0-10 or reset)",
             "/speed [walk|fly] <0..10|reset> [player]", "/speed [walk|fly] <0..10|reset> <player>",
             "allium.speed", "allium.speed.others",
@@ -790,6 +801,24 @@ public final class CoreCommandSpecs {
             List.of(CommandArgSpec.optional("player", "allium.ping.others",
                     SuggestionSpec.onlinePlayers("allium.ping.others"))),
             List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec COORDS = new CommandSpec(
+            "coords", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("getpos", "whereami"),
+            "Show your position or another player's",
+            "/coords [player]", "/coords <player>",
+            "allium.getpos", "allium.getpos.others",
+            List.of(CommandArgSpec.optional("player", "allium.getpos.others",
+                    SuggestionSpec.onlinePlayers("allium.getpos.others"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec COMPASS = new CommandSpec(
+            "compass", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Show the direction you are facing",
+            "/compass", "/compass",
+            "allium.compass", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
     public static final CommandSpec EXT = new CommandSpec(
@@ -1076,7 +1105,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
-            SPEED, SCALE, PING, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
+            SPEED, SCALE, PING, COORDS, COMPASS, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
             ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT, MOTD, RULES, BROADCAST, BROADCASTS
     );
 
@@ -1093,7 +1122,7 @@ public final class CoreCommandSpecs {
             "list",
             CommandSpec.DEFAULT_NAMESPACE,
             "info",
-            List.of("online"),
+            List.of("online", "who"),
             "List online players",
             "/list",
             "/list",

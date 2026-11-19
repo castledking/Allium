@@ -15,10 +15,12 @@ startup without registering listeners or intercepting dispatch.
 | --- | --- | --- | --- | --- |
 | `/repair [hand\|all]` | — | `allium.repair`, `allium.repair.all` | `op` (in `allium.*`) | Repairs held item in place preserving metadata/identity, or all damaged inventory slots (`all`) |
 | `/disposal` | `/trash`, `/dispose` | `allium.disposal` | `op` (in `allium.*`) | Opens a 27-slot virtual container whose contents are cleared on close |
-| `/workbench` | `/craft` | `allium.workbench` | `op` (in `allium.*`) | Opens a virtual crafting workbench |
+| `/workbench` | `/craft`, `/wb`, `/wbench` | `allium.workbench` | `op` (in `allium.*`) | Opens a virtual crafting workbench |
 | `/anvil` | — | `allium.anvil` | `op` (in `allium.*`) | Opens a virtual anvil GUI |
 | `/info` | — | `allium.info` | `op` (in `allium.*`) | Shows server name and vanish-aware online player count |
-| `/speed [walk\|fly] <0..10\|reset> [player]` | — | `allium.speed`, `allium.speed.others` | `op` (in `allium.*`) | Adjusts walk or fly speed (`0..10` mapped to `0.0..1.0`) or resets defaults (`0.2` walk, `0.1` fly) |
+| `/speed [walk\|fly] <0..10\|reset> [player]` | `/wspeed` and `/walkspeed` are `/speed walk` | `allium.speed`, `allium.speed.others` | `op` (in `allium.*`) | Adjusts walk or fly speed (`0..10` mapped to `0.0..1.0`) or resets defaults (`0.2` walk, `0.1` fly) |
+| `/coords [player]` | `/getpos`, `/whereami` | `allium.getpos` (true), `allium.getpos.others` | others `op` (in `allium.*`) | The world, block X/Y/Z with their directions, yaw (0-360) and pitch |
+| `/compass` | — | `allium.compass` (true) | in `allium.*` | The direction the player faces, one of eight, and the bearing in degrees clockwise from north |
 | `/ping [player]` | — | `allium.ping`, `allium.ping.others` | `op` (in `allium.*`) | Reports self or visible target ping in milliseconds |
 | `/ext [player]` | `/extinguish` | `allium.ext`, `allium.ext.others` | `op` (in `allium.*`) | Extinguishes fire ticks (`setFireTicks(0)`) on self or target |
 | `/burn <player> [seconds]` | — | `allium.burn` | `op` (in `allium.*`) | Sets target fire ticks (`1..300` seconds, default `10s`) |

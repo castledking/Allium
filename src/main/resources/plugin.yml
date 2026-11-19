@@ -282,7 +282,7 @@ commands:
 
   delhome:
     description: Delete one of your homes
-    usage: /delhome
+    usage: /delhome [name|player:home]
 
   homes:
     description: List your homes
@@ -623,7 +623,9 @@ permissions:
       allium.customtext: true
       allium.home.bed: true
       allium.home.others: true
+      allium.home.others.bed: true
       allium.homes.others: true
+      allium.delhome.others: true
       allium.reload: true
       allium.import: true
   allium.reload:
@@ -1046,7 +1048,11 @@ permissions:
     default: true
 
   allium.home.others:
-    description: Allows /home <player>:<home> to visit another player's home
+    description: "Allows /home <player>:<home> to visit another player's home, and /home <player>: to list them"
+    default: op
+
+  allium.home.others.bed:
+    description: Allows /home <player>:bed to visit another player's bed or respawn anchor
     default: op
 
   allium.delhome:
@@ -1057,6 +1063,10 @@ permissions:
 
   allium.homes.others:
     description: Allows /homes <player> to list another player's homes
+    default: op
+
+  allium.delhome.others:
+    description: Allows /delhome <player>:<home> to delete another player's home
     default: op
 
   allium.setwarp:

@@ -1,5 +1,16 @@
 # Staff tooling live gate
 
+## November 18 follow-up (r11): offline home administration
+
+**PASS on targeted runs:** `usage-items-homes` and the new `home-admin` case ran together with
+`--only` on Spigot 1.20.1 (`homes-both-spigot-1`) and Paper 26.3 (`homes-both-paper-1`), 26 checks
+each, SQLite, Allium.jar `0dd3b5a1d0b660236a6a76800128cd4835c059e51f0aeeb271f028c6bc7c95a2`. No exceptions or SEVERE lines. `./gradlew check`: 1036 unit tests,
+0 failures. The other staff cases did not run on this jar.
+
+| Case | What ran |
+| --- | --- |
+| home-admin | `/home PlayerBot:adm` completes `PlayerBot:admin1`/`admin2` and `/home PlayerB` completes `PlayerBot:`; `/delhome PlayerBot:` completes nothing without `allium.delhome.others`; `/home PlayerBot:` lists; `/delhome PlayerBot:admin1` refused, then deleted, and the online owner's `/homes` and the completion follow; `/home PlayerBot:bed` refused, then lands at the bed; with PlayerBot offline, the saved bed is reached, `/delhome PlayerBot:admin2` deletes and `/home PlayerBot:admin2` no longer finds it, which still holds after PlayerBot rejoins |
+
 ## November 18 follow-up (r10): usage cards, homes, item text, /xp, /customtext
 
 **PASS on targeted runs only, not the full gate:** the new `usage-items-homes` case ran with

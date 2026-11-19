@@ -223,6 +223,12 @@ home:
   not-found-other:
     - "{prefix} &f{player} &chas no home called &f{name}&c."
     - "[sound] block.note_block.bass 0.8"
+  deleted-other:
+    - "{prefix} &aDeleted &f{player}&a's home &f{name}&a."
+    - "[sound] item.book.page_turn 0.9"
+  bed-missing-other:
+    - "{prefix} &f{player} &chas no bed or charged respawn anchor, or it is blocked."
+    - "[sound] block.note_block.bass 0.8"
 customtext:
   missing:
     - "{prefix} &cThere is no custom text called &f{section}&c."

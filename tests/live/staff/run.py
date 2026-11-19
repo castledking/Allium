@@ -942,6 +942,68 @@ def usage_items_homes(lane):
     window(.5)
 
 
+def home_admin(lane):
+    """Offline home administration (legacy parity): /home <player>: lists, /home <player>:bed,
+    /delhome <player>:<home>, and staff completion from online players' loaded homes."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    for node in ['allium.home.others', 'allium.teleport.timer.bypass.home', 'allium.teleport.cooldown.bypass.home']:
+        lane.perm('StaffBot', node)
+    for node in ['allium.teleport.timer.bypass.home', 'allium.teleport.cooldown.bypass.home', 'allium.sethome.multiple.5']:
+        lane.perm('PlayerBot', node)
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+    window(.5)
+    player.command('sethome admin1', 'Home admin1 set.')
+    player.command('sethome admin2', 'Home admin2 set.')
+
+    tabs = staff.tab('home PlayerBot:adm')
+    require({'PlayerBot:admin1', 'PlayerBot:admin2'} <= set(tabs), lane.name + ': /home completes an online player\'s homes', tabs)
+    tabs = staff.tab('home PlayerB')
+    require('PlayerBot:' in tabs, lane.name + ': /home completes visible online players as Name:', tabs)
+    tabs = staff.tab('delhome PlayerBot:')
+    require(tabs == [], lane.name + ': /delhome completes no one else\'s homes without allium.delhome.others', tabs)
+
+    listed = staff.command('home PlayerBot:', "PlayerBot's homes: ")
+    require('admin1' in listed['plain'] and 'admin2' in listed['plain'], lane.name + ': /home PlayerBot: lists the homes', listed)
+
+    staff.command('delhome PlayerBot:admin1', 'permission to do that')
+    lane.perm('StaffBot', 'allium.delhome.others')
+    staff.command('delhome PlayerBot:admin1', "Deleted PlayerBot's home admin1.")
+    mine = player.command('homes', 'Homes:')
+    require('admin1' not in mine['plain'] and 'admin2' in mine['plain'], lane.name + ': the online owner sees the deletion at once', mine)
+    tabs = staff.tab('home PlayerBot:adm')
+    require(tabs == ['PlayerBot:admin2'], lane.name + ': completion follows the deletion', tabs)
+
+    here = lane.fixture('where PlayerBot')
+    bed = (here['x'] - 5, here['y'], here['z'] + 5)
+    lane.fixture(f'bedspawn PlayerBot {bed[0]} {bed[1]} {bed[2]}')
+    window(.3)
+    staff.command('home PlayerBot:bed', 'permission to do that')
+    lane.perm('StaffBot', 'allium.home.others.bed')
+    staff.command('home PlayerBot:bed', 'Teleported to home.')
+    at = lane.fixture('where StaffBot')
+    require(abs(at['x'] - bed[0]) < 1.6 and abs(at['z'] - bed[2]) < 1.6, lane.name + ': /home PlayerBot:bed lands at their bed',
+            dict(bed=bed, landed=at))
+
+    # The owner offline: the saved respawn point, storage reads and a deletion they see on return.
+    player.disconnect()
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    window(.4)
+    staff.command('home PlayerBot:bed', 'Teleported to home.')
+    at = lane.fixture('where StaffBot')
+    require(abs(at['x'] - bed[0]) < 1.6 and abs(at['z'] - bed[2]) < 1.6, lane.name + ': an offline player\'s saved bed is reachable',
+            dict(bed=bed, landed=at))
+    staff.command('delhome PlayerBot:admin2', "Deleted PlayerBot's home admin2.")
+    staff.command('home PlayerBot:admin2', 'PlayerBot has no home called admin2.')
+    player = lane.bot('PlayerBot')
+    mine = player.command('homes', 'Homes')
+    require('admin2' not in mine['plain'], lane.name + ': an offline deletion holds when the owner returns', mine)
+
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+    window(.5)
+
+
 def restore(lane):
     staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
     lane.fixture('clear PlayerBot')
@@ -1484,6 +1546,7 @@ def main():
         case('mail-numbers', lambda: mail_numbers(lane))
         case('whois-alts', lambda: whois_and_alts(lane))
         case('usage-items-homes', lambda: usage_items_homes(lane))
+        case('home-admin', lambda: home_admin(lane))
         case('restore', lambda: restore(lane))
         case('paid-repair', lambda: paid_repair(lane))
         case('repair-halt-after-reserve', lambda: repair_halt(lane, 'repair.halt-after-reserve', 'released'))

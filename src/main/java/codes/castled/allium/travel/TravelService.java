@@ -27,6 +27,10 @@ public final class TravelService implements Listener {
     public static final String PERMISSION_HOME_OTHERS="allium.home.others";
     /** {@code /homes <player>}. */
     public static final String PERMISSION_HOMES_OTHERS="allium.homes.others";
+    /** {@code /home <player>:bed}. */
+    public static final String PERMISSION_HOME_OTHERS_BED="allium.home.others.bed";
+    /** {@code /delhome <player>:<home>}. */
+    public static final String PERMISSION_DELHOME_OTHERS="allium.delhome.others";
     public static final String BED="bed";
     private static final Map<PluginStart,TravelService> OWNERS=new WeakHashMap<>();
     private final PluginStart plugin;
@@ -104,10 +108,34 @@ public final class TravelService implements Listener {
     }
     public List<String> completeHomes(Player p){return completeHomes(p,"");}
     public List<String> completeWarps(Player p){return completeWarps(p,"");}
-    public List<String> completeHomes(Player p,String prefix){
+    public List<String> completeHomes(Player p,String prefix){return completeHomes(p,prefix,"home");}
+    /**
+     * Names for {@code /sethome}, {@code /home} or {@code /delhome}: the player's own homes, {@code bed}
+     * for {@code /home}, and for staff {@code Name:} for each visible online player, then
+     * {@code Name:home} from that player's loaded homes. Memory only: offline owners complete nothing.
+     */
+    public List<String> completeHomes(Player p,String prefix,String command){
         Session s=sessions.get(p.getUniqueId());if(!homesEnabled||s==null||!same(s)||!s.loaded)return List.of();
-        String lower=prefix.toLowerCase(Locale.ROOT);var names=new TreeSet<>(s.homes.keySet());if(p.hasPermission(PERMISSION_BED))names.add(BED);
-        return names.stream().filter(n->n.startsWith(lower)).limit(50).toList();
+        String lower=prefix.toLowerCase(Locale.ROOT);boolean home=command.equals("home");
+        String others=home?PERMISSION_HOME_OTHERS:command.equals("delhome")?PERMISSION_DELHOME_OTHERS:null;
+        boolean staff=others!=null&&p.hasPermission(others);
+        int colon=lower.indexOf(':');
+        if(colon>=0){
+            if(!staff)return List.of();
+            Player owner=plugin.getServer().getPlayerExact(prefix.substring(0,colon));
+            if(owner==null||owner==p||!codes.castled.allium.naming.PlayerNameVisibility.canSee(p,owner))return List.of();
+            Session o=sessions.get(owner.getUniqueId());if(o==null||!same(o)||!o.loaded)return List.of();
+            var names=new TreeSet<>(o.homes.keySet());if(home&&p.hasPermission(PERMISSION_HOME_OTHERS_BED))names.add(BED);
+            String rest=lower.substring(colon+1);
+            return names.stream().filter(n->n.startsWith(rest)).limit(50).map(n->owner.getName()+":"+n).toList();
+        }
+        var out=new ArrayList<String>();
+        var names=new TreeSet<>(s.homes.keySet());if(home&&p.hasPermission(PERMISSION_BED))names.add(BED);
+        names.stream().filter(n->n.startsWith(lower)).forEach(out::add);
+        if(staff)plugin.getServer().getOnlinePlayers().stream()
+                .filter(o->o!=p&&codes.castled.allium.naming.PlayerNameVisibility.canSee(p,o)&&o.getName().toLowerCase(Locale.ROOT).startsWith(lower))
+                .map(o->o.getName()+":").sorted().forEach(out::add);
+        return out.stream().limit(50).toList();
     }
     public List<String> completeWarps(Player p,String prefix){return !warpsEnabled||!warpsLoaded||!p.hasPermission("allium.warp")?List.of():warps.keySet().stream().filter(n->access(p,n)&&n.startsWith(prefix.toLowerCase(Locale.ROOT))).sorted().limit(50).toList();}
     public void list(Player p,boolean warp) {
@@ -129,22 +157,30 @@ public final class TravelService implements Listener {
     public void listOther(Player p,String owner){
         if(!permission(p,"homes"))return;
         if(!p.hasPermission(PERMISSION_HOMES_OTHERS)){send(p,Messages.NO_PERMISSION);return;}
+        listOwner(p,owner,PERMISSION_HOMES_OTHERS);
+    }
+    private void listOwner(Player p,String owner,String node){
         resolveOwner(p,owner,(id,ownerName)->{
             if(id.equals(p.getUniqueId())){list(p,false);return;}
             Session s=session(p);if(s==null||!admit(s))return;
             query(s,()->repository.homes(id),homes->{
-                if(!p.hasPermission(PERMISSION_HOMES_OTHERS)){send(p,Messages.NO_PERMISSION);return;}
+                if(!p.hasPermission(node)){send(p,Messages.NO_PERMISSION);return;}
                 List<String> names=homes.keySet().stream().sorted().toList();
                 if(names.isEmpty()){send(p,Messages.HOME_NONE_OTHER,"{player}",ownerName);return;}
                 send(p,Messages.HOME_LIST_OTHER,"{player}",ownerName,"{homes}",render(names));
             });
         });
     }
-    /** {@code /home <player>:<home>}: teleports staff to another player's home; an empty home name means {@code home}. */
+    /**
+     * {@code /home <player>:<home>}: teleports staff to another player's home. As in legacy
+     * Allium, {@code <player>:} lists that player's homes and {@code <player>:bed} goes to their bed.
+     */
     public void useOther(Player p,String owner,String rawHome){
         if(!permission(p,"home"))return;
         if(!p.hasPermission(PERMISSION_HOME_OTHERS)){send(p,Messages.NO_PERMISSION);return;}
-        String name=rawHome.isEmpty()?"home":name(p,rawHome);if(name==null)return;
+        if(rawHome.isEmpty()){listOwner(p,owner,PERMISSION_HOME_OTHERS);return;}
+        if(BED.equalsIgnoreCase(rawHome)){bedOther(p,owner);return;}
+        String name=name(p,rawHome);if(name==null)return;
         resolveOwner(p,owner,(id,ownerName)->{
             if(id.equals(p.getUniqueId())){use(p,name,false);return;}
             Session s=session(p);if(s==null||!admit(s))return;
@@ -155,6 +191,56 @@ public final class TravelService implements Listener {
                 teleports.teleport(p,()->location(point),"home",()->same(s)&&p.hasPermission(PERMISSION_HOME_OTHERS));
             });
         });
+    }
+    /**
+     * {@code /home <player>:bed}: another player's bed or respawn anchor. An online owner's is checked
+     * as theirs would be; an offline owner's is the respawn point saved in their player file.
+     */
+    private void bedOther(Player p,String owner){
+        if(!p.hasPermission(PERMISSION_HOME_OTHERS_BED)){send(p,Messages.NO_PERMISSION);return;}
+        resolveOwner(p,owner,(id,ownerName)->{
+            if(id.equals(p.getUniqueId())){bed(p);return;}
+            if(RespawnPoints.of(plugin.getServer().getOfflinePlayer(id))==null){send(p,Messages.HOME_BED_MISSING_OTHER,"{player}",ownerName);return;}
+            plugin.logger().info("Home audit actor="+p.getUniqueId()+" owner="+id+" home=bed");
+            teleports.teleport(p,()->RespawnPoints.of(plugin.getServer().getOfflinePlayer(id)),"home",
+                    ()->p.isOnline()&&p.hasPermission(PERMISSION_HOME_OTHERS_BED));
+        });
+    }
+    /**
+     * {@code /delhome <player>:<home>}: deletes another player's home at the revision just read, so a
+     * home the owner changed in between is reported as changed rather than deleted. An online owner's
+     * loaded homes are updated at once.
+     */
+    public void deleteOther(Player p,String owner,String rawHome){
+        if(!permission(p,"delhome"))return;
+        if(!p.hasPermission(PERMISSION_DELHOME_OTHERS)){send(p,Messages.NO_PERMISSION);return;}
+        String name=name(p,rawHome.isEmpty()?"home":rawHome);if(name==null)return;
+        resolveOwner(p,owner,(id,ownerName)->{
+            if(id.equals(p.getUniqueId())){delete(p,name,false);return;}
+            Session s=session(p);if(s==null||!admit(s))return;
+            query(s,()->repository.home(id,name),found->{
+                if(found.isEmpty()){forgetOwner(id,name);send(p,Messages.HOME_NOT_FOUND_OTHER,"{player}",ownerName,"{name}",name);return;}
+                if(!p.hasPermission(PERMISSION_DELHOME_OTHERS)){send(p,Messages.NO_PERMISSION);return;}
+                if(!admit(s))return;
+                long revision=found.get().revision();
+                query(s,()->repository.deleteHome(id,name,revision),result->{
+                    switch(result){
+                        case DELETED->{
+                            forgetOwner(id,name);
+                            plugin.logger().info("Home audit actor="+p.getUniqueId()+" owner="+id+" home="+name+" action=delete");
+                            send(p,Messages.HOME_DELETED_OTHER,"{player}",ownerName,"{name}",name);
+                        }
+                        case MISSING->{forgetOwner(id,name);send(p,Messages.HOME_NOT_FOUND_OTHER,"{player}",ownerName,"{name}",name);}
+                        default->send(p,Messages.TRAVEL_CHANGED);
+                    }
+                });
+            });
+        });
+    }
+    private void forgetOwner(UUID id,String name){
+        Session o=sessions.get(id);if(o==null||!same(o))return;
+        forget(o,name,false);
+        if(o.confirmation!=null&&!o.confirmation.warp()&&o.confirmation.name().equals(name))o.confirmation=null;
     }
     /** {@code /bed} and {@code /home bed}: the player's bed or respawn anchor, checked again when the teleport lands. */
     public void bed(Player p){

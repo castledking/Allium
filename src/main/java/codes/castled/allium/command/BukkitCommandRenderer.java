@@ -151,7 +151,7 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
                 if (!(sender instanceof Player player) || plugin.getModuleManager()==null
                         || !(plugin.getModuleManager().getModule("travel") instanceof codes.castled.allium.module.TravelModule module)
                         || !module.isEnabled())return List.of();
-                return warps?module.travel().completeWarps(player,prefix):module.travel().completeHomes(player,prefix);
+                return warps?module.travel().completeWarps(player,prefix):module.travel().completeHomes(player,prefix,spec.canonicalName());
             }
 
             @Override

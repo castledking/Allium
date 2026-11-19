@@ -509,11 +509,56 @@ creative-manager:
   audit: true
   # Seconds between two "not allowed" messages to one player.
   message-cooldown-seconds: 10
-  # Blocks and entities (spawn eggs, armor stands, paintings...) refused in creative mode unless the
-  # player holds allium.gamemode.creative.blacklist. Names as in Bukkit, e.g. TNT, WITHER.
+  # Creative players cannot light TNT (flint and steel, fire charges, burning arrows...) unless they
+  # hold allium.gamemode.creative.blacklist.
+  protect-tnt: true
+  # Refused in creative mode unless the player holds allium.gamemode.creative.blacklist. Names as in
+  # Bukkit, e.g. TNT, WITHER.
   blacklist:
+    # Blocks that cannot be placed, broken or right-clicked.
     blocks: []
+    # Entities: spawn eggs, armor stands, paintings, minecarts...
     entities: []
+    # Items that cannot be used (right-clicked, emptied) or taken from the creative menu.
+    items: [FLINT_AND_STEEL, FIRE_CHARGE, LAVA_BUCKET]
+    # Commands: a command (give), or one with its first arguments (gamemode survival).
+    commands: []
+  # Blocks placed in creative mode are remembered (in each chunk's own data), so they never become
+  # survival loot. Holders of allium.gamemode.creative.loot get the normal drops.
+  placed-blocks:
+    enabled: true
+    # When a player who is not in creative breaks one: no-drops (it breaks and drops nothing) or deny.
+    # Explosions, liquids and leaf decay remove them without drops; pistons and falling keep the mark,
+    # and plants and trees grown from them are marked too.
+    survival-break: no-drops
+    # Iron golems, snow golems and withers built from them are not spawned.
+    prevent-mob-builds: true
+  # Lore added to items taken from the creative menu ({item}, {player}, {uuid}), so they can always be
+  # told apart. Holders of allium.gamemode.creative.untagged take items without it.
+  item-lore:
+    enabled: true
+    lines:
+      - '&5Creative {item}'
+      - '&7Taken by {player}'
+  # Items taken from the creative menu. Holders of allium.gamemode.creative.any-item are exempt.
+  menu-items:
+    # Remove custom (plugin) data, attribute modifiers, the unbreakable flag and enchantments above
+    # their highest level, which only modified clients put on creative items.
+    sanitize: true
+    refuse-enchanted: true
+    # Potions, splash and lingering potions, tipped arrows and stews with an effect.
+    refuse-potions: true
+  # Clear potion effects when a player enters or leaves creative (allium.gamemode.creative.keep-effects
+  # keeps them).
+  clear-effects-on-switch: true
+  # Armour worn while in creative. It cannot be taken off and is removed on leaving creative; with one
+  # shared inventory the player's own armour comes back. allium.gamemode.creative.own-armor skips it.
+  armor:
+    enabled: true
+    helmet: {material: LEATHER_HELMET, name: '&6Creative Helmet', lore: ['&7Worn while in creative mode'], color: '#FF55FF'}
+    chestplate: {material: LEATHER_CHESTPLATE, name: '&6Creative Chestplate', lore: ['&7Worn while in creative mode'], color: '#FF55FF'}
+    leggings: {material: LEATHER_LEGGINGS, name: '&6Creative Leggings', lore: ['&7Worn while in creative mode'], color: '#FF55FF'}
+    boots: {material: LEATHER_BOOTS, name: '&6Creative Boots', lore: ['&7Worn while in creative mode'], color: '#FF55FF'}
 
 # Alt detection (modules.alts). Every join records the player's IP. An account that first joined
 # from an IP an older account already used is an alt.

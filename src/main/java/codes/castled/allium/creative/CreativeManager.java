@@ -25,6 +25,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.TNTPrimeEvent;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityPlaceEvent;
@@ -101,6 +104,12 @@ public final class CreativeManager implements Listener {
     private final NamespacedKey groupKey;
     private final NamespacedKey lastModeKey;
     private final Map<Group, NamespacedKey> stashKeys = new HashMap<>();
+    private final NamespacedKey creativeItemKey;
+    private final NamespacedKey armorKey;
+    private final NamespacedKey savedArmorKey;
+    private volatile CreativeItems.Settings items;
+    @Nullable
+    private CreativePlacedBlocks placedBlocks;
     private final Map<UUID, Long> lastMessage = new HashMap<>();
     /** Swaps prepared at HIGHEST and applied at MONITOR, by player, for the event being dispatched. */
     private final Map<UUID, PreparedSwap> prepared = new HashMap<>();
@@ -108,11 +117,14 @@ public final class CreativeManager implements Listener {
     private volatile Settings settings;
 
     record Settings(boolean separateInventories, boolean restoreOnJoin, boolean audit, long cooldownMillis,
-                    Set<Material> blockedBlocks, Set<EntityType> blockedEntities) {
+                    Set<Material> blockedBlocks, Set<EntityType> blockedEntities, Set<Material> blockedItems,
+                    List<String> blockedCommands, boolean protectTnt) {
         static Settings read(@Nullable ConfigurationSection section, java.util.logging.Logger log) {
             ConfigurationSection c = section;
             Set<Material> blocks = EnumSet.noneOf(Material.class);
             Set<EntityType> entities = EnumSet.noneOf(EntityType.class);
+            Set<Material> items = EnumSet.noneOf(Material.class);
+            List<String> commands = new ArrayList<>();
             if (c != null) {
                 for (String name : c.getStringList("blacklist.blocks")) {
                     Material m = Material.matchMaterial(name);
@@ -124,13 +136,58 @@ public final class CreativeManager implements Listener {
                     if (type == null) log.warning("creative-manager.blacklist.entities: unknown entity " + name);
                     else entities.add(type);
                 }
+                for (String name : c.getStringList("blacklist.items")) {
+                    Material m = Material.matchMaterial(name);
+                    if (m == null) log.warning("creative-manager.blacklist.items: unknown item " + name);
+                    else items.add(m);
+                }
+                for (String raw : c.getStringList("blacklist.commands")) {
+                    String command = commandLine(raw);
+                    if (!command.isEmpty()) commands.add(command);
+                }
             }
             return new Settings(c == null || c.getBoolean("separate-inventories", true),
                     c == null || c.getBoolean("restore-gamemode-on-join", true),
                     c == null || c.getBoolean("audit", true),
                     Math.max(0, c == null ? 10 : c.getInt("message-cooldown-seconds", 10)) * 1000L,
-                    Set.copyOf(blocks), Set.copyOf(entities));
+                    Set.copyOf(blocks), Set.copyOf(entities), Set.copyOf(items), List.copyOf(commands),
+                    c == null || c.getBoolean("protect-tnt", true));
         }
+    }
+
+    /** A command line without its slash, namespace and extra spaces, lowercase: "/minecraft:Give  Bob" is "give bob". */
+    static String commandLine(@Nullable String raw) {
+        if (raw == null) return "";
+        String line = raw.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        if (line.startsWith("/")) line = line.substring(1);
+        int space = line.indexOf(' ');
+        String label = space < 0 ? line : line.substring(0, space);
+        int colon = label.lastIndexOf(':');
+        return colon < 0 ? line : line.substring(colon + 1);
+    }
+
+    /** Whether a typed command is one of {@code blocked}: the same command, or it with more arguments. */
+    static boolean commandBlocked(List<String> blocked, String typed) {
+        String line = commandLine(typed);
+        for (String entry : blocked) {
+            if (line.equals(entry) || line.startsWith(entry + " ")) return true;
+        }
+        return false;
+    }
+
+    /** Whether an item places a container (chest, shulker box, barrel...) that already holds items. */
+    static boolean filledContainer(@Nullable ItemStack item) {
+        return item != null && item.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta meta
+                && meta.hasBlockState() && meta.getBlockState() instanceof org.bukkit.block.Container container
+                && !container.getInventory().isEmpty();
+    }
+
+    /** The creative player who lit TNT: directly, or by shooting the burning projectile. */
+    @Nullable
+    static Player primingPlayer(@Nullable Entity primer) {
+        if (primer instanceof Player player) return player;
+        if (primer instanceof org.bukkit.entity.Projectile projectile && projectile.getShooter() instanceof Player shooter) return shooter;
+        return null;
     }
 
     private record PreparedSwap(GameMode to, Group from, Group target, byte[] outgoing, ItemStack[] incoming) {
@@ -140,6 +197,9 @@ public final class CreativeManager implements Listener {
         this.plugin = plugin;
         this.groupKey = new NamespacedKey(plugin, "creative_group");
         this.lastModeKey = new NamespacedKey(plugin, "last_gamemode");
+        this.creativeItemKey = new NamespacedKey(plugin, "creative_item");
+        this.armorKey = new NamespacedKey(plugin, "creative_armor");
+        this.savedArmorKey = new NamespacedKey(plugin, "creative_saved_armor");
         for (Group group : Group.values()) {
             stashKeys.put(group, new NamespacedKey(plugin, "creative_stash_" + group.id()));
         }
@@ -148,10 +208,15 @@ public final class CreativeManager implements Listener {
 
     public void reload() {
         settings = Settings.read(plugin.getConfig().getConfigurationSection("creative-manager"), plugin.getLogger());
+        items = CreativeItems.Settings.read(plugin.getConfig().getConfigurationSection("creative-manager"), plugin.getLogger()::warning);
+        if (placedBlocks != null) placedBlocks.reload();
     }
 
     public void enable() {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        placedBlocks = new CreativePlacedBlocks(plugin);
+        placedBlocks.enable();
+        hookPickBlock();
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             reconcile(player);
         }
@@ -159,6 +224,7 @@ public final class CreativeManager implements Listener {
 
     public void disable() {
         HandlerList.unregisterAll(this);
+        if (placedBlocks != null) placedBlocks.disable();
         prepared.clear();
         lastMessage.clear();
     }
@@ -215,9 +281,15 @@ public final class CreativeManager implements Listener {
         if (event.isCancelled()) {
             return;
         }
-        if (swap == null || swap.to() != event.getNewGameMode()) {
+        swap(player, swap, event.getNewGameMode());
+        // The player is still in the old mode until the event returns.
+        afterSwitch(player, player.getGameMode(), event.getNewGameMode());
+    }
+
+    private void swap(Player player, @Nullable PreparedSwap swap, GameMode to) {
+        if (swap == null || swap.to() != to) {
             // No swap: still record which inventory the player holds in the new mode.
-            CreativeInventoryPolicy.groupOf(event.getNewGameMode().name()).ifPresent(group -> {
+            CreativeInventoryPolicy.groupOf(to.name()).ifPresent(group -> {
                 if (activeGroup(player) == null || !separates(player)) markActive(player, group);
             });
             return;
@@ -230,6 +302,89 @@ public final class CreativeManager implements Listener {
         markActive(player, swap.target());
         player.updateInventory();
         notify(player, Messages.CREATIVE_INVENTORY_SWAPPED, "{group}", swap.target().id());
+    }
+
+    /** Potion effects and the creative armour, when a player enters or leaves creative. */
+    private void afterSwitch(Player player, GameMode from, GameMode to) {
+        boolean entering = to == GameMode.CREATIVE && from != GameMode.CREATIVE;
+        boolean leaving = from == GameMode.CREATIVE && to != GameMode.CREATIVE;
+        if (!entering && !leaving) return;
+        if (items.clearEffects() && !can(player, "keep-effects")) {
+            for (var effect : List.copyOf(player.getActivePotionEffects())) player.removePotionEffect(effect.getType());
+        }
+        if (leaving) takeOffCreativeArmor(player);
+        if (entering && items.armorEnabled() && !can(player, "own-armor")) putOnCreativeArmor(player);
+    }
+
+    private void putOnCreativeArmor(Player player) {
+        PlayerInventory inventory = player.getInventory();
+        if (!separates(player)) {
+            // One shared inventory: keep the player's own armour to give back when they leave creative.
+            ItemStack[] own = inventory.getArmorContents();
+            boolean any = false;
+            for (ItemStack piece : own) any |= piece != null && !piece.getType().isAir() && !CreativeItems.creativeArmor(piece, armorKey);
+            if (any) {
+                try {
+                    player.getPersistentDataContainer().set(savedArmorKey, PersistentDataType.BYTE_ARRAY, encode(own));
+                } catch (IOException | RuntimeException failure) {
+                    plugin.getLogger().warning("Kept " + player.getName() + "'s own armour in creative: it could not be saved ("
+                            + failure.getMessage() + ")");
+                    return;
+                }
+            }
+        }
+        // Armour slots run boots, leggings, chestplate, helmet.
+        List<CreativeItems.ArmorPiece> pieces = items.armor();
+        inventory.setArmorContents(new ItemStack[]{CreativeItems.armorItem(pieces.get(3), armorKey),
+                CreativeItems.armorItem(pieces.get(2), armorKey), CreativeItems.armorItem(pieces.get(1), armorKey),
+                CreativeItems.armorItem(pieces.get(0), armorKey)});
+        player.updateInventory();
+    }
+
+    private void takeOffCreativeArmor(Player player) {
+        PlayerInventory inventory = player.getInventory();
+        ItemStack[] contents = inventory.getContents();
+        boolean changed = false;
+        for (int i = 0; i < contents.length; i++) {
+            if (CreativeItems.creativeArmor(contents[i], armorKey)) {
+                contents[i] = null;
+                changed = true;
+            }
+        }
+        if (changed) inventory.setContents(contents);
+        byte[] saved = player.getPersistentDataContainer().get(savedArmorKey, PersistentDataType.BYTE_ARRAY);
+        if (saved != null) {
+            try {
+                ItemStack[] own = decode(saved, 4);
+                ItemStack[] worn = inventory.getArmorContents();
+                for (int i = 0; i < worn.length && i < own.length; i++) {
+                    if (worn[i] == null || worn[i].getType().isAir()) worn[i] = own[i];
+                }
+                inventory.setArmorContents(worn);
+                player.getPersistentDataContainer().remove(savedArmorKey);
+            } catch (IOException | RuntimeException failure) {
+                plugin.getLogger().warning("Could not give back " + player.getName() + "'s own armour: " + failure.getMessage());
+            }
+        }
+        if (changed || saved != null) player.updateInventory();
+    }
+
+    /** Paper 1.21.4+ handles pick block on the server ({@code PlayerPickItemEvent}); older servers leave it to the client. */
+    @SuppressWarnings("unchecked")
+    private void hookPickBlock() {
+        Class<? extends org.bukkit.event.Event> type;
+        try {
+            type = (Class<? extends org.bukkit.event.Event>) Class.forName("io.papermc.paper.event.player.PlayerPickItemEvent");
+        } catch (ClassNotFoundException | LinkageError absent) {
+            return;
+        }
+        plugin.getServer().getPluginManager().registerEvent(type, this, EventPriority.HIGH, (listener, event) -> {
+            if (!(event instanceof org.bukkit.event.player.PlayerEvent playerEvent) || !(event instanceof org.bukkit.event.Cancellable cancellable)) return;
+            Player player = playerEvent.getPlayer();
+            if (!creative(player) || can(player, "pickblock")) return;
+            cancellable.setCancelled(true);
+            deny(player, "use pick block", null);
+        }, plugin, true);
     }
 
     /**
@@ -435,6 +590,39 @@ public final class CreativeManager implements Listener {
         } else if (settings.blockedBlocks().contains(event.getBlock().getType()) && !can(player, "blacklist")) {
             event.setCancelled(true);
             denyBlacklisted(player, pretty(event.getBlock().getType().name()), event.getBlock().getLocation());
+        } else if (!can(player, "filled-containers") && filledContainer(event.getItemInHand())) {
+            // A chest or shulker box copied with its contents (pick block with Ctrl) would bring items into the world.
+            event.setCancelled(true);
+            deny(player, "place containers that hold items", event.getBlock().getLocation());
+        }
+    }
+
+    /** TNT lit by a creative player, with any igniter (flint and steel, fire charge, a burning arrow...). */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPrime(TNTPrimeEvent event) {
+        Player player = primingPlayer(event.getPrimingEntity());
+        if (player == null || !settings.protectTnt() || !creative(player) || can(player, "blacklist")) return;
+        event.setCancelled(true);
+        deny(player, "light TNT", event.getBlock().getLocation());
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBucket(PlayerBucketEmptyEvent event) {
+        Player player = event.getPlayer();
+        if (creative(player) && settings.blockedItems().contains(event.getBucket()) && !can(player, "blacklist")) {
+            event.setCancelled(true);
+            denyBlacklisted(player, pretty(event.getBucket().name()), event.getBlockClicked().getLocation());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onCommand(PlayerCommandPreprocessEvent event) {
+        Player player = event.getPlayer();
+        if (!creative(player) || settings.blockedCommands().isEmpty() || can(player, "blacklist")) return;
+        if (commandBlocked(settings.blockedCommands(), event.getMessage())) {
+            event.setCancelled(true);
+            String line = commandLine(event.getMessage());
+            denyBlacklisted(player, "/" + (line.contains(" ") ? line.substring(0, line.indexOf(' ')) : line), null);
         }
     }
 
@@ -471,6 +659,11 @@ public final class CreativeManager implements Listener {
                 denyBlacklisted(player, pretty(egg.name()), block == null ? null : block.getLocation());
                 return;
             }
+        }
+        if (right && item != null && settings.blockedItems().contains(item.getType()) && !can(player, "blacklist")) {
+            event.setCancelled(true);
+            denyBlacklisted(player, pretty(item.getType().name()), block == null ? null : block.getLocation());
+            return;
         }
         if (block != null && settings.blockedBlocks().contains(block.getType()) && !can(player, "blacklist")
                 && event.getAction() == Action.RIGHT_CLICK_BLOCK) {
@@ -621,7 +814,43 @@ public final class CreativeManager implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onCreativeMenu(InventoryCreativeEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player) || !creative(player) || can(player, "use")) return;
+        if (!(event.getWhoClicked() instanceof Player player) || !creative(player)) return;
+        ItemStack taken = event.getCursor();
+        if (can(player, "use")) {
+            boolean armorSlot = event.getSlotType() == InventoryType.SlotType.ARMOR;
+            // The creative armour stays on: it cannot be taken off, nor put anywhere else.
+            if (armorSlot && CreativeItems.creativeArmor(event.getCurrentItem(), armorKey) && !CreativeItems.creativeArmor(taken, armorKey)
+                    || !armorSlot && CreativeItems.creativeArmor(taken, armorKey)) {
+                refuse(event, player);
+                deny(player, "take off the creative armour", null);
+                return;
+            }
+            if (taken == null || taken.getType().isAir()) return;
+            if (settings.blockedItems().contains(taken.getType()) && !can(player, "blacklist")) {
+                refuse(event, player);
+                denyBlacklisted(player, pretty(taken.getType().name()), null);
+                return;
+            }
+            boolean anyItem = can(player, "any-item");
+            if (!anyItem && items.refuseEnchanted() && CreativeItems.enchanted(taken)) {
+                refuse(event, player);
+                deny(player, "take enchanted items from the creative menu", null);
+                return;
+            }
+            if (!anyItem && items.refusePotions() && CreativeItems.hasEffects(taken)) {
+                refuse(event, player);
+                deny(player, "take potions with effects from the creative menu", null);
+                return;
+            }
+            ItemStack result = taken;
+            if (!anyItem && items.sanitize()) result = CreativeItems.sanitize(result, Set.of(creativeItemKey, armorKey));
+            if (items.loreEnabled() && !can(player, "untagged") && !CreativeItems.tagged(result, creativeItemKey)
+                    && !CreativeItems.creativeArmor(result, armorKey)) {
+                result = CreativeItems.tag(result, player, items.loreLines(), creativeItemKey);
+            }
+            if (result != taken) event.setCursor(result);
+            return;
+        }
         ItemStack placed = event.getCursor();
         // Clearing a slot (or the trash slot) is allowed; putting any item anywhere is not, since
         // the creative client cannot tell the server whether it came from the menu.
@@ -634,6 +863,17 @@ public final class CreativeManager implements Listener {
             }
         });
         deny(player, "take items from the creative menu", null);
+    }
+
+    /** Refuses a creative inventory change and resynchronises the client, which already shows it. */
+    private void refuse(InventoryCreativeEvent event, Player player) {
+        event.setCancelled(true);
+        plugin.getScheduler().runOnServer(() -> {
+            if (player.isOnline()) {
+                player.setItemOnCursor(null);
+                player.updateInventory();
+            }
+        });
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

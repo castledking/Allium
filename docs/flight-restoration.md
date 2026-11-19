@@ -28,10 +28,20 @@ storage instead (below).
 
 Legacy Allium's tfly. A player with `allium.tfly` (default true) but not `allium.fly` who has
 time banked turns flight on and off with `/fly`. Turning it on allows flight without lifting the
-player; the time runs down only while they are in the air in survival or adventure, so standing,
-walking or being in creative costs nothing. Warnings come at 60, 30 and 10 seconds left and at each
-of the last 5. At zero flight ends (with the slow fall above if they are in the air) and `/fly`
-says there is no time left. Timed flight is never switched back on at join, as in legacy Allium;
+player. When the time runs is set in `config.yml`:
+
+```yaml
+timed-flight:
+  count-only-while-flying: false
+```
+
+By default (`false`) the time runs from `/fly` until the player turns it off or it runs out, on the
+ground or in the air. With `true` it runs only while they are in the air, so standing or walking
+costs nothing, as in legacy Allium; `/fly` then says so. Either way creative and spectator never
+spend time. `/allium reload` applies a change, also to timed flight that is already on.
+
+Warnings come at 60, 30 and 10 seconds left and at each of the last 5. At zero flight ends (with
+the slow fall above if they are in the air) and `/fly` says there is no time left. Timed flight is never switched back on at join, as in legacy Allium;
 if something else turns flight off (a gamemode change, another plugin), the player turns it on
 again.
 
@@ -53,8 +63,9 @@ as a relative change every 30 seconds and on quit or shutdown, so time given fro
 sharing the database is not overwritten. If storage fails, the spent seconds are kept and written
 on the next attempt, and a staff change that cannot be saved says so.
 
-PlaceholderAPI: `%allium_fly%` is `temporary` while timed flight is in the air and
-`temporary-paused` on the ground, and `%allium_fly_time%` is the time left
+PlaceholderAPI: `%allium_fly%` is `temporary` while timed flight's time is running and
+`temporary-paused` while it is on but not spending time (on the ground with
+`count-only-while-flying`, or in creative), and `%allium_fly_time%` is the time left
 ([placeholders.md](placeholders.md)).
 
 Legacy banks (`player_data.tfly_time`) are not imported yet.

@@ -21,6 +21,9 @@ final class LanguageColors {
             new Replacement("item.give.delivered","{prefix} &aEntregado &f{amount}x {item} &aa &f{player}&a.","{prefix} &aEntregado &f{amount} {item} &aa &f{player}&a."),
             new Replacement("item.give.degraded","{prefix} &eEntregado &f{amount}x {item} &ea &f{player}&e, pero la cabeza se entrego sin su skin.","{prefix} &eEntregado &f{amount} {item} &ea &f{player}&e, pero la cabeza se entrego sin su skin."),
             new Replacement("item.give.received","{prefix} &aRecibiste &f{amount}x {item}&a.","{prefix} &aRecibiste &f{amount} {item}&a."),
+            // tfly-on's first text described the while-flying count, now tfly-on-flying.
+            new Replacement("player.tfly-on","{prefix} &aTimed flight on: &f{time} &aleft. It only runs while you fly.","{prefix} &aTimed flight on: &f{time} &aleft."),
+            new Replacement("player.tfly-on","{prefix} &aVuelo temporal activado: quedan &f{time}&a. Solo corre mientras vuelas.","{prefix} &aVuelo temporal activado: quedan &f{time}&a."),
             new Replacement("utility.repair-held","{prefix} &aRepaired the held item.","{prefix} &aRepaired &f{items}&a."),
             new Replacement("utility.repair-all","{prefix} &aRepaired &f{count} &adamaged item(s).","{prefix} &aRepaired &f{items}&a."),
             new Replacement("utility.repair-all","{prefix} &aReparado(s) &f{count} &aobjeto(s) danado(s).","{prefix} &aReparaste &f{items}&a."),

@@ -204,14 +204,17 @@ public final class AlliumPlaceholders {
         });
     }
 
-    /** Legacy's values: {@code yes}, {@code no}, and {@code temporary} / {@code temporary-paused} for timed flight. */
+    /**
+     * Legacy's values: {@code yes}, {@code no}, and for timed flight {@code temporary} while its time
+     * runs, {@code temporary-paused} while it is on but not spending time.
+     */
     private String fly(Player p) {
         if (!p.getAllowFlight()) {
             return "no";
         }
         var timed = timed();
         if (timed != null && timed.active(p.getUniqueId())) {
-            return p.isFlying() ? "temporary" : "temporary-paused";
+            return timed.running(p) ? "temporary" : "temporary-paused";
         }
         return "yes";
     }

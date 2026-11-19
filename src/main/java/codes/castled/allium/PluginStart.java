@@ -284,7 +284,7 @@ public final class PluginStart extends JavaPlugin {
             if(moduleManager.getModule("chat") instanceof codes.castled.allium.module.ChatModule chat && chat.isEnabled())chat.chat().reload();
             if(moduleManager.getModule("hide") instanceof codes.castled.allium.module.HideModule hide && hide.isEnabled())hide.hide().reload();
             if(moduleManager.getModule("creative") instanceof codes.castled.allium.module.CreativeModule creative && creative.isEnabled())creative.reloadSettings();
-            if(moduleManager.getModule("essentials") instanceof codes.castled.allium.module.EssentialsModule essentials && essentials.isEnabled())essentials.reloadBroadcasts();
+            if(moduleManager.getModule("essentials") instanceof codes.castled.allium.module.EssentialsModule essentials && essentials.isEnabled())essentials.reloadSettings();
             if(moduleManager.getModule("restore") instanceof codes.castled.allium.module.RestoreModule restoreModule && restoreModule.isEnabled())restoreModule.reloadSettings();
             ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
             settings.warnings().forEach(logger::warning);

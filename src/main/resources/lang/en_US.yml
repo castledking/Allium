@@ -869,6 +869,9 @@ player:
     - "{prefix} &fFly mode {state} &ffor &d{player}&f."
     - "[sound] entity.bat.takeoff 1.15"
   tfly-on:
+    - "{prefix} &aTimed flight on: &f{time} &aleft."
+    - "[sound] entity.bat.takeoff 1.15"
+  tfly-on-flying:
     - "{prefix} &aTimed flight on: &f{time} &aleft. It only runs while you fly."
     - "[sound] entity.bat.takeoff 1.15"
   tfly-off:

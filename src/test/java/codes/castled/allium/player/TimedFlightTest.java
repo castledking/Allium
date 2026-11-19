@@ -9,6 +9,7 @@ import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.util.AlliumLogger;
 import org.bukkit.GameMode;
 import org.bukkit.Server;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,7 @@ class TimedFlightTest {
     private final UUID id = UUID.randomUUID();
     private boolean allowFlight, flying;
     private TimedFlight timed;
+    private final YamlConfiguration config = new YamlConfiguration();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -54,6 +56,7 @@ class TimedFlightTest {
         when(server.getPluginManager()).thenReturn(mock(PluginManager.class));
         when(plugin.getServer()).thenReturn(server);
         when(plugin.getMessageManager()).thenReturn(messages);
+        when(plugin.getConfig()).thenReturn(config);
         when(plugin.getScheduler()).thenReturn(scheduler);
         when(plugin.logger()).thenReturn(mock(AlliumLogger.class));
         when(scheduler.runOnServer(any(Runnable.class))).thenAnswer(inv -> {
@@ -82,14 +85,35 @@ class TimedFlightTest {
     }
 
     @Test
+    void byDefaultTimeRunsFromFlyOnTheGroundToo() throws Exception {
+        assertFalse(timed.countsOnlyWhileFlying());
+        assertEquals(TimedFlight.Toggle.ON, timed.toggle(steve));
+        assertFalse(flying);
+        assertTrue(timed.running(steve));
+        timed.tick();
+        assertEquals(5, timed.seconds(id), "standing still spends time from /fly on");
+        verify(messages).send(steve, Messages.TFLY_WARNING, "{time}", "5s");
+        assertEquals(TimedFlight.Toggle.OFF, timed.toggle(steve));
+        assertFalse(timed.running(steve));
+        timed.tick();
+        assertEquals(5, timed.seconds(id), "off spends nothing");
+        verify(repository).add(id, -1L);
+    }
+
+    @Test
     void timeRunsOnlyWhileFlyingWarnsAndEndsFlightAtZero() throws Exception {
+        config.set(TimedFlight.ONLY_WHILE_FLYING, true);
+        timed.reload();
+        assertTrue(timed.countsOnlyWhileFlying());
         assertEquals(TimedFlight.Toggle.ON, timed.toggle(steve));
         assertTrue(allowFlight);
         assertFalse(flying, "like legacy tfly, the player takes off themselves");
+        assertFalse(timed.running(steve));
         timed.tick();
         assertEquals(6, timed.seconds(id), "standing still costs nothing");
 
         flying = true;
+        assertTrue(timed.running(steve));
         timed.tick();
         assertEquals(5, timed.seconds(id));
         verify(messages).send(steve, Messages.TFLY_WARNING, "{time}", "5s");
@@ -108,6 +132,7 @@ class TimedFlightTest {
         timed.toggle(steve);
         flying = true;
         when(steve.getGameMode()).thenReturn(GameMode.CREATIVE);
+        assertFalse(timed.running(steve));
         timed.tick();
         assertEquals(6, timed.seconds(id));
         when(steve.getGameMode()).thenReturn(GameMode.SURVIVAL);

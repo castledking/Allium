@@ -1,5 +1,21 @@
 # Staff tooling live gate
 
+## November 19 follow-up (r18): when timed flight counts
+
+**PASS on targeted runs:** the updated `timed-flight` case with PlaceholderAPI 2.12.3 on Spigot
+1.20.1 (`tfly-spigot-3`) and Paper 26.3 (`tfly-paper-3`), 12 checks each, SQLite, Allium.jar
+`1c5179182ce7ff555e0c1ec1d9f6b0c4c3e26bf800ef579991915143cb60a067`
+([spigot](evidence/r18-tfly-spigot.json), [paper](evidence/r18-tfly-paper.json)). No exceptions or
+SEVERE lines. `./gradlew check`: 1068 unit tests, 0 failures. The other staff cases did not run on
+this jar.
+
+| Case | What ran |
+| --- | --- |
+| timed-flight | By default (`timed-flight.count-only-while-flying: false`) `/fly` says only the time left, `%allium_fly%` reads `temporary` on the ground, and 8 s standing still bring the 5 s warning, the run-out message and the end of flight. Then `count-only-while-flying: true` and `/allium reload`: `/fly` adds "It only runs while you fly.", 2.5 s on the ground spend nothing, `%allium_fly%` reads `temporary-paused` and `%allium_fly_time%` `8s` until the fixture lifts PlayerBot (`temporary`), and the time runs out in the air; then the r17 storage checks (about three seconds spent in the air, an offline `take 5`, `set 1h30m`). The config is restored and reloaded afterwards |
+
+Not covered live: the upgrade of an existing `player.tfly-on` text written by the r17 jar (unit
+only).
+
 ## November 19 follow-up (r17): timed flight
 
 **PASS on targeted runs:** the new `timed-flight` case with PlaceholderAPI 2.12.3 (`fde03259…`)

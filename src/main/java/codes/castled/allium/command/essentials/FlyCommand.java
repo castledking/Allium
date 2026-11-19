@@ -81,7 +81,8 @@ public final class FlyCommand implements SpecCommandHandler {
             return;
         }
         switch (flight.toggle(player)) {
-            case ON -> UtilitySupport.send(plugin, player, Messages.TFLY_ON, "{time}", time(flight.seconds(player.getUniqueId())));
+            case ON -> UtilitySupport.send(plugin, player, flight.countsOnlyWhileFlying() ? Messages.TFLY_ON_FLYING : Messages.TFLY_ON,
+                    "{time}", time(flight.seconds(player.getUniqueId())));
             case OFF -> UtilitySupport.send(plugin, player, Messages.TFLY_OFF, "{time}", time(flight.seconds(player.getUniqueId())));
             case NONE -> UtilitySupport.send(plugin, player, Messages.TFLY_NONE);
             case LOADING -> UtilitySupport.send(plugin, player, Messages.TFLY_LOADING);

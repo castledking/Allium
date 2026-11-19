@@ -174,8 +174,8 @@ public final class AlliumPlaceholders {
             case "gradientdisplayname" -> nickname(p, true);
             case "displayname" -> p.getDisplayName();
             case "ping" -> Integer.toString(p.getPing());
-            case "fly" -> yesNo(p.getAllowFlight());
-            case "fly_time" -> "0s";
+            case "fly" -> fly(p);
+            case "fly_time" -> PlaceholderFormats.duration(timed() == null ? 0 : timed().seconds(p.getUniqueId()));
             case "god" -> yesNo(GodModeCompatProvider.current().isGodMode(p));
             case "vanished" -> yesNo(PlayerNameVisibility.isVanished(p));
             case "afk" -> yesNo(plugin.getModuleManager().getModule("info") instanceof PlayerInfoModule info
@@ -202,6 +202,24 @@ public final class AlliumPlaceholders {
             case "baltop_rank_formatted" -> rank(p) == 0 ? "Unranked" : PlaceholderFormats.ordinal(rank(p));
             default -> null;
         });
+    }
+
+    /** Legacy's values: {@code yes}, {@code no}, and {@code temporary} / {@code temporary-paused} for timed flight. */
+    private String fly(Player p) {
+        if (!p.getAllowFlight()) {
+            return "no";
+        }
+        var timed = timed();
+        if (timed != null && timed.active(p.getUniqueId())) {
+            return p.isFlying() ? "temporary" : "temporary-paused";
+        }
+        return "yes";
+    }
+
+    @Nullable
+    private codes.castled.allium.player.TimedFlight timed() {
+        return plugin.getModuleManager().getModule("essentials") instanceof codes.castled.allium.module.EssentialsModule essentials
+                && essentials.isEnabled() ? essentials.timedFlight() : null;
     }
 
     private String balance(Player p, String key) {

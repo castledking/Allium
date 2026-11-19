@@ -868,6 +868,36 @@ player:
   fly-toggle:
     - "{prefix} &fModo vuelo {state} &fpara &d{player}&f."
     - "[sound] entity.bat.takeoff 1.15"
+  tfly-on:
+    - "{prefix} &aVuelo temporal activado: quedan &f{time}&a. Solo corre mientras vuelas."
+    - "[sound] entity.bat.takeoff 1.15"
+  tfly-off:
+    - "{prefix} &7Vuelo temporal desactivado: quedan &f{time}&7."
+    - "[sound] ui.button.click 0.9"
+  tfly-none:
+    - "{prefix} &cNo te queda vuelo temporal."
+    - "[sound] block.note_block.bass 0.8"
+  tfly-loading:
+    - "{prefix} &cTu tiempo de vuelo aun se esta cargando. Intentalo en un momento."
+    - "[sound] block.note_block.bass 0.8"
+  tfly-warning:
+    - "{prefix} &eVuelo temporal: quedan &f{time}&e."
+    - "[sound] block.note_block.pling 1.4"
+  tfly-expired:
+    - "{prefix} &cTu vuelo temporal se ha agotado."
+    - "[sound] entity.bat.death 1.0"
+  tfly-changed:
+    - "{prefix} &f{player} &aahora tiene &f{time} &ade vuelo temporal."
+    - "[sound] block.note_block.chime 1.2"
+  tfly-notify:
+    - "{prefix} &7Tu vuelo temporal ahora es de &f{time}&7."
+    - "[sound] block.note_block.chime 1.2"
+  tfly-invalid-time:
+    - "{prefix} &f{input} &cno es un tiempo; usa segundos o p. ej. 30m, 2h, 1d o 1h30m."
+    - "[sound] block.note_block.bass 0.8"
+  tfly-storage:
+    - "{prefix} &cNo se pudo leer ni guardar el tiempo de vuelo. Intentalo en un momento."
+    - "[sound] block.note_block.bass 0.8"
   god-toggle:
     - "{prefix} &fModo dios {state} &fpara &d{player}&f."
     - "[sound] block.beacon.activate 1.35"

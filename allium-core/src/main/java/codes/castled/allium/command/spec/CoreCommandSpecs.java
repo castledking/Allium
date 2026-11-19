@@ -118,16 +118,21 @@ public final class CoreCommandSpecs {
             "essentials",
             List.of(),
             "Toggle flight mode",
-            "/fly [player]",
-            "/fly <player>",
-            "allium.fly",
+            "/fly [player] | /fly <player> <set|add|take|reset> [time]",
+            "/fly <player> | /fly <player> <set|add|take|reset> [time]",
+            // allium.fly includes allium.tfly; without allium.fly, /fly is timed flight.
+            "allium.tfly",
             "allium.fly.others",
             List.of(
                     CommandArgSpec.optional(
                             "player",
                             "allium.fly.others",
                             SuggestionSpec.onlinePlayers("allium.fly.others")
-                    )
+                    ),
+                    CommandArgSpec.optional("action", "allium.tfly.add",
+                            SuggestionSpec.literals(List.of("add", "take", "set", "reset"), "allium.tfly.add")),
+                    CommandArgSpec.optional("time", "allium.tfly.add",
+                            SuggestionSpec.literals(List.of("10m", "30m", "1h", "1d"), "allium.tfly.add"))
             ),
             List.of(),
             CommandMessageKeys.ofOutcomes(Map.of(

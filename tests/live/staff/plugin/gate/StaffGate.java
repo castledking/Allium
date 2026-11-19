@@ -296,6 +296,13 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                     var instance = scale == null ? null : target.getAttribute(scale);
                     out.put("scale", instance == null ? null : instance.getBaseValue());
                 }
+                case "flight" -> {
+                    // "flight <name> fly" lifts an allowed player into flight, as a double jump would.
+                    Player p = online(args[1]);
+                    if (args.length > 2 && args[2].equals("fly") && p.getAllowFlight()) p.setFlying(true);
+                    out.put("allow", p.getAllowFlight());
+                    out.put("flying", p.isFlying());
+                }
                 case "bedspawn" -> {
                     // Forced, so no bed block is needed; "none" clears it.
                     Player p = online(args[1]);

@@ -1,5 +1,24 @@
 # Staff tooling live gate
 
+## November 19 follow-up (r17): timed flight
+
+**PASS on targeted runs:** the new `timed-flight` case with PlaceholderAPI 2.12.3 (`fde03259…`)
+installed, on Spigot 1.20.1 (`tfly-spigot-2`) and Paper 26.3 (`tfly-paper-2`), 10 checks each,
+SQLite, Allium.jar `a14ca00b8e03226e9cab844b9e67f0e04782a6ba6f9be7e6f1dc3463eacdda9b`
+([spigot](evidence/r17-tfly-spigot.json), [paper](evidence/r17-tfly-paper.json)). The same case
+without PlaceholderAPI passed 8/8 on each lane (`tfly-*-1`). No exceptions or SEVERE lines.
+`./gradlew check`: 1066 unit tests, 0 failures. The other staff cases did not run on this jar,
+except `placeholders` on Spigot after its parse helper moved (`papi-spigot-2`).
+
+| Case | What ran |
+| --- | --- |
+| timed-flight | PlayerBot has no `allium.fly`. After `/fly PlayerBot reset`, `/fly` says there is no time; the console's `add 8` notifies PlayerBot; `/fly` allows flight without lifting it, 2.5 s on the ground spend nothing and `/fly` turns it off; lifted into flight by the fixture (a client cannot start flying here), the 5 s warning and the run-out message arrive and flight ends; with 20 s, `%allium_fly%` reads `temporary-paused` and `%allium_fly_time%` `20s` on the ground and `temporary` in the air; about three seconds of flight spend 2-5 s; with PlayerBot offline, `take 5` changes the stored bank and the rejoined player sees it; `set 1h30m` shows `1h 30m` |
+
+The fixture's `flight <name> fly` only calls `setFlying(true)` on a player already allowed to fly,
+as a double jump would. Not covered live: the 30-second save while flying (the quit save is
+covered), the shutdown save, storage failures and the MySQL row lock (unit only), and a gamemode
+or world change during timed flight (not verified).
+
 ## November 19 follow-up (r16): PlaceholderAPI placeholders
 
 **PASS on targeted runs:** the new `placeholders` case (`--placeholderapi` with the real

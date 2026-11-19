@@ -124,10 +124,11 @@ class EssentialsCommandsTest {
     @Test
     void flySelfOtherAndConsole() {
         BukkitCommandRenderer fly = new BukkitCommandRenderer(plugin, policy, new FlyCommand(plugin));
-        when(self.hasPermission("allium.fly")).thenReturn(true);
-        when(self.hasPermission("allium.fly.others")).thenReturn(true);
-        when(console.hasPermission("allium.fly")).thenReturn(true);
-        when(console.hasPermission("allium.fly.others")).thenReturn(true);
+        // On a server allium.fly grants its child allium.tfly, the command's base node.
+        for (String node : new String[]{"allium.fly", "allium.tfly", "allium.fly.others"}) {
+            when(self.hasPermission(node)).thenReturn(true);
+            when(console.hasPermission(node)).thenReturn(true);
+        }
 
         fly.onCommand(self, command, "fly", new String[0]);
         verify(self).setAllowFlight(true);

@@ -31,6 +31,11 @@ migration in `PlayerNameRepository`), plus `/i` and `/item` self-use aliases for
     `info.near.default-radius` = `200`, max `info.near.max-radius` = `500`), sorted ascending by
     distance with `[AFK]` and viewer-permitted `[Vanished]` tags. Player-only.
   - Permissions: `allium.near` (default `true`), `allium.near.bypass-max` (default `op`).
+- `/playtime [player]`:
+  - Time played (Minecraft's play-time statistic) and the first-join date (`/seen`'s record, else
+    Bukkit's first-played time) in `playtime.date-format`. An offline or hidden player's playtime is
+    read from their stats file off the server thread.
+  - Permissions: `allium.playtime` (default `true`), `allium.playtime.others` (default `op`).
 - `/afk [message]` (alias `/away`):
   - Toggles manual AFK state with optional reason (sanitized via `UntrustedText` with `Allow.NONE`
     — no formatting or click/hover injection).

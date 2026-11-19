@@ -49,7 +49,8 @@ public final class AlliumPlaceholders {
     /** The per-player placeholders, kept in each second's snapshot. */
     public static final List<String> PLAYER_KEYS = List.of(
             "nickname", "nickname_raw", "gradientdisplayname", "displayname", "ping",
-            "fly", "fly_time", "god", "vanished", "afk", "muted", "jailed", "frozen",
+            "fly", "fly_time", "fly_time_short", "gamemode", "playtime", "playtime_short", "firstjoindate",
+            "god", "vanished", "afk", "muted", "jailed", "frozen",
             "reply", "spy", "mail_unread", "mail_gifts",
             "teleport_toggled", "teleport_requests", "teleport_cooldown",
             "homes_set", "homes_max", "home_set", "home_max",
@@ -176,6 +177,11 @@ public final class AlliumPlaceholders {
             case "ping" -> Integer.toString(p.getPing());
             case "fly" -> fly(p);
             case "fly_time" -> PlaceholderFormats.duration(timed() == null ? 0 : timed().seconds(p.getUniqueId()));
+            case "fly_time_short" -> PlaceholderFormats.durationShort(timed() == null ? 0 : timed().seconds(p.getUniqueId()));
+            case "gamemode" -> gamemode(p);
+            case "playtime" -> PlaceholderFormats.duration(codes.castled.allium.info.Playtime.seconds(p));
+            case "playtime_short" -> PlaceholderFormats.durationShort(codes.castled.allium.info.Playtime.seconds(p));
+            case "firstjoindate" -> codes.castled.allium.info.Playtime.date(plugin, codes.castled.allium.info.Playtime.firstJoin(plugin, p));
             case "god" -> yesNo(GodModeCompatProvider.current().isGodMode(p));
             case "vanished" -> yesNo(PlayerNameVisibility.isVanished(p));
             case "afk" -> yesNo(plugin.getModuleManager().getModule("info") instanceof PlayerInfoModule info
@@ -202,6 +208,16 @@ public final class AlliumPlaceholders {
             case "baltop_rank_formatted" -> rank(p) == 0 ? "Unranked" : PlaceholderFormats.ordinal(rank(p));
             default -> null;
         });
+    }
+
+    /**
+     * {@code survival}, {@code creative}, {@code adventure} or {@code spectator}; creative without
+     * {@code allium.gamemode.creative.bypass} (the creative manager's restrictions apply) is
+     * {@code restricted-creative}.
+     */
+    public static String gamemode(Player p) {
+        String mode = p.getGameMode().name().toLowerCase(java.util.Locale.ROOT);
+        return mode.equals("creative") && !p.hasPermission("allium.gamemode.creative.bypass") ? "restricted-creative" : mode;
     }
 
     /**

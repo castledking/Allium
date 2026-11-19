@@ -459,6 +459,10 @@ commands:
     description: List players near you
     usage: /<command> [radius]
     permission: allium.near
+  playtime:
+    description: Show how long you (or another player) have played
+    usage: /<command> [player]
+    permission: allium.playtime
   afk:
     description: Toggle AFK, with an optional message
     usage: /<command> [message]
@@ -605,6 +609,7 @@ permissions:
       allium.gamemode.creative.keep-effects: true
       allium.gamemode.creative.own-armor: true
       allium.gamemode.creative.pickblock: true
+      allium.gamemode.creative.bypass: true
       allium.gamemode.creative.inventory: true
       allium.gamemode.spectator.teleport: true
       allium.alerts: true
@@ -657,6 +662,8 @@ permissions:
       allium.enderchest.others: true
       allium.unmute: true
       allium.list: true
+      allium.playtime: true
+      allium.playtime.others: true
       allium.seen: true
       allium.whois: true
       allium.whois.location: true
@@ -954,6 +961,26 @@ permissions:
   allium.gamemode.creative.pickblock:
     description: Use pick block in creative mode (Paper 1.21.4 and later; older servers leave pick block to the client)
     default: op
+  allium.gamemode.creative.bypass:
+    description: Unrestricted creative mode (every creative-manager restriction lifted); %allium_gamemode% shows restricted-creative without it
+    default: op
+    children:
+      allium.gamemode.creative.place: true
+      allium.gamemode.creative.break: true
+      allium.gamemode.creative.interact: true
+      allium.gamemode.creative.use: true
+      allium.gamemode.creative.drop: true
+      allium.gamemode.creative.pickup: true
+      allium.gamemode.creative.container: true
+      allium.gamemode.creative.spawn: true
+      allium.gamemode.creative.blacklist: true
+      allium.gamemode.creative.filled-containers: true
+      allium.gamemode.creative.loot: true
+      allium.gamemode.creative.untagged: true
+      allium.gamemode.creative.any-item: true
+      allium.gamemode.creative.keep-effects: true
+      allium.gamemode.creative.own-armor: true
+      allium.gamemode.creative.pickblock: true
   allium.gamemode.creative.inventory:
     description: Keep one shared inventory across gamemodes (no separate creative inventory)
     default: op
@@ -1338,6 +1365,12 @@ permissions:
   allium.list:
     description: Allows /list
     default: true
+  allium.playtime:
+    description: Allows /playtime for yourself
+    default: true
+  allium.playtime.others:
+    description: Allows /playtime <player>
+    default: op
   allium.seen:
     description: Allows /seen
     default: true

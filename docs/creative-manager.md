@@ -29,6 +29,9 @@ In creative mode each action needs its node (all op by default):
 | `allium.gamemode.creative.pickblock` | pick block (middle click). Paper 1.21.4 and later handle it on the server and it can be refused; on older servers (Spigot 1.20.1) the client makes the item itself, so pick block counts as taking from the creative menu (`.use`) |
 | `allium.gamemode.spectator.teleport` | teleporting from the spectator menu |
 
+`allium.gamemode.creative.bypass` (op) grants every node above except `.inventory` and the
+spectator ones: unrestricted creative. Without it, `%allium_gamemode%` reads `restricted-creative`.
+
 A refusal shows a red particle puff and `creative.restricted` (or `creative.blacklisted`), at most
 once per `message-cooldown-seconds`.
 

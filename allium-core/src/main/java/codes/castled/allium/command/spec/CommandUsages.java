@@ -183,6 +183,8 @@ public final class CommandUsages {
                     u("<enchantment> <level> <player>", "Enchants another player's held item", "allium.enchant.others")),
             e("near", u("", "Lists the players near you"), u("<radius>", "Lists the players within a radius")),
             e("afk", u("", "Toggles your AFK status"), u("<message>", "Goes AFK with a message")),
+            e("playtime", u("", "Shows how long you have played and when you first joined"),
+                    u("<player>", "Shows another player's playtime", "allium.playtime.others")),
             e("restore", u("", "Browses your inventory snapshots"),
                     u("<player>", "Browses another player's inventory snapshots", "allium.restore.others")),
             e("rename", u("<name>", "Renames the item in your hand; colors and gradients work"),

@@ -61,6 +61,7 @@ public final class PlayerInfoModule extends AbstractModule {
         plugin.getCommandManager().register(new WhoisCommand(plugin, info));
         plugin.getCommandManager().register(new NearCommand(plugin, info));
         plugin.getCommandManager().register(new AfkCommand(plugin, info));
+        plugin.getCommandManager().register(new codes.castled.allium.command.info.PlaytimeCommand(plugin, info));
         plugin.logger().info("Player info utilities enabled: /list, /seen, /whois, /near, /afk.");
     }
 

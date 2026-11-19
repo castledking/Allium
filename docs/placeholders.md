@@ -21,6 +21,10 @@ empty values (the `baltop_` entries work for anyone).
 | `fly` | `yes` or `no`; with timed flight on, `temporary` while its time runs and `temporary-paused` while it does not (on the ground with `timed-flight.count-only-while-flying`, or in creative) |
 | `god`, `vanished`, `afk`, `muted`, `jailed`, `frozen`, `spy` | `yes` or `no` (`spy` is social spy) |
 | `fly_time` | Timed flight left, `1d 2h 30m 45s` (`0s` without any) |
+| `fly_time_short` | The same, its two largest parts: `1d 2h` |
+| `gamemode` | `survival`, `creative`, `adventure` or `spectator`; `restricted-creative` in creative without `allium.gamemode.creative.bypass` (the creative manager's restrictions apply) |
+| `playtime`, `playtime_short` | Time played (Minecraft's play-time statistic), `12d 6h 30m 5s` and `12d 6h` |
+| `firstjoindate` | When the player first joined, in `playtime.date-format` (default `Nov 19, 2026`) |
 | `reply` | Who `/reply` would answer, or empty |
 | `mail_unread`, `mail_gifts` | Unread mail and unclaimed gifts |
 | `teleport_toggled` | `true` while teleport requests to the player are blocked (`/tptoggle`), else `false` |

@@ -442,6 +442,8 @@ public enum Messages {
     INFO_LIST_GROUP("info.list.group", "&7{group} &8({count})&7: &f{players}"),
     INFO_SEEN_ONLINE("info.seen.online", "{prefix} &f{player} &ais online{tags} &7(for &f{duration}&7). First joined: &f{first_join}"),
     INFO_SEEN_OFFLINE("info.seen.offline", "{prefix} &f{player} &7is offline (last seen &f{last_seen} &7ago, &f{last_seen_date}&7). First joined: &f{first_join}"),
+    INFO_PLAYTIME_SELF("info.playtime.self", "{prefix} &aYou have played for &f{playtime}&a. First joined &f{first_join}&a."),
+    INFO_PLAYTIME_OTHER("info.playtime.other", "{prefix} &f{player} &ahas played for &f{playtime}&a. First joined &f{first_join}&a."),
     INFO_SEEN_UNKNOWN("info.seen.unknown", "{prefix} &cNo player called &f{player} &chas played here."),
     INFO_WHOIS_HEADER("info.whois.header", "{prefix} &fWhois &e{player} &7({status}{tags}):"),
     INFO_WHOIS_UUID("info.whois.uuid", "&7UUID: &f{uuid}"),

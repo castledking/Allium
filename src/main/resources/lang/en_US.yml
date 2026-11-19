@@ -907,6 +907,13 @@ info:
       - "[sound] item.book.page_turn 1.15"
     group:
       - "&7{group} &8({count})&7: &f{players}"
+  playtime:
+    self:
+      - "{prefix} &aYou have played for &f{playtime}&a. First joined &f{first_join}&a."
+      - "[sound] block.note_block.chime 1.2"
+    other:
+      - "{prefix} &f{player} &ahas played for &f{playtime}&a. First joined &f{first_join}&a."
+      - "[sound] block.note_block.chime 1.2"
   seen:
     online:
       - "{prefix} &f{player} &ais online{tags} &7(for &f{duration}&7). First joined: &f{first_join}"

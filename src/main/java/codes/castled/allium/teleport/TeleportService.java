@@ -115,6 +115,14 @@ public final class TeleportService implements Listener {
     public boolean warming(UUID id){return operations.containsKey(id);}
     public boolean historyPending(UUID id){return pendingWrites.containsKey(id);}
     public int pendingRequests(){return requests.size();}
+    /** Server thread: unexpired teleport requests the player sent or received. */
+    public int requestsInvolving(UUID id){return requests.involving(id,System.currentTimeMillis());}
+    /** Server thread: seconds until the player's longest running teleport cooldown ends, 0 when none runs. */
+    public long cooldownSeconds(UUID id){
+        Session s=sessions.get(id);if(s==null)return 0;long now=System.currentTimeMillis(),until=0;
+        for(long end:s.cooldowns.values())until=Math.max(until,end);
+        return until<=now?0:(until-now+999)/1000;
+    }
 
     public void request(Player sender,Player recipient,RequestTracker.Kind kind) {
         if(!sender.hasPermission(kind==RequestTracker.Kind.TO_TARGET?"allium.tpa":"allium.tpahere")){send(sender,Messages.NO_PERMISSION);return;}

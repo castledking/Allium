@@ -31,7 +31,7 @@ public final class ChatService implements Listener,AutoCloseable {
     private volatile boolean closed;
     private boolean paperChat;
     private TaskHandle tick=TaskHandle.NONE;
-    private AutoCloseable expansion,packetMirror;
+    private AutoCloseable packetMirror;
     private ChatRelay relay=ChatRelay.NONE;
     private static final class Session {
         final Player player;
@@ -53,8 +53,6 @@ public final class ChatService implements Listener,AutoCloseable {
         catch(LinkageError|RuntimeException error){plugin.logger().warning("Optional chat packet mirror unavailable; replay covers Allium-rendered history only.");}
         for(Player p:plugin.getServer().getOnlinePlayers())join(p);
         tick=plugin.getScheduler().repeatOnServer(()->{if(closed)return false;refresh();replayTick();return true;},50,50);
-        try{if(plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI"))expansion=new AlliumChatExpansion(this,plugin);}
-        catch(LinkageError|RuntimeException error){plugin.logger().warning("Chat placeholders unavailable: "+error.getMessage());}
         try{if(plugin.getServer().getPluginManager().isPluginEnabled("DiscordSRV"))relay=new DiscordChatRelay(plugin,this);}
         catch(LinkageError|RuntimeException error){plugin.logger().warning("Discord relay unavailable: "+error.getMessage());}
     }
@@ -309,5 +307,5 @@ public final class ChatService implements Listener,AutoCloseable {
         try{io.execute(()->{try{T result=query.run();plugin.getScheduler().runOnServer(()->{if(!closed)done.accept(result);});}catch(Exception error){plugin.getScheduler().runOnServer(()->{if(!closed)failed.accept(error);});}});}
         catch(RejectedExecutionException error){failed.accept(error);}
     }
-    @Override public void close(){closed=true;tick.cancel();HandlerList.unregisterAll(this);relay.close();if(packetMirror!=null)try{packetMirror.close();}catch(Exception ignored){}if(expansion!=null)try{expansion.close();}catch(Exception ignored){}for(Session s:sessions.values()){if(s.player.isOnline()){s.player.setDisplayName(s.player.getName());if(s.lastTab!=null)s.player.setPlayerListName(null);}}sessions.clear();refresh.clear();history.clear();replays.clear();}
+    @Override public void close(){closed=true;tick.cancel();HandlerList.unregisterAll(this);relay.close();if(packetMirror!=null)try{packetMirror.close();}catch(Exception ignored){}for(Session s:sessions.values()){if(s.player.isOnline()){s.player.setDisplayName(s.player.getName());if(s.lastTab!=null)s.player.setPlayerListName(null);}}sessions.clear();refresh.clear();history.clear();replays.clear();}
 }

@@ -1,0 +1,99 @@
+{
+  "suite": "paper",
+  "run": "papi-paper-1",
+  "alliumSha256": "def330331888b49ead9d75d0a6542cada45f084d0d9401fd913ce3b50068332f",
+  "sources": {
+    "tests/live/staff/run.py": "fa504313294361dda976631ff5a2c5594ceed5e4aaf47b9d1f6fb3e85ef9e8fc",
+    "tests/live/staff/plugin/gate/StaffGate.java": "060523c9025971f966f0fca96dd6a502617f8ae1028672c2b556d088a0b815b7",
+    "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+    "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
+    "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
+    "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+  },
+  "placeholderapiSha256": "fde03259f5af6938f3c33eeb4d814000a1adabf1d2304ce14970be81f609a437",
+  "passed": true,
+  "checks": 9,
+  "failures": [],
+  "cases": [
+    {
+      "name": "placeholders",
+      "passed": true
+    }
+  ],
+  "seconds": 28.7,
+  "results": [
+    {
+      "label": "paper: creative, alts and restore modules enabled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: the allium expansion registered",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: player placeholders answer with legacy formats",
+      "passed": true,
+      "detail": {
+        "nickname": "PlayerBot",
+        "world": "world",
+        "god": "no",
+        "vanished": "no",
+        "ping": "0",
+        "homes_max": "1",
+        "world_time": "6:04 AM",
+        "world_time_24": "06:04"
+      }
+    },
+    {
+      "label": "paper: numbers and the world clock",
+      "passed": true,
+      "detail": {
+        "nickname": "PlayerBot",
+        "world": "world",
+        "god": "no",
+        "vanished": "no",
+        "ping": "0",
+        "homes_max": "1",
+        "world_time": "6:04 AM",
+        "world_time_24": "06:04"
+      }
+    },
+    {
+      "label": "paper: an unknown placeholder is left as written",
+      "passed": true,
+      "detail": "%allium_nonsense%"
+    },
+    {
+      "label": "paper: the balance snapshot follows /eco set within one refresh",
+      "passed": true,
+      "detail": "1234.50"
+    },
+    {
+      "label": "paper: balance and baltop placeholders",
+      "passed": true,
+      "detail": {
+        "balance_commas": "1,234.5",
+        "balance_formatted": "1.2k",
+        "balance_fixed": "1234",
+        "baltop_player_1": "PlayerBot",
+        "baltop_balance_commas_1": "1,234.5",
+        "baltop_rank_formatted": "1st"
+      }
+    },
+    {
+      "label": "paper: the unread mail count follows new mail",
+      "passed": true,
+      "detail": {
+        "before": 0,
+        "after": "1"
+      }
+    },
+    {
+      "label": "paper: no exceptions or SEVERE lines in the server log",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

@@ -95,6 +95,8 @@ public final class TravelService implements Listener {
     public boolean ready(UUID id){Session s=sessions.get(id);return s!=null&&same(s)&&s.loaded;}
     public boolean pending(UUID id){Session s=sessions.get(id);return s!=null&&s.busy;}
     public boolean warpsReady(){return warpsLoaded;}
+    /** Server thread: how many homes an online player has, or -1 while they are loading. */
+    public int homeCount(UUID id){Session s=sessions.get(id);return s==null||!same(s)||!s.loaded?-1:s.homes.size();}
     public int limit(Player p) {
         List<Integer> grants=new ArrayList<>();
         for(var permission:p.getEffectivePermissions())if(permission.getValue()&&p.hasPermission(permission.getPermission())){

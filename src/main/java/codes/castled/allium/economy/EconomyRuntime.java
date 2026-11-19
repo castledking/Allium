@@ -375,6 +375,33 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         }catch(SQLException ignored){}
         return id.toString();
     }
+    /** What PlaceholderAPI reads: online players' available balances and the top accounts, refreshed off the server thread. */
+    public record PlaceholderSnapshot(Map<UUID,BigDecimal> balances,List<TopEntry> top){
+        public static final PlaceholderSnapshot EMPTY=new PlaceholderSnapshot(Map.of(),List.of());
+    }
+    public record TopEntry(UUID id,String name,BigDecimal balance){}
+    public static final int PLACEHOLDER_TOP=100;
+    private volatile PlaceholderSnapshot placeholders=PlaceholderSnapshot.EMPTY;
+    public PlaceholderSnapshot placeholders(){return placeholders;}
+    /** Reads the balances and the top {@value #PLACEHOLDER_TOP} on the economy worker; skipped while it is closed or full. */
+    public void refreshPlaceholders(Collection<UUID> online){
+        List<UUID> ids=List.copyOf(online);
+        submit(null,()->{
+            Map<UUID,BigDecimal> balances=new HashMap<>();
+            for(UUID id:ids)if(engine.balance(id) instanceof Found found)balances.put(id,found.available().decimal());
+            List<TopEntry> top=new ArrayList<>();
+            try(var c=plugin.getDatabaseManager().getConnection();
+                var ps=c.prepareStatement("SELECT account_uuid,balance_minor FROM allium_economy_accounts ORDER BY balance_minor DESC,account_uuid LIMIT ?")){
+                ps.setInt(1,PLACEHOLDER_TOP);
+                try(var r=ps.executeQuery()){
+                    while(r.next()){UUID id=UUID.fromString(r.getString(1));top.add(new TopEntry(id,resolveDisplayName(id),new Money(r.getLong(2)).decimal()));}
+                }
+            }catch(SQLException|RuntimeException error){top=placeholders.top();}
+            placeholders=new PlaceholderSnapshot(Map.copyOf(balances),List.copyOf(top));
+        });
+    }
+    /** How /balance shows an amount ({@code $1,234.50}). */
+    public String formatAmount(BigDecimal amount){return display.format(amount);}
     private record TopRow(int rank,String name,String balance){}
     private static final int BALTOP_PAGE_SIZE=8;
     private void top(CommandSender sender,String[] args){

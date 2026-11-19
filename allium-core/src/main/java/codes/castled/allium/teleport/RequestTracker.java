@@ -77,6 +77,17 @@ public final class RequestTracker {
 
     public int size() { return requests.size(); }
 
+    /** Unexpired requests {@code player} sent or received. */
+    public int involving(UUID player, long now) {
+        int count = 0;
+        for (Request request : requests.values()) {
+            if (now < request.expiresAt() && (request.requester().equals(player) || request.recipient().equals(player))) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     public Optional<Request> remove(UUID requester) {
         return Optional.ofNullable(requests.remove(Objects.requireNonNull(requester, "requester")));
     }

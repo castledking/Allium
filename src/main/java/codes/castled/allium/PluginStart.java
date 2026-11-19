@@ -38,6 +38,7 @@ public final class PluginStart extends JavaPlugin {
     private LanguageManager languageManager;
     private MessageManager messageManager;
     private codes.castled.allium.naming.PlayerNameService playerNames;
+    private codes.castled.allium.placeholder.AlliumPlaceholders placeholders;
     private DatabaseManager databaseManager;
     private ItemService itemService;
     private ProtectionService protectionService;
@@ -137,6 +138,8 @@ public final class PluginStart extends JavaPlugin {
         commandManager.register(new codes.castled.allium.command.HelpCommand(this));
         commandManager.registerAll();
         listenerManager.registerAll();
+        placeholders = new codes.castled.allium.placeholder.AlliumPlaceholders(this);
+        placeholders.start();
         new ProviderStartupDiagnostics(itemService, getServer().getPluginManager(), logger::warning).install(scheduler);
         new ItemSigningKeyAudit(hmacSigner, logger::severe).install(this, scheduler);
         // Addons (depend: [Allium]) are loaded but not yet enabled here, so each is checked before it starts.
@@ -324,6 +327,10 @@ public final class PluginStart extends JavaPlugin {
     public void onDisable() {
         if (addonApi != null) addonApi.closeAll();
         if (packDelivery != null) packDelivery.disable();
+        if (placeholders != null) {
+            placeholders.stop();
+            placeholders = null;
+        }
         if (moduleManager != null) moduleManager.unloadModules();
         if (databaseManager != null) databaseManager.shutdown();
         if (scheduler != null) {
@@ -336,6 +343,11 @@ public final class PluginStart extends JavaPlugin {
 
         logger.info("Allium disabled.");
         instance = null;
+    }
+
+    /** {@code %allium_...%} for PlaceholderAPI; null before enable or after disable. */
+    public codes.castled.allium.placeholder.AlliumPlaceholders getPlaceholders() {
+        return placeholders;
     }
 
     /** Where Allium's work runs: server-thread tasks, timers and bounded worker pools. */

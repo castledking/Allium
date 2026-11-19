@@ -42,6 +42,7 @@ P.add_argument('--run-name', required=True)
 P.add_argument('--only', default='', help='comma-separated case names (debugging)')
 P.add_argument('--run-root', type=Path, default=Path('/mnt/storage/.allium-validation/20261117/staff/runs'))
 P.add_argument('--paper-template', type=Path, default=Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3'))
+P.add_argument('--placeholderapi', type=Path, help='a PlaceholderAPI jar: installs it and runs the placeholders case')
 A = P.parse_args()
 
 if not re.fullmatch(r'[a-zA-Z0-9_][a-zA-Z0-9_.-]*', A.run_name):
@@ -283,6 +284,8 @@ class Lane:
         (self.path / 'tmp').mkdir()
         shutil.copy2(JAR, self.path / 'plugins/Allium.jar')
         shutil.copy2(RUN / 'helper/StaffGate.jar', self.path / 'plugins/StaffGate.jar')
+        if A.placeholderapi:
+            shutil.copy2(A.placeholderapi, self.path / 'plugins/PlaceholderAPI.jar')
         with zipfile.ZipFile(JAR) as z:
             config = yaml.safe_load(z.read('config.yml'))
         config.setdefault('modules', {}).update({m: True for m in config['modules']})
@@ -1108,6 +1111,54 @@ def broadcasts(lane):
     require(not player.saw(m, '[Tip]') and not player.saw(m, '[Vote]'), lane.name + ': broadcasts stop after reloading them off')
 
 
+def placeholders(lane):
+    """%allium_...% through the real PlaceholderAPI, parsed from the console (the server thread)."""
+    counter = [0]
+
+    def parse(placeholder):
+        counter[0] += 1
+        marker = f'PHG{counter[0]}|'
+        start = len(lane.logs)
+        lane.console(f'papi parse PlayerBot {marker}{placeholder}')
+        line = lane.log_since(start, marker, 15)
+        return line.split(marker, 1)[1].strip()
+
+    def until(placeholder, expected, timeout=25):
+        deadline = time.monotonic() + timeout
+        value = None
+        while time.monotonic() < deadline:
+            value = parse(placeholder)
+            if value == expected:
+                return value
+            window(1.5)
+        return value
+
+    require(any('PlaceholderAPI placeholders registered' in s for s in lane.logs), lane.name + ': the allium expansion registered')
+    values = {k: parse('%allium_' + k + '%') for k in ['nickname', 'world', 'god', 'vanished', 'ping', 'homes_max', 'world_time', 'world_time_24']}
+    require(values['nickname'] == 'PlayerBot' and values['world'] == 'world' and values['god'] == 'no' and values['vanished'] == 'no',
+            lane.name + ': player placeholders answer with legacy formats', values)
+    require(re.fullmatch(r'\d+', values['ping']) and re.fullmatch(r'\d+', values['homes_max'])
+            and re.fullmatch(r'\d{1,2}:\d\d (AM|PM)', values['world_time']) and re.fullmatch(r'\d\d:\d\d', values['world_time_24']),
+            lane.name + ': numbers and the world clock', values)
+    unknown = parse('%allium_nonsense%')
+    require(unknown == '%allium_nonsense%', lane.name + ': an unknown placeholder is left as written', unknown)
+
+    lane.console('eco set StaffBot 5')
+    lane.console('eco set PlayerBot 1234.5')
+    balance = until('%allium_balance%', '1234.50')
+    require(balance == '1234.50', lane.name + ': the balance snapshot follows /eco set within one refresh', balance)
+    money = {k: parse('%allium_' + k + '%') for k in ['balance_commas', 'balance_formatted', 'balance_fixed', 'baltop_player_1',
+                                                       'baltop_balance_commas_1', 'baltop_rank_formatted']}
+    require(money == {'balance_commas': '1,234.5', 'balance_formatted': '1.2k', 'balance_fixed': '1234', 'baltop_player_1': 'PlayerBot',
+                      'baltop_balance_commas_1': '1,234.5', 'baltop_rank_formatted': '1st'},
+            lane.name + ': balance and baltop placeholders', money)
+
+    before = int(parse('%allium_mail_unread%') or 0)
+    lane.console('mail send PlayerBot placeholder check')
+    unread = until('%allium_mail_unread%', str(before + 1))
+    require(unread == str(before + 1), lane.name + ': the unread mail count follows new mail', dict(before=before, after=unread))
+
+
 def restore(lane):
     staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
     lane.fixture('clear PlayerBot')
@@ -1683,6 +1734,8 @@ def main():
         case('repair-halt-after-save', lambda: repair_halt(lane, 'repair.halt-after-save', 'captured'))
         # Both reconnect PlayerBot, which drops its non-sticky grants: keep them last.
         case('broadcasts', lambda: broadcasts(lane))
+        if A.placeholderapi:
+            case('placeholders', lambda: placeholders(lane))
         case('home-admin', lambda: home_admin(lane))
         case('motd-rules', lambda: motd_rules(lane))
     finally:
@@ -1691,7 +1744,9 @@ def main():
         except Exception as error:
             require(False, 'shutdown: ' + str(error))
         clean_logs(lane)
-    manifest = dict(suite=A.suite, run=A.run_name, alliumSha256=A.sha256, sources=SOURCE_HASHES, passed=not failures,
+    manifest = dict(suite=A.suite, run=A.run_name, alliumSha256=A.sha256, sources=SOURCE_HASHES,
+                    placeholderapiSha256=hashlib.sha256(A.placeholderapi.read_bytes()).hexdigest() if A.placeholderapi else None,
+                    passed=not failures,
                     checks=len(checks), failures=failures, cases=cases, seconds=round(time.time() - started, 1), results=checks)
     (RUN / 'manifest.json').write_text(json.dumps(manifest, indent=2, default=str))
     emit(f'RESULT {"PASS" if not failures else "FAIL"} checks={len(checks)} failures={len(failures)} manifest={RUN / "manifest.json"}')

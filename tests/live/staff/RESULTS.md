@@ -1,5 +1,20 @@
 # Staff tooling live gate
 
+## November 19 follow-up (r16): PlaceholderAPI placeholders
+
+**PASS on targeted runs:** the new `placeholders` case (`--placeholderapi` with the real
+PlaceholderAPI 2.12.3, `fde03259…`) on Spigot 1.20.1 (`papi-spigot-1`) and Paper 26.3
+(`papi-paper-1`), 9 checks each, SQLite, Allium.jar
+`def330331888b49ead9d75d0a6542cada45f084d0d9401fd913ce3b50068332f`. No exceptions or SEVERE lines.
+`./gradlew check`: 1059 unit tests, 0 failures. The other staff cases did not run on this jar.
+
+| Case | What ran |
+| --- | --- |
+| placeholders | `papi parse` from the console: the expansion registers; `nickname`, `world`, `god`, `vanished`, `ping`, `homes_max`, `world_time` and `world_time_24` answer in legacy formats; `%allium_nonsense%` stays as written; after `/eco set PlayerBot 1234.5`, `balance` reads `1234.50` within one refresh and `balance_commas`, `balance_formatted`, `balance_fixed`, `baltop_player_1`, `baltop_balance_commas_1` and `baltop_rank_formatted` follow; a new mail raises `mail_unread` |
+
+Console parsing runs on the server thread, so the per-second snapshot that asynchronous requests
+read is unit tested only.
+
 ## November 19 follow-up (r15): timed broadcasts
 
 **PASS on targeted runs:** the new `broadcasts` case on Spigot 1.20.1 (`bc-spigot-1`) and Paper 26.3

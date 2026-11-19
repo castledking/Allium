@@ -256,6 +256,20 @@ rules:
   missing:
     - "{prefix} &cThere is no rules chapter called &f{section}&c."
     - "[sound] block.note_block.bass 0.8"
+broadcasts:
+  status:
+    - "{prefix} &7Timed broadcasts are {state}&7: every &f{interval}s&7, &f{order}&7, with at least &f{minimum} &7online. Broadcasts: &f{broadcasts}"
+    - "[sound] item.book.page_turn 1.1"
+  "on":
+    - "&aon"
+  "off":
+    - "&coff"
+  sent:
+    - "{prefix} &aSent the broadcast &f{name}&a."
+    - "[sound] block.note_block.chime 1.2"
+  unknown:
+    - "{prefix} &cThere is no broadcast called &f{name}&c."
+    - "[sound] block.note_block.bass 0.8"
 warp:
   set:
     - "{prefix} &aWarp &f{name} &aset."

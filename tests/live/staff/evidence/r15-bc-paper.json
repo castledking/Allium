@@ -1,0 +1,395 @@
+{
+  "suite": "paper",
+  "run": "bc-paper-1",
+  "alliumSha256": "57f9758af1747fc8b9945e9489b072456c074f9b4b66fa0ce37d089468b211af",
+  "sources": {
+    "tests/live/staff/run.py": "40a38551cce79dd1f8dcfb3c45b9aa0b5539110e4cc30f28bc138e4aa5565326",
+    "tests/live/staff/plugin/gate/StaffGate.java": "060523c9025971f966f0fca96dd6a502617f8ae1028672c2b556d088a0b815b7",
+    "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+    "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
+    "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
+    "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+  },
+  "passed": true,
+  "checks": 7,
+  "failures": [],
+  "cases": [
+    {
+      "name": "broadcasts",
+      "passed": true
+    }
+  ],
+  "seconds": 38.6,
+  "results": [
+    {
+      "label": "paper: creative, alts and restore modules enabled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: the first timed broadcast arrives with its click tag",
+      "passed": true,
+      "detail": {
+        "plain": "[Tip] New here? Read the rules.",
+        "colors": [
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#ffaa00",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#ffff55",
+          "#aaaaaa"
+        ],
+        "runs": [
+          {
+            "text": "[Tip] ",
+            "color": "#ffaa00"
+          },
+          {
+            "text": "New here? Read the ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "rules",
+            "color": "#ffff55"
+          },
+          {
+            "text": ".",
+            "color": "#aaaaaa"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gold",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "[Tip] "
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "New here? Read the "
+            },
+            {
+              "italic": 0,
+              "click_event": {
+                "command": "/rules",
+                "action": "run_command"
+              },
+              "underlined": 1,
+              "bold": 0,
+              "color": "yellow",
+              "obfuscated": 0,
+              "hover_event": {
+                "action": "show_text",
+                "value": {
+                  "italic": 0,
+                  "underlined": 0,
+                  "bold": 0,
+                  "color": "yellow",
+                  "obfuscated": 0,
+                  "strikethrough": 0,
+                  "text": "Click to read the rules"
+                }
+              },
+              "strikethrough": 0,
+              "text": "rules"
+            },
+            {
+              "italic": 0,
+              "underlined": 0,
+              "bold": 0,
+              "color": "gray",
+              "obfuscated": 0,
+              "strikethrough": 0,
+              "text": "."
+            }
+          ],
+          "text": ""
+        },
+        "interactive": true
+      }
+    },
+    {
+      "label": "paper: /broadcasts lists the broadcasts in file order",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] Timed broadcasts are on: every 10s, sequential, with at least 1 online. Broadcasts: rules, homes, vote",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#55ff55",
+          "#55ff55",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] Timed broadcasts are ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "on",
+            "color": "#55ff55"
+          },
+          {
+            "text": ": every ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "10s",
+            "color": "#ffffff"
+          },
+          {
+            "text": ", ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "sequential",
+            "color": "#ffffff"
+          },
+          {
+            "text": ", with at least ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "1 ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "online. Broadcasts: ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "rules, homes, vote",
+            "color": "#ffffff"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "color": "gray",
+              "text": "["
+            },
+            {
+              "color": "light_purple",
+              "text": "Allium"
+            },
+            {
+              "color": "gray",
+              "text": "] Timed broadcasts are "
+            },
+            {
+              "color": "green",
+              "text": "on"
+            },
+            {
+              "color": "gray",
+              "text": ": every "
+            },
+            {
+              "color": "white",
+              "text": "10s"
+            },
+            {
+              "color": "gray",
+              "text": ", "
+            },
+            {
+              "color": "white",
+              "text": "sequential"
+            },
+            {
+              "color": "gray",
+              "text": ", with at least "
+            },
+            {
+              "color": "white",
+              "text": "1 "
+            },
+            {
+              "color": "gray",
+              "text": "online. Broadcasts: "
+            },
+            {
+              "color": "white",
+              "text": "rules, homes, vote"
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: placeholders are filled for each recipient",
+      "passed": true,
+      "detail": {
+        "player": "[Vote] Enjoying Paper, PlayerBot? Vote for us!",
+        "staff": "[Vote] Enjoying Paper, StaffBot? Vote for us!"
+      }
+    },
+    {
+      "label": "paper: without allium.broadcasts.receive no timed broadcast arrives",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: broadcasts stop after reloading them off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: no exceptions or SEVERE lines in the server log",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

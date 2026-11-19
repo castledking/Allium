@@ -391,6 +391,18 @@ motd:
   # Ticks to wait after joining (0-200), so the MOTD follows the join messages.
   join-delay-ticks: 10
 
+# Timed broadcasts: every interval-seconds, the next #section of plugins/Allium/broadcasts.txt goes
+# to everyone online with allium.broadcasts.receive (default true) and to the console. Off by
+# default. /broadcasts lists them; /broadcasts send <name> and /broadcasts next send one now.
+broadcasts:
+  enabled: false
+  # 10-86400
+  interval-seconds: 300
+  # sequential (the file's order) or random (never the same one twice in a row)
+  order: sequential
+  # Skip a turn while fewer unvanished players than this are online.
+  minimum-players: 1
+
 # Opt-in sign types: color, warp, kit, balance, heal, repair, disposal, workbench, anvil, mail, info.
 # Legacy colour is accepted as color. One shared click limit across all types.
 enabledSigns:

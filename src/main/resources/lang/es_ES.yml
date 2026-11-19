@@ -256,6 +256,20 @@ rules:
   missing:
     - "{prefix} &cNo hay un capitulo de reglas llamado &f{section}&c."
     - "[sound] block.note_block.bass 0.8"
+broadcasts:
+  status:
+    - "{prefix} &7Los anuncios programados estan {state}&7: cada &f{interval}s&7, &f{order}&7, con al menos &f{minimum} &7conectados. Anuncios: &f{broadcasts}"
+    - "[sound] item.book.page_turn 1.1"
+  "on":
+    - "&aactivados"
+  "off":
+    - "&cdesactivados"
+  sent:
+    - "{prefix} &aEnviaste el anuncio &f{name}&a."
+    - "[sound] block.note_block.chime 1.2"
+  unknown:
+    - "{prefix} &cNo hay un anuncio llamado &f{name}&c."
+    - "[sound] block.note_block.bass 0.8"
 warp:
   set:
     - "{prefix} &aWarp &f{name} &aestablecido."

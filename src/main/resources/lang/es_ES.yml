@@ -148,6 +148,12 @@ teleport:
   unsafe:
     - "{prefix} &cNo se encontro un destino seguro. No se teletransporto nada."
     - "[sound] item.shield.break 0.95"
+  top-none:
+    - "{prefix} &cNo hay un lugar seguro donde pararse encima de ti."
+    - "[sound] block.note_block.bass 0.8"
+  bottom-none:
+    - "{prefix} &cNo hay un lugar seguro donde pararse debajo de ti."
+    - "[sound] block.note_block.bass 0.8"
   busy:
     - "{prefix} &cYa hay un teletransporte pendiente. Intentalo de nuevo en un momento."
     - "[sound] block.note_block.hat 0.85"

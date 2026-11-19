@@ -1,5 +1,20 @@
 # Staff tooling live gate
 
+## November 19 follow-up (r14): /top, /bottom and one mail number sequence
+
+**PASS on targeted runs:** the new `top-bottom` case and the updated `mail-numbers` case on Spigot
+1.20.1 (`topmail-spigot-1`) and Paper 26.3 (`topmail-paper-1`), 10 checks each, SQLite, Allium.jar
+`9c4eb59ee8b218058fe512597f572bab12458c069a02f957f9da3a8aad0a78c1`. No exceptions or SEVERE lines.
+`./gradlew check`: 1046 unit tests, 0 failures. The other staff cases did not run on this jar.
+
+| Case | What ran |
+| --- | --- |
+| top-bottom | on the flat floor `/bottom` finds nothing below; `/top` stands on a stone block placed 6 above and reports `20.5, -54.0, 20.5`; `/bottom` lands back on the floor; `/back` returns to the block |
+| mail-numbers (updated) | texts 1-3, a deleted text's number reused, then gifts numbered 4 and 5 after them; `/mail` lists 1 to 5 in order; `/mail claim 1` (a text) and `/mail delete 4` (a gift) are refused; a claimed gift's number 4 is reused |
+
+These lanes start from an empty database, so the version 4 renumbering of existing mail is unit
+tested only (SQLite; MySQL when `ALLIUM_TEST_MYSQL_URL` is set, which it was not).
+
 ## November 18 full re-run (r13)
 
 **PASS: the whole gate, 25 cases on each lane.** Spigot 1.20.1 (`r13b-full-spigot`, 182 checks) and

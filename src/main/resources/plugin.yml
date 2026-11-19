@@ -7,6 +7,14 @@ authors: [castledking]
 softdepend: [LuckPerms, Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, GriefPrevention, GriefPrevention3D]
 
 commands:
+  top:
+    description: Teleport to the highest block above you
+    usage: /top
+    permission: allium.top
+  bottom:
+    description: Teleport to the lowest block below you
+    usage: /bottom
+    permission: allium.bottom
   there:
     description: Teleport to the block you are looking at, or send selected entities there
     aliases: [tpthere]
@@ -629,6 +637,9 @@ permissions:
       allium.xp.take: true
       allium.xp.set: true
       allium.customtext: true
+      allium.top: true
+      allium.top.roof: true
+      allium.bottom: true
       allium.motd: true
       allium.rules: true
       allium.home.bed: true
@@ -1528,6 +1539,18 @@ permissions:
     default: op
 
   allium.tpthere:
+    default: op
+
+  allium.top:
+    description: Allows /top
+    default: op
+
+  allium.top.roof:
+    description: Lets /top stand on a world's roof, such as the Nether's; without it /top stays under the roof
+    default: op
+
+  allium.bottom:
+    description: Allows /bottom
     default: op
 
   allium.tppet:

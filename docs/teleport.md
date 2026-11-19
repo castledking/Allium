@@ -21,6 +21,8 @@ This slice handles local server worlds, not proxy travel or Folia regions.
 | `/tp <mover> <destination>` | Staff move an online player to another | Also `allium.tp.others` |
 | `/tp <x> <y> <z> [yaw] [pitch] [world]` | Staff travel to coordinates | Also `allium.tp.position` |
 | `/tppos <x> <y> <z> [yaw] [pitch] [world]` | The same, as its own command | `allium.tppos` |
+| `/top` | The highest block in your column with two free blocks above it; in a world with a roof (the Nether) the highest spot under it, or the roof itself with `allium.top.roof` | `allium.top` |
+| `/bottom` | The lowest such block below you | `allium.bottom` |
 | `/tphere <player>` | Staff bring a player to you | `allium.tphere` |
 
 Console uses `/tp <mover> <destination>` or an explicit toggle target. Base travel
@@ -43,7 +45,7 @@ teleport. Per-type grants, all default false:
 | `allium.teleport.timer.move.<type>` | Moving during the warmup does not cancel it (checked on the player who moves); damage still does |
 
 `<type>` is the teleport's command, as in `teleport.cooldowns`: `home`, `warp`, `tpa`,
-`tpahere`, `back`, `spawn`, `tp`, `tphere`, `there`, `tpoffline` and `tppos`; or a group:
+`tpahere`, `back`, `spawn`, `tp`, `tphere`, `there`, `tpoffline`, `tppos`, `top` and `bottom`; or a group:
 `homes`, `warps` and `requests` (`tpa` and `tpahere`). Each family also has a `.*` node.
 Neither operator status nor a force command implicitly bypasses recipient privacy:
 `.bypass.toggle` and `.bypass.ignore` are explicit, default-false permissions.

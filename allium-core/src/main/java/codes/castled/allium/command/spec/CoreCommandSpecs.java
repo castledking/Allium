@@ -24,6 +24,8 @@ public final class CoreCommandSpecs {
             Map.entry("tphere", "Teleport a player to you"),
             Map.entry("tpoffline", "Teleport to where an offline player logged out"),
             Map.entry("there", "Teleport to the block you are looking at, or send selected entities there"),
+            Map.entry("top", "Teleport to the highest block above you"),
+            Map.entry("bottom", "Teleport to the lowest block below you"),
             Map.entry("tppet", "Toggle selecting your own pets for /tp"),
             Map.entry("tpent", "Toggle selecting mobs and other entities for /tp"),
             Map.entry("sethome", "Set a home here"),
@@ -680,7 +682,8 @@ public final class CoreCommandSpecs {
                     CommandArgSpec.optional("yaw", null, SuggestionSpec.literals(List.of("~"), null)),
                     CommandArgSpec.optional("pitch", null, SuggestionSpec.literals(List.of("~"), null)),
                     CommandArgSpec.optional("world", null, SuggestionSpec.none()))),
-            teleportSpec("tphere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))));
+            teleportSpec("tphere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))),
+            teleportSpec("top", List.of()), teleportSpec("bottom", List.of()));
 
     private static CommandSpec teleportSpec(String command, List<CommandArgSpec> args) {
         String usage = "/" + command + switch(command) {

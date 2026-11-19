@@ -63,7 +63,7 @@ public final class WhoisExtras {
         var messages = plugin.getMessageManager();
         if (online != null) {
             messages.send(sender, Messages.INFO_WHOIS_STATE,
-                    "{gamemode}", online.getGameMode().name().toLowerCase(Locale.ROOT),
+                    "{gamemode}", codes.castled.allium.command.essentials.UtilitySupport.titleCase(online.getGameMode().name()),
                     "{fly}", yesNo(online.getAllowFlight()), "{flying}", yesNo(online.isFlying()),
                     "{god}", yesNo(GodModeCompatProvider.current().isGodMode(online)),
                     "{vanished}", yesNo(PlayerNameVisibility.isVanished(online)),

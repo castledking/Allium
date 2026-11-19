@@ -204,6 +204,32 @@ home:
   none:
     - "{prefix} &cNo tienes hogares establecidos."
     - "[sound] block.note_block.hat 0.9"
+  bed-entry:
+    - "&dbed"
+  bed-missing-entry:
+    - "&7&mbed"
+  bed-missing:
+    - "{prefix} &cNo tienes cama ni ancla de reaparicion cargada, o esta bloqueada."
+    - "[sound] block.note_block.bass 0.8"
+  bed-reserved:
+    - "{prefix} &cEl nombre &fbed &cesta reservado para tu cama; elige otro nombre para este hogar."
+    - "[sound] block.note_block.bass 0.8"
+  list-other:
+    - "{prefix} &fHogares de {player}: &d{homes}"
+    - "[sound] item.book.page_turn 1.1"
+  none-other:
+    - "{prefix} &f{player} &cno tiene hogares establecidos."
+    - "[sound] block.note_block.hat 0.9"
+  not-found-other:
+    - "{prefix} &f{player} &cno tiene un hogar llamado &f{name}&c."
+    - "[sound] block.note_block.bass 0.8"
+customtext:
+  missing:
+    - "{prefix} &cNo hay texto personalizado llamado &f{section}&c."
+    - "[sound] block.note_block.bass 0.8"
+  failed:
+    - "{prefix} &cNo se pudo leer el texto personalizado. Revisa la consola."
+    - "[sound] block.note_block.bass 0.8"
 warp:
   set:
     - "{prefix} &aWarp &f{name} &aestablecido."
@@ -310,7 +336,17 @@ economy:
   operation-refused:
     - "{prefix} &cEconomy refused: &f{reason}"
   top:
-    - "{prefix} &fTop balances: &a{balances}"
+    - "{prefix} &fTop de saldos &7[{page}/{pages}]"
+  top-total:
+    - " &f▪ Total del servidor: &a{total}"
+  top-entry:
+    - "&e&l#{rank} &f{player} &7─ &a{balance}"
+  top-empty:
+    - "&7No se encontraron cuentas."
+  top-previous:
+    - "&e[← Página anterior]"
+  top-next:
+    - "&e[↪ Página siguiente]"
   reservation-entry:
     - "{prefix} &f{kind} {id} &7payer=&f{payer} &7amount=&a{amount} &7state=&e{state}"
   outcome-unknown:
@@ -321,6 +357,63 @@ economy:
     - "{prefix} &aReceived &f{amount} &afrom &f{player}&a."
   payment-sent:
     - "{prefix} &aPaid &f{amount} &ato &f{player}&a. &7Operation {operation}"
+  payment-sent-taxed:
+    - "{prefix} &aPagaste &f{net} &aa &f{player} &7({tax} impuesto a {account})&a. &7Operacion {operation}"
+  cheque-created:
+    - "{prefix} &aCheque creado por &e{amount}&a."
+  cheque-created-taxed:
+    - "{prefix} &aCheque creado por &e{amount} &7({tax} impuesto a {account})&a."
+  cheque-given:
+    - "{prefix} &aCheque administrativo de &e{amount} &aentregado a &f{player}&a."
+  cheque-received:
+    - "{prefix} &aRecibiste un cheque de &e{amount} &ade &f{signer}&a."
+  cheque-redeemed:
+    - "{prefix} &aCanjeaste un cheque de &e{amount} &7(firmado por {signer})&a."
+    - "[sound] entity.experience_orb.pickup 0.9"
+  cheque-funds:
+    - "{prefix} &cNecesitas &e{amount} &cpara emitir este cheque."
+  cheque-full:
+    - "{prefix} &cEl inventario de {player} esta lleno."
+  cheque-pending:
+    - "{prefix} &eEste cheque aun se esta liquidando; intenta de nuevo pronto."
+  cheque-spent:
+    - "{prefix} &cEste cheque ya fue canjeado o anulado."
+  cheque-invalid:
+    - "{prefix} &cEste cheque no es valido."
+  cheque-recovered:
+    - "{prefix} &7Se liquido un cheque interrumpido: &f{captured} &7emitido, &f{released} &7reembolsado."
+  tax-info:
+    - "{prefix} &fImpuesto: &e{rate} &7({status}; aplica a: {applies}) &fCuenta &e{account}&f: &a{balance}"
+  tax-imposed:
+    - "{prefix} &aImpuesto de &e{percent} &a(&e{amount}&a) aplicado a &f{player}&a."
+  tax-imposed-multi:
+    - "{prefix} &aImpuesto de &e{percent} &aaplicado a &f{count} &ajugador(es), recaudado &e{total}&a."
+  tax-imposed-notify:
+    - "{prefix} &eSe aplico un impuesto de &f{percent} &e(&f{amount}&e) a tu saldo."
+  tax-imposed-mail:
+    - "&eSe aplico un impuesto del servidor de &f{percent} &e(&f{amount}&e) a tu saldo por &f{imposer}&e."
+  tax-no-balance:
+    - "{prefix} &c{player} no tiene saldo imponible."
+  tax-history-empty:
+    - "{prefix} &7No se encontraron registros de impuestos."
+  tax-history-header:
+    - "{prefix} &fHistorial de impuestos de &e{target} &7(pagina {page}/{pages}):"
+  tax-history-entry:
+    - "&7[&e#{id}&7] &f{date} &b{player} &c-{amount} &7({percent}) &epor {imposer} {status}"
+  tax-refund-confirm:
+    - "{prefix} &eConfirma el reembolso del impuesto &6#{id} &e(&a{amount}&e, &a{percent}&e) a &f{player}&e: ejecuta &f{command}"
+  tax-refunded:
+    - "{prefix} &aReembolsado &e{amount} &adel impuesto &6#{id} &aa &f{player}&a."
+  tax-refunded-notify:
+    - "{prefix} &aRecibiste un reembolso de impuestos de &e{amount}&a."
+  tax-refunded-mail:
+    - "&aRecibiste un reembolso de impuestos del servidor de &e{amount} &ade &f{refunder}&a."
+  tax-refund-not-found:
+    - "{prefix} &cNo se encontro ningun impuesto reembolsable para &f{target}&c."
+  tax-already-refunded:
+    - "{prefix} &cEl impuesto &6#{id} &cya fue reembolsado."
+  tax-funds:
+    - "{prefix} &cLa cuenta &e{account} &cno tiene fondos suficientes para ese reembolso."
   payment-refused:
     - "{prefix} &cThat player can't receive payments right now."
   resolve-unavailable:
@@ -348,7 +441,7 @@ economy:
   below-minimum:
     - "{prefix} &cAmount is below the minimum payment."
   invalid-arguments:
-    - "{prefix} &cInvalid arguments or amount. Use plain decimal amounts with at most two nonzero decimal places."
+    - "{prefix} &cArgumentos o cantidad invalidos. Usa decimales simples o abreviaturas k/m/b/t con hasta dos decimales."
   busy:
     - "{prefix} &cEconomy is busy; try again."
   unavailable:
@@ -384,8 +477,6 @@ chat:
     - "{prefix} &cChoose read or write."
   channel-unknown:
     - "{prefix} &cUnknown channel."
-  channel-usage:
-    - "{prefix} &cUsage: /channel <join|leave> <channel> [read|write]"
   channels-disabled-use-global:
     - "{prefix} &cChat channels are disabled; use /g to select global explicitly."
   channel-player-only:
@@ -396,8 +487,6 @@ chat:
     - "{prefix} &cInvalid nickname or formatting permission."
   nick-control-text:
     - "{prefix} &cNickname contains forbidden control text."
-  nick-usage:
-    - "{prefix} &cUsage: /nick <name|off> or /nick <player> <name|off>"
   nick-save-failed:
     - "{prefix} &cNickname could not be saved."
   profile-busy:
@@ -442,8 +531,6 @@ chat:
       - "{prefix} &cMensaje no encontrado."
     amount:
       - "{prefix} &cLa cantidad debe estar entre 1 y 200."
-    usage:
-      - "{prefix} &cUso: &f/delmsg <id> &co &f/delmsg <player> <amount>"
   player-not-found:
     - "{prefix} &cJugador no encontrado."
   msg-format:
@@ -459,9 +546,6 @@ chat:
     - "[sound] block.note_block.bell 1.05"
 moderation:
   discipline:
-    usage:
-      - "{prefix} &cUso: {usage}"
-      - "[sound] ui.button.click 0.75"
     unavailable:
       - "{prefix} &cLos datos de moderacion no estan disponibles. Intentalo de nuevo en un momento."
       - "[sound] block.note_block.bass 0.7"
@@ -658,17 +742,32 @@ info:
     uuid:
       - "&7UUID: &f{uuid}"
     dates:
-      - "&7Primer ingreso: &f{first_join} &8| &7{seen_label}: &f{seen_value}"
+      - "&7Primer ingreso: &f{first_join}"
+      - "&7{seen_label}: &f{seen_value}"
     location:
       - "&7Ubicacion: &f{world} &7(&f{x}&7, &f{y}&7, &f{z}&7)"
     names:
       - "&7Nombres conocidos: &f{names}"
     state:
-      - "&7Modo: &f{gamemode} &8| &7Vuelo: {fly} &8| &7Volando: {flying} &8| &7Dios: {god} &8| &7Invisible: {vanished} &8| &7AFK: {afk}"
+      - "&7Modo: &f{gamemode}"
+      - "&7Vuelo: {fly}"
+      - "&7Volando: {flying}"
+      - "&7Dios: {god}"
+      - "&7Invisible: {vanished}"
+      - "&7AFK: {afk}"
     vitals:
-      - "&7Vida: &f{health}&7/&f{max_health} &8| &7Comida: &f{food} &8| &7Nivel: &f{level} &8| &7Ping: &f{ping}ms &8| &7Velocidad: &f{speed}"
+      - "&7Vida: &f{health}&7/&f{max_health}"
+      - "&7Comida: &f{food}"
+      - "&7Nivel: &f{level}"
+      - "&7Ping: &f{ping}ms"
+      - "&7Velocidad: &f{speed}"
     flags:
-      - "&7Op: {op} &8| &7Silenciado: {muted} &8| &7Baneado: {banned} &8| &7En lista blanca: {whitelisted} &8| &7Congelado: {frozen} &8| &7Encarcelado: {jailed}"
+      - "&7Op: {op}"
+      - "&7Silenciado: {muted}"
+      - "&7Baneado: {banned}"
+      - "&7En lista blanca: {whitelisted}"
+      - "&7Congelado: {frozen}"
+      - "&7Encarcelado: {jailed}"
     ip:
       - "&7IP: &f{ip}"
     alts:
@@ -924,6 +1023,69 @@ utility:
   near-none:
     - "{prefix} &cNo hay jugadores cercanos."
     - "[sound] block.note_block.hat 0.95"
+  rename-set:
+    - "{prefix} &aRenombraste &f{item} &acomo &f{name}&a."
+    - "[sound] block.anvil.use 1.3"
+  rename-cleared:
+    - "{prefix} &aQuitaste el nombre; vuelve a ser &f{item}&a."
+    - "[sound] item.book.page_turn 1.0"
+  rename-nothing:
+    - "{prefix} &7Tu &f{item} &7no tiene un nombre personalizado."
+    - "[sound] block.note_block.hat 0.95"
+  rename-too-long:
+    - "{prefix} &cLos nombres pueden tener como maximo &f{max} &ccaracteres."
+    - "[sound] block.note_block.bass 0.8"
+  lore-added:
+    - "{prefix} &aAnadiste la linea &f{line} &aa la descripcion de tu &f{item}&a."
+    - "[sound] item.book.page_turn 1.2"
+  lore-set:
+    - "{prefix} &aCambiaste la linea &f{line} &ade la descripcion de tu &f{item}&a."
+    - "[sound] item.book.page_turn 1.2"
+  lore-inserted:
+    - "{prefix} &aInsertaste la linea &f{line} &aen la descripcion de tu &f{item}&a."
+    - "[sound] item.book.page_turn 1.2"
+  lore-removed:
+    - "{prefix} &aQuitaste la linea &f{line} &ade la descripcion de tu &f{item}&a."
+    - "[sound] item.book.page_turn 1.0"
+  lore-cleared:
+    - "{prefix} &aQuitaste toda la descripcion de tu &f{item}&a."
+    - "[sound] item.book.page_turn 1.0"
+  lore-none:
+    - "{prefix} &7Tu &f{item} &7no tiene descripcion."
+    - "[sound] block.note_block.hat 0.95"
+  lore-no-line:
+    - "{prefix} &cNo existe la linea &f{line}&c; el objeto tiene &f{count}&c."
+    - "[sound] block.note_block.bass 0.8"
+  lore-too-long:
+    - "{prefix} &cLas lineas pueden tener como maximo &f{max} &ccaracteres."
+    - "[sound] block.note_block.bass 0.8"
+  lore-full:
+    - "{prefix} &cLos objetos pueden tener como maximo &f{max} &clineas de descripcion."
+    - "[sound] block.note_block.bass 0.8"
+  lore-copied:
+    - "{prefix} &aCopiaste &f{count} &alinea(s) de la descripcion de tu &f{item}&a."
+    - "[sound] item.book.page_turn 1.3"
+  lore-pasted:
+    - "{prefix} &aPegaste &f{count} &alinea(s) de descripcion en tu &f{item}&a."
+    - "[sound] item.book.page_turn 1.2"
+  lore-clipboard-empty:
+    - "{prefix} &cAun no copiaste nada: sosten un objeto con descripcion y usa &f/lore copy&c."
+    - "[sound] block.note_block.bass 0.8"
+  xp-self:
+    - "{prefix} &7Tienes &f{points} &7puntos de experiencia: nivel &f{level}&7, faltan &f{next} &7para el siguiente."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  xp-other:
+    - "{prefix} &f{player} &7tiene &f{points} &7puntos de experiencia: nivel &f{level}&7, faltan &f{next} &7para el siguiente."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  xp-changed:
+    - "{prefix} &f{player} &aahora tiene &f{points} &apuntos de experiencia (nivel &f{level}&a)."
+    - "[sound] entity.experience_orb.pickup 1.0"
+  xp-notify:
+    - "{prefix} &7Tu experiencia cambio: &f{points} &7puntos (nivel &f{level}&7)."
+    - "[sound] entity.experience_orb.pickup 1.0"
+  xp-invalid:
+    - "{prefix} &f{input} &cno es una cantidad: usa puntos como &f100 &co niveles como &f5L &c(hasta el nivel &f{max}&c)."
+    - "[sound] block.note_block.bass 0.8"
 tool:
   mob-disarmer:
     disarmed:
@@ -1296,8 +1458,6 @@ hide:
     - "{prefix} &7{message}"
   permission:
     - "{prefix} &f{player}&7: &f{command} &7mediante &f{source}&7, permiso=&f{permission}&7, permitido=&f{allowed}"
-  usage:
-    - "{prefix} &cUso: &f/allium hide <status|reload|enabled true/false|resolve player command|fix command permission|unfix command|group name create/whitelist/inherit/add/remove/check>"
   hint-failed:
     - "{prefix} &eLas reglas están activas, pero no se pudo exportar el paquete de ayuda. Consulta la consola."
 
@@ -1308,16 +1468,70 @@ unknown-command-suggestion:
 no-permission:
   - "{prefix} &cNo tienes permiso para usar &f/{cmd}&c."
 help:
+  border:
+    - "&8&m───────────────────────────────────"
   header:
-    - "{prefix} &6&lMenú de ayuda &7- Página &e{page}/{pages}"
+    - "&6&lMenú de ayuda &8─ &ePágina {page}/{pages}"
+  subtitle:
+    - "&7Comandos a los que tienes acceso:"
+  plugin-header:
+    - "&6&lMenú de ayuda &8─ &e{plugin}"
+  plugin-subtitle:
+    - "&7Comandos de &c[Plugin] &e{plugin}&7:"
+  plugin-entry:
+    - "&c▪ [Plugin] &e{plugin}"
   entry:
-    - "&6 • &e/{command} &7- {description}"
+    - "&6▪ &e/{command} &7─ &f{description}"
+  search-header:
+    - "&6&lMenú de ayuda &8─ &eComandos que coinciden con &f\"{query}\""
+  related-header:
+    - "&7Comandos que coinciden con &e\"{query}\"&7:"
+  command-header:
+    - "&6&lAyuda de comando &8─ &e/{command}"
+  command-plugin:
+    - "&6Plugin: &f{plugin}"
+  command-description:
+    - "&6Descripción: &f{description}"
+  command-usage:
+    - "&6Uso: &f{usage}"
+  command-permission:
+    - "&6Permiso: &f{permission}"
+  command-usages:
+    - "&6Uso(s):"
+  usage-line:
+    - "{usage} &7- &f{description}"
+  usage-line-plain:
+    - "&f{usage}"
+  usage-literal:
+    - "&f{token}"
+  usage-argument:
+    - "&6{token}"
+  none:
+    - "&7Ninguno"
+  no-description:
+    - "&7Sin descripción"
+  unknown-header:
+    - "&6&lMenú de ayuda &8─ &eAyuda para &6{query}"
+  unknown:
+    - "&cComando desconocido: &e{query}"
+  unknown-plugin:
+    - "&cComando o plugin desconocido: &e{query}"
+  did-you-mean:
+    - "&7¿Quisiste decir alguno de estos?"
+  suggestion:
+    - "&7─ &e/{command}"
   empty:
-    - "{prefix} &7No hay comandos disponibles."
+    - "&7No hay comandos disponibles."
+  page:
+    - "&7Página &f{page}/{pages}"
   previous:
-    - "&e« Anterior"
+    - "&6« Anterior"
+  previous-disabled:
+    - "&8« Anterior"
   next:
-    - "&eSiguiente »"
+    - "&6Siguiente »"
+  next-disabled:
+    - "&8Siguiente »"
 
 give:
   unsafe-level:
@@ -1349,6 +1563,14 @@ signs:
   repair-recovered:
     - "{prefix} &7Se liquido una reparacion de pago interrumpida: &f{captured} &7cobradas, &f{released} &7devueltas."
     - "[sound] ui.button.click 1.25"
+  paid:
+    - "{prefix} &aPagaste &e{price} &apor &f[{type}]&a."
+  insufficient-funds:
+    - "{prefix} &cNecesitas &e{price} &cpara usar este cartel."
+  paid-unavailable:
+    - "{prefix} &cLos carteles de pago no estan disponibles ahora (la economia no esta lista)."
+  unsafe-price:
+    - "{prefix} &cEl precio &e{price} &ces menor que el costo configurado &e{cost}&c. Activa &funsafe-sign-prices &cpara permitir carteles con descuento."
 creative:
   restricted:
     - "{prefix} &cNo puedes {action} en modo creativo."

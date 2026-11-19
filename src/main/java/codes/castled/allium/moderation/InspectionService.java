@@ -397,7 +397,7 @@ public final class InspectionService implements Listener {
             return;
         }
         if (args.length != 1) {
-            send(viewer, Messages.INVALID_ARGS, "{usage}", "/invsee <player>");
+            codes.castled.allium.command.CommandUsageCard.sendInvalid(plugin, viewer, "invsee", "invsee", "/invsee <player>");
             return;
         }
         if (!viewer.hasPermission(PERMISSION_INVSEE)) {
@@ -422,7 +422,7 @@ public final class InspectionService implements Listener {
             return;
         }
         if (args.length > 1) {
-            send(viewer, Messages.INVALID_ARGS, "{usage}", "/enderchest [player]");
+            codes.castled.allium.command.CommandUsageCard.sendInvalid(plugin, viewer, "enderchest", "enderchest", "/enderchest [player]");
             return;
         }
         if (!viewer.hasPermission(PERMISSION_ENDERCHEST)) {

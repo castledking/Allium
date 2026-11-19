@@ -215,10 +215,11 @@ public final class ChatService implements Listener,AutoCloseable {
         if(!settings.enabled()){tell(context.sender(),Messages.CHAT_MODULE_DISABLED);return;}
         CommandSender sender=context.sender();String action=context.spec().canonicalName();String[] args=context.args();
         try{switch(action){case "nick"->nick(sender,args);case "channel"->channel(sender,context.label(),args);case "delmsg"->delete(sender,args);default->throw new IllegalArgumentException();}}
+        catch(UsageFailure usage){context.sendInvalidArgs(context.spec().selfUsage());}
         catch(IllegalArgumentException error){tell(sender,error instanceof ChatFailure failure?failure.message:Messages.CHAT_ARGUMENT_ERROR,"{message}",Objects.toString(error.getMessage(),"Invalid chat arguments."));}
     }
     private void nick(CommandSender sender,String[] args){
-        if(args.length<1||args.length>2)throw new ChatFailure(Messages.CHAT_NICK_USAGE);
+        if(args.length<1||args.length>2)throw new UsageFailure();
         String raw=args[args.length-1];boolean reset=Set.of("off","reset").contains(raw.toLowerCase(Locale.ROOT));
         if(!reset){
             if(!raw.equals(UntrustedText.clean(raw)))throw new ChatFailure(Messages.CHAT_NICK_CONTROL_TEXT);
@@ -261,7 +262,7 @@ public final class ChatService implements Listener,AutoCloseable {
             choose(s,s.write.equals(shortcut.id())?settings.defaultChannel():shortcut.id(),true);return;
         }
         if(args.length==0){tell(p,Messages.CHAT_CHANNELS_LIST,"{channels}",String.join(", ",complete(p,"")));return;}
-        if(args.length<2||args.length>3)throw new ChatFailure(Messages.CHAT_CHANNEL_USAGE);
+        if(args.length<2||args.length>3)throw new UsageFailure();
         var target=settings.resolve(args[1]);if(target==null)throw new ChatFailure(Messages.CHAT_CHANNEL_UNKNOWN);
         if(args[0].equalsIgnoreCase("join")){if(args.length==3&&!Set.of("read","write").contains(args[2]))throw new ChatFailure(Messages.CHAT_CHANNEL_DIRECTION_INVALID);choose(s,target.id(),args.length<3||!args[2].equals("read"));}
         else if(args[0].equalsIgnoreCase("leave")){
@@ -280,7 +281,7 @@ public final class ChatService implements Listener,AutoCloseable {
         if(args.length==2){final int amount;try{amount=Integer.parseInt(args[1]);}catch(NumberFormatException invalid){tell(sender,Messages.CHAT_DELETE_AMOUNT);return;}
             if(amount<1||amount>200){tell(sender,Messages.CHAT_DELETE_AMOUNT);return;}
             plugin.getPlayerNames().resolve(args[0]).whenComplete((found,error)->plugin.getScheduler().runOnServer(()->{if(error!=null||found.isEmpty()){tell(sender,Messages.CHAT_PLAYER_NOT_FOUND);return;}var ids=history.recentBySender(found.get().uuid(),amount).stream().map(ChatHistory.Message::id).toList();auditDeletion(sender,ids);deleteIds(ids);tell(sender,Messages.CHAT_DELETE_MULTIPLE);}));return;}
-        tell(sender,Messages.CHAT_DELETE_USAGE);
+        throw new UsageFailure();
     }
     public boolean deletedIdentity(String id){return history.find(id).map(m->m.deleted().get()).orElse(true);}
     @SuppressWarnings("unchecked") private void installInteractiveGuard(){
@@ -300,6 +301,8 @@ public final class ChatService implements Listener,AutoCloseable {
     }
     private void auditDeletion(CommandSender sender,List<String> ids){plugin.logger().info("Chat deletion actor="+(sender instanceof Player p?p.getUniqueId():"CONSOLE")+" messages="+String.join(",",ids));}
     private void tell(CommandSender sender,Messages message,String... args){if(!closed&&(!(sender instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(sender,message,args);}
+    /** Wrong or missing arguments: answered with the command's usage card. */
+    private static final class UsageFailure extends IllegalArgumentException {UsageFailure(){super("usage");}}
     private static final class ChatFailure extends IllegalArgumentException {final Messages message;ChatFailure(Messages message){super(message.getDefault());this.message=message;}}
     @FunctionalInterface private interface Query<T>{T run()throws Exception;}
     private <T> void work(Query<T> query,java.util.function.Consumer<T> done,java.util.function.Consumer<Throwable> failed){

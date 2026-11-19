@@ -12,14 +12,17 @@ UUID; a different world with the same name is never substituted or created.
 | --- | --- | --- |
 | `/sethome [name] [confirm]` | `allium.sethome` | true |
 | `/home [name]` | `allium.home` | true |
+| `/home bed`, `/bed` | `allium.home.bed` | true |
+| `/home <player>:<home>` | `allium.home` **and** `allium.home.others` | op |
 | `/delhome [name]` | `allium.delhome` | true |
 | `/homes` | `allium.homes` | true |
+| `/homes <player>` | `allium.homes` **and** `allium.homes.others` | op |
 | `/setwarp <name> [confirm]` | `allium.setwarp` | op |
 | `/warp <name>` | `allium.warp` **and** `allium.warps.<name>` | base true; named access false |
 | `/delwarp <name>` | `allium.delwarp` | op |
 | `/warps` | `allium.warps`, plus access to each listed warp | base true; named access false |
 
-Player-only commands never enumerate another player's homes. Omitted home names
+Only holders of `allium.homes.others` can list another player's homes. Omitted home names
 mean `home`. Names contain 1–32 ASCII letters, digits, underscores or hyphens and
 are normalized to lowercase. Spaces, slashes, selectors and arbitrary text fail
 validation. Unknown and inaccessible warps have exactly the same not-found reply.
@@ -35,6 +38,23 @@ non-false default blocks that warp and produces a diagnostic; Allium does not
 rewrite another plugin's permission. Permission and destination revision/location
 are checked again when the warmup commits. Deleting/changing the destination or
 revoking access cancels that operation.
+
+## Beds and other players' homes
+
+With `allium.home.bed`, `/home bed` and `/bed` go to the player's bed or charged respawn
+anchor, as Essentials' `/home bed` does. `/homes` lists the bed last: plain (`home.bed-entry`)
+when it is set, struck through (`home.bed-missing-entry`, `&7&mbed`) when it is not. A plain
+`/home` with no homes set goes to the bed when there is one. `bed` cannot be set as a home
+name (`home.bed-reserved`); a home that is already called `bed`, such as an imported one, is
+still reached and deleted normally by players without the node. The bed is checked again when
+the warmup ends, and the teleport shares the `home` cooldown and warmup rules. Spigot 1.20.1's
+`getBedSpawnLocation()` and the newer `getRespawnLocation()` are both supported.
+
+Staff with `allium.home.others` use `/home <player>:<home>` (an empty home name means `home`),
+and staff with `allium.homes.others` use `/homes <player>`. The name goes through the shared
+name index, so offline players work too, and the home is read from storage rather than a
+session. Each visit is logged as `Home audit actor=<uuid> owner=<uuid> home=<name>`.
+Deleting another player's home is not supported.
 
 ## Limits and confirmation
 

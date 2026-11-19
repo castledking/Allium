@@ -662,8 +662,8 @@ public final class DisarmBehavior {
         if (custom != null && !custom.isBlank()) {
             return custom;
         }
-        String type = target.getType().name().toLowerCase(Locale.ROOT).replace('_', ' ');
-        return type.isEmpty() ? "mob" : Character.toUpperCase(type.charAt(0)) + type.substring(1);
+        String type = codes.castled.allium.command.essentials.UtilitySupport.titleCase(target.getType().name());
+        return type.isEmpty() ? "Mob" : type;
     }
 
     static String formatDuration(long millis) {

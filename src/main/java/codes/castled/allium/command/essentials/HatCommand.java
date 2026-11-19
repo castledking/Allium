@@ -48,6 +48,6 @@ public final class HatCommand implements SpecCommandHandler {
         inventory.setHelmet(newHelmet);
         inventory.setItemInMainHand(swappedToHand);
         UtilitySupport.send(plugin, player, Messages.UTILITY_HAT_EQUIPPED,
-                "{item}", UtilitySupport.formatMaterialName(newHelmet.getType()));
+                "{item}", UtilitySupport.itemName(newHelmet));
     }
 }

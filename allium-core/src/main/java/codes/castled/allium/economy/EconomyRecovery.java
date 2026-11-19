@@ -13,6 +13,10 @@ public final class EconomyRecovery {
     private EconomyRecovery(){}
     public static void sweep(ConnectionSource source,EconomyReservations holds,Path directory,
                              Predicate<UUID> online,Consumer<String> warning)throws SQLException {
+        sweep(source,holds,directory,online,TaxSettings.defaults().accountUuid(),warning);
+    }
+    public static void sweep(ConnectionSource source,EconomyReservations holds,Path directory,
+                             Predicate<UUID> online,UUID taxAccount,Consumer<String> warning)throws SQLException {
         var ids=new ArrayList<EconomyReservations.Identity>();
         // Materialize first: no borrowed connection or write transaction during native file I/O.
         try(var c=source.connection();var s=c.createStatement();var r=s.executeQuery("SELECT workflow_kind,workflow_id FROM "+EconomySchema.RESERVATIONS+" WHERE state='HELD' ORDER BY workflow_kind,workflow_id")){
@@ -20,6 +24,7 @@ public final class EconomyRecovery {
         }
         var kits=new KitRepository(source,SqlDialect.SQLITE,System::currentTimeMillis);
         var mail=new MailRepository(source,SqlDialect.SQLITE,System::currentTimeMillis);
+        var cheques=new ChequeRepository(source);
         for(var identity:ids){
             try{
                 var row=holds.find(identity.kind(),identity.id()).orElseThrow();if(online.test(row.account()))continue;
@@ -39,7 +44,17 @@ public final class EconomyRecovery {
                     String raw=PlayerDataReceiptProof.read(file,PlayerDataReceiptProof.REPAIR_RECEIPTS);
                     if(RepairReceipts.parse(raw).contains(row.id()))require(holds.capture(row.kind(),row.id(),c->true));
                     else require(holds.release(row.kind(),row.id(),c->true));
-                }else{
+                }else if(identity.kind()==EconomyReservations.Kind.CHEQUE){
+                    String raw=PlayerDataReceiptProof.read(file,PlayerDataReceiptProof.CHEQUE_RECEIPTS);
+                    var cheque=cheques.find(row.id()).orElseThrow(()->new SQLException("missing cheque intent"));
+                    UUID captureOp=EconomyReservations.operation(EconomyReservations.Kind.CHEQUE,row.id(),EconomyRequest.Kind.CAPTURE);
+                    if(RepairReceipts.parse(raw).contains(row.id())){
+                        if(cheque.tax().minor()>0)
+                            require(holds.capture(row.kind(),row.id(),taxAccount,cheque.tax(),c->cheques.markIssued(c,row.id(),captureOp)));
+                        else
+                            require(holds.capture(row.kind(),row.id(),c->cheques.markIssued(c,row.id(),captureOp)));
+                    }else require(holds.release(row.kind(),row.id(),c->cheques.markVoided(c,row.id())));
+                }else if(identity.kind()==EconomyReservations.Kind.MAIL){
                     String raw=PlayerDataReceiptProof.read(file,PlayerDataReceiptProof.MAIL_RECEIPTS);
                     var entries=MailReceipts.parse(raw);
                     if(entries.stream().anyMatch(e->e instanceof MailReceipts.Unknown))throw new SQLException("ambiguous mail receipt");

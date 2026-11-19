@@ -55,6 +55,9 @@ public final class EconomyEngine {
     public EconomyRequest request(UUID id,String origin,String key,EconomyRequest.Kind kind,String actor,UUID source,UUID recipient,Money amount){
         return new EconomyRequest(id,origin,key,kind,actor,source,recipient,amount,settings);
     }
+    public EconomyRequest request(UUID id,String origin,String key,EconomyRequest.Kind kind,String actor,UUID source,UUID recipient,Money amount,UUID taxAccount,Money taxAmount){
+        return new EconomyRequest(id,origin,key,kind,actor,source,recipient,amount,settings,taxAccount,taxAmount);
+    }
     private Connection connection() throws SQLException {
         return connection(connections,false);
     }
@@ -125,7 +128,7 @@ public final class EconomyEngine {
             SqlSavepoint savepoint=new SqlSavepoint(c);
             String rejection=null;Found a=null,b=null;
             if(!q.settings().equals(settings)&&q.kind()!=EconomyRequest.Kind.CAPTURE&&q.kind()!=EconomyRequest.Kind.RELEASE) rejection="SETTINGS_CHANGED";
-            else if(q.kind()==EconomyRequest.Kind.OPEN){
+            else if(q.kind()==EconomyRequest.Kind.OPEN || q.kind()==EconomyRequest.Kind.OPEN_SYSTEM){
                 a=read(c,q.source());
                 if(a==null){
                     long now=System.currentTimeMillis();
@@ -140,26 +143,30 @@ public final class EconomyEngine {
                 else{String refusal=reservation(c,q,a);if(refusal!=null)rejection=refusal;else a=read(c,q.source());}
             }else{
                 // BEGIN IMMEDIATE owns the SQLite writer lock. Point reads still use UUID order.
-                var ids=new ArrayList<UUID>();ids.add(q.source());if(q.recipient()!=null)ids.add(q.recipient());ids.sort(Comparator.comparing(UUID::toString));
+                var ids=new ArrayList<UUID>();ids.add(q.source());if(q.recipient()!=null)ids.add(q.recipient());if(q.taxAccount()!=null)ids.add(q.taxAccount());ids.sort(Comparator.comparing(UUID::toString));
                 Map<UUID,Found> snapshots=new HashMap<>();for(UUID id:ids)snapshots.put(id,read(c,id));
                 a=snapshots.get(q.source());b=q.recipient()==null?null:snapshots.get(q.recipient());
-                if(a==null || q.recipient()!=null&&b==null)rejection="MISSING_ACCOUNT";
+                Found taxRow=q.taxAccount()==null?null:snapshots.get(q.taxAccount());
+                if(a==null || q.recipient()!=null&&b==null || q.taxAccount()!=null&&taxRow==null)rejection="MISSING_ACCOUNT";
                 else if(q.kind()==EconomyRequest.Kind.PAY && (q.amount().minor()<settings.minimumPay().minor() || !policy.permits(c,q.source(),q.recipient())))rejection="REFUSED";
                 else{
-                    long amount=q.amount().minor(),next=a.book().minor(),other=b==null?0:b.book().minor();
+                    long amount=q.amount().minor(),tax=q.taxAmount().minor(),recipientDelta=Math.subtractExact(amount,tax);
+                    long next=a.book().minor(),other=b==null?0:b.book().minor(),taxNext=taxRow==null?0:taxRow.book().minor();
                     switch(q.kind()){
-                        case PAY,WITHDRAW -> next=Math.subtractExact(next,amount);
+                        case PAY,TRANSFER,WITHDRAW -> next=Math.subtractExact(next,amount);
                         case DEPOSIT -> next=Math.addExact(next,amount);
                         case ADMIN_SET -> next=amount;
                         default -> throw new IllegalStateException("unhandled mutation");
                     }
-                    if(q.kind()==EconomyRequest.Kind.PAY)other=Math.addExact(other,amount);
-                    long floor=(q.kind()==EconomyRequest.Kind.PAY||q.kind()==EconomyRequest.Kind.WITHDRAW)?Math.max(0,settings.minimum().minor()):settings.minimum().minor();
+                    if(q.kind()==EconomyRequest.Kind.PAY||q.kind()==EconomyRequest.Kind.TRANSFER)other=Math.addExact(other,recipientDelta);
+                    if(tax>0)taxNext=Math.addExact(taxNext,tax);
+                    long floor=(q.kind()==EconomyRequest.Kind.PAY||q.kind()==EconomyRequest.Kind.TRANSFER||q.kind()==EconomyRequest.Kind.WITHDRAW)?Math.max(0,settings.minimum().minor()):settings.minimum().minor();
                     if(next<floor+a.reserved().minor())rejection="INSUFFICIENT_FUNDS";
-                    else if(next>settings.maximum().minor() || b!=null&&other>settings.maximum().minor())rejection="CAP";
+                    else if(next>settings.maximum().minor() || b!=null&&other>settings.maximum().minor() || taxRow!=null&&taxNext>settings.maximum().minor())rejection="CAP";
                     else{
                         Found old=a;a=update(c,q.source(),old,next);if(next!=old.book().minor())entry(c,q.id(),q.source(),old.book().minor(),old.reserved().minor(),a,Math.subtractExact(next,old.book().minor()));
-                        if(b!=null){Found before=b;b=update(c,q.recipient(),before,other);entry(c,q.id(),q.recipient(),before.book().minor(),before.reserved().minor(),b,amount);}
+                        if(b!=null&&recipientDelta>0){Found before=b;b=update(c,q.recipient(),before,other);entry(c,q.id(),q.recipient(),before.book().minor(),before.reserved().minor(),b,recipientDelta);}
+                        if(taxRow!=null&&tax>0){Found beforeTax=taxRow;Found afterTax=update(c,q.taxAccount(),beforeTax,taxNext);entry(c,q.id(),q.taxAccount(),beforeTax.book().minor(),beforeTax.reserved().minor(),afterTax,tax);}
                     }
                 }
             }
@@ -188,6 +195,9 @@ public final class EconomyEngine {
         verifyHeld(c,q.source());
         var held=EconomyReservations.find(c,identity.kind(),identity.id());
         long book=before.book().minor(),reserved=before.reserved().minor(),cost=q.amount().minor();
+        long tax=q.taxAmount().minor();
+        Found taxRow=null;
+        long taxNext=0;
         boolean initial=q.kind()==EconomyRequest.Kind.RESERVE||q.kind()==EconomyRequest.Kind.SPEND;
         if(initial){
             if(held.isPresent())return "WORKFLOW_EXISTS";
@@ -197,6 +207,12 @@ public final class EconomyEngine {
             if(held.isEmpty())return "MISSING_RESERVATION";
             var row=held.get();if(!row.account().equals(q.source())||row.amount().minor()!=cost)return "WORKFLOW_CONFLICT";
             if(!row.state().equals("HELD"))return "WORKFLOW_TERMINAL";
+            if(q.kind()==EconomyRequest.Kind.CAPTURE && tax>0){
+                taxRow=read(c,q.taxAccount());
+                if(taxRow==null)return "MISSING_ACCOUNT";
+                taxNext=Math.addExact(taxRow.book().minor(),tax);
+                if(taxNext>settings.maximum().minor())return "CAP";
+            }
             reserved=Math.subtractExact(reserved,cost);if(q.kind()==EconomyRequest.Kind.CAPTURE)book=Math.subtractExact(book,cost);
         }
         String state=q.kind()==EconomyRequest.Kind.RESERVE?"HELD":q.kind()==EconomyRequest.Kind.RELEASE?"RELEASED":"CAPTURED";
@@ -215,6 +231,10 @@ public final class EconomyEngine {
             s.setLong(1,book);s.setLong(2,reserved);s.setLong(3,now);s.setString(4,q.source().toString());s.setLong(5,before.book().minor());s.setLong(6,before.reserved().minor());s.setLong(7,before.version());requireOne(s.executeUpdate());
         }
         entry(c,q.id(),q.source(),before.book().minor(),before.reserved().minor(),new Found(new Money(book),new Money(reserved),Math.addExact(before.version(),1)),Math.subtractExact(book,before.book().minor()));
+        if(taxRow!=null&&tax>0){
+            Found afterTax=update(c,q.taxAccount(),taxRow,taxNext);
+            entry(c,q.id(),q.taxAccount(),taxRow.book().minor(),taxRow.reserved().minor(),afterTax,tax);
+        }
         return null;
     }
     private static void verifyHeld(Connection c,UUID account)throws SQLException{

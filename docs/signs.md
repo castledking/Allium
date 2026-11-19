@@ -97,10 +97,31 @@ validated player file at the player's next join, or at startup for an offline pl
 halt the JVM at each boundary for gates.
 Paid kit signs retain their existing receipt recovery. Stock repair messages update automatically. Custom repair messages can include `{items}` for the comma-separated list.
 
+## Paid signs and `unsafe-sign-prices`
+
+Every actionable sign type (`warp`, `kit`, `balance`, `heal`, `repair`, `disposal`, `workbench`,
+`anvil`, `mail`, `info`) accepts an optional non-negative price (plain decimal or `k`/`m`/`b`/`t`
+shorthand, optionally prefixed/suffixed with `economy.currency-symbol`). Place the price on line
+three — or on line four for a public `[Warp]` sign whose line three is `public`. Blank means free
+(or, on a `[Kit]` sign, the kit's configured command cost).
+
+- **Priced `[Kit]` signs** record an explicit price override in the face identity and bypass the
+  kit's configured command cost, charging the sign's price through the same E5 `KIT` reservation
+  and `allium:kit_receipts` crash-recovery workflow.
+- **Priced `[Repair]` signs** continue to use `PaidRepairService` (`REPAIR` reservation +
+  `allium:repair_receipts`).
+- **Other priced service signs** (`[Warp]`, `[Heal]`, `[Disposal]`, `[Workbench]`, `[Anvil]`,
+  `[Balance]`, `[Mail]`, `[Info]`) precheck the player's command permission and destination/service
+  readiness, then charge atomically through `PaidSignService` (`SIGN` `SPEND`) before running the
+  action.
+- **`unsafe-sign-prices: false` (default):** refuses creating a sign whose explicit price is lower
+  than the underlying kit/command's configured cost (highlighting the price line in red and sending
+  `signs.unsafe-price`). Set `unsafe-sign-prices: true` to allow discounted or free override signs.
+
 Set `economy.currency-symbol` and `economy.currency-symbol-suffix` to control display
-and optional symbol placement on repair prices. Enable `economy-log-enabled` for
-`plugins/Allium/trade.log` entries for successful paid kit and mail
-captures, `/pay`, and `/eco` or `/money` balance changes. Use `economy-log-uuids`
+and optional symbol placement on sign prices. Enable `economy-log-enabled` for
+`plugins/Allium/trade.log` entries for successful paid kit, sign, mail, cheque, `/pay`, `/tax`
+and `/eco` or `/money` balance changes. Use `economy-log-uuids`
 for UUIDs and `economy-log-update-enabled` to opt into Vault API mutations.
 Each CSV row contains the timestamp, origin, action, actor, account, exact amount,
 and operation ID. The SQLite operation journal remains

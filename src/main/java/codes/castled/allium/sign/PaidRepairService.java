@@ -369,7 +369,7 @@ public final class PaidRepairService implements Listener {
             if (!replacement.setItemMeta(damage)) continue;
             originals.put(slot, item.clone());
             replacements.put(slot, replacement);
-            names.add(item.getType().name().toLowerCase(Locale.ROOT).replace('_', ' '));
+            names.add(codes.castled.allium.command.essentials.UtilitySupport.itemName(item));
         }
         return new Plan(all, originals, replacements, names);
     }

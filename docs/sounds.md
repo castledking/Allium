@@ -1,7 +1,8 @@
 # Message sounds and `/mfx` (S08)
 
-Allium plays message sounds itself. Any lang entry can carry a sound, and private-message
-notifications are scaled by each recipient's own message sound volume.
+Allium plays message sounds itself. Any lang entry can carry a sound, and message sounds
+(including private-message notifications, mail notifications, and command/feedback messages) are
+scaled by each player's own `/mfx` message sound volume.
 
 ## A message's sound
 

@@ -15,9 +15,19 @@ public final class TravelCommand implements SpecCommandHandler {
     @Override public void execute(BukkitCommandContext context) {
         if(!(context.sender() instanceof Player player)){context.plugin().getMessageManager().send(context.sender(),Messages.PLAYER_ONLY);return;}
         String command=spec.canonicalName();String[] args=context.args();boolean warp=command.contains("warp");
+        if(command.equals("bed")){
+            if(args.length!=0){context.sendInvalidArgs(spec.selfUsage());return;}
+            service.bed(player);return;
+        }
         if(command.equals("homes")||command.equals("warps")){
+            if(!warp&&args.length==1){service.listOther(player,args[0]);return;}
             if(args.length!=0){context.sendInvalidArgs(spec.selfUsage());return;}
             service.list(player,warp);return;
+        }
+        // /home <player>:<home>; home names never contain ':'.
+        if(command.equals("home")&&args.length==1&&args[0].indexOf(':')>0){
+            String[] parts=args[0].split(":",2);
+            service.useOther(player,parts[0],parts[1]);return;
         }
         boolean set=command.startsWith("set");
         if(args.length>(set?2:1)||warp&&args.length==0||args.length==2&&!args[1].equalsIgnoreCase("confirm")){

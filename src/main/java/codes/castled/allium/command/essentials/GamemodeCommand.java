@@ -35,11 +35,12 @@ public final class GamemodeCommand implements SpecCommandHandler {
 
         GameMode mode = parseGamemode(args[0]);
         if (mode == null) {
-            context.sendInvalidArgs("/gamemode <survival|creative|adventure|spectator> [player]");
+            context.sendInvalidArgs(spec().selfUsage());
             return;
         }
 
-        String modeName = mode.name().toLowerCase(Locale.ROOT);
+        // Shown as "Survival", like every other mode and item name in messages.
+        String modeName = UtilitySupport.titleCase(mode.name());
         // Each mode has its own node (legacy Allium): /gamemode alone grants none of them.
         if (!context.sender().hasPermission(modePermission(mode))) {
             plugin.getMessageManager().send(context.sender(), Messages.GAMEMODE_MODE_DENIED, "{mode}", modeName);

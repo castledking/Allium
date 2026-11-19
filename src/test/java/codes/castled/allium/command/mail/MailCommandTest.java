@@ -35,8 +35,10 @@ class MailCommandTest {
             execute(player, "gift", "Alice", amount, "a note");
         }
         verifyNoInteractions(mail);
-        verify(messages, times(invalid.length)).sendByKey(eq(player), anyString(), eq("{usage}"),
-                eq("/mail gift <player> [amount] [note]"));
+        // Each answer is the /mail usage card narrowed to the gift form.
+        verify(messages, times(invalid.length)).send(eq(player), eq(Messages.HELP_COMMAND_HEADER), eq("{command}"), eq("mail"));
+        verify(messages, times(invalid.length)).resolve(eq(Messages.HELP_USAGE_LITERAL), eq("{token}"), eq("gift"));
+        verify(messages, never()).resolve(eq(Messages.HELP_USAGE_LITERAL), eq("{token}"), eq("send"));
     }
 
     @Test
@@ -103,7 +105,7 @@ class MailCommandTest {
             execute(player, args);
         }
         verifyNoInteractions(mail);
-        verify(messages, times(14)).sendByKey(eq(player), anyString(), eq("{usage}"), anyString());
+        verify(messages, times(14)).send(eq(player), eq(Messages.HELP_COMMAND_HEADER), eq("{command}"), eq("mail"));
     }
 
     private Player sender() {

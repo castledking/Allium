@@ -100,6 +100,23 @@ an unrestricted parent. With hiding off, help uses native command permissions.
 `allium.help` defaults true; disabling the help command family also disables its
 completion renderer.
 
+### Usage cards
+
+`/help <command>` and every Allium command typed with missing or wrong arguments show the same
+command card: `help.command-header`, `help.command-description` (the plugin.yml description),
+then `Usage: ...` for a single form or `Usage(s):` with one line per form
+(`help.usage-line`: `/nick <nickname> - Changes your nickname to the given text`). Lines use
+the label the player typed (`/gm <mode>` for `/gm`), colour literal words and arguments with
+`help.usage-literal` and `help.usage-argument`, and suggest the command when clicked. Forms
+behind a permission the sender lacks are left out, so `/nick` shows the `<player>` forms only
+to holders of `allium.nick.others`. A wrong subcommand narrows the card to its forms
+(`/core hide group` lists only the group lines), and a command that reports one exact form,
+like the console's `/heal <player>`, shows just that line. The forms are written in
+`CommandUsages` (allium-core); families without written forms list their subcommand usages, then
+the usage the command reported. `/core hide` uses the same card instead of the former
+`hide.usage` list, which was removed together with `chat.nick-usage`, `chat.channel-usage`,
+`chat.delete.usage` and `moderation.discipline.usage`.
+
 `settings.use-allium-permission-resolver: true` in hide.yml controls Allium's
 permission inspection during hide execution/help/root filtering. False retains
 hide execution and suggestion rules but delegates actual permission refusal to

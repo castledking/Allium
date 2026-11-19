@@ -798,7 +798,7 @@ def test_mute_chat_msg_reply_mail_and_expiry(lane):
     lane.fixture('give ModNorm EMERALD 4')
 
     # 0. Digit-leading invalid duration token must be rejected with usage instead of becoming reason
-    staff.command('mute ModNorm 10x spam', 'Usage: /mute <player> [duration] [reason]')
+    staff.command('mute ModNorm 10x spam', '/mute <player> <duration> [reason]')
     require(not lane.fixture('state')['normMuted'],
             lane.name + ': invalid digit-leading duration token "10x" is rejected with usage without muting ModNorm')
 

@@ -76,7 +76,13 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
 
         String fixedMode=spec.canonicalName().equals("gamemode")?CoreCommandSpecs.gamemodeAlias(label):null;
         if(fixedMode!=null){
-            if(args.length>1){plugin.getMessageManager().sendByKey(sender,spec.messageKeys().invalidArgsKey(),"{usage}","/"+label+" [player]");return true;}
+            if(args.length>1){
+                String mode=codes.castled.allium.command.essentials.UtilitySupport.titleCase(fixedMode);
+                CommandUsageCard.sendInvalid(plugin,sender,spec,label,List.of(
+                        codes.castled.allium.command.spec.CommandUsage.of("","Switches you to "+mode),
+                        codes.castled.allium.command.spec.CommandUsage.of("<player>","Switches another player to "+mode,spec.othersPermission())));
+                return true;
+            }
             args=withMode(fixedMode,args);
         }
         handler.execute(new BukkitCommandContext(plugin, spec, sender, label, args));
@@ -106,6 +112,7 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             if(!sender.hasPermission(spec.basePermission())||!codes.castled.allium.teleport.TeleportTargets.selectors(sender))return List.of();String prefix=args[args.length-1];return java.util.stream.Stream.of("@p","@r","@a","@s","@e").filter(v->v.startsWith(prefix)).filter(v->!v.equals("@a")||sender.hasPermission("allium.admin")||sender.hasPermission("allium.command.selector.all")).filter(v->!v.equals("@e")||sender.hasPermission("allium.admin")||sender.hasPermission("allium.command.selector.entities")).toList();
         }
         if(spec.canonicalName().equals("help")&&handler instanceof HelpCommand help)return help.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.essentials.CustomTextCommand customText)return customText.complete(sender,args);
         boolean tpPosition=spec.canonicalName().equals("tp")&&args.length>=2&&codes.castled.allium.teleport.CoordinateArgs.isCoordinate(args[0]);
         if(tpPosition||spec.canonicalName().equals("tppos")){
             if(!sender.hasPermission(tpPosition?"allium.tp.position":"allium.tppos"))return List.of();

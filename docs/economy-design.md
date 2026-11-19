@@ -603,3 +603,27 @@ record the fixed artifact and permissions/protection/persistence/destruction sco
 S22 is [design only](shop-signs-design.md): no buy/sell/trade code or migration.
 The unit ledger ends at 667; S21 adds six and S22 adds zero. The Vault provider
 and signs remain disabled by default, and no provider release is authorized.
+
+### Shorthand amounts, cheques, taxes and priced signs
+
+- **Command shorthand (`Money.parseCommand`):** `/pay`, `/eco` (`/money`), `/cheque`, and sign
+  prices accept exact decimal amounts with optional `k`, `m`, `b`, or `t` suffixes (e.g. `100k`,
+  `1.5k`, `1M`), multiplied in exact `BigDecimal` before enforcing two-decimal scale and hard
+  bounds. Config and ledger storage remain exact minor units.
+- **Tax account & automatic tax (schema v4):** `economy.tax` uses a GPExpansion-style layout
+  (`enabled: true`, `percent: '5'`, `account-name: 'Tax'`, `round-mode: nearest`,
+  `minimum-tax: '0.00'`, `apply-to: { pay: true, cheques: false }`). The system account opens at
+  `$0.00` via `OPEN_SYSTEM`, maps by name in `/bal`, `/baltop`, and Vault, and receives tax legs
+  atomically inside the same SQLite `PAY` or `CHEQUE` `CAPTURE` commit (sum of deltas = 0). Holders
+  of `allium.tax.exempt` (`default: false`, explicit-only) skip automatic taxes and bulk `/tax
+  impose *`.
+- **`/cheque` (`allium.cheque`, `allium.cheque.others`):** player-funded `/cheque <amount>` uses a
+  `CHEQUE` reservation + `allium:cheque_receipts` + `allium_economy_cheques` (`PENDING -> ISSUED ->
+  REDEEMED`) so crashes and item dupes can never lose or duplicate funds; `/cheque <amount|min-max>
+  <player>` mints an admin cheque (supporting ranges like `500-1000` or `1k-5k`, signed by Console
+  or staff) without debiting the issuer.
+- **`/tax` (`allium.tax`, `.impose`, `.impose.offline`, `.history`, `.refund`):** shows rate,
+  targets, and `Tax` balance; imposes percentage taxes atomically via `TRANSFER` +
+  `allium_economy_tax_history` with mail receipts; lists paginated history with clickable refund
+  prompts; and refunds atomically from `Tax` with explicit confirmation and double-refund guard.
+- **Priced signs & `unsafe-sign-prices`:** see [docs/signs.md](signs.md).

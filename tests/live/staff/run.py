@@ -516,7 +516,7 @@ def staff_chat(lane):
 def gamemode_perms(lane):
     player = lane.bots['PlayerBot']
     lane.perm('PlayerBot', 'allium.gamemode')
-    player.command('gamemode creative', "permission to use creative mode")
+    player.command('gamemode creative', "permission to use Creative mode")
     require(lane.fixture('inv PlayerBot')['gamemode'] == 'SURVIVAL', lane.name + ': /gamemode creative refused without allium.gamemode.creative')
     require(player.tab('gamemode ') == [], lane.name + ': /gamemode completes no mode without a mode node', player.tab('gamemode '))
     lane.perm('PlayerBot', 'allium.gamemode.creative')
@@ -807,6 +807,139 @@ def whois_and_alts(lane):
     window(1)
     require(not any('Gamemode:' in c['plain'] or '[LiteBans]' in c['plain'] for c in player.chats(m)),
             lane.name + ': without allium.whois.extra /whois stays basic')
+
+
+def raw(c):
+    """The raw component as JSON text; Spigot's arrives as a JSON string, Paper's as simplified NBT."""
+    value = c.get('rawComponent')
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            pass
+    return json.dumps(value, default=str)
+
+
+def struck(c):
+    return re.search(r'"strikethrough":\s*(true|1)\b', raw(c).replace(' ', '')) is not None
+
+
+def usage_items_homes(lane):
+    """Usage cards, capitalised names, /rename, /lore, /xp, one-line-per-field /whois, the bed home,
+    staff home lookups and /customtext click events (2026-11-18 follow-up)."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    for node in ['allium.nick', 'allium.hide.admin', 'allium.rename', 'allium.rename.color', 'allium.lore', 'allium.lore.color',
+                 'allium.xp.give', 'allium.xp.take', 'allium.xp.set', 'allium.xp.others', 'allium.home.others', 'allium.homes.others', 'allium.repair',
+                 'allium.teleport.timer.bypass.home', 'allium.teleport.cooldown.bypass.home']:
+        lane.perm('StaffBot', node)
+    for node in ['allium.teleport.timer.bypass.home', 'allium.teleport.cooldown.bypass.home']:
+        lane.perm('PlayerBot', node)
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+    window(.5)
+
+    # Missing arguments show the command card, one clickable line per form the sender may use.
+    m = staff.cmd('nick')
+    staff.chat(m, 'Command Help')
+    staff.chat(m, 'Usage(s):')
+    line = staff.chat(m, '/nick <nickname> - Changes your nickname to the given text')
+    require(line['interactive'] and 'suggest_command' in raw(line) and '/nick ' in raw(line) and '#ffaa00' in line['colors'],
+            lane.name + ': /nick usage lines suggest the command and colour the arguments', line)
+    staff.chat(m, '/nick off - Removes your nickname')
+    window(.4)
+    require(not staff.saw(m, '<player> off'), lane.name + ': forms behind allium.nick.others are hidden without it')
+    m = staff.cmd('core hide group')
+    staff.chat(m, '/core hide group <name> create <whitelist|blacklist> - Creates a hide group')
+    staff.chat(m, '/core hide group <name> check [-c|-t|-tc] <rules> - Tests rules against a group')
+    window(.4)
+    require(not staff.saw(m, 'hide reload'), lane.name + ': /core hide group narrows the card to the group forms')
+
+    # Modes and items are capitalised like /give's "Diamond Sword".
+    staff.command('gamemode survival', 'Gamemode set to Survival.')
+    lane.fixture('give StaffBot 0 DIAMOND_SWORD 1 100')
+    lane.fixture('held StaffBot 0')
+    window(.3)
+    staff.command('repair', 'Repaired Diamond Sword.')
+
+    staff.command('rename &aCool Sword', 'Renamed Diamond Sword to Cool Sword.')
+    staff.command('lore add &7First line', 'Added lore line 1 to your Cool Sword.')
+    staff.command('lore insert 1 &8Zeroth', 'Inserted lore line 1 into your Cool Sword.')
+    item = slot(lane.fixture('inv StaffBot'), 0)
+    require(item and item.get('name', '').endswith('Cool Sword') and '\u00a7a' in item.get('name', '')
+            and [x[-len('First line'):] for x in item.get('lore', [])][1:] == ['First line'] and len(item.get('lore', [])) == 2,
+            lane.name + ': /rename and /lore write a coloured name and lore lines', item)
+    staff.command('lore copy', 'Copied 2 lore line(s) from your Cool Sword.')
+    lane.fixture('give StaffBot 1 IRON_SWORD 1')
+    lane.fixture('held StaffBot 1')
+    window(.3)
+    staff.command('lore paste', 'Pasted 2 lore line(s) onto your Iron Sword.')
+    inv = lane.fixture('inv StaffBot')
+    require(slot(inv, 1).get('lore') == slot(inv, 0).get('lore') and len(slot(inv, 1).get('lore', [])) == 2,
+            lane.name + ': /lore paste copies the lore onto another item', inv['slots'])
+    lane.fixture('held StaffBot 0')
+    window(.3)
+    staff.command('lore remove 3', 'There is no lore line 3; the item has 2.')
+    staff.command('rename clear', 'Removed the custom name; it is a Diamond Sword again.')
+    require('name' not in slot(lane.fixture('inv StaffBot'), 0), lane.name + ': /rename clear removes the name')
+
+    staff.command('xp reset StaffBot', 'StaffBot now has 0 experience points (level 0).')
+    staff.command('xp reset PlayerBot', 'PlayerBot now has 0 experience points (level 0).')
+    staff.command('xp give StaffBot 5L', 'StaffBot now has 55 experience points (level 5).')
+    require(lane.fixture('xp StaffBot')['level'] == 5, lane.name + ': /xp give 5L sets level 5')
+    staff.command('xp take StaffBot 10', 'StaffBot now has 45 experience points (level 4).')
+    player.command('xp', 'You have 0 experience points')
+    player.command('xp give PlayerBot 5', 'permission to do that')
+    require(lane.fixture('xp PlayerBot')['level'] == 0, lane.name + ': /xp give needs allium.xp.give')
+
+    # /whois: one field per line.
+    m = staff.cmd('whois PlayerBot')
+    for fragment in ['Gamemode: Survival', 'Fly: ', 'Health: ', 'Op: no', 'Jailed: no']:
+        staff.chat(m, fragment)
+    window(.4)
+    require(not any('Fly:' in c['plain'] and '|' in c['plain'] for c in staff.chats(m)), lane.name + ': /whois fields are on separate lines')
+
+    # The bed home: listed last, struck through while unset.
+    lane.fixture('bedspawn PlayerBot none')
+    window(.3)
+    listed = player.command('homes', 'bed')
+    require(struck(listed), lane.name + ': /homes strikes the bed through when it is not set', listed)
+    player.command('bed', 'You have no bed or charged respawn anchor')
+    player.command('sethome bed', 'is taken by your bed')
+    player.command('sethome base', 'Home base set.')
+    here = lane.fixture('where PlayerBot')
+    lane.fixture(f"bedspawn PlayerBot {here['x'] + 6} {here['y']} {here['z'] + 6}")
+    window(.3)
+    listed = player.command('homes', 'Homes: base, bed')
+    require(not struck(listed), lane.name + ': a set bed is listed plain', listed)
+    player.command('home bed', 'Teleported to home.')
+    there = lane.fixture('where PlayerBot')
+    require(abs(there['x'] - (here['x'] + 6)) < 1.6 and abs(there['z'] - (here['z'] + 6)) < 1.6,
+            lane.name + ': /home bed lands at the respawn point', dict(bed=here, landed=there))
+
+    # Staff reach another player's homes; others cannot.
+    staff.command('homes PlayerBot', "PlayerBot's homes: base")
+    staff.command('home PlayerBot:base', 'Teleported to home.')
+    landed = lane.fixture('where StaffBot')
+    require(abs(landed['x'] - here['x']) < 1.6 and abs(landed['z'] - here['z']) < 1.6,
+            lane.name + ': /home PlayerBot:base lands at PlayerBot\'s home', dict(home=here, landed=landed))
+    player.command('homes StaffBot', 'permission to do that')
+    staff.command('home PlayerBot:nowhere', 'PlayerBot has no home called nowhere.')
+
+    # /customtext: the bundled file's index, click and hover tags and a JSON line.
+    m = player.cmd('customtext')
+    player.chat(m, 'Welcome to')
+    tags = player.chat(m, '/customtext rules')
+    require(tags['interactive'] and 'run_command' in raw(tags) and '/customtext rules' in raw(tags),
+            lane.name + ': /customtext click tags become click events', tags)
+    m = player.cmd('customtext vote')
+    copy = player.chat(m, 'Click here to copy the server address')
+    require(copy['interactive'] and 'copy_to_clipboard' in raw(copy) and 'play.example.com' in raw(copy),
+            lane.name + ': a JSON line in customtext.txt is sent as vanilla text', copy)
+    player.command('customtext nothing', 'There is no custom text called nothing.')
+
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+    window(.5)
 
 
 def restore(lane):
@@ -1271,7 +1404,7 @@ def paid_repair(lane):
     player = lane.bots['PlayerBot']
     repair_setup(lane, '10.00')
     m = player.signuse(*SIGN)
-    player.chat(m, 'Repaired diamond sword for $1.25')
+    player.chat(m, 'Repaired Diamond Sword for $1.25')
     inv = lane.fixture('inv PlayerBot')
     econ = lane.fixture('econ PlayerBot')
     require(slot(inv, 0)['damage'] == 0, lane.name + ': the paid repair repairs the held item', inv['slots'])
@@ -1350,6 +1483,7 @@ def main():
         case('teleport-types', lambda: teleport_types(lane))
         case('mail-numbers', lambda: mail_numbers(lane))
         case('whois-alts', lambda: whois_and_alts(lane))
+        case('usage-items-homes', lambda: usage_items_homes(lane))
         case('restore', lambda: restore(lane))
         case('paid-repair', lambda: paid_repair(lane))
         case('repair-halt-after-reserve', lambda: repair_halt(lane, 'repair.halt-after-reserve', 'released'))

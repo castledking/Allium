@@ -1,0 +1,436 @@
+{
+  "suite": "paper",
+  "run": "changed-paper-1",
+  "alliumSha256": "7f8fcd97194ca6fbc8531d75a1ee18b656d84b0e952aa9133c8f3a18c49820ea",
+  "sources": {
+    "tests/live/staff/run.py": "6f563d1b76f9295ddfb77434d8c3ab32ef7acfe121443e5fc0c50f4ced87e05d",
+    "tests/live/staff/plugin/gate/StaffGate.java": "060523c9025971f966f0fca96dd6a502617f8ae1028672c2b556d088a0b815b7",
+    "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+    "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
+    "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
+    "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+  },
+  "passed": true,
+  "checks": 40,
+  "failures": [],
+  "cases": [
+    {
+      "name": "gamemode-permissions",
+      "passed": true
+    },
+    {
+      "name": "scale",
+      "passed": true
+    },
+    {
+      "name": "tp-position",
+      "passed": true
+    },
+    {
+      "name": "whois-alts",
+      "passed": true
+    },
+    {
+      "name": "paid-repair",
+      "passed": true
+    }
+  ],
+  "seconds": 47.6,
+  "results": [
+    {
+      "label": "paper: creative, alts and restore modules enabled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /gamemode creative refused without allium.gamemode.creative",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /gamemode completes no mode without a mode node",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "label": "paper: /gamemode completes only the permitted mode",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: zero maps to 0.1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: invalid scales do not change the attribute",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: scaling a named player requires allium.scale.others",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: a named player can be scaled up to 16",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: only the selected mob is scaled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: scaling keeps the selection active",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: without selected mobs, scale applies to the sender",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: a named player is scaled back to 1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /tp <x> <y> <z> needs allium.tp.position",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /tp x y z yaw pitch lands on the block centers with the given facing",
+      "passed": true,
+      "detail": {
+        "x": 5.5,
+        "y": -61.0,
+        "z": 7.5,
+        "yaw": 90.0,
+        "pitch": 10.0,
+        "world": "world"
+      }
+    },
+    {
+      "label": "paper: ~ offsets are relative to the player",
+      "passed": true,
+      "detail": {
+        "x": 3.5,
+        "y": -61.0,
+        "z": 8.75,
+        "yaw": 90.0,
+        "pitch": 10.0,
+        "world": "world"
+      }
+    },
+    {
+      "label": "paper: denied /tppos leaves position unchanged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: unknown world leaves position unchanged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /tppos teleports with yaw and an explicit world",
+      "passed": true,
+      "detail": {
+        "x": 1.5,
+        "y": -61.0,
+        "z": 1.5,
+        "yaw": -90.0,
+        "pitch": 0.0,
+        "world": "world"
+      }
+    },
+    {
+      "label": "paper: /tppos completes ~ for coordinates",
+      "passed": true,
+      "detail": [
+        "~"
+      ]
+    },
+    {
+      "label": "paper: /tppos completes world names",
+      "passed": true,
+      "detail": [
+        "world",
+        "world_nether"
+      ]
+    },
+    {
+      "label": "paper: /tp offers players and ~ with allium.tp.position",
+      "passed": true,
+      "detail": [
+        "PlayerBot",
+        "StaffBot",
+        "~"
+      ]
+    },
+    {
+      "label": "paper: without allium.tp.position nobody moves by coordinates",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: joins record the IP history",
+      "passed": true,
+      "detail": {
+        "ips": [
+          {
+            "ip": "127.0.0.1",
+            "first_seen": 1795044905666
+          }
+        ],
+        "exempt": []
+      }
+    },
+    {
+      "label": "paper: the alert names the older account",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: without LuckPerms or Vault the missing group backend is logged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: and only once per server run",
+      "passed": true,
+      "detail": [
+        "[15:35:05 WARN]: [Allium] Alt detection: cannot add group alt to PlayerBot (no LuckPerms and no Vault permission provider with group support); staff are alerted instead. This is logged once.\n"
+      ]
+    },
+    {
+      "label": "paper: /seen lists alt accounts and the IP for staff",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /alts is an alias of /seen",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: players without the nodes see neither",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: the exemption is stored with its reason",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: an exempt account rejoins without an alert",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: the LiteBans action carries a click event running /history PlayerBot",
+      "passed": true,
+      "detail": [
+        {
+          "plain": "[LiteBans] View punishment history for PlayerBot",
+          "colors": [
+            "#ffff55",
+            "#ffff55",
+            "#ffff55",
+            "#ffff55",
+            "#ffff55",
+            "#ffff55",
+            "#ffff55",
+            "#ffff55",
+            "#ffff55",
+            "#ffff55",
+            "#ffff55",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff",
+            "#ffffff"
+          ],
+          "runs": [
+            {
+              "text": "[LiteBans] ",
+              "color": "#ffff55"
+            },
+            {
+              "text": "View punishment history for PlayerBot",
+              "color": "#ffffff"
+            }
+          ],
+          "overlay": false,
+          "rawComponent": {
+            "extra": [
+              {
+                "italic": 0,
+                "click_event": {
+                  "command": "/history PlayerBot",
+                  "action": "run_command"
+                },
+                "underlined": 0,
+                "bold": 0,
+                "color": "yellow",
+                "obfuscated": 0,
+                "hover_event": {
+                  "action": "show_text",
+                  "value": {
+                    "italic": 0,
+                    "underlined": 0,
+                    "bold": 0,
+                    "color": "gray",
+                    "obfuscated": 0,
+                    "strikethrough": 0,
+                    "text": "Click to view PlayerBot's punishment history."
+                  }
+                },
+                "strikethrough": 0,
+                "text": "[LiteBans] "
+              },
+              {
+                "italic": 0,
+                "click_event": {
+                  "command": "/history PlayerBot",
+                  "action": "run_command"
+                },
+                "underlined": 0,
+                "bold": 0,
+                "color": "white",
+                "obfuscated": 0,
+                "hover_event": {
+                  "action": "show_text",
+                  "value": {
+                    "italic": 0,
+                    "underlined": 0,
+                    "bold": 0,
+                    "color": "gray",
+                    "obfuscated": 0,
+                    "strikethrough": 0,
+                    "text": "Click to view PlayerBot's punishment history."
+                  }
+                },
+                "strikethrough": 0,
+                "text": "View punishment history for PlayerBot"
+              }
+            ],
+            "text": ""
+          },
+          "interactive": true
+        }
+      ]
+    },
+    {
+      "label": "paper: /whois shows state, vitals, flags, IP, alts and the action links to allium.whois.extra",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: without allium.whois.extra /whois stays basic",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: the paid repair repairs the held item",
+      "passed": true,
+      "detail": {
+        "0": {
+          "type": "DIAMOND_SWORD",
+          "amount": 1,
+          "damage": 0
+        }
+      }
+    },
+    {
+      "label": "paper: exactly $1.25 is captured and nothing stays held",
+      "passed": true,
+      "detail": {
+        "account": [
+          {
+            "balance_minor": 875,
+            "reserved_minor": 0
+          }
+        ],
+        "repairs": [
+          {
+            "workflow_id": "8b85840d-18c6-4611-8b77-99c5049d5950",
+            "state": "CAPTURED",
+            "amount_minor": 125
+          }
+        ]
+      }
+    },
+    {
+      "label": "paper: the repair receipt is dropped once captured",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: an undamaged item is never charged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: without funds nothing is repaired, held or charged",
+      "passed": true,
+      "detail": {
+        "account": [
+          {
+            "balance_minor": 100,
+            "reserved_minor": 0
+          }
+        ],
+        "repairs": [
+          {
+            "workflow_id": "8b85840d-18c6-4611-8b77-99c5049d5950",
+            "state": "CAPTURED",
+            "amount_minor": 125
+          }
+        ]
+      }
+    },
+    {
+      "label": "paper: no exceptions or SEVERE lines in the server log",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

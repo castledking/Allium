@@ -341,6 +341,24 @@ public final class KitService implements Listener {
     }
 
     public void claim(CommandSender actor, Player target, String rawName) {
+        claim(actor, target, rawName, null);
+    }
+
+    /**
+     * Claims a kit from a {@code [Kit]} sign with an optional sign-price override. When
+     * {@code signPriceOverride} is non-null, it replaces the kit's configured command cost
+     * (charging {@code signPriceOverride} through the same E5 reservation/receipt workflow, or
+     * claiming free when {@code signPriceOverride} is zero).
+     */
+    public void claimFromSign(Player player, String rawName, @Nullable Money signPriceOverride) {
+        if (!player.hasPermission(PERMISSION_KIT)) {
+            send(player, Messages.NO_PERMISSION);
+            return;
+        }
+        claim(player, player, rawName, signPriceOverride);
+    }
+
+    private void claim(CommandSender actor, Player target, String rawName, @Nullable Money signPriceOverride) {
         if (!same(target)) {
             send(actor, Messages.PLAYER_NOT_FOUND, "{player}", target.getName());
             return;
@@ -358,11 +376,15 @@ public final class KitService implements Listener {
             send(actor, Messages.KIT_NOT_FOUND, "{name}", rawName);
             return;
         }
-        KitDefinition def = definitions.get(name);
-        if (def == null || !def.enabled()) {
+        KitDefinition configured = definitions.get(name);
+        if (configured == null || !configured.enabled()) {
             send(actor, Messages.KIT_NOT_FOUND, "{name}", name);
             return;
         }
+        KitDefinition def = signPriceOverride == null
+                ? configured
+                : new KitDefinition(configured.name(), configured.enabled(), configured.cooldownSeconds(),
+                        configured.oneTime(), signPriceOverride.toString(), configured.items(), configured.sourceFile());
         if (blockedPermissions.contains(name)) {
             send(actor, Messages.KIT_NO_PERMISSION, "{name}", name);
             return;

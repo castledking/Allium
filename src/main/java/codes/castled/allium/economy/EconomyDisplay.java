@@ -32,6 +32,6 @@ public record EconomyDisplay(String symbol, boolean suffix) {
             else if (!suffix && text.startsWith(symbol)) text = text.substring(symbol.length()).trim();
         }
         if (text.matches("[0-9]{1,3}(,[0-9]{3})+(\\.[0-9]+)?")) text = text.replace(",", "");
-        return Money.parse(text, false);
+        return Money.parseCommand(text, false);
     }
 }

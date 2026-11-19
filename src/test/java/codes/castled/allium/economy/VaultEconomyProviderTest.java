@@ -58,4 +58,14 @@ class VaultEconomyProviderTest {
                 (c,op)->{try(var s=c.createStatement()){s.execute("COMMIT");}},receipt->{throw new IllegalArgumentException("egress mismatch");});
         assertFalse(provider(rejecting).depositPlayer(player,1).transactionSuccess());assertEquals(100,provider.getBalance(player));
     }
+    @Test void taxAccountOpensAtZeroViaVaultAndReceivesDepositsByName(){
+        assertFalse(provider.hasAccount("Tax"));
+        assertTrue(provider.createPlayerAccount("Tax"));
+        assertTrue(provider.hasAccount("Tax"));
+        assertEquals(0.0,provider.getBalance("Tax"));
+        assertTrue(provider.depositPlayer("Tax",12.50).transactionSuccess());
+        assertEquals(12.50,provider.getBalance("Tax"));
+        UUID taxUuid=TaxSettings.defaults().accountUuid();
+        assertEquals(1250,((Found)engine.balance(taxUuid)).available().minor());
+    }
 }

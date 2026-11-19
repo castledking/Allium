@@ -23,7 +23,24 @@ class EconomySettingsInputTest {
         config.set("economy.starting-balance","1.001");assertThrows(ArithmeticException.class,()->EconomyRuntime.readSettings(plugin));
     }
     @Test void allCommandFamiliesBelongToEconomyAndHaveExplicitPermissions(){
-        assertEquals(5,CoreCommandSpecs.ECONOMY_SPECS.size());
+        assertEquals(7,CoreCommandSpecs.ECONOMY_SPECS.size());
         for(var spec:CoreCommandSpecs.ECONOMY_SPECS){assertEquals("economy",spec.moduleName());assertEquals("allium."+spec.canonicalName(),spec.basePermission());}
+    }
+    @Test void taxConfigReadsGpExpansionApplyToLayoutAndDefaults(){
+        var plugin=mock(PluginStart.class);var config=new YamlConfiguration();when(plugin.getConfig()).thenReturn(config);
+        when(plugin.logger()).thenReturn(mock(codes.castled.allium.util.AlliumLogger.class));
+        TaxSettings defaults=EconomyRuntime.readTaxSettings(plugin);
+        assertTrue(defaults.enabled());assertEquals(500,defaults.percentBps());assertEquals("Tax",defaults.accountName());
+        assertTrue(defaults.applyToPay());assertFalse(defaults.applyToCheques());
+        config.set("economy.tax.percent",7.5);
+        config.set("economy.tax.account-name","Treasury");
+        config.set("economy.tax.apply-to.pay",true);
+        config.set("economy.tax.apply-to.cheques",true);
+        config.set("economy.tax.round-mode","ceil");
+        config.set("economy.tax.minimum-tax","0.50");
+        TaxSettings custom=EconomyRuntime.readTaxSettings(plugin);
+        assertEquals(750,custom.percentBps());assertEquals("Treasury",custom.accountName());
+        assertTrue(custom.applyToPay());assertTrue(custom.applyToCheques());
+        assertEquals(java.math.RoundingMode.CEILING,custom.roundMode());assertEquals(50,custom.minimumTax().minor());
     }
 }

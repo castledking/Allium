@@ -137,21 +137,51 @@ public final class HideService implements Listener,AutoCloseable {
             event.setCancelled(true);if(!commands.containsKey(HidePolicy.root(line)))unknown(p,line);else plugin.getMessageManager().send(p,Messages.HIDE_NO_PERMISSION,"{cmd}",HidePolicy.root(line));
         }
     }
-    public record HelpEntry(String path,String owner,String description) {}
+    public record HelpEntry(String path,String owner,String description,String usage,String permission) {
+        public HelpEntry(String path,String owner,String description){this(path,owner,description,"/"+path,"");}
+        public static HelpEntry of(PluginStart plugin,String path,Command command,String resolvedPermission){
+            String owner=command instanceof PluginIdentifiableCommand pc?pc.getPlugin().getName():"Minecraft";
+            String desc=Objects.toString(command.getDescription(),"").trim();
+            String usage=normalizeUsage(command.getUsage(),path);
+            String perm=resolvedPermission!=null&&!resolvedPermission.isBlank()?resolvedPermission.trim():Objects.toString(command.getPermission(),"").trim();
+            if(plugin!=null&&plugin.getCommandManager()!=null&&owner.equalsIgnoreCase(plugin.getName())){
+                String root=HidePolicy.root(path);
+                var specOpt=plugin.getCommandManager().getFamilyPolicy().findSpec(root);
+                if(specOpt.isPresent()){
+                    var spec=specOpt.get();
+                    if(desc.isBlank()&&spec.description()!=null)desc=spec.description().trim();
+                    if((usage.isBlank()||usage.equals("/"+path))&&spec.selfUsage()!=null&&!spec.selfUsage().isBlank())usage=spec.selfUsage().trim();
+                    if(perm.isBlank()&&spec.basePermission()!=null)perm=spec.basePermission().trim();
+                }
+            }
+            if(usage.isBlank())usage="/"+path;
+            return new HelpEntry(path,owner,desc,usage,perm);
+        }
+        public static String normalizeUsage(String raw,String path){
+            if(raw==null||raw.isBlank())return "/"+path;
+            String line=raw.lines().map(String::trim).filter(l->!l.isEmpty()).findFirst().orElse("");
+            if(line.isEmpty())return "/"+path;
+            String expanded=line.replaceAll("(?i)<command>",java.util.regex.Matcher.quoteReplacement(path));
+            return expanded.startsWith("/")?expanded:"/"+expanded;
+        }
+    }
     public List<HelpEntry> helpEntries(CommandSender sender){
         Viewer v=sender instanceof Player p?refresh(p,false):null;
         var out=new TreeMap<String,HelpEntry>();
         for(var entry:commands.entrySet()){
             String root=entry.getKey();if(root.contains(":"))continue;Command command=entry.getValue();
-            String owner=command instanceof PluginIdentifiableCommand pc?pc.getPlugin().getName():"Minecraft";
             var candidates=new LinkedHashSet<String>();candidates.add(root);
             if(v!=null&&v.settings().enabled())for(var group:v.groups())for(String rule:group.completions()){
                 if(rule.contains(" ")&&!rule.contains("*")&&variants(root).stream().anyMatch(label->HidePolicy.root(rule).equals(label)||HidePolicy.root(rule).equals(root)))candidates.add(root+rule.substring(rule.indexOf(' ')));
             }
             for(String path:candidates){
                 if(v!=null&&v.settings().enabled()&&(!packetVisible(v,path)||!groupAllows(v,path,false)))continue;
-                boolean allowed=v!=null&&v.settings().enabled()?(!v.settings().useResolver()||permissions.resolve((Player)sender,path,commands,v.settings().permissionOverrides()).allowed()):command.testPermissionSilent(sender);
-                if(allowed)out.put(path,new HelpEntry(path,owner,command.getDescription()));
+                String resolvedPerm=null;boolean allowed;
+                if(v!=null&&v.settings().enabled()){
+                    if(!v.settings().useResolver()){allowed=true;}
+                    else{var decision=permissions.resolve((Player)sender,path,commands,v.settings().permissionOverrides());allowed=decision.allowed();resolvedPerm=decision.permission();}
+                }else{allowed=command.testPermissionSilent(sender);}
+                if(allowed)out.put(path,HelpEntry.of(plugin,path,command,resolvedPerm));
             }
         }
         return List.copyOf(out.values());
@@ -207,7 +237,9 @@ public final class HideService implements Listener,AutoCloseable {
         try{Files.writeString(temp,next.saveToString(),java.nio.charset.StandardCharsets.UTF_8);Files.write(file.resolveSibling("hide.yml.before-edit"),before);Files.move(temp,file,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}finally{Files.deleteIfExists(temp);}
     }
     private void send(CommandSender to,Messages key,String... args){if(!closed&&(!(to instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(to,key,args);}
-    public void admin(CommandSender actor,String[] args){
+    public void admin(CommandSender actor,String[] args){admin(actor,args,usage->plugin.getMessageManager().send(actor,Messages.INVALID_ARGS,"{usage}",usage));}
+    /** {@code usage} shows the usage card for the narrowest form that was wrong ({@code /allium hide group}). */
+    public void admin(CommandSender actor,String[] args,java.util.function.Consumer<String> usage){
         if(!actor.hasPermission(ADMIN)){send(actor,Messages.NO_PERMISSION);return;}
         try{
             if(args.length==0||args[0].equals("status")){send(actor,Messages.HIDE_INFO,"{message}","enabled="+settings.enabled()+", groups="+String.join(", ",settings.policy().groupNames())+", packet-filter="+(packets!=null));return;}
@@ -216,18 +248,18 @@ public final class HideService implements Listener,AutoCloseable {
             if(args[0].equals("resolve")&&args.length>=3){Player target=plugin.getServer().getPlayerExact(args[1]);if(target==null||!codes.castled.allium.naming.PlayerNameVisibility.canSeeTarget(actor,target)){send(actor,Messages.CHAT_PLAYER_NOT_FOUND);return;}String line=String.join(" ",Arrays.copyOfRange(args,2,args.length));var d=permissions.resolve(target,line,commands,settings.permissionOverrides());send(actor,Messages.HIDE_PERMISSION,"{player}",target.getName(),"{command}",d.label(),"{source}",d.source().name(),"{permission}",Objects.toString(d.permission(),"native/unknown"),"{allowed}",Boolean.toString(d.allowed()));return;}
             if(args[0].equals("fix")&&args.length==3){String label=HidePolicy.root(args[1]),permission=args[2];audit(actor,"permission-map");update(actor,c->{var rows=new ArrayList<Map<?,?>>(c.getMapList("permission-overrides"));rows.removeIf(r->label.equals(r.get("command")));rows.add(Map.of("command",label,"permission",permission));c.set("permission-overrides",rows);});return;}
             if(args[0].equals("unfix")&&args.length==2){String label=HidePolicy.root(args[1]);audit(actor,"permission-unmap");update(actor,c->{var rows=new ArrayList<Map<?,?>>(c.getMapList("permission-overrides"));rows.removeIf(r->label.equals(r.get("command")));c.set("permission-overrides",rows);});return;}
-            if(args[0].equals("group")){groupAdmin(actor,Arrays.copyOfRange(args,1,args.length));return;}
+            if(args[0].equals("group")){groupAdmin(actor,Arrays.copyOfRange(args,1,args.length),usage);return;}
         }catch(IllegalArgumentException invalid){send(actor,Messages.HIDE_FAILED);return;}
-        send(actor,Messages.HIDE_USAGE);
+        if(!closed)usage.accept(args.length>0&&Set.of("enabled","resolve","fix","unfix").contains(args[0])?"/allium hide "+args[0]:"/allium hide");
     }
-    private void groupAdmin(CommandSender actor,String[] args){
-        if(args.length<2){send(actor,Messages.HIDE_USAGE);return;}String name=args[0].toLowerCase(Locale.ROOT),action=args[1];
+    private void groupAdmin(CommandSender actor,String[] args,java.util.function.Consumer<String> usage){
+        if(args.length<2){usage.accept("/allium hide group");return;}String name=args[0].toLowerCase(Locale.ROOT),action=args[1];
         if(!name.matches("[a-z0-9_-]{1,64}"))throw new IllegalArgumentException("group name");
         if(action.equals("create")&&args.length==3&&Set.of("whitelist","blacklist").contains(args[2])){boolean white=args[2].equals("whitelist");audit(actor,"group-create");update(actor,c->{if(c.contains("groups."+name))throw new IllegalArgumentException("group exists");c.set("groups."+name+".whitelist",white);c.set("groups."+name+".commands",List.of());c.set("groups."+name+".tabcompletes",List.of("^"));});return;}
         if(!settings.policy().groupNames().contains(name))throw new IllegalArgumentException("unknown group");
         if(action.equals("whitelist")&&args.length==3&&Set.of("true","false").contains(args[2])){audit(actor,"group-mode");update(actor,c->c.set(groupPath(c,name)+".whitelist",Boolean.parseBoolean(args[2])));return;}
         if(action.equals("inherit")&&args.length==4&&Set.of("commands","tabcompletes").contains(args[2])){audit(actor,"group-inherit");update(actor,c->c.set(groupPath(c,name)+".inherits."+args[2],Arrays.stream(args[3].split(",")).filter(v->!v.isBlank()).toList()));return;}
-        if(!Set.of("add","remove","check").contains(action)||args.length<3){send(actor,Messages.HIDE_USAGE);return;}
+        if(!Set.of("add","remove","check").contains(action)||args.length<3){usage.accept("/allium hide group");return;}
         int start=2;String flag="-tc";if(args[start].startsWith("-")){flag=args[start++];if(!Set.of("-c","-t","-tc","-ct").contains(flag))throw new IllegalArgumentException("scope");}
         if(start>=args.length)throw new IllegalArgumentException("rule missing");List<String> rules=Arrays.stream(String.join(" ",Arrays.copyOfRange(args,start,args.length)).split(",")).map(HidePolicy::normalize).toList();
         var scopes=flag.equals("-c")?List.of("commands"):flag.equals("-t")?List.of("tabcompletes"):List.of("commands","tabcompletes");

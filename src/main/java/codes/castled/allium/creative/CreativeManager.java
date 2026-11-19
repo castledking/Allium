@@ -330,8 +330,9 @@ public final class CreativeManager implements Listener {
         if (!settings.audit() || player.hasPermission("allium.gamemode." + mode)) {
             return;
         }
-        String[] replacements = {"{player}", player.getName(), "{cause}", cause + " " + mode,
-                "{from}", from.name().toLowerCase(Locale.ROOT), "{to}", mode};
+        String shownMode = codes.castled.allium.command.essentials.UtilitySupport.titleCase(mode);
+        String[] replacements = {"{player}", player.getName(), "{cause}", cause + " " + shownMode,
+                "{from}", codes.castled.allium.command.essentials.UtilitySupport.titleCase(from.name()), "{to}", shownMode};
         plugin.getLogger().warning("[GamemodeAudit] " + player.getName() + " " + cause + " " + mode + " (from "
                 + from.name().toLowerCase(Locale.ROOT) + ") without allium.gamemode." + mode);
         for (Player staff : plugin.getServer().getOnlinePlayers()) {
@@ -397,7 +398,7 @@ public final class CreativeManager implements Listener {
     }
 
     private static String pretty(String name) {
-        return name.toLowerCase(Locale.ROOT).replace('_', ' ');
+        return codes.castled.allium.command.essentials.UtilitySupport.titleCase(name);
     }
 
     @Nullable

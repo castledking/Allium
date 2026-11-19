@@ -138,6 +138,25 @@ commands:
     description: Add or remove enchantments on the held item
     usage: /<command> <enchantment> <level> [player]
     permission: allium.enchant
+  rename:
+    description: Rename the item in your hand
+    usage: /<command> <name|clear>
+    aliases: [itemname]
+    permission: allium.rename
+  lore:
+    description: Edit the lore of the item in your hand
+    usage: /<command> <add|set|insert|remove|clear|copy|paste>
+    aliases: [itemlore]
+    permission: allium.lore
+  xp:
+    description: Show or change experience
+    usage: /<command> [player] | /<command> <give|take|set> <player> <amount>[L] | /<command> reset <player>
+    aliases: [exp]
+    permission: allium.xp
+  customtext:
+    description: Show a page of the server's custom text
+    usage: /<command> [section] [page]
+    permission: allium.customtext
   heal:
     description: Restore health, hunger and remove effects
     usage: /<command> [player]
@@ -259,7 +278,7 @@ commands:
 
   home:
     description: Teleport to one of your homes
-    usage: /home
+    usage: /home [name|bed|player:home]
 
   delhome:
     description: Delete one of your homes
@@ -267,7 +286,12 @@ commands:
 
   homes:
     description: List your homes
-    usage: /homes
+    usage: /homes [player]
+
+  bed:
+    description: Teleport to your bed
+    usage: /bed
+    permission: allium.home.bed
 
   setwarp:
     description: Create or move a warp here
@@ -446,7 +470,16 @@ commands:
     permission: allium.eco
   baltop:
     description: Show the richest accounts
+    usage: /<command> [page]
     permission: allium.baltop
+  cheque:
+    description: Write a redeemable money cheque
+    usage: /<command> <amount> [player]
+    permission: allium.cheque
+  tax:
+    description: Inspect, impose, list or refund server taxes
+    usage: /<command> [impose|history|refund]
+    permission: allium.tax
 
 permissions:
   allium.*:
@@ -480,6 +513,16 @@ permissions:
       allium.gamemode.spectator.teleport: true
       allium.alerts: true
       allium.economy.*: true
+      allium.cheque: true
+      allium.cheque.others: true
+      allium.tax: true
+      allium.tax.impose: true
+      allium.tax.impose.offline: true
+      allium.tax.history: true
+      allium.tax.refund: true
+      allium.help: true
+      allium.help.plugins: true
+      allium.help.info: true
       allium.mobdisarmer.use: true
       allium.mobdisarmer.bypass: true
       allium.phantomobliterator.use: true
@@ -568,6 +611,19 @@ permissions:
       allium.weather: true
       allium.enchant: true
       allium.enchant.others: true
+      allium.rename: true
+      allium.rename.color: true
+      allium.lore: true
+      allium.lore.color: true
+      allium.xp: true
+      allium.xp.others: true
+      allium.xp.give: true
+      allium.xp.take: true
+      allium.xp.set: true
+      allium.customtext: true
+      allium.home.bed: true
+      allium.home.others: true
+      allium.homes.others: true
       allium.reload: true
       allium.import: true
   allium.reload:
@@ -985,11 +1041,23 @@ permissions:
   allium.home:
     default: true
 
+  allium.home.bed:
+    description: Allows /bed and /home bed, and lists the bed (struck through when unset) in /homes
+    default: true
+
+  allium.home.others:
+    description: Allows /home <player>:<home> to visit another player's home
+    default: op
+
   allium.delhome:
     default: true
 
   allium.homes:
     default: true
+
+  allium.homes.others:
+    description: Allows /homes <player> to list another player's homes
+    default: op
 
   allium.setwarp:
     default: op
@@ -1164,6 +1232,30 @@ permissions:
     default: op
   allium.baltop:
     default: op
+  allium.cheque:
+    description: Write a redeemable money cheque from your own balance
+    default: true
+  allium.cheque.others:
+    description: Mint an admin cheque (or ranged cheque) for another player
+    default: op
+  allium.tax:
+    description: View the server tax rate and tax account balance
+    default: true
+  allium.tax.exempt:
+    description: Exempt from automatic /pay and /cheque taxes and bulk /tax impose *. Explicit only; not in allium.*
+    default: false
+  allium.tax.impose:
+    description: Impose a percentage tax on a player or all online players
+    default: op
+  allium.tax.impose.offline:
+    description: Impose a percentage tax on all online and offline accounts (**)
+    default: op
+  allium.tax.history:
+    description: View imposed tax history
+    default: op
+  allium.tax.refund:
+    description: Refund an imposed tax entry from the tax account
+    default: op
 
   allium.repair:
     default: op
@@ -1243,6 +1335,40 @@ permissions:
     default: op
   allium.enchant.others:
     default: op
+  allium.rename:
+    description: Allows /rename on the held item; includes colour codes unless allium.rename.color is negated
+    default: op
+    children:
+      allium.rename.color: true
+  allium.rename.color:
+    description: Allows colour codes, hex colours and gradients in /rename
+    default: op
+  allium.lore:
+    description: Allows /lore on the held item; includes colour codes unless allium.lore.color is negated
+    default: op
+    children:
+      allium.lore.color: true
+  allium.lore.color:
+    description: Allows colour codes, hex colours and gradients in /lore
+    default: op
+  allium.xp:
+    description: Allows /xp to show your own experience
+    default: true
+  allium.xp.others:
+    description: Allows /xp <player> to show another player's experience
+    default: op
+  allium.xp.give:
+    description: Allows /xp give (and vanilla's /xp add) for any player
+    default: op
+  allium.xp.take:
+    description: Allows /xp take (and vanilla's /xp remove) for any player
+    default: op
+  allium.xp.set:
+    description: Allows /xp set and /xp reset for any player
+    default: op
+  allium.customtext:
+    description: Allows /customtext
+    default: true
   allium.enchant.unsafe:
     description: Allows applying unsafe or incompatible enchantments and above-max vanilla levels. Explicit only; not in allium.*
     default: false
@@ -1366,6 +1492,14 @@ permissions:
   allium.help:
     description: Browse commands available to you
     default: true
+
+  allium.help.plugins:
+    description: View plugin entries in /help and browse commands by plugin
+    default: op
+
+  allium.help.info:
+    description: View full command metadata (plugin, description, usage, permission) in /help <command>
+    default: op
 
   allium.tpthere:
     default: op

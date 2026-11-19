@@ -21,6 +21,13 @@ import java.util.function.Consumer;
 
 /** Server-thread caches and admission; JDBC runs only on the bounded storage worker. */
 public final class TravelService implements Listener {
+    /** {@code /home bed}, {@code /bed} and the {@code bed} entry of {@code /homes}. */
+    public static final String PERMISSION_BED="allium.home.bed";
+    /** {@code /home <player>:<home>}. */
+    public static final String PERMISSION_HOME_OTHERS="allium.home.others";
+    /** {@code /homes <player>}. */
+    public static final String PERMISSION_HOMES_OTHERS="allium.homes.others";
+    public static final String BED="bed";
     private static final Map<PluginStart,TravelService> OWNERS=new WeakHashMap<>();
     private final PluginStart plugin;
     private final TravelRepository repository;
@@ -97,24 +104,97 @@ public final class TravelService implements Listener {
     }
     public List<String> completeHomes(Player p){return completeHomes(p,"");}
     public List<String> completeWarps(Player p){return completeWarps(p,"");}
-    public List<String> completeHomes(Player p,String prefix){Session s=sessions.get(p.getUniqueId());return !homesEnabled||s==null||!same(s)||!s.loaded?List.of():s.homes.keySet().stream().filter(n->n.startsWith(prefix.toLowerCase(Locale.ROOT))).sorted().limit(50).toList();}
+    public List<String> completeHomes(Player p,String prefix){
+        Session s=sessions.get(p.getUniqueId());if(!homesEnabled||s==null||!same(s)||!s.loaded)return List.of();
+        String lower=prefix.toLowerCase(Locale.ROOT);var names=new TreeSet<>(s.homes.keySet());if(p.hasPermission(PERMISSION_BED))names.add(BED);
+        return names.stream().filter(n->n.startsWith(lower)).limit(50).toList();
+    }
     public List<String> completeWarps(Player p,String prefix){return !warpsEnabled||!warpsLoaded||!p.hasPermission("allium.warp")?List.of():warps.keySet().stream().filter(n->access(p,n)&&n.startsWith(prefix.toLowerCase(Locale.ROOT))).sorted().limit(50).toList();}
     public void list(Player p,boolean warp) {
         if(!permission(p,warp?"warps":"homes"))return;
         if(warp&&!warpsLoaded){send(p,Messages.TRAVEL_LOADING);return;}
         if(!warp&&session(p)==null)return;
         List<String> names=warp?warps.keySet().stream().filter(n->p.hasPermission("allium.warp")&&access(p,n)).sorted().toList():sessions.get(p.getUniqueId()).homes.keySet().stream().sorted().toList();
-        if(names.isEmpty()){send(p,warp?Messages.WARP_NONE:Messages.HOME_NONE);return;}
-        String rendered=String.join(", ",names.stream().limit(1000).toList())+(names.size()>1000?" (first 1000 of "+names.size()+")":"");
+        // Holders of allium.home.bed see their bed last: plain when set, struck through when not.
+        String bed=warp||!p.hasPermission(PERMISSION_BED)?null:plugin.getMessageManager().resolve(RespawnPoints.of(p)==null?Messages.HOME_BED_MISSING_ENTRY:Messages.HOME_BED_ENTRY);
+        if(names.isEmpty()&&bed==null){send(p,warp?Messages.WARP_NONE:Messages.HOME_NONE);return;}
+        String rendered=render(names);
+        if(bed!=null)rendered=rendered.isEmpty()?bed:rendered+", "+bed;
         send(p,warp?Messages.WARP_LIST:Messages.HOME_LIST,"{warps}",rendered,"{homes}",rendered);
+    }
+    private static String render(List<String> names){
+        return String.join(", ",names.stream().limit(1000).toList())+(names.size()>1000?" (first 1000 of "+names.size()+")":"");
+    }
+    /** {@code /homes <player>}: another player's homes, online or not, read from storage. */
+    public void listOther(Player p,String owner){
+        if(!permission(p,"homes"))return;
+        if(!p.hasPermission(PERMISSION_HOMES_OTHERS)){send(p,Messages.NO_PERMISSION);return;}
+        resolveOwner(p,owner,(id,ownerName)->{
+            if(id.equals(p.getUniqueId())){list(p,false);return;}
+            Session s=session(p);if(s==null||!admit(s))return;
+            query(s,()->repository.homes(id),homes->{
+                if(!p.hasPermission(PERMISSION_HOMES_OTHERS)){send(p,Messages.NO_PERMISSION);return;}
+                List<String> names=homes.keySet().stream().sorted().toList();
+                if(names.isEmpty()){send(p,Messages.HOME_NONE_OTHER,"{player}",ownerName);return;}
+                send(p,Messages.HOME_LIST_OTHER,"{player}",ownerName,"{homes}",render(names));
+            });
+        });
+    }
+    /** {@code /home <player>:<home>}: teleports staff to another player's home; an empty home name means {@code home}. */
+    public void useOther(Player p,String owner,String rawHome){
+        if(!permission(p,"home"))return;
+        if(!p.hasPermission(PERMISSION_HOME_OTHERS)){send(p,Messages.NO_PERMISSION);return;}
+        String name=rawHome.isEmpty()?"home":name(p,rawHome);if(name==null)return;
+        resolveOwner(p,owner,(id,ownerName)->{
+            if(id.equals(p.getUniqueId())){use(p,name,false);return;}
+            Session s=session(p);if(s==null||!admit(s))return;
+            query(s,()->repository.home(id,name),found->{
+                if(found.isEmpty()){send(p,Messages.HOME_NOT_FOUND_OTHER,"{player}",ownerName,"{name}",name);return;}
+                SavedLocation point=found.get().location();
+                plugin.logger().info("Home audit actor="+p.getUniqueId()+" owner="+id+" home="+name);
+                teleports.teleport(p,()->location(point),"home",()->same(s)&&p.hasPermission(PERMISSION_HOME_OTHERS));
+            });
+        });
+    }
+    /** {@code /bed} and {@code /home bed}: the player's bed or respawn anchor, checked again when the teleport lands. */
+    public void bed(Player p){
+        if(!homesEnabled){send(p,Messages.MODULE_DISABLED);return;}
+        if(!p.hasPermission(PERMISSION_BED)){send(p,Messages.NO_PERMISSION);return;}
+        if(RespawnPoints.of(p)==null){send(p,Messages.HOME_BED_MISSING);return;}
+        teleports.teleport(p,()->RespawnPoints.of(p),"home",()->p.isOnline()&&p.hasPermission(PERMISSION_BED));
+    }
+    /** Name lookups go through the shared name index, so offline players resolve too. */
+    private void resolveOwner(Player p,String owner,java.util.function.BiConsumer<UUID,String> then){
+        if(!owner.matches("[A-Za-z0-9_]{1,16}")){send(p,Messages.PLAYER_NOT_FOUND,"{player}",owner);return;}
+        var names=plugin.getPlayerNames();if(names==null){send(p,Messages.TRAVEL_LOADING);return;}
+        names.resolve(owner).whenComplete((found,error)->server(()->{
+            if(!p.isOnline())return;
+            if(error!=null){send(p,Messages.TRAVEL_STORAGE_FAILED);return;}
+            if(found==null||found.isEmpty()){send(p,Messages.PLAYER_NOT_FOUND,"{player}",owner);return;}
+            then.accept(found.get().uuid(),found.get().name());
+        }));
     }
     public void use(Player p,String raw,boolean warp) {use(p,raw,warp,false);}
     /** Public access is frozen only in a server-owned sign whose creator has the extra permission. */
     public void useSign(Player p,String raw,boolean publicAccess){use(p,raw,true,publicAccess);}
+    /** Non-mutating readiness and access precheck for priced {@code [Warp]} signs before charging. */
+    public boolean canUseSign(Player p,String raw,boolean publicAccess){
+        if(!permission(p,"warp"))return false;
+        String name=name(p,raw);if(name==null)return false;
+        Session s=session(p);if(s==null)return false;
+        if(!warpsLoaded){send(p,Messages.TRAVEL_LOADING);return false;}
+        if(!publicAccess&&!access(p,name)){notFound(p,name,true);return false;}
+        if(!warps.containsKey(name)){notFound(p,name,true);return false;}
+        return true;
+    }
     private void use(Player p,String raw,boolean warp,boolean publicAccess) {
         if(!permission(p,warp?"warp":"home"))return;
+        if(!warp&&BED.equalsIgnoreCase(raw)&&p.hasPermission(PERMISSION_BED)){bed(p);return;}
         String name=name(p,raw);if(name==null)return;
-        Session s=session(p);if(s==null||!admit(s))return;
+        Session s=session(p);if(s==null)return;
+        // Like Essentials, a plain /home with no homes set goes to the bed when there is one.
+        if(!warp&&name.equals("home")&&s.homes.isEmpty()&&!s.busy&&p.hasPermission(PERMISSION_BED)&&RespawnPoints.of(p)!=null){bed(p);return;}
+        if(!admit(s))return;
         if(warp&&!warpsLoaded){s.busy=false;send(p,Messages.TRAVEL_LOADING);return;}
         if(warp&&!publicAccess&&!access(p,name)){s.busy=false;notFound(p,name,true);return;}
         readEntry(s,name,warp,found->{
@@ -128,7 +208,8 @@ public final class TravelService implements Listener {
     }
     public void set(Player p,String raw,boolean warp,boolean confirm) {
         if(!permission(p,warp?"setwarp":"sethome"))return;
-        String name=name(p,raw);if(name==null)return;Session s=session(p);if(s==null||!admit(s))return;
+        String name=name(p,raw);if(name==null)return;
+        if(!warp&&name.equals(BED)){send(p,Messages.HOME_BED_RESERVED);return;}Session s=session(p);if(s==null||!admit(s))return;
         if(warp&&!warpsLoaded){s.busy=false;send(p,Messages.TRAVEL_LOADING);return;}
         SavedLocation point=saved(p.getLocation());
         if(confirm){

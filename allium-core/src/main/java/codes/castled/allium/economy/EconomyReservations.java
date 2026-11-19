@@ -7,7 +7,7 @@ import static codes.castled.allium.economy.EconomyResult.*;
 
 /** Stable workflow keys; each step shares the money journal and one caller-supplied SQL transition. */
 public final class EconomyReservations {
-    public enum Kind { KIT, MAIL, REPAIR }
+    public enum Kind { KIT, MAIL, REPAIR, CHEQUE, SIGN }
     public record Identity(Kind kind,UUID id){}
     public record Reservation(Kind kind,UUID id,UUID account,Money amount,String intentHash,String state,long version){}
     @FunctionalInterface public interface Executor {Mutation execute(EconomyRequest request,EconomyEngine.WorkflowTransition transition);}
@@ -27,17 +27,18 @@ public final class EconomyReservations {
         }catch(java.security.NoSuchAlgorithmException impossible){throw new AssertionError(impossible);}
     }
     public static UUID operation(Kind kind,UUID id,EconomyRequest.Kind step){return UUID.nameUUIDFromBytes(("Allium-Reservation:"+kind+":"+id+":"+step).getBytes(StandardCharsets.US_ASCII));}
-    private Mutation execute(Kind kind,UUID id,UUID account,Money amount,String intentHash,EconomyRequest.Kind step,EconomyEngine.WorkflowTransition transition){
-        return executor.execute(engine.request(operation(kind,id,step),"RESERVATION:"+kind,id+":"+step,step,"WORKFLOW:"+intentHash,account,null,amount),transition);
+    private Mutation execute(Kind kind,UUID id,UUID account,Money amount,String intentHash,EconomyRequest.Kind step,UUID taxAccount,Money taxAmount,EconomyEngine.WorkflowTransition transition){
+        return executor.execute(engine.request(operation(kind,id,step),"RESERVATION:"+kind,id+":"+step,step,"WORKFLOW:"+intentHash,account,null,amount,taxAccount,taxAmount),transition);
     }
     public Mutation reserve(Kind kind,UUID id,UUID account,Money amount,EconomyEngine.WorkflowTransition pending){return reserve(kind,id,account,amount,fingerprint(kind.name(),id.toString(),account.toString(),Long.toString(amount.minor())),pending);}
-    public Mutation reserve(Kind kind,UUID id,UUID account,Money amount,String intentHash,EconomyEngine.WorkflowTransition pending){return execute(kind,id,account,amount,intentHash,EconomyRequest.Kind.RESERVE,pending);}
-    public Mutation spend(Kind kind,UUID id,UUID account,Money amount,String intentHash,EconomyEngine.WorkflowTransition ready){return execute(kind,id,account,amount,intentHash,EconomyRequest.Kind.SPEND,ready);}
-    public Mutation capture(Kind kind,UUID id,EconomyEngine.WorkflowTransition provenReceipt)throws SQLException{return terminal(kind,id,EconomyRequest.Kind.CAPTURE,provenReceipt);}
-    public Mutation release(Kind kind,UUID id,EconomyEngine.WorkflowTransition provenAbsence)throws SQLException{return terminal(kind,id,EconomyRequest.Kind.RELEASE,provenAbsence);}
-    private Mutation terminal(Kind kind,UUID id,EconomyRequest.Kind step,EconomyEngine.WorkflowTransition transition)throws SQLException{
+    public Mutation reserve(Kind kind,UUID id,UUID account,Money amount,String intentHash,EconomyEngine.WorkflowTransition pending){return execute(kind,id,account,amount,intentHash,EconomyRequest.Kind.RESERVE,null,new Money(0),pending);}
+    public Mutation spend(Kind kind,UUID id,UUID account,Money amount,String intentHash,EconomyEngine.WorkflowTransition ready){return execute(kind,id,account,amount,intentHash,EconomyRequest.Kind.SPEND,null,new Money(0),ready);}
+    public Mutation capture(Kind kind,UUID id,EconomyEngine.WorkflowTransition provenReceipt)throws SQLException{return terminal(kind,id,EconomyRequest.Kind.CAPTURE,null,new Money(0),provenReceipt);}
+    public Mutation capture(Kind kind,UUID id,UUID taxAccount,Money taxAmount,EconomyEngine.WorkflowTransition provenReceipt)throws SQLException{return terminal(kind,id,EconomyRequest.Kind.CAPTURE,taxAccount,taxAmount,provenReceipt);}
+    public Mutation release(Kind kind,UUID id,EconomyEngine.WorkflowTransition provenAbsence)throws SQLException{return terminal(kind,id,EconomyRequest.Kind.RELEASE,null,new Money(0),provenAbsence);}
+    private Mutation terminal(Kind kind,UUID id,EconomyRequest.Kind step,UUID taxAccount,Money taxAmount,EconomyEngine.WorkflowTransition transition)throws SQLException{
         var row=find(kind,id);if(row.isEmpty())return new Rejected(operation(kind,id,step),"MISSING_RESERVATION");
-        return execute(kind,id,row.get().account(),row.get().amount(),row.get().intentHash(),step,transition);
+        return execute(kind,id,row.get().account(),row.get().amount(),row.get().intentHash(),step,taxAccount,taxAmount,transition);
     }
     public boolean operatorResolved(Kind kind,UUID id)throws SQLException {
         try(var c=connections.connection();var s=c.prepareStatement("SELECT 1 FROM allium_economy_reservation_audit WHERE workflow_kind=? AND workflow_id=?")){

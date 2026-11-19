@@ -26,7 +26,8 @@ Holders of `allium.seen.alts` also see every account that shares any IP in the p
 
 ## `/whois` extras (`allium.whois.extra`)
 
-Below the basic lines, staff see:
+Below the basic lines, staff see one field per line (stock one-line entries from older lang
+files are upgraded on startup; edited ones are kept):
 
 - gamemode, flight allowed, flying, god, vanished, AFK;
 - health, food, level, ping, walk speed (online players);

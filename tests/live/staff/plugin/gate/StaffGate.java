@@ -296,6 +296,19 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                     var instance = scale == null ? null : target.getAttribute(scale);
                     out.put("scale", instance == null ? null : instance.getBaseValue());
                 }
+                case "bedspawn" -> {
+                    // Forced, so no bed block is needed; "none" clears it.
+                    Player p = online(args[1]);
+                    if (args[2].equals("none")) p.setBedSpawnLocation(null, true);
+                    else p.setBedSpawnLocation(new Location(p.getWorld(), Double.parseDouble(args[2]), Double.parseDouble(args[3]),
+                            Double.parseDouble(args[4])), true);
+                    out.put("set", !args[2].equals("none"));
+                }
+                case "xp" -> {
+                    Player p = online(args[1]);
+                    out.put("level", p.getLevel());
+                    out.put("exp", p.getExp());
+                }
                 case "where" -> {
                     Player p = online(args[1]);
                     Location l = p.getLocation();
@@ -362,6 +375,38 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                     Player p = online(args[1]);
                     p.saveData();
                     out.put("saved", true);
+                }
+                case "blanksign" -> {
+                    var world = getServer().getWorlds().get(0);
+                    Player editor = online(args[1]);
+                    int x = Integer.parseInt(args[2]), z = Integer.parseInt(args[3]);
+                    int y = world.getHighestBlockYAt(x, z) + 1;
+                    Block block = world.getBlockAt(x, y, z);
+                    block.setType(Material.OAK_SIGN);
+                    Sign sign = (Sign) block.getState();
+                    editor.openSign(sign, org.bukkit.block.sign.Side.FRONT);
+                    out.put("x", x);
+                    out.put("y", y);
+                    out.put("z", z);
+                }
+                case "opensign" -> {
+                    var world = getServer().getWorlds().get(0);
+                    Player editor = online(args[1]);
+                    Block block = world.getBlockAt(Integer.parseInt(args[2]), Integer.parseInt(args[3]), Integer.parseInt(args[4]));
+                    editor.openSign((Sign) block.getState(), org.bukkit.block.sign.Side.FRONT);
+                    out.put("opened", true);
+                }
+                case "signstate" -> {
+                    var world = getServer().getWorlds().get(0);
+                    Block block = world.getBlockAt(Integer.parseInt(args[1]), Integer.parseInt(args[2]), Integer.parseInt(args[3]));
+                    Sign sign = (Sign) block.getState();
+                    out.put("lines", java.util.Arrays.asList(sign.getLines()));
+                    out.put("frontPdc", sign.getPersistentDataContainer().get(new NamespacedKey(allium, "sign_front"), PersistentDataType.STRING));
+                }
+                case "health" -> {
+                    Player p = online(args[1]);
+                    if (args.length > 2) p.setHealth(Double.parseDouble(args[2]));
+                    out.put("health", p.getHealth());
                 }
                 default -> throw new IllegalArgumentException("unknown action: " + args[0]);
             }

@@ -25,8 +25,8 @@ class MailRepositoryTest {
 
     private static MailRepository repository(MailDatabases.Db db) throws Exception {
         MailRepository repository = new MailRepository(db.source(), db.dialect(), System::currentTimeMillis);
-        assertEquals(3, repository.migrate(), db.name());
-        assertEquals(3, repository.migrate(), db.name() + ": migrating again changes nothing");
+        assertEquals(4, repository.migrate(), db.name());
+        assertEquals(4, repository.migrate(), db.name() + ": migrating again changes nothing");
         return repository;
     }
 
@@ -186,7 +186,7 @@ class MailRepositoryTest {
             try (var c = db.source().connection(); var statement = c.createStatement()) {
                 statement.execute("DELETE FROM allium_schema WHERE component = 'mail'");
             }
-            assertEquals(3, repo.migrate(), "DDL completed but version recording was interrupted");
+            assertEquals(4, repo.migrate(), "DDL completed but version recording was interrupted");
             try (var c = db.source().connection(); var statement = c.createStatement()) {
                 statement.execute("DELETE FROM allium_schema WHERE component = 'mail'");
                 statement.execute(db.dialect() == codes.castled.allium.storage.SqlDialect.MYSQL
@@ -278,8 +278,8 @@ class MailRepositoryTest {
             repo.send(text(CAROL, BOB, now + 11), roomy, false);
             repo.send(text(ALICE, CAROL, now + 12), roomy, false);
             assertEquals(List.of(1, 2, 3), numbers(repo, BOB, MailKind.GIFT, now + 20), db.name() + ": gifts 1, 2, 3");
-            assertEquals(List.of(1, 2), numbers(repo, BOB, MailKind.TEXT, now + 20), db.name() + ": text has its own numbers");
-            assertEquals(List.of(1), numbers(repo, CAROL, MailKind.TEXT, now + 20), db.name() + ": and each mailbox too");
+            assertEquals(List.of(4, 5), numbers(repo, BOB, MailKind.TEXT, now + 20), db.name() + ": text continues the same sequence");
+            assertEquals(List.of(1), numbers(repo, CAROL, MailKind.TEXT, now + 20), db.name() + ": each mailbox has its own");
             assertEquals("1", repo.mailbox(BOB, now + 20).get(0).label(), db.name() + ": players see the number");
 
             // Claim gift 2 completely: its number is free again, and the next gift takes it.
@@ -292,9 +292,12 @@ class MailRepositoryTest {
             repo.activate(next.id());
             assertEquals(2, repo.find(next.id()).orElseThrow().number(), db.name() + ": the smallest free number");
 
-            // Claim them all: a new gift starts at 1 again.
+            // Claim every gift and delete the text: a new gift starts at 1 again.
             for (MailRecord m : repo.mailbox(BOB, now + 50)) {
-                if (m.kind() != MailKind.GIFT) continue;
+                if (m.kind() != MailKind.GIFT) {
+                    assertTrue(repo.deleteText(BOB, m.id()), db.name());
+                    continue;
+                }
                 UUID t = UUID.randomUUID();
                 assertTrue(repo.beginClaim(m.id(), BOB, t, "server-a", now + 50), db.name());
                 assertTrue(repo.finishClaim(m.id(), t, null, 0), db.name());
@@ -355,14 +358,44 @@ class MailRepositoryTest {
             // Rows stored before version 3 had no number: drop them and rerun the migration.
             try (var c = db.source().connection(); var statement = c.createStatement()) {
                 statement.execute(db.dialect() == codes.castled.allium.storage.SqlDialect.MYSQL
-                        ? "DROP INDEX allium_mail_box_number ON allium_mail" : "DROP INDEX allium_mail_box_number");
+                        ? "DROP INDEX allium_mail_number ON allium_mail" : "DROP INDEX allium_mail_number");
                 statement.execute("UPDATE allium_mail SET box_number = NULL");
                 statement.execute("UPDATE allium_schema SET version = 2 WHERE component = 'mail'");
             }
-            assertEquals(3, repo.migrate(), db.name());
-            assertEquals(1, repo.find(older.id()).orElseThrow().number(), db.name() + ": oldest text is 1");
-            assertEquals(2, repo.find(newer.id()).orElseThrow().number(), db.name());
-            assertEquals(1, repo.find(giftRow.id()).orElseThrow().number(), db.name() + ": gifts are numbered apart");
+            assertEquals(4, repo.migrate(), db.name());
+            assertEquals(1, repo.find(older.id()).orElseThrow().number(), db.name() + ": oldest mail is 1");
+            assertEquals(2, repo.find(giftRow.id()).orElseThrow().number(), db.name() + ": gifts share the sequence");
+            assertEquals(3, repo.find(newer.id()).orElseThrow().number(), db.name());
+        }
+    }
+
+    @Test
+    void versionFourRenumbersPerKindNumbersIntoOneSequence() throws Exception {
+        for (MailDatabases.Db db : MailDatabases.all(dir)) {
+            MailRepository repo = repository(db);
+            long now = System.currentTimeMillis();
+            MailLimits roomy = new MailLimits(50, 50, 60_000L, 256, 3_600_000L, 64);
+            MailRecord text1 = text(ALICE, BOB, now);
+            MailRecord gift1 = gift(ALICE, BOB, now + 1);
+            MailRecord gift2 = gift(CAROL, BOB, now + 2);
+            MailRecord text2 = text(CAROL, BOB, now + 3);
+            for (MailRecord m : List.of(text1, gift1, gift2, text2)) repo.send(m, roomy, false);
+            // Back to version 3's layout: numbers per kind (text 1, 2; gifts 1, 2) under the old index.
+            try (var c = db.source().connection(); var statement = c.createStatement()) {
+                boolean mysql = db.dialect() == codes.castled.allium.storage.SqlDialect.MYSQL;
+                statement.execute(mysql ? "DROP INDEX allium_mail_number ON allium_mail" : "DROP INDEX allium_mail_number");
+                statement.execute("UPDATE allium_mail SET box_number = 1 WHERE id IN ('" + text1.id() + "', '" + gift1.id() + "')");
+                statement.execute("UPDATE allium_mail SET box_number = 2 WHERE id IN ('" + text2.id() + "', '" + gift2.id() + "')");
+                statement.execute("CREATE UNIQUE INDEX allium_mail_box_number ON allium_mail (recipient, kind, box_number)");
+                statement.execute("UPDATE allium_schema SET version = 3 WHERE component = 'mail'");
+            }
+            assertEquals(4, repo.migrate(), db.name());
+            List<Integer> renumbered = new ArrayList<>();
+            for (MailRecord m : List.of(text1, gift1, gift2, text2)) renumbered.add(repo.find(m.id()).orElseThrow().number());
+            assertEquals(List.of(1, 2, 3, 4), renumbered, db.name() + ": oldest first across kinds");
+            MailRecord next = text(ALICE, BOB, now + 10);
+            repo.send(next, roomy, false);
+            assertEquals(5, repo.find(next.id()).orElseThrow().number(), db.name() + ": new mail continues the sequence");
         }
     }
 }

@@ -59,6 +59,8 @@ public final class MailRepository {
         this.clock = clock;
     }
 
+    private static final String NUMBER_INDEX = "CREATE UNIQUE INDEX allium_mail_number ON allium_mail (recipient, box_number)";
+
     static List<Migration> migrations() {
         List<String> journal = List.of(
                 "CREATE TABLE IF NOT EXISTS allium_mail_activations (id CHAR(36) NOT NULL PRIMARY KEY)",
@@ -77,7 +79,19 @@ public final class MailRepository {
                         "ALTER TABLE allium_mail ADD COLUMN box_number INT NULL",
                         "UPDATE allium_mail m JOIN (SELECT id, ROW_NUMBER() OVER (PARTITION BY recipient, kind ORDER BY created_at, id) AS n "
                                 + "FROM allium_mail) r ON r.id = m.id SET m.box_number = r.n",
-                        index)));
+                        index)),
+                // Text and gifts share one sequence per mailbox (1, 2, 3 rather than 1 / 1, 2): existing
+                // mail is renumbered oldest first across both kinds, as version 3 numbered each kind.
+                Migration.of(4, "one mail number sequence per mailbox", List.of(
+                        "DROP INDEX IF EXISTS allium_mail_box_number",
+                        "UPDATE allium_mail SET box_number = (SELECT COUNT(*) FROM allium_mail m2 WHERE m2.recipient = allium_mail.recipient "
+                                + "AND (m2.created_at < allium_mail.created_at "
+                                + "OR (m2.created_at = allium_mail.created_at AND m2.id <= allium_mail.id)))",
+                        NUMBER_INDEX), List.of(
+                        "DROP INDEX allium_mail_box_number ON allium_mail",
+                        "UPDATE allium_mail m JOIN (SELECT id, ROW_NUMBER() OVER (PARTITION BY recipient ORDER BY created_at, id) AS n "
+                                + "FROM allium_mail) r ON r.id = m.id SET m.box_number = r.n",
+                        NUMBER_INDEX)));
     }
 
     private static List<String> v1(SqlDialect dialect) {
@@ -216,7 +230,7 @@ public final class MailRepository {
                     }
                 }
             }
-            insert(c, mail, freeNumber(c, mail.recipient(), mail.kind()));
+            insert(c, mail, freeNumber(c, mail.recipient()));
             if (mail.sender() != null) {
                 update(c, "INSERT INTO allium_mail_sends (id, sender, created_at) VALUES (?, ?, ?)",
                         mail.id().toString(), mail.sender().toString(), now);
@@ -236,15 +250,15 @@ public final class MailRepository {
     }
 
     /**
-     * The smallest number not used by {@code recipient}'s mail of {@code kind}. The caller holds the
-     * recipient's mailbox lock, so no concurrent send (on any server) can take the same number.
+     * The smallest number not used by any of {@code recipient}'s mail, text or gift: one sequence per
+     * mailbox. The caller holds the recipient's mailbox lock, so no concurrent send (on any server)
+     * can take the same number.
      */
-    private static int freeNumber(Connection c, UUID recipient, MailKind kind) throws SQLException {
+    private static int freeNumber(Connection c, UUID recipient) throws SQLException {
         int next = 1;
-        try (PreparedStatement s = c.prepareStatement("SELECT box_number FROM allium_mail WHERE recipient = ? AND kind = ? "
+        try (PreparedStatement s = c.prepareStatement("SELECT box_number FROM allium_mail WHERE recipient = ? "
                 + "AND box_number IS NOT NULL ORDER BY box_number")) {
             s.setString(1, recipient.toString());
-            s.setString(2, kind.name());
             try (ResultSet r = s.executeQuery()) {
                 while (r.next()) {
                     int used = r.getInt(1);
@@ -319,10 +333,10 @@ public final class MailRepository {
         return plain(c -> query(c, "SELECT * FROM allium_mail WHERE id = ?", mail.toString())).stream().findFirst();
     }
 
-    /** The visible mailbox: READY and CLAIMING mail that has not expired, oldest first. */
+    /** The visible mailbox: READY and CLAIMING mail that has not expired, in mailbox-number order. */
     public List<MailRecord> mailbox(UUID recipient, long now) throws SQLException {
         return plain(c -> query(c, "SELECT * FROM allium_mail WHERE recipient = ? AND state <> 'PENDING' "
-                + "AND (expires_at = 0 OR expires_at > ?) ORDER BY created_at, id", recipient.toString(), now));
+                + "AND (expires_at = 0 OR expires_at > ?) ORDER BY box_number, created_at, id", recipient.toString(), now));
     }
 
     public int unread(UUID recipient, long now) throws SQLException {

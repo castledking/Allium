@@ -59,9 +59,11 @@ public final class SchemaMigrator {
                         } catch (SQLException error) {
                             // MySQL DDL commits before the version record, and SQLite can also
                             // restart between DDL and record(). Concurrent starters may reach the
-                            // same ADD COLUMN. Only the dialect's duplicate-column error is safe
-                            // to accept; all other migration failures still abort startup.
-                            if (!duplicateAddedColumn(sql, error) && !duplicateCreatedIndex(connection, sql, error)) {
+                            // same ADD COLUMN. Only the dialect's duplicate-column error, an index
+                            // that already has the requested definition, and a dropped index that is
+                            // already gone are safe to accept; all other failures still abort startup.
+                            if (!duplicateAddedColumn(sql, error) && !duplicateCreatedIndex(connection, sql, error)
+                                    && !missingDroppedIndex(sql, error)) {
                                 throw error;
                             }
                         }
@@ -82,6 +84,17 @@ public final class SchemaMigrator {
             case MYSQL -> error.getErrorCode() == 1060 && "42S21".equals(error.getSQLState());
             case SQLITE -> error.getErrorCode() == 1 && error.getMessage() != null
                     && error.getMessage().contains("duplicate column name:");
+        };
+    }
+
+    /** A {@code DROP INDEX} that already ran (MySQL has no {@code IF EXISTS} for it). */
+    private boolean missingDroppedIndex(String sql, SQLException error) {
+        if (!sql.matches("(?is)^\\s*DROP\\s+INDEX\\s+.*")) {
+            return false;
+        }
+        return switch (dialect) {
+            case MYSQL -> error.getErrorCode() == 1091;
+            case SQLITE -> error.getMessage() != null && error.getMessage().contains("no such index");
         };
     }
 

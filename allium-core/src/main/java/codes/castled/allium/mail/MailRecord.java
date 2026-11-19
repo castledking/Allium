@@ -16,9 +16,9 @@ import java.util.UUID;
  * @param expiresAt  0 for never
  * @param source     {@code allium}, or an importer's name ({@code legacy-allium}, {@code essentials})
  * @param sourceRef  the importer's idempotency key; {@code null} for Allium's own mail
- * @param number     the mail's number in its recipient's mailbox, per kind (gift 1, 2, 3...; text 1, 2...):
- *                   the smallest free number when it was stored, so numbers are reused once mail is
- *                   claimed or deleted. 0 before the row is stored.
+ * @param number     the mail's number in its recipient's mailbox, one sequence for text and gifts
+ *                   (1, 2, 3...): the smallest free number when it was stored, so numbers are reused
+ *                   once mail is claimed or deleted. 0 before the row is stored.
  */
 public record MailRecord(UUID id, UUID recipient, @Nullable UUID sender, String senderName, MailKind kind,
                          @Nullable String body, @Nullable String items, int itemCount, MailState state,

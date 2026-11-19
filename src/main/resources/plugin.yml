@@ -253,6 +253,19 @@ commands:
     description: See private messages between other players
     usage: /<command> [on|off]
     permission: allium.socialspy
+  commandspy:
+    aliases: [cmdspy, cspy]
+    description: Opt in or out of seeing other players' commands
+    usage: /<command> [on|off]
+    permission: allium.commandspy
+  spy:
+    description: Inspect and toggle message, local chat, and command spying for a player
+    usage: /<command> <player>
+    permission: allium.spy
+  spectate:
+    description: Spectate a player using the configured spectate commands
+    usage: /<command> <player>
+    permission: allium.spectate
   messagesounds:
     description: Set the volume of private-message sounds
     usage: /<command> [volume <0-1>|toggle|reset]
@@ -702,6 +715,14 @@ permissions:
       allium.sethomes: true
       allium.sethome.bed: true
       allium.home.compass: true
+      allium.chat.ignoreexempt: true
+      allium.chat.spy: true
+      allium.chat.mention: true
+      allium.chat.question: true
+      allium.chat.url: true
+      allium.commandspy: true
+      allium.spy: true
+      allium.spectate: true
       allium.top.roof: true
       allium.bottom: true
       allium.motd: true
@@ -1636,6 +1657,36 @@ permissions:
   allium.chat.shout:
     description: Allows /g <message> and /shout <message>, one message to global chat
     default: true
+  allium.chat.question:
+    description: Allows ?<question> in local chat to escalate to global chat
+    default: true
+  allium.chat.mention:
+    description: Highlights @<player> mentions in chat and plays a mention sound to the target
+    default: true
+  allium.chat.url:
+    description: Allows sending URLs in chat
+    default: op
+  allium.chat.ignoreexempt:
+    description: Exempt from being /ignored by other players
+    default: op
+  allium.chat.spy:
+    description: Allows spying on local chat messages outside radius via /spy
+    default: op
+  allium.chat.spy.exempt:
+    description: Hides local chat messages from allium.chat.spy observers
+    default: op
+  allium.commandspy:
+    description: Allows opting into /commandspy to see other players' commands
+    default: op
+  allium.commandspy.exempt:
+    description: Hides commands from /commandspy observers
+    default: false
+  allium.spy:
+    description: Allows /spy <player> interactive spy status panel
+    default: op
+  allium.spectate:
+    description: Allows /spectate <player> to run configured spectate commands
+    default: op
   allium.me:
     description: Allows /me (/action)
     default: true

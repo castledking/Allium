@@ -579,6 +579,44 @@ chat:
     - "{prefix} &cInvalid chat message length."
   channel-write-denied:
     - "{prefix} &cYou cannot write to that channel."
+  url-denied:
+    - "{prefix} &cNo tienes permiso para enviar enlaces en el chat."
+    - "[sound] entity.villager.no 0.9"
+  question-denied:
+    - "{prefix} &cNo tienes permiso para hacer preguntas globales en el chat."
+    - "[sound] entity.villager.no 0.9"
+  local-spy:
+    - "&8[LocalSpy] &7[&f{player}&7] &f{message}"
+  commandspy-on:
+    - "{prefix} &aEspia de comandos activado."
+    - "[sound] block.note_block.pling 1.35"
+  commandspy-off:
+    - "{prefix} &7Espia de comandos desactivado."
+    - "[sound] block.note_block.bass 0.85"
+  commandspy-format:
+    - "&8[CmdSpy] &f{player}&7: &e{command}"
+  spy-header:
+    - "&6&lSpy &8─ &e{player}"
+  spy-messages:
+    - "&6▪ &fMensajes (SocialSpy): {state}"
+  spy-local:
+    - "&6▪ &fChat local (ChatSpy): {state}"
+  spy-commands:
+    - "&6▪ &fComandos (CommandSpy): {state}"
+  spy-on:
+    - "&aON"
+  spy-on-global:
+    - "&aON &7(global)"
+  spy-off:
+    - "&cOFF"
+  spy-denied:
+    - "&8Sin permiso"
+  spectate-started:
+    - "{prefix} &aAhora observando a &f{player}&a."
+    - "[sound] entity.enderman.teleport 1.1"
+  spectate-self:
+    - "{prefix} &cNo puedes observarte a ti mismo."
+    - "[sound] block.note_block.bass 0.8"
   channels-disabled-select-global:
     - "{prefix} &cChannels are disabled; explicitly select global before speaking."
   vanished-public:
@@ -1523,6 +1561,9 @@ messaging:
     self:
       - "{prefix} &cNo puedes ignorarte a ti mismo."
       - "[sound] block.note_block.bass 0.8"
+    exempt:
+      - "{prefix} &cNo puedes ignorar a &f{player}&c."
+      - "[sound] entity.villager.no 0.9"
     full:
       - "{prefix} &cTu lista de ignorados esta llena."
       - "[sound] entity.villager.no 0.9"

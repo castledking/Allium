@@ -38,8 +38,35 @@ public final class MessageManager {
             TextSender.send(sender, formatted);
         }
 
+        String actionBar = resolveActionBar(message, replacements);
+        if (!actionBar.isEmpty()) {
+            FormattedText formattedBar = TextFormatter.parse(actionBar);
+            TextSender.sendActionBar(sender, formattedBar);
+        }
+
         if (sender instanceof Player player) {
             playSoundIfPresent(player, message);
+        }
+    }
+
+    /**
+     * Sends only the {@code [actionbar]} portion of a message (silent, no sound, no chat line).
+     * Returns {@code true} if the message has an action bar configured and it was sent.
+     */
+    public boolean sendActionBarUpdate(Player player, Messages message, String... replacements) {
+        String actionBar = resolveActionBar(message, replacements);
+        if (actionBar.isEmpty()) {
+            return false;
+        }
+        TextSender.sendActionBar(player, TextFormatter.parse(actionBar));
+        return true;
+    }
+
+    /** Clears a player's action bar when {@code message} is configured with {@code [actionbar]}. */
+    public void clearActionBarIfPresent(Player player, Messages message) {
+        String raw = langManager.getActionBar(message);
+        if (raw != null && !raw.isEmpty()) {
+            TextSender.clearActionBar(player);
         }
     }
 
@@ -53,6 +80,11 @@ public final class MessageManager {
         if (!text.isEmpty()) {
             FormattedText formatted = TextFormatter.parse(text);
             TextSender.send(sender, formatted);
+        }
+
+        String actionBar = resolveActionBar(message, replacements);
+        if (!actionBar.isEmpty()) {
+            TextSender.sendActionBar(sender, TextFormatter.parse(actionBar));
         }
 
         if (sender instanceof Player player) {
@@ -73,16 +105,23 @@ public final class MessageManager {
     public void broadcast(Messages message, String... replacements) {
         String text = resolve(message, replacements);
         FormattedText formatted = text.isEmpty() ? FormattedText.EMPTY : TextFormatter.parse(text);
+        String actionBar = resolveActionBar(message, replacements);
+        FormattedText formattedBar = actionBar.isEmpty() ? FormattedText.EMPTY : TextFormatter.parse(actionBar);
 
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             if (!formatted.isEmpty()) {
                 TextSender.send(player, formatted);
+            }
+            if (!formattedBar.isEmpty()) {
+                TextSender.sendActionBar(player, formattedBar);
             }
             playSoundIfPresent(player, message);
         }
 
         if (!formatted.isEmpty()) {
             plugin.getServer().getConsoleSender().sendMessage(formatted.toPlainText());
+        } else if (!formattedBar.isEmpty()) {
+            plugin.getServer().getConsoleSender().sendMessage(formattedBar.toPlainText());
         }
     }
 
@@ -101,6 +140,19 @@ public final class MessageManager {
         }
         String text = langManager.get(message.key(), message.fallback().getDefault());
         return formatResolved(text, replacements);
+    }
+
+    public String resolveActionBar(Messages message, String... replacements) {
+        String bar = langManager.getActionBar(message);
+        return bar == null ? "" : formatResolved(bar, replacements);
+    }
+
+    public String resolveActionBar(LangMessage message, String... replacements) {
+        if (message.key().equals(message.fallback().getKey())) {
+            return resolveActionBar(message.fallback(), replacements);
+        }
+        String bar = langManager.getActionBar(message.key(), message.fallback().getDefault());
+        return bar == null ? "" : formatResolved(bar, replacements);
     }
 
     private String formatResolved(String text, String... replacements) {

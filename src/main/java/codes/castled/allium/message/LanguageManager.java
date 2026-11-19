@@ -59,8 +59,17 @@ public final class LanguageManager {
         plugin.logger().info("Loaded locale: " + locale);
     }
 
+    /** A locale Allium does not ship starts as a copy of the bundled default locale, sounds included. */
     private void generateLocaleFile(File file) {
         file.getParentFile().mkdirs();
+        try (java.io.InputStream bundled = plugin.getResource(LANG_DIR + "/" + DEFAULT_LOCALE + ".yml")) {
+            if (bundled != null) {
+                java.nio.file.Files.copy(bundled, file.toPath());
+                return;
+            }
+        } catch (IOException e) {
+            plugin.logger().warning("Could not copy the default locale for " + file.getName() + "; generating it from defaults.");
+        }
         YamlConfiguration config = new YamlConfiguration();
         for (Messages msg : Messages.values()) {
             config.set(msg.getKey(), msg==Messages.PREFIX?msg.getDefault():java.util.List.of(msg.getDefault()));
@@ -103,19 +112,44 @@ public final class LanguageManager {
 
     /** The text at {@code key} in the active locale, then the default locale, else {@code defaultText}. */
     public String get(String key, String defaultText) {
-        FileConfiguration active = loadedLocales.get(activeLocale);
-        String value = readText(active, key);
-        if (value != null) {
-            return value;
+        LanguageEntry entry = readEntry(loadedLocales.get(activeLocale), key);
+        if (entry != null) {
+            return entry.text();
         }
 
-        FileConfiguration fallback = loadedLocales.get(DEFAULT_LOCALE);
-        value = readText(fallback, key);
-        if (value != null) {
-            return value;
+        entry = readEntry(loadedLocales.get(DEFAULT_LOCALE), key);
+        if (entry != null) {
+            return entry.text();
         }
 
-        return defaultText;
+        LanguageEntry fallbackEntry = defaultText == null ? null : LanguageEntry.read(defaultText);
+        return fallbackEntry == null ? defaultText : fallbackEntry.text();
+    }
+
+    @Nullable
+    public String getActionBar(Messages message) {
+        return getActionBar(message.getKey(), message.getDefault());
+    }
+
+    @Nullable
+    public String getActionBar(String key) {
+        return getActionBar(key, null);
+    }
+
+    @Nullable
+    public String getActionBar(String key, @Nullable String defaultText) {
+        LanguageEntry entry = readEntry(loadedLocales.get(activeLocale), key);
+        if (entry != null) {
+            return entry.actionBar();
+        }
+
+        entry = readEntry(loadedLocales.get(DEFAULT_LOCALE), key);
+        if (entry != null) {
+            return entry.actionBar();
+        }
+
+        LanguageEntry fallbackEntry = defaultText == null ? null : LanguageEntry.read(defaultText);
+        return fallbackEntry == null ? null : fallbackEntry.actionBar();
     }
 
     @Nullable
@@ -125,29 +159,23 @@ public final class LanguageManager {
 
     @Nullable
     public MessageSoundSpec getSound(String key) {
-        FileConfiguration active = loadedLocales.get(activeLocale);
-        if (readText(active, key) != null) return readSound(active, key);
+        LanguageEntry active = readEntry(loadedLocales.get(activeLocale), key);
+        // A translation without a sound line keeps the default locale's sound; [sound] none silences it.
+        if (active != null && (active.soundDeclared() || DEFAULT_LOCALE.equals(activeLocale))) return active.sound();
 
-        FileConfiguration fallback = loadedLocales.get(DEFAULT_LOCALE);
-        return readSound(fallback, key);
+        LanguageEntry fallback = readEntry(loadedLocales.get(DEFAULT_LOCALE), key);
+        return fallback != null ? fallback.sound() : active == null ? null : active.sound();
     }
 
-    /** Whether the active or default locale has a message (text or sound) at {@code key}. */
+    /** Whether the active or default locale has a message (text, actionbar, or sound) at {@code key}. */
     public boolean hasKey(String key) {
-        return readText(loadedLocales.get(activeLocale), key) != null
-                || readText(loadedLocales.get(DEFAULT_LOCALE), key) != null;
+        return readEntry(loadedLocales.get(activeLocale), key) != null
+                || readEntry(loadedLocales.get(DEFAULT_LOCALE), key) != null;
     }
 
     @Nullable
-    private static String readText(@Nullable FileConfiguration config, String key) {
-        LanguageEntry entry=config==null?null:LanguageEntry.read(config.get(key));
-        return entry==null?null:entry.text();
-    }
-
-    @Nullable
-    private static MessageSoundSpec readSound(@Nullable FileConfiguration config, String key) {
-        LanguageEntry entry=config==null?null:LanguageEntry.read(config.get(key));
-        return entry==null?null:entry.sound();
+    private static LanguageEntry readEntry(@Nullable FileConfiguration config, String key) {
+        return config == null ? null : LanguageEntry.read(config.get(key));
     }
 
     public String getRaw(Messages message) {

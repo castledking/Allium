@@ -1,5 +1,22 @@
 # Staff tooling live gate
 
+## November 18 full re-run (r13)
+
+**PASS: the whole gate, 25 cases on each lane.** Spigot 1.20.1 (`r13b-full-spigot`, 182 checks) and
+Paper 26.3 (`r13b-full-paper`, 189 checks), SQLite, Allium.jar
+`69d1a916957deb739364d97c06b50ab45a12e0e75e89cb85550bc2e9b60b97d8` (commit `661b376` plus the fix below). No exceptions or SEVERE lines. `./gradlew check`:
+1041 unit tests, 0 failures. Manifests: `evidence/r13-full-spigot.json`, `evidence/r13-full-paper.json`.
+
+The first full run on `661b376` (`aaf722c8006ed72f5aba84268bb90fc620f2347893913378295ec6e6a4c80ea0`; `r13-full-spigot` 176 checks and `r13-full-paper` 183
+checks, 2 failures each) found a regression from the r10 capitalisation change: the creative
+audit alert's text holds `allium.gamemode.{to}`, so title-casing `{to}` named a node that does
+not exist (`allium.gamemode.Creative`). The node is now filled in lowercase before `{to}` becomes
+`Creative`, which also covers customized text, and `creative-audit` checks the whole line
+(`(Survival -> Creative)` and `allium.gamemode.creative`). Its second failure was a knock-on:
+the audit case stopped before restoring survival, so `usage-items-homes` saw Creative in
+`/whois`. `creative-audit` now restores survival in a `finally`, and `usage-items-homes` sets
+survival itself.
+
 ## November 18 follow-up (r12): /motd, /rules and the join MOTD
 
 **PASS on targeted runs:** the new `motd-rules` case with `home-admin` (`motd-spigot-2`,

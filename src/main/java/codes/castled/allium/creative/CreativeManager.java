@@ -331,7 +331,10 @@ public final class CreativeManager implements Listener {
             return;
         }
         String shownMode = codes.castled.allium.command.essentials.UtilitySupport.titleCase(mode);
-        String[] replacements = {"{player}", player.getName(), "{cause}", cause + " " + shownMode,
+        // Replacements apply in order: the node inside the text ("allium.gamemode.{to}") stays
+        // lowercase before {to} becomes the shown "Creative", in stock and customized text alike.
+        String[] replacements = {"allium.gamemode.{to}", "allium.gamemode." + mode,
+                "{player}", player.getName(), "{cause}", cause + " " + shownMode,
                 "{from}", codes.castled.allium.command.essentials.UtilitySupport.titleCase(from.name()), "{to}", shownMode};
         plugin.getLogger().warning("[GamemodeAudit] " + player.getName() + " " + cause + " " + mode + " (from "
                 + from.name().toLowerCase(Locale.ROOT) + ") without allium.gamemode." + mode);

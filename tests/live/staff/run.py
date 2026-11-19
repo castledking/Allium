@@ -608,11 +608,15 @@ def creative_audit(lane):
     lane.perm('PlayerBot', 'allium.gamemode.creative', False)
     m = staff.mark()
     lane.console('gamemode creative PlayerBot')
-    staff.chat(m, 'switched to creative')
-    require(True, lane.name + ': staff are alerted when a player enters creative without allium.gamemode.creative')
-    lane.console('gamemode survival PlayerBot')
-    wait(lambda: lane.fixture('inv PlayerBot')['gamemode'] == 'SURVIVAL', 'back to survival')
-    lane.perm('PlayerBot', 'allium.gamemode.creative')
+    try:
+        alert = staff.chat(m, 'switched to Creative')
+        require('allium.gamemode.creative' in alert['plain'] and '(Survival -> Creative)' in alert['plain'],
+                lane.name + ': staff are alerted when a player enters creative without allium.gamemode.creative; the node stays lowercase',
+                alert)
+    finally:
+        lane.console('gamemode survival PlayerBot')
+        wait(lambda: lane.fixture('inv PlayerBot')['gamemode'] == 'SURVIVAL', 'back to survival')
+        lane.perm('PlayerBot', 'allium.gamemode.creative')
 
 
 def invsee(lane):
@@ -836,6 +840,9 @@ def usage_items_homes(lane):
         lane.perm('PlayerBot', node)
     lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
     lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+    # Independent of earlier cases: the /whois check below expects survival.
+    lane.console('gamemode survival PlayerBot')
+    wait(lambda: lane.fixture('inv PlayerBot')['gamemode'] == 'SURVIVAL', 'PlayerBot in survival')
     window(.5)
 
     # Missing arguments show the command card, one clickable line per form the sender may use.

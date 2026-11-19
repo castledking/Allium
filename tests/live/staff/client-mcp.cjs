@@ -19,6 +19,17 @@ let openWindowId = 0;
 const stateIds = {};
 let pos = {x: 0, y: 64, z: 0};
 client.on('packet', (packet, meta) => {
+  if (meta.name === 'sound_effect' || meta.name === 'entity_sound_effect') {
+    // ItemSoundHolder: {soundId} for a registry sound, or {data: {soundName, fixedRange}} inline.
+    const s = packet.sound || {};
+    console.log('BASEG-SOUND ' + JSON.stringify({packet: meta.name, name: s.data ? s.data.soundName : null, id: s.soundId ?? null,
+      volume: packet.volume, pitch: packet.pitch}));
+  }
+  if (meta.name === 'action_bar') {
+    let content = packet.text;
+    if (content && typeof content === 'object' && content.type) content = nbt.simplify(content);
+    console.log('BASEG-CHAT ' + JSON.stringify(Object.assign(flatten(content), {overlay: true, actionBar: true, interactive: false})));
+  }
   if (meta.name === 'position') {
     pos = {x: packet.x, y: packet.y, z: packet.z};
     client.write('teleport_confirm', {teleportId: packet.teleportId});

@@ -71,7 +71,7 @@ def shorthand_and_tax_pay(lane):
 
     # Taxed /pay (default 5%): 100k -> 95k to StaffBot, 5k to Tax.
     smark = len(staff.lines)
-    sent = player.command('pay StaffBot 100k', 'tax to Tax')
+    sent = player.command('pay StaffBot 100k', '($5,000 tax)')
     staff.chat(smark, 'Received $95,000 from PlayerBot')
     wait(lambda: db_balance(lane, TAX_UUID) == (500_000, 0), 'Tax received 5k')
     require(db_balance(lane, 'PlayerBot') == (10_000, 0)
@@ -141,7 +141,7 @@ def cheques_player_and_admin(lane):
     cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
     console_wait(lane, 'allium reload', 'Configuration reloaded.')
     lane.fixture('clear PlayerBot')
-    player.command('cheque 200', 'Created a cheque for $190 ($10 tax to Tax)')
+    player.command('cheque 200', 'Created a cheque for $190 ($10 tax)')
     wait(lambda: db_balance(lane, 'PlayerBot') == (80_000, 0) and db_balance(lane, TAX_UUID)[0] == tax_before + 1_000,
          'taxed cheque debited 200 and credited Tax 10')
     inv = lane.fixture('inv PlayerBot')['slots']

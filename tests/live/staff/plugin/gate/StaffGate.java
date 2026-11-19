@@ -270,7 +270,8 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                 }
                 case "tp" -> {
                     Player p = online(args[1]);
-                    var world = getServer().getWorlds().get(0);
+                    // An eighth argument names the world; the first world otherwise.
+                    var world = args.length > 7 ? getServer().getWorld(args[7]) : getServer().getWorlds().get(0);
                     p.teleport(new Location(world, Double.parseDouble(args[2]), Double.parseDouble(args[3]), Double.parseDouble(args[4]),
                             Float.parseFloat(args[5]), Float.parseFloat(args[6])));
                     out.put("at", p.getLocation().toVector().toString());
@@ -295,6 +296,88 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                     if (scale == null) scale = registry.get(org.bukkit.NamespacedKey.minecraft("generic.scale"));
                     var instance = scale == null ? null : target.getAttribute(scale);
                     out.put("scale", instance == null ? null : instance.getBaseValue());
+                }
+                case "creativemark" -> {
+                    // "creativemark <x> <y> <z>": whether Allium marked the block as placed in creative.
+                    var world = getServer().getWorlds().get(0);
+                    int x = Integer.parseInt(args[1]), y = Integer.parseInt(args[2]), z = Integer.parseInt(args[3]);
+                    int[] marks = world.getBlockAt(x, y, z).getChunk().getPersistentDataContainer()
+                            .get(new NamespacedKey("allium", "creative_blocks"), PersistentDataType.INTEGER_ARRAY);
+                    int packed = (y << 8) | ((z & 15) << 4) | (x & 15);
+                    out.put("marked", marks != null && java.util.Arrays.binarySearch(marks, packed) >= 0);
+                }
+                case "items" -> {
+                    // "items <x> <y> <z> [remove]": dropped items within two blocks.
+                    var world = getServer().getWorlds().get(0);
+                    Location at = new Location(world, Integer.parseInt(args[1]) + .5, Integer.parseInt(args[2]) + .5, Integer.parseInt(args[3]) + .5);
+                    var found = world.getNearbyEntities(at, 2, 2, 2).stream().filter(e -> e instanceof org.bukkit.entity.Item).toList();
+                    out.put("count", found.size());
+                    out.put("types", found.stream().map(e -> ((org.bukkit.entity.Item) e).getItemStack().getType().name()).toList());
+                    if (args.length > 4) found.forEach(org.bukkit.entity.Entity::remove);
+                }
+                case "effects" -> {
+                    // "effects <name> [add <TYPE>]"
+                    Player p = online(args[1]);
+                    if (args.length > 3) p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                            org.bukkit.potion.PotionEffectType.getByName(args[3]), 20 * 120, 0));
+                    out.put("effects", p.getActivePotionEffects().stream().map(e -> e.getType().getName()).toList());
+                }
+                case "armor" -> {
+                    Player p = online(args[1]);
+                    List<String> worn = new ArrayList<>();
+                    for (ItemStack piece : p.getInventory().getArmorContents()) {
+                        worn.add(piece == null ? "AIR" : piece.getType().name() + (piece.getItemMeta() != null && piece.getItemMeta().hasDisplayName()
+                                ? "|" + org.bukkit.ChatColor.stripColor(piece.getItemMeta().getDisplayName()) : ""));
+                    }
+                    out.put("armor", worn);
+                }
+                case "setblock" -> {
+                    var world = getServer().getWorlds().get(0);
+                    Block b = world.getBlockAt(Integer.parseInt(args[1]), Integer.parseInt(args[2]), Integer.parseInt(args[3]));
+                    b.setType(Material.valueOf(args[4]));
+                    out.put("type", b.getType().name());
+                }
+                case "blockat" -> {
+                    var world = getServer().getWorlds().get(0);
+                    out.put("type", world.getBlockAt(Integer.parseInt(args[1]), Integer.parseInt(args[2]), Integer.parseInt(args[3])).getType().name());
+                }
+                case "firearrow" -> {
+                    // "firearrow <shooter> <x> <y> <z>": a burning arrow shot by the player, falling onto that block.
+                    Player shooter = online(args[1]);
+                    var world = getServer().getWorlds().get(0);
+                    Location from = new Location(world, Integer.parseInt(args[2]) + .5, Integer.parseInt(args[3]) + 3, Integer.parseInt(args[4]) + .5);
+                    var arrow = world.spawnArrow(from, new org.bukkit.util.Vector(0, -1, 0), 1.5f, 0f);
+                    arrow.setShooter(shooter);
+                    arrow.setFireTicks(200);
+                    out.put("arrow", arrow.getUniqueId().toString());
+                }
+                case "entities" -> {
+                    // "entities <TYPE> [player]": living entities of a type in the first world, and the farthest one from the player.
+                    var world = getServer().getWorlds().get(0);
+                    var type = org.bukkit.entity.EntityType.valueOf(args[1]);
+                    var found = world.getEntities().stream().filter(e -> e.getType() == type && e.isValid()).toList();
+                    out.put("count", found.size());
+                    if (args.length > 2) {
+                        Location at = online(args[2]).getLocation();
+                        out.put("farthest", found.stream().filter(e -> e.getWorld() == at.getWorld())
+                                .mapToDouble(e -> e.getLocation().distance(at)).max().orElse(-1));
+                    }
+                    if (args.length > 3 && args[3].equals("remove")) found.forEach(org.bukkit.entity.Entity::remove);
+                }
+                case "world" -> {
+                    // "world <name>": creates (or loads) a small flat world.
+                    var world = getServer().getWorld(args[1]);
+                    if (world == null) world = getServer().createWorld(new org.bukkit.WorldCreator(args[1]).type(org.bukkit.WorldType.FLAT)
+                            .generatorSettings("{\"layers\":[{\"block\":\"minecraft:bedrock\",\"height\":1},{\"block\":\"minecraft:dirt\",\"height\":2},"
+                                    + "{\"block\":\"minecraft:grass_block\",\"height\":1}],\"biome\":\"minecraft:plains\",\"structure_overrides\":[]}")
+                            .generateStructures(false));
+                    out.put("world", world.getName());
+                    out.put("permission", getServer().getPluginManager().getPermission("allium.worlds." + world.getName()) != null);
+                }
+                case "compass" -> {
+                    Location c = online(args[1]).getCompassTarget();
+                    out.put("x", c.getX());
+                    out.put("z", c.getZ());
                 }
                 case "flight" -> {
                     // "flight <name> fly" lifts an allowed player into flight, as a double jump would.

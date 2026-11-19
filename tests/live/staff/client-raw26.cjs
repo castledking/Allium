@@ -107,6 +107,19 @@ socket.on('data', chunk => { try {
           if (wid === openWindowId) openWindowId = 0;
         }
       if (id === ids.game_CLIENTBOUND['minecraft:open_sign_editor']) console.log('SIGN-EDITOR opened');
+      if (id === ids.game_CLIENTBOUND['minecraft:set_action_bar_text']) {
+        // Paper sends action bars on their own packet, not as overlay system chat.
+        const [component] = readNbt(payload, 0);
+        console.log('BASEG-CHAT ' + JSON.stringify(Object.assign(flatten(component), {overlay: true, actionBar: true, interactive: false})));
+      }
+      if (id === ids.game_CLIENTBOUND['minecraft:sound']) {
+        const [holder, o] = read(payload);
+        let name = null, p = o;
+        if (holder === 0) { [name, p] = readStr(payload, o); const hasRange = payload[p++]; if (hasRange) p += 4; }
+        const [, q] = read(payload, p); // category
+        console.log('BASEG-SOUND ' + JSON.stringify({packet: 'sound', name, id: holder === 0 ? null : holder - 1,
+          volume: payload.readFloatBE(q + 12), pitch: payload.readFloatBE(q + 16)}));
+      }
       if (id === ids.game_CLIENTBOUND['minecraft:system_chat']) {
         const [component, o] = readNbt(payload, 0);
         console.log('BASEG-CHAT ' + JSON.stringify(Object.assign(flatten(component), extractTranslate(component), {overlay: payload[o] === 1,
@@ -153,6 +166,10 @@ require('node:readline').createInterface({input: process.stdin}).on('line', line
   }
   if(text.startsWith('signedit ')){
     const data=JSON.parse(text.slice(9));game('sign_update',Buffer.concat([blockPosition(data.location.x,data.location.y,data.location.z),...data.lines.map(str),vi(data.front?1:0)]));game('client_tick_end');console.log('SIGN-SENT edit');
+  }
+  if(text.startsWith('pick ')){
+    // Pick block (middle click): servers from 1.21.4 handle it themselves.
+    const [x,y,z]=text.slice(5).split(/\s+/).map(Number);game('pick_item_from_block',Buffer.concat([blockPosition(x,y,z),Buffer.from([0])]));game('client_tick_end');console.log('SIGN-SENT pick');
   }
   if(text.startsWith('signbreak ')){
     const [x,y,z]=text.slice(10).split(/\s+/).map(Number);game('player_action',Buffer.concat([vi(0),blockPosition(x,y,z),Buffer.from([3]),vi(0)]));game('client_tick_end');console.log('SIGN-SENT break');

@@ -1,5 +1,38 @@
 # Staff tooling live gate
 
+## November 19 follow-up (r19): aliases, chat, travel, creative manager and two server fixes
+
+**PASS: the full staff gate, 546 live checks, 0 failures.** Spigot 1.20.1 (`r22-spigot-full`, 269
+checks) and Paper 26.3 (`r22-paper-full`, 277 checks), 39 cases each with PlaceholderAPI 2.12.3,
+SQLite, Allium.jar `a5031abb510e66e018bab06167cd8d201a26bf776c8c2875ba12db4e23ec51ab`
+([spigot](evidence/r19-spigot-full.json), [paper](evidence/r19-paper-full.json)). No exceptions or
+SEVERE lines. `./gradlew check`: 1099 unit tests, 0 failures.
+
+New cases on both lanes:
+
+| Case | What ran |
+| --- | --- |
+| chat-aliases | `/a`, `/ac`, `/amsg` reach staff chat, echoed to a sender who does not read it, and stay out of global; `/shout` and `/g` with a message need `allium.chat.shout`; `/me`; `/coords`, `/getpos`, `/whereami` (others need `.others`); `/compass` facing north and east; `/who`, `/balancetop`, `/wspeed`, `/walkspeed`, `/wb`, `/wbench` and the `*mode` gamemode aliases |
+| locale-sounds | with `settings.locale: es_US` (not bundled), a translated line without a sound plays the English sound, and the generated `es_US.yml` is a copy of `en_US.yml` with its sounds (the previous jar plays nothing) |
+| chat-permissions | a link needs `allium.chat.url`; a mention is coloured and the mentioned player hears it; `/ignore` hides chat and `allium.chat.ignoreexempt` both shows it and refuses the ignore; the local chat spy and its exemption; `?question` from local chat in the question format, refused without the node; the four `allium.chat.receive.*` nodes |
+| hide-own-commands | a legacy `unsafe-commands-list` with `msg` no longer stops `/msg` completing (the previous jar does not answer the completion) |
+| spy-tools | `/commandspy` is off until switched on; `/spy PlayerBot` rows are clickable, local chat spy is on for everyone by default, a click spies on one player's commands; `/spy` shows your own panel; `/spectate` runs the configured `tp` and `gmsp` |
+| travel-extras | `/warpinfo`, `/warp <warp> <player>`, `/renamehome` (own and staff), `/core sethomes` (show, set, relative, clear), the home compass, `allium.worlds.<world>` for a world created at runtime, `/tpo` and `/tpohere` past `/tptoggle` |
+| mass-teleports | `/spawnmob` (amount, per-mob node, the spawn limit), `/s @e[type=pig]` reports 13 and asks to confirm, moves nothing until confirmed, then moves them; `tphere-max` refuses with the count; `/tpall` past `/tptoggle` |
+| economy-messages | `/pay` to yourself, a taxed receipt without the operation id or tax account, an insufficient-funds refusal worded from the language file |
+| warmup-actionbar | the warmup counts down 3s, 2s, 1s in the action bar with no chat line; the chat replay after `/delmsg` plays no sounds |
+| creative-protections | flint and steel on TNT refused (`blacklist.items`); a creative player's burning arrow does not light TNT (`protect-tnt`), and does with the bypass; a torch placed in creative is marked in its chunk and drops nothing when broken in survival, while an unmarked torch drops; pick block refused without `.pickblock` and allowed with it (Paper only: Spigot 1.20.1 picks on the client); `blacklist.commands`; entering creative puts the pink creative armour on and clears effects, leaving takes it off |
+
+Updated: `teleport-types` reads the warmup from the action bar; `creative-inventories` expects the
+creative helmet; the clients now log sounds and action bars, and the fixture can set and read
+blocks, count dropped items, read block marks, fire a burning arrow and create a flat world.
+
+Not covered live: creative item lore, sanitizing and the enchantment/potion refusals (the clients
+cannot send creative inventory packets), explosions, pistons, falling blocks, growth and mob builds
+on marked blocks, filled containers, bed clicks, `/renamehome` refusals, entity selection limits
+for `/tpe` and `/tppet` (unit only). The bundled netherite aliases (`npick`, `nhelm`...) and their
+merge under an older `itemdb.yml` came after this jar and are unit tested.
+
 ## November 19 follow-up (r18): when timed flight counts
 
 **PASS on targeted runs:** the updated `timed-flight` case with PlaceholderAPI 2.12.3 on Spigot

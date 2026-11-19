@@ -211,6 +211,9 @@ class Bot:
         return wait(lambda: next((c for c in self.chats(start) if fragment in c.get('plain', '')), None),
                     self.name + ' chat: ' + fragment, timeout)
 
+    def sounds(self, start):
+        return [json.loads(s.split(' ', 1)[1]) for s in self.lines[start:] if s.startswith('BASEG-SOUND ')]
+
     def saw(self, start, fragment):
         return any(fragment in c.get('plain', '') for c in self.chats(start))
 
@@ -259,6 +262,13 @@ class Bot:
             raise RuntimeError('completion control did not answer on/off')
         res = response(req['id'])
         return [] if res is None else res['matches']
+
+    def block(self, verb, x, y, z):
+        """signbreak (start digging: breaks blocks that break at once, or in creative) or pick (Paper)."""
+        start = self.mark()
+        self.write(f'{verb} {x} {y} {z}')
+        wait(lambda: any(s.startswith('SIGN-SENT ') for s in self.lines[start:]), verb + ' sent')
+        return start
 
     def signuse(self, x, y, z):
         start = self.mark()
@@ -586,6 +596,486 @@ def chat_aliases(lane):
     require(lane.fixture('inv StaffBot')['gamemode'] == 'SURVIVAL', lane.name + ': the mode aliases switch gamemodes')
 
 
+def locale_sounds(lane):
+    """A locale Allium does not ship (es_US): its messages keep the English sounds, whether its
+    file only translates text or is generated at startup."""
+    player = lane.bots['PlayerBot']
+    config_path = lane.path / 'plugins/Allium/config.yml'
+    lang = lane.path / 'plugins/Allium/lang/es_US.yml'
+    original = config_path.read_text()
+
+    def compass_sound(expected_text):
+        m = player.mark()
+        player.cmd('compass')
+        player.chat(m, expected_text)
+        found = wait(lambda: next((s for s in player.sounds(m) if abs(s['pitch'] - 1.3) < 0.01), None), lane.name + ' compass sound', 5)
+        return found
+
+    try:
+        cfg = yaml.safe_load(original)
+        cfg.setdefault('settings', {})['locale'] = 'es_US'
+        config_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+        lang.write_text("utility:\n  compass-bearing:\n  - '{prefix} &aMIRANDO {direction} &7({degrees})'\n")
+        allium_reload(lane)
+        sound = compass_sound('MIRANDO')
+        require(sound, lane.name + ': a translated message without a sound line plays the English sound', sound)
+
+        lang.unlink()
+        allium_reload(lane)
+        generated = lang.read_text()
+        require(generated.count('[sound]') > 100, lane.name + ': an unbundled locale is generated from the English file, sounds included',
+                generated.count('[sound]'))
+        sound = compass_sound('You are facing')
+        require(sound, lane.name + ': the generated locale plays message sounds', sound)
+    finally:
+        config_path.write_text(original)
+        if lang.exists():
+            lang.unlink()
+        allium_reload(lane)
+
+
+def chat_permissions(lane):
+    """allium.chat.url, @mentions (colour and sound), ignores hiding chat and allium.chat.ignoreexempt,
+    the local chat spy and its exemption, and ?questions from local chat."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+    window(.5)
+
+    m, mp = staff.mark(), player.mark()
+    player.say('visit example.com today')
+    player.chat(mp, "permission to send links in chat")
+    window(1.0)
+    require(not staff.saw(m, 'example.com'), lane.name + ': a link without allium.chat.url is not sent')
+    lane.perm('PlayerBot', 'allium.chat.url')
+    player.say('visit example.com now')
+    staff.chat(m, 'visit example.com now')
+
+    m = staff.mark()
+    player.say('hello @StaffBot there')
+    line = staff.chat(m, 'hello @StaffBot there')
+    at = line['plain'].index('@StaffBot')
+    require(line['colors'][at] == '#ffff55', lane.name + ': a mention is coloured (mentions.color)', line['colors'][at:at + 9])
+    sound = wait(lambda: next((s for s in staff.sounds(m) if abs(s['pitch'] - 1.5) < 0.01), None), lane.name + ' mention sound', 5)
+    require(sound, lane.name + ': the mentioned player hears the mention sound', sound)
+
+    staff.command('ignore PlayerBot', 'You are now ignoring PlayerBot.')
+    m = staff.mark()
+    player.say('hidden-by-ignore')
+    window(1.5)
+    require(not staff.saw(m, 'hidden-by-ignore'), lane.name + ': an ignored player\'s chat is hidden')
+    lane.perm('PlayerBot', 'allium.chat.ignoreexempt')
+    player.say('exempt-from-ignore')
+    staff.chat(m, 'exempt-from-ignore')
+    staff.command('unignore PlayerBot', 'no longer ignoring')
+    staff.command('ignore PlayerBot', "You can't ignore PlayerBot.")
+    lane.perm('PlayerBot', 'allium.chat.ignoreexempt', False)
+
+    lane.perm('StaffBot', 'allium.chat.spy')
+    lane.fixture('tp StaffBot 400.5 -61 0.5 0 0')
+    window(.5)
+    m = staff.mark()
+    player.cmd('l spy-local-1')
+    spied = staff.chat(m, 'spy-local-1')
+    require(spied['plain'].startswith('[LocalSpy] [PlayerBot]'), lane.name + ': allium.chat.spy sees local chat out of range', spied)
+    lane.perm('PlayerBot', 'allium.chat.spy.exempt')
+    m = staff.mark()
+    player.cmd('l spy-exempt-2')
+    window(1.5)
+    require(not staff.saw(m, 'spy-exempt-2'), lane.name + ': allium.chat.spy.exempt keeps local chat from spies')
+    lane.perm('PlayerBot', 'allium.chat.spy.exempt', False)
+
+    player.command('channel join local write', 'local')
+    m = staff.mark()
+    player.say('?where is spawn')
+    question = staff.chat(m, 'where is spawn')
+    require('[Question]' in question['plain'], lane.name + ': ?question from local chat reaches everyone in chat.question.format', question)
+    lane.perm('PlayerBot', 'allium.chat.question', False)
+    mp = player.mark()
+    player.say('?denied question')
+    player.chat(mp, 'permission to ask global questions')
+    lane.perm('PlayerBot', 'allium.chat.question')
+    player.command('channel join default write', 'default')
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    window(.5)
+
+    # EssentialsChat's receive nodes: without one, that kind of message is not delivered.
+    lane.perm('PlayerBot', 'allium.chat.receive.shout', False)
+    m, ms = player.mark(), staff.mark()
+    staff.cmd('shout recv-shout-1')
+    staff.chat(ms, 'recv-shout-1')
+    staff.say('recv-normal-2')
+    player.chat(m, 'recv-normal-2')
+    require(not player.saw(m, 'recv-shout-1'), lane.name + ': without allium.chat.receive.shout no shouts arrive, ordinary chat does')
+    lane.perm('PlayerBot', 'allium.chat.receive.shout')
+    lane.perm('PlayerBot', 'allium.chat.receive.local', False)
+    m = player.mark()
+    staff.cmd('l recv-local-3')
+    window(1.5)
+    require(not player.saw(m, 'recv-local-3'), lane.name + ': without allium.chat.receive.local no local chat arrives')
+    lane.perm('PlayerBot', 'allium.chat.receive.local')
+    staff.cmd('l recv-local-4')
+    player.chat(m, 'recv-local-4')
+    staff.command('channel join local write', 'local')
+    lane.perm('PlayerBot', 'allium.chat.receive.question', False)
+    m = player.mark()
+    staff.say('?recv-question-5')
+    window(1.5)
+    require(not player.saw(m, 'recv-question-5'), lane.name + ': without allium.chat.receive.question no questions arrive')
+    lane.perm('PlayerBot', 'allium.chat.receive.question')
+    staff.say('?recv-question-6')
+    player.chat(m, 'recv-question-6')
+    staff.command('channel join default write', 'default')
+    lane.perm('PlayerBot', 'allium.chat.receive.mention', False)
+    m = player.mark()
+    staff.say('quiet @PlayerBot mention')
+    line = player.chat(m, 'quiet @PlayerBot mention')
+    at = line['plain'].index('@PlayerBot')
+    window(1.0)
+    require(line['colors'][at] != '#ffff55' and not any(abs(s['pitch'] - 1.5) < 0.01 for s in player.sounds(m)),
+            lane.name + ': without allium.chat.receive.mention a player is neither highlighted nor pinged', line['colors'][at:at + 10])
+    lane.perm('PlayerBot', 'allium.chat.receive.mention')
+
+
+def hide_own_commands(lane):
+    """A legacy hide.yml whose unsafe-commands-list names msg cannot hide Allium's own /msg."""
+    player = lane.bots['PlayerBot']
+    path = lane.path / 'plugins/Allium/hide.yml'
+    original = path.read_text() if path.exists() else None
+    try:
+        path.write_text(yaml.safe_dump({'settings': {'enabled': True, 'remove-unsafe-commands': True,
+                                                     'unsafe-commands-list': ['plugins', 'msg', 'r', 'me', 'bukkit:msg']},
+                                        'groups': {'default': {'whitelist': True, 'commands': ['msg', 'r', 'me'], 'tabcompletes': ['^']}}},
+                                       sort_keys=False))
+        start = len(lane.logs)
+        allium_reload(lane)
+        tabs = player.tab('msg Staff')
+        require('StaffBot' in tabs, lane.name + ': /msg completes player names under that hide.yml', tabs)
+        logged = lane.log_since(start, "unsafe-commands-list names Allium's own", 15)
+        require('msg' in logged and 'plugins' not in logged.split('own', 1)[1], lane.name + ': the reload says which own commands stay visible', logged)
+    finally:
+        if original is None:
+            path.unlink()
+        else:
+            path.write_text(original)
+        allium_reload(lane)
+
+
+def spy_tools(lane):
+    """/commandspy (opt-in), /spy and /spy <player> panels with click toggles, and /spectate."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    for node in ['allium.commandspy', 'allium.spy', 'allium.spectate', 'allium.chat.spy', 'allium.socialspy']:
+        lane.perm('StaffBot', node)
+    m = staff.mark()
+    player.cmd('compass')
+    window(1.5)
+    require(not any('[CmdSpy]' in c['plain'] for c in staff.chats(m)), lane.name + ': command spy is off until switched on')
+    staff.command('commandspy on', 'Command spy enabled.')
+    m = staff.mark()
+    player.cmd('compass')
+    spied = staff.chat(m, '[CmdSpy]')
+    require(spied['plain'] == '[CmdSpy] PlayerBot: /compass', lane.name + ': /commandspy shows other players\' commands', spied)
+    staff.command('commandspy off', 'Command spy disabled.')
+
+    m = staff.mark()
+    staff.cmd('spy PlayerBot')
+    staff.chat(m, 'Spy ─ PlayerBot')
+    rows = [staff.chat(m, label) for label in ['Messages (SocialSpy):', 'Local Chat (ChatSpy):', 'Commands (CommandSpy):']]
+    require(all(r['interactive'] for r in rows), lane.name + ': each /spy row is clickable', rows)
+    require('ON (global)' in rows[1]['plain'] and 'OFF' in rows[2]['plain'], lane.name + ': local chat spy is on for everyone by default; commands off',
+            [r['plain'] for r in rows])
+    m = staff.mark()
+    staff.cmd('spy PlayerBot toggle commands')
+    after = staff.chat(m, 'Commands (CommandSpy):')
+    require(after['plain'].endswith('ON'), lane.name + ': a click spies on that player\'s commands', after)
+    m = staff.mark()
+    player.cmd('compass')
+    staff.chat(m, '[CmdSpy] PlayerBot: /compass')
+    m = staff.mark()
+    staff.cmd('spy')
+    staff.chat(m, 'Spy ─ everyone')
+    staff.cmd('spy PlayerBot toggle commands')
+
+    lane.fixture('tp PlayerBot 40.5 -61 40.5 0 0')
+    staff.command('spectate PlayerBot', 'Now spectating PlayerBot.')
+    at = wait(lambda: (lambda w: w if abs(w['x'] - 40.5) < 2 and abs(w['z'] - 40.5) < 2 else None)(lane.fixture('where StaffBot')), 'spectate tp', 10)
+    require(lane.fixture('inv StaffBot')['gamemode'] == 'SPECTATOR', lane.name + ': /spectate runs the configured tp and gmsp', at)
+    lane.console('gamemode survival StaffBot')
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+
+
+def travel_extras(lane):
+    """/warpinfo, /warp <warp> <player>, /renamehome (own and others), /core sethomes, allium.worlds.<world>,
+    /tpo and /tpohere past /tptoggle, and the home compass."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    for node in ['allium.setwarp', 'allium.warp', 'allium.warps.gatewarp', 'allium.warps.farwarp', 'allium.warpinfo', 'allium.warp.others',
+                 'allium.renamehome.others', 'allium.sethomes', 'allium.tpo', 'allium.tpohere', 'allium.tppos',
+                 'allium.teleport.timer.bypass.warp', 'allium.teleport.cooldown.bypass.warp']:
+        lane.perm('StaffBot', node)
+    for node in ['allium.warp', 'allium.warps.farwarp', 'allium.renamehome', 'allium.home.compass', 'allium.sethome.multiple.8',
+                 'allium.teleport.timer.bypass.warp',
+                 'allium.teleport.cooldown.bypass.warp', 'allium.teleport.timer.bypass.home', 'allium.teleport.cooldown.bypass.home']:
+        lane.perm('PlayerBot', node)
+    lane.fixture('tp StaffBot 20.5 -61 20.5 90 0')
+    staff.command('setwarp gatewarp', 'Warp gatewarp set.')
+    info = staff.command('warpinfo gatewarp', 'Warp gatewarp:')
+    require('world' in info['plain'] and '20.5' in info['plain'] and 'allium.warps.gatewarp' in info['plain'], lane.name + ': /warpinfo shows the warp', info)
+    staff.command('warp gatewarp PlayerBot', 'Warped PlayerBot to gatewarp.')
+    at = wait(lambda: (lambda w: w if abs(w['x'] - 20.5) < 1 and abs(w['z'] - 20.5) < 1 else None)(lane.fixture('where PlayerBot')), 'warp others', 10)
+    require(at, lane.name + ': /warp <warp> <player> moves the player')
+
+    player.command('sethome alpha', 'Home alpha set.')
+    player.command('renamehome alpha beta', 'Renamed home alpha to beta.')
+    homes = player.command('homes', 'Homes:')
+    require('beta' in homes['plain'] and 'alpha' not in homes['plain'], lane.name + ': the renamed home is listed', homes)
+    staff.command('renamehome PlayerBot:beta gamma', "Renamed PlayerBot's home beta to gamma.")
+    homes = player.command('homes', 'Homes:')
+    require('gamma' in homes['plain'], lane.name + ': staff rename reaches the online owner', homes)
+
+    staff.command('core sethomes PlayerBot 12', 'Set max homes override for PlayerBot to 12')
+    limits = staff.command('core sethomes PlayerBot', 'Max homes for PlayerBot: 12')
+    require('permissions: 8' in limits['plain'] and 'override: 12' in limits['plain'] and re.search(r'set: \d+', limits['plain']),
+            lane.name + ': /core sethomes shows how the limit is made up', limits)
+    staff.command('core sethomes PlayerBot 4', 'effective: 8')
+    staff.command('core sethomes PlayerBot +2', 'to 10')
+    staff.command('core sethomes PlayerBot -1', 'Cleared max homes override for PlayerBot')
+
+    cfg_path = lane.path / 'plugins/Allium/config.yml'
+    original = cfg_path.read_text()
+    try:
+        cfg = yaml.safe_load(original)
+        # The compass points at the home named "home" (else the first by name): make it this spot.
+        m = player.mark()
+        player.cmd('sethome home')
+        if 'confirm' in player.chat(m, 'ome')['plain']:
+            player.command('sethome home confirm', 'Home home set.')
+        cfg['homes']['compass-towards-home-perm'] = True
+        cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+        allium_reload(lane)
+        compass = lane.fixture('compass PlayerBot')
+        require(abs(compass['x'] - 20.5) < 1 and abs(compass['z'] - 20.5) < 1, lane.name + ': with homes.compass-towards-home-perm the compass points home', compass)
+    finally:
+        cfg_path.write_text(original)
+        allium_reload(lane)
+
+    created = lane.fixture('world gate_far')
+    require(created['permission'], lane.name + ': a world loaded at runtime gets its allium.worlds.<world> node', created)
+    lane.fixture('tp StaffBot 0.5 -60 0.5 0 0 gate_far')
+    staff.command('setwarp farwarp', 'Warp farwarp set.')
+    lane.perm('PlayerBot', 'allium.worlds.gate_far', False)
+    player.command('warp farwarp', "permission to enter world gate_far")
+    require(lane.fixture('where PlayerBot')['world'] == 'world', lane.name + ': allium.worlds.<world> false keeps the player out')
+    lane.perm('PlayerBot', 'allium.worlds.gate_far')
+    player.command('warp farwarp', 'Teleported to warp.')
+    wait(lambda: lane.fixture('where PlayerBot')['world'] == 'gate_far' or None, 'world entry', 10)
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+
+    player.command('tptoggle', 'no longer accepts teleport requests')
+    staff.command('tpo PlayerBot', 'Teleported to PlayerBot')
+    lane.fixture('tp StaffBot 30.5 -61 0.5 0 0')
+    staff.cmd('tpohere PlayerBot')
+    wait(lambda: (lambda w: w if abs(w['x'] - 30.5) < 1 else None)(lane.fixture('where PlayerBot')), 'tpohere', 10)
+    player.command('tptoggle', 'now accepts teleport requests')
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+
+
+def mass_teleports(lane):
+    """/spawnmob (per-mob nodes, the spawn limit), /s @e with its count and confirmation, tphere-max, and /tpall past /tptoggle."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    for node in ['allium.spawnmob', 'allium.spawnmob.pig', 'allium.tphere', 'allium.selectors', 'allium.command.selector.entities',
+                 'allium.tpall', 'allium.teleport.timer.bypass.tphere']:
+        lane.perm('StaffBot', node)
+    lane.fixture('entities PIG StaffBot remove')
+    lane.fixture('tp StaffBot 60.5 -61 60.5 0 0')
+    staff.command('spawnmob pig 3', 'Spawned 3 pig.')
+    require(lane.fixture('entities PIG')['count'] == 3, lane.name + ': /spawnmob spawns the amount')
+    staff.command('spawnmob cow', "You don't have permission to spawn cow.")
+    staff.command('spawnmob pig 50', 'server spawn limit (10)')
+    require(lane.fixture('entities PIG')['count'] == 13, lane.name + ': the amount stops at spawnmob.limit')
+
+    lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+    window(.5)
+    confirm = staff.command('s @e[type=pig]', 'Targeted 13 entities.')
+    require('again within 15s to confirm' in confirm['plain'], lane.name + ': /s @e reports the count and asks to confirm', confirm)
+    require(lane.fixture('entities PIG StaffBot')['farthest'] > 30, lane.name + ': nothing moves before the confirmation')
+    staff.command('s @e[type=pig]', 'Teleported 13 entities.')
+    require(lane.fixture('entities PIG StaffBot')['farthest'] < 5, lane.name + ': the confirmed command moves them')
+
+    cfg_path = lane.path / 'plugins/Allium/config.yml'
+    original = cfg_path.read_text()
+    try:
+        cfg = yaml.safe_load(original)
+        cfg['teleport']['entity-limits']['tphere-max'] = 5
+        cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+        allium_reload(lane)
+        staff.command('s @e[type=pig]', 'Selection matched 13 entities, which exceeds the maximum limit of 5.')
+    finally:
+        cfg_path.write_text(original)
+        allium_reload(lane)
+    lane.fixture('entities PIG StaffBot remove')
+
+    player.command('tptoggle', 'no longer accepts teleport requests')
+    lane.fixture('tp PlayerBot 50.5 -61 0.5 0 0')
+    staff.command('tpall', 'Teleported 1 player(s) to StaffBot.')
+    wait(lambda: (lambda w: w if abs(w['x'] - 0.5) < 2 else None)(lane.fixture('where PlayerBot')), 'tpall', 10)
+    player.command('tptoggle', 'now accepts teleport requests')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+
+
+def economy_messages(lane):
+    """/pay to yourself, receipts without the operation id, and refusals worded from the language file."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    lane.console('eco set PlayerBot 50')
+    window(1.0)
+    player.command('pay PlayerBot 5', "You can't pay yourself.")
+    paid = player.command('pay StaffBot 5', 'Paid')
+    require('Operation' not in paid['plain'] and 'tax to' not in paid['plain'] and 'to StaffBot' in paid['plain'],
+            lane.name + ': the receipt names neither the operation nor the tax account', paid)
+    refused = player.command('pay StaffBot 999999', 'enough funds')
+    require('REFUSED' not in refused['plain'] and 'INSUFFICIENT' not in refused['plain'], lane.name + ': refusals are sentences, not codes', refused)
+
+
+def warmup_actionbar(lane):
+    """The teleport warmup counts down in the action bar with no chat line, and chat replay after /delmsg
+    plays no sounds."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    lane.perm('PlayerBot', 'allium.sethome.multiple.5')
+    lane.perm('PlayerBot', 'allium.teleport.timer.bypass.home', False)
+    lane.perm('PlayerBot', 'allium.teleport.cooldown.bypass.home')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+    player.command('sethome warmup', 'Home warmup set.')
+    lane.fixture('tp PlayerBot 9.5 -61 0.5 0 0')
+    m = player.mark()
+    player.cmd('home warmup')
+    wait(lambda: (lambda w: w if abs(w['x'] - 3.5) < 1 else None)(lane.fixture('where PlayerBot')), 'warmup teleport', 12)
+    lines = [c for c in player.chats(m) if 'Teleporting in' in c['plain']]
+    bars = [c['plain'] for c in lines if c['overlay']]
+    require(lines and all(c['overlay'] for c in lines), lane.name + ': the warmup is in the action bar only, never a chat line', [c['plain'] for c in lines])
+    require(any('3s' in b for b in bars) and any('2s' in b for b in bars) and any('1s' in b for b in bars),
+            lane.name + ': the warmup counts down 3s, 2s, 1s', bars)
+
+    lane.perm('StaffBot', 'allium.delmsg')
+    player.say('to-be-deleted-1')
+    window(1.0)
+    m = player.mark()
+    staff.cmd('delmsg PlayerBot 1')
+    window(4.0)
+    require(not player.sounds(m), lane.name + ': the chat replay after /delmsg plays no sounds', player.sounds(m))
+
+
+def creative_protections(lane):
+    """CreativeManager protections: flint and steel on TNT (blacklist.items), TNT lit by a creative
+    player's burning arrow (protect-tnt) with and without the bypass, blocks placed in creative that
+    drop nothing in survival (placed-blocks), pick block (Paper), blacklist.commands, and potion
+    effects and the creative armour on switching gamemode."""
+    player = lane.bots['PlayerBot']
+    cfg_path = lane.path / 'plugins/Allium/config.yml'
+    original = cfg_path.read_text()
+    cfg = yaml.safe_load(original)
+    cfg['creative-manager']['message-cooldown-seconds'] = 0
+    cfg['creative-manager']['blacklist']['commands'] = ['compass']
+    cfg['creative-manager']['clear-effects-on-switch'] = True
+    cfg['creative-manager'].setdefault('armor', {})['enabled'] = True
+    cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+    allium_reload(lane)
+    try:
+        creative_protection_steps(lane, player)
+    finally:
+        cfg_path.write_text(original)
+        allium_reload(lane)
+        if lane.fixture('inv PlayerBot')['gamemode'] != 'SURVIVAL':
+            lane.console('gamemode survival PlayerBot')
+        lane.fixture('setblock 5 -60 0 AIR')
+        lane.fixture('setblock 5 -61 0 GRASS_BLOCK')
+        lane.fixture('setblock 14 -61 12 GRASS_BLOCK')
+        for node in ['allium.gamemode.creative.interact', 'allium.gamemode.creative.place']:
+            lane.perm('PlayerBot', node, False)
+
+
+def creative_protection_steps(lane, player):
+    lane.console('gamemode creative PlayerBot')
+    wait(lambda: lane.fixture('inv PlayerBot')['gamemode'] == 'CREATIVE' or None, 'creative', 10)
+    lane.perm('PlayerBot', 'allium.gamemode.creative.interact')
+    lane.perm('PlayerBot', 'allium.gamemode.creative.place')
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 -90 0')
+    lane.fixture('setblock 5 -61 0 TNT')
+    lane.fixture('held PlayerBot 0')
+    lane.fixture('give PlayerBot 0 FLINT_AND_STEEL 1')
+    window(.5)
+    m = player.mark()
+    player.signuse(5, -61, 0)
+    player.chat(m, 'Flint And Steel is not allowed in creative mode.')
+    window(1.0)
+    require(lane.fixture('blockat 5 -61 0')['type'] == 'TNT', lane.name + ': flint and steel cannot light TNT in creative (blacklist.items)')
+
+    lane.fixture('setblock 14 -61 12 TNT')
+    m = player.mark()
+    lane.fixture('firearrow PlayerBot 14 -61 12')
+    player.chat(m, 'You are not allowed to light TNT in creative mode.', 10)
+    window(2.0)
+    require(lane.fixture('blockat 14 -61 12')['type'] == 'TNT', lane.name + ': a creative player\'s burning arrow does not light TNT (protect-tnt)')
+    lane.perm('PlayerBot', 'allium.gamemode.creative.blacklist')
+    lane.fixture('firearrow PlayerBot 14 -61 12')
+    wait(lambda: lane.fixture('blockat 14 -61 12')['type'] != 'TNT' or None, 'tnt primed with the bypass', 10)
+    window(5.0)  # let it explode before going on
+    lane.perm('PlayerBot', 'allium.gamemode.creative.blacklist', False)
+
+    # A torch placed in creative is marked; a torch set by the fixture is not.
+    lane.fixture('setblock 5 -61 0 GRASS_BLOCK')
+    lane.fixture('setblock 5 -60 0 STONE')
+    lane.fixture('give PlayerBot 0 TORCH 1')
+    window(.3)
+    player.signuse(5, -60, 0)
+    wait(lambda: lane.fixture('blockat 5 -60 1')['type'] == 'WALL_TORCH' or None, 'torch placed in creative', 10)
+    require(lane.fixture('creativemark 5 -60 1')['marked'], lane.name + ': a block placed in creative is marked in its chunk')
+    lane.fixture('setblock 6 -60 1 TORCH')
+    require(not lane.fixture('creativemark 6 -60 1')['marked'], lane.name + ': other blocks are not marked')
+
+    if lane.name == 'paper':
+        lane.fixture('give PlayerBot 0 AIR 1')
+        m = player.mark()
+        player.block('pick', 5, -60, 0)
+        player.chat(m, 'You are not allowed to use pick block in creative mode.')
+        lane.perm('PlayerBot', 'allium.gamemode.creative.pickblock')
+        player.block('pick', 5, -60, 0)
+        picked = wait(lambda: (lambda inv: inv if any((slot(inv, i) or {}).get('type') == 'STONE' for i in range(9)) else None)(
+            lane.fixture('inv PlayerBot')), 'pick block with the node', 10)
+        require(picked, lane.name + ': allium.gamemode.creative.pickblock allows pick block')
+        lane.perm('PlayerBot', 'allium.gamemode.creative.pickblock', False)
+
+    player.command('compass', '/compass is not allowed in creative mode.')
+
+    lane.console('gamemode survival PlayerBot')
+    wait(lambda: lane.fixture('inv PlayerBot')['gamemode'] == 'SURVIVAL' or None, 'survival', 10)
+    lane.fixture('items 5 -60 1 remove')
+    player.block('signbreak', 5, -60, 1)
+    wait(lambda: lane.fixture('blockat 5 -60 1')['type'] == 'AIR' or None, 'marked torch broken', 10)
+    window(1.0)
+    dropped = lane.fixture('items 5 -60 1')
+    require(dropped['count'] == 0 and not lane.fixture('creativemark 5 -60 1')['marked'],
+            lane.name + ': a block placed in creative drops nothing in survival, and its mark goes', dropped)
+    player.block('signbreak', 6, -60, 1)
+    wait(lambda: lane.fixture('blockat 6 -60 1')['type'] == 'AIR' or None, 'plain torch broken', 10)
+    control = wait(lambda: (lambda d: d if d['count'] > 0 else None)(lane.fixture('items 6 -60 1')), 'plain torch drop', 5)
+    require('TORCH' in control['types'], lane.name + ': a block not placed in creative drops as usual', control)
+    lane.fixture('items 6 -60 1 remove')
+
+    lane.fixture('effects PlayerBot add SPEED')
+    lane.console('gamemode creative PlayerBot')
+    wait(lambda: lane.fixture('inv PlayerBot')['gamemode'] == 'CREATIVE' or None, 'creative again', 10)
+    armor = lane.fixture('armor PlayerBot')['armor']
+    require(armor == ['LEATHER_BOOTS|Creative Boots', 'LEATHER_LEGGINGS|Creative Leggings', 'LEATHER_CHESTPLATE|Creative Chestplate',
+                      'LEATHER_HELMET|Creative Helmet'], lane.name + ': entering creative puts the creative armour on', armor)
+    require(lane.fixture('effects PlayerBot')['effects'] == [], lane.name + ': clear-effects-on-switch clears effects entering creative')
+    lane.console('gamemode survival PlayerBot')
+    wait(lambda: lane.fixture('inv PlayerBot')['gamemode'] == 'SURVIVAL' or None, 'survival again', 10)
+    armor = lane.fixture('armor PlayerBot')['armor']
+    require(not any('Creative' in a for a in armor), lane.name + ': leaving creative takes the creative armour off', armor)
+
+
 def gamemode_perms(lane):
     player = lane.bots['PlayerBot']
     lane.perm('PlayerBot', 'allium.gamemode')
@@ -605,7 +1095,8 @@ def creative_inventories(lane):
     lane.fixture('give PlayerBot 39 IRON_HELMET 1')
     player.command('gamemode creative', 'Gamemode set to')
     inv = wait(lambda: (lambda i: i if i['gamemode'] == 'CREATIVE' else None)(lane.fixture('inv PlayerBot')), 'creative')
-    require(slot(inv, 0) is None and slot(inv, 39) is None, lane.name + ': entering creative loads an empty creative inventory', inv['slots'])
+    require(slot(inv, 0) is None and (slot(inv, 39) or {}).get('type') == 'LEATHER_HELMET',
+            lane.name + ': entering creative loads an empty creative inventory, with the creative armour on', inv['slots'])
     require(inv['pdc'].get('allium:creative_group') == 'creative' and 'allium:creative_stash_survival' in inv['pdc'],
             lane.name + ': the survival inventory is stored in the player data', inv['pdc'])
     lane.fixture('give PlayerBot 0 BEDROCK 7')
@@ -1752,7 +2243,7 @@ def teleport_types(lane):
     lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
     window(.5)
     m = staff.cmd('tppos ~4 ~ ~')
-    staff.chat(m, 'Teleporting in 3.0s')
+    staff.chat(m, 'Teleporting in 3s')
     window(.4)
     staff.write('move 2 0')
     staff.chat(m, 'Teleport cancelled: movement')
@@ -1761,7 +2252,7 @@ def teleport_types(lane):
     window(.5)
     before = lane.fixture('where StaffBot')
     m = staff.cmd('tppos ~4 ~ ~')
-    staff.chat(m, 'Teleporting in 3.0s')
+    staff.chat(m, 'Teleporting in 3s')
     window(.4)
     staff.write('move 1 0')
     staff.chat(m, 'Teleported to', 8)
@@ -1773,7 +2264,7 @@ def teleport_types(lane):
     require(True, lane.name + ': the tppos cooldown applies without a cooldown node')
     lane.perm('StaffBot', 'allium.teleport.cooldown.bypass.tppos')
     m = staff.cmd('tppos ~1 ~ ~')
-    staff.chat(m, 'Teleporting in 3.0s')
+    staff.chat(m, 'Teleporting in 3s')
     staff.chat(m, 'Teleported to', 8)
     require(True, lane.name + ': allium.teleport.cooldown.bypass.tppos skips the cooldown (the warmup still runs)')
     lane.perm('StaffBot', 'allium.teleport.timer.bypass.tppos')
@@ -1880,6 +2371,7 @@ def main():
         case('creative-restriction', lambda: creative_restriction(lane))
         case('creative-restart', lambda: creative_restart(lane))
         case('creative-audit', lambda: creative_audit(lane))
+        case('creative-protections', lambda: creative_protections(lane))
         case('invsee', lambda: invsee(lane))
         case('items-batch', lambda: items_batch(lane))
         case('potions', lambda: potions(lane))
@@ -1896,6 +2388,15 @@ def main():
         case('paid-repair', lambda: paid_repair(lane))
         case('repair-halt-after-reserve', lambda: repair_halt(lane, 'repair.halt-after-reserve', 'released'))
         case('repair-halt-after-save', lambda: repair_halt(lane, 'repair.halt-after-save', 'captured'))
+        # The cases below grant PlayerBot travel and chat nodes the earlier cases must not have.
+        case('locale-sounds', lambda: locale_sounds(lane))
+        case('chat-permissions', lambda: chat_permissions(lane))
+        case('hide-own-commands', lambda: hide_own_commands(lane))
+        case('spy-tools', lambda: spy_tools(lane))
+        case('travel-extras', lambda: travel_extras(lane))
+        case('mass-teleports', lambda: mass_teleports(lane))
+        case('economy-messages', lambda: economy_messages(lane))
+        case('warmup-actionbar', lambda: warmup_actionbar(lane))
         # Both reconnect PlayerBot, which drops its non-sticky grants: keep them last.
         case('broadcasts', lambda: broadcasts(lane))
         if A.placeholderapi:

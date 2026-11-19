@@ -59,6 +59,9 @@ class FlyCommandTimedTest {
         fly.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.FLY, steve, "fly", new String[0]));
         verify(messages).send(steve, Messages.TFLY_ON, "{time}", "10m 30s");
         verify(steve, never()).setAllowFlight(true);
+        when(timed.countsOnlyWhileFlying()).thenReturn(true);
+        fly.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.FLY, steve, "fly", new String[0]));
+        verify(messages).send(steve, Messages.TFLY_ON_FLYING, "{time}", "10m 30s");
 
         ConsoleCommandSender console = mock(ConsoleCommandSender.class);
         when(console.getName()).thenReturn("CONSOLE");

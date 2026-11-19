@@ -64,10 +64,13 @@ public final class EssentialsModule extends AbstractModule {
     }
     private codes.castled.allium.broadcast.BroadcastService broadcasts;
 
-    /** Re-reads the timed broadcast settings ({@code /allium reload}). */
-    public void reloadBroadcasts() {
+    /** Re-reads the timed broadcast and timed flight settings ({@code /allium reload}). */
+    public void reloadSettings() {
         if (broadcasts != null) {
             broadcasts.reload();
+        }
+        if (timedFlight != null) {
+            timedFlight.reload();
         }
     }
     private SkullProfiles fallbackSkulls;

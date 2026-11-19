@@ -1061,6 +1061,13 @@ def motd_rules(lane):
         rules.write_text(original)
 
 
+def allium_reload(lane):
+    """`/allium reload` from the console, waiting for it to finish."""
+    start = len(lane.logs)
+    lane.console('allium reload')
+    lane.log_since(start, 'Configuration reloaded', 30)
+
+
 def broadcasts(lane):
     """Timed broadcasts from broadcasts.txt, /broadcasts, /broadcast and the receive opt-out."""
     staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
@@ -1070,9 +1077,7 @@ def broadcasts(lane):
     original = path.read_text()
 
     def reload():
-        start = len(lane.logs)
-        lane.console('allium reload')
-        lane.log_since(start, 'Configuration reloaded', 30)
+        allium_reload(lane)
 
     try:
         cfg = yaml.safe_load(original)
@@ -1167,59 +1172,85 @@ def placeholders(lane):
 
 
 def timed_flight(lane):
-    """Legacy tfly: /fly without allium.fly spends banked time only while flying; staff change it, online or not."""
+    """Legacy tfly: /fly without allium.fly spends banked time, from /fly on by default or only in the air
+    with timed-flight.count-only-while-flying; staff change it, online or not."""
     player = lane.bots['PlayerBot']
+    path = lane.path / 'plugins/Allium/config.yml'
+    original = path.read_text()
     lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
     lane.console('fly PlayerBot reset')
     window(1.0)
     player.command('fly', 'You have no timed flight left.')
 
+    # Default: the time runs from /fly on, on the ground too.
     m = player.mark()
     lane.console('fly PlayerBot add 8')
     player.chat(m, 'Your timed flight is now 8s.')
-    player.command('fly', 'Timed flight on: 8s left.')
-    state = lane.fixture('flight PlayerBot')
-    require(state['allow'] and not state['flying'], lane.name + ': timed flight allows flight without lifting the player', state)
-    window(2.5)
-    player.command('fly', 'Timed flight off: 8s left.')
-    require(not lane.fixture('flight PlayerBot')['allow'], lane.name + ': on the ground no time was spent, and /fly turns it off')
-
-    player.command('fly', 'Timed flight on: 8s left.')
     m = player.mark()
-    require(lane.fixture('flight PlayerBot fly')['flying'], lane.name + ': the fixture lifts PlayerBot into flight')
+    on = player.command('fly', 'Timed flight on: 8s left.')
+    state = lane.fixture('flight PlayerBot')
+    require(state['allow'] and not state['flying'] and 'only runs while you fly' not in on['plain'],
+            lane.name + ': by default /fly allows flight without lifting the player, and its time is running', [state, on])
+    if A.placeholderapi:
+        shown = papi(lane, '%allium_fly%')
+        require(shown == 'temporary', lane.name + ': the fly placeholder while the time runs on the ground', shown)
     player.chat(m, 'Timed flight: 5s left.', 8)
     player.chat(m, 'Your timed flight has run out.', 10)
     state = lane.fixture('flight PlayerBot')
-    require(not state['allow'] and not state['flying'], lane.name + ': at zero flight ends', state)
+    require(not state['allow'] and not state['flying'], lane.name + ': standing on the ground ran the time out and flight ended', state)
 
-    # The bank is in storage: it survives a rejoin and staff can change it while the player is offline.
-    lane.console('fly PlayerBot add 20')
-    window(1.0)
-    player.command('fly', 'Timed flight on: 20s left.')
-    if A.placeholderapi:
-        shown = {k: papi(lane, '%allium_' + k + '%') for k in ['fly', 'fly_time']}
-        require(shown == {'fly': 'temporary-paused', 'fly_time': '20s'}, lane.name + ': fly placeholders on the ground', shown)
-    lane.fixture('flight PlayerBot fly')
-    window(3.2)
-    if A.placeholderapi:
-        shown = papi(lane, '%allium_fly%')
-        require(shown == 'temporary', lane.name + ': the fly placeholder while timed flight is in the air', shown)
-    off = player.command('fly', 'Timed flight off:')
-    left = int(re.search(r'(\d+)s left', off['plain']).group(1))
-    require(15 <= left <= 18, lane.name + ': about three seconds were spent while flying', off)
-    player.disconnect()
-    start = len(lane.logs)
-    lane.console('fly PlayerBot take 5')
-    changed = lane.log_since(start, 'PlayerBot now has', 15)
-    require(f'{left - 5}s of timed flight' in changed, lane.name + ': an offline player\'s bank changes through storage', changed)
-    player = lane.bot('PlayerBot')
-    player.command('fly', f'Timed flight on: {left - 5}s left.')
-    player.command('fly', 'Timed flight off:')
-    lane.console('fly PlayerBot set 1h30m')
-    window(1.0)
-    player.command('fly', 'Timed flight on: 1h 30m left.')
-    player.command('fly', 'Timed flight off:')
-    lane.console('fly PlayerBot reset')
+    try:
+        cfg = yaml.safe_load(original)
+        cfg['timed-flight'] = {'count-only-while-flying': True}
+        path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+        allium_reload(lane)
+
+        lane.console('fly PlayerBot add 8')
+        window(1.0)
+        player.command('fly', 'Timed flight on: 8s left. It only runs while you fly.')
+        window(2.5)
+        player.command('fly', 'Timed flight off: 8s left.')
+        require(not lane.fixture('flight PlayerBot')['allow'], lane.name + ': counting only in the air, the ground spent nothing and /fly turns it off')
+
+        player.command('fly', 'Timed flight on: 8s left.')
+        if A.placeholderapi:
+            shown = {k: papi(lane, '%allium_' + k + '%') for k in ['fly', 'fly_time']}
+            require(shown == {'fly': 'temporary-paused', 'fly_time': '8s'}, lane.name + ': fly placeholders on the ground, counting only in the air', shown)
+        m = player.mark()
+        require(lane.fixture('flight PlayerBot fly')['flying'], lane.name + ': the fixture lifts PlayerBot into flight')
+        if A.placeholderapi:
+            shown = papi(lane, '%allium_fly%')
+            require(shown == 'temporary', lane.name + ': the fly placeholder in the air', shown)
+        player.chat(m, 'Timed flight: 5s left.', 8)
+        player.chat(m, 'Your timed flight has run out.', 10)
+        state = lane.fixture('flight PlayerBot')
+        require(not state['allow'] and not state['flying'], lane.name + ': at zero flight ends', state)
+
+        # The bank is in storage: it survives a rejoin and staff can change it while the player is offline.
+        lane.console('fly PlayerBot add 20')
+        window(1.0)
+        player.command('fly', 'Timed flight on: 20s left.')
+        lane.fixture('flight PlayerBot fly')
+        window(3.2)
+        off = player.command('fly', 'Timed flight off:')
+        left = int(re.search(r'(\d+)s left', off['plain']).group(1))
+        require(15 <= left <= 18, lane.name + ': about three seconds were spent while flying', off)
+        player.disconnect()
+        start = len(lane.logs)
+        lane.console('fly PlayerBot take 5')
+        changed = lane.log_since(start, 'PlayerBot now has', 15)
+        require(f'{left - 5}s of timed flight' in changed, lane.name + ': an offline player\'s bank changes through storage', changed)
+        player = lane.bot('PlayerBot')
+        player.command('fly', f'Timed flight on: {left - 5}s left.')
+        player.command('fly', 'Timed flight off:')
+        lane.console('fly PlayerBot set 1h30m')
+        window(1.0)
+        player.command('fly', 'Timed flight on: 1h 30m left.')
+        player.command('fly', 'Timed flight off:')
+    finally:
+        path.write_text(original)
+        allium_reload(lane)
+        lane.console('fly PlayerBot reset')
 
 
 def restore(lane):

@@ -14,4 +14,11 @@ class LanguageColorsTest {
   assertEquals(List.of("{prefix} &aRepaired &f{items}&a.","[sound] block.anvil.use 1.2"),yaml.getList("utility.repair-held"));
   assertEquals("Custom repair for {count} items",yaml.getString("utility.repair-all"));
  }
+ @Test void firstTimedFlightOnTextNoLongerClaimsTheGroundIsFree(){
+  var yaml=new YamlConfiguration();
+  yaml.set("player.tfly-on",List.of("{prefix} &aTimed flight on: &f{time} &aleft. It only runs while you fly.","[sound] entity.bat.takeoff 1.15"));
+  assertEquals(1,LanguageColors.upgrade(yaml));
+  assertEquals(List.of("{prefix} &aTimed flight on: &f{time} &aleft.","[sound] entity.bat.takeoff 1.15"),yaml.getList("player.tfly-on"));
+  assertEquals(0,LanguageColors.upgrade(yaml));
+ }
 }

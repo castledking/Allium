@@ -391,6 +391,13 @@ motd:
   # Ticks to wait after joining (0-200), so the MOTD follows the join messages.
   join-delay-ticks: 10
 
+# Timed flight: /fly for players without allium.fly, spending time staff give with
+# /fly <player> add <time>. The time runs from /fly until the player turns it off or it runs out,
+# in the air or not. With count-only-while-flying: true it runs only while they are in the air.
+# Creative and spectator never spend it. /allium reload applies a change.
+timed-flight:
+  count-only-while-flying: false
+
 # Timed broadcasts: every interval-seconds, the next #section of plugins/Allium/broadcasts.txt goes
 # to everyone online with allium.broadcasts.receive (default true) and to the console. Off by
 # default. /broadcasts lists them; /broadcasts send <name> and /broadcasts next send one now.

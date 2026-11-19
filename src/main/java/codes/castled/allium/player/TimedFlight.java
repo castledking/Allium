@@ -27,8 +27,9 @@ import java.util.function.Consumer;
 
 /**
  * Timed flight, as legacy Allium's tfly: a player without {@code allium.fly} who has banked
- * seconds turns flight on with {@code /fly}, and the time runs down only while they actually fly
- * in survival or adventure. Warnings come at 60, 30 and 10 seconds and each of the last 5; at 0
+ * seconds turns flight on with {@code /fly}. The time runs down from then until they turn it off,
+ * or, with {@code timed-flight.count-only-while-flying}, only while they are in the air; either
+ * way only in survival or adventure. Warnings come at 60, 30 and 10 seconds and each of the last 5; at 0
  * flight ends with slow falling if they are in the air ({@link FlightRestoration}). Staff set,
  * add, take or reset anyone's time. The bank lives in {@code allium_flight_time}: spent time is
  * written as a relative change every {@value #SAVE_MILLIS} ms and on quit, so time given on
@@ -38,6 +39,7 @@ import java.util.function.Consumer;
 public final class TimedFlight implements Listener, AutoCloseable {
 
     public static final String PERMISSION = "allium.tfly";
+    public static final String ONLY_WHILE_FLYING = "timed-flight.count-only-while-flying";
     static final long SAVE_MILLIS = 30_000;
     static final Set<Long> WARNINGS = Set.of(60L, 30L, 10L, 5L, 4L, 3L, 2L, 1L);
 
@@ -65,6 +67,7 @@ public final class TimedFlight implements Listener, AutoCloseable {
     private TaskHandle tick = TaskHandle.NONE;
     private TaskHandle save = TaskHandle.NONE;
     private volatile boolean closed;
+    private volatile boolean onlyWhileFlying;
 
     public TimedFlight(PluginStart plugin, FlightTimeRepository repository, ThreadPoolExecutor io, FlightRestoration flights) {
         this.plugin = plugin;
@@ -74,6 +77,7 @@ public final class TimedFlight implements Listener, AutoCloseable {
     }
 
     public void enable() {
+        reload();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             join(p);
@@ -112,6 +116,30 @@ public final class TimedFlight implements Listener, AutoCloseable {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /** Re-reads {@value #ONLY_WHILE_FLYING} (startup and {@code /allium reload}). */
+    public void reload() {
+        onlyWhileFlying = plugin.getConfig().getBoolean(ONLY_WHILE_FLYING, false);
+    }
+
+    /** Whether the time runs only while a player is in the air, rather than from {@code /fly}. */
+    public boolean countsOnlyWhileFlying() {
+        return onlyWhileFlying;
+    }
+
+    /**
+     * Whether an online player's timed flight is spending time right now: it is on, they are in
+     * survival or adventure and, with {@value #ONLY_WHILE_FLYING}, in the air.
+     */
+    public boolean running(Player p) {
+        Session s = sessions.get(p.getUniqueId());
+        return s != null && s.player == p && s.active && spends(p);
+    }
+
+    private boolean spends(Player p) {
+        return p.getAllowFlight() && (p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE)
+                && (!onlyWhileFlying || p.isFlying());
     }
 
     /** Banked seconds of an online player; 0 while loading or for anyone else. */
@@ -197,7 +225,7 @@ public final class TimedFlight implements Listener, AutoCloseable {
         }
     }
 
-    /** One second: time runs down for each timed flier who is in the air. */
+    /** One second: time runs down for each timed flier whose time is running ({@link #running}). */
     void tick() {
         for (Session s : sessions.values()) {
             if (!s.active) continue;
@@ -208,7 +236,7 @@ public final class TimedFlight implements Listener, AutoCloseable {
                 s.active = false;
                 continue;
             }
-            if (!p.isFlying() || p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) continue;
+            if (!spends(p)) continue;
             s.seconds = Math.max(0, s.seconds - 1);
             s.unsaved++;
             if (s.seconds == 0) {

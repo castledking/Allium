@@ -23,6 +23,11 @@ UUID; a different world with the same name is never substituted or created.
 | `/warp <name>` | `allium.warp` **and** `allium.warps.<name>` | base true; named access false |
 | `/delwarp <name>` | `allium.delwarp` | op |
 | `/warps` | `allium.warps`, plus access to each listed warp | base true; named access false |
+| `/warpinfo <warp>` | `allium.warpinfo` | op |
+| `/warp <warp> <player>` | `allium.warp` **and** `allium.warp.others` | op |
+| `/renamehome <home> <newhome>` | `allium.renamehome` | true |
+| `/renamehome <player>:<home> <newhome>` | `allium.renamehome.others` | op |
+| `/core sethomes <player> [n\|+n\|-n\|-1]` | `allium.sethomes` | op |
 
 Only holders of `allium.homes.others` can list another player's homes. Omitted home names
 mean `home`. Names contain 1–32 ASCII letters, digits, underscores or hyphens and
@@ -40,6 +45,17 @@ non-false default blocks that warp and produces a diagnostic; Allium does not
 rewrite another plugin's permission. Permission and destination revision/location
 are checked again when the warmup commits. Deleting/changing the destination or
 revoking access cancels that operation.
+
+## Bed clicks, the home compass and worlds
+
+- **Bed clicks:** with `allium.sethome.bed`, clicking a bed in the overworld during the day
+  (not sneaking, no thunderstorm) sets the player's respawn point there, so `/home bed` leads to
+  it (`home.bed-set`). At night the bed is slept in as usual.
+- **Compass:** with `homes.compass-towards-home-perm: true` (default false), holders of
+  `allium.home.compass` have their compass point at their home named `home`, else the first by
+  name, updated when homes change, on join and on `/core reload`.
+- **Worlds:** each world gets `allium.worlds.<world>` (default true), also worlds loaded later.
+  Without it, a teleport into that world is refused (`teleport.world-denied`).
 
 ## Beds and other players' homes
 
@@ -71,6 +87,11 @@ Each visit or deletion is logged as `Home audit actor=<uuid> owner=<uuid> home=<
 `action=delete` for deletions.
 
 ## Limits and confirmation
+
+`/core sethomes <player>` shows a player's home limit and how it is made up (permissions, the
+override, homes set); `/core sethomes <player> <n>` stores an override of `n` (0-1000) in the
+database, `+n`/`-n` changes the current limit, and `-1` clears it. As in legacy Allium the
+override never lowers what the player's permissions grant. Offline players are found by name.
 
 The home limit is the maximum of `homes.default-limit`, the highest effective
 granted `allium.sethome.multiple.<n>` or legacy `allium.sethome.<n>`, and the

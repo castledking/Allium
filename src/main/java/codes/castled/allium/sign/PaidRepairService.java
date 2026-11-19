@@ -147,7 +147,7 @@ public final class PaidRepairService implements Listener {
                         if (refused.reason().equals("INSUFFICIENT_FUNDS") || refused.reason().equals("MISSING_ACCOUNT")) {
                             plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_FUNDS, "{price}", display);
                         } else {
-                            plugin.getMessageManager().send(player, Messages.ECO_OPERATION_REFUSED, "{reason}", refused.reason());
+                            codes.castled.allium.economy.EconomyRuntime.sendRefusal(plugin, player, refused.reason());
                         }
                     });
                     return;

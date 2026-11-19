@@ -53,10 +53,13 @@ public final class TeleportService implements Listener {
     private final Map<UUID,OfflineLookup> offlineLookups=new HashMap<>();
     private final Set<UUID> committing=new HashSet<>();
     private volatile TeleportSettings settings;
+    private final Map<UUID,SelectorConfirmation> selectorConfirmations=new HashMap<>();
     private SavedLocation spawn;
     private boolean spawnReady;
     private boolean closed;
     private TaskHandle timer;
+
+    private record SelectorConfirmation(String command,String signature,long expiresAt) {}
 
     private static final class Session {
         final Player player;
@@ -68,7 +71,8 @@ public final class TeleportService implements Listener {
     }
     private record Operation(Session session,CommandSender actor,String command,Supplier<Location> destination,
                              @Nullable Player anchor,@Nullable RequestTracker.Request request,boolean force,
-                             Location origin,long due,TeleportSettings rules,BooleanSupplier policy,boolean mayMove) {}
+                             Location origin,long due,TeleportSettings rules,BooleanSupplier policy,boolean mayMove,
+                             long[] lastWarmupSecond) {}
     private record HistoryWrite(UUID owner,Session session,SavedLocation origin,String command,long until,
                                 Map<String,Long> cooldowns,Runnable success) {}
 
@@ -94,7 +98,10 @@ public final class TeleportService implements Listener {
         timer=plugin.getScheduler().repeatOnServer(()->{
             long now=System.currentTimeMillis();
             for(var request:requests.expire(now)) tell(request.requester(),Messages.TELEPORT_CANCELLED);
-            for(var operation:List.copyOf(operations.values()))if(now>=operation.due())complete(operation);
+            for(var operation:List.copyOf(operations.values())){
+                if(now>=operation.due())complete(operation);
+                else tickWarmup(operation,now);
+            }
             return true;
         },50,50);
     }
@@ -103,7 +110,7 @@ public final class TeleportService implements Listener {
         closed=true;
         if(timer!=null)timer.cancel();
         HandlerList.unregisterAll(this);
-        requests.expire(Long.MAX_VALUE);operations.clear();offlineLookups.clear();sessions.clear();
+        requests.expire(Long.MAX_VALUE);operations.clear();offlineLookups.clear();selectorConfirmations.clear();sessions.clear();
         // Retry records that exhausted their live attempts before draining the worker. Retries
         // belong to the worker, so shutdown never depends on another server tick.
         for(HistoryWrite write:pendingWrites.values())queueHistory(write);
@@ -116,6 +123,20 @@ public final class TeleportService implements Listener {
     public boolean reloadSettings() {
         try { settings=TeleportSettings.read(plugin.getConfig());return true; }
         catch(IllegalArgumentException e){plugin.logger().warning("Kept previous teleport settings: "+e.getMessage());return false;}
+    }
+    public TeleportSettings settings(){return settings;}
+    /** Two-step confirmation for mass-entity selector teleports (such as {@code /s @e}). */
+    public boolean consumeSelectorConfirmation(UUID actorId,String command,String signature){
+        long now=System.currentTimeMillis();
+        long window=settings.selectorConfirmMillis();
+        if(window<=0){selectorConfirmations.remove(actorId);return true;}
+        SelectorConfirmation existing=selectorConfirmations.get(actorId);
+        if(existing!=null&&existing.expiresAt()>now&&existing.command().equals(command)&&existing.signature().equals(signature)){
+            selectorConfirmations.remove(actorId);
+            return true;
+        }
+        selectorConfirmations.put(actorId,new SelectorConfirmation(command,signature,now+window));
+        return false;
     }
     public boolean ready(UUID id){Session s=sessions.get(id);return s!=null&&s.loaded&&!pendingWrites.containsKey(id);}
     public boolean warming(UUID id){return operations.containsKey(id);}
@@ -245,10 +266,24 @@ public final class TeleportService implements Listener {
         if(!allowed){send(actor,Messages.TELEPORT_REFUSED,"{player}",target.getName());return;}
         begin(mover,actor,command,target::getLocation,target,null,true);
     }
+    /** {@code /tpall [player]}: teleports all visible online players to {@code anchor}, bypassing {@code /tptoggle}. */
+    public void forceAll(CommandSender actor,Player anchor) {
+        if(!actor.hasPermission("allium.tpall")||!visible(actor,anchor)){send(actor,Messages.NO_PERMISSION);return;}
+        int moved=0;
+        for(Player mover:List.copyOf(plugin.getServer().getOnlinePlayers())){
+            if(mover==anchor||!visible(actor,mover))continue;
+            if(!allowed(mover,anchor,actor,true,false,true)||!allowed(anchor,mover,actor,true,false,true))continue;
+            if(begin(mover,actor,"tpall",anchor::getLocation,anchor,null,true))moved++;
+        }
+        plugin.logger().info("Teleport audit actor="+actor.getName()+" command=tpall anchor="+anchor.getUniqueId()+" moved="+moved);
+        if(moved==0)send(actor,Messages.TELEPORT_ALL_NONE);
+        else send(actor,Messages.TELEPORT_ALL,"{count}",Integer.toString(moved),"{player}",anchor.getName());
+    }
     private static boolean overridesToggle(CommandSender actor,String command){
         return actor.hasPermission("allium.teleport.bypass.toggle")
                 || command.equals("tpo")&&actor.hasPermission("allium.tpo")
-                || command.equals("tpohere")&&actor.hasPermission("allium.tpohere");
+                || command.equals("tpohere")&&actor.hasPermission("allium.tpohere")
+                || command.equals("tpall")&&actor.hasPermission("allium.tpall");
     }
     public void registerWorldPermission(World world){
         if(world==null||world.getName()==null||plugin.getServer()==null||plugin.getServer().getPluginManager()==null)return;
@@ -342,13 +377,26 @@ public final class TeleportService implements Listener {
         if(safety.ungenerated(wanted,rules)){send(actor,Messages.TELEPORT_UNGENERATED);return false;}
         var checked=safety.resolve(wanted,safetyRules(mover,actor,rules));
         if(checked.isEmpty()){send(actor,Messages.TELEPORT_UNSAFE);return false;}
-        long warmup=actor.hasPermission("allium.teleport.bypass.warmup")||typed(actor,"timer.bypass",command)?0:rules.warmupMillis();
+        long warmup=command.equals("tpall")||actor.hasPermission("allium.teleport.bypass.warmup")||typed(actor,"timer.bypass",command)?0:rules.warmupMillis();
+        long initialSeconds=warmup<=0?0:Math.max(1L,(warmup+999L)/1000L);
         var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),now+warmup,rules,policy,
-                typed(mover,"timer.move",command));
+                typed(mover,"timer.move",command),new long[]{initialSeconds});
         operations.put(mover.getUniqueId(),operation);
         if(warmup==0)complete(operation);
-        else send(mover,Messages.TELEPORT_WARMUP,"{time}",Double.toString(warmup/1000.0));
+        else send(mover,Messages.TELEPORT_WARMUP,"{warmup}",Long.toString(initialSeconds),"{time}",Long.toString(initialSeconds));
         return true;
+    }
+    private void tickWarmup(Operation operation,long now) {
+        long remaining=operation.due()-now;
+        if(remaining<=0)return;
+        long seconds=Math.max(1L,(remaining+999L)/1000L);
+        if(seconds==operation.lastWarmupSecond()[0])return;
+        operation.lastWarmupSecond()[0]=seconds;
+        Player mover=operation.session().player;
+        if(samePlayer(mover)){
+            String formatted=Long.toString(seconds);
+            plugin.getMessageManager().sendActionBarUpdate(mover,Messages.TELEPORT_WARMUP,"{warmup}",formatted,"{time}",formatted);
+        }
     }
     private void complete(Operation operation) {
         UUID id=operation.session().player.getUniqueId();
@@ -383,6 +431,7 @@ public final class TeleportService implements Listener {
         OfflineLookup offline=operation.command().equals("tpoffline")?offlineLookups.get(id):null;
         Location origin=mover.getLocation().clone();
         operations.remove(id);offlineLookups.remove(id);committing.add(id);
+        if(operation.lastWarmupSecond()[0]>0&&samePlayer(mover))plugin.getMessageManager().clearActionBarIfPresent(mover,Messages.TELEPORT_WARMUP);
         boolean success;
         try{success=mover.teleport(destination.get(),PlayerTeleportEvent.TeleportCause.PLUGIN);}
         finally{committing.remove(id);}
@@ -453,7 +502,9 @@ public final class TeleportService implements Listener {
     }
     private void interrupt(Operation operation,String reason) {
         if(operations.remove(operation.session().player.getUniqueId(),operation)){
-            offlineLookups.remove(operation.session().player.getUniqueId());send(operation.session().player,Messages.TELEPORT_INTERRUPTED,"{reason}",reason);
+            offlineLookups.remove(operation.session().player.getUniqueId());
+            if(operation.lastWarmupSecond()[0]>0&&samePlayer(operation.session().player))plugin.getMessageManager().clearActionBarIfPresent(operation.session().player,Messages.TELEPORT_WARMUP);
+            send(operation.session().player,Messages.TELEPORT_INTERRUPTED,"{reason}",reason);
         }
     }
     private void saveHistory(Session session,SavedLocation origin,String command,long until,int attempt,Runnable success) {
@@ -566,7 +617,7 @@ public final class TeleportService implements Listener {
     @EventHandler(priority=EventPriority.MONITOR) public void join(PlayerJoinEvent e){joined(e.getPlayer());}
     @EventHandler(priority=EventPriority.MONITOR) public void quit(PlayerQuitEvent e){
         Player player=e.getPlayer();
-        saveLogout(player);offlineLookups.remove(player.getUniqueId());
+        saveLogout(player);offlineLookups.remove(player.getUniqueId());selectorConfirmations.remove(player.getUniqueId());
         for(var op:List.copyOf(operations.values()))if(op.actor()==player||op.session().player==player||op.anchor()==player||op.request()!=null
                 &&(op.request().requester().equals(player.getUniqueId())||op.request().recipient().equals(player.getUniqueId())))interrupt(op,"player went offline");
         requests.cancelPlayer(player.getUniqueId());Session s=sessions.get(player.getUniqueId());if(s!=null&&s.player==player)sessions.remove(player.getUniqueId());

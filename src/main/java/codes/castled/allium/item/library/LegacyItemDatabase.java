@@ -60,7 +60,9 @@ public final class LegacyItemDatabase {
             replace(file, yaml.saveToString());
             plugin.getLogger().info("Updated Essentials legacy item IDs; custom mappings retained, original saved as " + backup.getFileName());
         }
+        // Aliases added to Allium later reach an existing itemdb.yml; the server's own file wins where both name one.
         var aliases = new HashMap<String, String>();
+        for (String group : List.of("aliases", "legacy-ids")) aliases.putAll(section(defaults, group));
         for (String group : List.of("aliases", "legacy-ids")) aliases.putAll(section(yaml, group));
         if (aliases.size() > 100000) throw new IOException("Too many item aliases");
         return new LegacyItemDatabase(aliases);

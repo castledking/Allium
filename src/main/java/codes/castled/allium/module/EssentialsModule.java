@@ -143,6 +143,7 @@ public final class EssentialsModule extends AbstractModule {
         broadcasts.start();
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.BroadcastCommand(plugin, CoreCommandSpecs.BROADCAST, broadcasts));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.BroadcastCommand(plugin, CoreCommandSpecs.BROADCASTS, broadcasts));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.SpawnMobCommand(plugin));
         motdOnJoin = new codes.castled.allium.command.essentials.MotdOnJoin(plugin, motd);
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
             plugin.getServer().getPluginManager().registerEvents(motdOnJoin, plugin);

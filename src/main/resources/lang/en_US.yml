@@ -131,7 +131,7 @@ teleport:
     - "{prefix} &cTeleport request cancelled."
     - "[sound] block.note_block.hat 0.8"
   warmup:
-    - "{prefix} &eTeleporting in {time}s. Stay still and avoid damage."
+    - "[actionbar] &eTeleporting in &f{warmup}s&e. Stay still and avoid damage."
     - "[sound] block.note_block.chime 1.0"
   interrupted:
     - "{prefix} &cTeleport cancelled: {reason}."
@@ -169,6 +169,49 @@ teleport:
   toggle-off:
     - "{prefix} &c{player} no longer accepts teleport requests. Incoming requests cancelled."
     - "[sound] block.note_block.bass 0.85"
+  all:
+    - "{prefix} &aTeleported &f{count} &aplayer(s) to &f{player}&a."
+    - "[sound] entity.enderman.teleport 1.1"
+  all-none:
+    - "{prefix} &7No other online players to teleport."
+    - "[sound] block.note_block.bass 0.85"
+  entity-limit-exceeded:
+    - "{prefix} &cSelection matched &f{count} &centities, which exceeds the maximum limit of &f{limit}&c."
+    - "[sound] block.note_block.bass 0.75"
+  selector-confirm:
+    - "{prefix} &eTargeted &f{count} &e{label}. Run &f{command} &eagain within &f{seconds}s &eto confirm the teleport."
+    - "[sound] block.note_block.bell 1.0"
+  entities-moved:
+    - "{prefix} &aTeleported &f{count} &a{label}."
+    - "[sound] entity.enderman.teleport 1.05"
+spawnmob:
+  list:
+    - "{prefix} &6Available mobs: &f{mobs}"
+    - "[sound] ui.button.click 1.2"
+  spawned:
+    - "{prefix} &aSpawned &f{count} &a{mob}&a."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  limit:
+    - "{prefix} &eAmount reduced to the server spawn limit (&f{limit}&e)."
+    - "[sound] block.note_block.hat 0.9"
+  invalid-mob:
+    - "{prefix} &cUnknown or unspawnable mob: &f{mob}&c."
+    - "[sound] block.note_block.bass 0.75"
+  no-perm-mob:
+    - "{prefix} &cYou don't have permission to spawn &f{mob}&c."
+    - "[sound] entity.villager.no 0.9"
+  no-stack:
+    - "{prefix} &cYou don't have permission to stack mobs."
+    - "[sound] entity.villager.no 0.9"
+  invalid-amount:
+    - "{prefix} &cAmount must be a positive whole number."
+    - "[sound] block.note_block.bass 0.75"
+  unable:
+    - "{prefix} &cUnable to spawn that mob here."
+    - "[sound] block.note_block.bass 0.75"
+  data-list:
+    - "{prefix} &7Available data for &f{mob}&7: &f{data}"
+    - "[sound] ui.button.click 1.2"
 travel:
   loading:
     - "{prefix} &cTravel data is loading. Try again shortly."
@@ -410,7 +453,30 @@ economy:
   admin-updated:
     - "{prefix} &aYour balance is now &e{balance}&a."
   operation-refused:
-    - "{prefix} &cEconomy refused: &f{reason}"
+    - "{prefix} &cThat economy transaction could not be completed (&f{reason}&c)."
+    - "[sound] block.note_block.bass 0.75"
+  pay-self:
+    - "{prefix} &cYou can't pay yourself."
+    - "[sound] block.note_block.bass 0.8"
+  refused:
+    insufficient-funds:
+      - "{prefix} &cYou don't have enough funds for that."
+      - "[sound] entity.villager.no 0.9"
+    balance-cap:
+      - "{prefix} &cThat transaction would exceed the maximum allowed balance."
+      - "[sound] block.note_block.bass 0.75"
+    missing-account:
+      - "{prefix} &cThat economy account could not be found."
+      - "[sound] block.note_block.bass 0.75"
+    settings-changed:
+      - "{prefix} &cEconomy settings changed while processing. Please try again."
+      - "[sound] block.note_block.hat 0.85"
+    duplicate-request:
+      - "{prefix} &cThat transaction conflicted with an earlier request. Please try again."
+      - "[sound] block.note_block.bass 0.75"
+    transaction-busy:
+      - "{prefix} &cThat transaction could not be completed right now. Please try again shortly."
+      - "[sound] block.note_block.hat 0.85"
   top:
     - "{prefix} &fBalancetop &7[{page}/{pages}]"
   top-total:
@@ -432,13 +498,13 @@ economy:
   payment-received:
     - "{prefix} &aReceived &f{amount} &afrom &f{player}&a."
   payment-sent:
-    - "{prefix} &aPaid &f{amount} &ato &f{player}&a. &7Operation {operation}"
+    - "{prefix} &aPaid &f{amount} &ato &f{player}&a."
   payment-sent-taxed:
-    - "{prefix} &aPaid &f{net} &ato &f{player} &7({tax} tax to {account})&a. &7Operation {operation}"
+    - "{prefix} &aPaid &f{net} &ato &f{player} &7({tax} tax)&a."
   cheque-created:
     - "{prefix} &aCreated a cheque for &e{amount}&a."
   cheque-created-taxed:
-    - "{prefix} &aCreated a cheque for &e{amount} &7({tax} tax to {account})&a."
+    - "{prefix} &aCreated a cheque for &e{amount} &7({tax} tax)&a."
   cheque-given:
     - "{prefix} &aGave an admin cheque for &e{amount} &ato &f{player}&a."
   cheque-received:

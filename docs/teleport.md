@@ -23,7 +23,15 @@ This slice handles local server worlds, not proxy travel or Folia regions.
 | `/tppos <x> <y> <z> [yaw] [pitch] [world]` | The same, as its own command | `allium.tppos` |
 | `/top` | The highest block in your column with two free blocks above it; in a world with a roof (the Nether) the highest spot under it, or the roof itself with `allium.top.roof` | `allium.top` |
 | `/bottom` | The lowest such block below you | `allium.bottom` |
-| `/tphere <player>` | Staff bring a player to you | `allium.tphere` |
+| `/tphere <player>` (`/s`) | Staff bring a player to you | `allium.tphere` |
+| `/tpo <player>`, `/tpohere <player>` | As `/tp` and `/tphere`, past the player's `/tptoggle` | `allium.tpo`, `allium.tpohere` |
+| `/tpall [player]` | Bring every visible online player to you (or to the named player) at once, past `/tptoggle` | `allium.tpall` |
+
+**Entity selectors:** `/s @e…` (`/tphere` and `/there`) first reports how many entities matched and
+asks you to run the same command again within `teleport.entity-limits.confirm-seconds` (15) to
+move them. More than `teleport.entity-limits.tphere-max` (50) matches are refused with the count.
+`/tpe` (`/tpent`) and `/tppet` selections stop at `tpe-max` (50) and `tppet-max` (10), or at a
+lower `allium.tpmob.<n>` / `allium.tppet.<n>` node.
 
 Console uses `/tp <mover> <destination>` or an explicit toggle target. Base travel
 commands default to players; staff permissions default to operators. Completion uses
@@ -53,6 +61,9 @@ Staff authorization/refusal and completed force moves are logged with participan
 command, result and reason. An issuing player disconnecting cancels their operation.
 
 ## Requests, safety and warmup
+
+The warmup counts down in the action bar (`teleport.warmup`, an `[actionbar]` line), every
+second, with no chat line.
 
 `teleport.request-expiry-seconds` bounds pending requests. Each requester has one
 outgoing request; latest acceptance means latest insertion, not longest expiry.

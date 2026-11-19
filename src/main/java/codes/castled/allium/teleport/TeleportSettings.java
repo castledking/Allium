@@ -11,7 +11,23 @@ import java.util.Objects;
 public record TeleportSettings(long warmupMillis, double movementTolerance, long requestExpiryMillis,
                                boolean deathBack, boolean safety, boolean adjust, int radius, int vertical,
                                boolean lava, boolean voids, boolean suffocation, boolean falls, boolean loadChunk,
-                               Map<String, Long> cooldowns) {
+                               Map<String, Long> cooldowns,
+                               int tppetMaxEntities, int tpeMaxEntities, int tphereMaxEntities,
+                               long selectorConfirmMillis) {
+
+    public static final int DEFAULT_TPPET_MAX = 10;
+    public static final int DEFAULT_TPE_MAX = 50;
+    public static final int DEFAULT_TPHERE_MAX = 50;
+    public static final long DEFAULT_SELECTOR_CONFIRM_MILLIS = 15_000L;
+
+    public TeleportSettings(long warmupMillis, double movementTolerance, long requestExpiryMillis,
+                            boolean deathBack, boolean safety, boolean adjust, int radius, int vertical,
+                            boolean lava, boolean voids, boolean suffocation, boolean falls, boolean loadChunk,
+                            Map<String, Long> cooldowns) {
+        this(warmupMillis, movementTolerance, requestExpiryMillis, deathBack, safety, adjust, radius, vertical,
+                lava, voids, suffocation, falls, loadChunk, cooldowns,
+                DEFAULT_TPPET_MAX, DEFAULT_TPE_MAX, DEFAULT_TPHERE_MAX, DEFAULT_SELECTOR_CONFIRM_MILLIS);
+    }
 
     public TeleportSettings {
         if (warmupMillis < 0 || warmupMillis > 300_000
@@ -21,6 +37,12 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
         }
         if (radius < 0 || radius > 8 || vertical < 0 || vertical > 16) {
             throw new IllegalArgumentException("teleport safety search exceeds bounded radius/height");
+        }
+        if (tppetMaxEntities < 1 || tppetMaxEntities > 1000
+                || tpeMaxEntities < 1 || tpeMaxEntities > 1000
+                || tphereMaxEntities < 1 || tphereMaxEntities > 1000
+                || selectorConfirmMillis < 0 || selectorConfirmMillis > 300_000) {
+            throw new IllegalArgumentException("teleport entity-limits settings out of range");
         }
         cooldowns = Map.copyOf(cooldowns);
         for (var entry : cooldowns.entrySet()) {
@@ -35,7 +57,8 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
         if (!flight && !unsafe) return this;
         return new TeleportSettings(warmupMillis, movementTolerance, requestExpiryMillis, deathBack,
                 safety && !unsafe, adjust, radius, vertical, lava, voids && !flight,
-                suffocation, falls && !flight, loadChunk, cooldowns);
+                suffocation, falls && !flight, loadChunk, cooldowns,
+                tppetMaxEntities, tpeMaxEntities, tphereMaxEntities, selectorConfirmMillis);
     }
 
     public long cooldown(String command) {
@@ -47,11 +70,16 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
         // Reject malformed sections rather than silently treating their children as unset.
         section(config, "safety");
         section(config, "back");
+        ConfigurationSection limits = section(config, "entity-limits");
         double warmup = number(config, "warmup-seconds", 3, 0, 300);
         double expiry = number(config, "request-expiry-seconds", 60, 0.1, 3600);
         double movement = number(config, "movement-tolerance", 0.1, 0, 5);
         int radius = integer(config, "safety.search-radius", 3, 8);
         int vertical = integer(config, "safety.vertical-search", 4, 16);
+        int tppetMax = integer(limits, "tppet-max", DEFAULT_TPPET_MAX, 1, 1000);
+        int tpeMax = integer(limits, "tpe-max", DEFAULT_TPE_MAX, 1, 1000);
+        int tphereMax = integer(limits, "tphere-max", DEFAULT_TPHERE_MAX, 1, 1000);
+        double confirmSec = number(limits, "confirm-seconds", 15, 0, 300);
         Map<String, Long> cooldowns = new HashMap<>();
         ConfigurationSection commands = section(config, "cooldowns");
         for (String key : commands.getKeys(false)) {
@@ -63,7 +91,8 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
                 bool(config, "safety.adjust", true), radius, vertical,
                 bool(config, "safety.avoid-lava", true), bool(config, "safety.avoid-void", true),
                 bool(config, "safety.avoid-suffocation", true), bool(config, "safety.avoid-falls", true),
-                bool(config, "safety.load-destination-chunk", false), cooldowns);
+                bool(config, "safety.load-destination-chunk", false), cooldowns,
+                tppetMax, tpeMax, tphereMax, (long) (confirmSec * 1000));
     }
 
     private static ConfigurationSection section(ConfigurationSection root, String path) {
@@ -84,7 +113,11 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
     }
 
     private static int integer(ConfigurationSection config, String path, int fallback, int max) {
-        double value = number(config, path, fallback, 0, max);
+        return integer(config, path, fallback, 0, max);
+    }
+
+    private static int integer(ConfigurationSection config, String path, int fallback, int min, int max) {
+        double value = number(config, path, fallback, min, max);
         if (value != Math.rint(value)) throw new IllegalArgumentException("teleport " + path + " must be an integer");
         return (int) value;
     }

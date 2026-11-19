@@ -22,7 +22,35 @@ public final class CompanionTeleports implements Listener,AutoCloseable {
   // Defer mutation until every protection listener has had its turn.
   plugin.getScheduler().runOnServerLater(()->{if(event.isCancelled()||selections.get(s.owner.getUniqueId())!=s||!e.isValid())return;select(s,e,pet);},50);
  }
- private void select(Selection s,Entity e,boolean pets){if(!(pets?s.petMode:s.entityMode)||pets&&!owned(e,s.owner)||plugin.getServer().getPlayer(s.owner.getUniqueId())!=s.owner)return;String permission=pets?"allium.tppet":"allium.tpmob";if(!s.owner.hasPermission(permission))return;Set<UUID> selected=pets?s.pets:s.entities;UUID id=e.getUniqueId();if(selected.remove(id)){if(!s.pets.contains(id)&&!s.entities.contains(id))release(s.owner.getUniqueId(),id);send(s.owner,"Deselected "+e.getType().name()+".");return;}int max=1;for(int i=1;i<=10;i++)if(s.owner.hasPermission(permission+"."+i))max=i;if(selected.size()>=max){send(s.owner,"Selection limit: "+max);return;}selected.add(id);var glow=glows.computeIfAbsent(id,k->new Glow(e,e.isGlowing(),new HashSet<>()));glow.owners().add(s.owner.getUniqueId());e.setGlowing(true);send(s.owner,"Selected "+e.getType().name()+".");}
+ private void select(Selection s,Entity e,boolean pets){if(!(pets?s.petMode:s.entityMode)||pets&&!owned(e,s.owner)||plugin.getServer().getPlayer(s.owner.getUniqueId())!=s.owner)return;String permission=pets?"allium.tppet":"allium.tpmob";if(!s.owner.hasPermission(permission))return;Set<UUID> selected=pets?s.pets:s.entities;UUID id=e.getUniqueId();if(selected.remove(id)){if(!s.pets.contains(id)&&!s.entities.contains(id))release(s.owner.getUniqueId(),id);send(s.owner,"Deselected "+e.getType().name()+".");return;}int max=maxSelection(s.owner,pets);if(selected.size()>=max){send(s.owner,"Selection limit: "+max);return;}selected.add(id);var glow=glows.computeIfAbsent(id,k->new Glow(e,e.isGlowing(),new HashSet<>()));glow.owners().add(s.owner.getUniqueId());e.setGlowing(true);send(s.owner,"Selected "+e.getType().name()+".");}
+ /** Maximum entities {@code owner} may select at once for {@code /tppet} (pets=true) or {@code /tpe} (pets=false). */
+ public int maxSelection(Player owner,boolean pets){
+  TeleportSettings cfg=TeleportSettings.read(plugin.getConfig());
+  int configMax=pets?cfg.tppetMaxEntities():cfg.tpeMaxEntities();
+  String permission=pets?"allium.tppet":"allium.tpmob";
+  if(owner.isOp()||owner.hasPermission("allium.admin")||owner.hasPermission(permission+".*"))return configMax;
+  String prefix=permission+".";
+  int highest=0;
+  var effective=owner.getEffectivePermissions();
+  if(effective!=null){
+   for(var info:effective){
+    if(!info.getValue())continue;
+    String node=info.getPermission().toLowerCase(Locale.ROOT);
+    if(node.startsWith(prefix)){
+     String suffix=node.substring(prefix.length());
+     if(suffix.matches("[0-9]{1,4}")){
+      int val=Integer.parseInt(suffix);
+      if(val>highest&&owner.hasPermission(info.getPermission()))highest=val;
+     }
+    }
+   }
+  }
+  if(highest==0){
+   int probe=Math.min(configMax,100);
+   for(int i=1;i<=probe;i++)if(owner.hasPermission(prefix+i))highest=i;
+  }
+  return highest>0?Math.min(highest,configMax):configMax;
+ }
  private static boolean owned(Entity e,Player p){return e instanceof Tameable t&&t.isTamed()&&t.getOwner()!=null&&p.getUniqueId().equals(t.getOwner().getUniqueId());}
  /** Snapshot of the player's current /tpe selection, without consuming it. */
  public List<LivingEntity> selectedMobs(Player player) {

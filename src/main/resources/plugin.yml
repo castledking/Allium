@@ -189,6 +189,11 @@ commands:
     description: Show the timed broadcasts, or send one now
     usage: /<command> [send <name>|next]
     permission: allium.broadcasts.admin
+  spawnmob:
+    description: Spawn one or more mobs at your target block or a player
+    usage: /<command> <mob>[:data][,<mount>[:data]] [amount] [player]
+    aliases: [mob]
+    permission: allium.spawnmob
   motd:
     description: Show the message of the day
     usage: /<command> [section] [page]
@@ -334,6 +339,11 @@ commands:
     description: Teleport a player to you, bypassing /tptoggle
     usage: /<command> <player>
     permission: allium.tpohere
+
+  tpall:
+    description: Teleport all online players to your location, bypassing /tptoggle
+    usage: /<command> [player]
+    permission: allium.tpall
 
   sethome:
     description: Set a home here
@@ -715,6 +725,11 @@ permissions:
       allium.compass: true
       allium.tpo: true
       allium.tpohere: true
+      allium.tpall: true
+      allium.spawnmob: true
+      allium.spawnmob.*: true
+      allium.spawnmob.stack: true
+      allium.spawnmob.others: true
       allium.warpinfo: true
       allium.warp.others: true
       allium.renamehome: true
@@ -1267,6 +1282,26 @@ permissions:
 
   allium.tpohere:
     description: Allows /tpohere to bring a player to you, bypassing /tptoggle
+    default: op
+
+  allium.tpall:
+    description: Allows /tpall to teleport all online players to your location, bypassing /tptoggle
+    default: op
+
+  allium.spawnmob:
+    description: Allows using /spawnmob
+    default: op
+
+  allium.spawnmob.*:
+    description: Allows spawning all mob types with /spawnmob
+    default: op
+
+  allium.spawnmob.stack:
+    description: Allows stacking mobs with commas in /spawnmob
+    default: op
+
+  allium.spawnmob.others:
+    description: Allows spawning mobs at another player's location with /spawnmob
     default: op
 
   allium.delwarp:

@@ -245,7 +245,8 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             if(!actor.isOnline()||plugin.getServer().getPlayer(source)!=actor||!actor.hasPermission("allium.pay")){return;}
             TaxSettings tax=taxSettings();
             boolean isTaxAccount=recipient.equals(tax.accountUuid());
-            if(source.equals(recipient)||target!=null&&!PlayerNameVisibility.canSee(actor,target)
+            if(source.equals(recipient)){tell(sender,Messages.ECO_PAY_SELF);return;}
+            if(target!=null&&!PlayerNameVisibility.canSee(actor,target)
                     ||!isTaxAccount&&target==null&&(!engine.settings().offlinePay()||!actor.hasPermission("allium.pay.offline"))){tell(sender,refusal());return;}
             var prefs=preferences();
             if(target!=null&&prefs!=null&&prefs.acceptance(recipient,PreferenceKey.ACCEPT_PAYMENTS)!=PreferenceSessions.Acceptance.ACCEPTS){tell(sender,refusal());return;}
@@ -278,8 +279,34 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     private void receipt(CommandSender sender,Mutation result,boolean generic){
         if(result instanceof Committed done)tell(sender,Messages.ECO_COMMITTED,"{operation}",done.operationId().toString());
         else if(result instanceof Unknown unknown)tell(sender,Messages.ECO_UNKNOWN,"{operation}",unknown.operationId().toString());
-        else if(result instanceof Rejected rejected)tell(sender,generic&&rejected.reason().equals("REFUSED")?refusal():Messages.ECO_OPERATION_REFUSED,"{reason}",rejected.reason());
+        else if(result instanceof Rejected rejected){
+            Messages msg=refusalMessage(rejected.reason());
+            if(msg==Messages.ECO_OPERATION_REFUSED)tell(sender,msg,"{reason}",rejected.reason());
+            else tell(sender,msg);
+        }
         else tell(sender,Messages.ECO_STORAGE);
+    }
+    /** Maps an internal economy engine rejection code to its localized lang message. */
+    public static Messages refusalMessage(String reason){
+        if(reason==null)return Messages.ECO_OPERATION_REFUSED;
+        return switch(reason){
+            case "INSUFFICIENT_FUNDS" -> Messages.ECO_REFUSED_INSUFFICIENT_FUNDS;
+            case "CAP" -> Messages.ECO_REFUSED_BALANCE_CAP;
+            case "MISSING_ACCOUNT" -> Messages.ECO_REFUSED_MISSING_ACCOUNT;
+            case "REFUSED" -> Messages.ECO_REFUSED;
+            case "SETTINGS_CHANGED" -> Messages.ECO_REFUSED_SETTINGS_CHANGED;
+            case "IDEMPOTENCY_CONFLICT" -> Messages.ECO_REFUSED_DUPLICATE_REQUEST;
+            case "WORKFLOW_REQUIRED","WORKFLOW_REFUSED","WORKFLOW_EXISTS",
+                    "WORKFLOW_CONFLICT","WORKFLOW_TERMINAL","MISSING_RESERVATION","NOT_HELD" ->
+                    Messages.ECO_REFUSED_TRANSACTION_BUSY;
+            default -> Messages.ECO_OPERATION_REFUSED;
+        };
+    }
+    /** Sends the localized message for an economy rejection code on the current (server) thread. */
+    public static void sendRefusal(PluginStart plugin,CommandSender sender,String reason){
+        Messages msg=refusalMessage(reason);
+        if(msg==Messages.ECO_OPERATION_REFUSED)plugin.getMessageManager().send(sender,msg,"{reason}",reason==null?"unknown":reason);
+        else plugin.getMessageManager().send(sender,msg);
     }
     private void balance(CommandSender sender,String[] args){
         if(args.length>1)throw new IllegalArgumentException("balance");

@@ -11,7 +11,10 @@ giveable item remain unavailable; the grass item follows the runtime's rename.
 The items module extracts the database to `plugins/Allium/itemdb.yml` when absent.
 On existing files it adds missing numeric defaults and corrects values matching
 the original bundled numeric table. Custom aliases and custom numeric values are
-retained. The first upgrade saves the exact original as
+retained. Aliases are read from the bundled database first and then from the server's file, so
+aliases added to Allium later (such as `npick`, `nhelm` or `nspade` for netherite, like `dpick`
+for diamond) work on servers whose `itemdb.yml` predates them; where both name an alias, the
+server's file wins. To drop a bundled alias, map it to another item in the file. The first upgrade saves the exact original as
 `itemdb.yml.before-legacy-id-fix` and replaces the file atomically. A customized
 value identical to an old default is indistinguishable from that default and is
 corrected. `/allium reload` prepares an immutable replacement index; a malformed

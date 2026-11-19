@@ -449,7 +449,12 @@ public final class TaxService {
                 } else if ("WORKFLOW_REFUSED".equals(refused.reason())) {
                     runtime.tellSender(sender, Messages.ECO_TAX_ALREADY_REFUNDED, "{id}", Long.toString(record.id()));
                 } else {
-                    runtime.tellSender(sender, Messages.ECO_OPERATION_REFUSED, "{reason}", refused.reason());
+                    Messages refusal = EconomyRuntime.refusalMessage(refused.reason());
+                    if (refusal == Messages.ECO_OPERATION_REFUSED) {
+                        runtime.tellSender(sender, refusal, "{reason}", refused.reason());
+                    } else {
+                        runtime.tellSender(sender, refusal);
+                    }
                 }
             } else if (result instanceof EconomyResult.Unknown unknown) {
                 runtime.tellSender(sender, Messages.ECO_UNKNOWN, "{operation}", unknown.operationId().toString());

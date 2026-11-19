@@ -20,6 +20,7 @@ startup without registering listeners or intercepting dispatch.
 | `/info` | — | `allium.info` | `op` (in `allium.*`) | Shows server name and vanish-aware online player count |
 | `/speed [walk\|fly] <0..10\|reset> [player]` | `/wspeed` and `/walkspeed` are `/speed walk` | `allium.speed`, `allium.speed.others` | `op` (in `allium.*`) | Adjusts walk or fly speed (`0..10` mapped to `0.0..1.0`) or resets defaults (`0.2` walk, `0.1` fly) |
 | `/coords [player]` | `/getpos`, `/whereami` | `allium.getpos` (true), `allium.getpos.others` | others `op` (in `allium.*`) | The world, block X/Y/Z with their directions, yaw (0-360) and pitch |
+| `/spawnmob <mob>[:data][,<mount>[:data]] [amount] [player]` | — | `allium.spawnmob`, and `allium.spawnmob.<mob>` (or `.*`) per mob; `allium.spawnmob.stack` for riders; `allium.spawnmob.others` | `op` (in `allium.*`) | Essentials-style: spawns at the block you look at (or at the player), at most `spawnmob.limit` (10) entities per command. Without arguments, lists the mobs you may spawn |
 | `/compass` | — | `allium.compass` (true) | in `allium.*` | The direction the player faces, one of eight, and the bearing in degrees clockwise from north |
 | `/ping [player]` | — | `allium.ping`, `allium.ping.others` | `op` (in `allium.*`) | Reports self or visible target ping in milliseconds |
 | `/ext [player]` | `/extinguish` | `allium.ext`, `allium.ext.others` | `op` (in `allium.*`) | Extinguishes fire ticks (`setFireTicks(0)`) on self or target |

@@ -24,22 +24,22 @@ public final class TeleportCommand implements SpecCommandHandler {
             if(target==null){if(args.length<2)context.sendInvalidArgs(spec.selfUsage());return;}
             service.toggle(sender,target,args.length==0?null:args[0].equalsIgnoreCase("on"));return;
         }
-        if(command.equals("tp")){
+        if(command.equals("tp")||command.equals("tpo")){
             if(args.length<1||args.length>2||!(sender instanceof Player)&&args.length!=2){context.sendInvalidArgs(spec.selfUsage());return;}
             Player mover=args.length==1?(Player)sender:target(sender,args[0]);
             Player to=target(sender,args[args.length-1]);
             if(mover!=null&&to!=null){
-                if(mover!=sender&&!sender.hasPermission("allium.tp.others")){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
-                service.force(sender,mover,to,"tp");
+                if(command.equals("tp")&&mover!=sender&&!sender.hasPermission("allium.tp.others")){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
+                service.force(sender,mover,to,command);
             }return;
         }
         if(!(sender instanceof Player player)){plugin.getMessageManager().send(sender,Messages.PLAYER_ONLY);return;}
         switch(command){
             case "tpoffline" -> {if(args.length!=1){context.sendInvalidArgs(spec.selfUsage());return;}service.offline(player,args[0]);}
-            case "tpa","tpahere","tphere" -> {
+            case "tpa","tpahere","tphere","tpohere" -> {
                 if(args.length!=1){context.sendInvalidArgs(spec.selfUsage());return;}
                 Player to=target(sender,args[0]);if(to==null)return;
-                if(command.equals("tphere"))service.force(sender,to,player,command);
+                if(command.equals("tphere")||command.equals("tpohere"))service.force(sender,to,player,command);
                 else service.request(player,to,command.equals("tpa")?RequestTracker.Kind.TO_TARGET:RequestTracker.Kind.HERE);
             }
             case "tpaccept","tpdeny" -> {

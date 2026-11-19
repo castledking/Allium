@@ -65,6 +65,13 @@ public final class AlliumCommand implements SpecCommandHandler {
                 importLang(sender, apply);
             }
             case "adopt-window" -> adoptWindow(context);
+            case "sethomes" -> {
+                if (plugin.getModuleManager().getModule("travel") instanceof codes.castled.allium.module.TravelModule travel && travel.isEnabled()) {
+                    travel.travel().sethomesAdmin(sender, java.util.Arrays.copyOfRange(context.args(), 1, context.args().length));
+                } else {
+                    plugin.getMessageManager().send(sender, Messages.MODULE_DISABLED);
+                }
+            }
             case "hide" -> {
                 if(plugin.getModuleManager().getModule("hide") instanceof codes.castled.allium.module.HideModule hide && hide.isEnabled())
                     hide.hide().admin(sender,java.util.Arrays.copyOfRange(context.args(),1,context.args().length),context::sendInvalidArgs);

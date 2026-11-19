@@ -13,11 +13,29 @@ public final class TravelCommand implements SpecCommandHandler {
     public TravelCommand(TravelService service,CommandSpec spec){this.service=service;this.spec=spec;}
     @Override public CommandSpec spec(){return spec;}
     @Override public void execute(BukkitCommandContext context) {
+        String command=spec.canonicalName();String[] args=context.args();
+        if(command.equals("warpinfo")){
+            if(args.length!=1){context.sendInvalidArgs(spec.selfUsage());return;}
+            service.warpInfo(context.sender(),args[0]);return;
+        }
+        if(command.equals("warp")&&args.length==2){
+            service.warpOther(context.sender(),args[0],args[1]);return;
+        }
         if(!(context.sender() instanceof Player player)){context.plugin().getMessageManager().send(context.sender(),Messages.PLAYER_ONLY);return;}
-        String command=spec.canonicalName();String[] args=context.args();boolean warp=command.contains("warp");
+        boolean warp=command.contains("warp");
         if(command.equals("bed")){
             if(args.length!=0){context.sendInvalidArgs(spec.selfUsage());return;}
             service.bed(player);return;
+        }
+        if(command.equals("renamehome")){
+            if(args.length!=2){context.sendInvalidArgs(spec.selfUsage());return;}
+            if(args[0].indexOf(':')>0){
+                String[] parts=args[0].split(":",2);
+                service.renameOther(player,parts[0],parts[1],args[1]);
+            }else{
+                service.rename(player,args[0],args[1]);
+            }
+            return;
         }
         if(command.equals("homes")||command.equals("warps")){
             if(!warp&&args.length==1){service.listOther(player,args[0]);return;}

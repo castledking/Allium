@@ -312,6 +312,16 @@ commands:
     description: Teleport a player to you
     permission: allium.tphere
 
+  tpo:
+    description: Teleport to or move a player, bypassing /tptoggle
+    usage: /<command> <player> [target]
+    permission: allium.tpo
+
+  tpohere:
+    description: Teleport a player to you, bypassing /tptoggle
+    usage: /<command> <player>
+    permission: allium.tpohere
+
   sethome:
     description: Set a home here
     usage: /sethome
@@ -323,6 +333,11 @@ commands:
   delhome:
     description: Delete one of your homes
     usage: /delhome [name|player:home]
+
+  renamehome:
+    description: Rename one of your homes
+    usage: /<command> <home|player:home> <newhome>
+    permission: allium.renamehome
 
   homes:
     description: List your homes
@@ -338,8 +353,13 @@ commands:
     usage: /setwarp
 
   warp:
-    description: Teleport to a warp
-    usage: /warp
+    description: Teleport to a warp, or send a player to a warp
+    usage: /<command> <name> [player]
+
+  warpinfo:
+    description: Show a warp's location and permission
+    usage: /<command> <name>
+    permission: allium.warpinfo
 
   delwarp:
     description: Delete a warp
@@ -673,6 +693,15 @@ permissions:
       allium.getpos: true
       allium.getpos.others: true
       allium.compass: true
+      allium.tpo: true
+      allium.tpohere: true
+      allium.warpinfo: true
+      allium.warp.others: true
+      allium.renamehome: true
+      allium.renamehome.others: true
+      allium.sethomes: true
+      allium.sethome.bed: true
+      allium.home.compass: true
       allium.top.roof: true
       allium.bottom: true
       allium.motd: true
@@ -1145,11 +1174,47 @@ permissions:
     description: Allows /delhome <player>:<home> to delete another player's home
     default: op
 
+  allium.renamehome:
+    description: Allows /renamehome <home> <newhome>
+    default: true
+
+  allium.renamehome.others:
+    description: Allows /renamehome <player>:<home> <newhome>
+    default: op
+
+  allium.sethomes:
+    description: Allows viewing and overriding a player's max homes via /core sethomes
+    default: op
+
+  allium.sethome.bed:
+    description: Allows right-clicking a bed during daytime to update /home bed
+    default: true
+
+  allium.home.compass:
+    description: Points your compass toward your first home when homes.compass-towards-home-perm is enabled
+    default: true
+
   allium.setwarp:
     default: op
 
   allium.warp:
     default: true
+
+  allium.warp.others:
+    description: Allows /warp <warp> <player> to warp another player
+    default: op
+
+  allium.warpinfo:
+    description: Allows /warpinfo <warp> to view a warp's location and permission
+    default: op
+
+  allium.tpo:
+    description: Allows /tpo to teleport to or move a player, bypassing /tptoggle
+    default: op
+
+  allium.tpohere:
+    description: Allows /tpohere to bring a player to you, bypassing /tptoggle
+    default: op
 
   allium.delwarp:
     default: op

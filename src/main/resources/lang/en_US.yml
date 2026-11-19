@@ -148,6 +148,12 @@ teleport:
   unsafe:
     - "{prefix} &cNo safe destination was found. Nothing was teleported."
     - "[sound] item.shield.break 0.95"
+  top-none:
+    - "{prefix} &cThere is no safe place to stand above you."
+    - "[sound] block.note_block.bass 0.8"
+  bottom-none:
+    - "{prefix} &cThere is no safe place to stand below you."
+    - "[sound] block.note_block.bass 0.8"
   busy:
     - "{prefix} &cA teleport is already pending. Try again shortly."
     - "[sound] block.note_block.hat 0.85"

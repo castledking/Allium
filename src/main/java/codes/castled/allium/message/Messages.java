@@ -220,6 +220,8 @@ public enum Messages {
     TELEPORT_LOADING("teleport.loading", "{prefix} &cYour teleport data is still loading. Try again shortly."),
     TELEPORT_STORAGE_FAILED("teleport.storage-failed", "{prefix} &cTeleport data could not be saved. Try again shortly."),
     TELEPORT_UNSAFE("teleport.unsafe", "{prefix} &cNo safe destination was found. Nothing was teleported."),
+    TELEPORT_TOP_NONE("teleport.top-none", "{prefix} &cThere is no safe place to stand above you."),
+    TELEPORT_BOTTOM_NONE("teleport.bottom-none", "{prefix} &cThere is no safe place to stand below you."),
     TELEPORT_UNGENERATED("teleport.ungenerated", "{prefix} &cThat destination is in terrain this world never generated."),
     TELEPORT_BUSY("teleport.busy", "{prefix} &cA teleport is already pending. Try again shortly."),
     TELEPORT_SELF("teleport.self", "{prefix} &cYou can't request a teleport to yourself."),

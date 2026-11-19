@@ -1453,6 +1453,32 @@ def tp_position(lane):
     lane.perm('PlayerBot', 'allium.tp', False)
 
 
+def top_bottom(lane):
+    """/top lands on the highest block above, /bottom on the lowest below, through the teleport service."""
+    staff = lane.bots['StaffBot']
+    for node in ['allium.top', 'allium.bottom', 'allium.back', 'allium.teleport.timer.bypass.top', 'allium.teleport.timer.bypass.bottom',
+                 'allium.teleport.timer.bypass.back', 'allium.teleport.cooldown.bypass.back']:
+        lane.perm('StaffBot', node)
+    lane.console('setblock 20 -55 20 minecraft:stone')
+    try:
+        lane.fixture('tp StaffBot 20.5 -61 20.5 0 0')
+        window(.5)
+        staff.command('bottom', 'There is no safe place to stand below you.')
+        staff.command('top', 'Teleported to 20.5, -54.0, 20.5 in world.')
+        at = lane.fixture('where StaffBot')
+        require(abs(at['y'] + 54) < 0.01 and abs(at['x'] - 20.5) < 0.01, lane.name + ': /top stands on the floating block', at)
+        staff.command('bottom', 'Teleported to 20.5, -61.0, 20.5 in world.')
+        at = lane.fixture('where StaffBot')
+        require(abs(at['y'] + 61) < 0.01, lane.name + ': /bottom stands on the ground below it', at)
+        staff.command('back', 'Returned to your previous location.')
+        at = lane.fixture('where StaffBot')
+        require(abs(at['y'] + 54) < 0.01, lane.name + ': /back returns to where /bottom started', at)
+    finally:
+        lane.console('setblock 20 -55 20 minecraft:air')
+        lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')
+        window(.4)
+
+
 def teleport_types(lane):
     staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
     for node in ['allium.teleport.timer.bypass.tppos', 'allium.teleport.timer.bypass.tp', 'allium.teleport.cooldown.bypass.tppos']:
@@ -1595,6 +1621,7 @@ def main():
         case('clear', lambda: inventory_clear(lane))
         case('scale', lambda: scaling(lane))
         case('tp-position', lambda: tp_position(lane))
+        case('top-bottom', lambda: top_bottom(lane))
         case('teleport-types', lambda: teleport_types(lane))
         case('mail-numbers', lambda: mail_numbers(lane))
         case('whois-alts', lambda: whois_and_alts(lane))

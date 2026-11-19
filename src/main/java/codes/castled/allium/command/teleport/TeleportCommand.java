@@ -49,7 +49,13 @@ public final class TeleportCommand implements SpecCommandHandler {
             }
             default -> {
                 if(args.length!=0){context.sendInvalidArgs(spec.selfUsage());return;}
-                switch(command){case "tpacancel"->service.cancel(player);case "back"->service.back(player);case "spawn"->service.spawn(player);case "setspawn"->service.setSpawn(player);default->throw new IllegalStateException(command);}
+                switch(command){case "tpacancel"->service.cancel(player);case "back"->service.back(player);case "spawn"->service.spawn(player);case "setspawn"->service.setSpawn(player);
+                    case "top","bottom"->{
+                        var to=command.equals("top")?codes.castled.allium.teleport.VerticalTeleports.top(player):codes.castled.allium.teleport.VerticalTeleports.bottom(player);
+                        if(to.isEmpty()){plugin.getMessageManager().send(player,command.equals("top")?Messages.TELEPORT_TOP_NONE:Messages.TELEPORT_BOTTOM_NONE);return;}
+                        service.teleport(player,to.get(),command);
+                    }
+                    default->throw new IllegalStateException(command);}
             }
         }
     }

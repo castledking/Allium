@@ -1,0 +1,193 @@
+{
+  "suite": "spigot",
+  "run": "topmail-spigot-1",
+  "alliumSha256": "9c4eb59ee8b218058fe512597f572bab12458c069a02f957f9da3a8aad0a78c1",
+  "sources": {
+    "tests/live/staff/run.py": "097994a48ef968b6a294853eef6cdd7c906f93a06c01554d8e53cce9c0e5e17e",
+    "tests/live/staff/plugin/gate/StaffGate.java": "060523c9025971f966f0fca96dd6a502617f8ae1028672c2b556d088a0b815b7",
+    "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+    "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
+    "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
+    "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+  },
+  "passed": true,
+  "checks": 10,
+  "failures": [],
+  "cases": [
+    {
+      "name": "top-bottom",
+      "passed": true
+    },
+    {
+      "name": "mail-numbers",
+      "passed": true
+    }
+  ],
+  "seconds": 27.9,
+  "results": [
+    {
+      "label": "spigot: creative, alts and restore modules enabled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "spigot: /top stands on the floating block",
+      "passed": true,
+      "detail": {
+        "x": 20.5,
+        "y": -54.0,
+        "z": 20.5,
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "world": "world"
+      }
+    },
+    {
+      "label": "spigot: /bottom stands on the ground below it",
+      "passed": true,
+      "detail": {
+        "x": 20.5,
+        "y": -61.0,
+        "z": 20.5,
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "world": "world"
+      }
+    },
+    {
+      "label": "spigot: /back returns to where /bottom started",
+      "passed": true,
+      "detail": {
+        "x": 20.5,
+        "y": -54.0,
+        "z": 20.5,
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "world": "world"
+      }
+    },
+    {
+      "label": "spigot: text mail reads as [1] [2] [3]",
+      "passed": true,
+      "detail": [
+        "[Allium] Your mail (3):",
+        "[1] From Console (just now): text-1",
+        "[2] From Console (just now): text-2",
+        "[3] From Console (just now): text-3"
+      ]
+    },
+    {
+      "label": "spigot: a new mail takes the freed number 2",
+      "passed": true,
+      "detail": [
+        {
+          "kind": "TEXT",
+          "state": "READY",
+          "number": 1,
+          "body": "text-1"
+        },
+        {
+          "kind": "TEXT",
+          "state": "READY",
+          "number": 2,
+          "body": "text-4"
+        },
+        {
+          "kind": "TEXT",
+          "state": "READY",
+          "number": 3,
+          "body": "text-3"
+        }
+      ]
+    },
+    {
+      "label": "spigot: gifts continue the text numbers",
+      "passed": true,
+      "detail": [
+        {
+          "kind": "GIFT",
+          "state": "READY",
+          "number": 4,
+          "body": null
+        },
+        {
+          "kind": "GIFT",
+          "state": "READY",
+          "number": 5,
+          "body": null
+        },
+        {
+          "kind": "TEXT",
+          "state": "READY",
+          "number": 1,
+          "body": "text-1"
+        },
+        {
+          "kind": "TEXT",
+          "state": "READY",
+          "number": 2,
+          "body": "text-4"
+        },
+        {
+          "kind": "TEXT",
+          "state": "READY",
+          "number": 3,
+          "body": "text-3"
+        }
+      ]
+    },
+    {
+      "label": "spigot: /mail lists one sequence, 1 to 5",
+      "passed": true,
+      "detail": [
+        "[Allium] Your mail (5):",
+        "[1] From Console (just now): text-1",
+        "[2] From Console (just now): text-4",
+        "[3] From Console (just now): text-3",
+        "[4] Gift from StaffBot (just now), 1 stack(s):  - /mail claim 4",
+        "[5] Gift from StaffBot (just now), 1 stack(s):  - /mail claim 5"
+      ]
+    },
+    {
+      "label": "spigot: the next gift reuses number 4",
+      "passed": true,
+      "detail": [
+        {
+          "kind": "GIFT",
+          "state": "READY",
+          "number": 4,
+          "body": null
+        },
+        {
+          "kind": "GIFT",
+          "state": "READY",
+          "number": 5,
+          "body": null
+        },
+        {
+          "kind": "TEXT",
+          "state": "READY",
+          "number": 1,
+          "body": "text-1"
+        },
+        {
+          "kind": "TEXT",
+          "state": "READY",
+          "number": 2,
+          "body": "text-4"
+        },
+        {
+          "kind": "TEXT",
+          "state": "READY",
+          "number": 3,
+          "body": "text-3"
+        }
+      ]
+    },
+    {
+      "label": "spigot: no exceptions or SEVERE lines in the server log",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

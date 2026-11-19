@@ -336,7 +336,7 @@ public final class TeleportService implements Listener {
         long until=System.currentTimeMillis()+(cooldownBypass(operation.actor(),operation.command())?0:operation.rules().cooldown(operation.command()));
         session.cooldowns.put(operation.command(),until);
         Location landed=mover.getLocation();
-        boolean position=operation.anchor()==null&&(operation.command().equals("tp")||operation.command().equals("tppos"));
+        boolean position=operation.anchor()==null&&java.util.Set.of("tp","tppos","top","bottom").contains(operation.command());
         saveHistory(session,session.back,operation.command(),until,0,()->{
             if(position){send(mover,Messages.TELEPORT_POSITION,"{x}",coordinate(landed.getX()),"{y}",coordinate(landed.getY()),"{z}",coordinate(landed.getZ()),"{world}",landed.getWorld()==null?"?":landed.getWorld().getName());return;}
             send(mover,switch(operation.command()){case "back"->Messages.TELEPORT_BACK;case "spawn"->Messages.SPAWN_TELEPORT;case "tpoffline"->Messages.TELEPORT_OFFLINE_SUCCESS;default->Messages.TELEPORT_SUCCESS;},"{target}",offline!=null?offline.name:operation.anchor()==null?operation.command():operation.anchor().getName());
